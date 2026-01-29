@@ -200,11 +200,11 @@
   [query :- ::lib.schema/query
    stage-number :- :int
    strategy :- ::lib.schema.join/strategy]
-  (let [available-strategies (lib.join/available-join-strategies query stage-number)
-        found-strategy (first (filter (partial matches-strategy? strategy) available-strategies))]
-    (if (nil? found-strategy)
-      (throw (ex-info "No join strategy found" {:available-strategies available-strategies, :strategy strategy}))
-      found-strategy)))
+  (let [available-strategies (lib.join/available-join-strategies query stage-number)]
+    (if-let [found-strategy (m/find-first #(= (:strategy %) strategy) available-strategies)]
+      found-strategy
+      
+      (throw (ex-info "No join strategy found" {:available-strategies available-strategies, :strategy strategy})))))
 
 (mu/defn- join-condition-spec->join-condition :- ::lib.schema.join/condition
   [query :- ::lib.schema/query
