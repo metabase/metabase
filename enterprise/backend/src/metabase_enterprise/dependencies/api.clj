@@ -1136,15 +1136,12 @@
          sort_direction :asc}} :- broken-dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
   (lib-be/with-metadata-provider-cache
-    (let [;; Normalize filter parameters
-          dep-types (cond
-                      (nil? dependent_types) nil
-                      (sequential? dependent_types) (mapv name dependent_types)
-                      :else [(name dependent_types)])
-          card-types (cond
-                       (nil? dependent_card_types) nil
-                       (sequential? dependent_card_types) (mapv name dependent_card_types)
-                       :else [(name dependent_card_types)])
+    (let [normalize-types (fn normalize-types [types]
+                            (if (keyword? types)
+                              [(name types)]
+                              (not-empty (map name types))))
+          dep-types (normalize-types dependent_types)
+          card-types (normalize-types dependent_card_types)
           where-clause (cond-> [:and
                                 [:= :afe.source_entity_type (name entity-type)]
                                 [:= :afe.source_entity_id id]

@@ -2755,3 +2755,42 @@
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card)
                                                         "&type=card&dependent_types=dashboard"))]
                 (is (empty? response))))))))))
+
+(deftest ^:synchronized broken-personal-collections-test
+  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/User creator {:email "creator@test.com"}
+                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                 :name "Test Personal Collection"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+            ;; one model, two dependents: one in personal collection, one in regular collection
+            (let [[model-card dependent-in-personal dependent-regular]
+                  (lib-be/with-metadata-provider-cache
+                    (let [model-card (create-model-card! creator "Model - personalcollbrokentest2")
+                          dependent-in-personal (create-dependent-card-on-model! creator model-card
+                                                                                 "Dependent in Personal - personalcollbrokentest2"
+                                                                                 :collection-id personal-coll-id)
+                          dependent-regular (create-dependent-card-on-model! creator model-card
+                                                                             "Dependent Regular - personalcollbrokentest2")]
+                      [model-card dependent-in-personal dependent-regular]))]
+              (lib-be/with-metadata-provider-cache
+                (break-model-card! model-card))
+              (lib-be/with-metadata-provider-cache
+                (while (#'dependencies.backfill/backfill-dependencies!))
+                (run-analysis-for-card! (:id dependent-in-personal))
+                (run-analysis-for-card! (:id dependent-regular)))
+              (testing "include_personal_collections=false (default) excludes broken dependents in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200
+                                                     (str "ee/dependencies/graph/broken?id=" (:id model-card) "&type=card"))
+                      card-ids (set (map :id response))]
+                  (is (not (contains? card-ids (:id dependent-in-personal))))
+                  (is (contains? card-ids (:id dependent-regular)))))
+              (testing "include_personal_collections=true includes broken dependents in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200
+                                                     (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                          "&type=card&include_personal_collections=true"))
+                      card-ids (set (map :id response))]
+                  (is (contains? card-ids (:id dependent-in-personal)))
+                  (is (contains? card-ids (:id dependent-regular))))))))))))
