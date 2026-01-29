@@ -32,7 +32,9 @@
    - :model-type     - String name for RemoteSyncObject model_type column
    - :model-key      - Toucan2 model keyword (e.g., :model/Card)
    - :identity       - Identity strategy: :entity-id, :path, or :hybrid
-   - :path-keys      - For path-based: vector of path components [:database :schema :table :field]
+   - :path-keys      - For :path or :hybrid identity: vector of path components [:database :schema :table :field]
+   - :parent-model   - For :parent-table eligibility: the parent model key to check eligibility against
+                       (e.g., :model/Table for Field, Segment, Measure)
    - :delete-after   - Optional vector of model keys that must be deleted AFTER this model.
                        Used to handle FK constraints during import cleanup. For example, if Card
                        has :delete-after [:model/Collection], Card will be deleted before Collection.
@@ -50,9 +52,16 @@
                        :hydrate-query  - Optional custom query for joins (overrides select-fields)
                        :field-mappings - Map of RemoteSyncObject column -> source field or [field transform-fn]
    - :removal        - Removal/cleanup configuration:
-                       :statuses  - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
-                       :scope-key - Optional key for scoping deletions (e.g., :collection_id, :id).
-                                    If nil, deletions are global (by entity_id only).
+                       :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
+                       :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
+                                     If nil, deletions are global (by entity_id only).
+                       :conditions - Optional map of extra conditions for filtering removals
+                                     (e.g., {:built_in_type nil} to protect built-in items)
+   - :export-scope   - Export scope for query-export-roots:
+                       :root-collections - Query root-level remote-synced + namespace collections (Collection)
+                       :root-only        - Query root instances with collection_id = nil (Transform)
+                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
+                       nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
   {:model/Card
@@ -617,7 +626,7 @@
 
 ;;; ---------------------------------------------- Spec Field Accessors ------------------------------------------------
 
-(defn select-fields-for-sync
+(defn fields-for-sync
   "Returns the fields to select for a model during sync operations.
    Falls back to default if not specified in spec."
   [model-type-str]

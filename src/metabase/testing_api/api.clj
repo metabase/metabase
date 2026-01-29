@@ -130,6 +130,8 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  ;; reset the system clock, in case `/set-time` was called without cleanup
+  (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex! {:async? false})
