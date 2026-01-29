@@ -1,4 +1,9 @@
-import { Card, Flex, Text } from "metabase/ui";
+import ColorInput from "metabase/common/components/ColorInput";
+import ColorPicker from "metabase/common/components/ColorPicker";
+import { ColorPill } from "metabase/common/components/ColorPill";
+import { suggestColors } from "metabase/lib/colors/derive-theme";
+import { Box, Card, Flex, Group, Stack, Text } from "metabase/ui";
+import { useState } from "react";
 
 export default {
   title: "Design System/Colors",
@@ -68,5 +73,26 @@ export function Default() {
         );
       })}
     </Flex>
+  );
+}
+
+export function ColorHarmony() {
+  const [brand, setBrand] = useState("#509EE2");
+
+  const suggestions = suggestColors(brand);
+
+  return (
+    <Box>
+      <ColorPicker value={brand} onChange={(val) => val && setBrand(val)} />
+
+      <Group mt="lg">
+        {Object.keys(suggestions).map((name) => (
+          <Stack key={name} gap="xs" align="center">
+            <ColorPill color={suggestions[name]} />
+            <Text>{name}</Text>
+          </Stack>
+        ))}
+      </Group>
+    </Box>
   );
 }
