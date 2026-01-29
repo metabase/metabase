@@ -8,6 +8,7 @@ export type NativeQuerySnippetDetails = {
   description?: string | null;
   content: string;
   collection_id?: RegularCollectionId | null;
+  archived?: boolean;
 };
 
 export function createSnippet({
@@ -15,6 +16,7 @@ export function createSnippet({
   description = null,
   content,
   collection_id = null,
+  archived = false,
 }: NativeQuerySnippetDetails): Cypress.Chainable<
   Cypress.Response<NativeQuerySnippet>
 > {
@@ -23,5 +25,6 @@ export function createSnippet({
     description,
     content,
     collection_id,
+    archived,
   });
 }

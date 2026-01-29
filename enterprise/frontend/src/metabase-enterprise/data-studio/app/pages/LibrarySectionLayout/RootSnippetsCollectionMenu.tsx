@@ -1,6 +1,8 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
+import { dataStudioArchivedSnippets } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
@@ -42,6 +44,13 @@ export const RootSnippetsCollectionMenu = ({
           }}
         >
           {t`Change permissions`}
+        </Menu.Item>
+        <Menu.Item
+          component={Link}
+          leftSection={<FixedSizeIcon name="view_archive" />}
+          to={dataStudioArchivedSnippets()}
+        >
+          {t`View archived snippets`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

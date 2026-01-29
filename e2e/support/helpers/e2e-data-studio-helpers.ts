@@ -5,6 +5,7 @@ import { popover } from "./e2e-ui-elements-helpers";
 
 const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
+const archivedSnippetsPage = () => cy.findByTestId("archived-snippets-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
 const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
@@ -43,6 +44,7 @@ export const DataStudio = {
   Snippets: {
     newPage: newSnippetPage,
     editPage: editSnippetPage,
+    archivedPage: archivedSnippetsPage,
     nameInput: () => newSnippetPage().findByDisplayValue("New SQL snippet"),
     descriptionInput: () => cy.findByPlaceholderText("No description"),
     saveButton: () => cy.findByRole("button", { name: "Save" }),

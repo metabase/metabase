@@ -301,6 +301,10 @@ export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
 }
 
+export function dataStudioArchivedSnippets() {
+  return `${dataStudioLibrary()}/snippets/archived`;
+}
+
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
 }

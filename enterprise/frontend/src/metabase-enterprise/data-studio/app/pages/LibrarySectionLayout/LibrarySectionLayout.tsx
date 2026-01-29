@@ -27,6 +27,15 @@ import {
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { LibraryEmptyState } from "metabase-enterprise/data-studio/common/components/LibraryEmptyState";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useBuildSnippetTree } from "metabase-enterprise/data-studio/common/hooks/use-build-snippet-tree";
+import type {
+  EmptyStateData,
+  TreeItem,
+} from "metabase-enterprise/data-studio/common/types";
+import {
+  isCollection,
+  isEmptyStateData,
+} from "metabase-enterprise/data-studio/common/utils";
 import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -36,17 +45,7 @@ import { SectionLayout } from "../../components/SectionLayout";
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
-import {
-  useBuildSnippetTree,
-  useBuildTreeForCollection,
-  useErrorHandling,
-} from "./hooks";
-import {
-  type EmptyStateData,
-  type TreeItem,
-  isCollection,
-  isEmptyStateData,
-} from "./types";
+import { useBuildTreeForCollection, useErrorHandling } from "./hooks";
 import { getAccessibleCollection, getWritableCollection } from "./utils";
 
 interface EmptyStateActionProps {
