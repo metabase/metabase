@@ -290,7 +290,8 @@
                (let [tool-entry (get tools toolName)
                      tool-fn    (if (map? tool-entry) (:fn tool-entry) tool-entry)
                      ;; collect the chunks for the tool and run with it
-                     task       (submit-virtual #(run-tool toolCallId toolName tool-fn chunks))]
+                     ;; Use bound-fn* to preserve dynamic bindings (e.g. *current-user-id*) in virtual thread
+                     task       (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool-fn chunks)))]
                  (vswap! active assoc toolCallId {:task task})))
              (rf result chunk))
 
