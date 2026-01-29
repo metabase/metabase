@@ -114,8 +114,12 @@ export function MetabotSQLGenerationSettingsSection() {
               }}
               onBlur={handleApiKeyBlur}
               error={apiKeyError}
-              visible={isApiKeyVisible}
-              onVisibilityChange={setIsApiKeyVisible}
+              {...(isApiKeyEnvVar
+                ? {}
+                : {
+                    visible: isApiKeyVisible,
+                    onVisibilityChange: setIsApiKeyVisible,
+                  })}
             />
             {isApiKeyEnvVar && (
               <SetByEnvVar varName={apiKeyDetails.env_name!} />
