@@ -19,11 +19,13 @@ import type { Transform } from "metabase-types/api";
 interface TransformRevisionHistorySidebarProps {
   transform: Transform;
   onClose: () => void;
+  readOnly?: boolean;
 }
 
 export function TransformRevisionHistorySidebar({
   transform,
   onClose,
+  readOnly,
 }: TransformRevisionHistorySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const currentUser = useSelector(getUser);
@@ -72,7 +74,7 @@ export function TransformRevisionHistorySidebar({
               })
             }
             entity="transform"
-            canWrite
+            canWrite={!readOnly}
           />
         )}
       </SidesheetCard>

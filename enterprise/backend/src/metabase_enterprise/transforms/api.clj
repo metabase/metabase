@@ -20,6 +20,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -48,8 +49,6 @@
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
-
-;;; ------------------------------------------------ Response Schemas ------------------------------------------------
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -129,6 +128,10 @@
                                          [:name {:optional true} :string]
                                          [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
 
+(defn- check-is-data-analyst
+  []
+  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
+
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
 
@@ -176,15 +179,16 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (api/check-superuser)
+  (check-is-data-analyst)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
-    (into []
-          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map python-source-table-ref->table-id))
-          (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))))
+    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
+         (into []
+               (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                     (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                     (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                     (map #(update % :last_run transforms.util/localize-run-timestamps))
+                     (map python-source-table-ref->table-id)))
+         transforms.util/add-source-readable)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -314,7 +318,9 @@
                       ;; Return with hydrated tag_ids
                       (t2/hydrate transform :transform_tag_ids :creator :owner)))]
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    (python-source-table-ref->table-id transform)))
+    (-> transform
+        python-source-table-ref->table-id
+        transforms.util/add-source-readable)))
 
 (defn get-transform
   "Get a specific transform."
@@ -325,7 +331,8 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table)
-        python-source-table-ref->table-id)))
+        python-source-table-ref->table-id
+        transforms.util/add-source-readable)))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -340,9 +347,11 @@
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
-        dep-ids (get global-ordering id)
-        dependencies (map id->transform dep-ids)]
-    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator :owner))))
+        dep-ids         (get global-ordering id)
+        dependencies    (map id->transform dep-ids)]
+    (->> (t2/hydrate dependencies :creator :owner)
+         (mapv python-source-table-ref->table-id)
+         transforms.util/add-source-readable)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -364,7 +373,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (api/check-superuser)
+  (check-is-data-analyst)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
@@ -391,6 +400,8 @@
                     (let [old (t2/select-one :model/Transform id)
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
+                      (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
+
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
@@ -409,7 +420,9 @@
                       (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
-    (python-source-table-ref->table-id transform)))
+    (-> transform
+        python-source-table-ref->table-id
+        transforms.util/add-source-readable)))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
@@ -435,7 +448,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
-        run (api/check-404 (transform-run/running-run-for-transform-id id))]
+        run       (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
       (transforms.canceling/cancel-run! (:id run))))

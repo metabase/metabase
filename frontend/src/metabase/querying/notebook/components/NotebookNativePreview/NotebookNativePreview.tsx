@@ -34,6 +34,7 @@ type NotebookNativePreviewProps = {
   title?: string;
   buttonTitle?: string;
   onConvertClick: (newQuestion: Question) => void;
+  readOnly?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -41,6 +42,7 @@ export const NotebookNativePreview = ({
   title,
   buttonTitle,
   onConvertClick,
+  readOnly,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
@@ -111,16 +113,18 @@ export const NotebookNativePreview = ({
         )}
         {showQuery && newQuery != null && <Editor query={newQuery} readOnly />}
       </Flex>
-      <Box ta="end" p="1.5rem">
-        <Button
-          variant="subtle"
-          p={0}
-          onClick={handleConvertClick}
-          disabled={!showQuery}
-        >
-          {buttonTitle ?? BUTTON_TITLE[engineType]}
-        </Button>
-      </Box>
+      {!readOnly && (
+        <Box ta="end" p="1.5rem">
+          <Button
+            variant="subtle"
+            p={0}
+            onClick={handleConvertClick}
+            disabled={!showQuery}
+          >
+            {buttonTitle ?? BUTTON_TITLE[engineType]}
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };
