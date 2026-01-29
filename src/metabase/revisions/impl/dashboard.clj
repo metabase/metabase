@@ -78,28 +78,50 @@
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
+(defn- clean-invalid-parameter-card-references
+  "Given a list of parameters, remove card references from any parameter whose values_source_config.card_id
+  references a card that is archived or does not exist. The parameter is reset to use connected fields."
+  [parameters]
+  (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
+        active-card-ids (when (seq card-ids)
+                          (t2/select-pks-set :model/Card
+                                             {:where [:and
+                                                      [:in :id card-ids]
+                                                      [:= :archived false]]}))
+        invalid-card-ids (set/difference card-ids active-card-ids)]
+    (if (empty? invalid-card-ids)
+      parameters
+      (mapv (fn [param]
+              (if (contains? invalid-card-ids (get-in param [:values_source_config :card_id]))
+                (dissoc param :values_source_type :values_source_config)
+                param))
+            parameters))))
+
 (defmethod revision/revert-to-revision! :model/Dashboard
   [model dashboard-id user-id serialized-dashboard]
-  ;; Update the dashboard description / name / permissions
-  ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
-  ;; Now update the tabs and cards as needed
-  (let [serialized-dashcards      (:cards serialized-dashboard)
-        current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                                    :model/DashboardTab :dashboard_id dashboard-id)
-        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
-        _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
-        serialized-dashcards      (cond->> serialized-dashcards
-                                    true
-                                    (remove-invalid-dashcards dashboard-id)
-                                    ;; in case reverting result in new tabs being created,
-                                    ;; we need to remap the tab-id
-                                    (seq old->new-tab-id)
-                                    (map (fn [card]
-                                           (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                             (assoc card :dashboard_tab_id new-tab-id)
-                                             card))))]
-    (revert-dashcards dashboard-id serialized-dashcards))
-  serialized-dashboard)
+  ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
+  (let [cleaned-parameters   (clean-invalid-parameter-card-references (:parameters serialized-dashboard))
+        serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
+    ;; Update the dashboard description / name / permissions
+    ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
+    ;; Now update the tabs and cards as needed
+    (let [serialized-dashcards      (:cards serialized-dashboard)
+          current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
+                                                      :model/DashboardTab :dashboard_id dashboard-id)
+          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
+          _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
+          serialized-dashcards      (cond->> serialized-dashcards
+                                      true
+                                      (remove-invalid-dashcards dashboard-id)
+                                      ;; in case reverting result in new tabs being created,
+                                      ;; we need to remap the tab-id
+                                      (seq old->new-tab-id)
+                                      (map (fn [card]
+                                             (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                               (assoc card :dashboard_tab_id new-tab-id)
+                                               card))))]
+      (revert-dashcards dashboard-id serialized-dashcards))
+    serialized-dashboard))
 
 (defmethod revision/diff-strings :model/Dashboard
   [_model prev-dashboard dashboard]

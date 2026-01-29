@@ -5444,3 +5444,146 @@ describe("issue 49319", () => {
     H.assertTableRowsCount(82);
   });
 });
+
+describe("issue #66670", () => {
+  const questionA = {
+    name: "Question A",
+    query: {
+      "source-table": PRODUCTS_ID,
+      limit: 10,
+    },
+  };
+
+  const questionB = {
+    name: "Question B",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+    cy.intercept("GET", "/api/revision*").as("revisionHistory");
+  });
+
+  it("should handle dashboard filter with permanently deleted question value source (metabase#66670)", () => {
+    cy.log("Step 1: Create a new dashboard");
+    H.createDashboard({ name: "Test Dashboard UXW-2494" }).then(
+      ({ body: { id: dashboardId } }) => {
+        cy.log("Step 2: Add Question A to the dashboard");
+        H.createQuestion(questionA).then(({ body: { id: questionAId } }) => {
+          H.updateDashboardCards({
+            dashboard_id: dashboardId,
+            cards: [
+              {
+                card_id: questionAId,
+                row: 0,
+                col: 0,
+                size_x: 12,
+                size_y: 8,
+              },
+            ],
+          });
+
+          cy.log("Step 3: Create Question B (not added to dashboard)");
+          H.createQuestion(questionB).then(({ body: { id: questionBId } }) => {
+            cy.log(
+              "Step 4: Edit dashboard, add filter with Question B as value source",
+            );
+            H.visitDashboard(dashboardId);
+            H.editDashboard();
+            H.setFilter("Text or Category", "Is");
+
+            // Map filter to Question A
+            cy.findByText("Select…").click();
+            H.popover().within(() => cy.findByText("Category").click());
+
+            // Set filter value source to Question B
+            H.setFilterQuestionSource({
+              question: questionB.name,
+              field: "Category",
+            });
+
+            cy.log("Step 5: Save the dashboard");
+            H.saveDashboard();
+            cy.wait("@updateDashboard");
+
+            cy.log("Step 5b: Update the title and save again");
+            H.editDashboard();
+            cy.findByTestId("dashboard-header")
+              .findByDisplayValue("Test Dashboard UXW-2494")
+              .clear()
+              .type("Updated Dashboard Title");
+            H.saveDashboard();
+            cy.wait("@updateDashboard");
+
+            cy.log("Step 6: Move Question B to the trash");
+            H.visitQuestion(questionBId);
+            H.openQuestionActions();
+            H.popover().findByText("Move to trash").click();
+            H.modal().findByText("Move to trash").click();
+
+            cy.log(
+              "Step 8: Revert dashboard to earlier version where filter used Question B",
+            );
+            H.visitDashboard(dashboardId);
+            H.openDashboardInfoSidebar();
+            H.sidesheet().within(() => {
+              cy.findByRole("tab", { name: "History" }).click();
+              cy.wait("@revisionHistory");
+              // Click revert on the version that added the filter with Question B source
+              cy.findByTestId("dashboard-history-list")
+                .findAllByLabelText(/revert to You edited this/i)
+                .first()
+                .click();
+            });
+            // Close sidesheet
+            H.sidesheet().findByLabelText("Close").click();
+
+            cy.log("Step 9: Permanently delete Question B from trash");
+            cy.request("DELETE", `/api/card/${questionBId}`);
+
+            cy.log("Step 10: Try to add another filter and save → Save fails");
+            H.editDashboard();
+            H.setFilter("Number");
+            cy.findByText("Select…").click();
+            H.popover().within(() => cy.findByText("Price").click());
+
+            cy.intercept("PUT", `/api/dashboard/${dashboardId}`).as(
+              "saveDashboard",
+            );
+            cy.findByTestId("edit-bar").button("Save").click();
+
+            cy.wait("@saveDashboard").then((interception) => {
+              expect(interception.response.statusCode).to.eq(200);
+            });
+
+            cy.log(
+              "Step 11: Edit existing filter, click Edit → modal loads indefinitely",
+            );
+            H.visitDashboard(dashboardId);
+            H.editDashboard();
+            H.filterWidget({ isEditing: true }).first().click();
+            H.dashboardParameterSidebar().findByText("Edit").click();
+
+            H.modal().should("be.visible");
+            H.modal().within(() => {
+              cy.findByText("Where values should come from", {
+                timeout: 10000,
+              }).should("be.visible");
+              cy.findByText("From connected fields").should("be.visible");
+              cy.findByText("From another model or question").should(
+                "be.visible",
+              );
+              cy.findByText("Custom list").should("be.visible");
+            });
+          });
+        });
+      },
+    );
+  });
+});
