@@ -502,6 +502,23 @@
            util
            xrays}}
 
+  data-studio
+  {:team "Gadget"
+   :api  #{metabase.data-studio.api}
+   :uses #{api
+           database-routing
+           driver
+           events
+           request
+           sync
+           util
+           warehouse-schema}}
+
+  database-routing
+  {:team "UX West"
+   :api  #{metabase.database-routing.core}
+   :uses #{premium-features}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -1780,23 +1797,6 @@
            settings
            util
            warehouse-schema}}
-
-  data-studio
-  {:team "Gadget"
-   :api  #{metabase.data-studio.api}
-   :uses #{api
-           database-routing
-           driver
-           events
-           request
-           sync
-           util
-           warehouse-schema}}
-
-  database-routing
-  {:team "UX West"
-   :api  #{metabase.database-routing.core}
-   :uses #{premium-features}}
 
   enterprise/action-v2
   {:team "Gadget"
