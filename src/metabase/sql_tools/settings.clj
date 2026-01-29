@@ -10,6 +10,7 @@
 (defsetting sql-tools-parser-backend
   (deferred-tru "Parser backend of `sql-tools` module.")
   :visibility :internal
+  :export? false
   :type :keyword
   :default (if config/is-dev?
              :sqlglot
