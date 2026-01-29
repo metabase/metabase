@@ -70,7 +70,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
   );
 
   return (
-    <Route path="/admin" component={CanAccessSettings} app="admin">
+    <Route path="/admin" component={CanAccessSettings}>
       <Route component={AdminApp}>
         <IndexRoute component={RedirectToAllowedSettings} />
         <Route
