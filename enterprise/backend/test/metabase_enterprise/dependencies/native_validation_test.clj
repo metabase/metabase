@@ -9,6 +9,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]))
 
+;;; WIP: due to added setting those tests should run with macaw by default in CI
+
 (defn- fake-query
   ([mp query]
    (fake-query mp query {}))
@@ -146,28 +148,28 @@
   (mt/test-driver
     :postgres
     (testing "Calculates result metadata"
-      (let [mp  (mt/metadata-provider) #_(deps.tu/default-metadata-provider)
+      (let [mp  #_WIP #_(mt/metadata-provider) (deps.tu/default-metadata-provider)
             driver (:engine (lib.metadata/database mp))]
-        #_(testing "Selecting a wildcard"
-            (check-result-metadata
-             driver mp
-             "select * from orders"
-             (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
-        #_(testing "Selecting a table wildcard"
-            (check-result-metadata
-             driver mp
-             "select orders.* from orders"
-             (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
-        #_(testing "Selecting a single col"
-            (check-result-metadata
-             driver mp
-             "select total from orders"
-             (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
-        #_(testing "Selecting a nonexistent col"
-            (check-result-metadata
-             driver mp
-             "select bad from orders"
-             []))
+        (testing "Selecting a wildcard"
+          (check-result-metadata
+           driver mp
+           "select * from orders"
+           (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+        (testing "Selecting a table wildcard"
+          (check-result-metadata
+           driver mp
+           "select orders.* from orders"
+           (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+        (testing "Selecting a single col"
+          (check-result-metadata
+           driver mp
+           "select total from orders"
+           (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
+        (testing "Selecting a nonexistent col"
+          (check-result-metadata
+           driver mp
+           "select bad from orders"
+           []))
         (testing "Selecting a col with an alias"
           (try (check-result-metadata
                 driver mp
@@ -182,92 +184,92 @@
                (catch Throwable t
                  (def ttt t)
                  (throw t))))
-        #_(testing "Selecting a custom col"
-            (check-result-metadata
-             driver mp
-             "select subtotal + tax as sum from orders"
-             [{:base-type :type/*,
-               :name "SUM",
-               :display-name "Sum",
-               :effective-type :type/*,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a union"
-            (check-result-metadata
-             driver mp
-             "select total from orders union select subtotal from orders"
-             [{:name "TOTAL",
-               :lib/desired-column-alias "TOTAL",
-               :display-name "Total",
-               :base-type :type/Float,
-               :effective-type :type/Float,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a union of custom fields"
-            (check-result-metadata
-             driver mp
-             "select 1 as TOTAL union select 2"
-             [{:name "TOTAL",
-               :lib/desired-column-alias "TOTAL",
-               :display-name "Total",
-               :base-type :type/*,
-               :effective-type :type/*,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a union with different types"
-            (check-result-metadata
-             driver mp
-             "select category from products union select title from products"
-             [{:name "CATEGORY",
-               :lib/desired-column-alias "CATEGORY",
-               :display-name "Category",
-               :base-type :type/Text,
-               :effective-type :type/Text,
-               :semantic-type :type/Category}]))
-        #_(testing "Using a table function"
-            (check-result-metadata
-             driver mp
-             "select ids from my_function(1, 100)"
-             [{:name "IDS",
-               :lib/desired-column-alias "IDS",
-               :display-name "Ids",
-               :effective-type :type/*,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a bad table wildcard"
-            (check-result-metadata
-             driver mp
-             "select orders.* from products"
-             []))
-        #_(testing "Using a nonsense query"
-            (check-result-metadata
-             driver mp
-             "this is not a query"
-             []))))))
+        (testing "Selecting a custom col"
+          (check-result-metadata
+           driver mp
+           "select subtotal + tax as sum from orders"
+           [{:base-type :type/*,
+             :name "SUM",
+             :display-name "Sum",
+             :effective-type :type/*,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a union"
+          (check-result-metadata
+           driver mp
+           "select total from orders union select subtotal from orders"
+           [{:name "TOTAL",
+             :lib/desired-column-alias "TOTAL",
+             :display-name "Total",
+             :base-type :type/Float,
+             :effective-type :type/Float,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a union of custom fields"
+          (check-result-metadata
+           driver mp
+           "select 1 as TOTAL union select 2"
+           [{:name "TOTAL",
+             :lib/desired-column-alias "TOTAL",
+             :display-name "Total",
+             :base-type :type/*,
+             :effective-type :type/*,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a union with different types"
+          (check-result-metadata
+           driver mp
+           "select category from products union select title from products"
+           [{:name "CATEGORY",
+             :lib/desired-column-alias "CATEGORY",
+             :display-name "Category",
+             :base-type :type/Text,
+             :effective-type :type/Text,
+             :semantic-type :type/Category}]))
+        (testing "Using a table function"
+          (check-result-metadata
+           driver mp
+           "select ids from my_function(1, 100)"
+           [{:name "IDS",
+             :lib/desired-column-alias "IDS",
+             :display-name "Ids",
+             :effective-type :type/*,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a bad table wildcard"
+          (check-result-metadata
+           driver mp
+           "select orders.* from products"
+           []))
+        (testing "Using a nonsense query"
+          (check-result-metadata
+           driver mp
+           "this is not a query"
+           []))))))
 
 (deftest ^:parallel result-metadata-test-pg
   (mt/test-driver
     :postgres
     (testing "Calculates result metadata"
-      (let [mp  (mt/metadata-provider) #_(deps.tu/default-metadata-provider)
+      (let [mp  #_WIP #_(mt/metadata-provider) (deps.tu/default-metadata-provider)
             driver (:engine (lib.metadata/database mp))]
-        #_(testing "Selecting a wildcard"
-            (check-result-metadata
-             driver mp
-             "select * from orders"
-             (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
-        #_(testing "Selecting a table wildcard"
-            (check-result-metadata
-             driver mp
-             "select orders.* from orders"
-             (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
-        #_(testing "Selecting a single col"
-            (check-result-metadata
-             driver mp
-             "select total from orders"
-             (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
-        #_(testing "Selecting a nonexistent col"
-            (check-result-metadata
-             driver mp
-             "select bad from orders"
-             []))
-       ;; ok, this is the baseline
+        (testing "Selecting a wildcard"
+          (check-result-metadata
+           driver mp
+           "select * from orders"
+           (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+        (testing "Selecting a table wildcard"
+          (check-result-metadata
+           driver mp
+           "select orders.* from orders"
+           (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+        (testing "Selecting a single col"
+          (check-result-metadata
+           driver mp
+           "select total from orders"
+           (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
+        (testing "Selecting a nonexistent col"
+          (check-result-metadata
+           driver mp
+           "select bad from orders"
+           []))
+       ;; WIP ok, this is the baseline
         (testing "Selecting a col with an alias"
           (try (check-result-metadata
                 driver mp
@@ -284,61 +286,61 @@
                (catch Throwable t
                  (def ttt t)
                  (throw t))))
-        #_(testing "Selecting a custom col"
-            (check-result-metadata
-             driver mp
-             "select subtotal + tax as sum from orders"
-             [{:base-type :type/*,
-               :name "SUM",
-               :display-name "Sum",
-               :effective-type :type/*,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a union"
-            (check-result-metadata
-             driver mp
-             "select total from orders union select subtotal from orders"
-             [{:name "TOTAL",
-               :lib/desired-column-alias "TOTAL",
-               :display-name "Total",
-               :base-type :type/Float,
-               :effective-type :type/Float,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a union of custom fields"
-            (check-result-metadata
-             driver mp
-             "select 1 as TOTAL union select 2"
-             [{:name "TOTAL",
-               :lib/desired-column-alias "TOTAL",
-               :display-name "Total",
-               :base-type :type/*,
-               :effective-type :type/*,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a union with different types"
-            (check-result-metadata
-             driver mp
-             "select category from products union select title from products"
-             [{:name "CATEGORY",
-               :lib/desired-column-alias "CATEGORY",
-               :display-name "Category",
-               :base-type :type/Text,
-               :effective-type :type/Text,
-               :semantic-type :type/Category}]))
-        #_(testing "Using a table function"
-            (check-result-metadata
-             driver mp
-             "select ids from my_function(1, 100)"
-             [{:name "IDS",
-               :lib/desired-column-alias "IDS",
-               :display-name "Ids",
-               :effective-type :type/*,
-               :semantic-type :Semantic/*}]))
-        #_(testing "Selecting a bad table wildcard"
-            (check-result-metadata
-             driver mp
-             "select orders.* from products"
-             []))
-        #_(testing "Using a nonsense query"
-            (check-result-metadata
-             driver mp
-             "this is not a query"
-             []))))))
+        (testing "Selecting a custom col"
+          (check-result-metadata
+           driver mp
+           "select subtotal + tax as sum from orders"
+           [{:base-type :type/*,
+             :name "SUM",
+             :display-name "Sum",
+             :effective-type :type/*,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a union"
+          (check-result-metadata
+           driver mp
+           "select total from orders union select subtotal from orders"
+           [{:name "TOTAL",
+             :lib/desired-column-alias "TOTAL",
+             :display-name "Total",
+             :base-type :type/Float,
+             :effective-type :type/Float,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a union of custom fields"
+          (check-result-metadata
+           driver mp
+           "select 1 as TOTAL union select 2"
+           [{:name "TOTAL",
+             :lib/desired-column-alias "TOTAL",
+             :display-name "Total",
+             :base-type :type/*,
+             :effective-type :type/*,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a union with different types"
+          (check-result-metadata
+           driver mp
+           "select category from products union select title from products"
+           [{:name "CATEGORY",
+             :lib/desired-column-alias "CATEGORY",
+             :display-name "Category",
+             :base-type :type/Text,
+             :effective-type :type/Text,
+             :semantic-type :type/Category}]))
+        (testing "Using a table function"
+          (check-result-metadata
+           driver mp
+           "select ids from my_function(1, 100)"
+           [{:name "IDS",
+             :lib/desired-column-alias "IDS",
+             :display-name "Ids",
+             :effective-type :type/*,
+             :semantic-type :Semantic/*}]))
+        (testing "Selecting a bad table wildcard"
+          (check-result-metadata
+           driver mp
+           "select orders.* from products"
+           []))
+        (testing "Using a nonsense query"
+          (check-result-metadata
+           driver mp
+           "this is not a query"
+           []))))))
