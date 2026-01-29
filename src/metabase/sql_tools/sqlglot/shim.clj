@@ -118,3 +118,17 @@
                                                                       sqlglot-schema]))))
         normalized (mapv (partial normalized-dependencies driver) lineage)]
     normalized))
+
+(defn validate-query
+  "WIP"
+  [driver sql default-table-schema sqlglot-schema]
+  (let [;; for development comment out interpreter so py changes are propagated to our context
+        ctx (or #_@interpreter (python-context))
+        _ (.eval ctx "python" "import sql_tools")
+        pyfn (.eval ctx "python" "sql_tools.validate_query")
+        dialect (when-not (= :h2 driver)
+                  (name driver))]
+    (json/decode (.asString (.execute pyfn (object-array [dialect
+                                                          sql
+                                                          default-table-schema
+                                                          sqlglot-schema]))))))
