@@ -68,11 +68,12 @@ export type TableDependencyNodeData = Pick<
   | "db"
   | "fields"
   | "transform"
+  | "owner"
 >;
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "created_at"
+  "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
 
 export type CardDependencyNodeData = Pick<

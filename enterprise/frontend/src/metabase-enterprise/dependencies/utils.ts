@@ -333,6 +333,22 @@ export function getNodeLocationInfo(
   }
 }
 
+export function getNodeOwner(node: DependencyNode): NamedUser | null {
+  switch (node.type) {
+    case "table":
+    case "transform":
+      return node.data.owner ?? null;
+    case "card":
+    case "dashboard":
+    case "document":
+    case "segment":
+    case "measure":
+    case "snippet":
+    case "sandbox":
+      return null;
+  }
+}
+
 export function getNodeCreatedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":

@@ -15,6 +15,7 @@ import {
   getNodeDescription,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
+  getNodeOwner,
   getNodeTransform,
 } from "../../../../utils";
 import S from "../ListSidebar.module.css";
@@ -25,17 +26,19 @@ type SidebarInfoSectionProps = {
 
 export function SidebarInfoSection({ node }: SidebarInfoSectionProps) {
   const description = getNodeDescription(node);
+  const owner = getNodeOwner(node);
+  const transform = getNodeTransform(node);
   const createdBy = getNodeCreatedBy(node);
   const createdAt = getNodeCreatedAt(node);
   const editedBy = getNodeLastEditedBy(node);
   const editedAt = getNodeLastEditedAt(node);
-  const transform = getNodeTransform(node);
 
   if (
     description == null &&
+    owner == null &&
+    transform == null &&
     (createdAt == null || createdBy == null) &&
-    (editedAt == null || editedBy == null) &&
-    transform == null
+    (editedAt == null || editedBy == null)
   ) {
     return null;
   }
@@ -51,14 +54,9 @@ export function SidebarInfoSection({ node }: SidebarInfoSectionProps) {
           )}
         </InfoSection>
       )}
-      {createdBy != null && createdAt != null && (
-        <InfoSection label={t`Created by`} date={createdAt}>
-          <Box className={CS.textWrap}>{getUserName(createdBy)}</Box>
-        </InfoSection>
-      )}
-      {editedBy != null && editedAt != null && (
-        <InfoSection label={t`Last edited by`} date={editedAt}>
-          <Box className={CS.textWrap}>{getUserName(editedBy)}</Box>
+      {owner != null && (
+        <InfoSection label={t`Owner`}>
+          <Box className={CS.textWrap}>{getUserName(owner)}</Box>
         </InfoSection>
       )}
       {transform != null && (
@@ -74,6 +72,16 @@ export function SidebarInfoSection({ node }: SidebarInfoSectionProps) {
               {transform.name}
             </Group>
           </Anchor>
+        </InfoSection>
+      )}
+      {createdBy != null && createdAt != null && (
+        <InfoSection label={t`Created by`} date={createdAt}>
+          <Box className={CS.textWrap}>{getUserName(createdBy)}</Box>
+        </InfoSection>
+      )}
+      {editedBy != null && editedAt != null && (
+        <InfoSection label={t`Last edited by`} date={editedAt}>
+          <Box className={CS.textWrap}>{getUserName(editedBy)}</Box>
         </InfoSection>
       )}
     </Card>

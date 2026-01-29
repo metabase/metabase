@@ -153,9 +153,11 @@
    :card      [:name :type :display :database_id :view_count :query_type
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
-               :collection :collection_id :dashboard :dashboard_id :document :document_id]
+               :collection :collection_id :dashboard :dashboard_id :document :document_id
+               :owner :owner_user_id :owner_email]
    :snippet   [:name :description :created_at :creator :creator_id :collection :collection_id]
-   :transform [:name :description :creator :table :last_run]
+   :transform [:name :description :creator :table :last_run
+               :owner :owner_user_id :owner_email]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
                :collection :collection_id
@@ -294,10 +296,12 @@
                :card_schema]
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
-   :table     [:id :name :description :display_name :db_id :schema]
+   :table     [:id :name :description :display_name :db_id :schema
+               :owner_user_id :owner_email]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
-               :source]
+               :source
+               :owner_user_id :owner_email]
    :snippet   [:id :name :description :created_at :creator_id :collection_id]
    :sandbox   [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]
@@ -526,9 +530,9 @@
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate entities :fields :db :transform)
+    :table (t2/hydrate entities :fields :db :transform :owner)
     :transform (-> entities
-                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection)
+                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
     :dashboard (-> entities
                    (t2/hydrate :creator [:collection :is_personal])
