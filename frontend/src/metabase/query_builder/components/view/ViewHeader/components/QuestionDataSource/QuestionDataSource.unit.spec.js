@@ -1,4 +1,4 @@
-/* eslint-disable react/display-name, react/prop-types */
+/* eslint-disable react/prop-types */
 import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
