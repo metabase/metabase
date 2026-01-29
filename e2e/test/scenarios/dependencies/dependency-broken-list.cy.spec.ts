@@ -105,8 +105,8 @@ describe("scenarios > dependencies > broken list", () => {
       cy.log("table dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
       checkSidebar({
-        entityName: TABLE_DISPLAY_NAME,
-        transformName: TABLE_TRANSFORM,
+        title: TABLE_DISPLAY_NAME,
+        transform: TABLE_TRANSFORM,
         missingColumns: ["score", "status"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
       });
@@ -114,7 +114,7 @@ describe("scenarios > dependencies > broken list", () => {
       cy.log("question dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
       checkSidebar({
-        entityName: TABLE_BASED_QUESTION,
+        title: TABLE_BASED_QUESTION,
         missingColumns: ["PRICE"],
         brokenDependents: BROKEN_QUESTION_DEPENDENTS,
       });
@@ -122,7 +122,7 @@ describe("scenarios > dependencies > broken list", () => {
       cy.log("model dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
       checkSidebar({
-        entityName: TABLE_BASED_MODEL,
+        title: TABLE_BASED_MODEL,
         missingColumns: ["AMOUNT"],
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
       });
@@ -510,23 +510,23 @@ function checkList({
 }
 
 function checkSidebar({
-  entityName,
-  transformName,
+  title,
+  transform,
   missingColumns,
   brokenDependents,
 }: {
-  entityName: string;
-  transformName?: string;
+  title: string;
+  transform?: string;
   missingColumns?: string[];
   brokenDependents?: string[];
 }) {
   H.DependencyDiagnostics.sidebar().within(() => {
     H.DependencyDiagnostics.Sidebar.header()
-      .findByText(entityName)
+      .findByText(title)
       .should("be.visible");
-    if (transformName) {
+    if (transform) {
       H.DependencyDiagnostics.Sidebar.infoSection()
-        .findByText(transformName)
+        .findByText(transform)
         .should("exist");
     }
     if (missingColumns) {
