@@ -160,16 +160,18 @@
                            (:args expression-spec))}))
 
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
-  [query             :- ::lib.schema/query
-   stage-number      :- :int
-   available-columns :- [:sequential ::lib.schema.metadata/column]
-   expression-spec   :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
-  (if (:value expression-spec)
-    (lib.expression/with-expression-name (expression-spec->expression-clause query stage-number available-columns (:value expression-spec)) (:name expression-spec))
+  [query                                    :- ::lib.schema/query
+   stage-number                             :- :int
+   available-columns                        :- [:sequential ::lib.schema.metadata/column]
+   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
+  (if value
+    (-> (expression-spec->expression-clause query stage-number available-columns value)
+        (lib.expression/with-expression-name name))
     (lib.fe-util/expression-clause
      (expression-spec->expression-parts query
                                         stage-number
                                         available-columns
+                                        
                                         expression-spec))))
 
 (mu/defn- append-expression :- ::lib.schema/query
