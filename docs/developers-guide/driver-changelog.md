@@ -8,8 +8,6 @@ title: Driver interface changelog
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
 
-- Added `sql-jdbc.execute/maybe-abort-connection-on-error!` multimethod. This gives drivers an opportunity to abort the connection if an error is known to leave connections in a bad state for subsequent requests. For example, ClickHouse connections need to be aborted after an unknown role error. The default implementation is a no-op.
-
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields

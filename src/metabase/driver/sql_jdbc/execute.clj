@@ -200,19 +200,6 @@
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
   :hierarchy #'driver/hierarchy)
 
-(defmulti maybe-abort-connection-on-error!
-  "Gives drivers an opportunity to abort the connection if the error is known
-  to leave connections in a bad state for subsequent requests.
-  For example, ClickHouse connections need to be aborted after an unknown role error.
-  The default implementation is a no-op."
-  {:added "0.59.0" :arglists '([driver ^java.sql.Connection conn exception])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod maybe-abort-connection-on-error! :default
-  [_ _ _]
-  nil)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Default Impl                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -800,7 +787,6 @@
                    ^ResultSet rs (try
                                    (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                    (catch Throwable e
-                                     (maybe-abort-connection-on-error! driver conn e)
                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                      (cond-> {:driver driver
                                                               :sql    (str/split-lines (driver/prettify-native-form driver sql))

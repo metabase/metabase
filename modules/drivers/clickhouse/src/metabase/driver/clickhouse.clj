@@ -317,15 +317,6 @@
 (defonce ^:private connection-abort-executor
   (delay (Executors/newCachedThreadPool)))
 
-(defmethod sql-jdbc.execute/maybe-abort-connection-on-error! :clickhouse
-  [_ conn exception]
-  ;; Connections with this error are unusable for subsequent queries so abort it (68674)
-  (when (and (instance? SQLException exception)
-             (str/includes? (.getMessage ^SQLException exception) "UNKNOWN_ROLE"))
-    (try
-      (.abort ^Connection conn @connection-abort-executor)
-      (catch Exception _ nil))))
-
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
@@ -367,3 +358,9 @@
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
+
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
+  [driver database]
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
+   {"preferredTestQuery" "SELECT 1"}))
