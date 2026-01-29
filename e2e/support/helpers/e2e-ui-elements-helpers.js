@@ -667,3 +667,35 @@ export function ensureParameterColumnValue({ columnName, columnValue }) {
     });
   });
 }
+
+export function getProfileLink() {
+  return cy.findByTestId("app-switcher-target");
+}
+
+export const mainAppLinkText = "Main app";
+export const dataStudioAppLinkText = "Data studio";
+export const adminAppLinkText = "Admin";
+
+export function goToMainApp() {
+  getProfileLink().click();
+  popover().findByText(mainAppLinkText).click();
+}
+
+export function goToAdmin() {
+  getProfileLink().click();
+  popover().findByText(adminAppLinkText).click();
+}
+
+export function goToDataStudio() {
+  getProfileLink().click();
+  popover().findByText(dataStudioAppLinkText).click();
+}
+
+export function goToProfile() {
+  getProfileLink().click();
+  popover().findByTestId("mode-switcher-profile-link").click();
+}
+
+export function getHelpSubmenu() {
+  return cy.findByTestId("help-submenu");
+}
