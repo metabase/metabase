@@ -14,7 +14,7 @@ export function addEnterpriseAutoRefreshTests(
     const DASHBOARD_CARD_QUERY_REQUEST_COUNT = 1;
 
     it("should support auto-refreshing dashboards for positive integers", async () => {
-      jest.useFakeTimers({ advanceTimers: true });
+      jest.useFakeTimers();
 
       try {
         await setup({ props: { autoRefreshInterval: 10 } });
