@@ -105,7 +105,6 @@
    [:creator CreatorResponse]
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids {:optional true} [:sequential pos-int?]]
-   [:transform_tag_ids {:optional true} [:sequential pos-int?]]
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
@@ -124,12 +123,11 @@
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
-   ;; Transform can have id/name when exists, or just tag_ids when deleted/orphaned
-   [:transform [:map {:closed true}
-                [:id {:optional true} pos-int?]
-                [:name {:optional true} :string]
-                [:tag_ids [:sequential pos-int?]]
-                [:transform_tag_ids {:optional true} [:sequential pos-int?]]]]])
+   ;; Transform can have id/name when exists, or be nil when deleted
+   [:transform {:optional true} [:maybe [:map {:closed true}
+                                         [:id {:optional true} pos-int?]
+                                         [:name {:optional true} :string]
+                                         [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
 
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
