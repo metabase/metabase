@@ -1084,56 +1084,56 @@ serdes/meta:
 (deftest import!-keeps-transforms-setting-disabled-when-no-transforms-present-test
   (testing "import! keeps remote-sync-transforms setting disabled when no transforms are present"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
-      (mt/with-temporary-setting-values [remote-sync-transforms false]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "No Transforms Coll" :is_remote_synced true :entity_id "no-transforms-coll-xx" :location "/"}]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                test-files {"main" {"collections/no-transforms-coll-xx-_/no-transforms-coll-xx.yaml"
-                                    (test-helpers/generate-collection-yaml "no-transforms-coll-xx" "No Transforms Coll")}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)]
-            (is (false? (remote-sync.settings/remote-sync-transforms))
-                "remote-sync-transforms should be initially disabled")
-            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
-              (is (= :success (:status result)))
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temporary-setting-values [remote-sync-transforms false]
+          (mt/with-temp [:model/Collection {_coll-id :id} {:name "No Transforms Coll" :is_remote_synced true :entity_id "no-transforms-coll-xx" :location "/"}]
+            (let [test-files {"main" {"collections/no-transforms-coll-xx-_/no-transforms-coll-xx.yaml"
+                                      (test-helpers/generate-collection-yaml "no-transforms-coll-xx" "No Transforms Coll")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)]
               (is (false? (remote-sync.settings/remote-sync-transforms))
-                  "remote-sync-transforms should remain disabled when no transforms in remote"))))))))
+                  "remote-sync-transforms should be initially disabled")
+              (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+                (is (= :success (:status result)))
+                (is (false? (remote-sync.settings/remote-sync-transforms))
+                    "remote-sync-transforms should remain disabled when no transforms in remote")))))))))
 
 (deftest import!-does-not-disable-transforms-setting-when-already-enabled-test
   (testing "import! does not modify remote-sync-transforms setting when it's already enabled"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
-      (mt/with-temporary-setting-values [remote-sync-transforms true]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Already Enabled Coll" :is_remote_synced true :entity_id "already-enabled-collx" :location "/"}]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                test-files {"main" {"collections/already-enabled-collx-_/already-enabled-collx.yaml"
-                                    (test-helpers/generate-collection-yaml "already-enabled-collx" "Already Enabled Coll")}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)]
-            (is (true? (remote-sync.settings/remote-sync-transforms))
-                "remote-sync-transforms should be initially enabled")
-            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
-              (is (= :success (:status result)))
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temporary-setting-values [remote-sync-transforms true]
+          (mt/with-temp [:model/Collection {_coll-id :id} {:name "Already Enabled Coll" :is_remote_synced true :entity_id "already-enabled-collx" :location "/"}]
+            (let [test-files {"main" {"collections/already-enabled-collx-_/already-enabled-collx.yaml"
+                                      (test-helpers/generate-collection-yaml "already-enabled-collx" "Already Enabled Coll")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)]
               (is (true? (remote-sync.settings/remote-sync-transforms))
-                  "remote-sync-transforms should remain enabled even when no transforms in remote"))))))))
+                  "remote-sync-transforms should be initially enabled")
+              (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+                (is (= :success (:status result)))
+                (is (true? (remote-sync.settings/remote-sync-transforms))
+                    "remote-sync-transforms should remain enabled even when no transforms in remote")))))))))
 
 (deftest import!-includes-all-optional-paths-regardless-of-settings-test
   (testing "import! always includes all optional paths (transforms, python-libraries, snippets)"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
-      (mt/with-temporary-setting-values [remote-sync-transforms false]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "All Paths Coll" :is_remote_synced true :entity_id "all-paths-coll-xxxxxx" :location "/"}]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                test-files {"main" {"collections/all-paths-coll-xxxxxx-_/all-paths-coll-xxxxxx.yaml"
-                                    (test-helpers/generate-collection-yaml "all-paths-coll-xxxxxx" "All Paths Coll")}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)
-                paths-passed (atom nil)
-                original-fn source.p/->ingestable]
-            (with-redefs [source.p/->ingestable (fn [snapshot opts]
-                                                  (reset! paths-passed (:path-filters opts))
-                                                  (original-fn snapshot opts))]
-              (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
-                (is (= :success (:status result)))
-                (when @paths-passed
-                  (let [filter-strs (map str @paths-passed)]
-                    (is (some #(str/includes? % "transforms") filter-strs)
-                        "transforms path should be included in filters")
-                    (is (some #(str/includes? % "python-libraries") filter-strs)
-                        "python-libraries path should be included in filters")
-                    (is (some #(str/includes? % "snippets") filter-strs)
-                        "snippets path should be included in filters")))))))))))
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temporary-setting-values [remote-sync-transforms false]
+          (mt/with-temp [:model/Collection {_coll-id :id} {:name "All Paths Coll" :is_remote_synced true :entity_id "all-paths-coll-xxxxxx" :location "/"}]
+            (let [test-files {"main" {"collections/all-paths-coll-xxxxxx-_/all-paths-coll-xxxxxx.yaml"
+                                      (test-helpers/generate-collection-yaml "all-paths-coll-xxxxxx" "All Paths Coll")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  paths-passed (atom nil)
+                  original-fn source.p/->ingestable]
+              (with-redefs [source.p/->ingestable (fn [snapshot opts]
+                                                    (reset! paths-passed (:path-filters opts))
+                                                    (original-fn snapshot opts))]
+                (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+                  (is (= :success (:status result)))
+                  (when @paths-passed
+                    (let [filter-strs (map str @paths-passed)]
+                      (is (some #(str/includes? % "transforms") filter-strs)
+                          "transforms path should be included in filters")
+                      (is (some #(str/includes? % "python-libraries") filter-strs)
+                          "python-libraries path should be included in filters")
+                      (is (some #(str/includes? % "snippets") filter-strs)
+                          "snippets path should be included in filters"))))))))))))
