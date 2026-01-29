@@ -393,5 +393,3 @@
           ;; Should be a SHA-256 hash (64 hex chars), not "oss__*"
           (is (=? {:hashed-metabase-license-token #"[0-9a-f]{64}"}
                   data)))))))
-
-
