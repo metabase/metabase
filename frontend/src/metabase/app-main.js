@@ -1,3 +1,4 @@
+import "metabase/polyfills";
 // Enables hot reload in development and noop in production
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
