@@ -58,7 +58,10 @@
   [query          :- ::lib.schema/query
    stage-number   :- :int
    field-specs    :- [:sequential ::lib.schema.query/test-column-spec]]
-  (lib.field/with-fields query stage-number (mapv #(find-column query stage-number (lib.metadata.calculation/visible-columns query stage-number) %) field-specs)))
+  (let [visible (lib.metadata.calculation/visible-columns query stage-number)]
+    (->> field-specs
+         (mapv #(find-column query stage-number visible %))
+         (lib.field/with-fields query stage-number))))
 
 (mu/defn- matches-temporal-bucket? :- :boolean
   [option         :- ::lib.schema.temporal-bucketing/option
