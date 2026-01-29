@@ -61,10 +61,14 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
    [:value [:ref ::literal/literal]]])
 
+(mr/def ::test-operator-spec
+  ;; TODO(@romeovs): be more specific here and limit to all valid operators?
+  string?)
+
 (mr/def ::test-operator-expression-spec
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
-   [:operator string?] ;; TODO(@romeovs): be more specific here and limit to all valid operators?
+   [:operator ::test-operator-spec]
    [:args [:sequential [:ref ::test-expression-spec]]]])
 
 (mr/def ::test-expression-spec
@@ -86,7 +90,7 @@
 
 (mr/def ::test-join-condition-spec
   [:map
-   [:operator string?] ;; TODO(@romeovs): be more specific here and limit?
+   [:operator ::test-operator-spec]
    [:left [:ref ::test-expression-spec]]
    [:right [:ref ::test-expression-spec]]])
 
