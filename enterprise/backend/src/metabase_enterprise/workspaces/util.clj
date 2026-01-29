@@ -201,7 +201,5 @@
 
    See: https://github.com/camsaul/toucan2/issues/204"
   [row]
-  (t2/insert! :model/WorkspaceTransform row)
-  (t2/select-one :model/WorkspaceTransform
-                 :ref_id (:ref_id row)
-                 :workspace_id (:workspace_id row)))
+  (or (t2/insert-returning-instance! :model/WorkspaceTransform row)
+      (t2/select-one :model/WorkspaceTransform :workspace_id (:workspace_id row) :ref_id (:ref_id row))))
