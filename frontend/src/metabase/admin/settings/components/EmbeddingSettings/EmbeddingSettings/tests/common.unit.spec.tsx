@@ -33,21 +33,19 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
   it("should show cards with related settings", async () => {
     await setup({
-      isEmbeddingSdkEnabled: true,
+      isEmbeddingSdkEnabled: false,
       showSdkEmbedTerms: false,
     });
 
     const relatedSettingCards = await screen.findAllByTestId(
       "related-setting-card",
     );
-    expect(relatedSettingCards).toHaveLength(6);
+    expect(relatedSettingCards).toHaveLength(4);
 
-    expect(await screen.findByText("Security")).toBeInTheDocument();
     expect(await screen.findByText("Authentication")).toBeInTheDocument();
     expect(await screen.findByText("Databases")).toBeInTheDocument();
     expect(await screen.findByText("People")).toBeInTheDocument();
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
-    expect(await screen.findByText("Appearance")).toBeInTheDocument();
   });
 
   it("does not show the modular embedding toggle when token features are missing", () => {
