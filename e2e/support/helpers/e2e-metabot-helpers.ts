@@ -79,7 +79,7 @@ export function lastChatMessage() {
 
 export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
-    .intercept("POST", "/api/ee/metabot-v3/agent-streaming", (req) => {
+    .intercept("POST", "/api/ee/metabot-v3/native-agent-streaming", (req) => {
       req.reply({
         status: 200,
         ...response,
