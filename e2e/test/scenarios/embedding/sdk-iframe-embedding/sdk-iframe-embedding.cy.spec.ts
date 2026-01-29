@@ -268,6 +268,76 @@ describe("scenarios > embedding > modular embedding", () => {
     getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
 
+  describe("auto-refreshing dashboard", () => {
+    /**
+     * Unfortunately, cy.clock() doesn't seem to work with mocking the timing inside the iframe,
+     * so we have to use real timeouts here.
+     */
+    it('does not automatically refresh the dashboard when "auto-refresh-interval" is not set', () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      cy.get("@getDashCardQuery.all").then((requests) => {
+        cy.wrap(requests.length).as("initialRequestCount");
+      });
+
+      cy.log("wait for the retrigger");
+      cy.wait(1000);
+      cy.get("@initialRequestCount").then((initialRequestCount) => {
+        cy.get("@getDashCardQuery.all").should(
+          "have.length",
+          initialRequestCount,
+        );
+      });
+    });
+
+    it('automatically refresh the dashboard when "auto-refresh-interval" is set', () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+              autoRefreshInterval: 1,
+            },
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      cy.get("@getDashCardQuery.all").then((requests) => {
+        cy.wrap(requests.length).as("initialRequestCount");
+      });
+
+      cy.log("wait for the retrigger");
+      cy.get("@initialRequestCount").then((initialRequestCount) => {
+        cy.get("@getDashCardQuery.all").should(
+          "have.length.above",
+          initialRequestCount,
+        );
+      });
+    });
+  });
+
   it("CSP nonces are set for custom expression styles (EMB-707)", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
