@@ -130,6 +130,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
       <Menu.Target>
         <Button
           role="button"
+          data-testid="transform-edit-menu-button"
           rightSection={<Icon name="chevrondown" />}
           loading={isBusy}
           size="xs"
