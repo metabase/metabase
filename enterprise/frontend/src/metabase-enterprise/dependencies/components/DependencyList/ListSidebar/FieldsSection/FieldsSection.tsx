@@ -25,6 +25,9 @@ type FieldsSectionProps = {
 
 export function FieldsSection({ node }: FieldsSectionProps) {
   const fields = getNodeFields(node);
+  if (fields == null) {
+    return null;
+  }
 
   return (
     <Stack role="region" aria-label={t`Fields`}>

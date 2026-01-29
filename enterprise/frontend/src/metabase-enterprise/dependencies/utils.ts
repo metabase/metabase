@@ -419,7 +419,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "card":
     case "dashboard":
     case "document":
-      return node.data.view_count ?? null;
+      return node.data.view_count ?? 0;
     default:
       return null;
   }
@@ -436,7 +436,7 @@ export function getNodeTransform(node: DependencyNode): Transform | null {
   return null;
 }
 
-export function getNodeFields(node: DependencyNode): Field[] {
+export function getNodeFields(node: DependencyNode): Field[] | null {
   switch (node.type) {
     case "card":
       return node.data.result_metadata ?? [];
@@ -450,7 +450,7 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "document":
     case "segment":
     case "measure":
-      return [];
+      return null;
   }
 }
 

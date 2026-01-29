@@ -112,7 +112,7 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
 
 function FieldsSection({ node }: SectionProps) {
   const fields = getNodeFields(node);
-  if (fields.length === 0) {
+  if (fields == null) {
     return null;
   }
 
