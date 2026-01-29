@@ -1,10 +1,12 @@
 import json
+import re
 
 import sqlglot
 import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
+from sqlglot.errors import ParseError, OptimizeError
 
 def parse_sql(sql: str, dialect: str = "postgres"):
     """Parses SQL and returns the root Expression."""
@@ -142,7 +144,7 @@ def is_pure_column(root):
             return False
     return True
 
-
+# TODO: infer_schema=True?
 # TODO: Comment on everything is aliased?
 def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema):
     ast = sqlglot.parse_one(sql, read=dialect)
@@ -184,3 +186,65 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema)
         dependencies.append((select, is_pure_select, tuple(leaves), ))
 
     return json.dumps(dependencies)
+
+# TODO: signal missing cases failures better?
+# TODO: Consider generic way of error extraction. It might make sense to do this in clojure.
+def serialize_error(e):
+
+    message = e.args[0]
+    assert isinstance(message, str), "Unexpected error format."
+
+    match = re.search(r'^Unknown table:\s*(?P<table>.*)', message)
+    if match:
+        return {"status": "error",
+                "type": "unknown_table",
+                "message": match.group(),
+                "table": match.group('table')}
+
+    match = re.search(r'''(?P<message>^Column '(?P<column>\S+)' could not be resolved.)(?P<details>.*)''', message)
+    if match:
+        return {"status": "error",
+                "type": "column_not_resolved",
+                "message": match.group('message'),
+                "column": match.group('column'),
+                "details": match.group('details')}
+
+    # ('Invalid expression / Unexpected token. Line 1, Col: 23.\n  complete nonsense \x1b[4mquery\x1b[0m',)
+    match = re.search(r'(?P<message>^Invalid expression.*?\.)(?P<details>.*)', message)
+    if match:
+        return {"status": "error",
+                "type": "invalid_expression",
+                "message": match.group('message'),
+                "details": match.group('details')}
+
+    return {"status": "error",
+            "type": "unhandled",
+            "message": message}
+
+def validate_query(dialect, sql, default_table_schema, sqlglot_schema):
+    """
+    Docstring for validate_query_stub
+
+    :param dialect: Description
+    :param sql: Description
+    :param default_table_schema: Description
+    :param sqlglot_schema: Description
+    """
+    print(sql)
+    status = {"status": "ok"}
+    # TODO: divide into 2 chunks -- parse, optimize
+    try:
+        ast = sqlglot.parse_one(sql, read=dialect)
+        ast = qualify.qualify(ast,
+                            db=default_table_schema,
+                            dialect=dialect,
+                            schema=sqlglot_schema,
+                            # TODO: Following makes the UDTFs parse. Broader implications?
+                            infer_schema=True,
+                            sql=sql)
+    except ParseError as e:
+        status |= serialize_error(e)
+    except OptimizeError as e:
+        status |= serialize_error(e)
+
+    return json.dumps(status)
