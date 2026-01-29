@@ -96,29 +96,48 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
+(def ^:private ws-prefix "/api/ee/workspace/\\d+")
+
+(defn- ws-pattern
+  "Compile a regex matching the workspace API prefix followed by `suffix`."
+  ^java.util.regex.Pattern [suffix]
+  (re-pattern (str ws-prefix suffix)))
+
+;; Service users may read workspace state and manage transforms within their workspace.
+;; All other routes relate to the lifecycle of the workspace itself, and require superuser — including:
+;;   GET/POST  /                              (list/create workspaces)
+;;   GET       /enabled, /database, /checkout (cross-workspace state)
+;;   PUT       /:ws-id                        (reconfigure workspace)
+;;   POST      /:ws-id/archive                (archive workspace)
+;;   POST      /:ws-id/unarchive              (unarchive workspace)
+;;   DELETE    /:ws-id                        (delete workspace)
+;;   POST      /:ws-id/merge                  (merge workspace)
+;;   POST      /:ws-id/transform/:tx-id/merge (merge single transform)
+;;   POST      /test-resources                (create test resources - available in non-prod environments only)
 (def ^:private service-user-patterns
   "URI patterns that workspace service users may access.
    New routes default to admin-only for safety."
-  {;; Read workspace state
-   :get    [#"/api/ee/workspace/\d+$"                            ; GET /:ws-id
-            #"/api/ee/workspace/\d+/table$"                      ; GET /:ws-id/table
-            #"/api/ee/workspace/\d+/log$"                        ; GET /:ws-id/log
-            #"/api/ee/workspace/\d+/graph$"                      ; GET /:ws-id/graph
-            #"/api/ee/workspace/\d+/problem$"                    ; GET /:ws-id/problem
-            #"/api/ee/workspace/\d+/external/transform$"         ; GET /:ws-id/external/transform
-            #"/api/ee/workspace/\d+/transform$"                  ; GET /:ws-id/transform
-            #"/api/ee/workspace/\d+/transform/[^/]+$"]           ; GET /:ws-id/transform/:tx-id
-   ;; Manage transforms
-   :post   [#"/api/ee/workspace/\d+/transform$"                  ; POST /:ws-id/transform
-            #"/api/ee/workspace/\d+/transform/[^/]+/archive$"    ; POST /:ws-id/transform/:tx-id/archive
-            #"/api/ee/workspace/\d+/transform/[^/]+/unarchive$"  ; POST /:ws-id/transform/:tx-id/unarchive
-            #"/api/ee/workspace/\d+/transform/validate/target$"  ; POST /:ws-id/transform/validate/target
-            ;; Run transforms
-            #"/api/ee/workspace/\d+/run$"                        ; POST /:ws-id/run
-            #"/api/ee/workspace/\d+/transform/[^/]+/run$"        ; POST /:ws-id/transform/:tx-id/run
-            #"/api/ee/workspace/\d+/transform/[^/]+/dry-run$"]   ; POST /:ws-id/transform/:tx-id/dry-run
-   :put    [#"/api/ee/workspace/\d+/transform/[^/]+$"]           ; PUT /:ws-id/transform/:tx-id
-   :delete [#"/api/ee/workspace/\d+/transform/[^/]+$"]})         ; DELETE /:ws-id/transform/:tx-id
+  (update-vals
+   {;; Read workspace state
+    :get    ["$"
+             "/table$"
+             "/log$"
+             "/graph$"
+             "/problem$"
+             "/external/transform$"
+             "/transform$"
+             "/transform/[^/]+$"]
+    ;; Manage & run transforms
+    :post   ["/transform$"
+             "/transform/[^/]+/archive$"
+             "/transform/[^/]+/unarchive$"
+             "/transform/validate/target$"
+             "/run$"
+             "/transform/[^/]+/run$"
+             "/transform/[^/]+/dry-run$"]
+    :put    ["/transform/[^/]+$"]
+    :delete ["/transform/[^/]+$"]}
+   (partial mapv ws-pattern)))
 
 (defn- service-user-allowed?
   "True if this request can be made by a workspace's service user."
@@ -134,7 +153,7 @@
           user-id api/*current-user-id*]
       (and user-id (t2/exists? :model/Workspace :id ws-id :execution_user user-id)))))
 
-(defn +authorize
+(defn- +authorize
   "Authorization middleware for workspace routes.
 
    Access rules:
@@ -1114,4 +1133,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
-  (api.macros/ns-handler *ns* +auth +authorize))
+  (api.macros/ns-handler *ns* +authorize +auth))
