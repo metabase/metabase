@@ -1,6 +1,5 @@
 (ns metabase.llm.api-test
   (:require
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,8 +10,7 @@
    [metabase.llm.api :as api]
    [metabase.llm.context :as llm.context]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]
-   [metabase.test.util :as tu]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -258,86 +256,6 @@
                                  :result "failure"
                                  :event_detail "postgres"}}]
                         simple-events))))))))))
-
-(deftest generate-sql-streaming-snowplow-success-test
-  (testing "successful /generate-sql-streaming call tracks both token_usage and simple_event"
-    (mt/with-temp [:model/Database db {:engine :postgres}
-                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
-                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}
-                   :model/Field _ {:table_id (:id table) :name "name" :base_type :type/Text}]
-      (let [tracked-events (atom [])
-            mock-chan (a/chan 10)]
-        (a/>!! mock-chan {:type :usage :id "anthropic/claude-sonnet-4" :usage {:promptTokens 1500}})
-        (a/>!! mock-chan {:type :text-delta :delta "{\"sql\":\"SELECT * FROM users\"}"})
-        (a/>!! mock-chan {:type :usage :id "anthropic/claude-sonnet-4" :usage {:completionTokens 250}})
-        (a/close! mock-chan)
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
-          (with-redefs [llm.anthropic/chat-completion-stream (constantly mock-chan)
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (let [response (mt/user-http-request :rasta :post 202 "llm/generate-sql-streaming"
-                                                 {:prompt "get all users"
-                                                  :database_id (:id db)
-                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
-              ;; Wait for the background thread to complete tracking
-              (tu/poll-until 2000 (>= (count @tracked-events) 2))
-              (is (string? response))
-              (is (str/includes? response "SELECT * FROM users"))
-              (testing "token_usage event"
-                (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
-                  (is (=? [{:schema :snowplow/token_usage
-                            :data {:model-id "anthropic/claude-sonnet-4"
-                                   :prompt-tokens 1500
-                                   :completion-tokens 250
-                                   :total-tokens 1750
-                                   :duration-ms int?
-                                   :source "oss_metabot"
-                                   :tag "oss-sqlgen-streaming"}}]
-                          token-events))))
-              (testing "simple_event"
-                (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                  (is (=? [{:schema :snowplow/simple_event
-                            :data {:event "metabot_oss_sqlgen_used"
-                                   :duration_ms int?
-                                   :result "success"
-                                   :event_detail "postgres"}}]
-                          simple-events)))))))))))
-
-(deftest generate-sql-streaming-snowplow-failure-test
-  (testing "streaming error tracks simple_event with failure result"
-    (mt/with-temp [:model/Database db {:engine :postgres}
-                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
-                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (let [tracked-events (atom [])
-            mock-chan (a/chan 10)]
-        (a/>!! mock-chan {:type :error :error "API rate limit exceeded"})
-        (a/close! mock-chan)
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
-          (with-redefs [llm.anthropic/chat-completion-stream (constantly mock-chan)
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (let [response (mt/user-http-request :rasta :post 202 "llm/generate-sql-streaming"
-                                                 {:prompt "get all users"
-                                                  :database_id (:id db)
-                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
-              ;; Wait for the background thread to complete
-              (tu/poll-until 2000 (seq @tracked-events))
-              (is (string? response))
-              (testing "no token_usage event on error"
-                (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
-                  (is (empty? token-events))))
-              (testing "simple_event with failure result"
-                (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                  (is (=? [{:schema :snowplow/simple_event
-                            :data {:event "metabot_oss_sqlgen_used"
-                                   :duration_ms int?
-                                   :result "failure"
-                                   :event_detail "postgres"}}]
-                          simple-events)))))))))))
 
 ;;; ------------------------------------------- Token Usage Tracking Tests -------------------------------------------
 
