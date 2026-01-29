@@ -3,11 +3,13 @@ import { t } from "ttag";
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
-import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
+import { getUserName } from "metabase/lib/user";
+import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import {
+  canNodeHaveOwner,
   getNodeCreatedAt,
   getNodeCreatedBy,
   getNodeDescription,
@@ -15,6 +17,7 @@ import {
   getNodeFieldsLabelWithCount,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
+  getNodeOwner,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -32,6 +35,7 @@ export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
   return (
     <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
+      <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
       <TableSection node={node} getGraphUrl={getGraphUrl} />
       <FieldsSection node={node} />
@@ -57,6 +61,25 @@ function DescriptionSection({ node }: SectionProps) {
     >
       {description.length > 0 ? description : t`No description`}
     </Box>
+  );
+}
+
+function OwnerSection({ node }: SectionProps) {
+  const canHaveOwner = canNodeHaveOwner(node.type);
+  if (!canHaveOwner) {
+    return null;
+  }
+
+  const owner = getNodeOwner(node);
+  return (
+    <Stack gap="xs" lh="1rem">
+      <Title order={6}>{t`Owner`}</Title>
+      {owner != null ? (
+        <Text lh="h4">{getUserName(owner)}</Text>
+      ) : (
+        <Text lh="h4" c="text-secondary">{t`No owner`}</Text>
+      )}
+    </Stack>
   );
 }
 
