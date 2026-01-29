@@ -15,13 +15,14 @@
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
-  "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
+  "Return an agent output for errors with known HTTP status codes, re-throw `e` otherwise.
+   Handles both explicit agent errors (:agent-error? true) and framework errors
+   from api/read-check and friends (which carry :status-code but not :agent-error?)."
   [e]
-  (let [data (ex-data e)]
-    (if (:agent-error? data)
+  (let [{:keys [agent-error? status-code]} (ex-data e)]
+    (if (or agent-error? status-code)
       (cond-> {:output (ex-message e)}
-        (:status-code data) (assoc :status-code (:status-code data)))
+        status-code (assoc :status-code status-code))
       (throw e))))
 
 (defn convert-field-type

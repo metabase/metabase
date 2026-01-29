@@ -391,7 +391,7 @@
             (is (= (mt/id) (lib/database-id decoded))))))
 
       (testing "Returns 404 for non-existent metric"
-        (is (= "No metric found with metric_id 999999"
+        (is (= "Not found."
                (agent-client :rasta :post 404 "agent/v1/construct-query"
                              {:metric_id 999999})))))))
 

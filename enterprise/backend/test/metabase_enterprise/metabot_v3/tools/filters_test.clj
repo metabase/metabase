@@ -158,7 +158,7 @@
                                    :operation :not-equals
                                    :values [3 42]}]}))))))
         (testing "Missing metric results in an error."
-          (is (= {:output (str "No metric found with metric_id " Integer/MAX_VALUE)
+          (is (= {:output "Not found."
                   :status-code 404}
                  (metabot-v3.tools.filters/query-metric {:metric-id Integer/MAX_VALUE}))))
         (testing "Invalid metric-id results in an error."
@@ -299,10 +299,12 @@
               (assoc input :fields nil)
               (assoc input :fields [])))))
       (testing "Missing model results in an error."
-        (is (= {:output (str "No model found with model_id " Integer/MAX_VALUE)}
+        (is (= {:output "Not found."
+                :status-code 404}
                (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
       (testing "Invalid model-id results in an error."
-        (is (= {:output (str "Invalid model_id " model-id)}
+        (is (= {:output (str "Invalid model_id " model-id)
+                :status-code 400}
                (metabot-v3.tools.filters/query-model {:model-id (str model-id)})))))))
 
 (deftest ^:parallel filter-records-table-test

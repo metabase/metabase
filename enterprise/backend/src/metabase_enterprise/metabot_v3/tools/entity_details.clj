@@ -359,19 +359,13 @@
                                           {:agent-error? true :status-code 400}))))
 
                       (int? table-id)
-                      (or (table-details table-id options)
-                          (throw (ex-info (str "Table " table-id " not found")
-                                          {:agent-error? true :status-code 404})))
+                      (table-details table-id options)
 
                       (string? table-id)
                       (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                        (or (card-details (parse-long card-id) options)
-                            (throw (ex-info (str "Model " card-id " not found")
-                                            {:agent-error? true :status-code 404})))
+                        (card-details (parse-long card-id) options)
                         (if (re-matches #"\d+" table-id)
-                          (or (table-details (parse-long table-id) options)
-                              (throw (ex-info (str "Table " table-id " not found")
-                                              {:agent-error? true :status-code 404})))
+                          (table-details (parse-long table-id) options)
                           (throw (ex-info "Invalid table_id format"
                                           {:agent-error? true :status-code 400}))))
 
@@ -390,9 +384,7 @@
       (let [options (cond-> arguments
                       (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
             details (if (int? metric-id)
-                      (or (metric-details metric-id options)
-                          (throw (ex-info (str "Metric " metric-id " not found")
-                                          {:agent-error? true :status-code 404})))
+                      (metric-details metric-id options)
                       (throw (ex-info "Invalid metric_id format"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))
@@ -402,18 +394,20 @@
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (if (int? report-id)
-                    (let [details (card-details report-id options)]
-                      (some-> details
-                              (select-keys [:id :type :description :name :verified])
-                              (assoc :result-columns (:fields details))))
-                    "invalid report_id")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "report not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (if (int? report-id)
+                      (let [details (card-details report-id options)]
+                        (-> details
+                            (select-keys [:id :type :description :name :verified])
+                            (assoc :result-columns (:fields details))))
+                      (throw (ex-info "Invalid report_id format"
+                                      {:agent-error? true :status-code 400})))]
+        {:structured-output details}))
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (defn get-document-details
   "Get information about the document with ID `document-id`."
