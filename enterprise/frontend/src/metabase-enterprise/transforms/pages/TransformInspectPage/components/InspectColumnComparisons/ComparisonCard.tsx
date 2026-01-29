@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryMetadataQuery,
+  useGetAdhocQueryQuery,
+} from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";
@@ -20,13 +24,16 @@ type ComparisonCardProps = {
 const VISUALIZATION_HEIGHT = 235;
 
 export const ComparisonCard = ({ card }: ComparisonCardProps) => {
+  const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
+    card ? card.dataset_query : skipToken,
+  );
   const metadata = useSelector(getMetadata);
-  const { data: dataset, isLoading } = useGetAdhocQueryQuery(
+  const { data: dataset, isLoading: isDataLoading } = useGetAdhocQueryQuery(
     card ? card.dataset_query : skipToken,
   );
 
   const { displayType, displaySettings } = useMemo(() => {
-    if (!card) {
+    if (!card || isMetadataLoading) {
       return { displayType: "row" as const, displaySettings: {} };
     }
 
@@ -42,7 +49,7 @@ export const ComparisonCard = ({ card }: ComparisonCardProps) => {
       console.error("Failed to determine display type:", e);
       return { displayType: "row" as const, displaySettings: {} };
     }
-  }, [card, metadata]);
+  }, [card, metadata, isMetadataLoading]);
 
   const rawSeries: RawSeries | undefined = useMemo(() => {
     if (!dataset || !card) {
@@ -65,7 +72,7 @@ export const ComparisonCard = ({ card }: ComparisonCardProps) => {
     ];
   }, [dataset, card, displayType, displaySettings]);
 
-  if (isLoading || !rawSeries) {
+  if (isMetadataLoading || isDataLoading || !rawSeries) {
     return (
       <Card p="md" shadow="none" withBorder>
         <Stack
