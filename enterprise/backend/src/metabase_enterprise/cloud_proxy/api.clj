@@ -46,4 +46,3 @@
 (def routes
   "`/api/ee/cloud-proxy` routes."
   (api.macros/ns-handler *ns*))
-
