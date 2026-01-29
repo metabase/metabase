@@ -18,7 +18,8 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,13 +122,21 @@
     transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
-  "Add transform to a TransformRun"
+  "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
+   returns a map with :name from the denormalized transform_name and :deleted true."
   [_model _k runs]
   (if-not (seq runs)
     runs
-    (let [transform-ids (into #{} (map :transform_id) runs)
-          id->transform (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in transform-ids])]
-      (for [run runs] (assoc run :transform (get id->transform (:transform_id run)))))))
+    (let [transform-ids (into #{} (keep :transform_id) runs)
+          id->transform (when (seq transform-ids)
+                          (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in transform-ids]))]
+      (for [run runs]
+        (assoc run :transform
+               (if-let [transform-id (:transform_id run)]
+                 (get id->transform transform-id)
+                 ;; Orphaned run - use denormalized transform_name
+                 (when-let [name (:transform_name run)]
+                   (t2.instance/instance :model/Transform {:name name :deleted true}))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :last_run]
   "Add last_run to a transform"
