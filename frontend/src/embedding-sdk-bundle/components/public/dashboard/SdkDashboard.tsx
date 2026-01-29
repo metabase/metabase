@@ -117,7 +117,7 @@ export type SdkDashboardProps = PropsWithChildren<
     dashboardId: SdkDashboardId;
 
     /**
-     * The interval between auto refreshes on the dashboard, in milliseconds.
+     * The interval between auto refreshes on the dashboard, in seconds.
      */
     autoRefreshInterval?: number;
 
