@@ -3,10 +3,12 @@ import { RuleTester } from "eslint";
 import noUnconditionalMetabaseLinksRender from "../eslint-rules/no-unconditional-metabase-links-render";
 
 const ruleTester = new RuleTester({
-  parserOptions: {
+  languageOptions: {
     ecmaVersion: 2015,
     sourceType: "module",
-    ecmaFeatures: { jsx: true },
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+    },
   },
 });
 
