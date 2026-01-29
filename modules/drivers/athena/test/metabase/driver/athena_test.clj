@@ -57,7 +57,7 @@
              {:name "latitude",    :base-type :type/Float,   :database-type "double", :database-position 3}
              {:name "longitude",   :base-type :type/Float,   :database-type "double", :database-position 4}
              {:name "price",       :base-type :type/Integer, :database-type "int",    :database-position 5}}
-           (#'athena/describe-table-fields-with-nested-fields (mt/db) "test_data" "venues")))))
+           (#'athena/describe-table-fields-with-nested-fields (mt/db) "v3_test_data" "venues")))))
 
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"

@@ -231,7 +231,7 @@
                         :aggregation  [[:count]]
                         :limit        1})))))))))))
 
-(mt/defdataset long-col-name-dataset
+(mt/defdataset long-column-name-dataset
   [["long_col_name" [{:field-name "fk"
                       :base-type :type/Integer}
                      {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
@@ -249,7 +249,7 @@
 
 (deftest long-col-name-repro-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (mt/dataset long-col-name-dataset
+    (mt/dataset long-column-name-dataset
       (let [mp (mt/metadata-provider)
             table (lib.metadata/table mp (mt/id :long_col_name))
             query (lib/query mp table)
