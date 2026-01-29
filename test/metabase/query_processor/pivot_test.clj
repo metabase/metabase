@@ -791,12 +791,12 @@
                                              :dataset-query query}]}))))
             query (-> (lib/query mp (lib.metadata/card mp 2))
                       (lib/aggregate (lib/count))
-                      (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                      (as-> $query (lib/breakout $query (lib.tu.notebook/find-unique-col-with-spec
                                                          $query
                                                          (lib/breakoutable-columns $query)
                                                          {:display-name "Nested: Products + Q1: Orders + People"}
                                                          ;; not sure this is the right column?
-                                                         {:display-name "Q1: Orders + People → Name"})))
+                                                         {:display-name "People - User → Name"})))
                       (lib/limit 3))]
         (is (= [[nil 0 3]
                 [nil 1 3]]

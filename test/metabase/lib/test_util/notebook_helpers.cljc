@@ -39,6 +39,31 @@
                          :column-spec column-spec
                          :found       (map #(lib/display-info query %) (lib/columns-group-columns group))})))))
 
+(mu/defn find-unique-col-with-spec :- ::lib.schema.metadata/column
+  "Like [[find-col-with-spec]], but asserts that exactly one column matches the spec.
+  Use this when the display name might be ambiguous and you want to catch that."
+  [query   :- ::lib.schema/query
+   columns :- [:sequential {:min 1} ::lib.schema.metadata/column]
+   group-spec
+   column-spec]
+  (let [groups      (or (not-empty (lib/group-columns columns))
+                        (throw (ex-info "lib/group-columns unexpectedly returned no groups"
+                                        {:columns columns})))
+        group       (or (m/find-first #(match-display-info query group-spec %) groups)
+                        (throw (ex-info "Failed to find column group"
+                                        {:group-spec group-spec, :found (map #(lib/display-info query %) groups)})))
+        matches     (filter #(match-display-info query column-spec %) (lib/columns-group-columns group))]
+    (case (count matches)
+      0 (throw (ex-info "Failed to find column in group"
+                        {:group       (lib/display-info query group)
+                         :column-spec column-spec
+                         :found       (map #(lib/display-info query %) (lib/columns-group-columns group))}))
+      1 (first matches)
+      (throw (ex-info "Found multiple columns matching spec (expected exactly one)"
+                      {:group       (lib/display-info query group)
+                       :column-spec column-spec
+                       :matches     (map #(lib/display-info query %) matches)})))))
+
 (defn add-join
   ([query rhs-table lhs-col rhs-col]
    (add-join query rhs-table lhs-col rhs-col nil))

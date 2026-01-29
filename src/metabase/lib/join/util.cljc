@@ -79,7 +79,7 @@
     (lib.util/format "%s__via__%s__via__%s" table-name fk-field-name fk-join-alias)
     (lib.util/format "%s__via__%s" table-name fk-field-name)))
 
-(defn- implicit-join-name [metadata-providerable {:keys [fk-field-id fk-field-name fk-join-alias table-id], :as _field-metadata}]
+(defn implicit-join-name [metadata-providerable {:keys [fk-field-id fk-field-name fk-join-alias table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
     (when-let [table (lib.metadata/table-or-card metadata-providerable table-id)]
       (let [table-name    (:name table)
