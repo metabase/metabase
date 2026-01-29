@@ -1,6 +1,7 @@
 (ns metabase.lib.query.util
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
@@ -13,6 +14,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -79,15 +81,43 @@
   (let [temporal-bucket  (find-temporal-bucket query stage-number column unit)]
     (lib.temporal-bucket/with-temporal-bucket column temporal-bucket)))
 
+(mu/defn- matches-binning-strategy? :- :boolean
+  [{:keys [mbql]}         :- ::lib.schema.binning/binning-option
+   bin-count      :- ::lib.schema.binning/num-bins]
+  (and
+   (= :num-bins (:strategy mbql))
+   (= bin-count (:num-bins mbql))))
+
+(mu/defn- find-bin-count-strategy :- ::lib.schema.binning/strategy
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   bin-count     :- ::lib.schema.binning/num-bins
+   column        :- ::lib.schema.metadata/column]
+  (let [binning-options (lib.binning/available-binning-strategies query stage-number column)
+        options (filterv #(matches-binning-strategy? % bin-count) binning-options)]
+    (case (count options)
+      0 (throw (ex-info "No binning strategy found" {:options options :bin-count bin-count}))
+      1 (first options)
+      (throw (ex-info "Multiple binning strategies found" {:options options :bin-count bin-count})))))
+
+(mu/defn- append-bin-count-bucket :- ::lib.schema/query
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   bin-count    :- :lib.schema.binning/num-bins
+   column       :- ::lib.schema.metadata/column]
+  (let [strategy (find-bin-count-strategy query stage-number bin-count column)]
+    (lib.binning/with-binning column strategy)))
+
 (mu/defn- append-breakout :- ::lib.schema/query
   [query               :- ::lib.schema/query
    stage-number        :- :int
    columns             :- [:sequential ::lib.schema.metadata/column]
-   {:keys [unit]
+   {:keys [unit bins]
     :as breakout-spec} :- ::lib.schema.query/test-breakout-spec]
   (let [column (find-column query stage-number columns breakout-spec)
         column-with-bucketing (cond->> column
-                                unit (append-temporal-bucket query stage-number unit))]
+                                unit (append-temporal-bucket query stage-number unit)
+                                bins (append-bin-count-bucket query stage-number bins))]
     (lib.breakout/breakout query stage-number column-with-bucketing)))
 
 (mu/defn- append-breakouts :- ::lib.schema/query

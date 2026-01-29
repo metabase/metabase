@@ -179,6 +179,32 @@ describe("createTestQuery", () => {
         displayName: "Created At: Month",
       });
     });
+
+    it("should create a query with breakouts with binning based on count", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            breakouts: [
+              {
+                type: "column",
+                name: "RATING",
+                bins: 10,
+              },
+            ],
+          },
+        ],
+      });
+
+      const breakouts = Lib.breakouts(query, 0);
+      expect(breakouts).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, breakouts[0])).toMatchObject({
+        displayName: "Rating: 10 bins",
+      });
+    });
   });
 
   describe("joins", () => {

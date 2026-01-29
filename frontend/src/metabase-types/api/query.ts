@@ -484,7 +484,13 @@ export type TemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type BreakoutSpec = ColumnSpec & TemporalBucketSpec;
+export type BinCountSpec = {
+  bins?: number;
+};
+
+type BinningSpec = TemporalBucketSpec | BinCountSpec;
+
+export type BreakoutSpec = ColumnSpec & BinningSpec;
 
 export type JoinSpec = {
   source: SourceSpec;

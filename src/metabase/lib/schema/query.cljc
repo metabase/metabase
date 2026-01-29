@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.query
   "Schemas for creating a query for testing purposes."
   (:require
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -34,10 +35,15 @@
   [:map
    [:unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]])
 
+(mr/def ::test-bin-count-bucket-spec
+  [:map
+   [:bins {:optional true} [:maybe [:ref ::lib.schema.binning/num-bins]]]])
+
 (mr/def ::test-breakout-spec
   [:merge
    ::test-column-spec
-   ::test-temporal-bucket-spec])
+   ::test-temporal-bucket-spec
+   ::test-bin-count-bucket-spec])
 
 (mr/def ::test-order-by-spec
   [:merge
