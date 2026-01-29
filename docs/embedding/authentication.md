@@ -287,18 +287,15 @@ app.get("/sso/metabase", async (req, res) => {
 
 This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you'll need to:
-
-- [Allow your domain in CORS](#allow-your-domain-in-cors)
-- [Configure session cookies for cross-domain](#configure-session-cookies-for-cross-domain)
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you'll need to [allow your domain in CORS](#allow-your-domain-in-cors).
 
 ### Allow your domain in CORS
 
 Go to **Admin settings** > **Embedding** > **Modular embedding** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
 
-### Configure session cookies for cross-domain
+### Configure session cookies when testing locally
 
-You'll also need to tell Metabase to set the session cookie's SameSite value to "none".
+When you use `useExistingUserSession: true` during development on a different domain, the browser must send the existing Metabase session cookie cross-origin into the iframe. To allow this, you'll need to set the session cookie's SameSite value to "none".
 
 You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
 
