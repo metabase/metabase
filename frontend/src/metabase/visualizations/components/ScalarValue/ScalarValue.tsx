@@ -14,7 +14,7 @@ import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
-  <ScalarRoot>{children}</ScalarRoot>
+  <ScalarRoot data-testid="scalar-root">{children}</ScalarRoot>
 );
 
 interface ScalarValueProps {
