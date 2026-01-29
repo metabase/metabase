@@ -1,4 +1,9 @@
+import { createSelector } from "@reduxjs/toolkit";
+
+import { getPlan } from "metabase/common/utils/plan";
+import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getTokenFeature } from "metabase/setup";
 import type { State } from "metabase-types/store";
 
 export const canAccessTransforms = (state: State): boolean => {
@@ -8,3 +13,15 @@ export const canAccessTransforms = (state: State): boolean => {
   const user = getUser(state);
   return user?.permissions?.can_access_transforms ?? false;
 };
+
+export const getTransformsFeatureAvailable = createSelector(
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (state: State) => getTokenFeature(state, "transforms"),
+  (plan, feature) => {
+    if (plan === "oss") {
+      return true;
+    }
+
+    return feature;
+  },
+);

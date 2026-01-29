@@ -16,8 +16,10 @@ import {
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import {
+  canAccessTransforms as canAccessTransformsSelector,
+  getTransformsFeatureAvailable,
+} from "metabase/transforms/selectors";
 import {
   ActionIcon,
   Box,
@@ -84,7 +86,6 @@ type DataStudioNavProps = {
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
-  const isAdmin = useSelector(getUserIsAdmin);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
@@ -97,7 +98,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasLibraryFeature = useHasTokenFeature("data_studio");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
-  const hasTransformsFeature = useHasTokenFeature("transforms");
+  const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -162,7 +163,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
             isGated={!hasDependenciesFeature}
           />
-          {(canAccessTransforms || isAdmin) && (
+          {canAccessTransforms && (
             <DataStudioTab
               label={t`Transforms`}
               icon="transform"
