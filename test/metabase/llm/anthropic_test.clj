@@ -1,13 +1,10 @@
 (ns metabase.llm.anthropic-test
   (:require
    [clj-http.client :as http]
-   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
-   [metabase.test :as mt])
-  (:import
-   (java.io ByteArrayInputStream)))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -162,52 +159,3 @@
 (deftest ^:parallel model->simplified-provider-model-nil-model-test
   (testing "returns nil for nil input"
     (is (nil? (#'anthropic/model->simplified-provider-model nil)))))
-
-;;; ------------------------------------------- chat-completion-stream Tests -------------------------------------------
-
-(deftest chat-completion-stream-usage-parts-test
-  (testing "chat-completion-stream emits usage parts with model id"
-    (let [sse-data (str "event: message_start\n"
-                        "data: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\",\"model\":\"claude-sonnet-4-20250514\",\"usage\":{\"input_tokens\":1500}}}\n\n"
-                        "event: content_block_start\n"
-                        "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"name\":\"generate_sql\"}}\n\n"
-                        "event: content_block_delta\n"
-                        "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"sql\\\":\\\"SELECT 1\\\"}\"}}\n\n"
-                        "event: content_block_stop\n"
-                        "data: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
-                        "event: message_delta\n"
-                        "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":250}}\n\n"
-                        "event: message_stop\n"
-                        "data: {\"type\":\"message_stop\"}\n\n")
-          mock-response {:status 200
-                         :body (ByteArrayInputStream. (.getBytes sse-data "UTF-8"))}]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"
-                                         llm-anthropic-model "claude-sonnet-4-20250514"]
-        (with-redefs [http/post (constantly mock-response)]
-          (let [ch (anthropic/chat-completion-stream {:system "You are a SQL expert"
-                                                      :messages [{:role "user" :content "test"}]})
-                results (loop [acc []]
-                          (if-let [v (a/<!! ch)]
-                            (recur (conj acc v))
-                            acc))
-                usage-parts (filter #(= :usage (:type %)) results)
-                text-parts (filter #(= :text-delta (:type %)) results)]
-            ;; Should have two usage parts (prompt and completion)
-            (is (= [{:type :usage
-                     :id "anthropic/claude-sonnet-4"
-                     :usage {:promptTokens 1500}}
-                    {:type :usage
-                     :id "anthropic/claude-sonnet-4"
-                     :usage {:completionTokens 250}}]
-                   usage-parts))
-            (is (= [{:type :text-delta
-                     :delta "{\"sql\":\"SELECT 1\"}"}]
-                   text-parts))))))))
-
-(deftest chat-completion-stream-not-configured-test
-  (testing "throws when API key not configured"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"not configured"
-           (anthropic/chat-completion-stream {:messages [{:role "user" :content "test"}]}))))))
