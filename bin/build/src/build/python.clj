@@ -15,34 +15,28 @@
 (def ^:private sqlglot-version
   "Pinned sqlglot version for reproducible builds.
   Read from .sqlglot-version file (single source of truth for both dev and build)."
-  (-> (io/file u/project-root-directory "resources/python-sources/.sqlglot-version")
-      slurp
-      str/trim))
+  (->> (io/file u/project-root-directory "resources/python-sources/.sqlglot-version")
+       slurp
+       ;; handle # comments in the version file
+       str/split-lines
+       (remove #(str/starts-with? % "#"))
+       (str/join "\n")
+       str/trim))
 
 (defn build-python-deps!
   "Install sqlglot to resources/python-sources for bundling into uberjar.
 
-  Uses `uv pip install` for speed, with fallback to standard `pip` if uv is unavailable.
-  The --no-compile flag skips .pyc generation since GraalVM Python uses interpreted mode.
+  Uses `uv pip install`. The --no-compile flag skips .pyc generation since GraalVM Python
+  uses interpreted mode.
 
-  Can be skipped by setting SKIP_PYTHON_DEPS=true (useful until Track 2 runtime support is ready)."
+  Can be skipped by setting SKIP_PYTHON_DEPS=true."
   [_edition]
   (if (= (env/env :skip-python-deps) "true")
     (u/announce "Skipping Python dependencies (SKIP_PYTHON_DEPS=true)")
     (u/step "Install Python dependencies (sqlglot)"
-            ;; Ensure directory exists (sql_tools.py should already be there)
       (u/create-directory-unless-exists! python-sources-dir)
-            ;; Try uv first (fast), fall back to pip
-      (let [{:keys [exit]} (u/sh* {:dir u/project-root-directory}
-                                  "uv" "pip" "install" (str "sqlglot==" sqlglot-version)
-                                  "--target" python-sources-dir
-                                  "--no-compile")]
-        (if (zero? exit)
-          (u/announce "sqlglot installed via uv to %s" python-sources-dir)
-          (do
-            (u/step "uv not available, falling back to pip"
-              (u/sh {:dir u/project-root-directory}
-                    "pip" "install" (str "sqlglot==" sqlglot-version)
-                    "--target" python-sources-dir
-                    "--no-compile"))
-            (u/announce "sqlglot installed via pip to %s" python-sources-dir)))))))
+      (u/sh {:dir u/project-root-directory}
+            "uv" "pip" "install" (str "sqlglot==" sqlglot-version)
+            "--target" python-sources-dir
+            "--no-compile")
+      (u/announce "sqlglot %s installed to %s" sqlglot-version python-sources-dir))))

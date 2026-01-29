@@ -757,7 +757,7 @@
   ;;
   ;; the various steps available are:
   ;;
-  ;;    :version :translations :frontend :licenses :drivers :uberjar
+  ;;    :version :translations :frontend :licenses :drivers :python :uberjar
   :build/all
   {:exec-fn build/build-cli}
 
