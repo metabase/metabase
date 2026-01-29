@@ -60,7 +60,7 @@
    [clojure.string :as str]
    [goog.object :as gobject]
    [malli.core :as mc]
-   [malli.transform :as mt]
+   [malli.transform :as mtx]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
@@ -2763,11 +2763,11 @@
 (def parse-query-spec
   "Parser for query-spec."
   (mc/coercer [:ref ::lib.schema.query/test-query-spec]
-              (mt/transformer
-               mt/json-transformer
-               (mt/key-transformer {:decode decode-js-key})
-               mt/strip-extra-keys-transformer
-               mt/default-value-transformer)))
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode decode-js-key})
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
 
 (defn ^:export test-query
   "Creates a query from a test query spec."

@@ -1,4 +1,5 @@
 (ns metabase.lib.query.util
+  (:refer-clojure :exclude [mapv name])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -21,22 +22,22 @@
    [metabase.lib.schema.query :as lib.schema.query]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [id type]}     :- ::lib.schema.query/test-source-spec]
-  (case type
-    :table (lib.metadata/table metadata-providerable id)
-    :card  (lib.metadata/card metadata-providerable id)))
+   {spec-id :id spec-type :type}     :- ::lib.schema.query/test-source-spec]
+  (case spec-type
+    :table (lib.metadata/table metadata-providerable spec-id)
+    :card  (lib.metadata/card metadata-providerable spec-id)))
 
 (mu/defn- matches-column? :- :boolean
   [query          :- ::lib.schema/query
-   _stage-number   :- :int
+   _stage-number  :- :int
    column         :- ::lib.schema.metadata/column
    {:keys [name source-name]} :- ::lib.schema.query/test-column-spec]
-  (cond-> true
-    (some? name) (and (= name (:name column)))
+  (cond-> (= name (:name column))
     (some? source-name) (and (= source-name (:name (lib.metadata/table query (:table-id column)))))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
@@ -201,11 +202,11 @@
 (mu/defn- append-expressions :- ::lib.schema/query
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   available-columns :- [:sequential ::lib.schema.metadata/column]
    expression-specs  :- [:sequential ::lib.schema.query/test-named-expression-spec]]
-  (reduce #(append-expression %1 stage-number available-columns %2)
-          query
-          expression-specs))
+  (let [available-columns (lib.expression/expressionable-columns query stage-number)]
+    (reduce #(append-expression %1 stage-number available-columns %2)
+            query
+            expression-specs)))
 
 (mu/defn- matches-strategy? :- :boolean
   [name :- string?
@@ -306,14 +307,14 @@
    stage-number                  :- :int
    {:keys [fields expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
-    fields (append-fields stage-number fields)
-    expressions (append-expressions stage-number (lib.metadata.calculation/visible-columns query stage-number) expressions)
-    joins (append-joins stage-number joins)
-    filters (append-filters stage-number filters)
+    fields       (append-fields stage-number fields)
+    expressions  (append-expressions stage-number expressions)
+    joins        (append-joins stage-number joins)
+    filters      (append-filters stage-number filters)
     aggregations (append-aggregations stage-number aggregations)
-    breakouts (append-breakouts stage-number breakouts)
-    order-bys (append-order-bys stage-number order-bys)
-    limit (lib.limit/limit stage-number limit)))
+    breakouts    (append-breakouts stage-number breakouts)
+    order-bys    (append-order-bys stage-number order-bys)
+    limit        (lib.limit/limit stage-number limit)))
 
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
@@ -321,4 +322,4 @@
    {:keys [stages]}      :- ::lib.schema.query/test-query-spec]
   (let [source (->> stages first :source (find-source metadata-providerable))
         query  (lib.query/query metadata-providerable source)]
-    (reduce-kv #(append-stage-clauses %1 %2 %3) query stages)))
+    (reduce-kv append-stage-clauses query stages)))
