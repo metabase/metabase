@@ -126,6 +126,7 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
           .click();
 
         H.getSimpleEmbedIframeContent().within(() => {
+          H.modal().findByText("Test Sammlung").should("be.visible").click();
           H.entityPickerModal()
             .findByText("Test Sammlung")
             .should("be.visible");

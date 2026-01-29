@@ -371,11 +371,9 @@ export const configureSandboxPolicy = (
       /Use a saved question to create a custom view for this table/,
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText(/Sandboxing/).click(); // collection name
-      cy.findByText(customViewName).click();
-      cy.findByText("Select").click();
+    H.pickEntity({
+      path: ["Our analytics", /Sandboxing/, customViewName],
+      select: true,
     });
   }
 

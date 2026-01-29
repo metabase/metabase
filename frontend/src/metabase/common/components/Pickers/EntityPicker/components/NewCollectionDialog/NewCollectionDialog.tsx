@@ -64,7 +64,6 @@ export const NewCollectionDialog = () => {
   const canCreateHere =
     !isInRecentsOrSearch(path) &&
     lastCollection &&
-    "can_write" in lastCollection &&
     lastCollection.can_write &&
     canPlaceEntityInCollection(
       "collection",
