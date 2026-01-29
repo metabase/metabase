@@ -124,8 +124,8 @@
 (defn- sanitize-validation-output
   [validation-output]
   (-> validation-output
-      (update :status (comp keyword u/kebab->snake))
-      (m/update-existing :type (comp keyword u/kebab->snake))))
+      (update :status (comp u/->kebab-case-en keyword))
+      (m/update-existing :type (comp u/->kebab-case-en keyword))))
 
 (defn validate-query
   "WIP"
