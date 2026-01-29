@@ -163,27 +163,21 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         }
       }
 
-      // Build settings to save, excluding the pending library key
-      const valuesWithUpdatedCollections = {
-        ...values,
-        [COLLECTIONS_KEY]: collectionsMap,
-      };
-
       // Don't send collections when in read-only mode
       // Also filter out the sync-library-pending key as it's not a real setting
-      const isReadOnly = valuesWithUpdatedCollections[TYPE_KEY] === "read-only";
+      const isReadOnly = values[TYPE_KEY] === "read-only";
       const settingsToSave: RemoteSyncConfigurationSettings = {
-        [REMOTE_SYNC_KEY]: valuesWithUpdatedCollections[REMOTE_SYNC_KEY],
-        [URL_KEY]: valuesWithUpdatedCollections[URL_KEY],
-        [TOKEN_KEY]: valuesWithUpdatedCollections[TOKEN_KEY],
-        [TYPE_KEY]: valuesWithUpdatedCollections[TYPE_KEY],
-        [BRANCH_KEY]: valuesWithUpdatedCollections[BRANCH_KEY],
-        [AUTO_IMPORT_KEY]: valuesWithUpdatedCollections[AUTO_IMPORT_KEY],
-        [TRANSFORMS_KEY]: valuesWithUpdatedCollections[TRANSFORMS_KEY],
+        [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
+        [URL_KEY]: values[URL_KEY],
+        [TOKEN_KEY]: values[TOKEN_KEY],
+        [TYPE_KEY]: values[TYPE_KEY],
+        [BRANCH_KEY]: values[BRANCH_KEY],
+        [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
+        [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
         ...(isReadOnly
           ? {}
           : {
-              [COLLECTIONS_KEY]: valuesWithUpdatedCollections[COLLECTIONS_KEY],
+              [COLLECTIONS_KEY]: collectionsMap,
             }),
       };
 
@@ -347,7 +341,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   return (
     <>
       <FormProvider
-        initialValues={initialValues as RemoteSyncConfigurationSettings}
+        initialValues={initialValues}
         enableReinitialize
         validationSchema={REMOTE_SYNC_SCHEMA}
         validationContext={settingValues}
@@ -509,11 +503,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     onLibraryPendingChange={(checked) =>
                       setFieldValue(SYNC_LIBRARY_PENDING_KEY, checked)
                     }
-                    isLibraryPendingChecked={
-                      (values as Record<string, unknown>)[
-                        SYNC_LIBRARY_PENDING_KEY
-                      ] === true
-                    }
+                    isLibraryPendingChecked={values[SYNC_LIBRARY_PENDING_KEY]}
                   />
                 </RemoteSyncSettingsSection>
               )}
