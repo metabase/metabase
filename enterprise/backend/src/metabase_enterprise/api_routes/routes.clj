@@ -42,7 +42,6 @@
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
-   [metabase.transforms.api.transform]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
@@ -71,7 +70,6 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
-   :transforms                 (deferred-tru "Transforms")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
