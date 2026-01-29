@@ -227,6 +227,16 @@
                             :tag                           tag}
                            user-id)))
 
+(defn- track-sqlgen-event!
+  "Track SQL generation usage via Snowplow simple_event."
+  [{:keys [duration-ms result engine]}]
+  (snowplow/track-event! :snowplow/simple_event
+                         {:event "metabot_oss_sqlgen_used"
+                          :duration_ms duration-ms
+                          :result result
+                          :event_detail (some-> engine name)}
+                         api/*current-user-id*))
+
 ;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
 (def ^:private table-with-columns-schema
@@ -336,32 +346,42 @@
         (when-not schema-ddl
           (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                           {:status-code 400})))
-        (let [engine              (database-engine database_id)
-              dialect             (database-dialect database_id)
+        (let [engine               (database-engine database_id)
+              dialect              (database-dialect database_id)
               dialect-instructions (load-dialect-instructions engine)
-              system-prompt       (build-system-prompt {:dialect              dialect
-                                                        :schema-ddl           schema-ddl
-                                                        :dialect-instructions dialect-instructions
-                                                        :source-sql           source_sql})
-              timestamp           (current-timestamp)]
+              system-prompt        (build-system-prompt {:dialect              dialect
+                                                         :schema-ddl           schema-ddl
+                                                         :dialect-instructions dialect-instructions
+                                                         :source-sql           source_sql})
+              timestamp            (current-timestamp)
+              start-timer          (u/start-timer)]
           (when (debug-logging-enabled?)
             (log-to-file! (str timestamp "_prompt.txt") system-prompt))
-          (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
-                                                    {:system   system-prompt
-                                                     :messages [{:role "user" :content prompt}]})]
-            (when (debug-logging-enabled?)
-              (log-to-file! (str timestamp "_response.txt") (pr-str result)))
-            (track-token-usage! (assoc usage
-                                       :duration-ms duration-ms
-                                       :user-id api/*current-user-id*
-                                       ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
-                                       :source "oss_metabot"
-                                       :tag "oss-sqlgen"))
-            (let [sql                 (parse-sql-response result)
-                  tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
-                  referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
-              {:sql                 sql
-               :referenced_entities referenced-entities})))))))
+          (try
+            (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
+                                                      {:system   system-prompt
+                                                       :messages [{:role "user" :content prompt}]})]
+              (when (debug-logging-enabled?)
+                (log-to-file! (str timestamp "_response.txt") (pr-str result)))
+              (track-token-usage! (assoc usage
+                                         :duration-ms duration-ms
+                                         :user-id api/*current-user-id*
+                                         ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
+                                         :source "oss_metabot"
+                                         :tag "oss-sqlgen"))
+              (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
+                                    :result "success"
+                                    :engine engine})
+              (let [sql                 (parse-sql-response result)
+                    tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
+                    referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
+                {:sql                 sql
+                 :referenced_entities referenced-entities}))
+            (catch Exception e
+              (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
+                                    :result "failure"
+                                    :engine engine})
+              (throw e))))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -457,7 +477,7 @@
                   (when (debug-logging-enabled?)
                     (log-to-file! (str timestamp "_response.txt") json-str))
                   (doseq [[model-id {:keys [prompt completion]}] @usage-acc]
-                      ;; There should only be one model in the usage-acc, but doseq in case that ever changes.
+                    ;; There should only be one model in the usage-acc, but doseq in case that ever changes.
                     (track-token-usage! {:model       model-id
                                          :prompt      prompt
                                          :completion  completion
@@ -465,6 +485,9 @@
                                          :user-id     api/*current-user-id*
                                          :source      "oss_metabot"
                                          :tag         "oss-sqlgen-streaming"}))
+                  (track-sqlgen-event! {:duration-ms (u/since-ms start-time)
+                                        :result "success"
+                                        :engine (database-engine database_id)})
                   (write-sse! os (llm.streaming/format-sse-line
                                   :data
                                   {:sql                 final-sql
@@ -476,6 +499,9 @@
                 (= (:type chunk) :error)
                 (do
                   (log/error "Error chunk received" {:error (:error chunk)})
+                  (track-sqlgen-event! {:duration-ms (u/since-ms start-time)
+                                        :result "failure"
+                                        :engine (database-engine database_id)})
                   (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)})))
 
                 (= (:type chunk) :usage)
