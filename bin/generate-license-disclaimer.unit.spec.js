@@ -257,24 +257,34 @@ describe("generateDisclaimerText", () => {
 });
 
 describe("integration", () => {
+  let tempDir;
+  let tempOutputFile;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "license-test-"));
+    tempOutputFile = path.join(tempDir, "license-output.txt");
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true });
+    }
+  });
+
   it("runs successfully and generates valid output", () => {
     const { execFileSync } = require("child_process");
     const scriptPath = path.join(__dirname, "generate-license-disclaimer.js");
-    const outputFile = path.join(
-      __dirname,
-      "..",
-      "resources",
-      "license-frontend-third-party.txt",
-    );
 
-    const result = execFileSync("node", [scriptPath], { encoding: "utf-8" });
+    const result = execFileSync("node", [scriptPath, tempOutputFile], {
+      encoding: "utf-8",
+    });
 
     expect(result).toMatch(/Found \d+ packages/);
 
     const packageCount = parseInt(result.match(/Found (\d+) packages/)[1], 10);
-    expect(packageCount).toBeGreaterThan(1000);
+    expect(packageCount).toBeGreaterThan(1000); // ensure transitive deps are included
 
-    const content = fs.readFileSync(outputFile, "utf-8");
+    const content = fs.readFileSync(tempOutputFile, "utf-8");
     expect(content).toMatch(/^THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES/);
     expect(content).toContain("-----");
     expect(content).toContain("This software contains the following license");

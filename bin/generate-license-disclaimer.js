@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-// Usage: node bin/generate-license-disclaimer.js
+// Usage: node bin/generate-license-disclaimer.js [output-path]
+// If output-path is not provided, writes to resources/license-frontend-third-party.txt
 
 const fs = require("fs");
 const path = require("path");
@@ -189,6 +190,9 @@ function generateDisclaimerText(packages, getPackageDetails) {
 }
 
 if (require.main === module) {
+  // Allow overriding output path via command line argument (useful for tests)
+  const outputPath = process.argv[2] || OUTPUT_FILE;
+
   console.log("Scanning bun packages...");
   const packages = scanBunPackages(BUN_MODULES_DIR);
   console.log(`Found ${packages.length} packages`);
@@ -211,8 +215,8 @@ if (require.main === module) {
     };
   });
 
-  fs.writeFileSync(OUTPUT_FILE, output);
-  console.log(`Generated ${OUTPUT_FILE}`);
+  fs.writeFileSync(outputPath, output);
+  console.log(`Generated ${outputPath}`);
 }
 
 module.exports = {
