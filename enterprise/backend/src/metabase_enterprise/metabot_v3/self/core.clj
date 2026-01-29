@@ -81,26 +81,49 @@
 
 (defn aisdk-xf
   "Collect a stream of AI SDK v5 messages into a list of parts (joins by id)."
-  [rf]
-  ;; NOTE: logic relies on chunks pieces not being interleaved, but even `tool-executor-xf` doesn't break that rule
-  ;; if we ever change it to stream tools rather than collect them in one piece, we'd need to improve logic here too
-  (let [current-id (volatile! nil)
-        acc        (volatile! [])]
-    (fn
-      ([result]
-       (cond-> result
-         (seq @acc) (rf (aisdk-chunks->part @acc))
-         true       rf))
-      ([result chunk]
-       (let [chunk-id (or (:id chunk)
-                          (:toolCallId chunk))]
-         (if (not= chunk-id @current-id)
-           (u/prog1 (cond-> result
-                      (seq @acc) (rf (aisdk-chunks->part @acc)))
-             (vreset! current-id chunk-id)
-             (vreset! acc [chunk]))
-           (u/prog1 result
-             (vswap! acc conj chunk))))))))
+  ([] (aisdk-xf nil))
+  ([{:keys [stream-text?]}]
+   (fn [rf]
+     ;; NOTE: logic relies on chunks pieces not being interleaved, but even `tool-executor-xf` doesn't break that rule
+     ;; if we ever change it to stream tools rather than collect them in one piece, we'd need to improve logic here too
+     (let [current-id (volatile! nil)
+           acc        (volatile! [])
+           ;; is it not nice how consistent the AI SDK format is?
+           getid      #(or (:id %) (:messageId %) (:toolCallId %))
+           flush!     (fn [result]
+                        (u/prog1 (cond-> result
+                                   (seq @acc) (rf (aisdk-chunks->part @acc)))
+                          (vreset! current-id nil)
+                          (vreset! acc [])))]
+       (fn
+         ([result]
+          (cond-> result
+            (seq @acc) (rf (aisdk-chunks->part @acc))
+            true       rf))
+         ([result chunk]
+          (let [chunk-id (getid chunk)]
+            (cond
+              (and stream-text? (#{:text-start :text-end} (:type chunk)))
+              (flush! result)
+
+              (and stream-text? (#{:text-delta :text-start :text-end} (:type chunk)))
+              (-> (flush! result)
+                  ;; TODO: check if I can just pass through text-delta?
+                  (rf {:type :text :id (:id chunk) :text (:delta chunk)}))
+
+              (not= chunk-id @current-id)
+              (u/prog1 (flush! result)
+                (vreset! current-id chunk-id)
+                (vreset! acc [chunk]))
+
+              :else
+              (u/prog1 result
+                (vswap! acc conj chunk))))))))))
+
+(defn lite-aisdk-xf
+  "Like `aisdk-xf` but text is streamed through as chunks"
+  []
+  (aisdk-xf {:stream-text? true}))
 
 ;;; AI SDK v4 Line Protocol Output
 ;;
@@ -127,10 +150,10 @@
   (let [type-str (or data-type
                      (get data :type)
                      "data")
-        value (or data (dissoc part :type :id))]
-    (str "2:" (json/encode {:type (if (keyword? type-str) (name type-str) type-str)
+        value    (or data (dissoc part :type :id))]
+    (str "2:" (json/encode {:type    (if (keyword? type-str) (name type-str) type-str)
                             :version 1
-                            :value value}))))
+                            :value   value}))))
 
 (defn format-error-line
   "Format error part as AI SDK line: 3:\"error message\""
@@ -141,10 +164,10 @@
   "Format tool-input part as AI SDK line: 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}"
   [{:keys [id function arguments]}]
   (str "9:" (json/encode {:toolCallId id
-                          :toolName function
-                          :args (if (string? arguments)
-                                  arguments
-                                  (json/encode arguments))})))
+                          :toolName   function
+                          :args       (if (string? arguments)
+                                        arguments
+                                        (json/encode arguments))})))
 
 (defn format-tool-result-line
   "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}"
@@ -153,13 +176,13 @@
                            result (assoc :result (if (string? result)
                                                    result
                                                    (json/encode result)))
-                           error (assoc :error (json/encode error))))))
+                           error  (assoc :error (json/encode error))))))
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
   [accumulated-usage]
   (str "d:" (json/encode {:finishReason "stop"
-                          :usage (or accumulated-usage {})})))
+                          :usage        (or accumulated-usage {})})))
 
 (defn format-start-line
   "Format start part as AI SDK line: f:{\"messageId\":...}"
@@ -198,9 +221,9 @@
          :usage       (do
                         ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
                         (let [{:keys [usage id]} part
-                              model (or id "claude-haiku-4-5")]
+                              model              (or id "claude-haiku-4-5")]
                           (vswap! usage-acc assoc model
-                                  {:prompt (:promptTokens usage 0)
+                                  {:prompt     (:promptTokens usage 0)
                                    :completion (:completionTokens usage 0)}))
                         result)
          ;; Pass through unknown types as data
@@ -237,7 +260,7 @@
   "Execute a tool and return output chunks. Handles errors gracefully."
   [tool-call-id tool-name tool-fn chunks]
   (try
-    (let [{:keys [arguments]} (into {} aisdk-xf chunks)]
+    (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
       (let [result (tool-fn arguments)]
         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})

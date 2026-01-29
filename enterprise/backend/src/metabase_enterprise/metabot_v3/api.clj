@@ -56,43 +56,99 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 
-(defn- streaming-writer-rf
-  "Creates a reducing function that:
-  1. Writes AI SDK lines to an OutputStream as they're produced
-  2. Accumulates lines for later storage
+(defn- extract-usage
+  "Extract usage from parts, combining multiple :usage parts if present."
+  [parts]
+  (transduce
+   (comp (filter #(= :usage (:type %)))
+         (map :usage))
+   (completing
+    (fn [acc {:keys [promptTokens completionTokens] :as _usage}]
+      (-> acc
+          (update :prompt + (or promptTokens 0))
+          (update :completion + (or completionTokens 0)))))
+   {:prompt 0 :completion 0}
+   parts))
 
-  The reducing function signature:
-  - () -> initializes accumulator
-  - (acc) -> completion, returns accumulated lines
-  - (acc line) -> writes line to stream, accumulates it"
+(defn- store-parts!
+  "Store assistant response parts directly to the database.
+
+  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
+  avoiding the intermediate 'aisdk messages' format.
+
+  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
+  [conversation-id profile-id parts]
+  (let [state-part (u/seek #(and (= :data (:type %))
+                                 (= "state" (:data-type %)))
+                           parts)
+        usage      (extract-usage parts)
+        ;; Filter out :start, :usage, :finish - these are metadata, not message content
+        content    (->> parts
+                        (remove #(#{:start :usage :finish :data} (:type %)))
+                        vec)]
+    (when state-part
+      (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
+                                (constantly {:user_id api/*current-user-id*
+                                             :state   (:data state-part)})))
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :data            content
+                 :usage           usage
+                 :role            :assistant
+                 :profile_id      profile-id
+                 :total_tokens    (+ (:prompt usage) (:completion usage))})))
+
+(defn- streaming-writer-rf
+  "Creates a reducing function that writes AI SDK lines to an OutputStream.
+
+  Lines are written immediately with a newline and flushed for real-time streaming."
   [^java.io.OutputStream os]
   (fn
-    ([] [])
-    ([lines] lines)
-    ([lines ^String line]
+    ([] nil)
+    ([_] nil)
+    ([_ ^String line]
      (.write os (.getBytes (str line "\n") "UTF-8"))
-     (.flush os)
-     (conj lines line))))
+     (.flush os))))
+
+(defn- combine-text-parts-xf []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (rf (if p (rf result p) result))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev (= :text (:type prev) (:type part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (do (vreset! pending part)
+                 (if prev (rf result prev) result)))))))))
 
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
-  Converts internal parts to AI SDK v4 line protocol format and streams them in real-time."
+
+  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
+  collecting parts for database storage. Text parts are combined before storage
+  to consolidate streaming chunks into single text parts."
   [{:keys [profile-id message context history conversation-id state]}]
   (let [enriched-context (metabot-v3.context/create-context context)
         messages (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"}
                            [^java.io.OutputStream os _canceled-chan]
-      ;; Transduce agent output through aisdk-line-xf to format as AI SDK lines
-      ;; and write to the output stream
-      (let [lines (transduce self.core/aisdk-line-xf
-                             (streaming-writer-rf os)
-                             (agent/run-agent-loop
-                              {:messages   messages
-                               :state      state
-                               :profile-id (keyword profile-id)
-                               :context    enriched-context}))]
-        (store-message! conversation-id profile-id
-                        (metabot-v3.u/aisdk->messages :assistant lines))))))
+      (let [parts-atom (atom [])
+              ;; Compose: collect parts AND convert to lines for streaming
+            xf         (comp (u/tee-xf parts-atom)
+                             self.core/aisdk-line-xf)]
+        (transduce xf
+                   (streaming-writer-rf os)
+                   (agent/run-agent-loop
+                    {:messages   messages
+                     :state      state
+                     :profile-id (keyword profile-id)
+                     :context    enriched-context}))
+        (store-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."

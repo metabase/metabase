@@ -1358,3 +1358,8 @@
   "Finds the first map in `maps` that contains the value at the given key path."
   [maps ks value]
   (second (find-first-map-indexed maps ks value)))
+
+(defn tee-xf
+  "Transducer that collects items into an atom while passing them through unchanged."
+  [atom]
+  (map (fn [x] (swap! atom conj x) x)))

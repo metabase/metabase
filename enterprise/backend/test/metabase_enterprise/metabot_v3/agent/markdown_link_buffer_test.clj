@@ -63,17 +63,25 @@
 
 ;;; metabase:// link resolution tests
 
+(def RESOLVED-LINK-RE #"\[Results\]\(/question#[a-zA-ZZ0-9=]+\)")
+
 (deftest resolve-query-link-test
   (testing "resolves metabase://query links using queries-state"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           [output flushed] (process "[Results](metabase://query/q-123)" {"q-123" query})]
-      (is (re-find #"\[Results\]\(/question#" output))
+      (is (=? RESOLVED-LINK-RE output))
       (is (not (re-find #"metabase://" output)))
       (is (= "" flushed))))
 
   (testing "falls back to link text for unknown query"
     (let [[output flushed] (process "[Results](metabase://query/unknown)")]
       (is (= "Results" output))
+      (is (= "" flushed))))
+
+  (testing "incomplete chunks are also replaced well"
+    (let [query {:database 1 :type :query :query {:source-table 1}}
+          [output flushed] (process-chunks ["Your [Res" "ults](metabase://qu" "ery/q-123)"] {"q-123" query})]
+      (is (=? ["Your " "" RESOLVED-LINK-RE] output))
       (is (= "" flushed)))))
 
 (deftest resolve-chart-link-test
