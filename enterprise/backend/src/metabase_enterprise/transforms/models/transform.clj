@@ -320,7 +320,7 @@
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
-(defn- extract-transform-db-id
+(defn transform->db-id
   "Return the database ID from transform source; else nil."
   [{:keys [source]}]
   (let [parsed-source (transform-source-out source)]
@@ -342,7 +342,7 @@
                   :view-count    false
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :source_type]}
-                  :database-id   {:fn extract-transform-db-id
+                  :database-id   {:fn transform->db-id
                                   :fields [:source]}}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
