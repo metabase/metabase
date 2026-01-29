@@ -22,3 +22,8 @@
   (cond-> #{}
     (query-transforms-enabled?) (into ["native" "mbql"])
     (python-transforms-enabled?) (conj "python")))
+
+(defn any-transforms-enabled?
+  "Whether any transforms are enabled."
+  []
+  (or (query-transforms-enabled?) (python-transforms-enabled?)))

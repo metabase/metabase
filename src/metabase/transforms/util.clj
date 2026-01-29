@@ -17,7 +17,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -525,11 +524,12 @@
   (log/infof "Renaming tables: %s" (pr-str rename-map))
   (driver/rename-tables! driver database-id rename-map))
 
-(defenterprise is-temp-transform-table?
+(defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
-  (when-let [table-name (:name table)]
-    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
+  (boolean
+   (when-let [table-name (and (transforms.gating/any-transforms-enabled?) (:name table))]
+     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix))))
 
 ;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
 
