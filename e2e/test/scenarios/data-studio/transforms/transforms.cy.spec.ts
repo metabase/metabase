@@ -1,8 +1,14 @@
 import dedent from "ts-dedent";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
   CardType,
   CollectionId,
@@ -4004,3 +4010,55 @@ function getRowNames(): Cypress.Chainable<string[]> {
     .findAllByTestId("tree-node-name")
     .then(($rows) => $rows.get().map((row) => row.textContent.trim()));
 }
+
+describe("scenarios > data studio > transforms > permissions", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+  });
+
+  it("should allow non-admin users with data-studio permission to create transforms", () => {
+    cy.log("grant data-studio permission to All Users");
+    cy.visit("/admin/permissions/application");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.DATA_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          transforms: DataPermissionValue.YES,
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+    H.setUserAsAnalyst(NORMAL_USER_ID);
+
+    cy.log("sign in as normal user and create a transform");
+    cy.signInAsNormalUser();
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.miniPicker().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText(TARGET_SCHEMA).click();
+      cy.findByText(SOURCE_TABLE).click();
+    });
+    getQueryEditor().button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("Non-admin transform");
+      cy.findByLabelText("Table name").type(TARGET_TABLE);
+      cy.button("Save").click();
+      cy.wait("@createTransform");
+    });
+
+    cy.log("Verify transform was created");
+    getTransformsNavLink().click();
+    H.DataStudio.Transforms.list()
+      .findByText("Non-admin transform")
+      .should("be.visible");
+  });
+});
