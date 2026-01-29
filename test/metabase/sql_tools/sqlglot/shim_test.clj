@@ -1,7 +1,8 @@
 (ns metabase.sql-tools.sqlglot.shim-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sql-tools.sqlglot.shim :as sqlglot.shim])
+   [metabase.sql-tools.sqlglot.shim :as sqlglot.shim]
+   [metabase.util :as u])
   (:import
    (io.aleph.dirigiste Pool)
    (java.util.concurrent CountDownLatch)))
@@ -218,29 +219,29 @@
 ;; We use a generic function name for dialects without well-known UDTFs to test
 ;; that unknown functions are handled gracefully.
 (def udtf-queries
-  {"postgres"  "SELECT * FROM generate_series(1, 10)"
-   "mysql"     "SELECT * FROM my_table_func(1, 10)"  ; MySQL's JSON_TABLE has complex syntax
-   "snowflake" "SELECT * FROM TABLE(FLATTEN(input => ARRAY_CONSTRUCT(1, 2, 3)))"
-   "bigquery"  "SELECT * FROM UNNEST([1, 2, 3]) AS val"
-   "redshift"  "SELECT * FROM generate_series(1, 10)"
-   "duckdb"    "SELECT * FROM generate_series(1, 10)"})
+  {:postgres  "SELECT * FROM generate_series(1, 10)"
+   :mysql     "SELECT * FROM my_table_func(1, 10)"  ; MySQL's JSON_TABLE has complex syntax
+   :snowflake "SELECT * FROM TABLE(FLATTEN(input => ARRAY_CONSTRUCT(1, 2, 3)))"
+   :bigquery  "SELECT * FROM UNNEST([1, 2, 3]) AS val"
+   :redshift  "SELECT * FROM generate_series(1, 10)"
+   :duckdb    "SELECT * FROM generate_series(1, 10)"})
 
 ;; UDTF queries mixed with real tables - tests that we correctly identify real tables
 ;; while gracefully handling table functions
 (def udtf-with-table-queries
-  {"postgres"  "SELECT o.* FROM orders o, generate_series(1, 10) g"
-   "mysql"     "SELECT o.* FROM orders o, my_table_func(1, 10) t"
-   "snowflake" "SELECT o.* FROM orders o, TABLE(FLATTEN(input => ARRAY_CONSTRUCT(1))) f"
-   "bigquery"  "SELECT o.* FROM orders o, UNNEST([1]) AS val"
-   "redshift"  "SELECT o.* FROM orders o, generate_series(1, 10) g"
-   "duckdb"    "SELECT o.* FROM orders o, generate_series(1, 10) g"})
+  {:postgres  "SELECT o.* FROM orders o, generate_series(1, 10) g"
+   :mysql     "SELECT o.* FROM orders o, my_table_func(1, 10) t"
+   :snowflake "SELECT o.* FROM orders o, TABLE(FLATTEN(input => ARRAY_CONSTRUCT(1))) f"
+   :bigquery  "SELECT o.* FROM orders o, UNNEST([1]) AS val"
+   :redshift  "SELECT o.* FROM orders o, generate_series(1, 10) g"
+   :duckdb    "SELECT o.* FROM orders o, generate_series(1, 10) g"})
 
 (deftest ^:parallel udtf-referenced-tables-test
   (testing "UDTFs are handled by referenced-tables across dialects"
     (doseq [[dialect sql] udtf-queries]
       (testing (str "dialect: " dialect " - pure UDTF query")
         ;; Table functions shouldn't appear as referenced tables - they're not real tables
-        (let [result (sqlglot.shim/referenced-tables dialect sql "public")]
+        (let [result (sqlglot.shim/referenced-tables (name dialect) sql "public")]
           (is (vector? result)
               (format "dialect %s: should return vector, got %s" dialect (type result)))
           (is (every? vector? result)
@@ -248,9 +249,9 @@
 
     (doseq [[dialect sql] udtf-with-table-queries]
       (testing (str "dialect: " dialect " - UDTF mixed with real table")
-        (let [result (sqlglot.shim/referenced-tables dialect sql "public")]
+        (let [result (sqlglot.shim/referenced-tables (name dialect) sql "public")]
           ;; Case-insensitive comparison since dialects like Snowflake uppercase identifiers
-          (is (some #(= "orders" (clojure.string/lower-case (second %))) result)
+          (is (some #(= "orders" (u/lower-case-en (second %))) result)
               (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
 
 (deftest ^:parallel udtf-returned-columns-lineage-test
@@ -259,7 +260,7 @@
       (testing (str "dialect: " dialect)
         ;; UDTFs should not cause assertion errors - they return lineage with empty deps
         ;; since there's no real table to trace columns back to
-        (let [result (sqlglot.shim/returned-columns-lineage dialect sql "public" {})]
+        (let [result (sqlglot.shim/returned-columns-lineage (name dialect) sql "public" {})]
           (is (sequential? result)
               (format "dialect %s: should return sequential, got %s" dialect (type result))))))))
 
@@ -268,104 +269,96 @@
     (doseq [[dialect sql] udtf-queries]
       (testing (str "dialect: " dialect)
         ;; This should NOT throw an error now that infer_schema=True
-        (let [result (sqlglot.shim/validate-query dialect sql "public" {})]
+        (let [result (sqlglot.shim/validate-query (name dialect) sql "public" {})]
           (is (= :ok (:status result))
               (format "dialect %s: UDTF query should validate OK, got %s" dialect result)))))))
-
 ;;; ------------------------------------------ Set Operation Tests (UNION, INTERSECT, EXCEPT) ------------------------------------------
 
-;; Set operation queries for testing - UNION, UNION ALL, INTERSECT, EXCEPT
-(def set-operation-queries
-  {:union          "SELECT id, name FROM users UNION SELECT id, name FROM archived_users"
-   :union-all      "SELECT id, name FROM users UNION ALL SELECT id, name FROM archived_users"
-   :intersect      "SELECT id FROM users INTERSECT SELECT id FROM premium_users"
-   :except         "SELECT id FROM users EXCEPT SELECT id FROM banned_users"
-   :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
-   :cte-with-union "WITH all_users AS (SELECT id FROM users UNION SELECT id FROM guests) SELECT * FROM all_users"})
+;; Set operation queries by dialect - tests UNION, UNION ALL, INTERSECT, EXCEPT
+;; All queries use tables "a" and "b" for consistent expected results
+(def dialect->set-operation->query
+  {:postgres
+   {:union          "SELECT id, name FROM a UNION SELECT id, name FROM b"
+    :union-all      "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+    :intersect      "SELECT id FROM a INTERSECT SELECT id FROM b"
+    :except         "SELECT id FROM a EXCEPT SELECT id FROM b"
+    :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+    :cte-with-union "WITH c AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM c"}
 
-(deftest ^:parallel set-operation-referenced-tables-test
-  (testing "Set operations correctly identify all referenced tables"
-    (testing "UNION"
-      (let [result (sqlglot.shim/referenced-tables "postgres"
-                                                   (:union set-operation-queries)
-                                                   "public")]
-        (is (= #{"users" "archived_users"}
-               (into #{} (map (comp clojure.string/lower-case second) result)))
-            "UNION should reference both tables")))
+   :mysql
+   {:union          "SELECT id, name FROM a UNION SELECT id, name FROM b"
+    :union-all      "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+    :intersect      "SELECT id FROM a INTERSECT SELECT id FROM b"
+    :except         "SELECT id FROM a EXCEPT SELECT id FROM b"
+    :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+    :cte-with-union "WITH c AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM c"}
 
-    (testing "UNION ALL"
-      (let [result (sqlglot.shim/referenced-tables "postgres"
-                                                   (:union-all set-operation-queries)
-                                                   "public")]
-        (is (= #{"users" "archived_users"}
-               (into #{} (map (comp clojure.string/lower-case second) result)))
-            "UNION ALL should reference both tables")))
+   :snowflake
+   {:union          "SELECT id, name FROM a UNION SELECT id, name FROM b"
+    :union-all      "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+    :intersect      "SELECT id FROM a INTERSECT SELECT id FROM b"
+    :except         "SELECT id FROM a EXCEPT SELECT id FROM b"
+    :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+    :cte-with-union "WITH c AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM c"}
 
-    (testing "INTERSECT"
-      (let [result (sqlglot.shim/referenced-tables "postgres"
-                                                   (:intersect set-operation-queries)
-                                                   "public")]
-        (is (= #{"users" "premium_users"}
-               (into #{} (map (comp clojure.string/lower-case second) result)))
-            "INTERSECT should reference both tables")))
+   :bigquery
+   {:union          "SELECT id, name FROM a UNION DISTINCT SELECT id, name FROM b"
+    :union-all      "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+    :intersect      "SELECT id FROM a INTERSECT DISTINCT SELECT id FROM b"
+    :except         "SELECT id FROM a EXCEPT DISTINCT SELECT id FROM b"
+    :nested-union   "SELECT * FROM (SELECT id FROM a UNION DISTINCT SELECT id FROM b) AS combined"
+    :cte-with-union "WITH c AS (SELECT id FROM a UNION DISTINCT SELECT id FROM b) SELECT * FROM c"}
 
-    (testing "EXCEPT"
-      (let [result (sqlglot.shim/referenced-tables "postgres"
-                                                   (:except set-operation-queries)
-                                                   "public")]
-        (is (= #{"users" "banned_users"}
-               (into #{} (map (comp clojure.string/lower-case second) result)))
-            "EXCEPT should reference both tables")))
+   :redshift
+   {:union          "SELECT id, name FROM a UNION SELECT id, name FROM b"
+    :union-all      "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+    :intersect      "SELECT id FROM a INTERSECT SELECT id FROM b"
+    :except         "SELECT id FROM a EXCEPT SELECT id FROM b"
+    :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+    :cte-with-union "WITH c AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM c"}
 
-    (testing "nested UNION in subquery"
-      (let [result (sqlglot.shim/referenced-tables "postgres"
-                                                   (:nested-union set-operation-queries)
-                                                   "public")]
-        (is (= #{"a" "b"}
-               (into #{} (map (comp clojure.string/lower-case second) result)))
-            "Nested UNION should reference tables from both sides")))
+   :duckdb
+   {:union          "SELECT id, name FROM a UNION SELECT id, name FROM b"
+    :union-all      "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+    :intersect      "SELECT id FROM a INTERSECT SELECT id FROM b"
+    :except         "SELECT id FROM a EXCEPT SELECT id FROM b"
+    :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+    :cte-with-union "WITH c AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM c"}})
 
-    (testing "UNION in CTE"
-      (let [result (sqlglot.shim/referenced-tables "postgres"
-                                                   (:cte-with-union set-operation-queries)
-                                                   "public")]
-        (is (= #{"users" "guests"}
-               (into #{} (map (comp clojure.string/lower-case second) result)))
-            "UNION in CTE should reference both tables")))))
-
-(deftest ^:parallel set-operation-returned-columns-lineage-test
-  (testing "Set operations return correct column lineage"
-    (testing "UNION - columns from both sides"
-      (let [result (sqlglot.shim/returned-columns-lineage
-                    "postgres"
-                    (:union set-operation-queries)
-                    "public"
-                    {})]
-        (is (sequential? result) "Should return sequential")
-        ;; UNION returns columns - should have id and name
-        (is (= 2 (count result)) "UNION should return 2 columns (id, name)")))
-
-    (testing "INTERSECT - single column"
-      (let [result (sqlglot.shim/returned-columns-lineage
-                    "postgres"
-                    (:intersect set-operation-queries)
-                    "public"
-                    {})]
-        (is (sequential? result) "Should return sequential")
-        (is (= 1 (count result)) "INTERSECT should return 1 column (id)")))
-
-    (testing "nested UNION"
-      (let [result (sqlglot.shim/returned-columns-lineage
-                    "postgres"
-                    (:nested-union set-operation-queries)
-                    "public"
-                    {})]
-        (is (sequential? result) "Should return sequential")))))
+(def ^:private set-operation->expected
+  {:union ["id" "name"]
+   :intersect ["id"]
+   :nested-union ["id"]})
 
 (deftest ^:parallel set-operation-validate-query-test
-  (testing "Set operations validate correctly"
-    (doseq [[op-name sql] set-operation-queries]
-      (testing (str "operation: " (name op-name))
-        (let [result (sqlglot.shim/validate-query "postgres" sql "public" {})]
+  (testing "Set operations validate correctly across dialects"
+    (doseq [[dialect ops] dialect->set-operation->query
+            [op-type sql] ops]
+      (testing (str "dialect: " (name dialect) " - " (name op-type))
+        (let [result (sqlglot.shim/validate-query (name dialect) sql "public" {})]
           (is (= :ok (:status result))
-              (format "%s query should validate OK, got %s" (name op-name) result)))))))
+              (format "%s/%s should validate OK, got %s"
+                      (name dialect) (name op-type) result)))))))
+
+(deftest ^:parallel set-operation-referenced-tables-test
+  (testing "Set operations correctly identify all referenced tables across dialects"
+    (doseq [[dialect ops] dialect->set-operation->query
+            [op-type sql] ops]
+      (testing (str "dialect: " (name dialect) " - " (name op-type))
+        (let [result (sqlglot.shim/referenced-tables (name dialect) sql "public")
+              found-tables (into #{} (map (comp u/lower-case-en second) result))]
+          (is (= #{"a" "b"} found-tables)
+              (format "%s/%s should find tables a and b, got %s"
+                      (name dialect) (name op-type) found-tables)))))))
+
+(deftest ^:parallel set-operation-returned-columns-lineage-test
+  (testing "Set operations return correct column lineage across dialects"
+    (doseq [[dialect ops] dialect->set-operation->query
+            [op-type sql] ops
+            :let [expected (get set-operation->expected op-type)]]
+      (testing (str "dialect: " (name dialect) ", operation: " (name op-type))
+        (let [result (sqlglot.shim/returned-columns-lineage (name dialect) sql "public" {})
+              columns (sort (map (comp u/lower-case-en first) result))]
+          (is (= expected columns)
+              (format "%s %s should return %s, got %s"
+                      (name dialect) (name op-type) (pr-str expected) columns)))))))
