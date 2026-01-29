@@ -1,3 +1,4 @@
+;; TODO move this into sql tools and refactor
 (ns metabase.driver.sql.references-test
   (:require
    [clojure.test :refer :all]
@@ -920,6 +921,7 @@ SELECT
     c
 FROM c;"))))
 
+;; composite field here
 (deftest ^:parallel recursive-cte-test
   (is (= {:used-fields
           #{{:column "id",

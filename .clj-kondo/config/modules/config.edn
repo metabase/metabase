@@ -564,6 +564,7 @@
            premium-features
            query-processor
            settings
+           sql-tools
            system
            util
            warehouse-schema
@@ -1376,6 +1377,14 @@
            settings
            setup
            system
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{driver
+           lib
            util}}
 
   sso
