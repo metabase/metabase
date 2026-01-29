@@ -3,6 +3,8 @@ import path from "node:path";
 
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
+import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
@@ -17,6 +19,48 @@ import {
 import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
+
+const compareImages = ({
+  actualPath,
+  expectedPath,
+  diffPath,
+  threshold = 0.1,
+  maxDiffPercentage = 0,
+}) => {
+  const actual = PNG.sync.read(fs.readFileSync(actualPath));
+  const expected = PNG.sync.read(fs.readFileSync(expectedPath));
+
+  const { width, height } = actual;
+  const diff = new PNG({ width, height });
+
+  const numDiffPixels = pixelmatch(
+    actual.data,
+    expected.data,
+    diff.data,
+    width,
+    height,
+    { threshold },
+  );
+
+  const totalPixels = width * height;
+  const diffPercentage = (numDiffPixels / totalPixels) * 100;
+  const match = diffPercentage <= maxDiffPercentage;
+
+  if (!match && diffPath) {
+    fs.writeFileSync(diffPath, PNG.sync.write(diff));
+  }
+
+  return { numDiffPixels, totalPixels, diffPercentage, match };
+};
+
+const removeFile = (filePath) => {
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -176,6 +220,8 @@ const defaultConfig = {
         console.log(...messages);
         return null; // tasks must have a return value
       },
+      compareImages,
+      removeFile,
       ...dbTasks,
       ...ciTasks,
       ...verifyDownloadTasks,
