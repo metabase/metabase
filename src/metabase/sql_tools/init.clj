@@ -1,3 +1,5 @@
-(ns metabase.sql-tools.init)
-
-;; TODO: how do we start the pool? where does it live?
+(ns metabase.sql-tools.init
+  (:require
+   ;; Following is needed to force method's registration
+   [metabase.sql-tools.macaw.core]
+   [metabase.sql-tools.sqlglot.core]))
