@@ -149,12 +149,12 @@
     (broken-cards-response {})))
 
 (def ^:private entity-keys
-  {:table     [:name :description :display_name :db_id :db :schema :fields :transform]
+  {:table     [:name :description :display_name :db_id :db :schema :fields :transform
+               :owner :owner_user_id :owner_email]
    :card      [:name :type :display :database_id :view_count :query_type
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
-               :collection :collection_id :dashboard :dashboard_id :document :document_id
-               :owner :owner_user_id :owner_email]
+               :collection :collection_id :dashboard :dashboard_id :document :document_id]
    :snippet   [:name :description :created_at :creator :creator_id :collection :collection_id]
    :transform [:name :description :creator :table :last_run
                :owner :owner_user_id :owner_email]

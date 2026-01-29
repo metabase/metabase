@@ -8,7 +8,7 @@ import type { DependencyListMode } from "../types";
 import { BrokenDependentsSection } from "./BrokenDependentsSection";
 import { ErrorsSection } from "./ErrorsSection";
 import { FieldsSection } from "./FieldsSection";
-import { SidebarInfoSection } from "./InfoSection";
+import { InfoSection } from "./InfoSection";
 import S from "./ListSidebar.module.css";
 import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
@@ -47,7 +47,7 @@ export const ListSidebar = memo(function ListSidebar({
         <Stack gap="lg">
           <SidebarHeader node={node} onClose={onClose} />
           <LocationSection node={node} />
-          <SidebarInfoSection node={node} />
+          <InfoSection node={node} />
         </Stack>
         {mode === "broken" && <ErrorsSection node={node} />}
         {mode === "broken" && <BrokenDependentsSection node={node} />}
