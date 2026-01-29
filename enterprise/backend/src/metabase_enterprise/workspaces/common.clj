@@ -157,8 +157,7 @@
       (let [workspace-id    (:id workspace)
             workspace-db-id (:database_id workspace)
             body            (assoc-in body [:target :database] workspace-db-id)
-            transform       (t2/insert-returning-instance!
-                             :model/WorkspaceTransform
+            transform       (ws.u/insert-returning-ws-tx!
                              (assoc (select-keys body [:name :description :source :target])
                                     :ref_id (ws.u/generate-ref-id)
                                     :creator_id creator-id

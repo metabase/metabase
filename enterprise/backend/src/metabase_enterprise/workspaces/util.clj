@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [metabase.system.core :as system]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn assert-transform!
   "Test whether we support the given entity type within workspaces yet.
@@ -188,3 +189,19 @@
            ;; It's good to keep these visible, as they should be rare and can cause transient consistency issues.
            (log/info "Ignoring constraint violation (concurrent insert race):" msg#)
            (throw e#))))))
+
+;;; -------------------------------- Toucan2 MySQL Workarounds ------------------------------------------
+
+(defn insert-returning-ws-tx!
+  "Insert a WorkspaceTransform and return the inserted instance.
+
+   Works around a Toucan2 limitation where `t2/insert-returning-instance!` returns nil
+   for tables with composite primary keys on MySQL and H2. These databases don't reliably
+   support RETURNING for composite PKs, so we insert then select instead.
+
+   See: https://github.com/camsaul/toucan2/issues/204"
+  [row]
+  (t2/insert! :model/WorkspaceTransform row)
+  (t2/select-one :model/WorkspaceTransform
+                 :ref_id (:ref_id row)
+                 :workspace_id (:workspace_id row)))
