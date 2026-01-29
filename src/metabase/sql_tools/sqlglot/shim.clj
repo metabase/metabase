@@ -3,8 +3,9 @@
   "Basic example of running Python code using GraalVM polyglot."
   (:require
    [medley.core :as m]
-   [metabase.sql-tools.sqlglot.sqlglot :as sqlglot]
+   [metabase.config.core :as config]
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.sql-tools.sqlglot.sqlglot :as sqlglot]
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
@@ -84,9 +85,9 @@
 
   Return value is `[[table_schema table]...]`."
   [driver sql default-table-schema]
-  (with-open [^Closeable ctx (#'sqlglot/acquire-context @#'sqlglot/python-context-pool)]
-    (.eval ctx "python" "import sql_tools")
-    (let [pyfn (.eval ctx "python" "sql_tools.referenced_tables")
+  (with-open [^Closeable ctx (#'sqlglot/acquire-context @@#'sqlglot/python-context-pool)]
+    (#'sqlglot/eval-python ctx "import sql_tools")
+    (let [pyfn (#'sqlglot/eval-python ctx "sql_tools.referenced_tables")
           dialect (when-not (= :h2 driver)
                     (name driver))]
       (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql
@@ -109,9 +110,9 @@
 ;; TODO: Rename lineage to something more accurate
 (defn returned-columns-lineage
   [driver sql default-table-schema sqlglot-schema]
-  (with-open [^Closeable ctx (#'sqlglot/acquire-context @#'sqlglot/python-context-pool)]
-    (.eval ctx "python" "import sql_tools")
-    (let [pyfn (.eval ctx "python" "sql_tools.returned_columns_lineage")
+  (with-open [^Closeable ctx (#'sqlglot/acquire-context @@#'sqlglot/python-context-pool)]
+    (#'sqlglot/eval-python ctx "import sql_tools")
+    (let [pyfn (#'sqlglot/eval-python ctx "sql_tools.returned_columns_lineage")
           dialect (when-not (= :h2 driver)
                     (name driver))
           lineage (json/decode (.asString (.execute pyfn (object-array [dialect
@@ -130,9 +131,11 @@
 (defn validate-query
   "WIP"
   [driver sql default-table-schema sqlglot-schema]
-  (with-open [^Closeable ctx (#'sqlglot/acquire-context @#'sqlglot/python-context-pool)]
-    (.eval ctx "python" "import sql_tools")
-    (let [pyfn (.eval ctx "python" "sql_tools.validate_query")
+  (with-open [^Closeable ctx (if config/is-dev?
+                               (#'sqlglot/acquire-dev-context)
+                               (#'sqlglot/acquire-context @@#'sqlglot/python-context-pool))]
+    (#'sqlglot/eval-python ctx "import sql_tools")
+    (let [pyfn (#'sqlglot/eval-python ctx "sql_tools.validate_query")
           dialect (when-not (= :h2 driver)
                     (name driver))]
       (-> (.asString (.execute pyfn (object-array [dialect
