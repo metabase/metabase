@@ -115,7 +115,7 @@
                  :messages messages}]
     (try
       (let [response (http/post anthropic-messages-url
-                                {:headers            (build-request-headers get-api-key-or-throw)
+                                {:headers            (build-request-headers (get-api-key-or-throw))
                                  :body               (json/encode (build-request-body request))
                                  :as                 :json
                                  :content-type       :json
