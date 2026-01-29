@@ -149,29 +149,42 @@
 ;;; ------------------------------------------ Anthropic Messages → AI SDK v5 ------------------------------------------
 
 (defn anthropic-chat->aisdk-xf
-  "Transducer: Convert Anthropic /v1/messages streaming chunks to AI SDK text deltas.
+  "Transducer: Convert Anthropic /v1/messages streaming chunks to AI SDK format.
 
-   Extracts partial JSON from tool_use input_json_delta events.
-
-   Anthropic streaming format for tool_use:
-   {:type \"content_block_delta\"
-    :index 0
-    :delta {:type \"input_json_delta\"
-            :partial_json \"{\\\"sql\\\":\"}}
-
-   Output format:
-   {:type :text-delta :delta \"{\\\"sql\\\":\"}"
+   Emits:
+   - {:type :text-delta :delta \"...\"} for content from input_json_delta
+   - {:type :usage :id \"model-name\" :usage {:promptTokens X}} from message_start
+   - {:type :usage :id \"model-name\" :usage {:completionTokens Y}} from message_delta"
   [rf]
-  (fn
-    ([] (rf))
-    ([result] (rf result))
-    ([result chunk]
-     (if (and (= "content_block_delta" (:type chunk))
-              (= "input_json_delta" (-> chunk :delta :type)))
-       (if-let [partial-json (-> chunk :delta :partial_json)]
-         (rf result {:type :text-delta :delta partial-json})
-         result)
-       result))))
+  (let [model-id (volatile! nil)]
+    (fn
+      ([] (rf))
+      ([result] (rf result))
+      ([result chunk]
+       (case (:type chunk)
+         "message_start"
+         (do
+           ;; Remember the model for subsequent usage parts
+           (when-let [model (-> chunk :message :model)]
+             (vreset! model-id model))
+           (if-let [input-tokens (-> chunk :message :usage :input_tokens)]
+             (rf result (cond-> {:type :usage :usage {:promptTokens input-tokens}}
+                          @model-id (assoc :id @model-id)))
+             result))
+
+         "message_delta"
+         (if-let [output-tokens (-> chunk :usage :output_tokens)]
+           (rf result (cond-> {:type :usage :usage {:completionTokens output-tokens}}
+                        @model-id (assoc :id @model-id)))
+           result)
+
+         "content_block_delta"
+         (if (and (= "input_json_delta" (-> chunk :delta :type))
+                  (-> chunk :delta :partial_json))
+           (rf result {:type :text-delta :delta (-> chunk :delta :partial_json)})
+           result)
+
+         result)))))
 
 ;;; ------------------------------------------------ SSE Output Formatting ------------------------------------------------
 

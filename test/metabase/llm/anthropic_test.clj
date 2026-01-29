@@ -1,9 +1,13 @@
 (ns metabase.llm.anthropic-test
   (:require
+   [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -101,7 +105,7 @@
       (is (contains? (get-in tool [:input_schema :properties]) :sql))
       (is (= ["sql"] (get-in tool [:input_schema :required]))))))
 
-;;; ------------------------------------------- chat-completion error handling Tests -------------------------------------------
+;;; ------------------------------------------- chat-completion Tests -------------------------------------------
 
 (deftest chat-completion-not-configured-test
   (testing "throws when API key not configured"
@@ -111,9 +115,99 @@
            #"not configured"
            (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
 
+(deftest chat-completion-returns-usage-test
+  (testing "chat-completion returns result, usage, and duration"
+    (let [mock-response {:body {:id "msg_123"
+                                :model "claude-sonnet-4-5-20250929"
+                                :content [{:type "tool_use"
+                                           :id "tool_123"
+                                           :name "generate_sql"
+                                           :input {:sql "SELECT * FROM users"
+                                                   :explanation "Fetches all users"}}]
+                                :usage {:input_tokens 1500
+                                        :output_tokens 250}}}]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"]
+        (with-redefs [http/post (constantly mock-response)]
+          (let [result (anthropic/chat-completion {:system "You are a SQL expert"
+                                                   :messages [{:role "user" :content "get all users"}]})]
+            (is (=? {:result {:sql "SELECT * FROM users"
+                              :explanation "Fetches all users"}
+                     :duration-ms #(and (number? %) (pos? %))
+                     :usage {:model "anthropic/claude-sonnet-4-5"
+                             :prompt 1500
+                             :completion 250}}
+                    result))))))))
+
 ;;; ------------------------------------------- default-model Tests -------------------------------------------
 
 (deftest default-model-test
   (testing "default model is defined and reasonable"
     (is (string? anthropic/default-model))
     (is (str/includes? anthropic/default-model "claude"))))
+
+;;; ------------------------------------------- model->simplified-provider-model Tests -------------------------------------------
+
+(deftest ^:parallel model->simplified-provider-model-test
+  (testing "strips date suffix and adds provider prefix"
+    (is (= "anthropic/claude-sonnet-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-sonnet-4-5-20250929")))
+    (is (= "anthropic/claude-opus-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-opus-4-5-20250514")))))
+
+(deftest ^:parallel model->simplified-provider-model-no-suffix-test
+  (testing "handles model without date suffix"
+    (is (= "anthropic/claude-sonnet-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-sonnet-4-5")))))
+
+(deftest ^:parallel model->simplified-provider-model-nil-model-test
+  (testing "returns nil for nil input"
+    (is (nil? (#'anthropic/model->simplified-provider-model nil)))))
+
+;;; ------------------------------------------- chat-completion-stream Tests -------------------------------------------
+
+(deftest chat-completion-stream-usage-parts-test
+  (testing "chat-completion-stream emits usage parts with model id"
+    (let [sse-data (str "event: message_start\n"
+                        "data: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\",\"model\":\"claude-sonnet-4-20250514\",\"usage\":{\"input_tokens\":1500}}}\n\n"
+                        "event: content_block_start\n"
+                        "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"name\":\"generate_sql\"}}\n\n"
+                        "event: content_block_delta\n"
+                        "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"sql\\\":\\\"SELECT 1\\\"}\"}}\n\n"
+                        "event: content_block_stop\n"
+                        "data: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
+                        "event: message_delta\n"
+                        "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":250}}\n\n"
+                        "event: message_stop\n"
+                        "data: {\"type\":\"message_stop\"}\n\n")
+          mock-response {:status 200
+                         :body (ByteArrayInputStream. (.getBytes sse-data "UTF-8"))}]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"
+                                         llm-anthropic-model "claude-sonnet-4-20250514"]
+        (with-redefs [http/post (constantly mock-response)]
+          (let [ch (anthropic/chat-completion-stream {:system "You are a SQL expert"
+                                                      :messages [{:role "user" :content "test"}]})
+                results (loop [acc []]
+                          (if-let [v (a/<!! ch)]
+                            (recur (conj acc v))
+                            acc))
+                usage-parts (filter #(= :usage (:type %)) results)
+                text-parts (filter #(= :text-delta (:type %)) results)]
+            ;; Should have two usage parts (prompt and completion)
+            (is (= [{:type :usage
+                     :id "anthropic/claude-sonnet-4"
+                     :usage {:promptTokens 1500}}
+                    {:type :usage
+                     :id "anthropic/claude-sonnet-4"
+                     :usage {:completionTokens 250}}]
+                   usage-parts))
+            (is (= [{:type :text-delta
+                     :delta "{\"sql\":\"SELECT 1\"}"}]
+                   text-parts))))))))
+
+(deftest chat-completion-stream-not-configured-test
+  (testing "throws when API key not configured"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"not configured"
+           (anthropic/chat-completion-stream {:messages [{:role "user" :content "test"}]}))))))

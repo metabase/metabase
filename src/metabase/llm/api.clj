@@ -1,20 +1,27 @@
 (ns metabase.llm.api
   "API endpoints for LLM-powered SQL generation (OSS)."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.costs :as llm.costs]
    [metabase.llm.settings :as llm.settings]
    [metabase.llm.streaming :as llm.streaming]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as sr]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -188,6 +195,48 @@
                            response))
     :else              response))
 
+;;; ------------------------------------------ Token Usage Tracking ------------------------------------------
+
+(defn- track-token-usage!
+  "Track token usage for LLM API calls via Snowplow."
+  [{:keys [model prompt completion duration-ms user-id source tag]}]
+  (let [request-id      (-> (random-uuid)
+                            str
+                            ;; strip dashes and lower-case to mimic the ai-service uuid.hex formatting
+                            (str/replace "-" "")
+                            u/lower-case-en)
+        hashed-token    (some-> (not-empty (premium-features/premium-embedding-token))
+                                buddy-hash/sha256
+                                codecs/bytes->hex)
+        token-or-uuid   (or hashed-token
+                            (str "oss__" (analytics/analytics-uuid)))
+        estimated-costs (llm.costs/estimate {:model      model
+                                             :prompt     prompt
+                                             :completion completion})]
+    (snowplow/track-event! :snowplow/token_usage
+                           {:hashed-metabase-license-token token-or-uuid
+                            :request-id                    request-id
+                            :model-id                      model
+                            :total-tokens                  (+ prompt completion)
+                            :prompt-tokens                 prompt
+                            :completion-tokens             completion
+                            :estimated-costs-usd           estimated-costs
+                            :user-id                       user-id
+                            :duration-ms                   (some-> duration-ms long)
+                            :source                        source
+                            :tag                           tag}
+                           user-id)))
+
+(defn- track-sqlgen-event!
+  "Track SQL generation usage via Snowplow simple_event."
+  [{:keys [duration-ms result engine]}]
+  (snowplow/track-event! :snowplow/simple_event
+                         {:event        "metabot_oss_sqlgen_used"
+                          :event_detail (some-> engine name)
+                          :duration_ms  (some-> duration-ms long)
+                          :result       result}
+                         api/*current-user-id*))
+
 ;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
 (def ^:private table-with-columns-schema
@@ -278,7 +327,7 @@
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
     (let [{:keys [prompt database_id source_sql referenced_entities]} body
-        ;; 2. Extract table IDs from all sources and merge them
+          ;; 2. Extract table IDs from all sources and merge them
           frontend-table-ids (when (seq referenced_entities)
                                (->> referenced_entities
                                     (filter #(= "table" (:model %)))
@@ -297,26 +346,42 @@
         (when-not schema-ddl
           (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                           {:status-code 400})))
-        (let [engine              (database-engine database_id)
-              dialect             (database-dialect database_id)
+        (let [engine               (database-engine database_id)
+              dialect              (database-dialect database_id)
               dialect-instructions (load-dialect-instructions engine)
-              system-prompt       (build-system-prompt {:dialect              dialect
-                                                        :schema-ddl           schema-ddl
-                                                        :dialect-instructions dialect-instructions
-                                                        :source-sql           source_sql})
-              timestamp           (current-timestamp)]
+              system-prompt        (build-system-prompt {:dialect              dialect
+                                                         :schema-ddl           schema-ddl
+                                                         :dialect-instructions dialect-instructions
+                                                         :source-sql           source_sql})
+              timestamp            (current-timestamp)
+              start-timer          (u/start-timer)]
           (when (debug-logging-enabled?)
             (log-to-file! (str timestamp "_prompt.txt") system-prompt))
-          (let [response (llm.anthropic/chat-completion
-                          {:system   system-prompt
-                           :messages [{:role "user" :content prompt}]})]
-            (when (debug-logging-enabled?)
-              (log-to-file! (str timestamp "_response.txt") (pr-str response)))
-            (let [sql                 (parse-sql-response response)
-                  tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
-                  referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
-              {:sql                 sql
-               :referenced_entities referenced-entities})))))))
+          (try
+            (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
+                                                      {:system   system-prompt
+                                                       :messages [{:role "user" :content prompt}]})]
+              (when (debug-logging-enabled?)
+                (log-to-file! (str timestamp "_response.txt") (pr-str result)))
+              (track-token-usage! (assoc usage
+                                         :duration-ms duration-ms
+                                         :user-id api/*current-user-id*
+                                         ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
+                                         :source "oss_metabot"
+                                         :tag "oss-sqlgen"))
+              (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
+                                    :result "success"
+                                    :engine engine})
+              (let [sql                 (parse-sql-response result)
+                    tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
+                    referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
+                {:sql                 sql
+                 :referenced_entities referenced-entities}))
+            (catch Exception e
+              (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
+                                    :result "failure"
+                                    :engine engine})
+              (throw e))))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -385,17 +450,19 @@
    request]
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
-    (let [{:keys [prompt database_id]} body
+    (let [{:keys [prompt database_id]}      body
           {:keys [system-prompt table-ids]} (validate-and-prepare-context body)
-          timestamp (current-timestamp)]
+          timestamp                         (current-timestamp)]
 
       (when (debug-logging-enabled?)
         (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-        (let [llm-chan (llm.anthropic/chat-completion-stream {:system   system-prompt
-                                                              :messages [{:role "user" :content prompt}]})
-              text-acc (StringBuilder.)]
+        (let [start-time (u/start-timer)
+              llm-chan   (llm.anthropic/chat-completion-stream {:system   system-prompt
+                                                                :messages [{:role "user" :content prompt}]})
+              text-acc   (StringBuilder.)
+              usage-acc  (volatile! {})]
           (loop []
             (let [[chunk port] (a/alts!! [llm-chan canceled-chan] :priority true)]
               (cond
@@ -409,6 +476,18 @@
                       referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
                   (when (debug-logging-enabled?)
                     (log-to-file! (str timestamp "_response.txt") json-str))
+                  (doseq [[model-id {:keys [prompt completion]}] @usage-acc]
+                    ;; There should only be one model in the usage-acc, but doseq in case that ever changes.
+                    (track-token-usage! {:model       model-id
+                                         :prompt      prompt
+                                         :completion  completion
+                                         :duration-ms (u/since-ms start-time)
+                                         :user-id     api/*current-user-id*
+                                         :source      "oss_metabot"
+                                         :tag         "oss-sqlgen-streaming"}))
+                  (track-sqlgen-event! {:duration-ms (u/since-ms start-time)
+                                        :result "success"
+                                        :engine (database-engine database_id)})
                   (write-sse! os (llm.streaming/format-sse-line
                                   :data
                                   {:sql                 final-sql
@@ -420,13 +499,29 @@
                 (= (:type chunk) :error)
                 (do
                   (log/error "Error chunk received" {:error (:error chunk)})
+                  (track-sqlgen-event! {:duration-ms (u/since-ms start-time)
+                                        :result "failure"
+                                        :engine (database-engine database_id)})
                   (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)})))
+
+                (= (:type chunk) :usage)
+                (let [{:keys [usage id]} chunk
+                      model-id (or id "unknown-model")]
+                    ;; Accumulate usage - merge prompt/completion tokens as they arrive
+                  (vswap! usage-acc update model-id
+                          (fn [current]
+                            (merge current
+                                   (when (:promptTokens usage)
+                                     {:prompt (:promptTokens usage)})
+                                   (when (:completionTokens usage)
+                                     {:completion (:completionTokens usage)}))))
+                  (recur))
 
                 (= (:type chunk) :text-delta)
                 (do
-                ;; Accumulate JSON silently - don't stream raw JSON to frontend.
-                ;; With tool_use, the streamed content is JSON like {"sql": "..."}
-                ;; which isn't useful to display. We extract the SQL at the end.
+                  ;; Accumulate JSON silently - don't stream raw JSON to frontend.
+                  ;; With tool_use, the streamed content is JSON like {"sql": "..."}
+                  ;; which isn't useful to display. We extract the SQL at the end.
                   (.append text-acc (:delta chunk))
                   (recur))
 
