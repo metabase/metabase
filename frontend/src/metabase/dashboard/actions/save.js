@@ -1,10 +1,11 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
+// Import directly from data-fetching to avoid circular dependency through actions/index
 import {
   fetchDashboard,
   fetchDashboardCardData,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/data-fetching";
 import { Dashboards } from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";

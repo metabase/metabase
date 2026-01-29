@@ -1,6 +1,6 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
 
-import type { ResourceAccessedVia, ResourceType } from "./downloads";
+import type { ResourceAccessedVia, ResourceType } from "./downloads-types";
 
 const SCHEMA = "downloads";
 

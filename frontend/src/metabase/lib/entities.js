@@ -75,6 +75,7 @@ import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
+import { addEntityContainers } from "metabase/entities/containers";
 import { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import {
   combineReducers,
@@ -626,7 +627,7 @@ export function createEntity(def) {
   }
 
   // add container components and HOCs
-  require("metabase/entities/containers").addEntityContainers(entity);
+  addEntityContainers(entity);
 
   return entity;
 }

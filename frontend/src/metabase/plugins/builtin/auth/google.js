@@ -1,3 +1,4 @@
+import { GoogleButton } from "metabase/auth/components/GoogleButton";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_AUTH_PROVIDERS,
@@ -7,8 +8,7 @@ import {
 PLUGIN_AUTH_PROVIDERS.providers.push((providers) => {
   const googleProvider = {
     name: "google",
-    // circular dependencies
-    Button: require("metabase/auth/components/GoogleButton").GoogleButton,
+    Button: GoogleButton,
   };
 
   return MetabaseSettings.isGoogleAuthEnabled()

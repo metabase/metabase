@@ -6,6 +6,12 @@ import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions/modal";
 import { UserApi } from "metabase/services";
 import type { User } from "metabase-types/api";
 
+// Re-export userUpdated from user-actions to maintain backwards compatibility
+// (userUpdated is in a separate file to avoid circular dependency with metabase/api/user)
+import { userUpdated } from "./user-actions";
+
+export { userUpdated };
+
 export const refreshCurrentUser = createAsyncThunk(
   "metabase/user/REFRESH_CURRENT_USER",
   async (_, { fulfillWithValue }) => {
@@ -29,7 +35,6 @@ export const loadCurrentUser = createAsyncThunk(
 export const clearCurrentUser = createAction(
   "metabase/user/CLEAR_CURRENT_USER",
 );
-export const userUpdated = createAction<User>("metabase/user/UPDATED");
 
 export const currentUser = createReducer<User | null>(null, (builder) => {
   builder

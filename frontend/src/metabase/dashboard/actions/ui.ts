@@ -1,5 +1,5 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 import type { DashCardId } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -10,12 +10,11 @@ import type {
 import { getSidebar } from "../selectors";
 
 import { closeAutoApplyFiltersToast } from "./parameters";
+// Re-export sidebar actions from sidebar.ts to maintain backwards compatibility
+// (sidebar actions are in a separate file to avoid circular dependency with parameters.tsx)
+import { CLOSE_SIDEBAR, closeSidebar, SET_SIDEBAR, setSidebar } from "./sidebar";
 
-export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
-export const setSidebar = createAction(SET_SIDEBAR);
-
-export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
-export const closeSidebar = createAction(CLOSE_SIDEBAR);
+export { CLOSE_SIDEBAR, closeSidebar, SET_SIDEBAR, setSidebar };
 
 export const showClickBehaviorSidebar =
   (dashcardId: DashCardId | null) => (dispatch: Dispatch) => {

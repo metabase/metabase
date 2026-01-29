@@ -5,6 +5,8 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "build",
     "paths": {
+      "assets/*": ["./resources/frontend_client/app/assets/*"],
+      "img/*": ["./resources/frontend_client/app/img/*"],
       "*": [
         "./frontend/src/*",
         "./frontend/test/*",
@@ -14,7 +16,10 @@
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
       "docs/*": ["./docs/*"],
-      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-iframe-embedding-ee-plugins": ["./frontend/src/metabase/lib/noop"],
+      "ee-plugins": ["./frontend/src/metabase/lib/noop"],
+      "sdk-specific-imports": ["./frontend/src/metabase/lib/noop"]
     },
     "plugins": [
       {

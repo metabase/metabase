@@ -1,5 +1,5 @@
 import { STORE_TEMPORARY_PASSWORD } from "metabase/admin/people/events";
-import { userUpdated } from "metabase/redux/user";
+import { userUpdated } from "metabase/redux/user-actions";
 import type {
   CreateUserRequest,
   ListUsersRequest,

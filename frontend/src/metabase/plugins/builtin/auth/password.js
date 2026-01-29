@@ -1,11 +1,12 @@
+import { PasswordButton } from "metabase/auth/components/PasswordButton";
+import { PasswordPanel } from "metabase/auth/components/PasswordPanel";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 PLUGIN_AUTH_PROVIDERS.providers.push((providers) => {
   const passwordProvider = {
     name: "password",
-    // circular dependencies
-    Button: require("metabase/auth/components/PasswordButton").PasswordButton,
-    Panel: require("metabase/auth/components/PasswordPanel").PasswordPanel,
+    Button: PasswordButton,
+    Panel: PasswordPanel,
   };
 
   return [...providers, passwordProvider];

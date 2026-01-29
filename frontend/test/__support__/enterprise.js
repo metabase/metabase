@@ -1,3 +1,5 @@
+import { initializePlugins } from "metabase-enterprise/plugins";
+
 import { ENTERPRISE_PLUGIN_NAME_MAPPING } from "./enterprise-typed";
 
 /**
@@ -36,7 +38,6 @@ export function setupEnterpriseTest() {
 }
 
 export function setupEnterprisePlugins() {
-  const { initializePlugins } = require(`metabase-enterprise/plugins`);
   initializePlugins?.();
 }
 

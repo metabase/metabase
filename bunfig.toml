@@ -1,0 +1,3 @@
+[test]
+preload = ["./frontend/test/bun-svg-plugin.ts", "./frontend/test/bun-emotion-plugin.ts", "./frontend/test/bun-setup.ts"]
+timeout = 30000
