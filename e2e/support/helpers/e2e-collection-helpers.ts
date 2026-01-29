@@ -78,9 +78,12 @@ export const openUnpinnedItemMenu = (name: string) => {
 };
 
 export const moveOpenedCollectionTo = (newParent: string) => {
+  cy.intercept("GET", "/api/collection/*/items**").as("getCollectionItems");
   openCollectionMenu();
   popover().within(() => cy.findByText("Move").click());
 
+
+  cy.wait(["@getCollectionItems", "@getCollectionItems"]);
   entityPickerModal().within(() => {
     cy.findByTestId("nested-item-picker").findByText(newParent).click();
     cy.button("Move").click();

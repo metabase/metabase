@@ -18,40 +18,26 @@ describe("scenarios > notebook > data source", () => {
       cy.signInAsAdmin();
     });
 
-    it(
-      "should display tables from the only existing database by default",
-      { tags: "@OSS" },
-      () => {
-        cy.visit("/");
-        cy.findByTestId("app-bar").findByText("New").click();
-        H.popover().findByTextEnsureVisible("Question").click();
-        cy.findByPlaceholderText("Search for tables and more...").should(
-          "exist",
-        );
+    it("should display databases by default", { tags: "@OSS" }, () => {
+      cy.visit("/");
+      cy.findByTestId("app-bar").findByText("New").click();
+      H.popover().findByTextEnsureVisible("Question").click();
+      cy.findByPlaceholderText("Search for tables and more...").should("exist");
 
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          cy.log("Should not have Recents tab");
-          cy.findAllByRole("tab").should("not.exist");
-
-          H.entityPickerModalItem(0, "Databases").click();
-          H.entityPickerModalLevel(0)
-            .findByText("Sample Database")
-            .should("not.exist");
-          H.entityPickerModalLevel(3)
-            .find("[data-index]")
-            .should("have.length", 8);
-          assertDataPickerEntityNotSelected(3, "Accounts");
-          assertDataPickerEntityNotSelected(3, "Analytic Events");
-          assertDataPickerEntityNotSelected(3, "Feedback");
-          assertDataPickerEntityNotSelected(3, "Invoices");
-          assertDataPickerEntityNotSelected(3, "Orders");
-          assertDataPickerEntityNotSelected(3, "People");
-          assertDataPickerEntityNotSelected(3, "Products");
-          assertDataPickerEntityNotSelected(3, "Reviews");
-        });
-      },
-    );
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModal().within(() => {
+        // databases is selected already
+        H.entityPickerModalLevel(1).findByText("Sample Database").click();
+        assertDataPickerEntityNotSelected(3, "Accounts");
+        assertDataPickerEntityNotSelected(3, "Analytic Events");
+        assertDataPickerEntityNotSelected(3, "Feedback");
+        assertDataPickerEntityNotSelected(3, "Invoices");
+        assertDataPickerEntityNotSelected(3, "Orders");
+        assertDataPickerEntityNotSelected(3, "People");
+        assertDataPickerEntityNotSelected(3, "Products");
+        assertDataPickerEntityNotSelected(3, "Reviews");
+      });
+    });
   });
 
   describe("table as a source", () => {

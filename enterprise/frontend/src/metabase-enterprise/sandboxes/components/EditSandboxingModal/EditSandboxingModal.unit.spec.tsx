@@ -242,6 +242,9 @@ describe("EditSandboxingModal", () => {
         await userEvent.click(
           await screen.findByRole("link", { name: /sandbox question/i }),
         );
+        await userEvent.click(
+          await screen.findByRole("button", { name: "Select" }),
+        );
 
         await userEvent.click(await screen.findByText("Save"));
 
@@ -293,6 +296,9 @@ describe("EditSandboxingModal", () => {
       await screen.findByTestId("entity-picker-modal");
       await userEvent.click(
         await screen.findByRole("link", { name: /sandbox question/i }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select" }),
       );
 
       await userEvent.click(await screen.findByText("Save"));

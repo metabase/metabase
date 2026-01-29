@@ -1535,6 +1535,7 @@ describe("issue 44974", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     H.restore("postgres-12");
     cy.signInAsAdmin();
   });
@@ -1562,8 +1563,9 @@ describe("issue 44974", { tags: "@external" }, () => {
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
 
+      cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("not.exist");
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders Model").should("be.visible");
         H.entityPickerModalItem(1, questionDetails.name).should(

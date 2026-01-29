@@ -1,6 +1,5 @@
 import type React from "react";
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
@@ -11,7 +10,6 @@ import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,
   type BoxProps,
-  Center,
   Flex,
   Icon,
   NavLink,
@@ -21,7 +19,7 @@ import {
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
 import { getEntityPickerIcon, isSelectedItem } from "../../utils";
-import { DelayedLoadingSpinner } from "../LoadingSpinner";
+import { ItemListLoader } from "../LoadingSpinner";
 
 const PickerColumn = ({
   children,
@@ -83,14 +81,8 @@ export function ItemList({
     return <LoadingAndErrorWrapper error={error} />;
   }
 
-  if (isLoading && !filteredItems) {
-    return (
-      <Box w={310} h="100%" aria-label={t`Loading...`}>
-        <Center p="lg" h="100%">
-          <DelayedLoadingSpinner delay={300} />
-        </Center>
-      </Box>
-    );
+  if (isLoading) {
+    return <ItemListLoader />;
   }
 
   if (!filteredItems || !filteredItems.length) {
