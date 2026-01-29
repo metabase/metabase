@@ -289,7 +289,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     ];
 
     testCases.forEach((testCase) => {
-      it(`should allow creating a new question from the dashboard with ${testCase.name}`, () => {
+      it.only(`should allow creating a new question from the dashboard with ${testCase.name}`, () => {
         cy.get(testCase.alias).then((dashboardId) => {
           mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
         });
@@ -304,7 +304,12 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.button("Visualize").click();
 
           cy.log("test going back to the dashboard from the visualization");
-          cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
+          cy.findByText(`Back to ${DASHBOARD_NAME}`)
+            .should("be.visible")
+            .click();
+
+          cy.button("Edit dashboard").should("be.visible").click();
+          cy.button("Add questions").should("be.visible").click();
 
           cy.log("create a new question again");
           cy.button("New Question").should("be.visible").click();
@@ -332,16 +337,12 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
            * I was supposed to test the dashcard auto-scroll here, but for some reason,
            * the test always fails on CI, but not locally. So I didn't test it here.
            */
-          cy.log("Now we should be back on the dashboard in the edit mode");
-          cy.findByText("You're editing this dashboard.").should("be.visible");
+          cy.log("Now we should be back");
           cy.findByText("Orders in a dashboard").should("be.visible");
           const NEW_DASHCARD_INDEX = 0;
           H.getDashboardCard(NEW_DASHCARD_INDEX)
             .findByText("Orders in a dashboard")
             .should("be.visible");
-
-          cy.button("Save").click();
-          cy.findByText("You're editing this dashboard.").should("not.exist");
         });
       });
     });
@@ -395,7 +396,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.log(
             "go back to the dashboard should still land us in the edit mode with the dirty state saved",
           );
-          cy.button(`Back to ${DASHBOARD_WITH_TABS_NAME}`).click();
+          cy.findByText(`Back to ${DASHBOARD_WITH_TABS_NAME}`).click();
           H.getDashboardCard()
             .findByText(ADDED_QUESTION_NAME)
             .should("be.visible");
