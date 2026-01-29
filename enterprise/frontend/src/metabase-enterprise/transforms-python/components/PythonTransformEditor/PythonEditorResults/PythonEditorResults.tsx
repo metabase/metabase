@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
@@ -6,7 +6,16 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
-import { Box, Flex, Group, Icon, Stack, Tabs, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Tabs,
+  Text,
+} from "metabase/ui";
 import type { TestPythonTransformResponse } from "metabase-types/api";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
@@ -24,7 +33,13 @@ export function PythonEditorResults({
   isRunning,
 }: PythonEditorProps) {
   const [tab, setTab] = useState<ResultsTab>("results");
+  const [footerDismissed, setFooterDismissed] = useState(false);
   const hasDataOrError = executionResult?.output || executionResult?.error;
+
+  useEffect(() => {
+    setFooterDismissed(false);
+  }, [executionResult]);
+
   return (
     <DebouncedFrame className={S.visualization}>
       <Stack data-testid="python-results" gap={0} h="100%">
@@ -42,7 +57,12 @@ export function PythonEditorResults({
             <ExecutionOutputLogs executionResult={executionResult} />
           )}
         </Box>
-        <ResultsFooter executionResult={executionResult} />
+        {!footerDismissed && (
+          <ResultsFooter
+            executionResult={executionResult}
+            onDismiss={() => setFooterDismissed(true)}
+          />
+        )}
         {isRunning && <LoadingState />}
       </Stack>
     </DebouncedFrame>
@@ -125,8 +145,10 @@ function ErrorState({ error }: { error: string }) {
 
 function ResultsFooter({
   executionResult,
+  onDismiss,
 }: {
   executionResult?: TestPythonTransformResponse | null;
+  onDismiss: () => void;
 }) {
   if (!executionResult) {
     return null;
@@ -140,6 +162,7 @@ function ResultsFooter({
           c="text-primary"
           ml="xs"
         >{t`An error occurred while executing your Python script.`}</Text>
+        <DismissButton onDismiss={onDismiss} />
       </Flex>
     );
   }
@@ -162,7 +185,24 @@ function ResultsFooter({
         ml="xs"
         lh="xs"
       >{t`Preview based on the first 100 rows from each table.`}</Text>
+      <DismissButton onDismiss={onDismiss} />
     </Flex>
+  );
+}
+
+function DismissButton({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <ActionIcon
+      ml="auto"
+      size="1.5rem"
+      radius="xl"
+      variant="subtle"
+      c="text-tertiary"
+      onClick={onDismiss}
+      aria-label={t`Dismiss`}
+    >
+      <Icon name="close" size={12} />
+    </ActionIcon>
   );
 }
 
