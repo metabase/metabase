@@ -38,7 +38,7 @@
                                                false
                                                #{:mysql})]
       (is (true? (:should-run result)))
-      (is (re-find #"break-quarantine-postgres" (:reason result))))))
+      (is (re-find #"break-quarantine-mysql" (:reason result))))))
 
 (deftest quarantine-respected-on-master
   (testing "Quarantined driver is skipped even on master/release"
