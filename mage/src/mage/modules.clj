@@ -365,7 +365,7 @@
         (println "Driver" (name driver) "is quarantined; checking for '" (break-quarantine-label driver) "' label...."))
       (if (contains? pr-labels (break-quarantine-label driver))
         {:should-run true
-         :reason "driver is quarantined, but anti-quarantine label present; running anyway"}
+         :reason (str "driver is quarantined, but " (break-quarantine-label driver) " label found; running anyway")}
         {:should-run false
          :reason "driver is quarantined"}))
 

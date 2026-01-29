@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.models.transforms.transform :as transform.model]
    [metabase.models.transforms.transform-job :as transform-job]
+   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.models.transforms.transform-tag :as transform-tag]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -342,3 +343,43 @@
                                 (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
                                 (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))
+
+(deftest deleted-transform-preserves-runs-test
+  (testing "Deleting a transform sets transform_id to NULL but preserves the run"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform {transform-id :id
+                                       transform-name :name
+                                       entity-id :entity_id} {}
+                     :model/TransformRun {run-id :id} {:transform_id transform-id
+                                                       :transform_name transform-name
+                                                       :transform_entity_id entity-id
+                                                       :status "succeeded"
+                                                       :run_method "manual"}]
+        (t2/delete! :model/Transform :id transform-id)
+
+        (let [run (t2/select-one :model/TransformRun :id run-id)]
+          (is (some? run))
+          (is (nil? (:transform_id run)))
+          (is (= transform-name (:transform_name run)))
+          (is (= entity-id (:transform_entity_id run))))))))
+
+(deftest orphaned-run-hydration-test
+  (testing "Hydrating :transform on orphaned runs returns {:name ... :deleted true}"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/TransformRun run {:transform_id nil
+                                              :transform_name "Deleted Transform"
+                                              :transform_entity_id "test-entity-id-123"
+                                              :status "succeeded"
+                                              :run_method "manual"}]
+        (let [hydrated (t2/hydrate run :transform)]
+          (is (= {:name "Deleted Transform" :deleted true} (:transform hydrated))))))))
+
+(deftest start-run-captures-transform-info-test
+  (testing "start-run! captures transform_name and transform_entity_id"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform {transform-id :id
+                                       transform-name :name
+                                       entity-id :entity_id} {}]
+        (let [run (transform-run/start-run! transform-id {:run_method "manual"})]
+          (is (= transform-name (:transform_name run)))
+          (is (= entity-id (:transform_entity_id run))))))))
