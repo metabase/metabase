@@ -3524,7 +3524,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       H.DataModel.TableSection.getVisibilityTypeInput().click();
-      H.popover().findByText("Copper").click();
+      H.popover().findByText("Hidden").click();
       cy.wait("@updateTable");
 
       FieldSection.getPreviewButton().click();
