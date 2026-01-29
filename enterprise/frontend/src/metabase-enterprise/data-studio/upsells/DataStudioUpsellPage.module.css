@@ -10,6 +10,7 @@
     transparent 95%
   );
 
+  position: relative;
   /* Using radial gradient to create dotted pattern with CSS variable support */
   /* Hard stop at 1.5px creates a crisp circle edge (no blur) */
   background-image: radial-gradient(
@@ -61,7 +62,7 @@
 .Border[data-position="left"] {
   width: 1px;
   height: calc(100% + 250px);
-  top: -125px;
+  top: -75px;
   /* background-color does not accept gradients, so this results in no color being shown.
      To display a vertical gradient border, use background-image instead: */
   background-image: linear-gradient(
@@ -83,6 +84,8 @@
 }
 
 .ImageCard {
+  display: flex;
+  height: fit-content;
   background-color: var(--mb-color-upsell-pattern-light);
 }
 

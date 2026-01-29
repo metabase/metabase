@@ -38,7 +38,8 @@ export function TransformsPurchasePage() {
     pythonProduct,
   } = useTransformsBilling();
 
-  const hasData = billingPeriodMonths !== undefined && transformsProduct;
+  const hasData =
+    billingPeriodMonths !== undefined && (transformsProduct || pythonProduct);
   const billingPeriod = billingPeriodMonths === 1 ? t`mo` : t`yr`;
 
   const handlePurchase = useCallback(async () => {
@@ -54,13 +55,26 @@ export function TransformsPurchasePage() {
     }
   }, [selectedTier, purchaseCloudAddOn, settingUpModalHandlers]);
 
-  if (error || !hasData || isLoading) {
+  // Check if there's an error loading add-on information.
+  if (error) {
+    return (
+      <Center h="100%" bg="background-secondary">
+        <LoadingAndErrorWrapper
+          loading={false}
+          error={t`Error fetching information about available add-ons.`}
+        />
+      </Center>
+    );
+  }
+
+  // Show loading state if necessary, or show error if required data is missing after loading is done.
+  if (!hasData || isLoading) {
     return (
       <Center h="100%" bg="background-secondary">
         <LoadingAndErrorWrapper
           loading={isLoading}
           error={
-            !isLoading && (error || !hasData)
+            !isLoading && !hasData
               ? t`Error fetching information about available add-ons.`
               : null
           }
