@@ -782,6 +782,17 @@ const configs = [
     },
   },
   {
+    files: [
+      "frontend/src/embedding-sdk-bundle/**/*.spec.*",
+      "frontend/src/embedding-sdk-bundle/**/test-utils.*",
+      "frontend/src/embedding-sdk-bundle/**/tests/**/*",
+      "frontend/src/embedding-sdk-bundle/**/test/**/*",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", baseMetabaseRestrictedConfig],
+    },
+  },
+  {
     files: ["frontend/src/embedding-sdk-bundle/test/**/*"],
     rules: {
       "metabase/no-color-literals": "off",
@@ -1104,6 +1115,9 @@ const configs = [
       globals: {
         ...globals.node,
       },
+    },
+    rules: {
+      "import/no-commonjs": "off",
     },
   },
 

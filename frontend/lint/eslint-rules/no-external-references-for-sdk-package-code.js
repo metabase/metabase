@@ -1,6 +1,3 @@
-/* eslint-disable import/no-commonjs */
-/* eslint-env node */
-
 const path = require("path");
 
 const resolve = require("eslint-module-utils/resolve").default;

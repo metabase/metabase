@@ -9,7 +9,6 @@
 const ERROR_MESSAGE =
   'Direct import of "reinitialize" from OSS plugin files is not allowed. Reinitializing all plugins at once from "metabase/plugins/index.ts" is the way.';
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",

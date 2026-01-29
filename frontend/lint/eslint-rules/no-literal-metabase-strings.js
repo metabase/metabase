@@ -11,7 +11,6 @@ const ERROR_MESSAGE =
   ADD_COMMENT_MESSAGE;
 const LITERAL_METABASE_STRING_REGEX = /Metabase/;
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",
