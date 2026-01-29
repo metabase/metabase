@@ -231,7 +231,9 @@
      {:write? true}
      (fn [^java.sql.Connection conn]
        ;; make sure we're committing right away, and NOT trying to execute these in a transaction
-       (.setAutoCommit conn true)
+       (try (.setAutoCommit conn true)
+            (catch Throwable __
+              (log/debugf "`.setAutoCommit` failed with engine `%s`" (name driver))))
        (doseq [statement statements]
          (execute/execute-sql! driver conn statement))))))
 
