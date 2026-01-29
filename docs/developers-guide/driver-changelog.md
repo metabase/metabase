@@ -9,15 +9,15 @@ title: Driver interface changelog
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this method when your sql-jdbc-based driver needs to
   customize how database type names are retrieved from result set metadata, for example when certain types need to be
   remapped based on precision or connection settings. For example, the `:mysql` implementation remaps `TINYINT` with
-  precision 1 to `BIT` (boolean) to ensure type consistency between sync and query execution.
+  precision 1 to `BIT` (boolean), ensuring type consistency between sync and query execution.
 
 - Added workspace isolation multimethods for enterprise workspaces feature:
-  - `init-workspace-isolation!`    - Initialize database isolation for a workspace (create isolated schema/database and
-                                     user credentials)
+  - `init-workspace-isolation!`    - Initialize database isolation for a workspace by creating an isolated
+                                     schema or database with user credentials
   - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation
   - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user
-  - `check-isolation-permissions`  - Check if database connection has sufficient permissions for workspace isolation
-                                     by testing the actual operations
+  - `check-isolation-permissions`  - Check if the database connection has sufficient permissions for workspace
+                                     isolation by testing the actual operations
 
 ## Metabase 0.58.0
 
