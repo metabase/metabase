@@ -1138,6 +1138,8 @@
                                                            :workspace_id (:id workspace1)}
                      :model/WorkspaceTransform transform2 {:name         "To Delete"
                                                            :workspace_id (:id workspace1)}]
+        (is (:ref_id transform1) "Transform 1 created successfully")
+        (is (:ref_id transform2) "Transform 2 created successfully")
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404
