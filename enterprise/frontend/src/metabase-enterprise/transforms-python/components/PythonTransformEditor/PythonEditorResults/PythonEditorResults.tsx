@@ -44,7 +44,7 @@ export function PythonEditorResults({
     <DebouncedFrame className={S.visualization}>
       <Stack data-testid="python-results" gap={0} h="100%">
         <ExecutionResultTabs tab={tab} onTabChange={setTab} />
-        <Box className={S.content}>
+        <Box className={S.content} flex={1} mih={0}>
           {!hasDataOrError && <EmptyState />}
           {hasDataOrError &&
             tab === "results" &&
