@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -8,8 +8,13 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Center } from "metabase/ui";
 import {
   useGetTransformJobQuery,
+  useListTransformJobTransformsQuery,
   useUpdateTransformJobMutation,
 } from "metabase-enterprise/api";
+import {
+  canEditTransform,
+  useTransformPermissions,
+} from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type {
   ScheduleDisplayType,
   TransformJob,
@@ -39,15 +44,32 @@ export function JobPage({ params }: JobPageProps) {
   const [isPolling, setIsPolling] = useState(false);
   const {
     data: job,
-    isLoading,
-    error,
+    isLoading: isLoadingJob,
+    error: jobError,
   } = useGetTransformJobQuery(jobId ?? skipToken, {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
+  const { transformsDatabases, isLoadingDatabases, databasesError } =
+    useTransformPermissions();
+  const {
+    data: transforms,
+    isLoading: isLoadingTransforms,
+    error: transformsError,
+  } = useListTransformJobTransformsQuery(jobId || skipToken);
+  const readOnly = useMemo(() => {
+    if (!transformsDatabases || !transforms) {
+      return;
+    }
+    return !transforms.every((t) => canEditTransform(t, transformsDatabases));
+  }, [transforms, transformsDatabases]);
+
   if (isPolling !== isPollingNeeded(job)) {
     setIsPolling(isPollingNeeded(job));
   }
+
+  const isLoading = isLoadingJob || isLoadingDatabases || isLoadingTransforms;
+  const error = jobError || databasesError || transformsError;
 
   if (isLoading || error != null || job == null) {
     return (
@@ -57,14 +79,15 @@ export function JobPage({ params }: JobPageProps) {
     );
   }
 
-  return <JobPageBody job={job} />;
+  return <JobPageBody job={job} readOnly={readOnly} />;
 }
 
 type JobPageBodyProps = {
   job: TransformJob;
+  readOnly?: boolean;
 };
 
-function JobPageBody({ job }: JobPageBodyProps) {
+function JobPageBody({ job, readOnly }: JobPageBodyProps) {
   const [updateJob] = useUpdateTransformJobMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -127,7 +150,8 @@ function JobPageBody({ job }: JobPageBodyProps) {
   return (
     <JobEditor
       job={job}
-      menu={<JobMoreMenu job={job} />}
+      menu={!readOnly && <JobMoreMenu job={job} />}
+      readOnly={readOnly}
       onNameChange={handleNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}

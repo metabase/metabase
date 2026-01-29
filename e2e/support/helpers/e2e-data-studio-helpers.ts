@@ -2,6 +2,7 @@ import type { MeasureId, SegmentId, TableId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
+const { H } = cy;
 
 const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
@@ -26,6 +27,7 @@ export const DataStudio = {
       cy.visit("/data-studio/transforms");
       DataStudio.Transforms.list().should("be.visible");
     },
+    pythonResults: () => cy.findByTestId("python-results"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
@@ -115,6 +117,10 @@ export const DataStudio = {
         cy
           .findByTestId("table-description-section")
           .findByPlaceholderText("No description"),
+    },
+    openFilterPopover: () => {
+      cy.findByRole("button", { name: "Filter" }).click();
+      H.popover();
     },
   },
   Library: {

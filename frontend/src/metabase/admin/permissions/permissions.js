@@ -6,6 +6,7 @@ import { isBoolean } from "underscore";
 import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
+  revokeTransformsPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
@@ -389,6 +390,17 @@ const dataPermissions = handleActions(
           );
         }
 
+        if (permissionInfo.type === DataPermissionType.TRANSFORMS) {
+          return updatePermission(
+            state,
+            groupId,
+            entityId.databaseId,
+            DataPermission.TRANSFORMS,
+            [],
+            value,
+          );
+        }
+
         if (
           permissionInfo.type === DataPermissionType.NATIVE &&
           PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
@@ -410,6 +422,14 @@ const dataPermissions = handleActions(
           permissionInfo.permission,
           value,
           database,
+        );
+
+        state = revokeTransformsPermissionIfNeeded(
+          state,
+          groupId,
+          entityId,
+          permissionInfo.permission,
+          value,
         );
 
         if (entityId.tableId != null) {
