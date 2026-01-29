@@ -4,6 +4,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
@@ -46,6 +47,12 @@
       0 (throw (ex-info "No column found" {:columns columns, :column-spec column-spec}))
       1 (first columns)
       (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
+
+(mu/defn- append-fields :- ::lib.schema/query
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   field-specs    :- [:sequential ::lib.schema.query/test-column-spec]]
+  (lib.field/with-fields query stage-number (mapv #(find-column query stage-number (lib.metadata.calculation/visible-columns query stage-number) %) field-specs)))
 
 (mu/defn- matches-temporal-bucket? :- :boolean
   [query          :- ::lib.schema/query
@@ -228,8 +235,9 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [fields expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
+    fields (append-fields stage-number fields)
     expressions (append-expressions stage-number (lib.metadata.calculation/visible-columns query stage-number) expressions)
     joins (append-joins stage-number joins)
     filters (append-filters stage-number filters)

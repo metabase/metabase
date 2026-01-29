@@ -505,6 +505,7 @@ export type OrderBySpec = ColumnSpec & {
 };
 
 export type StageSpec = {
+  fields?: ColumnSpec[];
   expressions?: NamedExpressionSpec[];
   joins?: JoinSpec[];
   filters?: FilterSpec[];

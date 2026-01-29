@@ -87,6 +87,7 @@
 (mr/def ::test-stage-spec
   [:map
    [:source       {:optional true} [:maybe ::test-source-spec]]
+   [:fields       {:optional true} [:maybe [:sequential ::test-column-spec]]]
    [:expressions  {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
    [:joins        {:optional true} [:maybe [:sequential ::test-join-spec]]]
    [:filters      {:optional true} [:maybe [:sequential ::test-expression-spec]]]

@@ -69,6 +69,41 @@ describe("createTestQuery", () => {
     });
   });
 
+  describe("fields", () => {
+    it("should create a query with fields", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            fields: [
+              {
+                type: "column",
+                name: "ID",
+              },
+              {
+                type: "column",
+                name: "VENDOR",
+              },
+            ],
+          },
+        ],
+      });
+
+      const fields = Lib.fields(query, 0);
+      expect(fields).toHaveLength(2);
+
+      expect(Lib.displayInfo(query, 0, fields[0])).toMatchObject({
+        name: "ID",
+      });
+      expect(Lib.displayInfo(query, 0, fields[1])).toMatchObject({
+        name: "VENDOR",
+      });
+    });
+  });
+
   describe("expressions", () => {
     it("should create a query with expressions", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
