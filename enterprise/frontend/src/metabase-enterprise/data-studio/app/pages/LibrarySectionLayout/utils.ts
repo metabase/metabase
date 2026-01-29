@@ -1,13 +1,15 @@
 import { t } from "ttag";
 
 import { isRootCollection } from "metabase/collections/utils";
+import * as Urls from "metabase/lib/urls";
 import type {
   Collection,
+  CollectionId,
   CollectionType,
   NativeQuerySnippet,
 } from "metabase-types/api";
 
-import type { TreeItem } from "./types";
+import type { LibrarySectionType, TreeItem } from "./types";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {
@@ -71,37 +73,88 @@ export function buildSnippetTree(
     activeSnippets,
   );
 
-  return [{ ...rootNode, name: t`SQL snippets` }];
+  // If the root has no children (no snippets or subfolders), add an empty state
+  const hasContent = activeSnippets.length > 0 || nonRootCollections.length > 0;
+  const children = hasContent
+    ? rootNode.children
+    : [createEmptyStateItem("snippets")];
+
+  return [{ ...rootNode, name: t`SQL snippets`, children }];
+}
+
+export function getAccessibleCollection(
+  rootCollection: Collection,
+  type: CollectionType,
+) {
+  return rootCollection.children?.find(
+    (collection) => collection.type === type,
+  );
 }
 
 export function getWritableCollection(
   rootCollection: Collection,
   type: CollectionType,
 ) {
-  const collection = rootCollection.children?.find(
-    (collection) => collection.type === type,
-  );
+  const collection = getAccessibleCollection(rootCollection, type);
   return collection?.can_write ? collection : undefined;
 }
 
-export function getAccessibleCollection(
-  rootCollection: Collection,
-  type: CollectionType,
-  isInstanceRemoteSyncEnabled: boolean,
-) {
-  const collection = rootCollection.children?.find(
-    (collection) => collection.type === type,
-  );
-  if (!collection) {
-    return undefined;
-  }
+type EmptyStateConfig = {
+  sectionType: LibrarySectionType;
+  description: string;
+  actionLabel: string;
+  actionUrl?: string;
+};
 
-  // If instance remote-sync is enabled AND this collection has remote-sync enabled,
-  // show it even if read-only. Otherwise, only show writable collections.
-  const isCollectionRemoteSynced =
-    isInstanceRemoteSyncEnabled && collection.is_remote_synced;
-  if (isCollectionRemoteSynced) {
-    return collection;
+function getEmptyStateConfig(
+  sectionType: LibrarySectionType,
+): Omit<EmptyStateConfig, "sectionType" | "actionUrl"> {
+  const config: Record<
+    LibrarySectionType,
+    Omit<EmptyStateConfig, "sectionType" | "actionUrl">
+  > = {
+    data: {
+      description: t`Cleaned, pre-transformed data sources ready for exploring`,
+      actionLabel: t`Publish a table`,
+    },
+    metrics: {
+      description: t`Standardized calculations with known dimensions`,
+      actionLabel: t`New metric`,
+    },
+    snippets: {
+      description: t`Reusable bits of code that save your time`,
+      actionLabel: t`New snippet`,
+    },
+  };
+
+  return config[sectionType];
+}
+
+export function createEmptyStateItem(
+  sectionType: LibrarySectionType,
+  metricCollectionId?: CollectionId,
+): TreeItem {
+  const config = getEmptyStateConfig(sectionType);
+
+  let actionUrl: string | undefined;
+  if (sectionType === "metrics" && metricCollectionId) {
+    actionUrl = Urls.newDataStudioMetric({ collectionId: metricCollectionId });
+  } else if (sectionType === "snippets") {
+    actionUrl = Urls.newDataStudioSnippet();
   }
-  return collection.can_write ? collection : undefined;
+  // "data" section opens a modal, so no actionUrl
+
+  return {
+    id: `empty-state:${sectionType}`,
+    name: "",
+    icon: "empty",
+    model: "empty-state",
+    data: {
+      model: "empty-state",
+      sectionType,
+      description: config.description,
+      actionLabel: config.actionLabel,
+      actionUrl,
+    },
+  };
 }

@@ -14,7 +14,7 @@
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
   This should be incremented when the dependency analysis logic changes."
-  4)
+  5)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
@@ -157,12 +157,16 @@
    (filtered-graph key-dependents destination-filter-fn source-filter-fn)))
 
 (defn entities->nodes
-  "Converts a map of entities `{entity-type [{:id 1, ...} ...]}` into a list of nodes `[[entity-type entity-id]]`."
+  "Converts a map of entities `{entity-type [{:id 1, ...} ...]}` or entity IDs `{entity-type [1]}` into a list of nodes
+  `[[entity-type entity-id]]`."
   [entities-map]
   (for [[entity-type entities] entities-map
         entity entities
-        :when (:id entity)]
-    [entity-type (:id entity)]))
+        :let [id (if (number? entity)
+                   entity
+                   (:id entity))]
+        :when id]
+    [entity-type id]))
 
 (defn group-nodes
   "Groups a list of nodes `[[entity-type entity-id]]` by their type."

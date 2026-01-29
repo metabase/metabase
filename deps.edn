@@ -80,11 +80,11 @@
   hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.15.0"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.569"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.570"}
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.30"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.33"}             ; Parse native SQL queries
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
@@ -362,6 +362,8 @@
                "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
                ;; Ignore connection URI in favor of the MB_DB_FILE
                "-Dmb.db.connection.uri="
+               ;; Unset the premium token so that tests can set it programmatically
+               "-Dmb.premium.embedding.token="
                ;; Ignore config.yml
                "-Dmb.config.file.path=__cypress__"
                ;; We use Snowplow micro in e2e tests

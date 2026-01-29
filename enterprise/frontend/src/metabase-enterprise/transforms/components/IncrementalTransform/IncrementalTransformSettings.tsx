@@ -6,7 +6,17 @@ import { FormSelect } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Anchor, Box, Divider, Group, Stack, Switch, Text } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  Divider,
+  Group,
+  Stack,
+  Switch,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
   SOURCE_STRATEGY_OPTIONS,
@@ -28,6 +38,7 @@ type IncrementalTransformSettingsProps = {
   incremental: boolean;
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
+  readOnly?: boolean;
 };
 
 export const IncrementalTransformSettings = ({
@@ -35,10 +46,12 @@ export const IncrementalTransformSettings = ({
   incremental,
   onIncrementalChange,
   variant = "embedded",
+  readOnly,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   // Check if this is a Python transform with exactly one source table
   // Incremental transforms are only supported for single-table Python transforms
@@ -54,22 +67,39 @@ export const IncrementalTransformSettings = ({
     .with({ isPythonTransform: true }, () => "python" as const)
     .otherwise(() => "native" as const);
 
-  const renderIncrementalSwitch = () => (
-    <Switch
-      disabled={isMultiTablePythonTransform}
-      checked={incremental}
-      size="sm"
-      label={
-        isMultiTablePythonTransform
-          ? t`Incremental transforms are only supported for single data source transforms.`
-          : t`Only process new and changed data`
-      }
-      wrapperProps={{
-        "data-testid": "incremental-switch",
-      }}
-      onChange={(e) => onIncrementalChange(e.target.checked)}
-    />
-  );
+  const renderIncrementalSwitch = () => {
+    const switchContent = (
+      <Switch
+        disabled={
+          readOnly || isMultiTablePythonTransform || isRemoteSyncReadOnly
+        }
+        checked={incremental}
+        size="sm"
+        label={
+          isMultiTablePythonTransform
+            ? t`Incremental transforms are only supported for single data source transforms.`
+            : t`Only process new and changed data`
+        }
+        wrapperProps={{
+          "data-testid": "incremental-switch",
+        }}
+        onChange={(e) => onIncrementalChange(e.target.checked)}
+      />
+    );
+
+    if (isRemoteSyncReadOnly) {
+      return (
+        <Tooltip
+          label={t`You can't edit this setting since Remote Sync is currently in read-only mode.`}
+          withArrow={false}
+        >
+          <span>{switchContent}</span>
+        </Tooltip>
+      );
+    }
+
+    return switchContent;
+  };
 
   const label = t`Incremental transformation`;
   const renderDescription = () => {
@@ -101,6 +131,7 @@ export const IncrementalTransformSettings = ({
                 source={source}
                 query={libQuery}
                 type={transformType}
+                readOnly={readOnly}
               />
             </Group>
             <TargetStrategyFields variant={variant} />
@@ -169,12 +200,14 @@ type SourceStrategyFieldsProps = {
   source: TransformSource;
   query: Lib.Query | null;
   type: "query" | "native" | "python";
+  readOnly?: boolean;
 };
 
 function SourceStrategyFields({
   source,
   query,
   type,
+  readOnly,
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
   return (
@@ -185,6 +218,7 @@ function SourceStrategyFields({
           label={t`Source Strategy`}
           description={t`How to track which rows to process`}
           data={SOURCE_STRATEGY_OPTIONS}
+          disabled={readOnly}
         />
       )}
       {values.sourceStrategy === "checkpoint" && (
@@ -197,6 +231,7 @@ function SourceStrategyFields({
               description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
+              disabled={readOnly}
             />
           )}
           {type === "native" && query && (
@@ -207,6 +242,7 @@ function SourceStrategyFields({
               description={t`Pick the column that we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
+              disabled={readOnly}
             />
           )}
           {type === "python" && "source-tables" in source && (
@@ -217,6 +253,7 @@ function SourceStrategyFields({
               description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               sourceTables={source["source-tables"]}
+              disabled={readOnly}
             />
           )}
         </>

@@ -36,13 +36,13 @@
 ;;
 ;;  <hr />
 ;;
-;; ## How does defendpoint coersion work?
+;; ## How does defendpoint coercion work?
 ;;
 ;; The `defendpoint` macro uses the schemas to generate code which binds args to their decoded values. Values are
 ;; decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be coerced; unmentioned
 ;; aliases will not be bound.
 ;;
-;; The exact coersion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
+;; The exact coercion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
 ;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
 ;; for more details
 ;;
@@ -122,6 +122,11 @@
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
+(def ^:dynamic ^Boolean *is-data-analyst?*
+  "Is the current user a data analyst with access to Data Studio?"
+  false)
+
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
   more information about the Metabase permissions system."
@@ -186,6 +191,12 @@
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
   []
   (check-403 *is-superuser?*))
+
+(defn check-data-analyst
+  "Check that `*current-user*` is a data analyst (or superuser) or throw a 403.
+  Superusers are automatically considered data analysts."
+  []
+  (check-403 (or *is-superuser?* *is-data-analyst?*)))
 
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.

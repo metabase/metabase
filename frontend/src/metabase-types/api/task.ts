@@ -1,3 +1,5 @@
+import type { Log } from "metabase-types/api/util";
+
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { SortingOptions } from "./sorting";
@@ -14,6 +16,8 @@ export interface Task {
   task: string;
   task_details: Record<string, unknown> | null;
   status: TaskStatus;
+  logs: Log[] | null;
+  run_id: number | null;
 }
 
 export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";
@@ -58,4 +62,58 @@ type Job = {
 export type TaskInfo = {
   scheduler: string[];
   jobs: Job[];
+};
+
+export type TaskRunType = "subscription" | "alert" | "sync" | "fingerprint";
+export type TaskRunEntityType = "database" | "card" | "dashboard";
+export type TaskRunStatus = "started" | "success" | "failed" | "abandoned";
+export type TaskRunDateFilterOption =
+  | "thisday"
+  | "past1days~"
+  | "past1weeks~"
+  | "past7days~"
+  | "past30days~"
+  | "past1months~"
+  | "past3months~"
+  | "past12months~";
+
+export interface TaskRun {
+  id: number;
+  run_type: TaskRunType;
+  entity_type: TaskRunEntityType;
+  entity_id: number;
+  started_at: string;
+  ended_at: string | null;
+  status: TaskRunStatus;
+  entity_name?: string;
+  task_count: number;
+  success_count: number;
+  failed_count: number;
+}
+
+export interface TaskRunExtended extends TaskRun {
+  tasks: Task[];
+}
+
+export interface RunEntity {
+  entity_type: TaskRunEntityType;
+  entity_id: number;
+  entity_name?: string;
+}
+
+export type ListTaskRunsRequest = {
+  "run-type"?: TaskRunType;
+  "entity-type"?: TaskRunEntityType;
+  "entity-id"?: number;
+  status?: TaskRunStatus;
+  "started-at"?: TaskRunDateFilterOption;
+} & PaginationRequest;
+
+export type ListTaskRunsResponse = {
+  data: TaskRun[];
+} & PaginationResponse;
+
+export type ListTaskRunEntitiesRequest = {
+  "run-type": TaskRunType;
+  "started-at": TaskRunDateFilterOption;
 };

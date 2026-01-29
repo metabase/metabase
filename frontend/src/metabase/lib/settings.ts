@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { numberToWord } from "metabase/lib/utils";
 import type {
+  ColorSettings,
   PasswordComplexity,
   SettingKey,
   Settings,
@@ -277,6 +278,15 @@ class MetabaseSettings {
   subscriptionAllowedDomains(): string[] {
     const setting = this.get("subscription-allowed-domains") || "";
     return setting ? setting.split(",") : [];
+  }
+
+  /**
+   * @deprecated use getSetting(state, "application-colors")
+   *
+   * Only use this when Redux store is not always available, e.g. in ThemeProvider
+   */
+  applicationColors(): ColorSettings {
+    return this.get("application-colors" as SettingKey) as ColorSettings;
   }
 }
 

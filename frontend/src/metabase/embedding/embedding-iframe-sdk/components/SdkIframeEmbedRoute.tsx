@@ -206,7 +206,11 @@ const SdkIframeEmbedView = ({
         // Embedding based on a questionId (Metabase Account auth type) with disabled drills
         {
           componentName: "metabase-question",
-          questionId: P.intersection(P.nonNullable, P.not("new")),
+          questionId: P.intersection(
+            P.nonNullable,
+            P.not("new"),
+            P.not("new-native"),
+          ),
           drills: false,
         },
         // Embedding based on a token (Guest Embed auth type) with default/disabled drills

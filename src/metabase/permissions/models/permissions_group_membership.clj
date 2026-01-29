@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -59,23 +58,17 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
 
-(defn- admin-count
-  "The current number of non-archived admins (superusers)."
-  []
-  (:count
-   (first
-    (app-db/query {:select [[:%count.* :count]]
-                   :from   [[:permissions_group_membership :pgm]]
-                   :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
-                   :where  [:and
-                            [:= :pgm.group_id (u/the-id (perms-group/admin))]
-                            [:= :user.is_active true]]}))))
-
 (defn throw-if-last-admin!
-  "Throw an Exception if there is only one admin (superuser) left. The assumption is that the one admin is about to be
+  "Throw an Exception if there are no admins left besides this one. The assumption is that the one admin is about to be
   archived or have their admin status removed."
-  []
-  (when (<= (admin-count) 1)
+  [user-id]
+  (when (zero?
+         (t2/count :model/PermissionsGroupMembership
+                   {:join   [[:core_user :user] [:= :user.id :user_id]]
+                    :where  [:and
+                             [:= :group_id (u/the-id (perms-group/admin))]
+                             [:= :user.is_active true]
+                             [:not= :user.id user-id]]}))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
@@ -85,13 +78,16 @@
   [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
   (check-not-all-external-users-group group_id)
-  ;; Otherwise if this is the Admin group...
+  ;; If this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception
-    (throw-if-last-admin!)
+    (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false}))))
+      (t2/update! 'User user_id {:is_superuser false})))
+  ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
+  (when (= group_id (:id (perms-group/data-analyst)))
+    (t2/update! 'User user_id {:is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the
@@ -198,6 +194,12 @@
                                      (when (= group-id (:id (perms-group/admin)))
                                        user-id))))
 
+          new-data-analyst-ids (->> user-id-group-id->is-group-manager?
+                                    keys
+                                    (keep (fn [[user-id group-id]]
+                                            (when (= group-id (:id (perms-group/data-analyst)))
+                                              user-id))))
+
           sql (add-users-to-groups-sql user-id-group-id->is-group-manager?)]
       (t2/with-transaction [_conn]
         (when (< (t2/query-one sql)
@@ -208,6 +210,8 @@
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
           (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+        (when (seq new-data-analyst-ids)
+          (t2/update! :model/User :id [:in new-data-analyst-ids] {:is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create

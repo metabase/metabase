@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { UpsellMetabaseBanner } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import type {
@@ -55,7 +55,7 @@ export const LookAndFeelSettings = ({
   displayOptions,
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only appear to admins
   const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
     anchor: "customizing-the-appearance-of-static-embeds",
     utm: {

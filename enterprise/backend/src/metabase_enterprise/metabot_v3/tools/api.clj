@@ -42,9 +42,12 @@
       nil)))
 
 ;;; ------------------------------------------------ Shared Schemas -------------------------------------------------
+;; NOTE: Some of these schemas are duplicated with small differences in the Agent API
+;; (metabase-enterprise.agent-api.api). If you update schemas here, check if the
+;; corresponding Agent API schemas need updating too.
 
 (mr/def ::bucket
-  (into [:enum {:error/message "Valid bucket"
+  (into [:enum {:error/message           "Valid bucket"
                 :encode/tool-api-request keyword}]
         (map name)
         lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
@@ -189,7 +192,12 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-aggregation
-  "Aggregation using a field and function."
+  "Aggregation using a field and function.
+
+   - field_id: Required. For 'count', any valid field_id can be provided (the value is ignored since count operates on rows).
+   - function: The aggregation function to apply.
+   - sort_order: Optional. Use this to order results by this aggregation ('asc' or 'desc').
+                 This is the correct way to sort by aggregation results - do NOT use order_by for aggregations."
   [:and
    [:map
     [:field_id :string]
@@ -217,6 +225,12 @@
     [:field_id :string]
     [:bucket {:optional true} ::bucket]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::order-by
+  "Order by item specifying a field and sort direction."
+  [:map
+   [:field ::field]
+   [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]])
 
 (mr/def ::count
   [:and
@@ -938,9 +952,7 @@
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
-    [:order_by {:optional true} [:maybe [:sequential [:map
-                                                      [:field ::field]
-                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
     [:limit {:optional true} [:maybe :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -960,9 +972,7 @@
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
-    [:order_by {:optional true} [:maybe [:sequential [:map
-                                                      [:field ::field]
-                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
     [:limit {:optional true} [:maybe :int]]]
    [:fn {:error/message "Exactly one of table_id and model_id required"}
     #(= (count (select-keys % [:table_id :model_id])) 1)]

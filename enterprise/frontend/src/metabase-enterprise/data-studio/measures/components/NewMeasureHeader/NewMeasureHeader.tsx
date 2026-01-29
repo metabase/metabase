@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
 import { MeasureMoreMenu } from "../MeasureMoreMenu";

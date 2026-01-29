@@ -1,5 +1,6 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DependencyListUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type UserId = number;
@@ -34,6 +35,7 @@ export interface BaseUser {
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
+  is_data_analyst: boolean;
 
   date_joined: string;
   last_login: string;
@@ -48,12 +50,14 @@ export interface UserPermissions {
 
   // requires advanced_permissions feature
   is_group_manager?: boolean;
+  is_data_analyst?: boolean;
   can_access_data_model?: boolean;
   can_access_db_details?: boolean;
   can_access_monitoring?: boolean;
   can_access_setting?: boolean;
   can_access_subscription?: boolean;
   can_access_data_studio?: boolean;
+  can_access_transforms?: boolean;
 }
 
 export interface User extends BaseUser {
@@ -183,6 +187,11 @@ export type UserKeyValue =
       namespace: "data_studio";
       key: string;
       value: boolean;
+    }
+  | {
+      namespace: "dependency_list";
+      key: string;
+      value: DependencyListUserParams;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

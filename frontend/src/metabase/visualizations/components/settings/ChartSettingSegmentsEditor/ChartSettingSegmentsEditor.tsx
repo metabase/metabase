@@ -1,32 +1,31 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-// import Button from "metabase/common/components/Button";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
-import { Box, Button, Icon, NumberInput, TextInput } from "metabase/ui";
+import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import type { ScalarSegment } from "metabase-types/api";
+
+import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
 
-export type Segment = {
-  min: number;
-  max: number;
-  color: string;
-  label?: string;
-};
+export interface ChartSettingSegmentsEditorProps {
+  value: ScalarSegment[];
+  onChange: (value: ScalarSegment[]) => void;
+  canRemoveAll?: boolean;
+}
 
 export const ChartSettingSegmentsEditor = ({
   value: segments,
   onChange,
-}: {
-  value: Segment[];
-  onChange: (value: Segment[]) => void;
-}) => {
+  canRemoveAll = false,
+}: ChartSettingSegmentsEditorProps) => {
   const onChangeProperty = (
     index: number,
-    property: keyof Segment,
+    property: keyof ScalarSegment,
     value: number | string,
   ) =>
     onChange([
@@ -37,78 +36,89 @@ export const ChartSettingSegmentsEditor = ({
 
   return (
     <Box px="1.5rem">
-      <table className={S.Table}>
-        <thead>
-          <tr>
-            <th />
-            <th>{t`Label`}</th>
-            <th>{t`Min`}</th>
-            <th>{t`Max`}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {segments.map((segment, index) => (
-            <tr key={index}>
-              <td>
-                <ColorSelector
-                  pillSize="large"
-                  className={S.ColorPill}
-                  value={segment.color}
-                  colors={getColorPalette()}
-                  onChange={(color) => onChangeProperty(index, "color", color)}
-                />
-              </td>
-              <td>
-                <TextInput
-                  value={segment.label}
-                  placeholder={t`Optional`}
-                  onChange={(e) =>
-                    onChangeProperty(index, "label", e.target.value)
-                  }
-                />
-              </td>
-              <td>
-                <NumberInput
-                  className={CS.full}
-                  value={segment.min}
-                  onBlur={(e) => {
-                    const newValue = parseFloat(e.target.value);
-                    if (newValue !== segment.min) {
-                      onChangeProperty(index, "min", newValue);
-                    }
-                  }}
-                  placeholder={t`Min`}
-                  w="4rem"
-                />
-              </td>
-              <td>
-                <NumberInput
-                  className={CS.full}
-                  value={segment.max}
-                  onBlur={(e) => {
-                    const newValue = parseFloat(e.target.value);
-                    if (newValue !== segment.max) {
-                      onChangeProperty(index, "max", newValue);
-                    }
-                  }}
-                  placeholder={t`Max`}
-                  w="4rem"
-                />
-              </td>
-              <td>
-                {segments.length > 1 && (
-                  <Button
-                    leftSection={<Icon name="trash" c="text-tertiary" />}
-                    onClick={() =>
-                      onChange(segments.filter((v, i) => i !== index))
+      {segments.length > 0 ? (
+        <table className={S.Table}>
+          <thead>
+            <tr>
+              <th />
+              <th>{t`Label`}</th>
+              <th>{t`Min`}</th>
+              <th>{t`Max`}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {segments.map((segment, index) => (
+              <tr key={index}>
+                <td>
+                  <ColorSelector
+                    pillSize="large"
+                    className={S.ColorPill}
+                    value={segment.color}
+                    colors={getColorPalette()}
+                    onChange={(color) =>
+                      onChangeProperty(index, "color", color)
                     }
                   />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </td>
+                <td>
+                  <ChartSettingInput
+                    value={segment.label}
+                    placeholder={t`Label for this range (optional)`}
+                    onChange={(val) => onChangeProperty(index, "label", val)}
+                  />
+                </td>
+                <td>
+                  <NumberInput
+                    className={CS.full}
+                    value={segment.min}
+                    onBlur={(e) => {
+                      const newValue = parseFloat(e.target.value);
+                      if (newValue !== segment.min) {
+                        onChangeProperty(index, "min", newValue);
+                      }
+                    }}
+                    placeholder={t`Min`}
+                    w="4rem"
+                  />
+                </td>
+                <td>
+                  <NumberInput
+                    className={CS.full}
+                    value={segment.max}
+                    onBlur={(e) => {
+                      const newValue = parseFloat(e.target.value);
+                      if (newValue !== segment.max) {
+                        onChangeProperty(index, "max", newValue);
+                      }
+                    }}
+                    placeholder={t`Max`}
+                    w="4rem"
+                  />
+                </td>
+                <td>
+                  {(segments.length > 1 || canRemoveAll) && (
+                    <Button
+                      leftSection={<Icon name="trash" c="text-tertiary" />}
+                      onClick={() =>
+                        onChange(segments.filter((v, i) => i !== index))
+                      }
+                    />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <Text
+          ta="center"
+          c="text-secondary"
+          mt="2.5rem"
+          mb="3rem"
+          lh="1.25rem"
+          px="1.5rem"
+        >{t`Add color ranges to make this number change color depending on it's value`}</Text>
+      )}
       <Button
         leftSection={<Icon name="add" />}
         onClick={() => onChange(segments.concat(newSegment(segments)))}
@@ -130,7 +140,7 @@ function getColorPalette() {
   ];
 }
 
-function newSegment(segments: Segment[]) {
+function newSegment(segments: ScalarSegment[]) {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastColorIndex = lastSegment
@@ -146,8 +156,5 @@ function newSegment(segments: Segment[]) {
     max: lastSegment ? lastSegment.max * 2 : 1,
     color: nextColor,
     label: "",
-    key: newSegmentKey(),
   };
 }
-
-const newSegmentKey = () => `gauge-segment-${_.uniqueId()}`;

@@ -163,10 +163,14 @@
     ;; Authentication succeeded - check account creation policy
     ;; TODO(edpaget): 2025/11/11 this should return an error condition instead of throwing
     :else
-    (do (when-not (and (:user request) (get-in request [:user :is_active]))
-          (sso-utils/check-user-provisioning :saml))
-        ;; If the user was deactivated but user provisioning is allowed reactive the user
-        (next-method provider (assoc-in request [:user-data :is_active] true)))))
+    (let [provisioning-enabled? (sso-settings/saml-user-provisioning-enabled?)]
+      (when-not (and (:user request) (get-in request [:user :is_active]))
+        (sso-utils/check-user-provisioning :saml))
+      ;; If the user was deactivated but user provisioning is allowed reactive the user
+      ;; Pass provisioning status for tenant reactivation logic
+      (next-method provider (-> request
+                                (assoc-in [:user-data :is_active] true)
+                                (assoc :user-provisioning-enabled? provisioning-enabled?))))))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"

@@ -21,9 +21,11 @@ import { TableAttributesEditBulk } from "./TableAttributesEditBulk";
 // Component that allows controlling selection for testing
 function SelectionController({
   initialTables,
+  nextTables,
   onSelectionChange,
 }: {
   initialTables: Set<TableId>;
+  nextTables?: Set<TableId>;
   onSelectionChange: () => void;
 }) {
   const { setSelectedTables } = useSelection();
@@ -38,7 +40,7 @@ function SelectionController({
       data-testid="change-selection"
       onClick={() => {
         // Change selection to a different table
-        setSelectedTables(new Set([999]));
+        setSelectedTables(nextTables ?? new Set([999]));
         onSelectionChange();
       }}
     >
@@ -49,16 +51,19 @@ function SelectionController({
 
 function TestWrapper({
   initialTables = new Set([1]),
+  nextTables,
 }: {
   initialTables?: Set<TableId>;
+  nextTables?: Set<TableId>;
 }) {
   const [_selectionChanged, setSelectionChanged] = useState(false);
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk hasLibrary onUpdate={_.noop} />
+      <TableAttributesEditBulk hasLibrary canPublish onUpdate={_.noop} />
       <SelectionController
         initialTables={initialTables}
+        nextTables={nextTables}
         onSelectionChange={() => setSelectionChanged(true)}
       />
     </SelectionProvider>
@@ -67,12 +72,16 @@ function TestWrapper({
 
 type SetupOpts = {
   initialTables?: Set<TableId>;
+  nextTables?: Set<TableId>;
   isAdmin?: boolean;
+  isDataAnalyst?: boolean;
 };
 
 function setup({
   initialTables = new Set([1]),
-  isAdmin = true,
+  nextTables,
+  isAdmin = false,
+  isDataAnalyst = false,
 }: SetupOpts = {}) {
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
@@ -91,28 +100,41 @@ function setup({
     },
   });
 
-  renderWithProviders(<TestWrapper initialTables={initialTables} />, {
-    withRouter: false,
-    storeInitialState: {
-      currentUser: createMockUser({ is_superuser: isAdmin }),
+  renderWithProviders(
+    <TestWrapper initialTables={initialTables} nextTables={nextTables} />,
+    {
+      withRouter: false,
+      storeInitialState: {
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+          is_data_analyst: isDataAnalyst,
+        }),
+      },
     },
-  });
+  );
 }
 
 describe("TableAttributesEditBulk", () => {
-  it("should not render publish buttons for non-admin users", async () => {
-    setup({ isAdmin: false });
+  it("should render publish buttons for admins", async () => {
+    setup({ isAdmin: true });
 
     await waitFor(() => {
       expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole("button", { name: /Publish/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Unpublish/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish")).toBeInTheDocument();
+  });
+
+  it("should render publish buttons for data analysts", async () => {
+    setup({ isDataAnalyst: true });
+
+    await waitFor(() => {
+      expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish")).toBeInTheDocument();
   });
 
   it("should reset form state when selection changes", async () => {
@@ -136,6 +158,35 @@ describe("TableAttributesEditBulk", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("textbox", { name: "Owner" })).toHaveValue("");
+    });
+  });
+
+  it("should keep form state when selection is a subset", async () => {
+    setup({
+      initialTables: new Set([1, 2]),
+      nextTables: new Set([1]),
+    });
+    const userName = "Testy Tableton";
+
+    await waitFor(() => {
+      expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(screen.getByText(userName));
+    await waitFor(() => {
+      expect(screen.getByRole("textbox", { name: "Owner" })).toHaveValue(
+        userName,
+      );
+    });
+
+    const changeSelectionButton = screen.getByTestId("change-selection");
+    await userEvent.click(changeSelectionButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole("textbox", { name: "Owner" })).toHaveValue(
+        userName,
+      );
     });
   });
 });

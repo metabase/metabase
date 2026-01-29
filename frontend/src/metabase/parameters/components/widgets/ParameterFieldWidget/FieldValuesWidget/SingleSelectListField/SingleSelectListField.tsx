@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import type { InputProps } from "metabase/common/components/Input";
-import Input from "metabase/common/components/Input";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { Input } from "metabase/common/components/Input";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";

@@ -91,6 +91,7 @@
     :model/Session
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
@@ -99,7 +100,6 @@
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
-    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue

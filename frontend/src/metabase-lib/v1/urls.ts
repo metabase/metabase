@@ -124,7 +124,7 @@ export function getComparisonDashboardUrl(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const tableId = question.legacyQueryTableId();
+  const tableId = Lib.sourceTableOrCardId(question.query());
   const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter

@@ -211,7 +211,7 @@
   (some-> card :dataset_query not-empty lib/all-source-table-ids))
 
 (mu/defn- prefetch-tables-for-cards!
-  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metadata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [cards-with-non-empty-queries :- [:maybe
                                     [:sequential
@@ -542,7 +542,7 @@
                                        (let [param-id->parameter (m/index-by :id parameters)]
                                          (->> param-cards
                                               (filter (fn [param-card]
-                                                        ;; if cant find the value-field in result_metadata, then we should
+                                                        ;; if can't find the value-field in result_metadata, then we should
                                                         ;; remove it
                                                         ;; existing usage -- do not use this in new code
                                                         #_{:clj-kondo/ignore [:deprecated-var]}
@@ -1102,13 +1102,13 @@
          not-empty)))
 
 (defn- eligible-mapping?
-  "Decide whether parameter mapping has strucuture so it can be updated presumably using [[update-mapping]]."
+  "Decide whether parameter mapping has structure so it can be updated presumably using [[update-mapping]]."
   [{[dim [ref-kind]] :target :as _mapping}]
   (and (= dim :dimension)
        (#{:field :expression} ref-kind)))
 
 (defn- update-mapping
-  "Return modifed mapping according to action."
+  "Return modified mapping according to action."
   [identifier->action {[_dim field-ref] :target :as mapping}]
   (let [identifier   (mbql-clause->identifier-for-parameter-updates field-ref)
         [action arg] (get identifier->action identifier)]

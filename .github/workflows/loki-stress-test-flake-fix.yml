@@ -8,10 +8,10 @@ on:
         type: string
         required: true
       burn_in:
-        description: "Number of times to run the test (e.g. 20)"
+        description: "Number of times to run the test (e.g. 50)"
         type: string
         required: true
-        default: "20"
+        default: "50"
 
 jobs:
   workflow-summary:

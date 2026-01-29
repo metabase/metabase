@@ -3,28 +3,39 @@ import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import type * as Urls from "metabase/lib/urls";
-import { Flex, Icon, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 
-import { getSearchQuery } from "../../../utils";
+import type { DependencyFilterOptions } from "../../../types";
+import { areFilterOptionsEqual, getSearchQuery } from "../../../utils";
+import { FilterOptionsPicker } from "../../FilterOptionsPicker";
 import type { DependencyListMode } from "../types";
-
-import { FilterOptionsPicker } from "./FilterOptionsPicker";
+import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";
 
 type ListSearchBarProps = {
   mode: DependencyListMode;
-  params: Urls.DependencyListParams;
-  hasLoader: boolean;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  query?: string;
+  filterOptions: DependencyFilterOptions;
+  isFetching: boolean;
+  isLoading: boolean;
+  onQueryChange: (query: string | undefined) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export const ListSearchBar = memo(function ListSearchBar({
   mode,
-  params,
-  hasLoader,
-  onParamsChange,
+  query,
+  filterOptions,
+  isFetching,
+  isLoading,
+  onQueryChange,
+  onFilterOptionsChange,
 }: ListSearchBarProps) {
-  const [searchValue, setSearchValue] = useState(params.query ?? "");
+  const [searchValue, setSearchValue] = useState(query ?? "");
+  const hasLoader = isFetching && !isLoading;
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(mode),
+  );
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newSearchValue = event.target.value;
@@ -35,27 +46,35 @@ export const ListSearchBar = memo(function ListSearchBar({
   const handleSearchDebounce = useDebouncedCallback(
     (newSearchValue: string) => {
       const newQuery = getSearchQuery(newSearchValue);
-      onParamsChange({ ...params, query: newQuery });
+      onQueryChange(newQuery);
     },
     SEARCH_DEBOUNCE_DURATION,
   );
 
+  const handleFilterOptionsChange = (
+    newFilterOptions: DependencyFilterOptions,
+  ) => {
+    onFilterOptionsChange(newFilterOptions);
+  };
+
   return (
-    <Flex gap="md" align="center">
+    <Group gap="md" align="center" wrap="nowrap">
       <TextInput
         value={searchValue}
         placeholder={t`Search…`}
         flex={1}
-        leftSection={<Icon name="search" />}
+        leftSection={<FixedSizeIcon name="search" />}
         rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         data-testid="dependency-list-search-input"
         onChange={handleSearchChange}
       />
       <FilterOptionsPicker
-        mode={mode}
-        params={params}
-        onParamsChange={onParamsChange}
+        filterOptions={filterOptions}
+        availableGroupTypes={getAvailableGroupTypes(mode)}
+        isDisabled={isLoading}
+        hasDefaultFilterOptions={hasDefaultFilterOptions}
+        onFilterOptionsChange={handleFilterOptionsChange}
       />
-    </Flex>
+    </Group>
   );
 });

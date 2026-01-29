@@ -452,7 +452,7 @@
       (catch Throwable e
         (let [e (ex-info (.getMessage e)
                          {:card-id (u/the-id card)
-                          :card-params (:parametres card)
+                          :card-params (:parameters card)
                           :allowed-param-slugs embedding-params
                           :slug->id            slug->id
                           :id->slug            id->slug
@@ -497,7 +497,7 @@
       (catch Throwable e
         (let [e (ex-info (.getMessage e)
                          {:card-id (u/the-id card)
-                          :card-params (:parametres card)
+                          :card-params (:parameters card)
                           :allowed-param-slugs embedding-params
                           :slug->id            slug->id
                           :id->slug            id->slug

@@ -6,13 +6,13 @@ import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import QuestionLoader from "metabase/common/components/QuestionLoader";
-import Radio from "metabase/common/components/Radio";
+import { QuestionLoader } from "metabase/common/components/QuestionLoader";
+import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
@@ -419,6 +419,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
               ? getRawDataQuestionForTable(policyTable)
               : null
           }
+          includeSensitiveFields
         >
           {({ question }: { question: Question }) => {
             if (!question) {

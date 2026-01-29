@@ -107,18 +107,19 @@
 
       (cond
         (:active notification)
-        (try
-          (log/info "Submitting to the notification queue")
-          (task-history/with-task-history {:task         "notification-trigger"
-                                           :task_details {:trigger_type                 :notification-subscription/cron
-                                                          :notification_subscription_id subscription-id
-                                                          :cron_schedule                (:cron_schedule subscription)
-                                                          :notification_ids             [notification-id]}}
-            (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
-          (log/info "Submitted to the notification queue")
-          (catch Exception e
-            (log/error e "Failed to submit to the notification queue")
-            (throw e)))
+        (task-history/with-task-run (some-> (notification.send/notification->task-run-info notification) (assoc :auto-complete false))
+          (try
+            (log/info "Submitting to the notification queue")
+            (task-history/with-task-history {:task         "notification-trigger"
+                                             :task_details {:trigger_type                 :notification-subscription/cron
+                                                            :notification_subscription_id subscription-id
+                                                            :cron_schedule                (:cron_schedule subscription)
+                                                            :notification_ids             [notification-id]}}
+              (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
+            (log/info "Submitted to the notification queue")
+            (catch Exception e
+              (log/error e "Failed to submit to the notification queue")
+              (throw e))))
 
         (nil? notification)
         (do

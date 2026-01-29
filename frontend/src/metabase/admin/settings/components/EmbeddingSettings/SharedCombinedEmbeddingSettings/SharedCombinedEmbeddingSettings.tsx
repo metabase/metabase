@@ -1,9 +1,7 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
-import type { EmbeddingSettingKey } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellBanner } from "metabase/admin/upsells/components";
 import { useSetting } from "metabase/common/hooks";
@@ -38,20 +36,13 @@ export function SharedCombinedEmbeddingSettings({
     getUpgradeUrl(state, { utm_content: "embedding-settings" }),
   );
 
-  const dependentSettingKeys: EmbeddingSettingKey[] = useMemo(
-    // When the simple embed feature is not available (oss), we toggle both guest and simple embeds
-    () => (isSimpleEmbedFeatureAvailable ? [] : ["enable-embedding-simple"]),
-    [isSimpleEmbedFeatureAvailable],
-  );
-
   return (
     <>
       <EmbeddingSettingsCard
         title={t`Enable guest embeds`}
-        description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through. Enables modular embedding and static embedding.`}
+        description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through.`}
         settingKey="enable-embedding-static"
         actionButton={<NewEmbedButton />}
-        dependentSettingKeys={dependentSettingKeys}
         sdk-setting-card
         testId="guest-embeds-setting-card"
       />

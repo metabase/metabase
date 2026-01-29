@@ -35,6 +35,7 @@
           content
           ["FieldValues"
            "Metabot"
+           "PythonLibrary"
            "Setting"
            "Transform"
            "TransformJob"
@@ -96,7 +97,6 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
-   "PythonLibrary"
    "Pulse"
    "PulseCard"
    "PulseChannel"
@@ -118,6 +118,7 @@
    "Session"
    "SupportAccessGrantLog"
    "TaskHistory"
+   "TaskRun"
    "Tenant"
    "TransformJobRun"
    "TransformRun"

@@ -26,8 +26,9 @@ describe("Remote Sync", () => {
 
   describe("read-write Mode", () => {
     it("can push and pull changes", () => {
-      H.configureGit("read-write");
-      H.wrapSyncedCollection();
+      H.configureGitWithNewSyncedCollection("read-write").as(
+        "syncedCollection",
+      );
       const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
 
       cy.get("@syncedCollection").then((syncedCollection) => {
@@ -46,7 +47,7 @@ describe("Remote Sync", () => {
       // Ensure that status icon is present
       H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
       H.navigationSidebar()
-        .findByRole("link", { name: /Synced Collection/ })
+        .findByRole("link", { name: /Test Synced Collection/ })
         .click();
 
       H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
@@ -64,7 +65,7 @@ describe("Remote Sync", () => {
       });
 
       H.navigationSidebar()
-        .findByRole("link", { name: /Synced Collection/ })
+        .findByRole("link", { name: /Test Synced Collection/ })
         .findByTestId("remote-sync-status")
         .should("not.exist");
 
@@ -92,8 +93,9 @@ describe("Remote Sync", () => {
     });
 
     it("should not allow you to move content to the Synced Collection that references non Synced Collection items", () => {
-      H.configureGit("read-write");
-      H.wrapSyncedCollection();
+      H.configureGitWithNewSyncedCollection("read-write").as(
+        "syncedCollection",
+      );
       cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
         "updateDashboard",
       );
@@ -107,7 +109,7 @@ describe("Remote Sync", () => {
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Collections").click();
-        H.entityPickerModalItem(1, "Synced Collection").click();
+        H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
 
@@ -124,7 +126,7 @@ describe("Remote Sync", () => {
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Browse").click();
-        H.entityPickerModalItem(1, "Synced Collection").click();
+        H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
 
@@ -135,7 +137,7 @@ describe("Remote Sync", () => {
       const NEW_BRANCH = `new-branch-${Date.now()}`;
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-write");
+      H.configureGitAndPullChanges("read-write");
       H.wrapSyncedCollection();
 
       cy.visit("/collection/root");
@@ -236,8 +238,9 @@ describe("Remote Sync", () => {
       };
 
       it("should allow you to create new branches and switch between them", () => {
-        H.configureGit("read-write");
-        H.wrapSyncedCollection();
+        H.configureGitWithNewSyncedCollection("read-write").as(
+          "syncedCollection",
+        );
 
         const NEW_BRANCH_1 = `new-branch-${Date.now()}`;
         const NEW_BRANCH_2 = `new-branch-${Date.now() + 1}`;
@@ -245,24 +248,30 @@ describe("Remote Sync", () => {
         cy.visit("/collection/root");
 
         H.navigationSidebar()
-          .findByRole("treeitem", { name: /Synced Collection/ })
+          .findByRole("treeitem", { name: /Test Synced Collection/ })
           .click();
 
-        // Synced Synced Collection starts empty
+        // Test Synced Collection starts empty
         H.collectionTable().should("not.exist");
         cy.findByTestId("collection-empty-state").should("exist");
 
         createNewBranch(NEW_BRANCH_1);
 
-        // Move something into Synced Collection for the new branch
-        H.moveCollectionItemToSyncedCollection("Orders, Count");
+        // Move something into synced collection for the new branch
+        H.moveCollectionItemToSyncedCollection(
+          "Orders, Count",
+          "Test Synced Collection",
+        );
 
         pushUpdates();
 
         // Go back to the main branch
         createNewBranch(NEW_BRANCH_2);
 
-        H.moveCollectionItemToSyncedCollection("Orders Model");
+        H.moveCollectionItemToSyncedCollection(
+          "Orders Model",
+          "Test Synced Collection",
+        );
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         H.collectionTable().findByText("Orders Model").should("exist");
@@ -282,24 +291,29 @@ describe("Remote Sync", () => {
       });
 
       it("should show a popup when trying to switch branches with unsynced changes", () => {
-        H.configureGit("read-write");
+        H.configureGitWithNewSyncedCollection("read-write").as(
+          "syncedCollection",
+        );
 
         const NEW_BRANCH = `new-branch-${Date.now()}`;
 
         cy.visit("/collection/root");
 
         H.navigationSidebar()
-          .findByRole("treeitem", { name: /Synced Collection/ })
+          .findByRole("treeitem", { name: /Test Synced Collection/ })
           .click();
 
-        // Synced Synced Collection starts empty
+        // Test Synced Collection starts empty
         H.collectionTable().should("not.exist");
         cy.findByTestId("collection-empty-state").should("exist");
 
         createNewBranch(NEW_BRANCH);
 
-        // Move something into Synced Collection for the new branch
-        H.moveCollectionItemToSyncedCollection("Orders, Count");
+        // Move something into synced collection for the new branch
+        H.moveCollectionItemToSyncedCollection(
+          "Orders, Count",
+          "Test Synced Collection",
+        );
 
         // Attempt to go back to main
         switchToExistingBranch("main");
@@ -333,7 +347,7 @@ describe("Remote Sync", () => {
       beforeEach(() => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         H.wrapSyncedCollection();
 
         cy.visit("/collection/root");
@@ -374,21 +388,24 @@ describe("Remote Sync", () => {
           cy.button(/Push changes/).click();
         });
 
-        H.waitForTask({ taskName: "export" });
+        H.waitForTask({ taskName: "export" }).then(() => {
+          H.getGitSyncControls().should("contain.text", NEW_BRANCH);
+          H.collectionTable().within(() => {
+            cy.findByText("Orders").should("exist");
+            cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+          });
 
-        H.getGitSyncControls().should("contain.text", NEW_BRANCH);
-        H.collectionTable().within(() => {
-          cy.findByText("Orders").should("exist");
-          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
-        });
+          H.modal().findByText("Pushing to Git").should("not.exist");
 
-        H.getSwitchBranchOption().click();
-        H.popover().findByRole("option", { name: "main" }).click();
+          H.getSwitchBranchOption().click();
+          H.popover().findByRole("option", { name: "main" }).click();
 
-        H.waitForTask({ taskName: "import" });
-        H.collectionTable().within(() => {
-          cy.findByText("Orders").should("not.exist");
-          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+          H.waitForTask({ taskName: "import" }).then(() => {
+            H.collectionTable().within(() => {
+              cy.findByText("Orders").should("not.exist");
+              cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+            });
+          });
         });
       });
 
@@ -436,19 +453,11 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      H.waitForTask({ taskName: "import" });
       H.modal().should("not.exist");
       cy.findByTestId("exit-admin").click();
 
-      // Branch picker is now in the app bar
+      // Branch picker should appear in the app bar (doesn't require import)
       H.getGitSyncControls().should("contain.text", "main");
-
-      // Synced collection appears in regular collections list (no separate heading)
-      H.navigationSidebar().within(() => {
-        cy.findByRole("treeitem", { name: /Synced Collection/i }).should(
-          "exist",
-        );
-      });
     });
 
     it("can set up read-only mode", () => {
@@ -537,7 +546,7 @@ describe("Remote Sync", () => {
     it("can deactivate remote sync", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-write");
+      H.configureGitAndPullChanges("read-write");
 
       cy.visit("/admin/settings/remote-sync");
 
@@ -639,7 +648,7 @@ describe("Remote Sync", () => {
     describe("admin settings", () => {
       it("should show shared tenant collections section when tenants are enabled and remote sync is configured", () => {
         // First set up remote sync
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create some tenant collections
         H.createSharedTenantCollection("Tenant A Shared");
@@ -667,7 +676,7 @@ describe("Remote Sync", () => {
         // Disable tenants
         cy.request("PUT", "/api/setting/use-tenants", { value: false });
 
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         // Shared collections sub-section should NOT be visible
@@ -686,7 +695,7 @@ describe("Remote Sync", () => {
       });
 
       it("should show empty state when no shared tenant collections exist", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
@@ -696,7 +705,7 @@ describe("Remote Sync", () => {
       });
 
       it("can toggle sync for a shared tenant collection", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Tenant Collection To Sync");
@@ -736,7 +745,7 @@ describe("Remote Sync", () => {
       it("should reset collection toggles when switching from read-write to read-nly", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Mode Switch Test Collection");
@@ -767,7 +776,7 @@ describe("Remote Sync", () => {
 
     describe("syncing tenant collections", () => {
       it("can push changes from a synced tenant collection", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Syncable Tenant Collection").then(
@@ -815,7 +824,7 @@ describe("Remote Sync", () => {
       });
 
       it("shows sync status badge on synced tenant collections in sidebar", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Badge Test Collection").then(

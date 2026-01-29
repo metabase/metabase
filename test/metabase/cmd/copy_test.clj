@@ -47,6 +47,7 @@
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/Transform
     :model/TransformRun

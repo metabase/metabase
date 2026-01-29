@@ -4,6 +4,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
@@ -15,6 +16,7 @@ type Props = {
   isDirty: boolean;
   isEditMode: boolean;
   isSaving: boolean;
+  readOnly?: boolean;
   source: DraftTransformSource;
   transformId: TransformId;
 };
@@ -27,9 +29,11 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
+    readOnly,
     transformId,
   } = props;
   const metadata = useSelector(getMetadata);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
@@ -49,7 +53,13 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isPythonTransform && !isNative && !isEditMode) {
+  if (
+    !readOnly &&
+    !isPythonTransform &&
+    !isNative &&
+    !isEditMode &&
+    !isRemoteSyncReadOnly
+  ) {
     return <EditDefinitionButton transformId={transformId} />;
   }
 
@@ -59,7 +69,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
 
   return (
     <PaneHeaderActions
-      alwaysVisible={!isPythonTransform && isEditMode}
+      alwaysVisible={isEditMode}
       errorMessage={validationResult.errorMessage}
       isDirty={isDirty}
       isSaving={isSaving}

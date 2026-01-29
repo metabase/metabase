@@ -153,10 +153,11 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         enterprisePlugins: ["audit_app", "collections"],
       });
 
-      // change all users users view to no access
-      await userEvent.click(
-        await screen.findAllByText("View").then((dropdowns) => dropdowns[0]),
-      );
+      // change all internal users view to no access
+      const allUsersRow = await screen.findByRole("row", {
+        name: /All internal users/i,
+      });
+      await userEvent.click(within(allUsersRow).getByText("View"));
       await userEvent.click(await screen.findByText("No access"));
 
       expect(

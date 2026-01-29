@@ -1,13 +1,26 @@
 import type {
+  AnalysisFindingError,
   CardDependencyNode,
   CardDependencyNodeData,
   CheckCardDependenciesRequest,
   CheckDependenciesResponse,
   CheckSnippetDependenciesRequest,
   CheckTransformDependenciesRequest,
+  DashboardDependencyNode,
+  DashboardDependencyNodeData,
   DependencyEdge,
   DependencyEntry,
   DependencyGraph,
+  DocumentDependencyNode,
+  DocumentDependencyNodeData,
+  ListBrokenGraphNodesRequest,
+  ListBrokenGraphNodesResponse,
+  ListUnreferencedGraphNodesRequest,
+  ListUnreferencedGraphNodesResponse,
+  MeasureDependencyNode,
+  MeasureDependencyNodeData,
+  SandboxDependencyNode,
+  SandboxDependencyNodeData,
   SegmentDependencyNode,
   SegmentDependencyNodeData,
   SnippetDependencyNode,
@@ -24,6 +37,18 @@ export function createMockDependencyEntry(
   return {
     id: 1,
     type: "table",
+    ...opts,
+  };
+}
+
+export function createMockAnalysisFindingError(
+  opts?: Partial<AnalysisFindingError>,
+): AnalysisFindingError {
+  return {
+    id: 1,
+    analyzed_entity_id: 1,
+    analyzed_entity_type: "card",
+    error_type: "missing-column",
     ...opts,
   };
 }
@@ -210,6 +235,140 @@ export function createMockCheckDependenciesResponse(
 ): CheckDependenciesResponse {
   return {
     success: true,
+    ...opts,
+  };
+}
+
+export function createMockDashboardDependencyNodeData(
+  opts?: Partial<DashboardDependencyNodeData>,
+): DashboardDependencyNodeData {
+  return {
+    name: "Dashboard",
+    description: null,
+    created_at: "2020-01-01T00:00:00Z",
+    collection_id: null,
+    moderation_reviews: [],
+    ...opts,
+  } as DashboardDependencyNodeData;
+}
+
+export function createMockDashboardDependencyNode(
+  opts?: Partial<DashboardDependencyNode>,
+): DashboardDependencyNode {
+  return {
+    id: 1,
+    type: "dashboard",
+    data: createMockDashboardDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockDocumentDependencyNodeData(
+  opts?: Partial<DocumentDependencyNodeData>,
+): DocumentDependencyNodeData {
+  return {
+    name: "Document",
+    created_at: "2020-01-01T00:00:00Z",
+    collection_id: null,
+    ...opts,
+  } as DocumentDependencyNodeData;
+}
+
+export function createMockDocumentDependencyNode(
+  opts?: Partial<DocumentDependencyNode>,
+): DocumentDependencyNode {
+  return {
+    id: 1,
+    type: "document",
+    data: createMockDocumentDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockSandboxDependencyNodeData(
+  opts?: Partial<SandboxDependencyNodeData>,
+): SandboxDependencyNodeData {
+  return {
+    table_id: 1,
+    ...opts,
+  };
+}
+
+export function createMockSandboxDependencyNode(
+  opts?: Partial<SandboxDependencyNode>,
+): SandboxDependencyNode {
+  return {
+    id: 1,
+    type: "sandbox",
+    data: createMockSandboxDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockMeasureDependencyNodeData(
+  opts?: Partial<MeasureDependencyNodeData>,
+): MeasureDependencyNodeData {
+  return {
+    name: "Measure",
+    description: null,
+    table_id: 1,
+    created_at: "2020-01-01T00:00:00Z",
+    creator_id: 1,
+    ...opts,
+  };
+}
+
+export function createMockMeasureDependencyNode(
+  opts?: Partial<MeasureDependencyNode>,
+): MeasureDependencyNode {
+  return {
+    id: 1,
+    type: "measure",
+    data: createMockMeasureDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockListBrokenGraphNodesRequest(
+  opts?: Partial<ListBrokenGraphNodesRequest>,
+): ListBrokenGraphNodesRequest {
+  return {
+    ...opts,
+  };
+}
+
+export function createMockListBrokenGraphNodesResponse(
+  opts?: Partial<ListBrokenGraphNodesResponse>,
+): ListBrokenGraphNodesResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
+export function createMockListUnreferencedGraphNodesRequest(
+  opts?: Partial<ListUnreferencedGraphNodesRequest>,
+): ListUnreferencedGraphNodesRequest {
+  return {
+    ...opts,
+  };
+}
+
+export function createMockListUnreferencedGraphNodesResponse(
+  opts?: Partial<ListUnreferencedGraphNodesResponse>,
+): ListUnreferencedGraphNodesResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
     ...opts,
   };
 }

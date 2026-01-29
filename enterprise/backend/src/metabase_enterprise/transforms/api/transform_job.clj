@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -37,7 +38,6 @@
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
-  (api/check-superuser)
   ;; Validate cron expression
   (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
@@ -46,11 +46,13 @@
     (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
       (api/check-400 (= (set tag_ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
-  (let [job (t2/insert-returning-instance! :model/TransformJob
-                                           {:name name
-                                            :description description
-                                            :schedule schedule
-                                            :ui_display_type ui_display_type})]
+  (let [job-data {:name            name
+                  :description     description
+                  :schedule        schedule
+                  :ui_display_type ui_display_type}
+        _        (api/check-403 (mi/can-create? :model/TransformJob (assoc job-data :tag_ids tag_ids)))
+        job      (t2/insert-returning-instance! :model/TransformJob
+                                                job-data)]
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
@@ -82,8 +84,11 @@
                                                             (ms/enum-decode-keyword ui-display-types)]
                                                            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
+    ;; Check write permission on both current state and final state (with new tags if provided)
+    (api/write-check existing-job)
+    (when (some? tag-ids)
+      (api/write-check (assoc existing-job :tag_ids tag-ids))))
   ;; Validate cron expression if provided
   (when schedule
     (api/check-400 (transforms.schedule/validate-cron-expression schedule)
@@ -117,8 +122,7 @@
   "Delete a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  (api/write-check (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))
   (t2/delete! :model/TransformJob :id job-id)
   (transforms.schedule/delete-job! job-id)
   api/generic-204-no-content)
@@ -131,11 +135,11 @@
   "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual run of transform job" job-id)
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
+  (api/write-check (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
-     (transforms.jobs/run-job! job-id {:run-method :manual})
+     (transforms.jobs/run-job! job-id {:run-method :manual
+                                       :user-id api/*current-user-id*})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
        (log/error t))))
@@ -151,9 +155,8 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (api/check-superuser)
-  (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (t2/hydrate job :tag_ids :last_run)))
+  (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
+      (t2/hydrate :tag_ids :last_run)))
 
 (defn- add-next-run
   [{id :id :as job}]
@@ -170,10 +173,11 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
-  (api/check-superuser)
   (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
   (-> (transforms.jobs/job-transforms job-id)
-      (t2/hydrate :creator)))
+      (#(do (api/check-403 (every? mi/can-read? %)) %))
+      (t2/hydrate :creator)
+      transforms.util/add-source-readable))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -193,7 +197,7 @@
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
-  (api/check-superuser)
+  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*))
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)

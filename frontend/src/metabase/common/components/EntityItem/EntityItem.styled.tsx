@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { darken } from "metabase/lib/colors";
 import { color } from "metabase/ui/utils/colors";
 
