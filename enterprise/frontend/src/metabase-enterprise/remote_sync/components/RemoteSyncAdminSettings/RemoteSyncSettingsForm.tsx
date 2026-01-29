@@ -20,18 +20,24 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_COLLECTIONS, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
   Flex,
   Icon,
+  type IconName,
   Radio,
   Stack,
+  Switch,
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import {
+  useCreateLibraryMutation,
+  useGetLibraryCollectionQuery,
+} from "metabase-enterprise/api";
 import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
@@ -52,7 +58,9 @@ import {
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
+  SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
+  TRANSFORMS_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -67,6 +75,10 @@ export type RemoteSyncSettingsFormProps = {
   variant?: "admin" | "settings-modal";
 };
 
+type RemoteSyncSettingsFormState = RemoteSyncConfigurationSettings & {
+  "sync-library-pending"?: boolean;
+};
+
 export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const { onCancel, onSaveSuccess, variant = "admin" } = props;
   const { data: settingValues } = useGetSettingsQuery();
@@ -75,6 +87,8 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     updateRemoteSyncSettings,
     { isLoading: isUpdatingRemoteSyncSettings },
   ] = useUpdateRemoteSyncSettingsMutation();
+  const [createLibrary, { isLoading: isCreatingLibrary }] =
+    useCreateLibraryMutation();
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
@@ -92,10 +106,13 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     { skip: !isRemoteSyncEnabled },
   );
 
+  const isModalVariant = variant === "settings-modal";
+
   // Fetch library collection to build initial sync state
+  // For modal variant, always fetch to enable default-checked toggles
   const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
     undefined,
-    { skip: !isRemoteSyncEnabled },
+    { skip: !isRemoteSyncEnabled && !isModalVariant },
   );
   // Library collection endpoint returns { data: null } when not found
   const libraryCollection =
@@ -122,20 +139,55 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     show: showDisableConfirmation,
     modalContent: disableConfirmationModal,
   } = useConfirmation();
-  const isModalVariant = variant === "settings-modal";
 
   const handleSubmit = useCallback(
-    async (values: RemoteSyncConfigurationSettings) => {
+    async (values: RemoteSyncSettingsFormState) => {
       const didBranchChange =
         values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
 
+      const collectionsMap: Record<number, boolean> = {
+        ...values[COLLECTIONS_KEY],
+      };
+
+      // If user wants to sync library but it doesn't exist yet, create it first
+      const wantsSyncLibrary = values[SYNC_LIBRARY_PENDING_KEY];
+      if (isModalVariant && !libraryCollection && wantsSyncLibrary) {
+        try {
+          const newLibrary = await createLibrary().unwrap();
+          // Cast to number since the newly created library will have a numeric ID
+          collectionsMap[newLibrary.id as number] = true;
+        } catch (error) {
+          sendToast({
+            message: t`Failed to create Library`,
+            icon: "warning",
+          });
+          throw error;
+        }
+      }
+
+      // Build settings to save, excluding the pending library key
+      const valuesWithUpdatedCollections = {
+        ...values,
+        [COLLECTIONS_KEY]: collectionsMap,
+      };
+
       // Don't send collections when in read-only mode
-      const settingsToSave =
-        values[TYPE_KEY] === "read-only"
-          ? (Object.fromEntries(
-              Object.entries(values).filter(([key]) => key !== COLLECTIONS_KEY),
-            ) as RemoteSyncConfigurationSettings)
-          : values;
+      // Also filter out the sync-library-pending key as it's not a real setting
+      const isReadOnly = valuesWithUpdatedCollections[TYPE_KEY] === "read-only";
+      const settingsToSave: RemoteSyncConfigurationSettings = {
+        [REMOTE_SYNC_KEY]: valuesWithUpdatedCollections[REMOTE_SYNC_KEY],
+        [URL_KEY]: valuesWithUpdatedCollections[URL_KEY],
+        [TOKEN_KEY]: valuesWithUpdatedCollections[TOKEN_KEY],
+        [TYPE_KEY]: valuesWithUpdatedCollections[TYPE_KEY],
+        [BRANCH_KEY]: valuesWithUpdatedCollections[BRANCH_KEY],
+        [AUTO_IMPORT_KEY]: valuesWithUpdatedCollections[AUTO_IMPORT_KEY],
+        [TRANSFORMS_KEY]: valuesWithUpdatedCollections[TRANSFORMS_KEY],
+        ...(isReadOnly
+          ? {}
+          : {
+              [COLLECTIONS_KEY]: valuesWithUpdatedCollections[COLLECTIONS_KEY],
+            }),
+      };
 
       const saveSettings = async (
         settings: RemoteSyncConfigurationSettings,
@@ -196,6 +248,8 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       settingValues,
       updateRemoteSyncSettings,
       isModalVariant,
+      libraryCollection,
+      createLibrary,
       sendToast,
       onSaveSuccess,
       showChangeBranchConfirmation,
@@ -237,10 +291,14 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     // Build initial collection sync map from server data
     const collectionSyncMap: Record<number, boolean> = {};
 
+    // For modal variant during first-time setup, default library to checked
+    const shouldDefaultToChecked = isModalVariant && !isRemoteSyncEnabled;
+
     // Add library collection
     if (libraryCollection) {
-      collectionSyncMap[libraryCollection.id] =
-        libraryCollection.is_remote_synced ?? false;
+      collectionSyncMap[libraryCollection.id] = shouldDefaultToChecked
+        ? true
+        : (libraryCollection.is_remote_synced ?? false);
     }
 
     // Add top-level collections (excluding personal)
@@ -259,6 +317,14 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       ...values,
       [TOKEN_KEY]: tokenValue,
       [COLLECTIONS_KEY]: collectionSyncMap,
+      // For modal variant during first-time setup, default transforms to checked (if enabled)
+      [TRANSFORMS_KEY]:
+        shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
+          ? true
+          : values[TRANSFORMS_KEY],
+      // For modal variant when library doesn't exist, default to wanting to create and sync it
+      [SYNC_LIBRARY_PENDING_KEY]:
+        shouldDefaultToChecked && !libraryCollection ? true : false,
     };
   }, [
     settingValues,
@@ -266,6 +332,8 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     libraryCollection,
     topLevelCollectionsData,
     tenantCollectionsData,
+    isModalVariant,
+    isRemoteSyncEnabled,
   ]);
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
@@ -287,7 +355,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         validationContext={settingValues}
         onSubmit={handleSubmit}
       >
-        {({ dirty, values }) => (
+        {({ dirty, values, setFieldValue }) => (
           <Form disabled={!dirty}>
             <Stack gap="xl" maw="52rem">
               {!isModalVariant && !isRemoteSyncEnabled && (
@@ -432,11 +500,75 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   </RemoteSyncSettingsSection>
                 )}
 
-              {/* Read-write mode info */}
+              {/* Content to sync section for modal variant */}
               {isModalVariant && values?.[TYPE_KEY] === "read-write" && (
-                <Text c="text-secondary" size="sm">
-                  {t`In read-write mode, the Library collection will be enabled for syncing.`}
-                </Text>
+                <RemoteSyncSettingsSection
+                  title={t`Content to sync`}
+                  variant={variant}
+                >
+                  <Box
+                    style={{
+                      border: "1px solid var(--mb-color-border)",
+                      borderRadius: "var(--mantine-radius-md)",
+                    }}
+                  >
+                    {/* Library toggle - show even if library doesn't exist yet */}
+                    {libraryCollection ? (
+                      <ModalSyncToggleRow
+                        icon={
+                          PLUGIN_COLLECTIONS.getIcon({
+                            model: "collection",
+                            type: libraryCollection.type,
+                            is_remote_synced:
+                              values[COLLECTIONS_KEY]?.[libraryCollection.id] ??
+                              false,
+                          }).name as IconName
+                        }
+                        label={libraryCollection.name}
+                        isChecked={
+                          values[COLLECTIONS_KEY]?.[libraryCollection.id] ??
+                          false
+                        }
+                        onToggle={(checked) =>
+                          setFieldValue(
+                            `${COLLECTIONS_KEY}.${libraryCollection.id}`,
+                            checked,
+                          )
+                        }
+                        isLast={!PLUGIN_TRANSFORMS.isEnabled}
+                        ariaLabel={t`Sync ${libraryCollection.name}`}
+                      />
+                    ) : (
+                      <ModalSyncToggleRow
+                        icon="repository"
+                        label={t`Library`}
+                        isChecked={
+                          (values as Record<string, unknown>)[
+                            SYNC_LIBRARY_PENDING_KEY
+                          ] === true
+                        }
+                        onToggle={(checked) =>
+                          setFieldValue(SYNC_LIBRARY_PENDING_KEY, checked)
+                        }
+                        isLast={!PLUGIN_TRANSFORMS.isEnabled}
+                        ariaLabel={t`Sync Library`}
+                      />
+                    )}
+                    {/* Transforms toggle */}
+                    {PLUGIN_TRANSFORMS.isEnabled && (
+                      <ModalSyncToggleRow
+                        icon="transform"
+                        label={t`Transforms`}
+                        isChecked={values[TRANSFORMS_KEY] ?? false}
+                        onToggle={(checked) =>
+                          setFieldValue(TRANSFORMS_KEY, checked)
+                        }
+                        isLast
+                        ariaLabel={t`Sync Transforms`}
+                      />
+                    )}
+                  </Box>
+                </RemoteSyncSettingsSection>
               )}
 
               {/* Footer Actions - Outside Sections */}
@@ -477,7 +609,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     }
                     variant="filled"
                     disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}
-                    loading={isUpdatingRemoteSyncSettings}
+                    loading={isUpdatingRemoteSyncSettings || isCreatingLibrary}
                   />
                 </Flex>
               </Flex>
@@ -522,4 +654,47 @@ const getEnvSettingProps = (setting?: SettingDefinition) => {
     };
   }
   return {};
+};
+
+interface ModalSyncToggleRowProps {
+  icon: IconName;
+  label: string;
+  isChecked: boolean;
+  onToggle: (checked: boolean) => void;
+  isLast: boolean;
+  ariaLabel: string;
+}
+
+const ModalSyncToggleRow = ({
+  icon,
+  label,
+  isChecked,
+  onToggle,
+  isLast,
+  ariaLabel,
+}: ModalSyncToggleRowProps) => {
+  return (
+    <Box
+      p="md"
+      style={{
+        borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
+      }}
+    >
+      <Flex justify="space-between" align="center">
+        <Flex align="center" gap="sm">
+          <Icon name={icon} c="text-secondary" />
+          <Text fw="medium">{label}</Text>
+        </Flex>
+        <Flex align="center" gap="sm">
+          <Switch
+            size="sm"
+            checked={isChecked}
+            onChange={(e) => onToggle(e.currentTarget.checked)}
+            aria-label={ariaLabel}
+          />
+          <Text>{t`Sync`}</Text>
+        </Flex>
+      </Flex>
+    </Box>
+  );
 };

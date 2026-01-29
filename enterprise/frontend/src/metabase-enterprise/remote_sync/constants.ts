@@ -11,6 +11,8 @@ export const REMOTE_SYNC_KEY = "remote-sync-enabled";
 export const AUTO_IMPORT_KEY = "remote-sync-auto-import";
 export const TRANSFORMS_KEY = "remote-sync-transforms";
 export const COLLECTIONS_KEY = "collections";
+// Used in modal variant when library doesn't exist yet but user wants to sync it
+export const SYNC_LIBRARY_PENDING_KEY = "sync-library-pending";
 
 export const REMOTE_SYNC_SCHEMA = Yup.object({
   [REMOTE_SYNC_KEY]: Yup.boolean().nullable().default(true),
@@ -24,6 +26,7 @@ export const REMOTE_SYNC_SCHEMA = Yup.object({
     .default("read-only"),
   [BRANCH_KEY]: Yup.string().nullable().default("main"),
   [COLLECTIONS_KEY]: Yup.object().nullable().default({}),
+  [SYNC_LIBRARY_PENDING_KEY]: Yup.boolean().nullable().default(false),
 });
 
 export const REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<EnterpriseTagType>[] =
