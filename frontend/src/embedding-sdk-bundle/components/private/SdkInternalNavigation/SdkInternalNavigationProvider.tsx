@@ -11,9 +11,16 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
+import { useSdkStore } from "embedding-sdk-bundle/store";
+import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import * as Urls from "metabase/lib/urls";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
+import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
+import type { QuestionDashboardCard } from "metabase-types/api";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
@@ -30,6 +37,8 @@ import {
 
 type Props = {
   children: ReactNode;
+  /** The dashboard ID for navigateToNewCardFromDashboard */
+  dashboardId?: SdkDashboardId | null;
   dashboardProps?: Partial<Omit<SdkDashboardInnerProps, "dashboardId">>;
   /** Custom renderer for drill-through questions */
   renderDrillThroughQuestion?: () => ReactNode;
@@ -48,12 +57,14 @@ const SdkInternalNavigationProviderInner = ({
   style,
   className,
   children,
+  dashboardId,
   dashboardProps,
   renderDrillThroughQuestion: RenderDrillThroughQuestion,
   drillThroughQuestionProps,
 }: Props) => {
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
   const isNavigatingRef = useRef(false);
+  const store = useSdkStore();
 
   const push = useCallback((entry: SdkInternalNavigationEntry) => {
     setStack((prev) => [...prev, entry]);
@@ -136,6 +147,73 @@ const SdkInternalNavigationProviderInner = ({
     [push, stack, updateCurrentEntry],
   );
 
+  // Navigate to a new card from a dashboard context (for drills and "go to card" actions)
+  const navigateToNewCardFromDashboard = useCallback(
+    ({
+      nextCard,
+      previousCard,
+      dashcard,
+      objectId,
+    }: NavigateToNewCardFromDashboardOpts) => {
+      const state = store.getState();
+      const metadata = getMetadata(state);
+      const { dashboards, parameterValues } = state.dashboard;
+
+      if (dashboardId == null) {
+        console.warn(
+          "[SDK Navigation] dashboardId is null in navigateToNewCardFromDashboard",
+        );
+        return;
+      }
+
+      // Find the dashboard by ID (numeric or entity ID)
+      const dashboard = Object.values(dashboards).find(
+        (d) =>
+          d.id === dashboardId ||
+          d.entity_id === dashboardId ||
+          String(d.id) === String(dashboardId),
+      );
+
+      if (dashboard) {
+        // Check if this is a "go to card" action (clicking card title) vs a drill action
+        // When clicking on a card title, previousCard is undefined (from ChartCaption)
+        // OR nextCard and previousCard are equivalent (from other places)
+        const isGoToCardAction =
+          (previousCard == null || cardIsEquivalent(nextCard, previousCard)) &&
+          nextCard.id != null;
+
+        if (isGoToCardAction) {
+          // Navigate to the saved question directly
+          push({
+            type: "question",
+            id: nextCard.id,
+            name: nextCard.name || t`Question`,
+          });
+        } else {
+          // This is a drill action - generate URL for adhoc question
+          const url = getNewCardUrl({
+            metadata,
+            dashboard,
+            parameterValues,
+            nextCard,
+            previousCard,
+            dashcard: dashcard as QuestionDashboardCard,
+            objectId,
+          });
+
+          if (url) {
+            push({
+              type: "adhoc-question",
+              questionPath: url,
+              name: nextCard.name || t`Question`,
+            });
+          }
+        }
+      }
+    },
+    [store, dashboardId, push],
+  );
+
   const value = useMemo(
     () => ({
       stack,
@@ -145,9 +223,17 @@ const SdkInternalNavigationProviderInner = ({
       previousEntry: stack.at(-2),
       canGoBack: stack.length > 1,
       navigateToNewCard,
+      navigateToNewCardFromDashboard,
       initWithDashboard,
     }),
-    [stack, push, pop, navigateToNewCard, initWithDashboard],
+    [
+      stack,
+      push,
+      pop,
+      navigateToNewCard,
+      navigateToNewCardFromDashboard,
+      initWithDashboard,
+    ],
   );
 
   const currentEntry = value.currentEntry;
@@ -189,7 +275,7 @@ const SdkInternalNavigationProviderInner = ({
         questionPath={currentEntry.questionPath}
         onNavigateBack={pop}
         navigateToNewCard={navigateToNewCard}
-        isSaveEnabled={false}
+        // isSaveEnabled={false}
         {...drillThroughQuestionProps}
       >
         {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}

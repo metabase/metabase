@@ -30,8 +30,11 @@ export type EditableDashboardProps = SdkDashboardProps &
 
 // Inner component that uses the navigation context
 const EditableDashboardContent = (props: EditableDashboardProps) => {
-  const { push: pushNavigation, initWithDashboard } =
-    useSdkInternalNavigation();
+  const {
+    push: pushNavigation,
+    initWithDashboard,
+    navigateToNewCardFromDashboard,
+  } = useSdkInternalNavigation();
   const dashboard = useSdkSelector(getDashboardComplete);
 
   // Initialize the navigation stack with the dashboard when it loads
@@ -78,6 +81,7 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       dashboardActions={dashboardActions}
     />
   );
@@ -87,6 +91,7 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
 export const EditableDashboardInner = (props: EditableDashboardProps) => {
   return (
     <SdkInternalNavigationProvider
+      dashboardId={props.dashboardId}
       style={props.style}
       className={props.className}
       dashboardProps={props}

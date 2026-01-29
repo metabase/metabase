@@ -269,6 +269,48 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
+    it("should navigate to the question when clicking on the dashcard title", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        // Verify we're on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Click on the dashcard title to navigate to the question
+        H.getDashboardCard()
+          .findByText("Orders for Dashboard A")
+          .should("be.visible")
+          .click();
+
+        // Verify the question loaded (visualization root should be visible)
+        cy.findByTestId("visualization-root").should("be.visible");
+
+        // Verify breadcrumb shows Dashboard A
+        cy.findByText("Back to Dashboard A").should("be.visible");
+
+        // Go back to Dashboard A
+        cy.findByText("Back to Dashboard A").click();
+
+        cy.wait("@getDashboard");
+
+        // Verify we're back on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Verify no back button exists (we're at the root)
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
     it("should support nested navigations dashboard -> dashboard -> question -> drill -> back through all", () => {
       cy.get<number>("@dashboardAId").then((dashboardAId) => {
         mountSdkContent(

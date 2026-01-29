@@ -6,6 +6,7 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionId,
 } from "embedding-sdk-bundle/types/question";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 
 import type { SdkQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
@@ -51,6 +52,9 @@ export type SdkInternalNavigationContextValue = {
   canGoBack: boolean;
   previousEntry: SdkInternalNavigationEntry | undefined;
   navigateToNewCard: (params: NavigateToNewCardParams) => Promise<void>;
+  navigateToNewCardFromDashboard: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
   initWithDashboard: (dashboard: { id: number; name: string }) => void;
 };
 
