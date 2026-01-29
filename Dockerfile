@@ -23,8 +23,11 @@ COPY . .
 # version is pulled from git, but git doesn't trust the directory due to different owners
 RUN git config --global --add safe.directory /home/node
 
+# install bun for frontend dependencies
+RUN npm install -g bun
+
 # install frontend dependencies
-RUN yarn --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 

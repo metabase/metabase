@@ -76,7 +76,7 @@ const init = async () => {
       printBold("⚠️ Your backend is already running");
       console.log(`If tests fail or if something doesn't work:
       - Kill the pid ${backendPid}
-      - Run *yarn test-cypress* again
+      - Run *bun run test-cypress* again
       - This will spin up the live backend with the correct settings for e2e tests
     `);
     } else {
@@ -110,7 +110,7 @@ const init = async () => {
     !runningFromJar
   ) {
     printBold(
-      "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
+      "⚠️⚠️ You don't have your frontend running. You should probably run bun run build-hot ⚠️⚠️",
     );
   }
 
