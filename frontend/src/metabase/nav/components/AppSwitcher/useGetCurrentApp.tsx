@@ -6,11 +6,11 @@ export const useGetCurrentApp = () => {
   const { location } = useRouter();
   return match(location.pathname)
     .when(
-      (path) => path.startsWith("/admin/"),
+      (path) => path.startsWith("/admin"),
       () => "admin",
     )
     .when(
-      (path) => path.startsWith("/data-studio/"),
+      (path) => path.startsWith("/data-studio"),
       () => "data-studio",
     )
     .otherwise(() => "main");
