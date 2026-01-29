@@ -7,7 +7,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.analytics.settings :as analytics.settings]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -209,7 +209,7 @@
                                 buddy-hash/sha256
                                 codecs/bytes->hex)
         token-or-uuid   (or hashed-token
-                            (str "oss__" (analytics.settings/analytics-uuid)))
+                            (str "oss__" (analytics/analytics-uuid)))
         estimated-costs (llm.costs/estimate {:model      model
                                              :prompt     prompt
                                              :completion completion})]

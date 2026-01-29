@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.settings :as analytics.settings]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api :as api]
@@ -350,7 +350,7 @@
                                                                         :data data
                                                                         :user-id user-id}))
                     premium-features/premium-embedding-token (constantly nil)
-                    analytics.settings/analytics-uuid (constantly test-analytics-uuid)]
+                    analytics/analytics-uuid (constantly test-analytics-uuid)]
         (#'api/track-token-usage! {:model "anthropic/claude-sonnet-4-5"
                                    :prompt 1000
                                    :completion 500
