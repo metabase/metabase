@@ -1,8 +1,18 @@
+/* eslint-disable no-color-literals */
+
 import type { TransformInspectResponse } from "./mock-types";
 
 export const fetchTransformInspect = (
-  _transformId: number,
+  transformId: number,
 ): Promise<TransformInspectResponse> => {
+  // eslint-disable-next-line no-console
+  console.log(
+    "%c[Mock API]%c GET /api/ee/transform/%s/inspect",
+    "background: #7c3aed; color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold;",
+    "color: #7c3aed; font-weight: bold;",
+    transformId,
+  );
+
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
