@@ -2,7 +2,6 @@
 // Rule Definition
 //------------------------------------------------------------------------------
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",

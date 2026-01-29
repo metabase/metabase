@@ -9,7 +9,6 @@
 const ERROR_MESSAGE =
   'Do not import "H" from "e2e/support". use "const { H } = cy" instead.';
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",

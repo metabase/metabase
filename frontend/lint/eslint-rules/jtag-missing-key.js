@@ -6,7 +6,6 @@
 const ERROR_MESSAGE =
   "JSX elements in jt`` tagged templates must have a key prop. Add key='unique-identifier' to the JSX element.";
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",

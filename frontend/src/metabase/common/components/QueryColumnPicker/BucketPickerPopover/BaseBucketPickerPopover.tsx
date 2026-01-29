@@ -47,7 +47,7 @@ export interface BaseBucketPickerPopoverProps {
   };
 }
 
-function _BaseBucketPickerPopover({
+function BaseBucketPickerPopoverInner({
   query,
   stageIndex,
   items,
@@ -224,7 +224,10 @@ const TriggerButton = forwardRef(function TriggerButton(
   );
 });
 
-export const BaseBucketPickerPopover = Object.assign(_BaseBucketPickerPopover, {
-  displayName: "BucketPickerPopover",
-  TriggerButton,
-});
+export const BaseBucketPickerPopover = Object.assign(
+  BaseBucketPickerPopoverInner,
+  {
+    displayName: "BucketPickerPopover",
+    TriggerButton,
+  },
+);

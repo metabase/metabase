@@ -45,7 +45,10 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
   };
 };
 
-const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
+const ImpersonationModalInner = ({
+  route,
+  params,
+}: ImpersonationModalProps) => {
   const [
     {
       loading: isImpersonationLoading,
@@ -153,4 +156,4 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
   );
 };
 
-export const ImpersonationModal = withRouter(_ImpersonationModal);
+export const ImpersonationModal = withRouter(ImpersonationModalInner);

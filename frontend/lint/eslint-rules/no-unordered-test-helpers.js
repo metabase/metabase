@@ -8,7 +8,6 @@
 
 const ERROR_MESSAGE = "H.restore() must come before H.resetTestTable()";
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",

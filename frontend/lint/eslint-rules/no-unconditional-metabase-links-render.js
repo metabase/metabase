@@ -37,7 +37,6 @@ const HOOK_ERROR_MESSAGE =
 const LITERAL_METABASE_URL_REGEX =
   /(metabase\.com\/docs|metabase\.com\/learn)($|\/)/;
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",

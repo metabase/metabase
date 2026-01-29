@@ -26,7 +26,7 @@ import { getGridSizeAdjustedSettings } from "./utils";
 const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
 
-function _CartesianChart(props: VisualizationProps) {
+function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -196,7 +196,7 @@ function _CartesianChart(props: VisualizationProps) {
 export function CartesianChart(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
-      <_CartesianChart {...props} />
+      <CartesianChartInner {...props} />
     </ChartRenderingErrorBoundary>
   );
 }

@@ -282,4 +282,5 @@ const SegmentDetail = (props) => {
 
 SegmentDetail.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentDetail);

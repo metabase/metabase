@@ -29,6 +29,7 @@ import { Table } from "./visualizations/Table/Table";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function () {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);

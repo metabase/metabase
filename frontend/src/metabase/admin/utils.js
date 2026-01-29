@@ -31,7 +31,7 @@ const mapDispatchToProps = {
   replace,
 };
 
-const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
+const RedirectToAllowedSettingsInner = ({ adminItems, replace }) => {
   useLayoutEffect(() => {
     replace(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path);
   }, [adminItems, replace]);
@@ -39,7 +39,7 @@ const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
   return null;
 };
 
-_RedirectToAllowedSettings.propTypes = {
+RedirectToAllowedSettingsInner.propTypes = {
   adminItems: PropTypes.arrayOf(PropTypes.shape({ path: PropTypes.string })),
   replace: PropTypes.func.isRequired,
 };
@@ -47,7 +47,7 @@ _RedirectToAllowedSettings.propTypes = {
 export const RedirectToAllowedSettings = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(_RedirectToAllowedSettings);
+)(RedirectToAllowedSettingsInner);
 
 export const createTenantsRouteGuard = () => {
   const Wrapper = connectedReduxRedirect({
