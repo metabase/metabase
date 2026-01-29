@@ -315,8 +315,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
           ? true
           : values[TRANSFORMS_KEY],
       // For modal variant when library doesn't exist, default to wanting to create and sync it
-      [SYNC_LIBRARY_PENDING_KEY]:
-        shouldDefaultToChecked && !libraryCollection ? true : false,
+        [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
     };
   }, [
     settingValues,
