@@ -19,7 +19,8 @@
    [:entity_id [:maybe :string]]
    [:created_at :any]
    [:updated_at :any]
-   [:built_in_type {:optional true} [:maybe :string]]])
+   [:built_in_type {:optional true} [:maybe :string]]
+   [:can_run {:optional true} :boolean]])
 
 (api.macros/defendpoint :post "/" :- TransformTagResponse
   "Create a new transform tag."
