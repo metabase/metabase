@@ -1945,9 +1945,13 @@
                    (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
 
 ;;; ============================================ Authorization Test Matrix ============================================
+;;
+;; TODO: Review and remove redundant authorization tests elsewhere in this file.
+;; The service-user-authorization-test below provides comprehensive coverage of the authorization matrix.
+;; Tests like workspace-endpoints-require-superuser-test may now be partially redundant.
 
 (def ^:private admin-only-routes
-  "Routes that require superuser access (no {:access :workspace} metadata)"
+  "Routes that require superuser access"
   [[:get  "/"]
    [:post "/"]
    [:get  "/enabled"]
@@ -1970,7 +1974,7 @@
    [:get  "/:ws-id/problem"]
    [:get  "/:ws-id/external/transform"]
    [:get  "/:ws-id/transform"]
-   [:post "/:ws-id/transform"] u
+   [:post "/:ws-id/transform"]
    [:get  "/:ws-id/transform/:tx-id"]
    [:put  "/:ws-id/transform/:tx-id"]
    [:delete "/:ws-id/transform/:tx-id"]
@@ -1998,16 +2002,16 @@
 
         ;; We don't test whether an admin can access the routes - that's implicit in the regular tests for each route.
 
-        #_(testing "Admin-only routes reject service users"
-            (doseq [[method pattern] admin-only-routes
-                    :let [url (resolve-url pattern)]]
-              (testing (str method " " pattern)
-                (is (= permission-denied-msg
-                       (mt/user-http-request service-user-1 method 403 url))
-                    "Should reject workspace's own service user"))))
+        (testing "Admin-only routes reject service users"
+          (doseq [[method pattern] admin-only-routes
+                  :let [url (resolve-url pattern)]]
+            (testing (str method " " pattern)
+              (is (= permission-denied-msg
+                     (mt/user-http-request service-user-1 method 403 url))
+                  "Should reject workspace's own service user"))))
 
-        (testing "Workspace routes allow their own service user, but not others"
-          (doseq [[method pattern] service-user-rotes
+        (testing "Workspace routes allow own service user, reject others"
+          (doseq [[method pattern] service-user-routes
                   :let [url (resolve-url pattern)]]
             (testing (str method " " pattern)
               ;; We check for NOT 403 since some routes may 404 without full setup.
@@ -2015,6 +2019,6 @@
               (is (not= permission-denied-msg
                         (mt/user-http-request service-user-1 method url))
                   "Should allow workspace's own service user")
-              #_(is (= permission-denied-msg
-                       (mt/user-http-request service-user-2 method 403 url))
-                    "Should reject other workspace's service user"))))))))
+              (is (= permission-denied-msg
+                     (mt/user-http-request service-user-2 method 403 url))
+                  "Should reject other workspace's service user"))))))))

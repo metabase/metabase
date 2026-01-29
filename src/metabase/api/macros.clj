@@ -679,7 +679,6 @@
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
     (some (fn [[route handler metadata]]
-            (when metadata #p metadata)
             (when-let [route-params (clout/route-matches route request)]
               [(-> request
                    (assoc :route-params (decode-route-params route-params))
