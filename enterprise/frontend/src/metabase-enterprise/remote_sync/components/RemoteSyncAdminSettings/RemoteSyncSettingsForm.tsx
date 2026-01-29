@@ -20,17 +20,15 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_COLLECTIONS, PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
   Flex,
   Icon,
-  type IconName,
   Radio,
   Stack,
-  Switch,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -506,68 +504,17 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   title={t`Content to sync`}
                   variant={variant}
                 >
-                  <Box
-                    style={{
-                      border: "1px solid var(--mb-color-border)",
-                      borderRadius: "var(--mantine-radius-md)",
-                    }}
-                  >
-                    {/* Library toggle - show even if library doesn't exist yet */}
-                    {libraryCollection ? (
-                      <ModalSyncToggleRow
-                        icon={
-                          PLUGIN_COLLECTIONS.getIcon({
-                            model: "collection",
-                            type: libraryCollection.type,
-                            is_remote_synced:
-                              values[COLLECTIONS_KEY]?.[libraryCollection.id] ??
-                              false,
-                          }).name as IconName
-                        }
-                        label={libraryCollection.name}
-                        isChecked={
-                          values[COLLECTIONS_KEY]?.[libraryCollection.id] ??
-                          false
-                        }
-                        onToggle={(checked) =>
-                          setFieldValue(
-                            `${COLLECTIONS_KEY}.${libraryCollection.id}`,
-                            checked,
-                          )
-                        }
-                        isLast={!PLUGIN_TRANSFORMS.isEnabled}
-                        ariaLabel={t`Sync ${libraryCollection.name}`}
-                      />
-                    ) : (
-                      <ModalSyncToggleRow
-                        icon="repository"
-                        label={t`Library`}
-                        isChecked={
-                          (values as Record<string, unknown>)[
-                            SYNC_LIBRARY_PENDING_KEY
-                          ] === true
-                        }
-                        onToggle={(checked) =>
-                          setFieldValue(SYNC_LIBRARY_PENDING_KEY, checked)
-                        }
-                        isLast={!PLUGIN_TRANSFORMS.isEnabled}
-                        ariaLabel={t`Sync Library`}
-                      />
-                    )}
-                    {/* Transforms toggle */}
-                    {PLUGIN_TRANSFORMS.isEnabled && (
-                      <ModalSyncToggleRow
-                        icon="transform"
-                        label={t`Transforms`}
-                        isChecked={values[TRANSFORMS_KEY] ?? false}
-                        onToggle={(checked) =>
-                          setFieldValue(TRANSFORMS_KEY, checked)
-                        }
-                        isLast
-                        ariaLabel={t`Sync Transforms`}
-                      />
-                    )}
-                  </Box>
+                  <TopLevelCollectionsList
+                    skipCollections
+                    onLibraryPendingChange={(checked) =>
+                      setFieldValue(SYNC_LIBRARY_PENDING_KEY, checked)
+                    }
+                    isLibraryPendingChecked={
+                      (values as Record<string, unknown>)[
+                        SYNC_LIBRARY_PENDING_KEY
+                      ] === true
+                    }
+                  />
                 </RemoteSyncSettingsSection>
               )}
 
@@ -654,47 +601,4 @@ const getEnvSettingProps = (setting?: SettingDefinition) => {
     };
   }
   return {};
-};
-
-interface ModalSyncToggleRowProps {
-  icon: IconName;
-  label: string;
-  isChecked: boolean;
-  onToggle: (checked: boolean) => void;
-  isLast: boolean;
-  ariaLabel: string;
-}
-
-const ModalSyncToggleRow = ({
-  icon,
-  label,
-  isChecked,
-  onToggle,
-  isLast,
-  ariaLabel,
-}: ModalSyncToggleRowProps) => {
-  return (
-    <Box
-      p="md"
-      style={{
-        borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
-      }}
-    >
-      <Flex justify="space-between" align="center">
-        <Flex align="center" gap="sm">
-          <Icon name={icon} c="text-secondary" />
-          <Text fw="medium">{label}</Text>
-        </Flex>
-        <Flex align="center" gap="sm">
-          <Switch
-            size="sm"
-            checked={isChecked}
-            onChange={(e) => onToggle(e.currentTarget.checked)}
-            aria-label={ariaLabel}
-          />
-          <Text>{t`Sync`}</Text>
-        </Flex>
-      </Flex>
-    </Box>
-  );
 };

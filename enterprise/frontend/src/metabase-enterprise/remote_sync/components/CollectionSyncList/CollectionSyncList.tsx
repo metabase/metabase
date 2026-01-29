@@ -1,8 +1,10 @@
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
+import { t } from "ttag";
 
-import { Box, Flex, Loader, Text } from "metabase/ui";
+import CS from "metabase/css/core/bordered.module.css";
+import { Box, Flex, Icon, Loader, Switch, Text } from "metabase/ui";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
@@ -21,6 +23,18 @@ interface CollectionSyncListProps {
   error: string | null;
   isLoading: boolean;
   showTransformsRow?: boolean;
+  /**
+   * When true and no library collection exists, show a placeholder row for library.
+   */
+  showLibraryPlaceholder?: boolean;
+  /**
+   * Callback when the library pending toggle changes (when library doesn't exist).
+   */
+  onLibraryPendingChange?: (checked: boolean) => void;
+  /**
+   * Current state of the library pending toggle.
+   */
+  isLibraryPendingChecked?: boolean;
 }
 
 export const CollectionSyncList = ({
@@ -29,6 +43,9 @@ export const CollectionSyncList = ({
   error,
   isLoading,
   showTransformsRow,
+  showLibraryPlaceholder,
+  onLibraryPendingChange,
+  isLibraryPendingChecked,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
@@ -64,6 +81,32 @@ export const CollectionSyncList = ({
       />
     ));
 
+    if (showLibraryPlaceholder && onLibraryPendingChange) {
+      const libraryPlaceholderRow = (
+        <Box key="library-placeholder" p="md" className={CS.borderRowDivider}>
+          <Flex justify="space-between" align="center">
+            <Flex align="center" gap="sm">
+              <Icon name="repository" c="text-secondary" />
+              <Text fw="medium">{t`Library`}</Text>
+            </Flex>
+            <Flex align="center" gap="sm">
+              <Switch
+                size="sm"
+                checked={isLibraryPendingChecked ?? false}
+                onChange={(e) =>
+                  onLibraryPendingChange(e.currentTarget.checked)
+                }
+                disabled={isReadOnly}
+                aria-label={t`Sync Library`}
+              />
+              <Text>{t`Sync`}</Text>
+            </Flex>
+          </Flex>
+        </Box>
+      );
+      rowsItems.unshift(libraryPlaceholderRow);
+    }
+
     if (showTransformsRow) {
       const transformsRow = (
         <TransformsSyncRow key="transforms" isReadOnly={isReadOnly} />
@@ -72,16 +115,28 @@ export const CollectionSyncList = ({
         (collection) => collection.type === "library",
       );
 
-      // Insert transforms row before library collection or as last item
+      // Insert transforms row after library collection or placeholder
       if (libraryIndex !== -1) {
         rowsItems.splice(libraryIndex + 1, 0, transformsRow);
+      } else if (showLibraryPlaceholder) {
+        // Insert after library placeholder (at index 1)
+        rowsItems.splice(1, 0, transformsRow);
       } else {
         rowsItems.push(transformsRow);
       }
     }
 
     return rowsItems;
-  }, [collections, handleToggle, isReadOnly, showTransformsRow, values]);
+  }, [
+    collections,
+    handleToggle,
+    isReadOnly,
+    showTransformsRow,
+    values,
+    showLibraryPlaceholder,
+    onLibraryPendingChange,
+    isLibraryPendingChecked,
+  ]);
 
   if (isLoading) {
     return (
