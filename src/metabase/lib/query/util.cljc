@@ -55,23 +55,29 @@
   (lib.field/with-fields query stage-number (mapv #(find-column query stage-number (lib.metadata.calculation/visible-columns query stage-number) %) field-specs)))
 
 (mu/defn- matches-temporal-bucket? :- :boolean
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   option         :- ::lib.schema.temporal-bucketing/option
-   {:keys [unit]} :- ::lib.schema.query/test-temporal-bucket-spec]
-  (cond-> true
-    (some? unit) (and (= unit (:unit option)))))
+  [option         :- ::lib.schema.temporal-bucketing/option
+   unit           :- ::lib.schema.temporal-bucketing/unit]
+  (= unit (:unit option)))
 
 (mu/defn- find-temporal-bucket :- ::lib.schema.temporal-bucketing/option
-  [query                :- ::lib.schema/query
-   stage-number         :- :int
-   options              :- [:sequential ::lib.schema.temporal-bucketing/option]
-   temporal-bucket-spec :- ::lib.schema.query/test-temporal-bucket-spec]
-  (let [options (filterv #(matches-temporal-bucket? query stage-number % temporal-bucket-spec) options)]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   column        :- ::lib.schema.metadata/column
+   unit          :- ::lib.schema.temporal-bucketing/unit]
+  (let [temporal-buckets (lib.temporal-bucket/available-temporal-buckets query stage-number column)
+        options (filterv #(matches-temporal-bucket? % unit) temporal-buckets)]
     (case (count options)
       0 (throw (ex-info "No temporal bucket found" {:options options}))
       1 (first options)
       (throw (ex-info "Multiple temporal buckets found" {:options options})))))
+
+(mu/defn- append-temporal-bucket :- ::lib.schema/query
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   unit         :- ::lib.schema.temporal-bucketing/unit
+   column       :- ::lib.schema.metadata/column]
+  (let [temporal-bucket  (find-temporal-bucket query stage-number column unit)]
+    (lib.temporal-bucket/with-temporal-bucket column temporal-bucket)))
 
 (mu/defn- append-breakout :- ::lib.schema/query
   [query               :- ::lib.schema/query
@@ -80,12 +86,9 @@
    {:keys [unit]
     :as breakout-spec} :- ::lib.schema.query/test-breakout-spec]
   (let [column (find-column query stage-number columns breakout-spec)
-        column (cond
-                 unit (let [temporal-buckets (lib.temporal-bucket/available-temporal-buckets query stage-number column)
-                            temporal-bucket  (find-temporal-bucket query stage-number temporal-buckets breakout-spec)]
-                        (lib.temporal-bucket/with-temporal-bucket column temporal-bucket))
-                 :else column)]
-    (lib.breakout/breakout query stage-number column)))
+        column-with-bucketing (cond->> column
+                                unit (append-temporal-bucket query stage-number unit))]
+    (lib.breakout/breakout query stage-number column-with-bucketing)))
 
 (mu/defn- append-breakouts :- ::lib.schema/query
   [query          :- ::lib.schema/query
