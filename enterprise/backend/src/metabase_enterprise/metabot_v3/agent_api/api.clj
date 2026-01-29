@@ -29,11 +29,13 @@
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
 (defn- check-tool-result
-  "Extract :structured-output from a tool result, or throw 404 with the error message.
-   Tool functions return {:structured-output ...} on success, {:output \"error\"} on failure."
-  [{:keys [structured-output output]}]
+  "Extract :structured-output from a tool result, or throw with the appropriate HTTP status code.
+   Tool functions return {:structured-output ...} on success,
+   {:output \"error\" :status-code 4xx/5xx} on failure.
+   Defaults to 404 if no status-code is provided for backwards compatibility."
+  [{:keys [structured-output output status-code]}]
   (or structured-output
-      (api/check false [404 (or output "Not found.")])))
+      (api/check false [(or status-code 404) (or output "Not found.")])))
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 
