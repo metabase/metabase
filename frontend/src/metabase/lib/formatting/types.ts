@@ -13,7 +13,6 @@ export interface OptionsType extends TimeOnlyOptions {
   compact?: boolean;
   date_abbreviate?: boolean;
   date_format?: string;
-  date_separator?: string;
   date_style?: string;
   decimals?: number;
   isExclude?: boolean;
