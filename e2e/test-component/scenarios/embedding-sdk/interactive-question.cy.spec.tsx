@@ -80,7 +80,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it.only("should be able to create a native question with the QueryEditor", () => {
+  it("should be able to create a native question with the QueryEditor", () => {
     cy.intercept("GET", "/api/database?can-query=true").as("schema");
 
     mountSdkContent(
