@@ -199,14 +199,16 @@
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
-(deftest can-write?-test
+(deftest can-write?-superuser-test
   (testing "Superusers can write measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
                                            :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? measure))))))
+        (is (true? (mi/can-write? measure)))))))
+
+(deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write measures"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -218,7 +220,9 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (mi/can-write? measure))))))
+          (is (mi/can-write? measure)))))))
+
+(deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write measures"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
@@ -227,7 +231,9 @@
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (session/with-current-user analyst-id
-          (is (false? (mi/can-write? measure)))))))
+          (is (false? (mi/can-write? measure))))))))
+
+(deftest can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
                                            :table_id (mt/id :venues)
@@ -236,12 +242,14 @@
       (mt/with-test-user :rasta
         (is (false? (mi/can-write? measure)))))))
 
-(deftest can-create?-test
+(deftest can-create?-superuser-test
   (testing "Superusers can create measures"
     (mt/with-test-user :crowberto
       (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
                                                  :table_id (mt/id :venues)
-                                                 :definition (measure-definition (lib/count))})))))
+                                                 :definition (measure-definition (lib/count))}))))))
+
+(deftest can-create?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can create measures"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -251,14 +259,18 @@
         (session/with-current-user analyst-id
           (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
                                                      :table_id (mt/id :venues)
-                                                     :definition (measure-definition (lib/count))})))))))
+                                                     :definition (measure-definition (lib/count))}))))))))
+
+(deftest can-create?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot create measures"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}]
         (session/with-current-user analyst-id
           (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
                                                       :table_id (mt/id :venues)
-                                                      :definition (measure-definition (lib/count))})))))))
+                                                      :definition (measure-definition (lib/count))}))))))))
+
+(deftest can-create?-non-analyst-test
   (testing "Non-data-analysts cannot create measures"
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"

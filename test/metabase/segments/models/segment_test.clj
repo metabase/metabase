@@ -190,14 +190,16 @@
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
-(deftest can-write?-test
+(deftest can-write?-superuser-test
   (testing "Superusers can write segments"
     (mt/with-temp [:model/Segment segment {:name "Test Segment"
                                            :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? segment))))))
+        (is (true? (mi/can-write? segment)))))))
+
+(deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write segments"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -209,7 +211,9 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (mi/can-write? segment))))))
+          (is (mi/can-write? segment)))))))
+
+(deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write segments"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
@@ -218,7 +222,9 @@
                                              :creator_id (mt/user->id :rasta)
                                              :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
         (session/with-current-user analyst-id
-          (is (false? (mi/can-write? segment)))))))
+          (is (false? (mi/can-write? segment))))))))
+
+(deftest can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write segments"
     (mt/with-temp [:model/Segment segment {:name "Test Segment"
                                            :table_id (mt/id :venues)
@@ -227,12 +233,14 @@
       (mt/with-test-user :rasta
         (is (false? (mi/can-write? segment)))))))
 
-(deftest can-create?-test
+(deftest can-create?-superuser-test
   (testing "Superusers can create segments"
     (mt/with-test-user :crowberto
       (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
                                                  :table_id (mt/id :venues)
-                                                 :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}})))))
+                                                 :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))
+
+(deftest can-create?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can create segments"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -242,14 +250,18 @@
         (session/with-current-user analyst-id
           (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
                                                      :table_id (mt/id :venues)
-                                                     :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}})))))))
+                                                     :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
+
+(deftest can-create?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot create segments"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}]
         (session/with-current-user analyst-id
           (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
                                                       :table_id (mt/id :venues)
-                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}})))))))
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
+
+(deftest can-create?-non-analyst-test
   (testing "Non-data-analysts cannot create segments"
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
