@@ -1,18 +1,18 @@
 ;; TODO move this into sql tools and refactor
-(ns metabase.driver.sql.references-test
+(ns metabase.sql-tools.macaw.references-test
   (:require
    [clojure.test :refer :all]
    [macaw.core :as macaw]
-   [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql.references :as sql.references]))
+   [metabase.lib.core :as lib]
+   [metabase.sql-tools.macaw.references :as sql-tools.macaw]))
 
 (defn- ->references [query]
-  (->> query macaw/parsed-query macaw/->ast (sql.references/field-references :sql)))
+  (->> query macaw/parsed-query macaw/->ast (sql-tools.macaw/field-references :sql)))
 
 (deftest ^:parallel garbage-test
   (is (= {:used-fields #{}
           :returned-fields []
-          :errors #{(driver-api/syntax-error)}}
+          :errors #{(lib/syntax-error)}}
          (->references "nothing"))))
 
 (deftest ^:parallel basic-select-test
@@ -273,7 +273,7 @@
              :source-columns [[{:type :all-columns,
                                 :table {:table "orders"}}]]}},
           :returned-fields []
-          :errors #{(driver-api/missing-table-alias-error "foo")}}
+          :errors #{(lib/missing-table-alias-error "foo")}}
          (->references "select foo.* from (select a from orders)"))))
 
 (deftest ^:parallel bad-table-name-test
@@ -287,7 +287,7 @@
             :alias nil,
             :type :single-column,
             :source-columns []}]
-          :errors #{(driver-api/missing-table-alias-error "bad")}}
+          :errors #{(lib/missing-table-alias-error "bad")}}
          (->references "select bad.a from products"))))
 
 (deftest ^:parallel no-possible-sources-test
@@ -301,7 +301,7 @@
             :alias nil
             :type :single-column
             :source-columns []}]
-          :errors #{(driver-api/missing-column-error "a")}}
+          :errors #{(lib/missing-column-error "a")}}
          (->references "select a"))))
 
 (deftest ^:parallel select-constant-test
