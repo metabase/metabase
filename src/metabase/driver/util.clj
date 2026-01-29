@@ -828,23 +828,12 @@
   "mb_transform_temp_table")
 
 (defn temp-table-name
-  "Generate a temporary table name that includes a hash of the original table name
-   and a random suffix for uniqueness. Respects driver's max table name length.
+  "Generate a temporary table name with a random suffix for uniqueness.
 
-   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema
-   and the name is the original table name.
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
 
-   Format: <prefix>_<table_hash>_<random_suffix>"
-  [driver table]
-  (let [schema     (some-> table namespace)
-        table-name (some-> table name)
-        max-len    (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        prefix     (str transform-temp-table-prefix "_")
-        suffix     (subs (str (random-uuid)) 0 8)
-        ;; +1 for separator between hash portion and suffix
-        reserved   (+ (count prefix) (count suffix) 1)
-        available  (- max-len reserved)
-        table-hash (when (and table-name (pos? available))
-                     (let [hash-str (format "%08x" (hash table-name))]
-                       (str (subs hash-str 0 (min available (count hash-str))) "_")))]
-    (keyword schema (str prefix table-hash suffix))))
+   Format: <prefix>_<random_suffix>"
+  [_driver table]
+  (let [schema (some-> table namespace)
+        rand   (subs (str (random-uuid)) 0 8)]
+    (keyword schema (str transform-temp-table-prefix "_" rand))))
