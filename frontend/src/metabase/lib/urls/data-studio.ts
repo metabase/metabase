@@ -289,6 +289,10 @@ export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }
 
+export function dataStudioGitSync() {
+  return `${dataStudio()}/git-sync`;
+}
+
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
   return `${dataStudioLibrary()}/snippets/${snippetId}`;
 }

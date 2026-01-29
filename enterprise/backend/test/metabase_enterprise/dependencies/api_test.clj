@@ -317,7 +317,7 @@
 
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check_transform"
-    (mt/with-premium-features #{:dependencies}
+    (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
         (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform" transform)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
@@ -664,7 +664,7 @@
 
 (deftest check-transform-permissions-test
   (testing "POST /api/ee/dependencies/check_transform requires read permissions on the input transform"
-    (mt/with-premium-features #{:dependencies}
+    (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform transform {:name "test transform"}]
         (testing "Returns 403 when user is not an admin (only admins can read transforms)"
           (is (= "You don't have permissions to do that."
@@ -2543,6 +2543,43 @@
             (is (=? {:data  [{:id card1-id}, {:id card4-id}]
                      :total 2}
                     response))))))))
+
+;;; ------------------------------------------------ Table API Tests -------------------------------------------------
+;;; Tests for dependency-related filtering on the /api/table endpoint
+
+(deftest unused-only-filter-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "GET /api/table?unused-only=true"
+      (testing "filters tables that have no non-transform dependents"
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {table-1-id :id} {:db_id db-id, :name "table_1", :active true}
+                       :model/Table {table-2-id :id} {:db_id db-id, :name "table_2", :active true}]
+          (testing "both tables returned without filter"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table")
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (testing "both tables returned with unused_only=false"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (mt/with-temp [:model/Card card {:database_id   db-id
+                                           :table_id      table-1-id
+                                           :dataset_query {:database db-id
+                                                           :type     :query
+                                                           :query    {:source-table table-1-id}}}]
+            (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
+            (testing "after creating card that depends on table-1, only table-2 is unused"
+              (is (= #{table-2-id}
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only true)
+                          (filter #(= (:db_id %) db-id))
+                          (map :id)
+                          set))))))))))
 
 (deftest ^:sequential unreferenced-table-owner-test
   (testing "GET /api/ee/dependencies/unreferenced - table owner is returned"

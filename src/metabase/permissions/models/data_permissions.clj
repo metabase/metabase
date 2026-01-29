@@ -228,13 +228,15 @@
   (let [ordered-values (-> permissions.schema/data-permissions perm-type :values reverse)]
     (first (filter (set perm-values) ordered-values))))
 
-(defn- is-superuser?
+(defn is-superuser?
+  "Returns true if the given user ID is a superuser. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*
     (t2/select-one-fn :is_superuser :model/User :id user-id)))
 
-(defn- is-data-analyst?
+(defn is-data-analyst?
+  "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-data-analyst?*
@@ -506,8 +508,8 @@
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
-  group, for at least one database or table."
-  [user-id perm-type]
+  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the check."
+  [user-id perm-type & {:keys [exclude-db-ids]}]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))
@@ -517,10 +519,12 @@
                      :from [[:permissions_group_membership :pgm]]
                      :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                             [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                     :where [:and
-                             [:= :pgm.user_id user-id]
-                             [:= :p.perm_type (u/qualified-name perm-type)]
-                             [:= :p.perm_value (u/qualified-name value)]]}))))
+                     :where (into [:and
+                                   [:= :pgm.user_id user-id]
+                                   [:= :p.perm_type (u/qualified-name perm-type)]
+                                   [:= :p.perm_value (u/qualified-name value)]]
+                                  (when (seq exclude-db-ids)
+                                    [[:not-in :p.db_id exclude-db-ids]]))}))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
@@ -646,7 +650,13 @@
 
                           (= [:perms/view-data :blocked] [perm-type value])
                           (into [(build-database-permission group-or-id db-or-id :perms/create-queries :no)
-                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)]))]
+                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)])
+
+                          (and (= perm-type :perms/view-data) (not= value :unrestricted))
+                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no))
+
+                          (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
+                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no)))]
     (apply merge-with concat
            {:to-delete existing-perms
             :to-insert [new-perm]}

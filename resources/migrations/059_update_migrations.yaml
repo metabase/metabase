@@ -1,5 +1,62 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:23
+      author: nvoxland
+      comment: Add source_database_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_database_id
+                  type: int
+                  remarks: The database containing the source data for this transform
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:24
+      author: nvoxland
+      comment: Add index for transform.source_database_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_source_database_id
+            columns:
+              - column:
+                  name: source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:25
+      author: nvoxland
+      comment: Add foreign key on transform(source_database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:26
+      author: nvoxland
+      comment: Transfer data from transform.source to transform.source_database_id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.SetTransformSourceDatabaseId"
+      rollback: # No need to roll back
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:27
+      author: nvoxland
+      comment: Make transform.source_database_id not nullable
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
   - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
@@ -803,6 +860,42 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: python_library
             constraintName: unique_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:00
+      author: metamben
+      comment: Add stale column to analysis_finding for asynchronous dependent updates
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs re-analysis due to upstream changes
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: stale
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:01
+      author: metamben
+      comment: Add partial index on analysis_finding.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_finding_stale
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
