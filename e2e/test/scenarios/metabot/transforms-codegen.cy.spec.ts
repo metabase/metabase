@@ -85,7 +85,9 @@ describe(
       H.activateToken("bleeding-edge");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+      cy.intercept("POST", "/api/ee/metabot-v3/native-agent-streaming").as(
+        "agentReq",
+      );
       cy.intercept("POST", "/api/ee/transform").as("createTransform");
       cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
     });

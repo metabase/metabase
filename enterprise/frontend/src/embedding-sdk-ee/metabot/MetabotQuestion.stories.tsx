@@ -62,7 +62,7 @@ export const MetabotError = {
   parameters: {
     msw: {
       handlers: [
-        http.post("*/api/ee/metabot-v3/agent-streaming", () => {
+        http.post("*/api/ee/metabot-v3/native-agent-streaming", () => {
           return new HttpResponse(null, {
             status: 500,
           });

@@ -188,7 +188,7 @@ describe("metabot > ui", () => {
 
   it("should not show retry option for error messages", async () => {
     setup();
-    fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
+    fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 500);
 
     await enterChatMessage("Who is your favorite?");
 

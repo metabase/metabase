@@ -17,7 +17,7 @@ import {
 describe("metabot > errors", () => {
   it("should handle service error response", async () => {
     setup();
-    fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
+    fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 500);
 
     await enterChatMessage("Who is your favorite?");
 
@@ -30,7 +30,7 @@ describe("metabot > errors", () => {
 
   it("should handle non-successful responses", async () => {
     setup();
-    fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 400);
+    fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 400);
 
     await enterChatMessage("Who is your favorite?");
 
@@ -73,7 +73,7 @@ describe("metabot > errors", () => {
 
   it("should remove previous error messages and prompt when submitting next prompt", async () => {
     setup();
-    fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
+    fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 500);
 
     await enterChatMessage("Who is your favorite?");
 
