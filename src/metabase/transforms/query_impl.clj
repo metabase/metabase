@@ -1,5 +1,6 @@
 (ns metabase.transforms.query-impl
   (:require
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
@@ -41,7 +42,7 @@
     :table-incremental {}))
 
 (defn- throw-if-db-routing-enabled [transform driver database]
-  (when (transforms.util/db-routing-enabled? database)
+  (when (database-routing/db-routing-enabled? database)
     (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
                               (:name transform)
                               (:name database))

@@ -1544,6 +1544,7 @@
            api
            channel
            config
+           database-routing
            driver
            events
            lib

@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
@@ -90,7 +91,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
                    (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+    (api/check-400 (not (database-routing/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn- check-feature-enabled!

@@ -531,15 +531,6 @@
   (when-let [table-name (:name table)]
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
-(defn db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database"
-  [db-or-id]
-  ;; TODO: use defenterprise here.
-  ;; using `db_router` instead of `:model/DatabaseRouter` here because this code is OSS.
-  (or (t2/exists? :db_router :database_id (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               (t2/exists? :db_router :database_id))))
-
 ;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
 
 (def ^:private ^:const batch-lookup-chunk-size
