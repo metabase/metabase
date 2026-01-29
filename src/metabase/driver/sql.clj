@@ -159,6 +159,7 @@
   [_]
   "public")
 
+;; TODO: remove after driver ns ast manip is removed
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
