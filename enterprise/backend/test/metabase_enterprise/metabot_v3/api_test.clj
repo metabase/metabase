@@ -90,25 +90,23 @@
                                                     :conversation_id conversation-id
                                                     :history         [historical-message]
                                                     :state           {}})
+                    lines    (str/split-lines response)
                     conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                     messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-                ;; Native agent emits: TEXT, DATA (state), FINISH_MESSAGE
-                (is (=? [{:_type   :TEXT
-                          :role    "assistant"
-                          :content "Hello from native agent!"}
-                         {:_type :DATA
-                          :type  "state"}
-                         {:_type         :FINISH_MESSAGE
-                          :finish_reason "stop"}]
-                        (metabot.u/aisdk->messages "assistant" (str/split-lines response))))
+                ;; Native agent emits AI SDK v4 line protocol directly
+                (testing "response contains expected line types"
+                  ;; Lines are: f:{start}, 0:"text", d:{finish}, 2:{state data}, d:{finish}
+                  (is (=? [#"^f:\{.*" #"^0:\"Hello from native agent!\"" #"^d:\{.*" #"^2:\{.*" #"^d:\{.*"]
+                          lines)))
                 (is (=? {:user_id (mt/user->id :rasta)}
                         conv))
+                ;; Native agent stores parts in raw format
                 (is (=? [{:total_tokens 0
                           :role         :user
                           :data         [{:role "user" :content (:content question)}]}
                          {:total_tokens pos-int?
                           :role         :assistant
-                          :data         [{:role "assistant" :content "Hello from native agent!"}]}]
+                          :data         [{:type "text" :text "Hello from native agent!"}]}]
                         messages))))))))))
 
 (deftest closing-connection-test
@@ -211,3 +209,34 @@
         (testing "Throws when premium token is missing"
           (mt/with-temporary-setting-values [premium-embedding-token nil]
             (mt/user-http-request :rasta :post 400 "ee/metabot-v3/feedback" {:foo "bar"})))))))
+
+(deftest combine-text-parts-xf-test
+  (testing "passes through non-text parts"
+    (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
+           (into [] (#'api/combine-text-parts-xf)
+                 [{:type :tool, :id 1} {:type :tool, :id 2}]))))
+
+  (testing "combines consecutive text parts"
+    (is (= [{:type :text, :text "hello world"}]
+           (into [] (#'api/combine-text-parts-xf)
+                 [{:type :text, :text "hello "}
+                  {:type :text, :text "world"}]))))
+
+  (testing "combines multiple runs"
+    (is (= [{:type :text, :text "ab"}
+            {:type :tool, :id 1}
+            {:type :text, :text "cd"}]
+           (into [] (#'api/combine-text-parts-xf)
+                 [{:type :text, :text "a"}
+                  {:type :text, :text "b"}
+                  {:type :tool, :id 1}
+                  {:type :text, :text "c"}
+                  {:type :text, :text "d"}]))))
+
+  (testing "handles empty input"
+    (is (= [] (into [] (#'api/combine-text-parts-xf) []))))
+
+  (testing "handles single text part"
+    (is (= [{:type :text, :text "solo"}]
+           (into [] (#'api/combine-text-parts-xf)
+                 [{:type :text, :text "solo"}])))))
