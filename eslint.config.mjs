@@ -101,6 +101,16 @@ const configs = [
   },
 
   // ============================================
+  // LINTER OPTIONS
+  // ============================================
+  {
+    linterOptions: {
+      // Restore ESLint 8 behavior - don't report unused disable directives
+      reportUnusedDisableDirectives: "off",
+    },
+  },
+
+  // ============================================
   // BASE CONFIG (JS recommended + settings)
   // ============================================
   js.configs.recommended,
