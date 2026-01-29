@@ -77,11 +77,10 @@ export function filterLogs(logs: Log[], { process, query }: UrlState) {
   const lowerCaseQuery = query ? query.toLowerCase() : "";
 
   return logs.filter((log) => {
-    const formattedLog = formatLog(log).join("\n");
-
     const matchesProcessFilter =
       !process || process === "ALL" || log.process_uuid === process;
-    const matchesQueryFilter = formattedLog
+    // search for text in any of log's properties without expensive formatting or parsing
+    const matchesQueryFilter = JSON.stringify(log)
       .toLowerCase()
       .includes(lowerCaseQuery);
 
@@ -99,11 +98,15 @@ export function getAllProcessUUIDs(logs: Log[]) {
 const formatTs = (ts: string) => dayjs(ts).format();
 const memoedFormatTs = _.memoize(formatTs);
 
-export function formatLog(log: Log) {
-  const timestamp = memoedFormatTs(log.timestamp);
-  const uuid = log.process_uuid || "---";
-  return [
-    `[${uuid}] ${timestamp} ${log.level} ${log.fqns} ${log.msg}`,
-    ...(log.exception || []),
-  ];
-}
+export const formatLog =
+  (process: string, processUUIDs: string[]) => (log: Log) => {
+    const timestamp = memoedFormatTs(log.timestamp);
+    const uuid =
+      process === "ALL" && processUUIDs.length > 1
+        ? `[${log.process_uuid}]`
+        : undefined;
+    return [
+      [uuid, timestamp, log.level, log.fqns, log.msg].filter(Boolean).join(" "),
+      ...(log.exception || []),
+    ];
+  };

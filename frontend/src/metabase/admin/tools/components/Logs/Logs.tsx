@@ -53,8 +53,8 @@ const LogsBase = ({
   const hasAnyLogs = logs.length > 0;
   const { scrollRef, onScroll, refollow } = useTailLogs(filteredLogs);
   const logText = useMemo(
-    () => filteredLogs.map(formatLog).join("\n"),
-    [filteredLogs],
+    () => filteredLogs.map(formatLog(process, processUUIDs)).join("\n"),
+    [filteredLogs, process, processUUIDs],
   );
 
   const displayLogs = useMemo(() => {
