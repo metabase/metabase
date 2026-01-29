@@ -29,6 +29,7 @@
                 reducible?
                 sse-reducible
                 aisdk-xf
+                lite-aisdk-xf
                 aisdk-line-xf
                 format-text-line
                 format-data-line
