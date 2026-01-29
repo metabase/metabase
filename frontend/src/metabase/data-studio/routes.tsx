@@ -4,7 +4,10 @@ import { IndexRoute, Route } from "react-router";
 
 import { GitSyncSectionLayout } from "metabase/data-studio/app/pages/GitSyncSectionLayout";
 import { DependencyDiagnosticsSectionLayout } from "metabase/data-studio/app/pages/TasksSectionLayout/TasksSectionLayout";
-import { DependenciesUpsellPage } from "metabase/data-studio/upsells";
+import {
+  DependenciesUpsellPage,
+  LibraryUpsellPage,
+} from "metabase/data-studio/upsells";
 import { DependencyDiagnosticsUpsellPage } from "metabase/data-studio/upsells/DependencyDiagnosticsUpsellPage";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -46,8 +49,11 @@ export function getDataStudioRoutes(
           {getDataStudioTransformRoutes()}
         </Route>
         {getDataStudioGlossaryRoutes()}
-        {PLUGIN_LIBRARY.isEnabled &&
-          PLUGIN_LIBRARY.getDataStudioLibraryRoutes()}
+        {PLUGIN_LIBRARY.isEnabled ? (
+          PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
+        ) : (
+          <Route path="library" component={LibraryUpsellPage} />
+        )}
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
