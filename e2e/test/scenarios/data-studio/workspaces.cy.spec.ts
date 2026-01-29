@@ -1279,6 +1279,54 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
+    it("should open preview on Cmd+Enter when no unsaved changes, and not when there are changes", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open SQL transform and save");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Cmd+Enter opens preview when transform is saved");
+      H.NativeEditor.focus();
+      cy.realPress([
+        Cypress.platform === "darwin" ? "Meta" : "Control",
+        "Enter",
+      ]);
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("Preview (SQL transform)", [
+          "Setup",
+          "Graph",
+          "SQL transform",
+          "Preview (SQL transform)",
+        ]);
+      });
+
+      cy.log("Close preview tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByRole("tab", { name: "Preview (SQL transform)" })
+          .icon("close")
+          .click();
+      });
+
+      cy.log("Go back to SQL transform tab and make a change");
+      Workspaces.getWorkspaceContent()
+        .findByRole("tab", { name: "SQL transform" })
+        .click();
+      H.NativeEditor.type(" ");
+
+      cy.log("Cmd+Enter does not open preview when there are unsaved changes");
+      cy.realPress([
+        Cypress.platform === "darwin" ? "Meta" : "Control",
+        "Enter",
+      ]);
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
+      });
+    });
+
     it("should not show Python transform preview section in workspace", () => {
       H.setPythonRunnerSettings();
       createTransforms();

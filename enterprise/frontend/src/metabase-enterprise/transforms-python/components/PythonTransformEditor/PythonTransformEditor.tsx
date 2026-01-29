@@ -107,6 +107,10 @@ export function PythonTransformEditor({
     if (!isEditMode) {
       return;
     }
+    // In workspaces, disable run shortcut when transform has unsaved changes (hideRunButton)
+    // if (uiOptions?.hideRunButton) {
+    //   return;
+    // }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
