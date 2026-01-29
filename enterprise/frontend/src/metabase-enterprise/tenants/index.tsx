@@ -26,7 +26,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import type { TenantCollectionPathItem } from "metabase/plugins/oss/tenants";
-import { getIsTenantUser } from "metabase/selectors/user";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -34,6 +34,7 @@ import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
+import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
 import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
 import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
 import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
@@ -45,6 +46,7 @@ import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPe
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
+import { TenantSpecificCollectionPermissionsPage } from "./components/TenantSpecificCollectionPermissionsPage";
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
 import { TenantUsersList } from "./components/TenantUsersList";
 import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
@@ -125,19 +127,32 @@ export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
-    // Register tenant collection permissions tab and routes
+    // Register tenant collection permissions tabs and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
       name: t`Shared collections`,
       value: "tenant-collections",
     });
 
+    PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
+      name: t`Tenant collections`,
+      value: "tenant-specific-collections",
+    });
+
     PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes = () => (
-      <Route
-        path="tenant-collections"
-        component={TenantCollectionPermissionsPage}
-      >
-        <Route path=":collectionId" />
-      </Route>
+      <>
+        <Route
+          path="tenant-collections"
+          component={TenantCollectionPermissionsPage}
+        >
+          <Route path=":collectionId" />
+        </Route>
+        <Route
+          path="tenant-specific-collections"
+          component={TenantSpecificCollectionPermissionsPage}
+        >
+          <Route path=":collectionId" />
+        </Route>
+      </>
     );
 
     PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
@@ -235,6 +250,7 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
       TenantSpecificCollectionsItemList;
     PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
+    PLUGIN_TENANTS.CanAccessTenantSpecificRoute = CanAccessTenantSpecificRoute;
     PLUGIN_TENANTS.TenantUsersList = TenantUsersList;
     PLUGIN_TENANTS.TenantUsersPersonalCollectionList =
       TenantUsersPersonalCollectionList;
@@ -321,6 +337,7 @@ export function initializePlugin() {
     };
     PLUGIN_TENANTS.useTenantMainNavbarData = () => {
       const isTenantUser = useSelector(getIsTenantUser);
+      const isAdmin = useSelector(getUserIsAdmin);
       const useTenants = useSetting("use-tenants");
 
       const { data: sharedTenantCollections } = useListCollectionsTreeQuery(
@@ -334,6 +351,13 @@ export function initializePlugin() {
         { skip: !useTenants || isTenantUser },
       );
 
+      // Check if non-admin user has access to tenant-specific namespace
+      const { data: tenantSpecificRoot } = useGetCollectionQuery(
+        { id: "root", namespace: "tenant-specific" },
+        { skip: !useTenants || isTenantUser || isAdmin },
+      );
+      const canAccessTenantSpecific = isAdmin || !!tenantSpecificRoot;
+
       // Non-admins can create shared collections if they have curate permissions on the root shared collection
       const canCreateSharedCollection =
         sharedCollectionRoot?.can_write ?? false;
@@ -342,9 +366,12 @@ export function initializePlugin() {
       const showExternalCollectionsSection =
         useTenants &&
         !isTenantUser &&
-        (hasVisibleSharedCollections || canCreateSharedCollection);
+        (hasVisibleSharedCollections ||
+          canCreateSharedCollection ||
+          canAccessTenantSpecific);
 
       return {
+        canAccessTenantSpecific,
         canCreateSharedCollection,
         showExternalCollectionsSection,
         sharedTenantCollections,

@@ -185,7 +185,10 @@ export const getRoutes = (store) => {
             <IndexRoute component={UserCollectionList} />
           </Route>
 
-          <Route path="collection/tenant-specific" component={IsAdmin}>
+          <Route
+            path="collection/tenant-specific"
+            component={PLUGIN_TENANTS.CanAccessTenantSpecificRoute}
+          >
             <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 

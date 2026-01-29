@@ -11,7 +11,7 @@ import {
 } from "metabase/plugins";
 
 const propTypes = {
-  tab: PropTypes.oneOf(["data", "collections"]).isRequired,
+  tab: PropTypes.string.isRequired,
   onChangeTab: PropTypes.func.isRequired,
 };
 
@@ -21,7 +21,9 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => {
   const adminPermissionsTabs = isUsingTenants
     ? PLUGIN_ADMIN_PERMISSIONS_TABS.tabs
     : PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.filter(
-        (tab) => tab.value !== "tenant-collections",
+        (tab) =>
+          tab.value !== "tenant-collections" &&
+          tab.value !== "tenant-specific-collections",
       );
 
   return (

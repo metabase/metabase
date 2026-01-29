@@ -31,10 +31,16 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    dataPermissionsRevision: number | null;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;
+    collectionPermissionsRevision: number | null;
     tenantCollectionPermissions: CollectionPermissions;
     originalTenantCollectionPermissions: CollectionPermissions;
+    tenantCollectionPermissionsRevision: number | null;
+    tenantSpecificCollectionPermissions: CollectionPermissions;
+    originalTenantSpecificCollectionPermissions: CollectionPermissions;
+    tenantSpecificCollectionPermissionsRevision: number | null;
     saveError?: string;
     isHelpReferenceOpen: boolean;
     hasRevisionChanged: {
