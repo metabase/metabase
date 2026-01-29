@@ -43,17 +43,17 @@
             (testing "without any feature flags"
               (mt/with-premium-features #{}
                 (testing "creating python transform without any features fails"
-                  (is (= "error-premium-feature-not-available"
-                         (:status (mt/user-http-request :lucky :post 402 "transform"
-                                                        {:name   "My beautiful python runner"
-                                                         :source {:type            "python"
-                                                                  :body            "print('hello world')"
-                                                                  :source-tables   {}
-                                                                  :source-database (mt/id)}
-                                                         :target {:type     "table"
-                                                                  :schema   (get-test-schema)
-                                                                  :name     "gadget_products"
-                                                                  :database (mt/id)}})))))))
+                  (is (= "Premium features required for this transform type are not enabled."
+                         (mt/user-http-request :lucky :post 402 "transform"
+                                               {:name   "My beautiful python runner"
+                                                :source {:type            "python"
+                                                         :body            "print('hello world')"
+                                                         :source-tables   {}
+                                                         :source-database (mt/id)}
+                                                :target {:type     "table"
+                                                         :schema   (get-test-schema)
+                                                         :name     "gadget_products"
+                                                         :database (mt/id)}}))))))
 
             (testing "with only transforms feature flag (no transforms-python)"
               (mt/with-premium-features #{:transforms}
@@ -105,7 +105,7 @@
             (let [response (mt/user-http-request :crowberto :put
                                                  (format "transform/%d" id)
                                                  (assoc-in transform [:source :body] "print('no features')"))]
-              (is (= "error-premium-feature-not-available" (:status response))
+              (is (= "Premium features required for this transform type are not enabled." response)
                   "Should return 403 without any features"))))))))
 
 (deftest run-python-transform-feature-flag-test
@@ -129,7 +129,7 @@
                 (mt/with-premium-features #{}
                   (let [response (mt/user-http-request :crowberto :post 402
                                                        (format "transform/%d/run" (:id created)))]
-                    (is (= "error-premium-feature-not-available" (:status response)))))
+                    (is (= "Premium features required for this transform type are not enabled." response))))
                 (mt/with-premium-features #{:transforms}
                   (let [response (mt/user-http-request :crowberto :post
                                                        (format "transform/%d/run" (:id created)))]
