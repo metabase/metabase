@@ -215,16 +215,13 @@
    model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
    native-model? :- :boolean]
   (cond
-    (and (seq result-cols)
-         (empty? model-cols))
-    result-cols
+    (empty? model-cols)
+    (not-empty result-cols)
 
-    (and (empty? result-cols)
-         (seq model-cols))
-    model-cols
+    (empty? result-cols)
+    (not-empty model-cols)
 
-    (and (seq result-cols)
-         (seq model-cols))
+    :else ;; both not empty
     (let [name->model-col (m/index-by :name model-cols)]
       (mapv (fn [result-col]
               (merge
