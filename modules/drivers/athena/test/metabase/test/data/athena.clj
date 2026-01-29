@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -274,33 +273,9 @@
   (let [physical-name (ddl.i/format-name driver database-name)]
     (contains? (existing-databases) physical-name)))
 
-;; Differs from the default implementation by adding `:transaction? false` to the insert call
 (mu/defmethod load-data/do-insert! :athena
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
    rows]
-  (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
-    ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
-    ;; DB hasn't been synced yet
-    (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
-      (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
-        (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
-        (jdbc/execute! {:connection conn} [set-timezone-sql])))
-    (mt/with-database-timezone-id nil
-      (doseq [sql-args statements
-              :let     [sql-args (if (string? sql-args)
-                                   [sql-args]
-                                   sql-args)]]
-        (assert (string? (first sql-args))
-                (format "Bad sql-args: %s" (pr-str sql-args)))
-        (log/tracef "[insert] %s" (pr-str sql-args))
-        (try
-          (jdbc/execute! {:connection conn :transaction? false} sql-args {:set-parameters (fn [stmt params]
-                                                                                            (sql-jdbc.execute/set-parameters! driver stmt params))})
-          (catch Throwable e
-            (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
-                            {:driver   driver
-                             :sql-args (into [(str/split-lines (app-db/format-sql (first sql-args)))]
-                                             (rest sql-args))}
-                            e))))))))
+  (load-data/do-insert*! driver conn table-identifier rows {:transaction? false}))

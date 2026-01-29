@@ -184,12 +184,12 @@
      init
      (reducible-chunks driver dbdef tabledef))))
 
-;;; default impl
-(mu/defmethod do-insert! :sql-jdbc/test-extensions
+(mu/defn do-insert*!
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
-   rows]
+   rows
+   {:keys [transaction?] :or {transaction? true}}]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet
@@ -208,14 +208,24 @@
         (try
           ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
           ;; Tech Debt Issue: #39375
-          (jdbc/execute! {:connection conn} sql-args {:set-parameters (fn [stmt params]
-                                                                        (sql-jdbc.execute/set-parameters! driver stmt params))})
+          (jdbc/execute! {:connection conn
+                          :transaction? transaction?}
+                         sql-args {:set-parameters (fn [stmt params]
+                                                     (sql-jdbc.execute/set-parameters! driver stmt params))})
           (catch Throwable e
             (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                             {:driver   driver
                              :sql-args (into [(str/split-lines (app-db/format-sql (first sql-args)))]
                                              (rest sql-args))}
                             e))))))))
+
+;;; default impl
+(mu/defmethod do-insert! :sql-jdbc/test-extensions
+  [driver                    :- :keyword
+   ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
+   table-identifier
+   rows]
+  (do-insert*! driver conn table-identifier rows nil))
 
 (defonce ^:private reference-load-durations
   (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
