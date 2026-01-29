@@ -147,7 +147,7 @@ export function PythonTransformEditor({
             source={source.body}
             proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
-            withDebugger={isEditMode || !uiOptions?.hidePreview}
+            withDebugger={isEditMode && !uiOptions?.hidePreview}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />

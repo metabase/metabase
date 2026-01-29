@@ -1279,6 +1279,29 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
+    it("should not show Python transform preview section in workspace", () => {
+      H.setPythonRunnerSettings();
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open Python transform in workspace");
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
+
+      cy.log("Inline preview section (Results/Output) should not be displayed");
+      cy.findByTestId("python-results").should("not.exist");
+
+      cy.log("Python editor should fill available height (no white box)");
+      const MIN_EDITOR_HEIGHT = 590;
+      cy.findByTestId("python-editor").should(($editor) => {
+        const height = $editor.height();
+        expect(height).to.be.at.least(
+          MIN_EDITOR_HEIGHT,
+          `Editor height should be at least ${MIN_EDITOR_HEIGHT}px, got ${height}`,
+        );
+      });
+    });
+
     it(
       "should show ad-hoc results for Python transform",
       { tags: ["@python"] },
