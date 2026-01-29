@@ -163,11 +163,9 @@ export function versionIsLatest({
 
 /**
  * @deprecated
- * In most of the cases we can rely on token features.
- * Use it ONLY when we should apply logic for the EE build specifically including:
- * - EE build with no license
- * - EE build Starter
- * - EE build Pro/Enterprise
+ * In most cases we want to use specific token features, not the type of build.
+ * Use only we want to display something differently based on specifically the build,
+ * ie: "Switch binary" vs "Put a valid token in the settings"
  */
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
 
