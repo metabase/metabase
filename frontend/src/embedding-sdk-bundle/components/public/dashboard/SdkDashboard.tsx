@@ -548,7 +548,7 @@ function AutoRefreshController({ refreshPeriod }: AutoRefreshControllerProps) {
 
   useEffect(() => {
     const normalizedRefreshPeriod =
-      refreshPeriod && refreshPeriod >= 0 ? refreshPeriod : null;
+      refreshPeriod != null && refreshPeriod >= 0 ? refreshPeriod : null;
     onRefreshPeriodChange(normalizedRefreshPeriod);
   }, [refreshPeriod, onRefreshPeriodChange]);
 
