@@ -265,9 +265,6 @@
       ;; Test each mutation
       (doseq [[idx mutation] (map-indexed vector (:mutations mutation-data))]
         (try
-          (println (str "Testing mutation " (inc idx) "/" (count (:mutations mutation-data))
-                        ": " (:description mutation)))
-
           ;; Evaluate the mutated function to replace the original
           (binding [*ns* (find-ns ns-sym)]
             (eval (read-string (:mutation mutation))))
