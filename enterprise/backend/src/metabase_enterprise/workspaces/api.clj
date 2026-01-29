@@ -442,7 +442,6 @@
   (let [workspace (t2/select-one :model/Workspace :id ws-id)]
     (api/check-404 workspace)
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-    (ws.impl/get-or-calculate-graph! workspace)
     (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])

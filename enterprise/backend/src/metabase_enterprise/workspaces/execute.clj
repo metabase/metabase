@@ -147,7 +147,7 @@
         {:status  :failed
          :message (or (:error result) "Query execution failed")}))
     (catch Exception e
-      (log/error e "Failed to run sql preview")
+      (log/error e "Failed to run sql dry-run")
       {:status  :failed
        :message (ex-message e)})))
 

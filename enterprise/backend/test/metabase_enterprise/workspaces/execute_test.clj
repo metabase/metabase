@@ -264,71 +264,36 @@
                (remap-python-source table-mapping source)))))))
 
 (deftest remap-sql-source-test
-  (let [remap-sql-source #'ws.execute/remap-sql-source]
-    (testing "remaps qualified table reference to isolated table"
-      (let [table-mapping {[1 "public" "orders"] {:db-id  1
-                                                  :schema "ws_isolated_123"
-                                                  :table  "public__orders"
-                                                  :id     456}}
-            source        {:type  "query"
-                           :query {:database 1
-                                   :type     :native
-                                   :stages   [{:native "SELECT * FROM public.orders"}]}}]
-        (is (= {:type  "query"
-                :query {:database 1
-                        :type     :native
-                        :stages   [{:native "SELECT * FROM ws_isolated_123.public__orders"}]}}
-               (remap-sql-source table-mapping source)))))
+  (let [remap-sql-source #'ws.execute/remap-sql-source
+        make-source      (fn [sql] {:type "query", :query {:database 1, :type :native, :stages [{:native sql}]}})]
+    ;; Test cases as [label, table-mapping, input-sql, expected-sql]
+    (doseq [[label table-mapping input-sql expected-sql]
+            [["remaps qualified table reference to isolated table"
+              {[1 "public" "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
+              "SELECT * FROM public.orders"
+              "SELECT * FROM ws_isolated_123.public__orders"]
 
-    (testing "remaps unqualified table reference using nil-schema mapping"
-      (let [table-mapping {[1 nil "orders"] {:db-id  1
-                                             :schema "ws_isolated_123"
-                                             :table  "public__orders"
-                                             :id     456}}
-            source        {:type  "query"
-                           :query {:database 1
-                                   :type     :native
-                                   :stages   [{:native "SELECT * FROM orders"}]}}]
-        (is (= {:type  "query"
-                :query {:database 1
-                        :type     :native
-                        :stages   [{:native "SELECT * FROM ws_isolated_123.public__orders"}]}}
-               (remap-sql-source table-mapping source)))))
+             ["remaps unqualified table reference using nil-schema mapping"
+              {[1 nil "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
+              "SELECT * FROM orders"
+              "SELECT * FROM ws_isolated_123.public__orders"]
 
-    (testing "qualifies unqualified input table reference (no isolation, just adds schema)"
-      (let [;; This is what build-remapping creates for input tables:
-            ;; [db_id nil table] -> {:schema original-schema, :table original-table}
-            table-mapping {[1 nil "orders"] {:db-id  1
-                                             :schema "public"
-                                             :table  "orders"
-                                             :id     123}}
-            source        {:type  "query"
-                           :query {:database 1
-                                   :type     :native
-                                   :stages   [{:native "SELECT * FROM orders"}]}}]
-        (is (= {:type  "query"
-                :query {:database 1
-                        :type     :native
-                        :stages   [{:native "SELECT * FROM public.orders"}]}}
-               (remap-sql-source table-mapping source)))))
+             ;; This is what build-remapping creates for unqualified input tables
+             ["qualifies unqualified input table reference (no isolation, just adds schema)"
+              {[1 nil "orders"] {:db-id 1, :schema "public", :table "orders", :id 123}}
+              "SELECT * FROM orders"
+              "SELECT * FROM public.orders"]
 
-    (testing "leaves unmapped tables unchanged"
-      (let [table-mapping {}
-            source        {:type  "query"
-                           :query {:database 1
-                                   :type     :native
-                                   :stages   [{:native "SELECT * FROM orders"}]}}]
-        (is (= source (remap-sql-source table-mapping source)))))
+             ["leaves unmapped tables unchanged"
+              {[1 nil "other_table"] {:db-id 1, :schema "public", :table "other_table", :id 999}}
+              "SELECT * FROM orders"
+              "SELECT * FROM orders"]
 
-    (testing "handles multiple tables in same query"
-      (let [table-mapping {[1 nil "orders"]   {:db-id 1, :schema "public", :table "orders", :id 123}
-                           [1 nil "products"] {:db-id 1, :schema "public", :table "products", :id 456}}
-            source        {:type  "query"
-                           :query {:database 1
-                                   :type     :native
-                                   :stages   [{:native "SELECT * FROM orders JOIN products ON orders.product_id = products.id"}]}}]
-        (is (= {:type  "query"
-                :query {:database 1
-                        :type     :native
-                        :stages   [{:native "SELECT * FROM public.orders JOIN public.products ON public.orders.product_id = public.products.id"}]}}
-               (remap-sql-source table-mapping source)))))))
+             ["handles multiple tables in same query"
+              {[1 nil "orders"]   {:db-id 1, :schema "public", :table "orders", :id 123}
+               [1 nil "products"] {:db-id 1, :schema "public", :table "products", :id 456}}
+              "SELECT * FROM orders JOIN products ON orders.product_id = products.id"
+              "SELECT * FROM public.orders JOIN public.products ON public.orders.product_id = public.products.id"]]]
+      (testing label
+        (is (= (make-source expected-sql)
+               (remap-sql-source table-mapping (make-source input-sql))))))))

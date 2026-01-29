@@ -17,6 +17,11 @@
 
 ;;; Test helper multimethod to verify cleanup
 
+(defn- has-results?
+  "Returns true if the query returns any results."
+  [conn-spec query]
+  (-> (jdbc/query conn-spec query) seq boolean))
+
 (defmulti workspace-isolation-resources-exist?
   "Check if isolation resources still exist for the workspace.
   Returns a map with keys indicating which resources exist."
@@ -30,24 +35,20 @@
   (let [schema-name (ws.u/isolation-namespace-name workspace)
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    {:schema (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
-                 seq boolean)
-     :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM pg_user WHERE usename = ?" username])
-                 seq boolean)}))
+    {:schema (has-results? conn-spec
+                           ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
+     :user   (has-results? conn-spec
+                           ["SELECT 1 FROM pg_user WHERE usename = ?" username])}))
 
 (defmethod workspace-isolation-resources-exist? :h2
   [database workspace]
   (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    {:schema (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE UPPER(SCHEMA_NAME) = UPPER(?)" schema-name])
-                 seq boolean)
-     :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM INFORMATION_SCHEMA.USERS WHERE UPPER(USER_NAME) = UPPER(?)" username])
-                 seq boolean)}))
+    {:schema (has-results? conn-spec
+                           ["SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE UPPER(SCHEMA_NAME) = UPPER(?)" schema-name])
+     :user   (has-results? conn-spec
+                           ["SELECT 1 FROM INFORMATION_SCHEMA.USERS WHERE UPPER(USER_NAME) = UPPER(?)" username])}))
 
 (defmethod workspace-isolation-resources-exist? :snowflake
   [database workspace]
@@ -56,54 +57,44 @@
         role-name   (format "MB_ISOLATION_ROLE_%s" (:id workspace))
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    {:schema (-> (jdbc/query conn-spec
-                             [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
-                 seq boolean)
-     :user   (-> (jdbc/query conn-spec
-                             [(format "SHOW USERS LIKE '%s'" username)])
-                 seq boolean)
-     :role   (-> (jdbc/query conn-spec
-                             [(format "SHOW ROLES LIKE '%s'" role-name)])
-                 seq boolean)}))
+    {:schema (has-results? conn-spec
+                           [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
+     :user   (has-results? conn-spec
+                           [(format "SHOW USERS LIKE '%s'" username)])
+     :role   (has-results? conn-spec
+                           [(format "SHOW ROLES LIKE '%s'" role-name)])}))
 
 (defmethod workspace-isolation-resources-exist? :sqlserver
   [database workspace]
   (let [schema-name (ws.u/isolation-namespace-name workspace)
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    {:schema (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
-                 seq boolean)
-     :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM sys.database_principals WHERE name = ?" username])
-                 seq boolean)
-     :login  (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM master.sys.server_principals WHERE name = ?" username])
-                 seq boolean)}))
+    {:schema (has-results? conn-spec
+                           ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
+     :user   (has-results? conn-spec
+                           ["SELECT 1 FROM sys.database_principals WHERE name = ?" username])
+     :login  (has-results? conn-spec
+                           ["SELECT 1 FROM master.sys.server_principals WHERE name = ?" username])}))
 
 (defmethod workspace-isolation-resources-exist? :clickhouse
   [database workspace]
   (let [db-name   (ws.u/isolation-namespace-name workspace)
         username  (ws.u/isolation-user-name workspace)
         conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    {:database (-> (jdbc/query conn-spec
-                               ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
-                   seq boolean)
-     :user     (-> (jdbc/query conn-spec
-                               ["SELECT 1 FROM system.users WHERE name = ?" username])
-                   seq boolean)}))
+    {:database (has-results? conn-spec
+                             ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
+     :user     (has-results? conn-spec
+                             ["SELECT 1 FROM system.users WHERE name = ?" username])}))
 
 (defmethod workspace-isolation-resources-exist? :mysql
   [database workspace]
   (let [db-name   (ws.u/isolation-namespace-name workspace)
         username  (ws.u/isolation-user-name workspace)
         conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    {:database (-> (jdbc/query conn-spec
-                               ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" db-name])
-                   seq boolean)
-     :user     (-> (jdbc/query conn-spec
-                               ["SELECT 1 FROM mysql.user WHERE user = ?" username])
-                   seq boolean)}))
+    {:database (has-results? conn-spec
+                             ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" db-name])
+     :user     (has-results? conn-spec
+                             ["SELECT 1 FROM mysql.user WHERE user = ?" username])}))
 
 ;;; Tests
 (deftest destroy-workspace-isolation-test
