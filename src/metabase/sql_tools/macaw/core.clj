@@ -148,3 +148,23 @@
 (defmethod sql-tools/returned-columns-impl :macaw
   [_parser driver query]
   (returned-columns driver query))
+
+(defn validate-query
+  "Validate native query. TODO: limits; what this can and can not do."
+  [driver native-query]
+  (let [{:keys [used-fields returned-fields errors]} (-> native-query
+                                                         lib/raw-native-query
+                                                         macaw/parsed-query
+                                                         macaw/->ast
+                                                         (-> (sql-tools.macaw.references/field-references driver)))
+        check-fields #(mapcat (fn [col-spec]
+                                (resolve-field driver (lib/->metadata-provider native-query) col-spec)
+                                (keep :error))
+                              %)]
+    (-> errors
+        (into (check-fields used-fields))
+        (into (check-fields returned-fields)))))
+
+(defmethod sql-tools/validate-query-impl :macaw
+  [_parser driver query]
+  (validate-query driver query))

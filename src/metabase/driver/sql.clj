@@ -3,9 +3,6 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
-   ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
-   ;; Driver API namespace?
-   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
@@ -13,7 +10,6 @@
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]
@@ -192,22 +188,10 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (sql-tools/returned-columns driver native-query))
 
-;; TODO: What checks are done exactly!!! maybe returning lineage is fine, this fn can handle the rest...
 (mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (let [{:keys [used-fields returned-fields errors]} (->> native-query
-                                                          driver-api/raw-native-query
-                                                          macaw/parsed-query
-                                                          macaw/->ast
-                                                          (sql.references/field-references driver))
-        check-fields #(mapcat (fn [col-spec]
-                                (->> (#'metabase.sql-tools.macaw.core/resolve-field driver (driver-api/->metadata-provider native-query) col-spec)
-                                     (keep :error)))
-                              %)]
-    (-> errors
-        (into (check-fields used-fields))
-        (into (check-fields returned-fields)))))
+  (sql-tools/validate-query driver native-query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
