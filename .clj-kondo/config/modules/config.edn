@@ -1383,7 +1383,8 @@
   {:team "DevEx"
    :api #{metabase.sql-tools.core
           metabase.sql-tools.init}
-   :uses #{driver
+   :uses #{config
+           driver
            lib
            util}}
 
