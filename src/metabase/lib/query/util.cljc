@@ -228,8 +228,10 @@
    target :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
    {:keys [operator left right]} :- ::lib.schema.query/test-join-condition-spec]
   (let [lhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-lhs-columns query stage-number nil nil) left)
-        rhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-rhs-columns query stage-number target lhs nil) right)]
-    (lib.fe-util/join-condition-clause operator lhs rhs)))
+        rhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-rhs-columns query stage-number target lhs nil) right)
+        lhs-with-binning (apply-binning query stage-number lhs left)
+        rhs-with-binning (apply-binning query stage-number rhs right)]
+    (lib.fe-util/join-condition-clause operator lhs-with-binning rhs-with-binning)))
 
 (mu/defn- append-join :- ::lib.schema/query
   [query             :- ::lib.schema/query

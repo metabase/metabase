@@ -92,11 +92,17 @@
    [:strategy ::lib.schema.join/strategy]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
+(mr/def ::test-join-source-spec
+  [:multi {:dispatch (comp keyword :type)}
+   [:column [:merge ::test-column-spec ::test-binning-spec]]
+   [:literal [:ref ::test-literal-expression-spec]]
+   [:operator [:ref ::test-operator-expression-spec]]])
+
 (mr/def ::test-join-condition-spec
   [:map
    [:operator ::test-operator-spec]
-   [:left [:ref ::test-expression-spec]]
-   [:right [:ref ::test-expression-spec]]])
+   [:left [:ref ::test-join-source-spec]]
+   [:right [:ref ::test-join-source-spec]]])
 
 (mr/def ::test-aggregation-spec
   [:or

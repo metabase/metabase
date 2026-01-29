@@ -506,8 +506,8 @@ export type JoinSpec = {
 
 type JoinConditionSpec = {
   operator: Lib.JoinConditionOperator;
-  left: ExpressionSpec;
-  right: ExpressionSpec;
+  left: (ColumnSpec & BinningSpec) | ExpressionSpec;
+  right: (ColumnSpec & BinningSpec) | ExpressionSpec;
 };
 
 export type OrderBySpec = ColumnSpec & {

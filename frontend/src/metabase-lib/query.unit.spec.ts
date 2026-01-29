@@ -290,6 +290,53 @@ describe("createTestQuery", () => {
       });
     });
 
+    it("should create a query with joins that have binning", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            joins: [
+              {
+                source: {
+                  type: "table",
+                  id: PEOPLE_ID,
+                },
+                strategy: "inner-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: {
+                      type: "column",
+                      name: "CREATED_AT",
+                      unit: "month",
+                    },
+                    right: {
+                      type: "column",
+                      name: "CREATED_AT",
+                      unit: "month",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      const joins = Lib.joins(query, -1);
+      expect(joins).toHaveLength(1);
+
+      const conditions = Lib.joinConditions(joins[0]);
+      expect(conditions).toHaveLength(1);
+
+      expect(Lib.displayInfo(query, -1, conditions[0])).toMatchObject({
+        displayName: "Created At: Month is Created At: Month",
+      });
+    });
+
     it("should create a query with suggested joins", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
