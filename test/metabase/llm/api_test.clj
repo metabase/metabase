@@ -186,13 +186,15 @@
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "No tables found")))))))
 
-(deftest generate-sql-tracks-token-usage-test
-  (testing "successful /generate-sql call tracks token usage"
+;;; ------------------------------------------- Snowplow Tests -------------------------------------------
+
+(deftest generate-sql-snowplow-success-test
+  (testing "successful /generate-sql call tracks both token_usage and simple_event"
     (mt/with-temp [:model/Database db {:engine :postgres}
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}
                    :model/Field _ {:table_id (:id table) :name "name" :base_type :type/Text}]
-      (let [tracked-usage (atom nil)
+      (let [tracked-events (atom [])
             mock-chat-response {:result {:sql "SELECT * FROM users"}
                                 :usage {:model "anthropic/claude-sonnet-4-5"
                                         :prompt 1000
@@ -200,22 +202,65 @@
                                 :duration-ms 500}]
         (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
           (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)
-                        api/track-token-usage! (fn [usage] (reset! tracked-usage usage))]
+                        snowplow/track-event! (fn [schema data user-id]
+                                                (swap! tracked-events conj {:schema schema
+                                                                            :data data
+                                                                            :user-id user-id}))]
             (let [response (mt/user-http-request :rasta :post 200 "llm/generate-sql"
                                                  {:prompt "get all users"
                                                   :database_id (:id db)
                                                   :referenced_entities [{:model "table" :id (:id table)}]})]
               (is (= "SELECT * FROM users" (:sql response)))
-              (is (=? {:model "anthropic/claude-sonnet-4-5"
-                       :prompt 1000
-                       :completion 200
-                       :duration-ms 500
-                       :source "oss_metabot"
-                       :tag "oss-sqlgen"}
-                      @tracked-usage)))))))))
+              (testing "token_usage event"
+                (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
+                  (is (=? [{:schema :snowplow/token_usage
+                            :data {:model-id "anthropic/claude-sonnet-4-5"
+                                   :prompt-tokens 1000
+                                   :completion-tokens 200
+                                   :total-tokens 1200
+                                   :duration-ms 500
+                                   :source "oss_metabot"
+                                   :tag "oss-sqlgen"}}]
+                          token-events))))
+              (testing "simple_event"
+                (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
+                  (is (=? [{:schema :snowplow/simple_event
+                            :data {:event "metabot_oss_sqlgen_used"
+                                   :duration_ms pos?
+                                   :result "success"
+                                   :event_detail "postgres"}}]
+                          simple-events)))))))))))
 
-(deftest generate-sql-streaming-tracks-token-usage-test
-  (testing "successful /generate-sql-streaming call tracks token usage via snowplow"
+(deftest generate-sql-snowplow-failure-test
+  (testing "failed /generate-sql call tracks simple_event with failure result"
+    (mt/with-temp [:model/Database db {:engine :postgres}
+                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
+                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
+      (let [tracked-events (atom [])]
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+          (with-redefs [llm.anthropic/chat-completion (fn [_] (throw (Exception. "API error")))
+                        snowplow/track-event! (fn [schema data user-id]
+                                                (swap! tracked-events conj {:schema schema
+                                                                            :data data
+                                                                            :user-id user-id}))]
+            (mt/user-http-request :rasta :post 500 "llm/generate-sql"
+                                  {:prompt "get all users"
+                                   :database_id (:id db)
+                                   :referenced_entities [{:model "table" :id (:id table)}]})
+            (testing "no token_usage event on failure (chat-completion call failed)"
+              (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
+                (is (empty? token-events))))
+            (testing "simple_event with failure result"
+              (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
+                (is (=? [{:schema :snowplow/simple_event
+                          :data {:event "metabot_oss_sqlgen_used"
+                                 :duration_ms pos?
+                                 :result "failure"
+                                 :event_detail "postgres"}}]
+                        simple-events))))))))))
+
+(deftest generate-sql-streaming-snowplow-success-test
+  (testing "successful /generate-sql-streaming call tracks both token_usage and simple_event"
     (mt/with-temp [:model/Database db {:engine :postgres}
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}
@@ -237,19 +282,62 @@
                                                   :database_id (:id db)
                                                   :referenced_entities [{:model "table" :id (:id table)}]})]
               ;; Wait for the background thread to complete tracking
-              (tu/poll-until 2000 (seq @tracked-events))
+              (tu/poll-until 2000 (>= (count @tracked-events) 2))
               (is (string? response))
               (is (str/includes? response "SELECT * FROM users"))
-              (let [token-usage-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
-                (is (=? [{:schema :snowplow/token_usage
-                          :data {:model-id "anthropic/claude-sonnet-4"
-                                 :prompt-tokens 1500
-                                 :completion-tokens 250
-                                 :total-tokens 1750
-                                 :duration-ms pos?
-                                 :source "oss_metabot"
-                                 :tag "oss-sqlgen-streaming"}}]
-                        token-usage-events))))))))))
+              (testing "token_usage event"
+                (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
+                  (is (=? [{:schema :snowplow/token_usage
+                            :data {:model-id "anthropic/claude-sonnet-4"
+                                   :prompt-tokens 1500
+                                   :completion-tokens 250
+                                   :total-tokens 1750
+                                   :duration-ms pos?
+                                   :source "oss_metabot"
+                                   :tag "oss-sqlgen-streaming"}}]
+                          token-events))))
+              (testing "simple_event"
+                (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
+                  (is (=? [{:schema :snowplow/simple_event
+                            :data {:event "metabot_oss_sqlgen_used"
+                                   :duration_ms pos?
+                                   :result "success"
+                                   :event_detail "postgres"}}]
+                          simple-events)))))))))))
+
+(deftest generate-sql-streaming-snowplow-failure-test
+  (testing "streaming error tracks simple_event with failure result"
+    (mt/with-temp [:model/Database db {:engine :postgres}
+                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
+                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
+      (let [tracked-events (atom [])
+            mock-chan (a/chan 10)]
+        (a/>!! mock-chan {:type :error :error "API rate limit exceeded"})
+        (a/close! mock-chan)
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+          (with-redefs [llm.anthropic/chat-completion-stream (constantly mock-chan)
+                        snowplow/track-event! (fn [schema data user-id]
+                                                (swap! tracked-events conj {:schema schema
+                                                                            :data data
+                                                                            :user-id user-id}))]
+            (let [response (mt/user-http-request :rasta :post 202 "llm/generate-sql-streaming"
+                                                 {:prompt "get all users"
+                                                  :database_id (:id db)
+                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
+              ;; Wait for the background thread to complete
+              (tu/poll-until 2000 (seq @tracked-events))
+              (is (string? response))
+              (testing "no token_usage event on error"
+                (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
+                  (is (empty? token-events))))
+              (testing "simple_event with failure result"
+                (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
+                  (is (=? [{:schema :snowplow/simple_event
+                            :data {:event "metabot_oss_sqlgen_used"
+                                   :duration_ms pos?
+                                   :result "failure"
+                                   :event_detail "postgres"}}]
+                          simple-events)))))))))))
 
 ;;; ------------------------------------------- Token Usage Tracking Tests -------------------------------------------
 
@@ -306,121 +394,4 @@
           (is (=? {:hashed-metabase-license-token #"[0-9a-f]{64}"}
                   data)))))))
 
-;;; ------------------------------------------- Simple Event Tracking Tests -------------------------------------------
 
-(deftest generate-sql-tracks-simple-event-test
-  (testing "successful /generate-sql call tracks simple_event"
-    (mt/with-temp [:model/Database db {:engine :postgres}
-                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
-                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (let [tracked-events (atom [])
-            mock-chat-response {:result {:sql "SELECT * FROM users"}
-                                :usage {:model "anthropic/claude-sonnet-4-5"
-                                        :prompt 1000
-                                        :completion 200}
-                                :duration-ms 500}]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
-          (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (let [response (mt/user-http-request :rasta :post 200 "llm/generate-sql"
-                                                 {:prompt "get all users"
-                                                  :database_id (:id db)
-                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
-              (is (= "SELECT * FROM users" (:sql response)))
-              (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                (is (=? [{:schema :snowplow/simple_event
-                          :data {:event "metabot_oss_sqlgen_used"
-                                 :duration_ms pos?
-                                 :result "success"
-                                 :event_detail "postgres"}}]
-                        simple-events))))))))))
-
-(deftest generate-sql-tracks-simple-event-on-failure-test
-  (testing "failed /generate-sql call tracks simple_event with failure result"
-    (mt/with-temp [:model/Database db {:engine :postgres}
-                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
-                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (let [tracked-events (atom [])]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
-          (with-redefs [llm.anthropic/chat-completion (fn [_] (throw (Exception. "API error")))
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (mt/user-http-request :rasta :post 500 "llm/generate-sql"
-                                  {:prompt "get all users"
-                                   :database_id (:id db)
-                                   :referenced_entities [{:model "table" :id (:id table)}]})
-            (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-              (is (=? [{:schema :snowplow/simple_event
-                        :data {:event "metabot_oss_sqlgen_used"
-                               :duration_ms pos?
-                               :result "failure"
-                               :event_detail "postgres"}}]
-                      simple-events)))))))))
-
-(deftest generate-sql-streaming-tracks-simple-event-test
-  (testing "successful /generate-sql-streaming call tracks simple_event"
-    (mt/with-temp [:model/Database db {:engine :postgres}
-                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
-                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (let [tracked-events (atom [])
-            mock-chan (a/chan 10)]
-        (a/>!! mock-chan {:type :usage :id "anthropic/claude-sonnet-4" :usage {:promptTokens 1500}})
-        (a/>!! mock-chan {:type :text-delta :delta "{\"sql\":\"SELECT * FROM users\"}"})
-        (a/>!! mock-chan {:type :usage :id "anthropic/claude-sonnet-4" :usage {:completionTokens 250}})
-        (a/close! mock-chan)
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
-          (with-redefs [llm.anthropic/chat-completion-stream (constantly mock-chan)
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (let [response (mt/user-http-request :rasta :post 202 "llm/generate-sql-streaming"
-                                                 {:prompt "get all users"
-                                                  :database_id (:id db)
-                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
-              ;; Wait for the background thread to complete tracking
-              (tu/poll-until 2000 (>= (count @tracked-events) 2))
-              (is (string? response))
-              (is (str/includes? response "SELECT * FROM users"))
-              (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                (is (=? [{:schema :snowplow/simple_event
-                          :data {:event "metabot_oss_sqlgen_used"
-                                 :duration_ms pos?
-                                 :result "success"
-                                 :event_detail "postgres"}}]
-                        simple-events))))))))))
-
-(deftest generate-sql-streaming-tracks-simple-event-on-error-test
-  (testing "streaming error chunk tracks simple_event with failure result"
-    (mt/with-temp [:model/Database db {:engine :postgres}
-                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
-                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (let [tracked-events (atom [])
-            mock-chan (a/chan 10)]
-        (a/>!! mock-chan {:type :error :error "API rate limit exceeded"})
-        (a/close! mock-chan)
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
-          (with-redefs [llm.anthropic/chat-completion-stream (constantly mock-chan)
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (let [response (mt/user-http-request :rasta :post 202 "llm/generate-sql-streaming"
-                                                 {:prompt "get all users"
-                                                  :database_id (:id db)
-                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
-              ;; Wait for the background thread to complete
-              (tu/poll-until 2000 (seq @tracked-events))
-              (is (string? response))
-              (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                (is (=? [{:schema :snowplow/simple_event
-                          :data {:event "metabot_oss_sqlgen_used"
-                                 :duration_ms pos?
-                                 :result "failure"
-                                 :event_detail "postgres"}}]
-                        simple-events))))))))))
