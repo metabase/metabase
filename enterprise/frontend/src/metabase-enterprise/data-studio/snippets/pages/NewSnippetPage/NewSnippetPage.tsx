@@ -39,7 +39,8 @@ type NewSnippetPageProps = {
 export function NewSnippetPage({ route }: NewSnippetPageProps) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [name, setName] = useState(t`New SQL snippet`);
+  const defaultName = t`New SQL snippet`;
+  const [name, setName] = useState(defaultName);
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
