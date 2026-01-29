@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -86,14 +87,17 @@
 ;;; LLM interaction
 
 (defn- call-llm
-  "Call Claude and collect processed parts."
+  "Call Claude and stream processed parts.
+
+  Uses lite-aisdk-xf for fluid text streaming - emits text chunks immediately
+  rather than collecting them into one large part."
   [memory context profile tools]
   (let [model      (:model profile "claude-haiku-4-5")
         system-msg (messages/build-system-message context profile tools)
         input-msgs (messages/build-message-history memory)]
     (log/info "Calling Claude" {:model model :msgs (count input-msgs) :tools (count tools)})
     (eduction (comp (self/tool-executor-xf tools)
-                    self/aisdk-xf)
+                    (self/lite-aisdk-xf))
               (self/claude (cond-> {:model model :input input-msgs :tools (vec tools)}
                              system-msg (assoc :system (:content system-msg)))))))
 
@@ -205,14 +209,6 @@
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
 
-(defn- accumulating-xf
-  "Transducer that passes all parts through while accumulating them into an atom.
-  Used to stream parts immediately while also collecting them for later processing."
-  [parts-atom]
-  (map (fn [part]
-         (swap! parts-atom conj part)
-         part)))
-
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
@@ -225,7 +221,7 @@
         ;; Compose: post-process for streaming output, accumulate for later decisions
         xf         (comp (streaming/post-process-xf (get-in @memory-atom [:state :queries] {})
                                                     (get-in @memory-atom [:state :charts] {}))
-                         (accumulating-xf parts-atom))
+                         (u/tee-xf parts-atom))
         ;; Stream parts to consumer AND accumulate them simultaneously
         result'    (transduce xf rf result (call-llm @memory-atom context profile tools))
         parts      @parts-atom]
