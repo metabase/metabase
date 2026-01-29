@@ -43,20 +43,20 @@ import {
   BROKEN_DEPENDENTS_SORT_COLUMNS,
 } from "../../constants";
 
-import S from "./SidebarDependentsSection.module.css";
+import S from "./BrokenDependentsSection.module.css";
 import {
   getDefaultFilterOptions,
   getDefaultSortOptions,
   getListRequest,
 } from "./utils";
 
-type SidebarDependentsSectionProps = {
+type BrokenDependentsSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarDependentsSection({
+export function BrokenDependentsSection({
   node,
-}: SidebarDependentsSectionProps) {
+}: BrokenDependentsSectionProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
   const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>(
     getDefaultFilterOptions(),

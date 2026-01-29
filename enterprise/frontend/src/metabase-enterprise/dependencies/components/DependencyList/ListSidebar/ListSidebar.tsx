@@ -5,13 +5,13 @@ import type { DependencyNode } from "metabase-types/api";
 
 import type { DependencyListMode } from "../types";
 
+import { BrokenDependentsSection } from "./BrokenDependentsSection";
+import { ErrorsSection } from "./ErrorsSection";
+import { FieldsSection } from "./FieldsSection";
+import { SidebarInfoSection } from "./InfoSection";
 import S from "./ListSidebar.module.css";
-import { SidebarDependentsSection } from "./SidebarDependentsSection";
-import { SidebarErrorsSection } from "./SidebarErrorsSection";
-import { SidebarFieldsSection } from "./SidebarFieldsSection";
+import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarInfoSection } from "./SidebarInfoSection";
-import { SidebarLocationSection } from "./SidebarLocationSection";
 import { SidebarResizableBox } from "./SidebarResizableBox";
 
 type ListSidebarProps = {
@@ -46,12 +46,12 @@ export const ListSidebar = memo(function ListSidebar({
       >
         <Stack gap="lg">
           <SidebarHeader node={node} onClose={onClose} />
-          <SidebarLocationSection node={node} />
+          <LocationSection node={node} />
           <SidebarInfoSection node={node} />
         </Stack>
-        {mode === "broken" && <SidebarErrorsSection node={node} />}
-        {mode === "broken" && <SidebarDependentsSection node={node} />}
-        {mode === "unreferenced" && <SidebarFieldsSection node={node} />}
+        {mode === "broken" && <ErrorsSection node={node} />}
+        {mode === "broken" && <BrokenDependentsSection node={node} />}
+        {mode === "unreferenced" && <FieldsSection node={node} />}
       </Stack>
     </SidebarResizableBox>
   );

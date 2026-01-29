@@ -24,13 +24,13 @@ import {
   getErrorTypeLabel,
 } from "../../../../utils";
 
-import S from "./SidebarErrorsSection.module.css";
+import S from "./ErrorsSection.module.css";
 
-type SidebarErrorsSectionProps = {
+type ErrorsSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarErrorsSection({ node }: SidebarErrorsSectionProps) {
+export function ErrorsSection({ node }: ErrorsSectionProps) {
   const errors = getDependencyErrors(node.dependents_errors ?? []);
   const errorGroups = getDependencyErrorGroups(errors);
 

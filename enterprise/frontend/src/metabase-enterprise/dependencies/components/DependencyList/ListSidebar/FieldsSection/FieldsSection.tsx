@@ -17,13 +17,13 @@ import type { DependencyNode, Field } from "metabase-types/api";
 
 import { getNodeFields, getNodeFieldsLabel } from "../../../../utils";
 
-import S from "./SidebarFieldsSection.module.css";
+import S from "./FieldsSection.module.css";
 
-type SidebarFieldsSectionProps = {
+type FieldsSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarFieldsSection({ node }: SidebarFieldsSectionProps) {
+export function FieldsSection({ node }: FieldsSectionProps) {
   const fields = getNodeFields(node);
 
   return (
