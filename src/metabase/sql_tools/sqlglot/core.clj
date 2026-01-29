@@ -42,6 +42,13 @@
           {}
           (lib.metadata/tables mp)))
 
+(defn- driver->dialect
+  [driver]
+  (when-not (= :h2 driver)
+    (name driver)))
+
+;;;; Columns
+
 ;; TODO: Clean this up. This is breaking lib encapsulation.
 (defn- resolve-column
   [schema->table->col single-lineage]
@@ -62,6 +69,18 @@
   [schema->table->col* lineage]
   (mapv (partial resolve-column schema->table->col*) lineage))
 
+(defn- normalize-dependency
+  [driver dependency]
+  (mapv (fn [component]
+          (when (string? (not-empty component))
+            (sql.normalize/normalize-name driver component)))
+        dependency))
+
+(defn- normalized-dependencies
+  [driver [_alias _pure? _dependencies :as single-lineage]]
+  (update single-lineage 2 #(mapv (partial normalize-dependency driver)
+                                  %)))
+
 (defn returned-columns
   "Given a native query return columns it produces.
 
@@ -70,14 +89,19 @@
   (let [sqlglot-schema* (sqlglot-schema driver query)
         sql-str (lib/raw-native-query query)
         default-schema* (driver.sql/default-schema driver)
-        lineage (sqlglot.shim/returned-columns-lineage driver sql-str default-schema* sqlglot-schema*)
+        lineage (sqlglot.shim/returned-columns-lineage
+                 (driver->dialect driver) sql-str default-schema* sqlglot-schema*)
+        normalized-lienage (mapv (partial normalized-dependencies driver)
+                                 lineage)
         schema->table->col* (schema->table->col query)
-        returned-columns (lineage->returned-columns schema->table->col* lineage)]
+        returned-columns (lineage->returned-columns schema->table->col* normalized-lienage)]
     returned-columns))
 
 (defmethod sql-tools/returned-columns-impl :sqlglot
   [_parser driver query]
   (returned-columns driver query))
+
+;;;; Tables
 
 (defn- referenced-tables
   [driver query]
@@ -85,7 +109,8 @@
         db-transforms (lib.metadata/transforms query)
         sql (lib/raw-native-query query)
         default-table-schema* (driver.sql/default-schema driver)
-        query-tables (sqlglot.shim/referenced-tables driver sql default-table-schema*)]
+        query-tables (sqlglot.shim/referenced-tables
+                      (driver->dialect driver) sql default-table-schema*)]
     (into #{}
           (keep (fn [[table-schema table]]
                   (sql-tools.common/find-table-or-transform
@@ -97,6 +122,8 @@
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [_parser driver query]
   (referenced-tables driver query))
+
+;;;; Validation
 
 (defn- process-error-dispatch [_driver {:keys [type]}] type)
 
@@ -129,7 +156,8 @@
   (let [sql (lib/raw-native-query query)
         default-table-schema* (driver.sql/default-schema driver)
         sqlglot-schema* (sqlglot-schema driver query)
-        validation-result (sqlglot.shim/validate-query driver sql default-table-schema* sqlglot-schema*)]
+        validation-result (sqlglot.shim/validate-query
+                           (driver->dialect driver) sql default-table-schema* sqlglot-schema*)]
     (if (= :ok (:status validation-result))
       #{}
       (let [processed (process-error driver validation-result)]
