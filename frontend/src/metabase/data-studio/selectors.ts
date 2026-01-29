@@ -1,10 +1,6 @@
-import {
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_REMOTE_SYNC,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { canAccessTransforms } from "metabase/transforms/selectors";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
 // Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
@@ -12,11 +8,7 @@ export function canAccessDataStudio(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
   }
-  return (
-    getUserIsAdmin(state) ||
-    canAccessTransforms(state) ||
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
-  );
+  return getUserIsAdmin(state) || getUserIsAnalyst(state);
 }
 
 export const getUserCanWriteSegments = (

@@ -12,25 +12,42 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- database-routing-error-ex-data [^Throwable e]
+  (when e
+    (if (:database-routing-enabled (ex-data e))
+      (ex-data e)
+      (recur (.getCause e)))))
+
 (defmethod transforms.i/table-dependencies :query
-  [{:keys [source]}]
-  (let [query (-> (:query source)
-                  transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)
-        driver (-> query
-                   lib.metadata/database
-                   :engine)]
-    (if (lib/native-only-query? query)
-      (driver/native-query-deps driver query)
-      (into #{}
-            (map (fn [table-id]
-                   {:table table-id}))
-            (lib/all-source-table-ids query)))))
+  [{:keys [source] :as transform}]
+  (try
+    (let [query (-> (:query source)
+                    transforms.util/massage-sql-query
+                    qp.preprocess/preprocess)
+          driver (-> query
+                     lib.metadata/database
+                     :engine)]
+      (if (lib/native-only-query? query)
+        (driver/native-query-deps driver query)
+        (into #{}
+              (map (fn [table-id]
+                     {:table table-id}))
+              (lib/all-source-table-ids query))))
+    (catch clojure.lang.ExceptionInfo e
+      (if-some [data (database-routing-error-ex-data e)]
+        (let [message (i18n/trs "Failed to run transform because the database {0} has database routing turned on. Running transforms on databases with db routing enabled is not supported." (:database-name data))]
+          (throw (ex-info message
+                          {:metabase.transforms.jobs/transform-failure true
+                           :metabase.transforms.jobs/failures [{:metabase-enterprise.transforms.jobs/transform transform
+                                                                           :metabase-enterprise.transforms.jobs/message message}]}
+                          e)))
+        (throw e)))))
 
 (defn- dependency-map [transforms]
   (into {}
