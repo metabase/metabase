@@ -32,7 +32,6 @@ export const METABASE_DARK_THEME: MetabaseThemeV2 = {
     "background-secondary-inverse": baseColors.orion[30],
     "background-tertiary-inverse": baseColors.orion[70],
     overlay: baseColors.orionAlpha[70],
-    "bg-ocean-alpha-light": baseColors.oceanAlpha[20],
     "background-error": baseColors.lobster[90],
     "background-success": baseColors.palm[90],
     brand: baseColors.blue[40],

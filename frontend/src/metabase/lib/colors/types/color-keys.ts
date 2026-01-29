@@ -94,7 +94,6 @@ export type ProtectedColorKey =
   | "admin-navbar"
   | "admin-navbar-secondary"
   | "admin-navbar-inverse"
-  | "bg-ocean-alpha-light"
   | "accent0"
   | "accent1"
   | "accent2"

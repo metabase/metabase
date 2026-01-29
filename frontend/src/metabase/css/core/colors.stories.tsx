@@ -1,11 +1,11 @@
-import { colorConfig } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors";
 import { Card, Flex, Text } from "metabase/ui";
 
 export default {
   title: "Design System/Colors",
 };
 
-const COLOR_NAMES = Object.keys(colorConfig);
+const COLOR_NAMES = Object.keys(colors);
 
 export function Default() {
   return (
