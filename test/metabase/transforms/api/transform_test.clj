@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -25,12 +24,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defmacro deftest-oss
-  [name & body]
-  `(deftest ~name
-     (when-not config/ee-available?
-       ~@body)))
 
 ;;; ------------------------------------------------------------
 ;;; Assertion Helpers
@@ -67,7 +60,7 @@
       :filter-fn     lib/=
       :filter-values [category]})))
 
-(deftest-oss create-transform-test
+(mt/deftest-oss create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -98,7 +91,7 @@
                 (is (map? (:owner response)))
                 (is (= lucky-id (get-in response [:owner :id])))))))))))
 
-(deftest-oss create-transform-with-owner-test
+(mt/deftest-oss create-transform-with-owner-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (testing "Creating a transform with explicit owner_user_id"
@@ -140,7 +133,7 @@
             (is (= {:email "external.owner@example.com"} (:owner response))
                 "Hydrated owner should be email-only map")))))))
 
-(deftest-oss update-transform-owner-test
+(mt/deftest-oss update-transform-owner-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (with-transform-cleanup! [table-name "update_owner_test"]
@@ -186,7 +179,7 @@
               (is (nil? (:owner_email updated)))
               (is (nil? (:owner updated))))))))))
 
-(deftest-oss transform-type-detection-test
+(mt/deftest-oss transform-type-detection-test
   (testing "Transform type is automatically detected and set based on source"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
@@ -217,7 +210,7 @@
                                                                :name   table-name}})]
                   (is (= "native" (:source_type response))))))))))))
 
-(deftest-oss transform-type-updates-test
+(mt/deftest-oss transform-type-updates-test
   (testing "Transform type is automatically updated when source changes"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
@@ -243,7 +236,7 @@
                                                                 :query mbql-query}})]
                     (is (= "mbql" (:source_type updated)))))))))))))
 
-(deftest-oss create-transform-feature-flag-test
+(mt/deftest-oss create-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "Creating a query transform without :transforms feature succeeds in OSS"
       (mt/dataset transforms-dataset/transforms-test
@@ -261,7 +254,7 @@
                                                              :name   table-name}})]
                 (is (some? (:id response)))))))))))
 
-(deftest-oss update-transform-feature-flag-test
+(mt/deftest-oss update-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -282,7 +275,7 @@
                                                    (assoc transform-payload :name "Updated Transform"))]
                 (is (= "Updated Transform" (:name response)))))))))))
 
-(deftest-oss run-transform-feature-flag-test
+(mt/deftest-oss run-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "Running a query transform works without :transforms feature in OSS"
       (mt/dataset transforms-dataset/transforms-test
@@ -302,7 +295,7 @@
                                                    (format "transform/%d/run" (:id created)))]
                 (is (= "Transform run started" (:message response)))))))))))
 
-(deftest-oss list-transforms-test
+(mt/deftest-oss list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (testing "Can list without query parameters"
@@ -331,7 +324,7 @@
                   (is (some #(true? (:source_readable %)) list-resp)
                       "At least one transform should have readable sources"))))))))))
 
-(deftest-oss filter-transforms-test
+(mt/deftest-oss filter-transforms-test
   (testing "should be able to filter transforms"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -360,7 +353,7 @@
             (is (=? [{:id t2-id}]
                     (mt/user-http-request :lucky :get 200 "transform" :tag_ids [tag2-id])))))))))
 
-(deftest-oss get-transforms-test
+(mt/deftest-oss get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -382,7 +375,7 @@
                 (is (map? (:creator get-resp)))
                 (is (= lucky-id (get-in get-resp [:creator :id])))))))))))
 
-(deftest-oss source-readable-field-test
+(mt/deftest-oss source-readable-field-test
   (testing "Transforms API includes source_readable field"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
@@ -425,7 +418,7 @@
             :name "orders_2"
             :type "table"}})
 
-(deftest-oss get-transform-dependencies-test
+(mt/deftest-oss get-transform-dependencies-test
   (mt/with-data-analyst-role! (mt/user->id :lucky)
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-temp [:model/Table {table :id} {:schema "public", :name "orders_2"}
@@ -446,7 +439,7 @@
           (testing "Dependencies response hydrates creator"
             (is (every? #(map? (:creator %)) deps-resp))))))))
 
-(deftest-oss put-transforms-test
+(mt/deftest-oss put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -476,7 +469,7 @@
                 (is (map? (:creator put-resp)))
                 (is (= lucky-id (get-in put-resp [:creator :id])))))))))))
 
-(deftest-oss change-target-table-test
+(mt/deftest-oss change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -505,7 +498,7 @@
                           (update-in [:source :query] lib/normalize))))
               (is (false? (transforms.util/target-table-exists? original))))))))))
 
-(deftest-oss delete-transforms-test
+(mt/deftest-oss delete-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -521,7 +514,7 @@
               (mt/user-http-request :lucky :delete 204 (format "transform/%s" (:id resp)))
               (mt/user-http-request :lucky :get 404 (format "transform/%s" (:id resp))))))))))
 
-(deftest-oss delete-table-transforms-test
+(mt/deftest-oss delete-table-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -607,7 +600,7 @@
       (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
           (recur)))))
 
-(deftest-oss execute-transform-test
+(mt/deftest-oss execute-transform-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
@@ -647,7 +640,7 @@
                   (is (true? (transforms.util/target-table-exists? updated)))
                   (check-query-results table2-name [2 3 4 13] "Doohickey"))))))))))
 
-(deftest-oss get-runs-filter-by-single-transform-id-test
+(mt/deftest-oss get-runs-filter-by-single-transform-id-test
   (testing "GET /api/transform/run - filter by single transform ID"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-temp [:model/Transform transform1 {}
@@ -668,7 +661,7 @@
             (assert-transform-ids response #{(:id transform2)})
             (is (= (:id run2) (-> response :data first :id)))))))))
 
-(deftest-oss get-runs-filter-by-multiple-transform-ids-test
+(mt/deftest-oss get-runs-filter-by-multiple-transform-ids-test
   (testing "GET /api/transform/run - filter by multiple transform IDs"
     (mt/with-temp [:model/Transform transform1 {}
                    :model/Transform transform2 {}
@@ -682,7 +675,7 @@
           (assert-run-count response 2)
           (assert-transform-ids response #{(:id transform1) (:id transform2)}))))))
 
-(deftest-oss get-runs-filter-by-single-status-test
+(mt/deftest-oss get-runs-filter-by-single-status-test
   (testing "GET /api/transform/run - filter by single status"
     (mt/with-temp [:model/Transform transform {}
                    :model/TransformRun _run1 {:transform_id (:id transform) :status "succeeded"}
@@ -708,7 +701,7 @@
   (let [response (apply mt/user-http-request :crowberto :get 200 "transform/run" filters)]
     (filter our-pred (:data response))))
 
-(deftest-oss get-runs-filter-by-multiple-statuses-test
+(mt/deftest-oss get-runs-filter-by-multiple-statuses-test
   (testing "GET /api/transform/run - filter by multiple statuses"
     (mt/with-temp [:model/Transform {t0-id :id} {}
                    :model/Transform {t1-id :id} {}
@@ -805,7 +798,7 @@
                     :transform_id t1-id}]
                   (transform-runs our-run-pred :run_methods ["manual"] :start_time "~2025-08-25" :end_time "~2025-08-23"))))))))
 
-(deftest-oss get-runs-filter-by-single-tag-test
+(mt/deftest-oss get-runs-filter-by-single-tag-test
   (testing "GET /api/transform/run - filter by single tag"
     (mt/with-temp [:model/Transform transform1 {}
                    :model/Transform transform2 {}
@@ -826,7 +819,7 @@
           (is (not (contains? (set (map :transform_id (:data response)))
                               (:id transform3)))))))))
 
-(deftest-oss get-runs-filter-by-multiple-tags-test
+(mt/deftest-oss get-runs-filter-by-multiple-tags-test
   (testing "GET /api/transform/run - filter by multiple tags (union)"
     (mt/with-temp [:model/Transform transform1 {:name   "Transform with tag1"
                                                 :source {:type  "query"
@@ -880,7 +873,7 @@
           (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
           (is (not (contains? returned-transform-ids (:id transform4)))))))))
 
-(deftest-oss get-runs-combine-transform-id-and-status-test
+(mt/deftest-oss get-runs-combine-transform-id-and-status-test
   (testing "GET /api/transform/run - combine transform ID and status filters"
     (mt/with-temp [:model/Transform transform1 {:name   "Transform 1"
                                                 :source {:type  "query"
@@ -912,7 +905,7 @@
                             (= "failed" (:status %)))
                       (:data response))))))))
 
-(deftest-oss get-runs-combine-tag-and-status-test
+(mt/deftest-oss get-runs-combine-tag-and-status-test
   (testing "GET /api/transform/run - combine tag and status filters"
     (mt/with-temp [:model/Transform transform1 {}
                    :model/Transform transform2 {}
@@ -933,7 +926,7 @@
           (is (= (:id transform2) (-> response :data first :transform_id)))
           (is (= "failed" (-> response :data first :status))))))))
 
-(deftest-oss get-runs-intersect-transform-id-and-tag-test
+(mt/deftest-oss get-runs-intersect-transform-id-and-tag-test
   (testing "GET /api/transform/run - intersection of transform IDs and tags"
     (mt/with-temp [:model/Transform transform1 {}
                    :model/Transform transform2 {}
@@ -963,7 +956,7 @@
           (assert-run-count response 1)
           (assert-transform-ids response #{(:id transform1)}))))))
 
-(deftest-oss transform-revisions-test
+(mt/deftest-oss transform-revisions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (with-transform-cleanup! [table-name "transform_revisions_test"]
@@ -1001,7 +994,7 @@
                                    :name   table-name}}]
           (test-transform-revisions :put (str "transform/" transform-id) widget-req 2))))))
 
-(deftest-oss permissions-test
+(mt/deftest-oss permissions-test
   (testing "Transform endpoints require transforms permission"
     (mt/with-temp [:model/Transform transform {}]
       (testing "Regular users without transform permission get 403"
@@ -1032,7 +1025,7 @@
     [_driver _feature _database]
     false))
 
-(deftest-oss ^:parallel extract-columns-from-query-test
+(mt/deftest-oss ^:parallel extract-columns-from-query-test
   (testing "POST /api/transform/extract-columns"
     (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
                                                            ::extract-columns-from-query]})
@@ -1078,7 +1071,7 @@
                                                   :stages [{:lib/type :mbql.stage/native
                                                             :native "SELECT * FROM transforms_products"}]}})))))))))
 
-(deftest-oss ^:parallel is-simple-query-test
+(mt/deftest-oss ^:parallel is-simple-query-test
   (testing "POST /api/transform/is-simple-query"
     (testing "Returns true for simple SELECT queries"
       (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
@@ -1124,7 +1117,7 @@
 ;;; User Attribution Tests
 ;;; ------------------------------------------------------------
 
-(deftest-oss manual-run-user-attribution-test
+(mt/deftest-oss manual-run-user-attribution-test
   (testing "Manual runs are attributed to the triggering user, not the owner"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
@@ -1159,7 +1152,7 @@
 ;;; Collection Items Integration Tests
 ;;; ------------------------------------------------------------
 
-(deftest-oss collection-items-include-transforms-test
+(mt/deftest-oss collection-items-include-transforms-test
   (testing "GET /api/collection/:id/items"
     (testing "Includes transforms in collection items"
       (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -1202,7 +1195,7 @@
             (is (= "transform" (:model (first items))))
             (is (= "Test Transform" (:name (first items))))))))))
 
-(deftest-oss create-transform-with-tags-test
+(mt/deftest-oss create-transform-with-tags-test
   (testing "POST /api/transform with tag_ids"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1238,7 +1231,7 @@
                   (finally
                     (t2/delete! :model/Transform :id (:id transform-response))))))))))))
 
-(deftest-oss update-transform-tags-test
+(mt/deftest-oss update-transform-tags-test
   (testing "PUT /api/transform/:id with tag_ids"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1269,7 +1262,7 @@
                                                   {:tag_ids []})]
                 (is (= [] (:tag_ids updated)))))))))))
 
-(deftest-oss get-transform-with-tags-test
+(mt/deftest-oss get-transform-with-tags-test
   (testing "GET /api/transform/:id returns tag_ids"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1301,7 +1294,7 @@
                 (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform2)))]
                   (is (= [] (:tag_ids fetched))))))))))))
 
-(deftest-oss list-transforms-with-tags-test
+(mt/deftest-oss list-transforms-with-tags-test
   (testing "GET /api/transform returns transforms with tag_ids"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -1332,7 +1325,7 @@
               (is (= [(:id tag1)] (:tag_ids t1)))
               (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids t2)))))))))))
 
-(deftest-oss delete-tag-removes-associations-test
+(mt/deftest-oss delete-tag-removes-associations-test
   (testing "Deleting a tag removes it from all transforms"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1365,7 +1358,7 @@
                 (finally
                   (t2/delete! :model/TransformTag :id (:id tag1)))))))))))
 
-(deftest-oss preserve-tag-order-test
+(mt/deftest-oss preserve-tag-order-test
   (testing "Tag order is preserved when adding/updating transform tags"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1409,7 +1402,7 @@
                     (finally
                       (t2/delete! :model/Transform :id (:id transform)))))))))))))
 
-(deftest-oss root-collection-items-include-transforms-test
+(mt/deftest-oss root-collection-items-include-transforms-test
   (testing "GET /api/collection/root/items"
     (testing "Includes transforms in root collection items"
       (mt/with-temp [:model/Transform {transform-id :id}
@@ -1446,7 +1439,7 @@
                            (filter #(= "transform" (:model %))))]
             (is (empty? items))))))))
 
-(deftest-oss transforms-appear-in-here-test
+(mt/deftest-oss transforms-appear-in-here-test
   (testing "GET /api/collection/:id/items"
     (testing "Transforms in a collection appear in its :here field"
       (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
@@ -1461,7 +1454,7 @@
                                                              (format "collection/%d/items" parent-id))))]
           (is (= ["transform"] (:here child-coll))))))))
 
-(deftest-oss transforms-appear-in-below-test
+(mt/deftest-oss transforms-appear-in-below-test
   (testing "GET /api/collection/:id/items"
     (testing "Transforms in descendant collections appear in :below field"
       (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
@@ -1480,7 +1473,7 @@
           (is (= ["collection"] (:here child-coll)))
           (is (= ["transform"] (:below child-coll))))))))
 
-(deftest-oss native-incremental-column-type-validated-on-create-test
+(mt/deftest-oss native-incremental-column-type-validated-on-create-test
   (testing "POST /api/transform column type validation"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
       (mt/dataset transforms-dataset/transforms-test
@@ -1500,7 +1493,7 @@
               (is (string? response))
               (is (re-find #"Only numeric and temporal" response)))))))))
 
-(deftest-oss native-incremental-column-type-validated-on-update-test
+(mt/deftest-oss native-incremental-column-type-validated-on-update-test
   (testing "PUT /api/transform column type validation"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
       (mt/dataset transforms-dataset/transforms-test
@@ -1530,7 +1523,7 @@
                   (is (string? response))
                   (is (re-find #"Only numeric and temporal" response)))))))))))
 
-(deftest-oss mbql-incremental-column-type-validated-on-create-test
+(mt/deftest-oss mbql-incremental-column-type-validated-on-create-test
   (testing "MBQL query with checkpoint-filter-unique-key - checkpoint column type validation"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
       (mt/dataset transforms-dataset/transforms-test
@@ -1550,7 +1543,7 @@
               (is (string? response))
               (is (re-find #"not supported" response)))))))))
 
-(deftest-oss native-incremental-column-validation-when-not-extractable-test
+(mt/deftest-oss native-incremental-column-validation-when-not-extractable-test
   (testing "Native query checkpoint column validation with text input fallback"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
       (mt/dataset transforms-dataset/transforms-test
@@ -1575,7 +1568,7 @@
                   (is (some? (:id response))
                       "Should accept column not in extracted metadata, allowing text input fallback"))))))))))
 
-(deftest-oss search-filters-transform-source-types-test
+(mt/deftest-oss search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [search-term (str "transform-search-" (u/generate-nano-id))
@@ -1603,7 +1596,7 @@
               (is (contains? transform-ids query-id))
               (is (not (contains? transform-ids python-id))))))))))
 
-(deftest-oss search-hides-transforms-for-non-superusers-test
+(mt/deftest-oss search-hides-transforms-for-non-superusers-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [search-term (str "transform-search-" (u/generate-nano-id))
@@ -1621,7 +1614,7 @@
               (is (empty? ids))
               (is (not (contains? ids transform-id))))))))))
 
-(deftest-oss search-includes-native-and-mbql-query-transforms-test
+(mt/deftest-oss search-includes-native-and-mbql-query-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [search-term (str "transform-search-" (u/generate-nano-id))
