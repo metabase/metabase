@@ -1,17 +1,17 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
-  Box,
   Button,
   Card,
   Center,
   Divider,
+  DottedBackground,
   Flex,
   Group,
+  Icon,
   Radio,
   Stack,
   Text,
@@ -19,12 +19,30 @@ import {
 } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
+import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "../common/components/PaneHeader";
+
+import { LineDecorator } from "./LineDecorator";
+import S from "./TransformsPurchasePage.module.css";
 import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
 import { useTransformsBilling } from "./useTransformsBilling";
 
 type TransformTier = "basic" | "advanced";
 
-export function TransformsPurchasePage() {
+type TierOption = {
+  value: TransformTier;
+  label: string;
+  price: number;
+  description?: string;
+};
+
+export type TransformsPurchasePageProps = {
+  bulletPoints?: string[];
+};
+
+export function TransformsPurchasePage({
+  bulletPoints,
+}: TransformsPurchasePageProps) {
   const [selectedTier, setSelectedTier] = useState<TransformTier>("basic");
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
@@ -40,7 +58,7 @@ export function TransformsPurchasePage() {
 
   const hasData =
     billingPeriodMonths !== undefined && (transformsProduct || pythonProduct);
-  const billingPeriod = billingPeriodMonths === 1 ? t`mo` : t`yr`;
+  const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`year`;
 
   const handlePurchase = useCallback(async () => {
     const productType =
@@ -55,7 +73,6 @@ export function TransformsPurchasePage() {
     }
   }, [selectedTier, purchaseCloudAddOn, settingUpModalHandlers]);
 
-  // Check if there's an error loading add-on information.
   if (error) {
     return (
       <Center h="100%" bg="background-secondary">
@@ -67,7 +84,6 @@ export function TransformsPurchasePage() {
     );
   }
 
-  // Show loading state if necessary, or show error if required data is missing after loading is done.
   if (!hasData || isLoading) {
     return (
       <Center h="100%" bg="background-secondary">
@@ -86,97 +102,124 @@ export function TransformsPurchasePage() {
   const transformsPrice = transformsProduct?.default_base_fee ?? 0;
   const pythonPrice = pythonProduct?.default_base_fee ?? 0;
 
+  const tierOptions: TierOption[] = [
+    {
+      value: "basic",
+      label: t`SQL only`,
+      price: transformsPrice,
+    },
+    {
+      value: "advanced",
+      label: t`SQL + Python`,
+      price: pythonPrice,
+      description: t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`,
+    },
+  ];
+
+  const selectedPrice =
+    selectedTier === "basic" ? transformsPrice : pythonPrice;
+
   return (
-    <Center h="100%" bg="background-secondary">
-      <Card shadow="md" p="xl" maw={600} withBorder>
-        <Stack gap="lg">
-          <Flex align="center" gap="xs">
-            <UpsellGem size={16} />
-            <Text c="text-primary">{t`Add transforms`}</Text>
-          </Flex>
-
-          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
-          <Title order={2}>{t`Tidy up your data right from Metabase`}</Title>
-
-          <Radio.Group
-            value={selectedTier}
-            onChange={(value) => setSelectedTier(value as TransformTier)}
-          >
-            <Card withBorder p={0}>
-              <Radio.Card
-                value="basic"
-                bg={selectedTier === "basic" ? "brand-light" : undefined}
-                p="md"
-                radius={0}
+    <DottedBackground px="3.5rem" pb="2rem">
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
+        }
+      />
+      <Flex align="flex-start" justify="center" py="xl">
+        <LineDecorator>
+          <Card className={S.container} p={0} withBorder>
+            <Stack gap="lg" className={S.leftColumn} p="xl">
+              <Title
+                order={2}
+                // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+              >{t`Start transforming your data in Metabase`}</Title>
+              <Text c="text-secondary">
+                {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
+                {t`Clean up, reshape, and reuse data directly in Metabase. Add transforms to build models your whole team can use.`}
+              </Text>
+              {bulletPoints && bulletPoints.length > 0 && (
+                <Stack gap="lg" py="sm">
+                  {bulletPoints.map((point) => (
+                    <Flex direction="row" gap="sm" key={point}>
+                      <Center w={24} h={24}>
+                        <Icon name="check_filled" size={16} c="text-brand" />
+                      </Center>
+                      <Text c="text-secondary">{point}</Text>
+                    </Flex>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+            {/* Right Column - Purchase Card */}
+            <Stack gap="lg" className={S.rightColumn} p="xl">
+              <Title order={3}>{t`Add transforms to your plan`}</Title>
+              <Radio.Group
+                value={selectedTier}
+                onChange={(value) => setSelectedTier(value as TransformTier)}
               >
-                <Group wrap="nowrap" align="flex-start" gap="sm">
-                  <Flex h="1.55rem" align="center">
-                    <Radio.Indicator />
-                  </Flex>
-                  <Flex
-                    align="flex-start"
-                    direction={{ base: "column", sm: "row" }}
-                    justify="space-between"
-                    flex={1}
-                  >
-                    <Box>
-                      <Text fw="bold" lh="1.55">{t`Transforms`}</Text>
-                      <Text size="sm" c="text-secondary">
-                        {t`10k transforms. Buy more as you go.`}
-                      </Text>
-                    </Box>
-                    <Text fw="bold" ta={{ base: "left", sm: "right" }}>
-                      {`$${transformsPrice}`}
-                    </Text>
-                  </Flex>
-                </Group>
-              </Radio.Card>
-
+                <Stack gap="md">
+                  {tierOptions.map((option) => (
+                    <Fragment key={option.value}>
+                      <Card
+                        withBorder
+                        p={0}
+                        radius="md"
+                        style={{
+                          borderColor:
+                            selectedTier === option.value
+                              ? "var(--mb-color-brand)"
+                              : undefined,
+                          borderWidth: selectedTier === option.value ? 2 : 1,
+                        }}
+                      >
+                        <Radio.Card value={option.value} p="md" radius="md">
+                          <Flex direction="row" align="flex-start" gap="md">
+                            <Center mt={2}>
+                              <Radio.Indicator />
+                            </Center>
+                            <Flex direction="column" style={{ flex: 1 }}>
+                              <Group justify="space-between" align="flex-start">
+                                <Text fw="bold">{option.label}</Text>
+                                <Text fw="bold">{`$${option.price} / ${billingPeriod}`}</Text>
+                              </Group>
+                              {option.description && (
+                                <Text size="sm" c="text-secondary" mt="sm">
+                                  {option.description}
+                                </Text>
+                              )}
+                            </Flex>
+                          </Flex>
+                        </Radio.Card>
+                      </Card>
+                    </Fragment>
+                  ))}
+                </Stack>
+              </Radio.Group>
               <Divider />
-
-              <Radio.Card
-                value="advanced"
-                bg={selectedTier === "advanced" ? "brand-light" : undefined}
-                p="md"
-                radius={0}
-              >
-                <Group wrap="nowrap" align="flex-start" gap="sm">
-                  <Flex h="1.55rem" align="center">
-                    <Radio.Indicator />
-                  </Flex>
-                  <Flex
-                    align="flex-start"
-                    direction={{ base: "column", sm: "row" }}
-                    justify="space-between"
-                    flex={1}
-                  >
-                    <Box>
-                      <Text fw="bold" lh="1.55">{t`Advanced transforms`}</Text>
-                      <Text size="sm" c="text-secondary">
-                        {t`Get access to python based transforms.`}
-                      </Text>
-                    </Box>
-                    <Text fw="bold" ta={{ base: "left", sm: "right" }}>
-                      {t`$${pythonPrice}/${billingPeriod} + transform cost`}
-                    </Text>
-                  </Flex>
+              <Stack gap="sm">
+                <Group justify="space-between">
+                  <Text c="text-secondary">{t`Due today:`}</Text>
+                  <Text fw="bold">{`$${selectedPrice}`}</Text>
                 </Group>
-              </Radio.Card>
-            </Card>
-          </Radio.Group>
-
-          <Button
-            variant="filled"
-            size="md"
-            onClick={handlePurchase}
-            loading={isPurchasing}
-            fullWidth
-          >
-            {t`Add on transforms`}
-          </Button>
-        </Stack>
-      </Card>
-
+                <Group justify="space-between">
+                  <Text c="text-secondary">{t`New total cost`}</Text>
+                  <Text fw="bold">{`$${selectedPrice}`}</Text>
+                </Group>
+              </Stack>
+              <Button
+                variant="filled"
+                size="md"
+                onClick={handlePurchase}
+                loading={isPurchasing}
+                fullWidth
+              >
+                {t`Confirm purchase`}
+              </Button>
+            </Stack>
+          </Card>
+        </LineDecorator>
+      </Flex>
       <TransformsSettingUpModal
         opened={settingUpModalOpened}
         onClose={() => {
@@ -185,6 +228,6 @@ export function TransformsPurchasePage() {
         }}
         isPython={selectedTier === "advanced"}
       />
-    </Center>
+    </DottedBackground>
   );
 }

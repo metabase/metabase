@@ -14,7 +14,6 @@ import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
-  Box,
   Card,
   Center,
   DottedBackground,
@@ -30,6 +29,7 @@ import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumb
 import { PaneHeader } from "../common/components/PaneHeader";
 
 import S from "./DataStudioUpsellPage.module.css";
+import { LineDecorator } from "./LineDecorator";
 import { DATA_STUDIO_UPGRADE_URL } from "./constants";
 
 export type DataStudioUpsellPageProps = {
@@ -86,10 +86,7 @@ export function DataStudioUpsellPage({
         breadcrumbs={<DataStudioBreadcrumbs>{header}</DataStudioBreadcrumbs>}
       />
       <Stack align="center" p={40}>
-        <Box className={S.Card}>
-          {["top", "right", "bottom", "left"].map((position) => (
-            <Box key={position} className={S.Border} data-position={position} />
-          ))}
+        <LineDecorator>
           <Card shadow="md" p="xl" maw={maxWidth} withBorder>
             <Flex direction="row" gap="lg">
               <Stack gap="sm">
@@ -161,7 +158,7 @@ export function DataStudioUpsellPage({
               )}
             </Flex>
           </Card>
-        </Box>
+        </LineDecorator>
       </Stack>
     </DottedBackground>
   );

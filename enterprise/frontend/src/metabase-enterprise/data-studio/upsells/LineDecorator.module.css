@@ -1,0 +1,67 @@
+/* CSS variable for line color - matches the dotted pattern color */
+:global {
+  :root {
+    --mb-color-upsell-pattern: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 80%
+    );
+  }
+}
+
+.root {
+  position: relative;
+  display: flex;
+}
+
+.border {
+  position: absolute;
+}
+
+.border[data-position="top"],
+.border[data-position="bottom"] {
+  height: 1px;
+  width: calc(100% + 500px);
+  left: -250px;
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    transparent
+  );
+}
+
+.border[data-position="top"] {
+  top: -1px;
+}
+
+.border[data-position="bottom"] {
+  bottom: -1px;
+}
+
+.border[data-position="right"],
+.border[data-position="left"] {
+  width: 1px;
+  height: calc(100% + 250px);
+  top: -75px;
+  /* background-color does not accept gradients, so this results in no color being shown.
+     To display a vertical gradient border, use background-image instead: */
+  background-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    transparent
+  );
+}
+
+.border[data-position="right"] {
+  right: -1px;
+}
+
+.border[data-position="left"] {
+  left: -1px;
+}

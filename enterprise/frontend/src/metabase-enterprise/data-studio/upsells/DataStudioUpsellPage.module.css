@@ -1,74 +1,12 @@
-/* CSS variables for borders and ImageCard background - matches the dotted pattern color */
+/* CSS variable for ImageCard background - matches the dotted pattern color */
 :global {
   :root {
-    --mb-color-upsell-pattern: color-mix(
-      in srgb,
-      var(--mb-color-brand),
-      transparent 80%
-    );
     --mb-color-upsell-pattern-light: color-mix(
       in srgb,
       var(--mb-color-brand),
       transparent 95%
     );
   }
-}
-
-.Card {
-  position: relative;
-  display: flex;
-}
-
-.Border {
-  position: absolute;
-}
-
-.Border[data-position="top"],
-.Border[data-position="bottom"] {
-  height: 1px;
-  width: calc(100% + 500px);
-  left: -250px;
-  background-image: linear-gradient(
-    to right,
-    transparent,
-    var(--mb-color-upsell-pattern),
-    var(--mb-color-upsell-pattern),
-    var(--mb-color-upsell-pattern),
-    transparent
-  );
-}
-
-.Border[data-position="top"] {
-  top: -1px;
-}
-
-.Border[data-position="bottom"] {
-  bottom: -1px;
-}
-
-.Border[data-position="right"],
-.Border[data-position="left"] {
-  width: 1px;
-  height: calc(100% + 250px);
-  top: -75px;
-  /* background-color does not accept gradients, so this results in no color being shown.
-     To display a vertical gradient border, use background-image instead: */
-  background-image: linear-gradient(
-    to bottom,
-    transparent,
-    var(--mb-color-upsell-pattern),
-    var(--mb-color-upsell-pattern),
-    var(--mb-color-upsell-pattern),
-    transparent
-  );
-}
-
-.Border[data-position="right"] {
-  right: -1px;
-}
-
-.Border[data-position="left"] {
-  left: -1px;
 }
 
 .ImageCard {

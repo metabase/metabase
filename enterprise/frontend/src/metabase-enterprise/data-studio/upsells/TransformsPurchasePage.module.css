@@ -1,0 +1,18 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.leftColumn {
+  flex: 1;
+  padding-right: 2.5rem;
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.rightColumn {
+  flex: 1;
+  background-color: var(--mb-color-background-secondary);
+  padding-left: 2.5rem;
+}
