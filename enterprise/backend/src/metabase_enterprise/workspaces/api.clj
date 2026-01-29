@@ -19,7 +19,7 @@
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.config.core :as config]
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
@@ -153,7 +153,7 @@
           user-id api/*current-user-id*]
       (and user-id (t2/exists? :model/Workspace :id ws-id :execution_user user-id)))))
 
-(defn- +authorize
+(defn- authorize*
   "Authorization middleware for workspace routes.
 
    Access rules:
@@ -165,6 +165,9 @@
       (api/check-403 (or api/*is-superuser?* (owns-workspace? (:uri request))))
       (api/check-superuser))
     (handler request respond raise)))
+
+(def ^:private +authorize
+  (routes.common/wrap-middleware-for-open-api-spec-generation authorize*))
 
 (defn- ws->response
   "Transform a workspace record into an API response, computing the backwards-compatible status."
