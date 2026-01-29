@@ -179,3 +179,9 @@
                                              {:prompt "no table mentions here"
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "No tables found")))))))
+
+(deftest list-models-unconfigured-test
+  (testing "Returns 403 when LLM is not configured"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (let [response (mt/user-http-request :rasta :get 403 "llm/list-models")]
+        (is (str/includes? (str response) "not configured"))))))

@@ -1,5 +1,7 @@
 (ns metabase.llm.anthropic-test
   (:require
+   [cheshire.core :as json]
+   [clj-http.fake :as fake]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
    [metabase.test :as mt]))
@@ -109,3 +111,43 @@
            clojure.lang.ExceptionInfo
            #"not configured"
            (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
+
+;;; ------------------------------------------- list-models Tests -------------------------------------------
+
+(deftest list-models-requires-api-key-test
+  (testing "list-models throws when API key is not configured"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"not configured"
+           (anthropic/list-models))))))
+
+(deftest list-models-success-test
+  (testing "list-models returns sorted models with selected fields"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"]
+      (let [mock-response {:data [{:id "claude-sonnet-4-20250514"
+                                   :display_name "Claude Sonnet 4"
+                                   :created_at "2025-05-14T00:00:00Z"
+                                   :type "model"}
+                                  {:id "claude-sonnet-4-5-20250929"
+                                   :display_name "Claude Sonnet 4.5"
+                                   :created_at "2025-09-29T00:00:00Z"
+                                   :type "model"}
+                                  {:id "claude-opus-4-5-20251101"
+                                   :display_name "Claude Opus 4.5"
+                                   :created_at "2025-11-01T00:00:00Z"
+                                   :type "model"}]
+                           :first_id "claude-sonnet-4-20250514"
+                           :last_id "claude-opus-4-5-20251101"
+                           :has_more false}]
+        (fake/with-fake-routes
+          {"https://api.anthropic.com/v1/models"
+           (constantly {:status 200
+                        :headers {"content-type" "application/json"}
+                        :body (json/encode mock-response)})}
+          (let [result (anthropic/list-models)]
+            ;; Should be sorted by created_at descending (newest first)
+            (is (= [{:id "claude-opus-4-5-20251101" :display_name "Claude Opus 4.5"}
+                    {:id "claude-sonnet-4-5-20250929" :display_name "Claude Sonnet 4.5"}
+                    {:id "claude-sonnet-4-20250514" :display_name "Claude Sonnet 4"}]
+                   (:models result)))))))))
