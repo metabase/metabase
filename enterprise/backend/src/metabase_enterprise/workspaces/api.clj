@@ -96,25 +96,17 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
-(defn- workspace-service-user?
-  "Check if the current user is the service user for the given workspace-id."
-  [workspace-id user-id]
-  (and user-id (t2/exists? :model/Workspace :id workspace-id :execution_user user-id)))
-
-(defn- any-workspace-service-user?
-  "Check if the current user is a service user for ANY workspace."
-  [user-id]
-  (and user-id (t2/exists? :model/Workspace :execution_user user-id)))
-
 (defn- check-workspace-access!
   "Check that the current user is either a superuser OR the workspace's service user."
   [workspace-id]
-  (api/check-403 (or api/*is-superuser?* (workspace-service-user? workspace-id api/*current-user-id*))))
+  (api/check-403 (or api/*is-superuser?*
+                     (some->> api/*current-user-id* (t2/exists? :model/Workspace :id workspace-id :execution_user)))))
 
 (defn- check-any-workspace-access!
   "Check that the current user is either a superuser OR a service user for any workspace."
   []
-  (api/check-403 (or api/*is-superuser?* (any-workspace-service-user? api/*current-user-id*))))
+  (api/check-403 (or api/*is-superuser?*
+                     (some->> api/*current-user-id* (t2/exists? :model/Workspace :execution_user)))))
 
 (defn- ws->response
   "Transform a workspace record into an API response, computing the backwards-compatible status."
