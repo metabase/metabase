@@ -40,7 +40,8 @@
    column         :- ::lib.schema.metadata/column
    {:keys [name source-name]} :- ::lib.schema.query/test-column-spec]
   (cond-> (= name (:name column))
-    (some? source-name) (and (= source-name (:name (lib.metadata/table query (:table-id column)))))))
+    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))))
+    
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
   [query        :- ::lib.schema/query
