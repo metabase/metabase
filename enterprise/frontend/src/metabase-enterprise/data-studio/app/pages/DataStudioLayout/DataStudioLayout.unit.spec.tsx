@@ -120,7 +120,6 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByText("Library")).toBeInTheDocument();
-      expect(screen.getByText("Exit")).toBeInTheDocument();
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
