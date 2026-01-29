@@ -1760,7 +1760,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("be.visible");
 
         cy.log("results panel should be visible in edit mode");
-        H.DataStudio.Transforms.pythonResults().should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("be.visible");
 
         cy.log("Edit definition button should be hidden in edit mode");
         H.DataStudio.Transforms.editDefinition().should("not.exist");
