@@ -500,7 +500,9 @@ type TestBinningSpec =
   | TestBinCountSpec
   | TestBinWidthSpec;
 
-export type TestBreakoutSpec = TestColumnSpec & TestBinningSpec;
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+
+export type TestBreakoutSpec = TestColumnWithBinningSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;
@@ -512,8 +514,8 @@ export type TestJoinSpec = {
 
 type TestJoinConditionSpec = {
   operator: Lib.JoinConditionOperator;
-  left: (TestColumnSpec & TestBinningSpec) | TestExpressionSpec;
-  right: (TestColumnSpec & TestBinningSpec) | TestExpressionSpec;
+  left: TestColumnWithBinningSpec | TestExpressionSpec;
+  right: TestColumnWithBinningSpec | TestExpressionSpec;
 };
 
 export type TestOrderBySpec = TestColumnSpec & {
