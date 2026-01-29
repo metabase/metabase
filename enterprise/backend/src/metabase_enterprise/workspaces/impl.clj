@@ -159,7 +159,6 @@
         db-ids           (into #{} (map :db_id) (concat all-outputs all-inputs))
         databases        (when (seq db-ids)
                            (t2/select [:model/Database :id :engine :details] :id [:in db-ids]))
-        db-id->engine    (into {} (map (juxt :id :engine)) databases)
         db-id->default   (into {}
                                (map (fn [{:keys [id engine details]}]
                                       ;; Pre-quote the default schema/database name because it will be spliced into SQL
