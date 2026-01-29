@@ -165,10 +165,16 @@ def analyze(sql: str) -> str:
     return json.dumps(result)
 
 def table_parts(table):
+    """
+    Extract (schema, name) tuple from a table expression.
+    Returns None if the table doesn't have a valid name (e.g., UDTFs).
+    """
     # table.db maps to what is known as table schema
-    parts = (table.db or None, table.name or None)
-    assert isinstance(parts[1], str), "Missing table name."
-    return parts
+    name = table.name
+    if not isinstance(name, str) or not name:
+        # UDTFs and other function-based sources don't have traditional table names
+        return None
+    return (table.db or None, name)
 
 # TODO: Add type info
 def referenced_tables(dialect, sql, default_table_schema):
@@ -189,12 +195,17 @@ def referenced_tables(dialect, sql, default_table_schema):
     ast = qualify.qualify(ast,
                           db=default_table_schema,
                           dialect=dialect,
+                          infer_schema=True,
                           sql=sql)
     root_scope = optimizer.build_scope(ast)
 
     tables = set()
     for scope in root_scope.traverse():
-        tables |= {table_parts(t) for t in scope.sources.values() if isinstance(t, exp.Table)}
+        for source in scope.sources.values():
+            if isinstance(source, exp.Table):
+                parts = table_parts(source)
+                if parts is not None:
+                    tables.add(parts)
 
     return json.dumps(tuple(tables))
 
@@ -237,6 +248,7 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema)
                           db=default_table_schema,
                           dialect=dialect,
                           schema=sqlglot_schema,
+                          infer_schema=True,
                           sql=sql)
 
     assert isinstance(ast, exp.Query), "Ast does not represent a `Query`."
@@ -249,7 +261,7 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema)
         assert select not in dependencies, \
             "Duplicate alias `{}`.".format(select)
 
-        select_elm_lineage = lineage.lineage(select, ast.sql(dialect))
+        select_elm_lineage = lineage.lineage(select, ast.sql(dialect), dialect=dialect)
         is_pure_select = is_pure_column(select_elm_lineage)
 
         leaves = set()
@@ -260,13 +272,18 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema)
                 len(node.downstream) == 1
                 and isinstance(node.downstream[0].expression, exp.Table)
                 and not node.downstream[0].downstream):
-                assert isinstance(node.expression.this, exp.Column), "Leaf node is not a `Column`."
+                # For UDTFs/table functions, the penultimate node may not be a Column
+                # (e.g., FLATTEN results). Skip these gracefully.
+                if not isinstance(node.expression.this, exp.Column):
+                    continue
                 # TODO: The column is missing table schema because source table
                 # is aliased to its name. Maybe there's a cleaner way. Figure that
                 # out!
                 table = table_parts(node.downstream[0].expression)
-                namespaced_column = table + (node.expression.this.name, )
-                leaves.add(namespaced_column)
+                # Skip UDTFs and other function-based sources that don't have real table names
+                if table is not None:
+                    namespaced_column = table + (node.expression.this.name, )
+                    leaves.add(namespaced_column)
 
         dependencies.append((select, is_pure_select, tuple(leaves), ))
 

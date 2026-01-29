@@ -210,3 +210,64 @@
       (is (= ["orders"] (:tables_source result)))
       ;; Projections are named_selects - unnamed aggregates may not appear
       (is (vector? (:projections result))))))
+
+;;; -------------------------------------------- UDTF (Table Function) Tests -----------------------------------------
+
+;; Dialect-specific UDTF queries - each dialect may have slightly different syntax
+;; for table-valued functions. The queries should be semantically equivalent.
+;; We use a generic function name for dialects without well-known UDTFs to test
+;; that unknown functions are handled gracefully.
+(def udtf-queries
+  {"postgres"  "SELECT * FROM generate_series(1, 10)"
+   "mysql"     "SELECT * FROM my_table_func(1, 10)"  ; MySQL's JSON_TABLE has complex syntax
+   "snowflake" "SELECT * FROM TABLE(FLATTEN(input => ARRAY_CONSTRUCT(1, 2, 3)))"
+   "bigquery"  "SELECT * FROM UNNEST([1, 2, 3]) AS val"
+   "redshift"  "SELECT * FROM generate_series(1, 10)"
+   "duckdb"    "SELECT * FROM generate_series(1, 10)"})
+
+;; UDTF queries mixed with real tables - tests that we correctly identify real tables
+;; while gracefully handling table functions
+(def udtf-with-table-queries
+  {"postgres"  "SELECT o.* FROM orders o, generate_series(1, 10) g"
+   "mysql"     "SELECT o.* FROM orders o, my_table_func(1, 10) t"
+   "snowflake" "SELECT o.* FROM orders o, TABLE(FLATTEN(input => ARRAY_CONSTRUCT(1))) f"
+   "bigquery"  "SELECT o.* FROM orders o, UNNEST([1]) AS val"
+   "redshift"  "SELECT o.* FROM orders o, generate_series(1, 10) g"
+   "duckdb"    "SELECT o.* FROM orders o, generate_series(1, 10) g"})
+
+(deftest ^:parallel udtf-referenced-tables-test
+  (testing "UDTFs are handled by referenced-tables across dialects"
+    (doseq [[dialect sql] udtf-queries]
+      (testing (str "dialect: " dialect " - pure UDTF query")
+        ;; Table functions shouldn't appear as referenced tables - they're not real tables
+        (let [result (sqlglot.shim/referenced-tables dialect sql "public")]
+          (is (vector? result)
+              (format "dialect %s: should return vector, got %s" dialect (type result)))
+          (is (every? vector? result)
+              (format "dialect %s: each element should be [schema table] pair" dialect)))))
+
+    (doseq [[dialect sql] udtf-with-table-queries]
+      (testing (str "dialect: " dialect " - UDTF mixed with real table")
+        (let [result (sqlglot.shim/referenced-tables dialect sql "public")]
+          ;; Case-insensitive comparison since dialects like Snowflake uppercase identifiers
+          (is (some #(= "orders" (clojure.string/lower-case (second %))) result)
+              (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
+
+(deftest ^:parallel udtf-returned-columns-lineage-test
+  (testing "UDTFs are handled by returned-columns-lineage across dialects"
+    (doseq [[dialect sql] udtf-queries]
+      (testing (str "dialect: " dialect)
+        ;; UDTFs should not cause assertion errors - they return lineage with empty deps
+        ;; since there's no real table to trace columns back to
+        (let [result (sqlglot.shim/returned-columns-lineage dialect sql "public" {})]
+          (is (sequential? result)
+              (format "dialect %s: should return sequential, got %s" dialect (type result))))))))
+
+(deftest ^:parallel udtf-validate-query-test
+  (testing "UDTFs pass validation (with infer_schema=True)"
+    (doseq [[dialect sql] udtf-queries]
+      (testing (str "dialect: " dialect)
+        ;; This should NOT throw an error now that infer_schema=True
+        (let [result (sqlglot.shim/validate-query dialect sql "public" {})]
+          (is (= :ok (:status result))
+              (format "dialect %s: UDTF query should validate OK, got %s" dialect result)))))))
