@@ -226,7 +226,7 @@
                 (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
                   (is (=? [{:schema :snowplow/simple_event
                             :data {:event "metabot_oss_sqlgen_used"
-                                   :duration_ms pos?
+                                   :duration_ms int?
                                    :result "success"
                                    :event_detail "postgres"}}]
                           simple-events)))))))))))
@@ -254,7 +254,7 @@
               (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
                 (is (=? [{:schema :snowplow/simple_event
                           :data {:event "metabot_oss_sqlgen_used"
-                                 :duration_ms pos?
+                                 :duration_ms int?
                                  :result "failure"
                                  :event_detail "postgres"}}]
                         simple-events))))))))))
@@ -292,7 +292,7 @@
                                    :prompt-tokens 1500
                                    :completion-tokens 250
                                    :total-tokens 1750
-                                   :duration-ms pos?
+                                   :duration-ms int?
                                    :source "oss_metabot"
                                    :tag "oss-sqlgen-streaming"}}]
                           token-events))))
@@ -300,7 +300,7 @@
                 (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
                   (is (=? [{:schema :snowplow/simple_event
                             :data {:event "metabot_oss_sqlgen_used"
-                                   :duration_ms pos?
+                                   :duration_ms int?
                                    :result "success"
                                    :event_detail "postgres"}}]
                           simple-events)))))))))))
@@ -334,7 +334,7 @@
                 (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
                   (is (=? [{:schema :snowplow/simple_event
                             :data {:event "metabot_oss_sqlgen_used"
-                                   :duration_ms pos?
+                                   :duration_ms int?
                                    :result "failure"
                                    :event_detail "postgres"}}]
                           simple-events)))))))))))

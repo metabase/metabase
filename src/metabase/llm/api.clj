@@ -222,7 +222,7 @@
                             :completion-tokens             completion
                             :estimated-costs-usd           estimated-costs
                             :user-id                       user-id
-                            :duration-ms                   duration-ms
+                            :duration-ms                   (some-> duration-ms long)
                             :source                        source
                             :tag                           tag}
                            user-id)))
@@ -231,10 +231,10 @@
   "Track SQL generation usage via Snowplow simple_event."
   [{:keys [duration-ms result engine]}]
   (snowplow/track-event! :snowplow/simple_event
-                         {:event "metabot_oss_sqlgen_used"
-                          :duration_ms duration-ms
-                          :result result
-                          :event_detail (some-> engine name)}
+                         {:event        "metabot_oss_sqlgen_used"
+                          :event_detail (some-> engine name)
+                          :duration_ms  (some-> duration-ms long)
+                          :result       result}
                          api/*current-user-id*))
 
 ;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
