@@ -8,12 +8,12 @@ describe("issue #68378", () => {
     H.activateToken("bleeding-edge");
   });
 
-  it("should show empty schema's when picking a target schema (metabase#68378)", () => {
+  it("should show empty schemas when picking a target schema (metabase#68378)", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
     H.popover().findByText("Writable Postgres12").click();
-    H.NativeEditor.type("SELECT 42", { allowFastSet: true });
+    H.NativeEditor.type("SELECT 42", { allowFastSet: true }).blur();
 
     cy.log("Save with empty_schema as target schema");
     getQueryEditor().button("Save").click();

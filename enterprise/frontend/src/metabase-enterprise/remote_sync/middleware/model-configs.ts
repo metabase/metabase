@@ -12,6 +12,7 @@ import { tableApi as coreTableApi } from "metabase/api/table";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
+import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import { transformApi } from "metabase-enterprise/api/transform";
 import { transformTagApi } from "metabase-enterprise/api/transform-tag";
@@ -205,6 +206,14 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     ],
     deleteEndpoints: [
       transformTagApi.endpoints.deleteTransformTag.matchFulfilled,
+    ],
+    invalidation: { type: InvalidationType.Always },
+  },
+  {
+    modelType: "pythonLibrary",
+    // PythonLibrary only has an upsert endpoint (updatePythonLibrary creates or updates)
+    updateEndpoints: [
+      pythonLibraryApi.endpoints.updatePythonLibrary.matchFulfilled,
     ],
     invalidation: { type: InvalidationType.Always },
   },

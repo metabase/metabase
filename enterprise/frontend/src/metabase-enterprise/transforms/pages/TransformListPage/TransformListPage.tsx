@@ -18,7 +18,6 @@ import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
-  Avatar,
   Card,
   EntityNameCell,
   Flex,
@@ -169,35 +168,12 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
 
           if (hasUserName) {
             const displayName = getUserName(owner as NamedUser);
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" name={displayName} />
-                <Ellipsified>{displayName}</Ellipsified>
-              </Flex>
-            );
+            return <Ellipsified>{displayName}</Ellipsified>;
           }
 
           const ownerEmail = row.original.owner_email ?? owner?.email;
           if (ownerEmail) {
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" color="initials" name="emails">
-                  <Icon name="mail" />
-                </Avatar>
-                <Ellipsified>{ownerEmail}</Ellipsified>
-              </Flex>
-            );
-          }
-
-          if (row.original.nodeType === "transform") {
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" color="background-secondary" name="unknown">
-                  <Icon name="person" c="text-secondary" />
-                </Avatar>
-                <Ellipsified c="text-secondary">{t`No owner`}</Ellipsified>
-              </Flex>
-            );
+            return <Ellipsified>{ownerEmail}</Ellipsified>;
           }
 
           return null;

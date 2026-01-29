@@ -34,19 +34,19 @@ export function dependencyDiagnostics() {
 export type DependencyListParams = {
   page?: number;
   query?: string;
-  groupTypes?: DependencyGroupType[];
-  includePersonalCollections?: boolean;
-  sortColumn?: DependencySortColumn;
-  sortDirection?: DependencySortDirection;
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 function dependencyListQueryString({
   page,
   query,
-  groupTypes,
-  includePersonalCollections,
-  sortColumn,
-  sortDirection,
+  group_types,
+  include_personal_collections,
+  sort_column,
+  sort_direction,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
 
@@ -56,22 +56,22 @@ function dependencyListQueryString({
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (groupTypes != null) {
-    groupTypes.forEach((groupType) => {
+  if (group_types != null) {
+    group_types.forEach((groupType) => {
       searchParams.append("group_types", groupType);
     });
   }
-  if (includePersonalCollections != null) {
+  if (include_personal_collections != null) {
     searchParams.set(
       "include_personal_collections",
-      String(includePersonalCollections),
+      String(include_personal_collections),
     );
   }
-  if (sortColumn != null) {
-    searchParams.set("sort_column", sortColumn);
+  if (sort_column != null) {
+    searchParams.set("sort_column", sort_column);
   }
-  if (sortDirection != null) {
-    searchParams.set("sort_direction", sortDirection);
+  if (sort_direction != null) {
+    searchParams.set("sort_direction", sort_direction);
   }
 
   const queryString = searchParams.toString();
