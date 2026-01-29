@@ -43,16 +43,15 @@
   [:map
    [:bin-width {:optional true} [:maybe ::lib.schema.binning/bin-width]]])
 
-(mr/def ::test-binning-spec
+(mr/def ::test-column-with-binning-spec
   [:merge
+   ::test-column-spec
    ::test-temporal-bucket-spec
    ::test-bin-count-bucket-spec
    ::test-bin-width-bucket-spec])
 
 (mr/def ::test-breakout-spec
-  [:merge
-   ::test-column-spec
-   ::test-binning-spec])
+  [:ref ::test-column-with-binning-spec])
 
 (mr/def ::test-order-by-spec
   [:merge
@@ -94,7 +93,7 @@
 
 (mr/def ::test-join-source-spec
   [:multi {:dispatch (comp keyword :type)}
-   [:column [:merge ::test-column-spec ::test-binning-spec]]
+   [:column [:ref ::test-column-with-binning-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
 

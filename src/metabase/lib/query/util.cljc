@@ -121,7 +121,7 @@
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
    column                        :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-   {:keys [unit bins bin-width]} :- ::lib.schema.query/test-binning-spec]
+   {:keys [unit bins bin-width]} :- ::lib.schema.query/test-column-with-binning-spec]
   (cond->> column
     unit      (add-temporal-bucket query stage-number unit)
     bins      (add-binning query stage-number :num-bins bins)
