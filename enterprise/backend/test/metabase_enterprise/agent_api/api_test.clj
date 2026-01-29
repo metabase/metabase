@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.agent-api.api-test
+(ns metabase-enterprise.agent-api.api-test
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]

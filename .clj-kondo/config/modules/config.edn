@@ -1789,6 +1789,17 @@
            warehouses
            enterprise/impersonation}}
 
+  enterprise/agent-api
+  {:team "Metabot"
+   :api  #{metabase-enterprise.agent-api.api}
+   :uses #{api
+           auth-identity
+           query-processor
+           request
+           server
+           util
+           enterprise/metabot-v3}}
+
   enterprise/ai-entity-analysis
   {:team "Metabot"
    :api  #{metabase-enterprise.ai-entity-analysis.api}
@@ -2081,46 +2092,46 @@
            util}}
 
   enterprise/metabot-v3
-  {:team "Metabot"
-   :api  #{metabase-enterprise.metabot-v3.agent-api.api
-           metabase-enterprise.metabot-v3.api
-           metabase-enterprise.metabot-v3.client
-           metabase-enterprise.metabot-v3.core
-           metabase-enterprise.metabot-v3.init
-           metabase-enterprise.metabot-v3.tools.api}
-   :uses #{activity-feed
-           api
-           app-db
-           audit-app
-           auth-identity
-           collections
-           config
-           documents
-           driver
-           legacy-mbql
-           lib
-           lib-be
-           models
-           native-query-snippets
-           permissions
-           premium-features
-           pulse
-           query-processor
-           request
-           search
-           server
-           settings
-           store-api
-           sync
-           system
-           task
-           users-rest
-           util
-           warehouse-schema
-           warehouses-rest
-           enterprise/dependencies
-           enterprise/transforms
-           enterprise/transforms-python}}
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.metabot-v3.api
+              metabase-enterprise.metabot-v3.client
+              metabase-enterprise.metabot-v3.core
+              metabase-enterprise.metabot-v3.init
+              metabase-enterprise.metabot-v3.tools.api}
+   :friends #{enterprise/agent-api}
+   :uses    #{activity-feed
+              api
+              app-db
+              audit-app
+              auth-identity
+              collections
+              config
+              documents
+              driver
+              legacy-mbql
+              lib
+              lib-be
+              models
+              native-query-snippets
+              permissions
+              premium-features
+              pulse
+              query-processor
+              request
+              search
+              server
+              settings
+              store-api
+              sync
+              system
+              task
+              users-rest
+              util
+              warehouse-schema
+              warehouses-rest
+              enterprise/dependencies
+              enterprise/transforms
+              enterprise/transforms-python}}
 
   enterprise/permission-debug
   {:team "UX West"
