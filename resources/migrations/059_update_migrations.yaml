@@ -804,6 +804,26 @@ databaseChangeLog:
             tableName: python_library
             constraintName: unique_python_library_entity_id
 
+  - changeSet:
+      id: v59.2026-01-28T12:00:00
+      author: winlost
+      comment: Add disable_links column to notification_card table
+      changes:
+        - addColumn:
+            tableName: notification_card
+            columns:
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable alert email links"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: notification_card
+            columnName: disable_links
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
