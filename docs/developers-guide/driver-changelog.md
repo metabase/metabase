@@ -12,12 +12,12 @@ title: Driver interface changelog
   precision 1 to `BIT` (boolean), ensuring type consistency between sync and query execution.
 
 - Added workspace isolation multimethods for enterprise workspaces feature:
-  - `init-workspace-isolation!`    - Initialize database isolation for a workspace by creating an isolated
-                                     schema or database with user credentials
+  - `init-workspace-isolation!`    - Initialize database isolation for a workspace by creating an isolated schema or
+                                     database with user credentials
   - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation
   - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user
-  - `check-isolation-permissions`  - Check if the database connection has sufficient permissions for workspace
-                                     isolation by testing the actual operations
+  - `check-isolation-permissions`  - Check if the database connection has sufficient permissions for workspace isolation
+                                     by testing the actual operations
 
 ## Metabase 0.58.0
 
