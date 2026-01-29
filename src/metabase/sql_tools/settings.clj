@@ -19,5 +19,5 @@
             (or (available-parser-backends (keyword new-value))
                 (throw (ex-info (tru "Invalid sql-tools parser backend.")
                                 {:value (keyword new-value)
-                                 :avialable available-parser-backends})))
+                                 :available available-parser-backends})))
             (setting/set-value-of-type! :keyword :sql-tools-parser-backend new-value)))
