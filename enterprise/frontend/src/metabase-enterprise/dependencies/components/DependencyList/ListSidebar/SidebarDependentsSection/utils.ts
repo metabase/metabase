@@ -1,6 +1,6 @@
 import type {
   DependencyNode,
-  ListNodeDependentsRequest,
+  ListBrokenGraphNodesRequest,
 } from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../../../constants";
@@ -15,13 +15,12 @@ export function getListRequest(
   node: DependencyNode,
   filterOptions: DependencyFilterOptions,
   sortOptions: DependencySortOptions,
-): ListNodeDependentsRequest {
+): ListBrokenGraphNodesRequest {
   return {
     id: node.id,
     type: node.type,
     dependent_types: getDependencyTypes(filterOptions.groupTypes),
     dependent_card_types: getCardTypes(filterOptions.groupTypes),
-    broken: true,
     include_personal_collections: filterOptions.includePersonalCollections,
     sort_column: sortOptions.column,
     sort_direction: sortOptions.direction,

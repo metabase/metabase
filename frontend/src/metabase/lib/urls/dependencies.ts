@@ -78,8 +78,8 @@ function dependencyListQueryString({
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/broken${dependencyListQueryString(params)}`;
+export function breakingDependencies(params?: DependencyListParams) {
+  return `${dependencyDiagnostics()}/breaking${dependencyListQueryString(params)}`;
 }
 
 export function unreferencedDependencies(params?: DependencyListParams) {
