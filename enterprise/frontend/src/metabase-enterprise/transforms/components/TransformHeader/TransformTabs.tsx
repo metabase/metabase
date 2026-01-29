@@ -35,6 +35,10 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       label: t`Inspect`,
       to: Urls.transformInspect(id),
     },
+    {
+      label: t`Inspect Mock`,
+      to: Urls.transformInspectMock(id),
+    },
   ];
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {

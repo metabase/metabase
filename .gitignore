@@ -16,6 +16,7 @@
 .nrepl-port
 .portal
 .vscode
+/.zed
 /*.h2.db
 /*.lock.db
 /*.mv.db

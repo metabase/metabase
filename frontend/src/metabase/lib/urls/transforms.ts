@@ -62,6 +62,10 @@ export function transformInspect(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect`;
 }
 
+export function transformInspectMock(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect-mock`;
+}
+
 export function transformJobList() {
   return JOBS_ROOT_URL;
 }
