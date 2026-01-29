@@ -81,6 +81,7 @@ export function setup({
           table={tableWithSegments}
           activeTab={activeTab}
           hasLibrary
+          canPublish
           onSyncOptionsClick={onSyncOptionsClick}
         />
       )}

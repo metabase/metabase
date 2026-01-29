@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useEditTablesMutation } from "metabase/api";
@@ -29,6 +30,7 @@ import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
 type TableAttributesEditBulkProps = {
+  canPublish: boolean;
   hasLibrary: boolean;
   onUpdate: () => void;
 };
@@ -36,6 +38,7 @@ type TableAttributesEditBulkProps = {
 type TableModalType = "library" | "publish" | "unpublish" | "sync";
 
 export function TableAttributesEditBulk({
+  canPublish,
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
@@ -58,6 +61,9 @@ export function TableAttributesEditBulk({
   const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
   const [modalType, setModalType] = useState<TableModalType>();
+  const previousTables = usePrevious(selectedTables);
+  const previousSchemas = usePrevious(selectedSchemas);
+  const previousDatabases = usePrevious(selectedDatabases);
 
   const hasOnlyTablesSelected =
     selectedTables.size > 0 &&
@@ -140,12 +146,30 @@ export function TableAttributesEditBulk({
   };
 
   useEffect(() => {
-    setDataLayer(null);
-    setDataSource(null);
-    setEmail(null);
-    setEntityType(null);
-    setUserId(null);
-  }, [selectedTables, selectedSchemas, selectedDatabases]);
+    if (!previousTables || !previousSchemas || !previousDatabases) {
+      return;
+    }
+
+    const shouldReset =
+      !isSubsetOf(selectedTables, previousTables) ||
+      !isSubsetOf(selectedSchemas, previousSchemas) ||
+      !isSubsetOf(selectedDatabases, previousDatabases);
+
+    if (shouldReset) {
+      setDataLayer(null);
+      setDataSource(null);
+      setEmail(null);
+      setEntityType(null);
+      setUserId(null);
+    }
+  }, [
+    previousDatabases,
+    previousSchemas,
+    previousTables,
+    selectedDatabases,
+    selectedSchemas,
+    selectedTables,
+  ]);
 
   return (
     <>
@@ -176,7 +200,7 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            {!remoteSyncReadOnly && (
+            {canPublish && !remoteSyncReadOnly && (
               <Button
                 flex={1}
                 p="sm"
@@ -186,7 +210,7 @@ export function TableAttributesEditBulk({
                 {t`Publish`}
               </Button>
             )}
-            {!remoteSyncReadOnly && hasLibrary && (
+            {canPublish && !remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
                 p="sm"
@@ -319,4 +343,8 @@ export function TableAttributesEditBulk({
       />
     </>
   );
+}
+
+function isSubsetOf<T>(subset: Set<T>, superset: Set<T>): boolean {
+  return Array.from(subset).every((element) => superset.has(element));
 }

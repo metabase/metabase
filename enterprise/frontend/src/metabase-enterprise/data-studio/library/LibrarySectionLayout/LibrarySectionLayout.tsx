@@ -6,10 +6,12 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
+import { LibraryUpsellPage } from "metabase/data-studio/upsells";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -29,8 +31,9 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { LibraryEmptyState } from "metabase-enterprise/data-studio/common/components/LibraryEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
+
+import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
@@ -88,6 +91,16 @@ function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
+  const hasLibraryFeature = useHasTokenFeature("data_studio");
+
+  if (!hasLibraryFeature) {
+    return <LibraryUpsellPage />;
+  }
+
+  return <LibrarySectionContent />;
+}
+
+function LibrarySectionContent() {
   const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,

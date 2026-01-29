@@ -2,13 +2,15 @@ import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import { IndexRoute, Route } from "react-router";
 
+import { GitSyncSectionLayout } from "metabase/data-studio/app/pages/GitSyncSectionLayout";
 import { DependencyDiagnosticsSectionLayout } from "metabase/data-studio/app/pages/TasksSectionLayout/TasksSectionLayout";
+import { DependenciesUpsellPage } from "metabase/data-studio/upsells";
+import { DependencyDiagnosticsUpsellPage } from "metabase/data-studio/upsells/DependencyDiagnosticsUpsellPage";
 import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
-  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
@@ -25,7 +27,7 @@ export function getDataStudioRoutes(
   store: Store<State>,
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
-  CanAccessTransforms: ComponentType,
+  _CanAccessTransforms: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -40,29 +42,33 @@ export function getDataStudioRoutes(
             {getDataStudioMetadataRoutes()}
           </Route>
         </Route>
-        {PLUGIN_TRANSFORMS.isEnabled && (
-          <Route path="transforms" component={CanAccessTransforms}>
-            <Route component={TransformsSectionLayout}>
-              {getDataStudioTransformRoutes()}
-            </Route>
-          </Route>
-        )}
+        <Route path="transforms" component={TransformsSectionLayout}>
+          {getDataStudioTransformRoutes()}
+        </Route>
         {getDataStudioGlossaryRoutes()}
         {PLUGIN_LIBRARY.isEnabled &&
           PLUGIN_LIBRARY.getDataStudioLibraryRoutes()}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
+        ) : (
+          <Route path="dependencies" component={DependenciesUpsellPage} />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
             component={DependencyDiagnosticsSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
+        ) : (
+          <Route
+            path="dependency-diagnostics"
+            component={DependencyDiagnosticsUpsellPage}
+          />
         )}
+        <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>
     </Route>
   );

@@ -1293,6 +1293,15 @@
       #{:collection}
       #{:no_models})))
 
+(def ^:private namespaces-holding-non-collection-types
+  "We can't really *know* what namespace something with a `nil` `collection_id` is in, unless it's one of the special
+  types that can only live in one namespace.
+
+  If you're looking in the root collection of one of these namespaces, we'll allow you to list any type of model.
+
+  Otherwise, we'll just show you collections."
+  #{nil "snippets" "transforms"})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1347,7 +1356,9 @@
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
-      :models                      (if-not (or (nil? namespace) (= namespace "snippets")) #{:collection} model-kwds)
+      :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
+                                     #{:collection}
+                                     model-kwds)
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                     :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)

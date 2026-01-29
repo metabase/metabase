@@ -31,9 +31,7 @@ type RunSectionProps = {
 };
 
 export function RunSection({ transform, readOnly }: RunSectionProps) {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useSelector(PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly);
 
   return (
     <TitleSection

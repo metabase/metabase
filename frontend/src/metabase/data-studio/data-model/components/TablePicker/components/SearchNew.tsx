@@ -100,7 +100,8 @@ export function SearchNew({
   isLibraryEnabled,
   onChange,
 }: SearchNewProps) {
-  const { resetSelection } = useSelection();
+  const { resetSelection, filterSelectedTables } = useSelection();
+
   const routeParams = parseRouteParams(params);
   const {
     data: tables,
@@ -149,6 +150,10 @@ export function SearchNew({
     () => buildResultTree(filteredTables),
     [filteredTables],
   );
+
+  useEffect(() => {
+    filterSelectedTables(filteredTables.map((table) => table.id));
+  }, [filteredTables, filterSelectedTables]);
 
   useEffect(() => {
     resetSelection();

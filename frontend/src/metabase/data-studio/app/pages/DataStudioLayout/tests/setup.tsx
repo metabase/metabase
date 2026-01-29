@@ -198,9 +198,10 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     "feature_level_permissions",
   ],
   tokenFeatures: {
-    data_studio: true,
     remote_sync: true,
     advanced_permissions: true,
     transforms: true,
+    data_studio: true,
+    dependencies: true,
   },
 };

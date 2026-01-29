@@ -158,7 +158,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
     ]);
 
     cy.button("Save changes").click();
@@ -191,7 +191,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
     ]);
 
     cy.button("Save changes").click();
@@ -221,7 +221,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
     ]);
 
     cy.findByTestId("permission-table")
@@ -235,7 +235,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Can view", "No", "1 million rows", "No", "No", "No"],
     ]);
   });
 
@@ -276,8 +276,24 @@ describe(
       H.savePermissions();
 
       H.assertPermissionTable([
-        ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-        ["QA Postgres12", "Impersonated", "No", "1 million rows", "No", "No"],
+        [
+          "Sample Database",
+          "Can view",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
+        [
+          "QA Postgres12",
+          "Impersonated",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
       ]);
 
       // Checking it shows the right state on the tables level
@@ -318,8 +334,24 @@ describe(
       H.savePermissions();
 
       H.assertPermissionTable([
-        ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-        ["QA Postgres12", "Impersonated", "No", "1 million rows", "No", "No"],
+        [
+          "Sample Database",
+          "Can view",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
+        [
+          "QA Postgres12",
+          "Impersonated",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
       ]);
     });
 
@@ -388,8 +420,16 @@ describe(
 
       // On database level it got reset to Can view too
       H.assertPermissionTable([
-        ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-        ["QA Postgres12", "Can view", "No", "1 million rows", "No", "No"],
+        [
+          "Sample Database",
+          "Can view",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
+        ["QA Postgres12", "Can view", "No", "1 million rows", "No", "No", "No"],
       ]);
     });
 
@@ -496,6 +536,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
         "1 million rows",
         "No",
         "No",
+        "No",
       ],
     ]);
 
@@ -529,6 +570,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
       [
         "Sample Database",
         "No self-service (Deprecated)",
+        "No",
         "No",
         "No",
         "No",

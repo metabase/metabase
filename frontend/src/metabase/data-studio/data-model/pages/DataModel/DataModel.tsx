@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
@@ -112,17 +113,18 @@ function DataModelContent({ params }: Props) {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
 
-  const {
-    data: libraryCollection,
-    isLoading: isLoadingLibrary,
-    error: libraryError,
-  } = PLUGIN_LIBRARY.useGetLibraryCollectionQuery();
+  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const { data: libraryCollection, isLoading: isLoadingLibrary } =
+    PLUGIN_LIBRARY.useGetLibraryCollectionQuery(undefined, {
+      skip: !hasLibraryFeature,
+    });
 
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
-  const error = databasesError ?? tableError ?? libraryError;
+  const error = databasesError ?? tableError;
 
   const hasLibrary = hasLibraryCollection(libraryCollection);
+  const canPublish = hasLibraryFeature;
 
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
@@ -226,6 +228,7 @@ function DataModelContent({ params }: Props) {
             miw={COLUMN_CONFIG.table.min}
           >
             <TableAttributesEditBulk
+              canPublish={canPublish}
               hasLibrary={hasLibrary}
               onUpdate={() => onUpdateCallback?.()}
             />
@@ -281,6 +284,7 @@ function DataModelContent({ params }: Props) {
                     table={table}
                     activeFieldId={fieldId}
                     activeTab={activeTab}
+                    canPublish={canPublish}
                     hasLibrary={hasLibrary}
                     onSyncOptionsClick={openSyncModal}
                   />

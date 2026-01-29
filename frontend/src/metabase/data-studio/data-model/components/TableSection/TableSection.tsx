@@ -50,6 +50,7 @@ interface Props {
   table: Table;
   activeFieldId?: FieldId;
   activeTab: DataStudioTableMetadataTab;
+  canPublish: boolean;
   hasLibrary: boolean;
   onSyncOptionsClick: () => void;
 }
@@ -60,6 +61,7 @@ const TableSectionBase = ({
   table,
   activeFieldId,
   activeTab,
+  canPublish,
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
@@ -220,7 +222,7 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        {isLibraryEnabled && !remoteSyncReadOnly && (
+        {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"

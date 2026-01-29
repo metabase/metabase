@@ -138,7 +138,7 @@ describe("DataStudioLayout", () => {
   });
 
   describe("transform dirty indicator", () => {
-    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
+    it("should show dirty indicator on Exit tab when transforms have dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
@@ -151,16 +151,14 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      // Should show the dirty indicator badge
+      // Should show the dirty indicator badge on the Exit tab
       const transformsTab = screen.getByLabelText("Transforms");
-      await waitFor(() => {
-        expect(
-          within(transformsTab).getByTestId("remote-sync-status"),
-        ).toBeInTheDocument();
-      });
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
+    it("should not show dirty indicator on Exit tab when no dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
