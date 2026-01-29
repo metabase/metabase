@@ -79,6 +79,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.util :as lib.query.util]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -2749,3 +2750,74 @@
       js->clj
       lib.native/validate-template-tags
       clj->js))
+
+(defn ^:export test-query
+  "Creates a query from a test query spec."
+  [metadata-providerable query-spec]
+  (letfn [(->source-spec [source-spec]
+            (-> source-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :type keyword)))
+
+          (->expression-spec [expression-spec]
+            (-> expression-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :type keyword)
+                (m/update-existing :args #(mapv ->expression-spec %))))
+
+          (->named-expression-spec [named-expression-spec]
+            (-> named-expression-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :value ->expression-spec)))
+
+          (->named-or-plain-expression-spec [named-or-plain-expression-spec]
+            (-> named-or-plain-expression-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :type keyword)
+                (m/update-existing :args #(mapv ->expression-spec %))
+                (m/update-existing :value #(->expression-spec %))))
+
+          (->filter-spec [filter-spec]
+            (-> filter-spec
+                ->expression-spec))
+
+          (->join-condition-spec [join-condition-spec]
+            (-> join-condition-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :operator keyword)
+                (m/update-existing :left ->expression-spec)
+                (m/update-existing :right ->expression-spec)))
+
+          (->join-spec [join-spec]
+            (-> join-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :strategy keyword)
+                (m/update-existing :source ->source-spec)
+                (m/update-existing :conditions #(mapv ->join-condition-spec %))))
+
+          (->breakout-spec [breakout-spec]
+            (-> breakout-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :unit keyword)))
+
+          (->order-by-spec [order-by-spec]
+            (-> order-by-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :direction keyword)))
+
+          (->stage-spec [stage-spec]
+            (-> stage-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :source ->source-spec)
+                (m/update-existing :expressions #(mapv ->named-expression-spec %))
+                (m/update-existing :filters #(mapv ->filter-spec %))
+                (m/update-existing :aggregations #(mapv ->named-or-plain-expression-spec %))
+                (m/update-existing :joins #(mapv ->join-spec %))
+                (m/update-existing :breakouts #(mapv ->breakout-spec %))
+                (m/update-existing :order-bys #(mapv ->order-by-spec %))))
+
+          (->query-spec [query-spec]
+            (-> query-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :stages #(mapv ->stage-spec %))))]
+    (lib.query.util/test-query metadata-providerable (-> query-spec js->clj ->query-spec))))

@@ -7,6 +7,7 @@ import type {
   DatasetQuery,
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
+  QuerySpec,
   TableId,
 } from "metabase-types/api";
 
@@ -155,4 +156,11 @@ export function fromJsQueryAndMetadata(
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
+}
+
+export function createTestQuery(
+  metadataProvider: MetadataProvider,
+  querySpec: QuerySpec,
+): Query {
+  return ML.test_query(metadataProvider, querySpec);
 }

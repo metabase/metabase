@@ -1,12 +1,12 @@
+import type * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  CardId,
-  DatabaseId,
-  FieldId,
-  SegmentId,
-  TableId,
-  TemplateTags,
-} from "metabase-types/api";
+
+import type { CardId } from "./card";
+import type { DatabaseId } from "./database";
+import type { TemplateTags, TemporalUnit } from "./dataset";
+import type { FieldId } from "./field";
+import type { SegmentId } from "./segment";
+import type { TableId } from "./table";
 
 export interface NativeQuery {
   query: string;
@@ -439,3 +439,89 @@ export type DimensionReferenceWithOptions =
 export type DimensionReference =
   | DimensionReferenceWithOptions
   | TemplateTagReference;
+
+export type TableSourceSpec = {
+  type: "table";
+  id: TableId;
+};
+
+export type CardSourceSpec = {
+  type: "card";
+  id: CardId;
+};
+
+export type SourceSpec = TableSourceSpec | CardSourceSpec;
+
+export type ColumnSpec = {
+  type: "column";
+  name: string;
+  sourceName?: string;
+};
+
+export type ExpressionSpec = LiteralSpec | OperatorSpec | ColumnSpec;
+
+export type FilterSpec = ExpressionSpec;
+
+export type AggregationSpec = ExpressionSpec | NamedExpressionSpec;
+
+export type NamedExpressionSpec = {
+  name: string;
+  value: ExpressionSpec;
+};
+
+export type LiteralSpec = {
+  type: "literal";
+  value: number | bigint | string | boolean;
+};
+
+export type OperatorSpec = {
+  type: "operator";
+  operator: string;
+  args: ExpressionSpec[];
+};
+
+export type TemporalBucketSpec = {
+  unit?: TemporalUnit;
+};
+
+export type BreakoutSpec = ColumnSpec & TemporalBucketSpec;
+
+export type JoinSpec = {
+  source: SourceSpec;
+  strategy: JoinStrategy;
+
+  // If not set we will use the suggested join conditions
+  conditions?: JoinConditionSpec[];
+};
+
+type JoinConditionSpec = {
+  operator: Lib.JoinConditionOperator;
+  left: ExpressionSpec;
+  right: ExpressionSpec;
+};
+
+export type OrderBySpec = ColumnSpec & {
+  direction?: "asc" | "desc";
+};
+
+export type StageSpec = {
+  expressions?: NamedExpressionSpec[];
+  joins?: JoinSpec[];
+  filters?: FilterSpec[];
+  aggregations?: AggregationSpec[];
+  breakouts?: BreakoutSpec[];
+  orderBys?: OrderBySpec[];
+  limit?: number;
+};
+
+export type StageSpecWithSource = StageSpec & {
+  source: SourceSpec;
+};
+
+export type QuerySpec = {
+  stages: [StageSpecWithSource, ...StageSpec[]];
+};
+
+export type QuerySpecWithDatabase = QuerySpec & {
+  database: DatabaseId;
+};
