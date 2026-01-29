@@ -1,29 +1,17 @@
-.Pattern {
-  --mb-color-upsell-pattern: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    transparent 80%
-  );
-  --mb-color-upsell-pattern-light: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    transparent 95%
-  );
-
-  position: relative;
-  /* Using radial gradient to create dotted pattern with CSS variable support */
-  /* Hard stop at 1.5px creates a crisp circle edge (no blur) */
-  background-image: radial-gradient(
-    circle,
-    /* stylelint-disable-next-line length-zero-no-unit -- This is a hard stop */
-      var(--mb-color-upsell-pattern) 0px,
-    var(--mb-color-upsell-pattern) 1px,
-    transparent 1px
-  );
-  background-position: center;
-  background-repeat: round round;
-  background-size: 1rem 1rem;
-  overflow: hidden;
+/* CSS variables for borders and ImageCard background - matches the dotted pattern color */
+:global {
+  :root {
+    --mb-color-upsell-pattern: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 80%
+    );
+    --mb-color-upsell-pattern-light: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 95%
+    );
+  }
 }
 
 .Card {

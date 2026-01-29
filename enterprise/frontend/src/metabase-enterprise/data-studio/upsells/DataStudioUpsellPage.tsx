@@ -17,6 +17,7 @@ import {
   Box,
   Card,
   Center,
+  DottedBackground,
   Flex,
   Icon,
   Image,
@@ -80,94 +81,88 @@ export function DataStudioUpsellPage({
   const maxWidth = image ? 700 : 450;
 
   return (
-    <Stack w="100%" h="100%" bg="background-secondary">
-      <Stack h="100%" w="100%" className={S.Pattern} px="3.5rem" pb="2rem">
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{header}</DataStudioBreadcrumbs>}
-        />
-        <Stack align="center" p={40}>
-          <Box className={S.Card}>
-            {["top", "right", "bottom", "left"].map((position) => (
-              <Box
-                key={position}
-                className={S.Border}
-                data-position={position}
-              />
-            ))}
-            <Card shadow="md" p="xl" maw={maxWidth} withBorder>
-              <Flex direction="row" gap="lg">
-                <Stack gap="sm">
-                  <Flex align="center" gap="xs">
-                    <UpsellGem.New size={16} />
-                    {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
-                    <Text c="text-brand">{t`Metabase Pro`}</Text>
-                  </Flex>
-                  <Title order={2}>{title}</Title>
-                  <Stack gap="md" py="sm" mb="sm">
-                    <Text c="text-secondary">{description}</Text>
-                    {bulletPoints && (
-                      <Stack gap="lg" py="sm">
-                        {bulletPoints?.map((point) => (
-                          <Flex direction="row" gap="sm" key={point}>
-                            <Center w={24} h={24}>
-                              <Icon
-                                name="check_filled"
-                                size={16}
-                                c="text-brand"
-                              />
-                            </Center>
-                            <Text c="text-secondary">{point}</Text>
-                          </Flex>
-                        ))}
-                      </Stack>
-                    )}
-                    {shouldShowContactAdmin ? (
-                      <Text>
-                        {anyStoreUserEmailAddress
-                          ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-                            t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to upgrade your plan.`
-                          : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-                            t`Please ask a Metabase Store Admin to upgrade your plan.`}
-                      </Text>
-                    ) : (
-                      <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
-                    )}
-                  </Stack>
-                  {!shouldShowContactAdmin && (
-                    <Stack align="flex-start">
-                      <UpsellCta
-                        onClick={triggerUpsellFlow}
-                        url={getUpsellUrl()}
-                        internalLink={undefined}
-                        buttonText={t`Upgrade to Pro`}
-                        onClickCapture={() =>
-                          trackUpsellClicked({ location, campaign })
-                        }
-                        className={S.UpsellCta}
-                        size="large"
-                      />
+    <DottedBackground px="3.5rem" pb="2rem">
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{header}</DataStudioBreadcrumbs>}
+      />
+      <Stack align="center" p={40}>
+        <Box className={S.Card}>
+          {["top", "right", "bottom", "left"].map((position) => (
+            <Box key={position} className={S.Border} data-position={position} />
+          ))}
+          <Card shadow="md" p="xl" maw={maxWidth} withBorder>
+            <Flex direction="row" gap="lg">
+              <Stack gap="sm">
+                <Flex align="center" gap="xs">
+                  <UpsellGem.New size={16} />
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
+                  <Text c="text-brand">{t`Metabase Pro`}</Text>
+                </Flex>
+                <Title order={2}>{title}</Title>
+                <Stack gap="md" py="sm" mb="sm">
+                  <Text c="text-secondary">{description}</Text>
+                  {bulletPoints && (
+                    <Stack gap="lg" py="sm">
+                      {bulletPoints?.map((point) => (
+                        <Flex direction="row" gap="sm" key={point}>
+                          <Center w={24} h={24}>
+                            <Icon
+                              name="check_filled"
+                              size={16}
+                              c="text-brand"
+                            />
+                          </Center>
+                          <Text c="text-secondary">{point}</Text>
+                        </Flex>
+                      ))}
                     </Stack>
                   )}
+                  {shouldShowContactAdmin ? (
+                    <Text>
+                      {anyStoreUserEmailAddress
+                        ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+                          t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to upgrade your plan.`
+                        : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+                          t`Please ask a Metabase Store Admin to upgrade your plan.`}
+                    </Text>
+                  ) : (
+                    <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
+                  )}
                 </Stack>
-                {image && (
-                  <Card
-                    className={S.ImageCard}
-                    p={6}
-                    radius={12}
-                    shadow="md"
-                    withBorder
-                    maw="50%"
-                  >
-                    <Card radius={6} p={0} shadow="none" withBorder>
-                      <Image src={image} radius={6} w="100%" />
-                    </Card>
-                  </Card>
+                {!shouldShowContactAdmin && (
+                  <Stack align="flex-start">
+                    <UpsellCta
+                      onClick={triggerUpsellFlow}
+                      url={getUpsellUrl()}
+                      internalLink={undefined}
+                      buttonText={t`Upgrade to Pro`}
+                      onClickCapture={() =>
+                        trackUpsellClicked({ location, campaign })
+                      }
+                      className={S.UpsellCta}
+                      size="large"
+                    />
+                  </Stack>
                 )}
-              </Flex>
-            </Card>
-          </Box>
-        </Stack>
+              </Stack>
+              {image && (
+                <Card
+                  className={S.ImageCard}
+                  p={6}
+                  radius={12}
+                  shadow="md"
+                  withBorder
+                  maw="50%"
+                >
+                  <Card radius={6} p={0} shadow="none" withBorder>
+                    <Image src={image} radius={6} w="100%" />
+                  </Card>
+                </Card>
+              )}
+            </Flex>
+          </Card>
+        </Box>
       </Stack>
-    </Stack>
+    </DottedBackground>
   );
 }

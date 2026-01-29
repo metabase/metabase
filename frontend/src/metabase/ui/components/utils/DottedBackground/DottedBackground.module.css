@@ -1,0 +1,23 @@
+.root {
+  position: relative;
+  background-color: var(--mb-dotted-bg-background);
+}
+
+.root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    var(--mb-dotted-bg-color) var(--mb-dotted-bg-size),
+    transparent var(--mb-dotted-bg-size)
+  );
+  background-position: center;
+  background-repeat: round round;
+  background-size: var(--mb-dotted-bg-spacing) var(--mb-dotted-bg-spacing);
+}
+
+.root > * {
+  position: relative;
+}
