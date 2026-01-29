@@ -246,6 +246,7 @@
     :fingerprint
     :id
     :semantic-type
+    :settings
     :table-id
     :visibility-type})
 
