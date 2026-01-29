@@ -879,7 +879,9 @@
    For provisional transforms we will skip even creating it in the first place."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id ws-id} {:archived_at [:now]})))
+  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
+                                   {:ref_id tx-id :workspace_id ws-id}
+                                   {:archived_at [:now]})))
   ;; Increment graph version since transform is leaving the graph
   (ws.impl/increment-graph-version! ws-id)
   nil)
