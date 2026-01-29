@@ -6,6 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [metabase.llm.settings :as llm-settings]
    [metabase.llm.streaming :as streaming]
    [metabase.util.json :as json]
@@ -77,11 +78,11 @@
                       exception)))
     (throw exception)))
 
-(defn get-api-key-or-throw
-  "Gets Anthropic API key from settings or throws and unconfigured error."
+(defn- get-api-key-or-throw
+  "Gets Anthropic API key from settings or throws an unconfigured error."
   []
   (let [api-key (llm-settings/llm-anthropic-api-key)]
-    (when-not api-key
+    (when (str/blank? api-key)
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
     api-key))
@@ -173,28 +174,25 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (let [api-key (llm-settings/llm-anthropic-api-key)]
-    (when-not api-key
-      (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
-                      {:type :llm-not-configured})))
-    (let [model        (or model (llm-settings/llm-anthropic-model))
-          request      {:model model :system system :messages messages}
-          request-body (build-streaming-request-body request)]
-      (try
-        (let [response (http/post anthropic-messages-url
-                                  {:as                 :stream
-                                   :headers            (build-request-headers api-key)
-                                   :body               (json/encode request-body)
-                                   :throw-exceptions   false
-                                   :socket-timeout     (llm-settings/llm-request-timeout-ms)
-                                   :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
-          (if (<= 200 (:status response) 299)
-            (a/pipe (streaming/anthropic-sse-chan (:body response))
-                    (a/chan 64 streaming/anthropic-chat->aisdk-xf))
-            (handle-streaming-error (:status response) (:body response))))
-        (catch Exception e
-          (log/error e "Anthropic streaming request failed with exception")
-          (let [error-chan (a/chan 1)]
-            (a/>!! error-chan {:type :error :error (ex-message e)})
-            (a/close! error-chan)
-            error-chan))))))
+  (let [api-key      (get-api-key-or-throw)
+        model        (or model (llm-settings/llm-anthropic-model))
+        request      {:model model :system system :messages messages}
+        request-body (build-streaming-request-body request)]
+    (try
+      (let [response (http/post anthropic-messages-url
+                                {:as                 :stream
+                                 :headers            (build-request-headers api-key)
+                                 :body               (json/encode request-body)
+                                 :throw-exceptions   false
+                                 :socket-timeout     (llm-settings/llm-request-timeout-ms)
+                                 :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
+        (if (<= 200 (:status response) 299)
+          (a/pipe (streaming/anthropic-sse-chan (:body response))
+                  (a/chan 64 streaming/anthropic-chat->aisdk-xf))
+          (handle-streaming-error (:status response) (:body response))))
+      (catch Exception e
+        (log/error e "Anthropic streaming request failed with exception")
+        (let [error-chan (a/chan 1)]
+          (a/>!! error-chan {:type :error :error (ex-message e)})
+          (a/close! error-chan)
+          error-chan)))))
