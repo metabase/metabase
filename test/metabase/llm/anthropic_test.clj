@@ -1,7 +1,6 @@
 (ns metabase.llm.anthropic-test
   (:require
    [clj-http.client :as http]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
    [metabase.test :as mt]))
@@ -123,7 +122,8 @@
                                                    :explanation "Fetches all users"}}]
                                 :usage {:input_tokens 1500
                                         :output_tokens 250}}}]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"
+                                         llm-anthropic-model "claude-sonnet-4-5-20250929"]
         (with-redefs [http/post (constantly mock-response)]
           (let [result (anthropic/chat-completion {:system "You are a SQL expert"
                                                    :messages [{:role "user" :content "get all users"}]})]
@@ -134,13 +134,6 @@
                              :prompt 1500
                              :completion 250}}
                     result))))))))
-
-;;; ------------------------------------------- default-model Tests -------------------------------------------
-
-(deftest default-model-test
-  (testing "default model is defined and reasonable"
-    (is (string? anthropic/default-model))
-    (is (str/includes? anthropic/default-model "claude"))))
 
 ;;; ------------------------------------------- model->simplified-provider-model Tests -------------------------------------------
 

@@ -8,19 +8,11 @@
    [clojure.string :as str]
    [metabase.llm.settings :as llm-settings]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (com.fasterxml.jackson.core JsonParseException)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private anthropic-messages-url
-  "https://api.anthropic.com/v1/messages")
-
-(def ^:private anthropic-api-version
-  "2023-06-01")
-
-(def default-model
-  "Default Anthropic model for SQL generation."
-  "claude-sonnet-4-5-20250929")
 
 (defn- model->simplified-provider-model
   "Given a precise model name, return a simplified name with the provider prefixed.
@@ -48,7 +40,7 @@
   "Build headers for Anthropic API request."
   [api-key]
   {"x-api-key"         api-key
-   "anthropic-version" anthropic-api-version
+   "anthropic-version" (llm-settings/llm-anthropic-api-version)
    "content-type"      "application/json"})
 
 (defn- build-request-body
@@ -77,7 +69,7 @@
   (if-let [response-body (some-> exception ex-data :body)]
     (let [parsed (try
                    (json/decode response-body)
-                   (catch Exception _
+                   (catch JsonParseException _
                      {:error {:message response-body}}))]
       (throw (ex-info (or (-> parsed :error :message)
                           "Anthropic API request failed")
@@ -103,13 +95,13 @@
     (when-not api-key
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
-    (let [model      (or model (llm-settings/llm-anthropic-model) default-model)
+    (let [model      (or model (llm-settings/llm-anthropic-model))
           request    {:model    model
                       :system   system
                       :messages messages}
           start-time (u/start-timer)]
       (try
-        (let [response    (http/post anthropic-messages-url
+        (let [response    (http/post (llm-settings/llm-anthropic-api-url)
                                      {:headers            (build-request-headers api-key)
                                       :body               (json/encode (build-request-body request))
                                       :as                 :json
