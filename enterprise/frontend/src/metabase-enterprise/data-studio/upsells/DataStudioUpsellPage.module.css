@@ -4,6 +4,11 @@
     var(--mb-color-brand),
     transparent 80%
   );
+  --mb-color-upsell-pattern-light: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    transparent 95%
+  );
 
   /* Using radial gradient to create dotted pattern with CSS variable support */
   /* Hard stop at 1.5px creates a crisp circle edge (no blur) */
@@ -32,8 +37,8 @@
 .Border[data-position="top"],
 .Border[data-position="bottom"] {
   height: 1px;
-  width: calc(100% + 250px);
-  left: calc(-50% + 125px);
+  width: calc(100% + 500px);
+  left: -250px;
   background-image: linear-gradient(
     to right,
     transparent,
@@ -56,7 +61,7 @@
 .Border[data-position="left"] {
   width: 1px;
   height: calc(100% + 250px);
-  top: calc(-50%);
+  top: -125px;
   /* background-color does not accept gradients, so this results in no color being shown.
      To display a vertical gradient border, use background-image instead: */
   background-image: linear-gradient(
@@ -75,4 +80,41 @@
 
 .Border[data-position="left"] {
   left: -1px;
+}
+
+.ImageCard {
+  background-color: var(--mb-color-upsell-pattern-light);
+}
+
+.UpsellCta {
+  /* Copied (and slightly adapted if needed) from metabase/css/components/buttons.module.css */
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  background: var(--mb-color-brand);
+  color: var(--mb-color-text-primary-inverse);
+  transition:
+    background 150ms,
+    color 150ms,
+    box-shadow 100ms;
+  outline: none;
+  text-decoration: none;
+  line-height: 1.4;
+  box-shadow: 0 2px 4px 0 rgba(13, 19, 35, 0.04);
+
+  /* Button hover and focus states */
+}
+
+.UpsellCta:hover,
+.UpsellCta:focus {
+  background: var(--mb-color-brand-alpha-88);
+  color: var(--mb-color-text-primary-inverse);
 }

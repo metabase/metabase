@@ -9,6 +9,7 @@ export function DependencyDiagnosticsUpsellPage() {
       location="data-studio-dependency-diagnostics-page"
       title={t`See how everything connects`}
       description={t`Better manage your data transformation and entity graph by inspecting it visually, understanding relationships and dependencies.`}
+      image="app/assets/img/data-studio-dependencies-upsell.png"
     />
   );
 }
