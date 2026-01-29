@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
@@ -266,6 +267,75 @@
                            {:object document
                             :user-id api/*current-user-id*})
     api/generic-204-no-content))
+
+;;; ---------------------------------------------------- Copy --------------------------------------------------------
+
+(mu/defn- copy-cards-for-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
+  "Copies all cards that belong to the source document to the new document.
+
+  Args:
+  - source-document-id: ID of the document being copied
+  - new-document-id: ID of the newly created document
+  - new-collection-id: Collection ID for the new cards
+
+  Returns:
+  - Map of old-card-id -> new-card-id"
+  [source-document-id :- ms/PositiveInt
+   new-document-id :- ms/PositiveInt
+   new-collection-id :- [:or :nil ms/PositiveInt]]
+  (let [cards-to-copy (t2/select :model/Card :document_id source-document-id)]
+    (reduce (fn [accum card]
+              (let [new-card (create-card! (-> card
+                                               (dissoc :id :entity_id :created_at :updated_at :creator_id
+                                                       :public_uuid :made_public_by_id :cache_invalidated_at)
+                                               (assoc :document_id new-document-id
+                                                      :collection_id new-collection-id))
+                                           @api/*current-user*)]
+                (when (or (:archived card) (:archived_directly card))
+                  (t2/update! :model/Card (:id new-card)
+                              {:archived          (boolean (:archived card))
+                               :archived_directly (boolean (:archived_directly card))}))
+                (assoc accum (:id card) (:id new-card))))
+            {}
+            cards-to-copy)))
+
+(api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
+  "Copy a Document."
+  [{:keys [from-document-id]} :- [:map
+                                  [:from-document-id ms/PositiveInt]]
+   _query-params
+   {:keys [name collection_id collection_position]} :- [:map
+                                                        [:name                {:optional true} [:maybe ms/NonBlankString]]
+                                                        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+                                                        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/create-check :model/Document {:collection_id collection_id})
+  (let [existing-document (api/check-404
+                           (api/read-check
+                            (t2/select-one :model/Document :id from-document-id :archived false)))
+        document-data {:name                (or name (:name existing-document))
+                       :document            (:document existing-document)
+                       :content_type        (:content_type existing-document)
+                       :creator_id          api/*current-user-id*
+                       :collection_id       collection_id
+                       :collection_position collection_position}
+        new-document (t2/with-transaction [_conn]
+                       (when collection_position
+                         (api/maybe-reconcile-collection-position! document-data))
+                       (let [new-document-id (t2/insert-returning-pk! :model/Document document-data)
+                             card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
+                         (when (seq card-id-map)
+                           (t2/update! :model/Document :id new-document-id
+                                       (update-cards-in-ast
+                                        {:document (:document existing-document)
+                                         :content_type (:content_type existing-document)}
+                                        card-id-map)))
+                         (u/prog1 (get-document new-document-id)
+                           (when (collections/remote-synced-collection? collection_id)
+                             (collections/check-non-remote-synced-dependencies <>)))))]
+    (events/publish-event! :event/document-create
+                           {:object new-document
+                            :user-id api/*current-user-id*})
+    new-document))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

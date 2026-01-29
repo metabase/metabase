@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
@@ -158,7 +158,7 @@ function CopyDashboardForm({
           {!!onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton label={t`Duplicate`} />
+          <FormSubmitButton label={c(`A verb, not a noun`).t`Duplicate`} />
         </FormFooter>
       </Form>
     </FormProvider>

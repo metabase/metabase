@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
@@ -155,7 +155,10 @@ export const CopyCardForm = ({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton label={t`Duplicate`} variant="filled" />
+            <FormSubmitButton
+              label={c(`A verb, not a noun`).t`Duplicate`}
+              variant="filled"
+            />
           </FormFooter>
         </Form>
       )}
