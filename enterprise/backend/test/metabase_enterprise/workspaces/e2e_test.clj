@@ -56,8 +56,8 @@
                             {:ref_id (:ref_id isolated-transform)}
                             {:source {:type  "query"
                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues {:limit 1})))}})
-                (is (=? {:status :failed}
-                        (mt/with-current-user (mt/user->id :crowberto)
-                          (ws.impl/run-transform! workspace
-                                                  (ws.impl/get-or-calculate-graph! workspace)
-                                                  (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))))))))))))))
+                (let [ref-id    (:ref_id isolated-transform)
+                      transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref-id)]
+                  (is (=? {:status :failed}
+                          (mt/with-current-user (mt/user->id :crowberto)
+                            (ws.impl/run-transform! workspace graph transform)))))))))))))
