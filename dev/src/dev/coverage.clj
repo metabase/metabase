@@ -1,6 +1,7 @@
 (ns dev.coverage
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :as t]
    [metabase.util.malli.registry :as m.registry]
    [rewrite-clj.node :as n]
@@ -13,7 +14,7 @@
         results (atom false)]
     (binding [t/report (fn [m]
                          (case (:type m)
-                           :fail  (reset! results true)
+                           :fail (reset! results true)
                            :error (reset! results true)
                            #_else nil))]
       (t/run-test-var test-var))
@@ -284,7 +285,7 @@
             (alter-var-root var-obj (constantly original-fn))
             (alter-meta! var-obj (constantly original-meta)))))
 
-      @results)))
+      (assoc @results :original-source (:original-source mutation-data)))))
 
 (defn- index-by [f coll]
   (into {} (for [v coll] [(f v) v])))
@@ -293,11 +294,78 @@
   (let [coverage (ns-coverage [target-ns] test-ns-s)
         mutations (for [[f tests] (:coverage coverage)]
                     (let [results (test-mutations f tests)]
-                      (assoc results :function f :tests tests)))]
+                      (assoc results :function f :tests tests)))
+        uncovered (into {}
+                        (for [f (:uncovered-fns coverage)
+                              :let [fn-info (find-function-source f)
+                                    source (when fn-info (read-function-from-file fn-info))]]
+                          [f {:function f :original-source source}]))]
 
-    {:uncovered-fns (:uncovered-fns coverage)
+    {:uncovered-fns uncovered
      :fully-covered (index-by :function (filter #(empty? (:survived %)) mutations))
      :partially-covered (index-by :function (filter #(seq (:survived %)) mutations))}))
+
+(defn generate-report [target-ns test-ns-s out-file]
+  (let [results (test-namespace target-ns test-ns-s)
+        s #_:clj-kondo/ignore ;; it's wrapped in `with-out-str`
+        (with-out-str
+          (println "# Mutation Testing Namespace Report")
+          (println)
+          (println "Namespace:" target-ns)
+          (println)
+          (println "Test namespaces:" (str/join ", " (sort test-ns-s)))
+
+          (when (seq (:uncovered-fns results))
+            (println)
+            (println "## Uncovered Functions")
+            (println)
+            (println "These functions are never executed when the tests are run.")
+            (doseq [{:keys [function original-source]} (sort-by :function (vals (:uncovered-fns results)))]
+              (println)
+              (println "###" function)
+              (println)
+              (println "```")
+              (println original-source)
+              (println "```")))
+
+          (when (seq (:partially-covered results))
+            (println)
+            (println "## Partially Covered Functions")
+            (println)
+            (println "These functions are executed but have mutations that survive.")
+
+            (doseq [{:keys [function survived original-source]} (sort-by :function (vals (:partially-covered results)))]
+              (println)
+              (println "###" function)
+              (println)
+              (println "Original code")
+              (println)
+              (println "```")
+              (println original-source)
+              (println "```")
+              (doseq [{:keys [description mutation]} survived]
+                (println)
+                (println "#### Mutation:" description)
+                (println)
+                (println "```")
+                (println mutation)
+                (println "```"))))
+
+          (when (seq (:fully-covered results))
+            (println)
+            (println "## Fully Covered Functions")
+            (println)
+            (println "These functions are fully covered by the test namespaces.")
+            (doseq [{:keys [original-source function]} (sort-by :function (vals (:fully-covered results)))]
+              (println)
+              (println "###" function)
+              (println)
+              (println "Original code")
+              (println)
+              (println "```")
+              (println original-source)
+              (println "```"))))]
+    (spit out-file s)))
 
 (comment
 
@@ -307,10 +375,12 @@
 
   (def results (test-namespace target-ns [test-ns]))
 
+  (generate-report 'metabase.lib.card ['metabase.lib.card-test] "mutation-testing-report.lib.card.md")
+
   (clojure.pprint/pprint results)
   (:fully-covered results)
   (println (:uncovered-fns results))
-  (:partially-covered results)
+  (first (:partially-covered results))
   (metabase.util.malli.fn/instrument-ns? *ns*)
 
   (doseq [{:keys [function survived]} (vals (:partially-covered results))]
