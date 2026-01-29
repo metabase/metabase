@@ -29,6 +29,10 @@ export function setupCheckTransformDependenciesEndpoint(
   fetchMock.post("path:/api/ee/dependencies/check_transform", response);
 }
 
+export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
+  fetchMock.get("path:/api/ee/dependencies/graph/dependents", nodes);
+}
+
 export function setupListBreakingGraphNodesEndpoint(
   response: ListBreakingGraphNodesResponse,
 ) {
