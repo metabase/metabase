@@ -338,14 +338,18 @@ export function getNodeOwner(node: DependencyNode): NamedUser | null {
     case "table":
     case "transform":
       return node.data.owner ?? null;
-    case "card":
-    case "dashboard":
-    case "document":
-    case "segment":
-    case "measure":
-    case "snippet":
-    case "sandbox":
+    default:
       return null;
+  }
+}
+
+export function canNodeHaveOwner(type: DependencyType): boolean {
+  switch (type) {
+    case "table":
+    case "transform":
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -359,8 +363,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "snippet":
     case "transform":
       return node.data.created_at;
-    case "table":
-    case "sandbox":
+    default:
       return null;
   }
 }
@@ -375,8 +378,7 @@ export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
     case "snippet":
     case "transform":
       return node.data.creator ?? null;
-    case "table":
-    case "sandbox":
+    default:
       return null;
   }
 }
@@ -386,13 +388,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
+    default:
       return null;
   }
 }
@@ -402,29 +398,18 @@ export function getNodeLastEditedBy(node: DependencyNode): NamedUser | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"] ?? null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
+    default:
       return null;
   }
 }
 
-export function canHaveViewCount(type: DependencyType): boolean {
+export function canNodeHaveViewCount(type: DependencyType): boolean {
   switch (type) {
     case "card":
     case "dashboard":
     case "document":
       return true;
-    case "table":
-    case "transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
-    case "measure":
+    default:
       return false;
   }
 }
@@ -435,12 +420,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "dashboard":
     case "document":
       return node.data.view_count ?? null;
-    case "table":
-    case "measure":
-    case "transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
+    default:
       return null;
   }
 }

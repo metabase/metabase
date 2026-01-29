@@ -10,6 +10,7 @@ import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import {
+  canNodeHaveOwner,
   getNodeCreatedAt,
   getNodeCreatedBy,
   getNodeDescription,
@@ -27,6 +28,7 @@ type InfoSectionProps = {
 export function InfoSection({ node }: InfoSectionProps) {
   const description = getNodeDescription(node);
   const owner = getNodeOwner(node);
+  const canHaveOwner = canNodeHaveOwner(node.type);
   const transform = getNodeTransform(node);
   const createdBy = getNodeCreatedBy(node);
   const createdAt = getNodeCreatedAt(node);
@@ -35,7 +37,7 @@ export function InfoSection({ node }: InfoSectionProps) {
 
   if (
     description == null &&
-    owner == null &&
+    !canHaveOwner &&
     transform == null &&
     (createdAt == null || createdBy == null) &&
     (editedAt == null || editedBy == null)
@@ -54,9 +56,13 @@ export function InfoSection({ node }: InfoSectionProps) {
           )}
         </InfoSectionItem>
       )}
-      {owner != null && (
+      {canHaveOwner && (
         <InfoSectionItem label={t`Owner`}>
-          <Box className={CS.textWrap}>{getUserName(owner)}</Box>
+          {owner != null ? (
+            <Box className={CS.textWrap}>{getUserName(owner)}</Box>
+          ) : (
+            <Box c="text-secondary">{t`No owner`}</Box>
+          )}
         </InfoSectionItem>
       )}
       {transform != null && (
