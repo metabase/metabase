@@ -35,10 +35,10 @@
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
 (mu/defn- matches-column? :- :boolean
-  [query          :- ::lib.schema/query
-   _stage-number  :- :int
-   column         :- ::lib.schema.metadata/column
-   {:keys [name source-name]} :- ::lib.schema.query/test-column-spec]
+  [query                      :- ::lib.schema/query
+   _stage-number              :- :int
+   {:keys [name source-name]} :- ::lib.schema.query/test-column-spec
+   column                     :- ::lib.schema.metadata/column]
   (cond-> (= name (:name column))
     (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))))
 
@@ -47,7 +47,7 @@
    stage-number :- :int
    available-columns      :- [:sequential ::lib.schema.metadata/column]
    column-spec  :- ::lib.schema.query/test-column-spec]
-  (let [columns (filterv #(matches-column? query stage-number % column-spec) available-columns)]
+  (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
@@ -59,12 +59,12 @@
    field-specs    :- [:sequential ::lib.schema.query/test-column-spec]]
   (let [visible (lib.metadata.calculation/visible-columns query stage-number)]
     (->> field-specs
-         (mapv #(find-column query stage-number visible %))
+         (mapv (partial find-column query stage-number visible))
          (lib.field/with-fields query stage-number))))
 
 (mu/defn- matches-temporal-bucket? :- :boolean
-  [option         :- ::lib.schema.temporal-bucketing/option
-   unit           :- ::lib.schema.temporal-bucketing/unit]
+  [unit           :- ::lib.schema.temporal-bucketing/unit
+   option         :- ::lib.schema.temporal-bucketing/option]
   (= unit (:unit option)))
 
 (mu/defn- find-temporal-bucket :- ::lib.schema.temporal-bucketing/option
@@ -73,7 +73,7 @@
    column        :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
    unit          :- ::lib.schema.temporal-bucketing/unit]
   (let [temporal-buckets (lib.temporal-bucket/available-temporal-buckets query stage-number column)
-        matches (filterv #(matches-temporal-bucket? % unit) temporal-buckets)]
+        matches (filterv (partial matches-temporal-bucket? unit) temporal-buckets)]
     (case (count matches)
       0 (throw (ex-info "No temporal bucket found" {:temporal-buckets temporal-buckets, :unit unit}))
       1 (first matches)
@@ -88,8 +88,8 @@
     (lib.temporal-bucket/with-temporal-bucket column temporal-bucket)))
 
 (mu/defn- matches-bin-count-option? :- :boolean
-  [{:keys [mbql]} :- ::lib.schema.binning/binning-option
-   bin-count      :- ::lib.schema.binning/num-bins]
+  [bin-count      :- ::lib.schema.binning/num-bins
+   {:keys [mbql]} :- ::lib.schema.binning/binning-option]
   (and
    (= :num-bins (:strategy mbql))
    (== bin-count (:num-bins mbql))))
@@ -100,7 +100,7 @@
    bin-count     :- ::lib.schema.binning/num-bins
    column        :- ::lib.schema.metadata/column]
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
-        matches (filterv #(matches-bin-count-option? % bin-count) binning-strategies)]
+        matches (filterv (partial matches-bin-count-option? bin-count) binning-strategies)]
     (case (count matches)
       0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :bin-count bin-count}))
       1 (first matches)
@@ -115,8 +115,8 @@
     (lib.binning/with-binning column strategy)))
 
 (mu/defn- matches-bin-width-option? :- :boolean
-  [{:keys [mbql]} :- ::lib.schema.binning/binning-option
-   bin-width      :- ::lib.schema.binning/bin-width]
+  [bin-width      :- ::lib.schema.binning/bin-width
+   {:keys [mbql]} :- ::lib.schema.binning/binning-option]
   (and
    (= :bin-width (:strategy mbql))
    (== bin-width (:bin-width mbql))))
@@ -127,7 +127,7 @@
    bin-width    :- ::lib.schema.binning/num-bins
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
-        matches (filterv #(matches-bin-width-option? % bin-width) binning-strategies)]
+        matches (filterv (partial matches-bin-width-option? bin-width) binning-strategies)]
     (case (count matches)
       0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :bin-width bin-width}))
       1 (first matches)
@@ -180,7 +180,7 @@
     :operator {:lib/type :mbql/expression-parts
                :operator (:operator expression-spec)
                :options {}
-               :args (mapv #(expression-spec->expression-parts query stage-number available-columns %)
+               :args (mapv (partial expression-spec->expression-parts query stage-number available-columns)
                            (:args expression-spec))}))
 
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
@@ -223,7 +223,7 @@
    stage-number :- :int
    strategy :- ::lib.schema.join/strategy]
   (let [available-strategies (lib.join/available-join-strategies query stage-number)
-        found-strategy (first (filter #(matches-strategy? strategy %) available-strategies))]
+        found-strategy (first (filter (partial matches-strategy? strategy) available-strategies))]
     (if (nil? found-strategy)
       (throw (ex-info "No join strategy found" {:available-strategies available-strategies, :strategy strategy}))
       found-strategy)))
@@ -247,7 +247,7 @@
         join-strategy (find-join-strategy query stage-number strategy)
         join-conditions (if (nil? conditions)
                           (lib.join/suggested-join-conditions query stage-number join-target)
-                          (mapv #(join-condition-spec->join-condition query stage-number join-target %) conditions))
+                          (mapv (partial join-condition-spec->join-condition query stage-number join-target) conditions))
         join-clause (lib.join/join-clause join-target join-conditions join-strategy)]
     (if (empty? join-conditions)
       (throw (ex-info "No join conditions provided" {:join-conditions join-conditions, :join-strategy join-strategy}))
