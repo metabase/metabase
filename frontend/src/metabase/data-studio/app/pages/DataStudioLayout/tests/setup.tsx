@@ -49,9 +49,15 @@ const createRemoteSyncSettings = ({
 
 const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
+  tokenFeatures?: Partial<TokenFeatures>,
 ) => {
   const remoteSyncSettings = createRemoteSyncSettings(settings);
-  setupPropertiesEndpoints(createMockSettings(remoteSyncSettings));
+  setupPropertiesEndpoints(
+    createMockSettings({
+      ...remoteSyncSettings,
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  );
 };
 
 const setupDirtyEndpoints = ({
@@ -166,7 +172,7 @@ export const setup = ({
   };
 
   setupSettingsEndpoints([]);
-  setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
+  setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
 

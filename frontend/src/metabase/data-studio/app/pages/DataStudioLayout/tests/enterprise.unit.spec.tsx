@@ -40,7 +40,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should open modal when Set up git sync button is clicked", async () => {
-      setup({ remoteSyncEnabled: false });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should close modal when onClose is called", async () => {
-      setup({ remoteSyncEnabled: false });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
