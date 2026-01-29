@@ -12,7 +12,7 @@ import {
   getNodeCreatedBy,
   getNodeDescription,
   getNodeFields,
-  getNodeFieldsLabel,
+  getNodeFieldsLabelWithCount,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
 } from "../../../../utils";
@@ -119,7 +119,7 @@ function FieldsSection({ node }: SectionProps) {
   return (
     <Stack gap="md" lh="1rem">
       <Title className={CS.textWrap} order={6}>
-        {getNodeFieldsLabel(fields.length)}
+        {getNodeFieldsLabelWithCount(fields.length)}
       </Title>
       {fields.map((field, fieldIndex) => {
         const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);

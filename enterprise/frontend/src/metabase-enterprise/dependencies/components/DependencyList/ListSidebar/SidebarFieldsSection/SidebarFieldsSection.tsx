@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import type { DependencyNode } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { Badge, Box, Card, Group, Stack, Title } from "metabase/ui";
+import type { DependencyNode, Field } from "metabase-types/api";
 
 import { getNodeFields, getNodeFieldsLabel } from "../../../../utils";
-import { SidebarListSection } from "../SidebarListSection";
 
 type SidebarFieldsSectionProps = {
   node: DependencyNode;
@@ -13,11 +14,34 @@ export function SidebarFieldsSection({ node }: SidebarFieldsSectionProps) {
   const fields = getNodeFields(node);
 
   return (
-    <SidebarListSection
-      title={getNodeFieldsLabel(fields.length)}
-      items={fields.map((field) => field.display_name)}
-      badgeColor="brand"
-      aria-label={t`Fields`}
-    />
+    <Stack role="region" aria-label={t`Fields`}>
+      <Group gap="sm" wrap="nowrap">
+        <Badge c="text-selected" bg="brand">
+          {fields.length}
+        </Badge>
+        <Title order={5}>{getNodeFieldsLabel(fields.length)}</Title>
+      </Group>
+      {fields.length > 0 && (
+        <Card p={0} shadow="none" withBorder>
+          {fields.map((field, fieldIndex) => (
+            <FieldListItem key={fieldIndex} field={field} />
+          ))}
+        </Card>
+      )}
+    </Stack>
+  );
+}
+
+type FieldListItemProps = {
+  field: Field;
+};
+
+function FieldListItem({ field }: FieldListItemProps) {
+  return (
+    <Stack gap="xs">
+      <Box className={CS.textWrap} lh="1rem">
+        {field.display_name}
+      </Box>
+    </Stack>
   );
 }

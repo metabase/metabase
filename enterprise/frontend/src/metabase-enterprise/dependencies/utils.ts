@@ -474,7 +474,11 @@ export function getNodeFields(node: DependencyNode): Field[] {
   }
 }
 
-export function getNodeFieldsLabel(fieldCount: number) {
+export function getNodeFieldsLabel(fieldCount = 0) {
+  return fieldCount === 1 ? t`Field` : t`Fields`;
+}
+
+export function getNodeFieldsLabelWithCount(fieldCount: number) {
   return ngettext(
     msgid`${fieldCount} field`,
     `${fieldCount} fields`,
