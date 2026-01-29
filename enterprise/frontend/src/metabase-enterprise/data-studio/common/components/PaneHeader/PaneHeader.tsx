@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -18,6 +19,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
 export interface PaneHeaderProps extends Omit<StackProps, "title"> {
@@ -26,7 +28,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  breadcrumbs?: ReactNode;
+  breadcrumbs: ReactNode;
   showMetabotButton?: boolean;
 }
 
@@ -43,16 +45,14 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      {(breadcrumbs || showMetabotButton) && (
-        <Flex mb="lg" mt="md" h="2rem" w="100%">
-          {breadcrumbs}
-          {showMetabotButton && (
-            <Box ml="auto">
-              <PLUGIN_METABOT.MetabotDataStudioButton />
-            </Box>
-          )}
-        </Flex>
-      )}
+      <Flex mb="lg" mt="md" w="100%">
+        {breadcrumbs}
+
+        <Group ml="auto" gap="md">
+          {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
+          <AppSwitcher className={S.ProfileLink} />
+        </Group>
+      </Flex>
       <Group
         className={className}
         gap="sm"
