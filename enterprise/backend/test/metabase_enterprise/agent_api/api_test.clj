@@ -266,17 +266,17 @@
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
         (is (some? field-id) "Should find the State field")
-        (is (=? {:statistics {:distinct_count 49}
-                 :values     sequential?}
+        (is (=? {:value_metadata {:statistics   {:distinct-count 49}
+                                  :field_values sequential?}}
                 (agent-client :crowberto :get 200
                               (format "agent/v1/table/%d/field/%s/values" table-id field-id))))))
 
     (testing "Respects limit parameter"
       (let [table-id (mt/id :people)
-            field-id (visible-field-id table-id "State")
-            result   (agent-client :crowberto :get 200
-                                   (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))]
-        (is (= 5 (count (:values result))) "Should respect limit parameter")))
+            field-id (visible-field-id table-id "State")]
+        (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
+                (agent-client :crowberto :get 200
+                              (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
@@ -380,8 +380,8 @@
               quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
           (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
           (when-let [field-id (:field_id quantity-field)]
-            (is (=? {:statistics map?
-                     :values     sequential?}
+            (is (=? {:value_metadata {:statistics   map?
+                                      :field_values sequential?}}
                     (agent-client :rasta :get 200
                                   (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
 
