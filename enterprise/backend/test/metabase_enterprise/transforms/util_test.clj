@@ -18,7 +18,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [driver driver/*driver*]
 
-        (testing "Basic table name generation without original table"
+        (testing "Basic table name generation"
           (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
