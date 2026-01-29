@@ -1,0 +1,78 @@
+.Pattern {
+  --mb-color-upsell-pattern: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    transparent 80%
+  );
+
+  /* Using radial gradient to create dotted pattern with CSS variable support */
+  /* Hard stop at 1.5px creates a crisp circle edge (no blur) */
+  background-image: radial-gradient(
+    circle,
+    /* stylelint-disable-next-line length-zero-no-unit -- This is a hard stop */
+      var(--mb-color-upsell-pattern) 0px,
+    var(--mb-color-upsell-pattern) 1px,
+    transparent 1px
+  );
+  background-position: center;
+  background-repeat: round round;
+  background-size: 1rem 1rem;
+  overflow: hidden;
+}
+
+.Card {
+  position: relative;
+  display: flex;
+}
+
+.Border {
+  position: absolute;
+}
+
+.Border[data-position="top"],
+.Border[data-position="bottom"] {
+  height: 1px;
+  width: calc(100% + 250px);
+  left: calc(-50% + 125px);
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    transparent
+  );
+}
+
+.Border[data-position="top"] {
+  top: -1px;
+}
+
+.Border[data-position="bottom"] {
+  bottom: -1px;
+}
+
+.Border[data-position="right"],
+.Border[data-position="left"] {
+  width: 1px;
+  height: calc(100% + 250px);
+  top: calc(-50%);
+  /* background-color does not accept gradients, so this results in no color being shown.
+     To display a vertical gradient border, use background-image instead: */
+  background-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    var(--mb-color-upsell-pattern),
+    transparent
+  );
+}
+
+.Border[data-position="right"] {
+  right: -1px;
+}
+
+.Border[data-position="left"] {
+  left: -1px;
+}

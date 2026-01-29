@@ -253,7 +253,7 @@ function DataStudioTab({
   rightSection,
   isGated,
 }: DataStudioTabProps) {
-  const upsellGem = isGated ? <UpsellGem size={14} /> : null;
+  const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
   const effectiveRightSection = rightSection ?? upsellGem;
 
   return (
