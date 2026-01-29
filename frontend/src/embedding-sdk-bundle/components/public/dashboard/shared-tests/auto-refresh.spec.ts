@@ -74,7 +74,7 @@ export function addEnterpriseAutoRefreshTests(
         });
 
         // Advance time significantly
-        jest.advanceTimersByTime(30000);
+        jest.advanceTimersByTime(30_000);
 
         // Verify no additional requests were made
         const finalRequests = await getDashboardQueryRequests();
