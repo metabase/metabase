@@ -36,30 +36,34 @@
   (testing "validate-native-query handles nonsense queries"
     (let [mp (mt/metadata-provider) #_(deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-      (testing "complete nonsense query"
+      (try
+        (testing "complete nonsense query"
           ;; ; error: ParseError: ParseError: Invalid expression / Unexpected token. Line 1, Col: 23.
-        (let [query (lib/native-query mp "complete nonsense query")]
-          @(def rere1 (sql-tools.sqlglot/validate-query driver query))))
-      (testing "bad table wildcard"
+          (let [query (lib/native-query mp "complete nonsense query")]
+            @(def rere1 (sql-tools.sqlglot/validate-query driver query))))
+        (testing "bad table wildcard"
         ;; error: OptimizeError: OptimizeError: Unknown table: products (qualify_columns.py:30)
-        (let [query (lib/native-query mp "select products.* from orders")]
-          @(def rere2 (sql-tools.sqlglot/validate-query driver query))))
-      (testing "bad col reference"
+          (let [query (lib/native-query mp "select products.* from orders")]
+            @(def rere2 (sql-tools.sqlglot/validate-query driver query))))
+        (testing "bad col reference"
         ;; error: OptimizeError: OptimizeError: Column 'bad' could not be resolved. Line: 1, Col: 10
-        (let [query (lib/native-query mp "select bad from products")]
-          @(def rere3 (sql-tools.sqlglot/validate-query driver query))))
-      (testing "can validate queries using table functions"
+          (let [query (lib/native-query mp "select bad from products")]
+            @(def rere3 (sql-tools.sqlglot/validate-query driver query))))
+        (testing "can validate queries using table functions"
         ;; error: OptimizeError: OptimizeError: Column 'i' could not be resolved. Line: 1, Col: 8
         ;; TODO: This is probably not right. Correct behavior?
-        (let [query (lib/native-query mp
-                                      #_"select * from my_function(1, 100)"
-                                      "select i from my_function(1, 100)")]
+          (let [query (lib/native-query mp
+                                        #_"select * from my_function(1, 100)"
+                                        "select i from my_function(1, 100)")]
               ;; however the "select i from my_function(1, 100)" passes
               ;;
               ;; The fact we do not have udtf's schema may pose a problem. TODO: learn specifics of how this is
               ;; handled in sqlglot
               ;; TODO: infer_schema=True in sql_tools.py makes it pass, figure out broader implications (later)
-          @(def rere4 (sql-tools.sqlglot/validate-query driver query)))))))
+            @(def rere4 (sql-tools.sqlglot/validate-query driver query))))
+        (catch Throwable t
+          (def ttt t)
+          (throw t))))))
 
 ;; copied, OK
 (deftest ^:parallel validate-native-query-with-subquery-columns-test

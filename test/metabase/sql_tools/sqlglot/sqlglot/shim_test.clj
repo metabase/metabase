@@ -1,1 +1,0 @@
-(ns metabase.sql-tools.sqlglot.shim-test)

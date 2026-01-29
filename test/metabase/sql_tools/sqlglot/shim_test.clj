@@ -1,7 +1,7 @@
-(ns metabase.driver.sql.sqlglot-test
+(ns metabase.sql-tools.sqlglot.shim-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.sql.sqlglot :as sqlglot])
+   [metabase.sql-tools.sqlglot.shim :as sqlglot.shim])
   (:import
    (io.aleph.dirigiste Pool)
    (java.util.concurrent CountDownLatch)))
@@ -43,13 +43,13 @@
   ([config]
    (let [counter (atom 0)
          generator (counting-generator counter)
-         pool (#'sqlglot/make-python-context-pool generator config)]
+         pool (#'sqlglot.shim/make-python-context-pool generator config)]
      [pool counter])))
 
 (defn- with-pool
   "Execute f with a context from pool. Uses with-open for proper resource management."
   [pool f]
-  (with-open [^java.io.Closeable ctx (#'sqlglot/acquire-context pool)]
+  (with-open [^java.io.Closeable ctx (#'sqlglot.shim/acquire-context pool)]
     (f ctx)))
 
 (defn- run-concurrent
@@ -124,7 +124,7 @@
   (testing "Pool gracefully handles when generator fails"
     (let [counter (atom 0)
           generator (failing-generator counter 1)
-          pool (#'sqlglot/make-python-context-pool generator)]
+          pool (#'sqlglot.shim/make-python-context-pool generator)]
 
       (is (some? (with-pool pool identity)) "First context creation succeeds")
 
@@ -168,13 +168,13 @@
 
 (deftest ^:parallel basic-select-test
   (testing "Simple SELECT parses correctly"
-    (let [result (sqlglot/p "SELECT id, name FROM users")]
+    (let [result (sqlglot.shim/p "SELECT id, name FROM users")]
       (is (= ["users"] (:tables_source result)))
       (is (= ["id" "name"] (sort (:columns result)))))))
 
 (deftest ^:parallel cte-test
   (testing "CTE (WITH clause) parsing"
-    (let [result (sqlglot/p "WITH active_users AS (SELECT * FROM users WHERE active)
+    (let [result (sqlglot.shim/p "WITH active_users AS (SELECT * FROM users WHERE active)
                              SELECT * FROM active_users")]
       ;; tables_source excludes CTE references, returning only real tables
       ;; tables_all includes CTE names as well
@@ -183,30 +183,30 @@
 
 (deftest ^:parallel join-test
   (testing "JOIN parsing extracts all tables"
-    (let [result (sqlglot/p "SELECT u.name, o.total
+    (let [result (sqlglot.shim/p "SELECT u.name, o.total
                              FROM users u
                              JOIN orders o ON u.id = o.user_id")]
       (is (= ["orders" "users"] (sort (:tables_source result)))))))
 
 (deftest ^:parallel dollar-quote-test
   (testing "PostgreSQL dollar-quoted strings (fails in JSqlParser)"
-    (let [result (sqlglot/p "SELECT $tag$hello world$tag$")]
+    (let [result (sqlglot.shim/p "SELECT $tag$hello world$tag$")]
       (is (map? result))
       (is (contains? result :ast)))))
 
 (deftest ^:parallel ast-structure-test
   (testing "AST structure is returned"
-    (let [result (sqlglot/p "SELECT 1")]
+    (let [result (sqlglot.shim/p "SELECT 1")]
       (is (= "Select" (get-in result [:ast :type]))))))
 
 (deftest ^:parallel subquery-test
   (testing "Subquery table extraction"
-    (let [result (sqlglot/p "SELECT * FROM (SELECT id FROM users) AS sub")]
+    (let [result (sqlglot.shim/p "SELECT * FROM (SELECT id FROM users) AS sub")]
       (is (= ["users"] (:tables_source result))))))
 
 (deftest ^:parallel aggregate-test
   (testing "Aggregate functions in projections"
-    (let [result (sqlglot/p "SELECT COUNT(*), SUM(amount) FROM orders")]
+    (let [result (sqlglot.shim/p "SELECT COUNT(*), SUM(amount) FROM orders")]
       (is (= ["orders"] (:tables_source result)))
       ;; Projections are named_selects - unnamed aggregates may not appear
       (is (vector? (:projections result))))))
