@@ -8,6 +8,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel test-query-basic-table-source-test
   (testing "test-query creates a basic query from a table source"
     (let [query (lib.query.util/test-query
