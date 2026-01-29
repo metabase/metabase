@@ -64,10 +64,9 @@
   [:map
    [:used-fields [:set [:ref ::col-spec]]]
    [:returned-fields [:sequential [:ref ::col-spec]]]
-   ;; TODO: Boundary violation?
+   ;; TODO: is the following boundary violation?
    [:errors [:set [:ref ::lib.schema.validate/error]]]])
 
-;; TODO: normalize-name
 (defn- normalize-fields [driver m]
   (update-vals m
                #(if (string? %)
@@ -108,7 +107,6 @@
   (if (and (nil? (:table raw-col))
            (nil? (:schema raw-col))
            (nil? (:database raw-col))
-           ;; TODO!
            (sql.normalize/reserved-literal driver (:column raw-col)))
     []
     (let [{:keys [alias column table] :as expr} (col-fields driver raw-col)
