@@ -25,3 +25,13 @@
   "Return tables referenced by the `native-query`"
   [driver native-query]
   (referenced-tables-impl default-parser-impl driver native-query))
+
+(defmulti validate-query-impl
+  "Parser specific implementation of [[validate-query]]. Do not use directly."
+  {:arglists '([parser driver native-query])}
+  parser-dispatch)
+
+(defn validate-query
+  "Validate native query. Retu"
+  [driver native-query]
+  (validate-query-impl default-parser-impl driver native-query))
