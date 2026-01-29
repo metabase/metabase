@@ -33,15 +33,15 @@
 
 (mr/def ::test-temporal-bucket-spec
   [:map
-   [:unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]])
+   [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
 
 (mr/def ::test-bin-count-bucket-spec
   [:map
-   [:bins {:optional true} [:maybe [:ref ::lib.schema.binning/num-bins]]]])
+   [:bins {:optional true} [:maybe ::lib.schema.binning/num-bins]]])
 
 (mr/def ::test-bin-width-bucket-spec
   [:map
-   [:bin-width {:optional true} [:maybe [:ref ::lib.schema.binning/bin-width]]]])
+   [:bin-width {:optional true} [:maybe ::lib.schema.binning/bin-width]]])
 
 (mr/def ::test-binning-spec
   [:merge
@@ -67,7 +67,7 @@
 
 (mr/def ::test-operator-spec
   ;; TODO(@romeovs): be more specific here and limit to all valid operators?
-  string?)
+  keyword?)
 
 (mr/def ::test-operator-expression-spec
   [:map
@@ -88,8 +88,8 @@
 
 (mr/def ::test-join-spec
   [:map
-   [:source [:ref ::test-source-spec]]
-   [:strategy ::lib.schema.join/strategy]
+   [:source     [:ref ::test-source-spec]]
+   [:strategy   ::lib.schema.join/strategy]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
 (mr/def ::test-join-source-spec
@@ -100,7 +100,7 @@
 
 (mr/def ::test-join-condition-spec
   [:map
-   [:operator ::test-operator-spec]
+   [:operator {:decode/normalize lib.schema.common/normalize-keyword} ::test-operator-spec]
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
 
