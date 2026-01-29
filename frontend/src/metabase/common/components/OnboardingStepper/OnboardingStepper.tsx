@@ -18,7 +18,7 @@ const OnboardingStepperRoot = ({
   completedSteps = {},
   onChange,
 }: OnboardingStepperProps) => {
-  // Extract step IDs from children to create refs
+  // Extract step IDs from children
   const stepIds = useMemo(() => {
     const ids: string[] = [];
 
@@ -31,11 +31,9 @@ const OnboardingStepperRoot = ({
     return ids;
   }, [children]);
 
-  // Calculate default active step: first incomplete step, or first step if all complete
+  // Calculate default active step: first incomplete step, or null if all complete
   const defaultActiveStep = useMemo(() => {
-    const firstIncomplete = stepIds.find((id) => !completedSteps[id]);
-
-    return firstIncomplete ?? stepIds[0] ?? null;
+    return stepIds.find((id) => !completedSteps[id]) ?? null;
   }, [stepIds, completedSteps]);
 
   const [activeStep, setActiveStepState] = useState<string | null>(
