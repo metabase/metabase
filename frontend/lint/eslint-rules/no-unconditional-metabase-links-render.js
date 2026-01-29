@@ -66,7 +66,7 @@ module.exports = {
      */
     function getImportedModuleNode(node, { isDefault, named, source }) {
       if (getImportNodeLocation(node) === source) {
-        const variables = context.getDeclaredVariables(node);
+        const variables = context.sourceCode.getDeclaredVariables(node);
         if (isDefault) {
           return variables.find(
             (variable) =>
@@ -189,7 +189,7 @@ module.exports = {
         });
       },
       Program() {
-        const comments = context.getSourceCode().getAllComments();
+        const comments = context.sourceCode.getAllComments();
 
         const ESLINT_DISABLE_BLOCK_REGEX =
           /eslint-disable\s+no-unconditional-metabase-links-render/;

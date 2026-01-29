@@ -62,7 +62,7 @@ module.exports = {
         }
       },
       Program() {
-        const comments = context.getSourceCode().getAllComments();
+        const comments = context.sourceCode.getAllComments();
 
         const ESLINT_DISABLE_BLOCK_REGEX =
           /eslint-disable\s+no-literal-metabase-strings/;
