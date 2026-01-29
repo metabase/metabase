@@ -103,15 +103,20 @@
   [handler]
   (fn [request respond raise]
     (let [access (get-in request [:route-metadata :access] :admin)]
+      #p (:route-metadata request)
       (case access
         :admin     (api/check-superuser)
         :workspace (api/check-403
                     (or api/*is-superuser?*
-                        (let [ws-id   (get-in request [:route-params :ws-id])
+                        (let [ws-id   (some-> (get-in request [:route-params :ws-id]) parse-long)
                               user-id api/*current-user-id*]
+                          #p {:ws-id ws-id :user-id user-id :exists? (when (and ws-id user-id) (t2/exists? :model/Workspace :id ws-id :execution_user user-id))}
                           (when (and ws-id user-id)
                             (t2/exists? :model/Workspace :id ws-id :execution_user user-id))))))
       (handler request respond raise))))
+
+(comment
+  (remove-ns (ns-name *ns*)))
 
 (defn- ws->response
   "Transform a workspace record into an API response, computing the backwards-compatible status."
