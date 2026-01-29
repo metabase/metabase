@@ -417,9 +417,9 @@
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
     (eval-python ctx "import sql_tools")
-    (-> (eval-python ctx "sql_tools.referenced_tables")
-        (.execute (object-array [dialect sql
-                                 default-table-schema]))
+    (-> ^Value (eval-python ctx "sql_tools.referenced_tables")
+        (.execute ^Value (object-array [dialect sql
+                                        default-table-schema]))
         .asString
         json/decode
         vec)))
@@ -432,11 +432,11 @@
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
     (eval-python ctx "import sql_tools")
-    (-> (eval-python ctx "sql_tools.returned_columns_lineage")
-        (.execute (object-array [dialect
-                                 sql
-                                 default-table-schema
-                                 sqlglot-schema]))
+    (-> ^Value (eval-python ctx "sql_tools.returned_columns_lineage")
+        (.execute ^Value (object-array [dialect
+                                        sql
+                                        default-table-schema
+                                        sqlglot-schema]))
         .asString
         json/decode)))
 
@@ -453,11 +453,11 @@
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
     (eval-python ctx "import sql_tools")
-    (-> (eval-python ctx "sql_tools.validate_query")
-        (.execute (object-array [dialect
-                                 sql
-                                 default-table-schema
-                                 sqlglot-schema]))
+    (-> ^Value (eval-python ctx "sql_tools.validate_query")
+        (.execute ^Value (object-array [dialect
+                                        sql
+                                        default-table-schema
+                                        sqlglot-schema]))
         .asString
         json/decode+kw
         sanitize-validation-output)))
