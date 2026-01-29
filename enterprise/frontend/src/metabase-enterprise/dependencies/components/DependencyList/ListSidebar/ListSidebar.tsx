@@ -3,11 +3,12 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
+import type { DependencyListMode } from "../types";
 
 import S from "./ListSidebar.module.css";
 import { SidebarDependentsSection } from "./SidebarDependentsSection";
 import { SidebarErrorSection } from "./SidebarErrorSection";
+import { SidebarFieldsSection } from "./SidebarFieldsSection";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarInfoSection } from "./SidebarInfoSection";
 import { SidebarLocationSection } from "./SidebarLocationSection";
@@ -15,6 +16,7 @@ import { SidebarResizableBox } from "./SidebarResizableBox";
 
 type ListSidebarProps = {
   node: DependencyNode;
+  mode: DependencyListMode;
   containerWidth: number;
   onResizeStart: () => void;
   onResizeStop: () => void;
@@ -23,14 +25,12 @@ type ListSidebarProps = {
 
 export const ListSidebar = memo(function ListSidebar({
   node,
+  mode,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
 }: ListSidebarProps) {
-  const errors = getDependencyErrors(node.dependents_errors ?? []);
-  const errorGroups = getDependencyErrorGroups(errors);
-
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
@@ -49,13 +49,8 @@ export const ListSidebar = memo(function ListSidebar({
           <SidebarLocationSection node={node} />
           <SidebarInfoSection node={node} />
         </Stack>
-        {errorGroups.map((errorGroup) => (
-          <SidebarErrorSection
-            key={errorGroup.type}
-            type={errorGroup.type}
-            errors={errorGroup.errors}
-          />
-        ))}
+        {mode === "broken" && <SidebarErrorSection node={node} />}
+        {mode === "unreferenced" && <SidebarFieldsSection node={node} />}
         <SidebarDependentsSection node={node} />
       </Stack>
     </SidebarResizableBox>

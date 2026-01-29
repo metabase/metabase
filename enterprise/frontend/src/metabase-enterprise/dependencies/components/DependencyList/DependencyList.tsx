@@ -193,6 +193,7 @@ export function DependencyList({
       {selectedNode != null && (
         <ListSidebar
           node={selectedNode}
+          mode={mode}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
