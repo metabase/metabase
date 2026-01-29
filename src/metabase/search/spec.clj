@@ -85,7 +85,8 @@
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
    :display-type            :text
-   :is-published            :boolean})
+   :is-published            :boolean
+   :source-type             :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -109,7 +110,8 @@
          :updated-at
          :non-temporal-dim-ids
          :has-temporal-dim
-         :is-published])
+         :is-published
+         :source-type])
        distinct
        vec))
 

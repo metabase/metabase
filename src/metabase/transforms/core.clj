@@ -17,7 +17,8 @@
   query-transform?
   transform-source-database
   transform-type
-  has-db-transforms-permission?]
+  has-db-transforms-permission?
+  enabled-source-types]
  [metabase.models.transforms.transform-run
   timeout-run!])
 

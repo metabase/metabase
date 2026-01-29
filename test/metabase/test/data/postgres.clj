@@ -55,11 +55,11 @@
   [_ context {:keys [database-name]}]
   (merge
    {:host     (tx/db-test-env-var-or-throw :postgresql :host "localhost")
-    :port     (tx/db-test-env-var-or-throw :postgresql :port 5432)
+    :port     (tx/db-test-env-var-or-throw :postgresql :port 32794)
     :timezone :America/Los_Angeles}
-   (when-let [user (tx/db-test-env-var :postgresql :user)]
+   (when-let [user (tx/db-test-env-var :postgresql :user "metabase")]
      {:user user})
-   (when-let [password (tx/db-test-env-var :postgresql :password)]
+   (when-let [password (tx/db-test-env-var :postgresql :password "password")]
      {:password password})
    (when (= context :db)
      {:db database-name})))

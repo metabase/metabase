@@ -47,7 +47,7 @@
                                                   :source-tables {}
                                                   :body transform-body}
                                          :target (assoc target :database (mt/id))}
-                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
                                                                transform-payload)]
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
@@ -77,7 +77,7 @@
                                                              "def transform():\n"
                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                         :target  (assoc target :database (mt/id))}
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
                                                              original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 5000)

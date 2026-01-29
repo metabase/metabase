@@ -24,6 +24,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.schema :as transforms.schema]
@@ -108,10 +109,15 @@
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
-  (if (python-transform? transform)
-    (and (premium-features/has-feature? :transforms)
-         (premium-features/has-feature? :transforms-python))
-    (premium-features/has-feature? :transforms)))
+  (cond
+    (query-transform? transform) (transforms.gating/query-transforms-enabled?)
+    (python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    :else false))
+
+(defn enabled-source-types
+  "Returns set of enabled source types for WHERE clause filtering."
+  []
+  (transforms.gating/enabled-source-types))
 
 (defn has-db-transforms-permission?
   "Returns true if the given user has the transforms permission for the given source db."
@@ -528,9 +534,11 @@
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"
   [db-or-id]
-  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
+  ;; TODO: use defenterprise here.
+  ;; using `db_router` instead of `:model/DatabaseRouter` here because this code is OSS.
+  (or (t2/exists? :db_router :database_id (u/the-id db-or-id))
       (some->> (:router-database-id db-or-id)
-               (t2/exists? :model/DatabaseRouter :database_id))))
+               (t2/exists? :db_router :database_id))))
 
 ;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
 

@@ -98,19 +98,26 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
+(defn- check-feature-enabled-404!
+  [transform]
+  (api/check-404 (transforms.util/check-feature-enabled transform)))
+
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (check-is-data-analyst)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
-    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
-         (into []
-               (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                     (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                     (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                     (map #(update % :last_run transforms.util/localize-run-timestamps))
-                     (map python-source-table-ref->table-id)))
-         transforms.util/add-source-readable)))
+  (let [enabled-types (transforms.util/enabled-source-types)]
+    (api/check-404 (seq enabled-types))
+    (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
+                                                  :order-by [[:id :asc]]})]
+      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
+           (into []
+                 (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                       (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                       (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                       (map #(update % :last_run transforms.util/localize-run-timestamps))
+                       (map python-source-table-ref->table-id)))
+           transforms.util/add-source-readable))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -258,6 +265,7 @@
   [id]
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
+    (check-feature-enabled-404! transform)
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)

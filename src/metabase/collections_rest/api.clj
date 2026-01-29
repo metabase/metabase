@@ -26,6 +26,8 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.transforms.core :as transforms]
+   [metabase.transforms.util :as transforms.util]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -485,15 +487,22 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-   :from   [[:transform :transform]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
-              [:=
-               [:inline 0]
-               [:inline 1]])]})
+  (let [enabled-types (transforms.util/enabled-source-types)
+        enabled-clause (if (seq enabled-types)
+                         [:in :source_type enabled-types]
+                         [:=
+                          [:inline 0]
+                          [:inline 1]])]
+    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+     :from   [[:transform :transform]]
+     :where  [:and
+              (poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              enabled-clause
+              (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
+                [:=
+                 [:inline 0]
+                 [:inline 1]])]}))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -825,11 +834,13 @@
           #{})
 
         collections-containing-transforms
-        (if (premium-features/has-feature? :transforms)
+        (if (seq (transforms/enabled-source-types))
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :transform
-                            :where [:in :collection_id descendant-collection-ids]}))
+                            :where [:and
+                                    [:in :collection_id descendant-collection-ids]
+                                    [:in :source_type (transforms/enabled-source-types)]]}))
                (map :collection_id)
                (into #{}))
           #{})

@@ -108,6 +108,11 @@
   (let [{:keys [id label]} (-> tt serdes/path last)]
     ["transforms" "transform_tags" (serdes/storage-leaf-file-name id label)]))
 
+(derive ::transform-tag-noop :metabase/event)
+(derive :event/transform-tag-create ::transform-tag-noop)
+(derive :event/transform-tag-update ::transform-tag-noop)
+(derive :event/transform-tag-delete ::transform-tag-noop)
+
 ;; Event hooks for remote-sync tracking
 (t2/define-after-insert :model/TransformTag [tag]
   (events/publish-event! :event/transform-tag-create {:object tag})

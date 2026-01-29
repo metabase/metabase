@@ -20,6 +20,7 @@
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
@@ -28,6 +29,13 @@
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
+
+(defn- transform-source-type-clause
+  []
+  (let [enabled-types (transforms.gating/enabled-source-types)]
+    (if (seq enabled-types)
+      [:in (search.config/column-with-model-alias "transform" :source_type) enabled-types]
+      false-clause)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
@@ -349,9 +357,11 @@
                 has-temporal-dim
                 display-type
                 is-superuser?]} search-context
+        enabled-types (transforms.gating/enabled-source-types)
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
+      (empty? enabled-types)       (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
@@ -383,6 +393,9 @@
                 has-temporal-dim
                 display-type]} search-context]
     (cond-> honeysql-query
+      (= model "transform")
+      (sql.helpers/where (transform-source-type-clause))
+
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 

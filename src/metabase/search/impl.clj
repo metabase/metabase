@@ -11,6 +11,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -62,7 +63,9 @@
 (defmethod check-permissions-for-model :transform
   [search-ctx instance]
   (and (:is-superuser? search-ctx)
-       (premium-features/enable-transforms?)
+       (let [enabled-types (transforms.gating/enabled-source-types)
+             source-type   (some-> (:source_type instance) name)]
+         (contains? enabled-types source-type))
        (if (:archived? search-ctx)
          (can-write? search-ctx instance)
          true)))

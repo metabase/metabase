@@ -195,6 +195,11 @@
                  (:owner_email transform)
                  {:email (:owner_email transform)}))))))
 
+(derive ::transform-noop :metabase/event)
+(derive :event/create-transform ::transform-noop)
+(derive :event/update-transform ::transform-noop)
+(derive :event/delete-transform ::transform-noop)
+
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})
   transform)
@@ -378,7 +383,8 @@
                   :view-count    false
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :source_type]}
-                  :database-id   :source_database_id}
+                  :database-id   :source_database_id
+                  :source-type   true}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})

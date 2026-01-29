@@ -395,6 +395,7 @@
            request
            revisions
            settings
+           transforms
            upload
            util}}
 
@@ -500,11 +501,6 @@
            revisions
            util
            xrays}}
-
-  database-routing
-  {:team "UX West"
-   :api  #{metabase.database-routing.core}
-   :uses #{premium-features}}
 
   documents
   {:team "UX West"
@@ -842,14 +838,6 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
-           metabase.models.transforms.job-run
-           metabase.models.transforms.transform
-           metabase.models.transforms.transform-job
-           metabase.models.transforms.transform-job-transform-tag
-           metabase.models.transforms.transform-run
-           metabase.models.transforms.transform-run-cancelation
-           metabase.models.transforms.transform-tag
-           metabase.models.transforms.transform-transform-tag
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -951,6 +939,7 @@
            premium-features
            remote-sync
            settings
+           transforms
            util
            enterprise/advanced-permissions}}
 
@@ -1283,6 +1272,7 @@
            settings
            startup
            task
+           transforms
            util
            warehouses}}
 
@@ -1523,6 +1513,40 @@
            models
            util}}
 
+  transforms
+  {:team "Querying"
+   :api  #{metabase.transforms.api.transform
+           metabase.transforms.api.transform-job
+           metabase.transforms.api.transform-tag
+           metabase.transforms.core
+           metabase.transforms.feature-gating
+           metabase.transforms.init
+           metabase.transforms.schema
+           metabase.transforms.util}
+   :uses #{analytics
+           api
+           channel
+           config
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           query-processor
+           request
+           revisions
+           settings
+           sync
+           task
+           task-history
+           util}
+   :friends #{models
+              enterprise/transforms-python}}
+
+
   types
   {:team "Querying"
    :api  #{metabase.types.core
@@ -1761,52 +1785,18 @@
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
    :uses #{api
-           collections
            database-routing
            driver
            events
-           models
-           permissions
            request
            sync
            util
            warehouse-schema}}
 
-  transforms
-  {:team "Querying"
-   :api  #{metabase.transforms.api.transform
-           metabase.transforms.api.transform-job
-           metabase.transforms.api.transform-tag
-           metabase.transforms.core
-           metabase.transforms.init
-           metabase.transforms.instrumentation
-           metabase.transforms.interface
-           metabase.transforms.schema
-           metabase.transforms.util}
-   :uses #{analytics
-           api
-           app-db
-           channel
-           collections
-           driver
-           events
-           lib
-           lib-be
-           models
-           permissions
-           premium-features
-           queries
-           query-processor
-           remote-sync
-           request
-           revisions
-           search
-           settings
-           sync
-           task
-           task-history
-           util}
-   :friends #{models}}
+  database-routing
+  {:team "UX West"
+   :api  #{metabase.database-routing.core}
+   :uses #{premium-features}}
 
   enterprise/action-v2
   {:team "Gadget"
@@ -2012,16 +2002,11 @@
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections
-           database-routing
-           driver
            events
            models
            permissions
            premium-features
-           request
-           sync
-           util
-           warehouse-schema}}
+           util}}
 
   enterprise/database-replication
   {:team "Cloud"
@@ -2077,8 +2062,8 @@
            revisions
            settings
            task
-           util
-           transforms}}
+           transforms
+           util}}
 
   enterprise/email
   {:team "UX West"
@@ -2192,12 +2177,12 @@
               sync
               system
               task
+              transforms
               users-rest
               util
               warehouse-schema
               warehouses-rest
               enterprise/dependencies
-              transforms
               enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2408,8 +2393,8 @@
            permissions
            query-processor
            settings
-           util
-           transforms}}
+           transforms
+           util}}
 
   enterprise/upload-management
   {:team "UX West"

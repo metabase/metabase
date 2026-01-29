@@ -37,14 +37,14 @@
                                                       :schema   schema
                                                       :name     "gadget_products"
                                                       :database (mt/id)}}]
-                      (mt/user-http-request :lucky :post "ee/transform"
+                      (mt/user-http-request :lucky :post "transform"
                                             transform-payload)))]
 
             (testing "without any feature flags"
               (mt/with-premium-features #{}
                 (testing "creating python transform without any features fails"
                   (is (= "error-premium-feature-not-available"
-                         (:status (mt/user-http-request :lucky :post 402 "ee/transform"
+                         (:status (mt/user-http-request :lucky :post 402 "transform"
                                                         {:name   "My beautiful python runner"
                                                          :source {:type            "python"
                                                                   :body            "print('hello world')"
@@ -59,7 +59,7 @@
               (mt/with-premium-features #{:transforms}
                 (testing "creating python transform without transforms-python feature fails"
                   (is (= "Premium features required for this transform type are not enabled."
-                         (mt/user-http-request :lucky :post 402 "ee/transform"
+                         (mt/user-http-request :lucky :post 402 "transform"
                                                {:name   "My beautiful python runner"
                                                 :source {:type            "python"
                                                          :body            "print('hello world')"
@@ -75,7 +75,7 @@
                 (with-transform-cleanup! [table-name "gadget_products"]
                   (let [transform         (create-transform!)]
                     (is (= "print('hello chris')"
-                           (-> (mt/user-http-request :lucky :put 200 (format "ee/transform/%s" (:id transform))
+                           (-> (mt/user-http-request :lucky :put 200 (format "transform/%s" (:id transform))
                                                      {:name   "My beautiful python runner"
                                                       :source {:type            "python"
                                                                :body            "print('hello chris')"
@@ -103,7 +103,7 @@
                                                                   :database (mt/id)}}]
           (mt/with-premium-features #{}
             (let [response (mt/user-http-request :crowberto :put
-                                                 (format "ee/transform/%d" id)
+                                                 (format "transform/%d" id)
                                                  (assoc-in transform [:source :body] "print('no features')"))]
               (is (= "error-premium-feature-not-available" (:status response))
                   "Should return 403 without any features"))))))))
@@ -125,14 +125,14 @@
                                                 :schema   schema
                                                 :name     table-name
                                                 :database (mt/id)}}
-                    created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+                    created (mt/user-http-request :crowberto :post 200 "transform" transform-payload)]
                 (mt/with-premium-features #{}
                   (let [response (mt/user-http-request :crowberto :post 402
-                                                       (format "ee/transform/%d/run" (:id created)))]
+                                                       (format "transform/%d/run" (:id created)))]
                     (is (= "error-premium-feature-not-available" (:status response)))))
                 (mt/with-premium-features #{:transforms}
                   (let [response (mt/user-http-request :crowberto :post
-                                                       (format "ee/transform/%d/run" (:id created)))]
+                                                       (format "transform/%d/run" (:id created)))]
                     (is (= "Premium features required for this transform type are not enabled." response)
                         "Should return 403 without :transforms-python feature")))))))))))
 
@@ -154,7 +154,7 @@
                                                              "def transform():\n"
                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                         :target  (assoc target :database (mt/id))}
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" original)]
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform" original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
@@ -173,7 +173,7 @@
     :else (recur (rest xs) ys)))
 
 (defn- get-last-run [transform-id]
-  (:last_run (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
+  (:last_run (mt/user-http-request :crowberto :get 200 (format "transform/%d" transform-id))))
 
 (defn- open-message-value-observer
   "Polls the `:message` state of the last run and stores the value every time it is different to the last observation.
@@ -218,7 +218,7 @@
 
             (create-transform [{:keys [program]} target]
               {:post [(integer? %)]}
-              (:id (mt/user-http-request :crowberto :post 200 "ee/transform"
+              (:id (mt/user-http-request :crowberto :post 200 "transform"
                                          {:name   "Python logging test"
                                           :source {:type            "python"
                                                    :body            (program->source program)
@@ -318,7 +318,7 @@
                           (is (subsequence? (str/split-lines message) expected)))))))))))))))
 
 (deftest get-python-transform-with-different-target-database-test
-  (testing "GET /api/ee/transform/:id correctly fetches target table from different database"
+  (testing "GET /api/transform/:id correctly fetches target table from different database"
     (mt/with-premium-features #{:transforms :transforms-python}
       (mt/with-temp [:model/Database target-db {:engine :h2
                                                 :details {:db "mem:target-db"}}
@@ -335,7 +335,7 @@
                                                           :schema "PUBLIC"
                                                           :name "python_target_table"
                                                           :database (:id target-db)}}]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id transform)))]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%s" (:id transform)))]
           (is (=? {:id     (:id target-table)
                    :name   "python_target_table"
                    :schema "PUBLIC"
@@ -348,7 +348,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]} ; todo factor to maybe some private helpers or share test impl for multiple top-level tests
 (deftest python-cancellation-test
   (letfn [(create-transform [{:keys [desc program]} target]
-            (mt/user-http-request :crowberto :post 200 "ee/transform"
+            (mt/user-http-request :crowberto :post 200 "transform"
                                   {:name   (format "Python cancellation test: %s" desc)
                                    :source {:type            "python"
                                             :body            (str/join "\n" program)
@@ -411,7 +411,7 @@
                 (fn []
                   (let [{transform-id :id} (create-transform scenario target)]
                     (with-open [message-observer (open-message-value-observer transform-id)]
-                      (let [_          (mt/user-http-request :crowberto :post 202 (format "ee/transform/%d/run" transform-id))
+                      (let [_          (mt/user-http-request :crowberto :post 202 (format "transform/%d/run" transform-id))
                             ;; Cancellation currently overwrites the message, so we should wait for some log output if we expect it
                             ;; Ideally we would not use the message field for log output, or otherwise avoid having logs being lost on cancellation.
                             _          (when expect-script
@@ -421,7 +421,7 @@
                                                   :timeout-ms  5000}))
                             _          (when redefs (await-signal ready-signal))
                             _          (get-last-run transform-id)
-                            _          (mt/user-http-request :crowberto :post 204 (format "ee/transform/%d/cancel" transform-id))
+                            _          (mt/user-http-request :crowberto :post 204 (format "transform/%d/cancel" transform-id))
                             _          (deliver wait-signal true)
                             _          (await-signal finished-signal)
                             last-run   (get-last-run transform-id)]
@@ -533,7 +533,7 @@
                                                                       "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                        :target (assoc target :database (mt/id))}
                     ;; Create initial transform via API
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" initial-transform)]
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform" initial-transform)]
 
                 ;; Run initial transform and validate
                 (transforms.tu/test-run transform-id)
@@ -550,7 +550,7 @@
                                                                               "\n"
                                                                               "def transform():\n"
                                                                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'friend': ['Bob', 'Alice']})")})
-                      update-response (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" transform-id)
+                      update-response (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id)
                                                             updated-transform)]
                   (is (some? update-response) "Transform update should succeed"))
 
@@ -582,7 +582,7 @@
                                               :source-database (mt/id)
                                               :source-tables   source-tables}
                                      :target (assoc target :database (mt/id))}
-                  response (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+                  response (mt/user-http-request :crowberto :post 200 "transform" transform-payload)]
               (testing "Transform is created successfully"
                 (is (integer? (:id response)))
                 (is (= "python" (:source_type response))))

@@ -262,12 +262,12 @@
                         (is (nil? (get-checkpoint-value transform))))
 
                       (testing "Can retrieve transform via API"
-                        (let [retrieved (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" (:id transform)))]
+                        (let [retrieved (mt/user-http-request :crowberto :get 200 (format "transform/%d" (:id transform)))]
                           (is (= (:id transform) (:id retrieved)))
                           (is (= "Test Incremental Transform" (:name retrieved)))))
 
                       (testing "Transform appears in list endpoint"
-                        (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform")
+                        (let [transforms (mt/user-http-request :crowberto :get 200 "transform")
                               our-transform (first (filter #(= (:id transform) (:id %)) transforms))]
                           (is (some? our-transform))
                           (is (= "Test Incremental Transform" (:name our-transform))))))))))))))))
@@ -345,7 +345,7 @@
                                                         (update :source dissoc :source-incremental-strategy)
                                                         (update :target dissoc :source-incremental-strategy)
                                                         (update :target assoc :type "table"))
-                            updated (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
+                            updated (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
                                                           non-incremental-payload)]
                         (is (= "table" (-> updated :target :type)))
                         (is (nil? (-> updated :source :source-incremental-strategy)))))
@@ -396,7 +396,7 @@
                             (is (nil? checkpoint) "No checkpoint for non-incremental transform")))))
 
                     (testing "Switch to incremental via PUT API"
-                      (let [updated (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
+                      (let [updated (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
                                                           incremental-payload)]
                         (is (= "table-incremental" (-> updated :target :type)))
                         (is (= "checkpoint" (-> updated :source :source-incremental-strategy :type)))))
@@ -501,7 +501,7 @@
                                               :database (mt/id)
                                               :target-incremental-strategy {:type "append"}}}]
               (testing "API validation rejects unsupported checkpoint column type"
-                (let [response (mt/user-http-request :crowberto :post 400 "ee/transform" transform-payload)]
+                (let [response (mt/user-http-request :crowberto :post 400 "transform" transform-payload)]
                   (is (string? response))
                   (is (re-find #"unsupported type" response)))))))))))
 
@@ -730,7 +730,7 @@
                     (testing "Switch to non-incremental via API"
                       (let [non-incremental-payload (-> incremental-payload
                                                         (update :source dissoc :source-incremental-strategy))
-                            updated                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
+                            updated                 (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
                                                                           non-incremental-payload)]
                         (is (nil? (:source-incremental-strategy (:source updated))))))
                     (testing "Non-incremental run removes automatic indexes indexes"
@@ -761,7 +761,7 @@
                     (is (=? {:value initial-field :index-name #"^mb_transform_idx_.*$"} (first indexes)))))
                 (testing "Switch checkpoint column via API"
                   (let [new-payload (make-incremental-transform-payload "Column Change Transform" target-table transform-type float-config)
-                        updated     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
+                        updated     (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
                                                           new-payload)]
                     (is (= new-field (-> updated :source :source-incremental-strategy :checkpoint-filter)))))
                 (testing "Run with new checkpoint column updates indexes"

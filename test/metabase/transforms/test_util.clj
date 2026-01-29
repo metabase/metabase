@@ -100,7 +100,7 @@
 
 (defn test-run
   [transform-id]
-  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
+  (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
         timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
@@ -108,7 +108,7 @@
     (loop [last-resp nil]
       (when (> (System/currentTimeMillis) limit)
         (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {:resp last-resp})))
-      (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
+      (let [resp   (mt/user-http-request :crowberto :get 200 (format "transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
         (when-not (contains? #{:started :succeeded} status)
           (throw (ex-info (str "Transform run failed with status " status) {:resp resp :status status})))
@@ -125,7 +125,7 @@
       (when (> (u/since-ms start-time) timeout-ms)
         (throw (ex-info (format "Transform %d did not complete after %dms" transform-id timeout-ms)
                         {:transform-id transform-id :timeout-ms timeout-ms})))
-      (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))
+      (let [resp (mt/user-http-request :crowberto :get 200 (format "transform/%d" transform-id))
             status (some-> resp :last_run :status keyword)]
         (case status
           :succeeded resp
