@@ -26,48 +26,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO: (Chris 2026-01-29) Authorization Test Matrix for Workspace Service User Access Control
-;;
-;; Authorization is handled by the +authorize middleware which reads {:access ...} from route metadata.
-;; Routes default to :admin (superuser-only). Routes with {:access :workspace} allow service users.
-;;
-;; Access patterns:
-;;   :admin     -> superuser: 200, all others: 403, unauth: 401
-;;   :workspace -> superuser: 200, own service user: 200, other service user: 403, regular: 403, unauth: 401
-;;
-;; Admin-only routes (no metadata):
-;;   GET    /
-;;   POST   /
-;;   GET    /enabled
-;;   GET    /database
-;;   GET    /checkout
-;;   PUT    /:ws-id
-;;   POST   /:ws-id/archive
-;;   POST   /:ws-id/unarchive
-;;   DELETE /:ws-id
-;;   POST   /:ws-id/merge
-;;   POST   /:ws-id/transform/:tx-id/merge
-;;   POST   /test-resources
-;;
-;; Workspace service user routes ({:access :workspace}):
-;;   GET    /:ws-id
-;;   GET    /:ws-id/table
-;;   GET    /:ws-id/log
-;;   GET    /:ws-id/graph
-;;   GET    /:ws-id/problem
-;;   GET    /:ws-id/external/transform
-;;   GET    /:ws-id/transform
-;;   POST   /:ws-id/transform
-;;   GET    /:ws-id/transform/:tx-id
-;;   PUT    /:ws-id/transform/:tx-id
-;;   DELETE /:ws-id/transform/:tx-id
-;;   POST   /:ws-id/transform/:tx-id/archive
-;;   POST   /:ws-id/transform/:tx-id/unarchive
-;;   POST   /:ws-id/run
-;;   POST   /:ws-id/transform/:tx-id/run
-;;   POST   /:ws-id/transform/:tx-id/dry-run
-;;   POST   /:ws-id/transform/validate/target
-
 (ws.tu/ws-fixtures!)
 
 (use-fixtures :once (fn [thunk] (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table) (thunk))))
@@ -1985,3 +1943,78 @@
           (testing "transform targets the specified database"
             (is (= other-db-id
                    (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
+
+;;; ============================================ Authorization Test Matrix ============================================
+
+(def ^:private admin-only-routes
+  "Routes that require superuser access (no {:access :workspace} metadata)"
+  [[:get  "/"]
+   [:post "/"]
+   [:get  "/enabled"]
+   [:get  "/database"]
+   [:get  "/checkout"]
+   [:put  "/:ws-id"]
+   [:post "/:ws-id/archive"]
+   [:post "/:ws-id/unarchive"]
+   [:delete "/:ws-id"]
+   [:post "/:ws-id/merge"]
+   [:post "/:ws-id/transform/:tx-id/merge"]
+   [:post "/test-resources"]])
+
+(def ^:private service-user-routes
+  "Routes that allow workspace service users ({:access :workspace})"
+  [[:get  "/:ws-id"]
+   [:get  "/:ws-id/table"]
+   [:get  "/:ws-id/log"]
+   [:get  "/:ws-id/graph"]
+   [:get  "/:ws-id/problem"]
+   [:get  "/:ws-id/external/transform"]
+   [:get  "/:ws-id/transform"]
+   [:post "/:ws-id/transform"] u
+   [:get  "/:ws-id/transform/:tx-id"]
+   [:put  "/:ws-id/transform/:tx-id"]
+   [:delete "/:ws-id/transform/:tx-id"]
+   [:post "/:ws-id/transform/:tx-id/archive"]
+   [:post "/:ws-id/transform/:tx-id/unarchive"]
+   [:post "/:ws-id/run"]
+   [:post "/:ws-id/transform/:tx-id/run"]
+   [:post "/:ws-id/transform/:tx-id/dry-run"]
+   [:post "/:ws-id/transform/validate/target"]])
+
+(def ^:private permission-denied-msg "You don't have permissions to do that.")
+
+(deftest service-user-authorization-test
+  (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
+                           ws2 {:name "Workspace 2"}]
+    (mt/with-temp [:model/WorkspaceTransform tx {:name         "Test Transform"
+                                                 :workspace_id (:id ws1)}]
+      (let [service-user-1 (:execution_user ws1)
+            service-user-2 (:execution_user ws2)
+            resolve-url    (fn [pattern]
+                             (-> pattern
+                                 (str/replace ":ws-id" (str (:id ws1)))
+                                 (str/replace ":tx-id" (:ref_id tx))
+                                 (->> (str "ee/workspace"))))]
+
+        ;; We don't test whether an admin can access the routes - that's implicit in the regular tests for each route.
+
+        #_(testing "Admin-only routes reject service users"
+            (doseq [[method pattern] admin-only-routes
+                    :let [url (resolve-url pattern)]]
+              (testing (str method " " pattern)
+                (is (= permission-denied-msg
+                       (mt/user-http-request service-user-1 method 403 url))
+                    "Should reject workspace's own service user"))))
+
+        (testing "Workspace routes allow their own service user, but not others"
+          (doseq [[method pattern] service-user-rotes
+                  :let [url (resolve-url pattern)]]
+            (testing (str method " " pattern)
+              ;; We check for NOT 403 since some routes may 404 without full setup.
+              ;; If auth passes, we won't get the permission-denied message.
+              (is (not= permission-denied-msg
+                        (mt/user-http-request service-user-1 method url))
+                  "Should allow workspace's own service user")
+              #_(is (= permission-denied-msg
+                       (mt/user-http-request service-user-2 method 403 url))
+                    "Should reject other workspace's service user"))))))))
