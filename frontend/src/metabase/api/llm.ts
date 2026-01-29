@@ -7,6 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { listTag } from "./tags";
 
 export const llmApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,6 +30,7 @@ export const llmApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/llm/list-models",
       }),
+      providesTags: () => [listTag("llm-models")],
     }),
   }),
 });

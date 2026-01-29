@@ -7,8 +7,10 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useListModelsQuery } from "metabase/api/llm";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import { Box, PasswordInput, Select, Stack, TextInput } from "metabase/ui";
 
 export function MetabotSQLGenerationSettingsSection() {
@@ -18,6 +20,9 @@ export function MetabotSQLGenerationSettingsSection() {
   const { settingDetails: modelDetails } = model;
 
   const [localApiKey, setLocalApiKey] = useState<string | null>(null);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
+  const [sendToast] = useToast();
 
   const isApiKeyEnvVar = !!(
     apiKeyDetails?.is_env_setting && apiKeyDetails?.env_name
@@ -25,11 +30,11 @@ export function MetabotSQLGenerationSettingsSection() {
   const isModelEnvVar = !!(
     modelDetails?.is_env_setting && modelDetails?.env_name
   );
-  const ApiKeyInput = isApiKeyEnvVar ? TextInput : PasswordInput;
 
   const savedApiKey = apiKey.value ?? "";
   const hasApiKey = savedApiKey.trim().length > 0;
   const apiKeyDisplayValue = localApiKey ?? savedApiKey;
+  const ApiKeyInput = isApiKeyEnvVar ? TextInput : PasswordInput;
 
   const {
     data: modelsData,
@@ -65,7 +70,20 @@ export function MetabotSQLGenerationSettingsSection() {
   const handleApiKeyBlur = async (e: FocusEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value !== savedApiKey) {
-      await updateSetting({ key: "llm-anthropic-api-key", value });
+      setApiKeyError(null);
+      const response = await updateSetting({
+        key: "llm-anthropic-api-key",
+        value,
+        toast: false,
+      });
+      if (response.error) {
+        setApiKeyError(
+          getErrorMessage(response.error, t`Failed to save API key`),
+        );
+        return;
+      }
+      sendToast({ message: t`API key saved successfully!`, icon: "check" });
+      setIsApiKeyVisible(false);
     }
     setLocalApiKey(null);
   };
@@ -79,20 +97,25 @@ export function MetabotSQLGenerationSettingsSection() {
   return (
     <SettingsPageWrapper>
       <SettingsSection
-        title={t`SQL Generation`}
-        description={t`Ask questions in plain language and get results — Metabot handles the SQL.`}
+        title={t`Connect to a model`}
+        description={t`Use your Anthropic API key and specify which language model to use for AI features.`}
       >
         <Stack gap="md">
           <Box>
             <ApiKeyInput
               disabled={isApiKeyEnvVar}
               label={t`Anthropic API Key`}
-              description={t`Your API key. This key is encrypted and stored securely.`}
               placeholder={t`Enter your API key`}
               value={apiKeyDisplayValue}
-              onChange={(e) => setLocalApiKey(e.target.value)}
+              onChange={(e) => {
+                setLocalApiKey(e.target.value);
+                setApiKeyError(null);
+                setIsApiKeyVisible(true);
+              }}
               onBlur={handleApiKeyBlur}
-              type="password"
+              error={apiKeyError}
+              visible={isApiKeyVisible}
+              onVisibilityChange={setIsApiKeyVisible}
             />
             {isApiKeyEnvVar && (
               <SetByEnvVar varName={apiKeyDetails.env_name!} />
@@ -102,8 +125,7 @@ export function MetabotSQLGenerationSettingsSection() {
           <Box>
             <Select
               disabled={isModelFieldDisabled || !!isModelEnvVar}
-              label={t`Anthropic Model`}
-              description={t`The model to use for SQL generation.`}
+              label={t`Model`}
               placeholder={isModelsLoading ? t`Loading models...` : undefined}
               data={modelOptions}
               value={isDeprecatedModel ? null : modelValue}

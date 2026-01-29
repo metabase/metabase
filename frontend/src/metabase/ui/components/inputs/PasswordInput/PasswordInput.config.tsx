@@ -13,6 +13,7 @@ export const passwordInputOverrides = {
     },
     classNames: {
       input: Styles.input,
+      innerInput: Styles.innerInput,
       error: Styles.error,
     },
   }),

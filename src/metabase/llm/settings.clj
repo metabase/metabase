@@ -1,15 +1,23 @@
 (ns metabase.llm.settings
   "Settings for OSS LLM integration."
   (:require
+   [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting llm-anthropic-api-key
   (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export? false
+  :setter     (fn [new-value]
+                (let [trimmed (when (string? new-value)
+                                (not-empty (str/trim new-value)))]
+                  (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
+                    (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
+                                    {:status-code 400})))
+                  (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
   :doc false)
 
 (defsetting llm-anthropic-model

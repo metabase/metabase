@@ -6,11 +6,31 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ------------------------------------------- llm-anthropic-api-key Setter Tests -------------------------------------------
+
+(deftest llm-anthropic-api-key-setter-test
+  (testing "accepts valid sk-ant- key and trims whitespace"
+    (mt/discard-setting-changes [llm-anthropic-api-key]
+      (llm.settings/llm-anthropic-api-key! "  sk-ant-abc123  ")
+      (is (= "sk-ant-abc123" (llm.settings/llm-anthropic-api-key)))))
+
+  (testing "rejects keys without sk-ant- prefix"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid Anthropic API key format"
+         (llm.settings/llm-anthropic-api-key! "invalid-key"))))
+
+  (testing "empty/nil clears the setting"
+    (mt/discard-setting-changes [llm-anthropic-api-key]
+      (llm.settings/llm-anthropic-api-key! "sk-ant-abc123")
+      (llm.settings/llm-anthropic-api-key! "")
+      (is (nil? (llm.settings/llm-anthropic-api-key))))))
+
 ;;; ------------------------------------------- llm-enabled? Tests -------------------------------------------
 
 (deftest llm-enabled?-test
   (testing "returns true when API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"]
+    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
       (is (true? (llm.settings/llm-enabled?)))))
 
   (testing "returns false when API key is nil"
@@ -26,7 +46,7 @@
 
 (deftest llm-sql-generation-enabled-test
   (testing "returns true when Anthropic API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
       (is (true? (llm.settings/llm-sql-generation-enabled)))))
 
   (testing "returns false when no API key and metabot not enabled"
