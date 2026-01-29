@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.date-time-zone-functions-test :as dt-fn-test]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -96,3 +99,30 @@
                                          :card-id      2}}}]
           (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
                  (mt/rows (qp/process-query (mt/native-query query))))))))))
+
+(deftest convert-timezone-in-case-with-default-test
+  (testing "convert-timezone inside case with a default value should not double-convert (#68712)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+      (mt/with-report-timezone-id! "UTC"
+        (mt/dataset dt-fn-test/times-mixed
+          (let [mp (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/table mp (mt/id :times)))
+                dt-tz-col (lib.metadata/field mp (mt/id :times :dt_tz))
+                index-col (lib.metadata/field mp (mt/id :times :index))
+                convert-tz (fn [col]
+                             (lib.options/ensure-uuid
+                              [:convert-timezone {} col "Asia/Seoul"]))
+                with-default (lib/case [[(lib/= index-col 1) (convert-tz dt-tz-col)]]
+                               dt-tz-col)
+                without-default (lib/case [[(lib/= index-col 1) (convert-tz dt-tz-col)]])
+                q (-> query
+                      (lib/expression "with-default" with-default)
+                      (lib/expression "without-default" without-default)
+                      (lib/filter (lib/= index-col 1))
+                      (as-> q (lib/with-fields q [index-col
+                                                  (lib/expression-ref q "with-default")
+                                                  (lib/expression-ref q "without-default")])))
+                results (qp/process-query q)
+                [_idx with-default-val without-default-val] (first (mt/rows results))]
+            (testing "MBQL: case with and without default should produce the same result for matching rows"
+              (is (= without-default-val with-default-val)))))))))
