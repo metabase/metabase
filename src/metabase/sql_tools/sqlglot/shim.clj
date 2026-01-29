@@ -62,18 +62,28 @@
         (do
           (u.files/create-dir-if-not-exists! target)
           (copy-dir-recursive! child target))
-        (u.files/copy-file! child target)))))
+        (log/with-no-logs ;; <-- Suppress per-file logs from copy-file! (hundreds of files in sqlglot)
+          (u.files/copy-file! child target))))))
 
 (defn- extract-python-sources!
   "Extract python-sources from JAR to plugins directory. Returns the path as a string.
-  Uses the same plugins directory as driver modules for consistency."
+  Uses the same plugins directory as driver modules for consistency.
+  Skips extraction if version file matches."
   ^String []
   (let [^Path plugins-path (plugins-dir-path)
-        dest-path          (.resolve plugins-path "python-sources")]
-    (u.files/create-dir-if-not-exists! dest-path)
-    (log/info "Extracting Python sources to" (str dest-path))
-    (u.files/with-open-path-to-resource [source-path python-sources-resource]
-      (copy-dir-recursive! source-path dest-path))
+        dest-path          (.resolve plugins-path "python-sources")
+        version-file       (.resolve dest-path ".sqlglot-version")
+        jar-version        (some-> (io/resource "python-sources/.sqlglot-version") slurp str/trim)
+        dest-version       (when (u.files/exists? version-file)
+                             (str/trim (slurp (.toFile version-file))))]
+    (if (and jar-version (= jar-version dest-version))
+      (log/info "Python sources already extracted (version" jar-version ")")
+      (do
+        (u.files/create-dir-if-not-exists! dest-path)
+        (log/info "Extracting Python sources to" (str dest-path))
+        (u.files/with-open-path-to-resource [source-path python-sources-resource]
+          (copy-dir-recursive! source-path dest-path))
+        (log/info "Python sources extracted")))
     (str dest-path)))
 
 ;;; -------------------------------------------------- Dev lazy installation --------------------------------------------------
