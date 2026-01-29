@@ -87,9 +87,9 @@ const DragSourceComponent = DragSource(
 
 export function ItemDragSource(props) {
   const [sendToast] = useToast();
-  const onMoveError = (e) =>
+  const onMoveError = (error) =>
     sendToast({
-      message: getErrorMessage(e),
+      message: getErrorMessage(error),
       icon: "warning_triangle_filled",
       iconColor: "warning",
     });
