@@ -96,24 +96,37 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
-(def ^:private admin-only-patterns
-  "URI patterns for admin-only routes that have a workspace ID but require superuser access.
-   All other routes with a workspace ID allow the workspace's service user."
-  [#"/api/ee/workspace/\d+$"                        ; PUT/DELETE /:ws-id
-   #"/api/ee/workspace/\d+/archive$"                ; POST /:ws-id/archive
-   #"/api/ee/workspace/\d+/unarchive$"              ; POST /:ws-id/unarchive
-   #"/api/ee/workspace/\d+/merge$"                  ; POST /:ws-id/merge
-   #"/api/ee/workspace/\d+/transform/[^/]+/merge$"  ; POST /:ws-id/transform/:tx-id/merge
-   ])
+(def ^:private service-user-patterns
+  "URI patterns that workspace service users may access.
+   New routes default to admin-only for safety."
+  {;; Read workspace state
+   :get    [#"/api/ee/workspace/\d+$"                            ; GET /:ws-id
+            #"/api/ee/workspace/\d+/table$"                      ; GET /:ws-id/table
+            #"/api/ee/workspace/\d+/log$"                        ; GET /:ws-id/log
+            #"/api/ee/workspace/\d+/graph$"                      ; GET /:ws-id/graph
+            #"/api/ee/workspace/\d+/problem$"                    ; GET /:ws-id/problem
+            #"/api/ee/workspace/\d+/external/transform$"         ; GET /:ws-id/external/transform
+            #"/api/ee/workspace/\d+/transform$"                  ; GET /:ws-id/transform
+            #"/api/ee/workspace/\d+/transform/[^/]+$"]           ; GET /:ws-id/transform/:tx-id
+   ;; Manage transforms
+   :post   [#"/api/ee/workspace/\d+/transform$"                  ; POST /:ws-id/transform
+            #"/api/ee/workspace/\d+/transform/[^/]+/archive$"    ; POST /:ws-id/transform/:tx-id/archive
+            #"/api/ee/workspace/\d+/transform/[^/]+/unarchive$"  ; POST /:ws-id/transform/:tx-id/unarchive
+            #"/api/ee/workspace/\d+/transform/validate/target$"  ; POST /:ws-id/transform/validate/target
+            ;; Run transforms
+            #"/api/ee/workspace/\d+/run$"                        ; POST /:ws-id/run
+            #"/api/ee/workspace/\d+/transform/[^/]+/run$"        ; POST /:ws-id/transform/:tx-id/run
+            #"/api/ee/workspace/\d+/transform/[^/]+/dry-run$"]   ; POST /:ws-id/transform/:tx-id/dry-run
+   :put    [#"/api/ee/workspace/\d+/transform/[^/]+$"]           ; PUT /:ws-id/transform/:tx-id
+   :delete [#"/api/ee/workspace/\d+/transform/[^/]+$"]})         ; DELETE /:ws-id/transform/:tx-id
 
-(defn- admin-only-route?
-  "True if this request requires superuser access (not accessible by service users)."
+(defn- service-user-allowed?
+  "True if this request can be made by a workspace's service user."
   [{:keys [uri request-method]}]
-  (or (not (re-find #"/api/ee/workspace/(\d+)" uri))  ; No workspace ID = admin route
-      (and (#{:put :delete :post} request-method)
-           (some #(re-matches % uri) admin-only-patterns))))
+  (when-let [patterns (get service-user-patterns request-method)]
+    (some #(re-matches % uri) patterns)))
 
-(defn- workspace-service-user?
+(defn- owns-workspace?
   "True if the current user is the service user for the workspace in this request's URI."
   [uri]
   (when-let [[_ ws-id-str] (re-find #"/api/ee/workspace/(\d+)" uri)]
@@ -125,13 +138,13 @@
   "Authorization middleware for workspace routes.
 
    Access rules:
-   - Admin routes (no ws-id, or admin-only patterns): superuser required
-   - Workspace routes: superuser OR the workspace's own service user"
+   - Service user routes: superuser OR the workspace's own service user
+   - All other routes: superuser required (default)"
   [handler]
   (fn [request respond raise]
-    (if (admin-only-route? request)
-      (api/check-superuser)
-      (api/check-403 (or api/*is-superuser?* (workspace-service-user? (:uri request)))))
+    (if (service-user-allowed? request)
+      (api/check-403 (or api/*is-superuser?* (owns-workspace? (:uri request))))
+      (api/check-superuser))
     (handler request respond raise)))
 
 (defn- ws->response
