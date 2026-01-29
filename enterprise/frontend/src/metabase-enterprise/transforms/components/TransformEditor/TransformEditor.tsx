@@ -27,7 +27,8 @@ type TransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   onBlur?: () => void;
-  isEditMode: boolean;
+  isEditMode?: boolean;
+  readOnly?: boolean;
   transformId?: TransformId;
 };
 
@@ -42,6 +43,7 @@ export function TransformEditor({
   onRejectProposed,
   onBlur,
   isEditMode,
+  readOnly,
   transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
@@ -63,7 +65,7 @@ export function TransformEditor({
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const showEditDefinitionButton =
-    !!transformId && !isEditMode && !isRemoteSyncReadOnly;
+    !!transformId && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {

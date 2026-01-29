@@ -64,7 +64,7 @@
 
 (deftest open-s3-shared-storage-test
   (testing "open-s3-shared-storage! returns closeable derefable"
-    (mt/with-premium-features #{:transforms-python}
+    (mt/with-premium-features #{:transforms-python :transforms}
       (let [table-name->id {"users" 1}
             storage-ref    (s3/open-shared-storage! table-name->id)
             {:keys [s3-client bucket-name objects]} @storage-ref]

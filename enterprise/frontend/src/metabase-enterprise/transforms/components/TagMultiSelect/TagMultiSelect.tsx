@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type MouseEvent, useState } from "react";
 import { jt, t } from "ttag";
 
@@ -30,12 +31,14 @@ type TagMultiSelectProps = {
   tagIds: TransformTagId[];
   onChange: (tagIds: TransformTagId[], undoable?: boolean) => void;
   readOnly?: boolean;
+  requireTransformWriteAccess?: boolean;
 };
 
 export function TagMultiSelect({
   tagIds,
   onChange,
   readOnly,
+  requireTransformWriteAccess,
 }: TagMultiSelectProps) {
   const { data: tags = [], isLoading } = useListTransformTagsQuery();
   const [createTag, { isLoading: isCreating }] =
@@ -98,8 +101,9 @@ export function TagMultiSelect({
   return (
     <>
       <MultiSelect
+        classNames={{ option: S.option }}
         value={tagIds.map(getValue)}
-        data={getOptions(tags, trimmedSearchValue)}
+        data={getOptions(tags, trimmedSearchValue, requireTransformWriteAccess)}
         placeholder={readOnly ? t`Tags are read-only` : t`Add tags`}
         searchValue={searchValue}
         searchable
@@ -124,6 +128,7 @@ export function TagMultiSelect({
               selected={item.checked}
               onUpdateClick={handleUpdateClick}
               onDeleteClick={handleDeleteClick}
+              requireTransformWriteAccess={requireTransformWriteAccess}
             />
           )
         }
@@ -177,12 +182,14 @@ function NewTagSelectItem({
 
 type ExistingTagSelectItemProps = SelectItemProps & {
   tag: TransformTag;
+  requireTransformWriteAccess?: boolean;
   onUpdateClick: (tag: TransformTag) => void;
   onDeleteClick: (tag: TransformTag) => void;
 };
 
 function ExistingTagSelectItem({
   tag,
+  requireTransformWriteAccess,
   selected,
   onUpdateClick,
   onDeleteClick,
@@ -199,10 +206,23 @@ function ExistingTagSelectItem({
     onDeleteClick(tag);
   };
 
+  const selectable = requireTransformWriteAccess ? tag.can_run : true;
+
   return (
-    <SelectItem className={S.selectItem} selected={selected} py="xs">
+    <SelectItem
+      className={cx(S.selectItem, { [S.editable]: tag.can_run })}
+      selected={selected}
+      py="xs"
+    >
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
+        {!selectable && (
+          <Tooltip
+            label={t`This tag contains a transform you don't have permission to run.`}
+          >
+            <Icon name="lock_filled" size={14} ml="xs" />
+          </Tooltip>
+        )}
       </Text>
       <Tooltip label={t`Rename tag`}>
         <ActionIcon
@@ -238,11 +258,16 @@ function getTagId(value: string): TransformTagId {
   return parseInt(value, 10);
 }
 
-function getOptions(tags: TransformTag[], trimmedSearchValue: string) {
+function getOptions(
+  tags: TransformTag[],
+  trimmedSearchValue: string,
+  requireTransformWriteAccess?: boolean,
+) {
   const options = tags.map((tag) => ({
     tag,
     value: getValue(tag.id),
     label: tag.name,
+    disabled: requireTransformWriteAccess ? !tag.can_run : false,
   }));
 
   if (

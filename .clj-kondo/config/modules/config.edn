@@ -1779,6 +1779,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           audit-app
            lib
            permissions
            premium-features
@@ -2333,6 +2334,7 @@
            lib
            lib-be
            models
+           permissions
            premium-features
            queries
            query-processor
@@ -2359,6 +2361,7 @@
            lib
            lib-be
            models
+           permissions
            query-processor
            settings
            util

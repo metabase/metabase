@@ -23,6 +23,7 @@ type JobEditorProps = {
   job: TransformJobInfo;
   menu?: ReactNode;
   actions?: ReactNode;
+  readOnly?: boolean;
   onNameChange: (name: string) => void;
   onScheduleChange: (
     schedule: string,
@@ -35,6 +36,7 @@ export function JobEditor({
   job,
   menu,
   actions,
+  readOnly,
   onNameChange,
   onScheduleChange,
   onTagListChange,
@@ -47,6 +49,7 @@ export function JobEditor({
             initialValue={job.name}
             maxLength={NAME_MAX_LENGTH}
             onChange={onNameChange}
+            readOnly={readOnly}
           />
         }
         py={0}
@@ -63,8 +66,16 @@ export function JobEditor({
         data-testid="jobs-header"
       />
       <Stack gap="3.5rem">
-        <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
-        <TagSection job={job} onTagsChange={onTagListChange} />
+        <ScheduleSection
+          job={job}
+          readOnly={readOnly}
+          onScheduleChange={onScheduleChange}
+        />
+        <TagSection
+          job={job}
+          readOnly={readOnly}
+          onTagsChange={onTagListChange}
+        />
         {job.id != null && <DependenciesSection jobId={job.id} />}
       </Stack>
     </PageContainer>

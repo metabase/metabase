@@ -17,6 +17,7 @@ type PythonKeysetColumnSelectProps = {
   description: React.ReactNode;
   descriptionProps?: InputDescriptionProps & DataAttributes;
   sourceTables: PythonTransformTableAliases;
+  disabled?: boolean;
 };
 
 export function PythonKeysetColumnSelect({
@@ -26,6 +27,7 @@ export function PythonKeysetColumnSelect({
   description,
   descriptionProps,
   sourceTables,
+  disabled,
 }: PythonKeysetColumnSelectProps) {
   const metadata = useSelector(getMetadata);
 
@@ -69,7 +71,7 @@ export function PythonKeysetColumnSelect({
       description={description}
       descriptionProps={descriptionProps}
       query={query}
-      disabled={isLoading || !!error}
+      disabled={disabled || isLoading || !!error}
     />
   );
 }

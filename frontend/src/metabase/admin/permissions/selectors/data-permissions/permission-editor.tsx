@@ -312,6 +312,7 @@ export const getDatabasesPermissionEditor = createSelector(
       ...(permissionSubject
         ? PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(
             permissionSubject,
+            groupType,
             isExternal,
           )
         : []),

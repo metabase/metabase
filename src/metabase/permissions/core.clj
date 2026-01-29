@@ -43,6 +43,8 @@
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  is-superuser?
+  is-data-analyst?
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
@@ -106,7 +108,9 @@
   collection-path?]
  [metabase.permissions.user
   user-permissions-set
-  user->tenant-collection-and-descendant-ids]
+  user->tenant-collection-and-descendant-ids
+  has-any-transforms-permission?
+  has-db-transforms-permission?]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

@@ -1,5 +1,62 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:23
+      author: nvoxland
+      comment: Add source_database_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_database_id
+                  type: int
+                  remarks: The database containing the source data for this transform
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:24
+      author: nvoxland
+      comment: Add index for transform.source_database_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_source_database_id
+            columns:
+              - column:
+                  name: source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:25
+      author: nvoxland
+      comment: Add foreign key on transform(source_database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:26
+      author: nvoxland
+      comment: Transfer data from transform.source to transform.source_database_id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.SetTransformSourceDatabaseId"
+      rollback: # No need to roll back
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:27
+      author: nvoxland
+      comment: Make transform.source_database_id not nullable
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
   - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase

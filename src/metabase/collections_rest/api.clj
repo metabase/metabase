@@ -490,7 +490,7 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
-            (when-not api/*is-superuser?*
+            (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
               [:=
                [:inline 0]
                [:inline 1]])]})

@@ -14,10 +14,12 @@ import type { Transform } from "metabase-types/api";
 
 type UpdateIncrementalSettingsProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
 const IncrementalTransformSettingsWrapper = ({
   transform,
+  readOnly,
 }: UpdateIncrementalSettingsProps) => {
   const { values, setFieldValue } =
     useFormikContext<IncrementalSettingsFormValues>();
@@ -40,6 +42,7 @@ const IncrementalTransformSettingsWrapper = ({
         incremental={values.incremental}
         onIncrementalChange={handleIncrementalChange}
         variant="standalone"
+        readOnly={readOnly}
       />
       {modal}
     </>
@@ -48,6 +51,7 @@ const IncrementalTransformSettingsWrapper = ({
 
 export const UpdateIncrementalSettings = ({
   transform,
+  readOnly,
 }: UpdateIncrementalSettingsProps) => {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -73,7 +77,10 @@ export const UpdateIncrementalSettings = ({
           onSuccess={showSuccessToast}
           onError={showErrorToast}
         />
-        <IncrementalTransformSettingsWrapper transform={transform} />
+        <IncrementalTransformSettingsWrapper
+          transform={transform}
+          readOnly={readOnly}
+        />
       </Form>
     </FormProvider>
   );

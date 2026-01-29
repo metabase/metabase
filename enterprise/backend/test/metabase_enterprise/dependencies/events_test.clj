@@ -317,7 +317,7 @@
     (run-with-dependencies-setup!
      (fn [_]
        (let [source {:type :python,
-                     :source-database 2,
+                     :source-database (mt/id),
                      :source-tables {"orders" {:database_id (mt/id),
                                                :schema "public",
                                                :table "orders",

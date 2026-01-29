@@ -35,7 +35,7 @@
     background-color: var(--mb-color-brand-light);
   }
 
-  &:focus {
+  &:focus:not(.disabled) {
     outline: none;
     background-color: var(--mb-color-brand-light);
   }

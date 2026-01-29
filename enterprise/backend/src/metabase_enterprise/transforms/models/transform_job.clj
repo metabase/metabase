@@ -3,6 +3,8 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
+   [metabase-enterprise.transforms.models.transform :as transform]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -19,6 +21,39 @@
 
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})
+
+(defmethod mi/can-read? :model/TransformJob
+  ([_instance]
+   (or api/*is-superuser?* api/*is-data-analyst?*))
+  ([_model _pk]
+   (or api/*is-superuser?* api/*is-data-analyst?*)))
+
+(defmethod mi/can-write? :model/TransformJob
+  ([instance]
+   (or api/*is-superuser?*
+       (and api/*is-data-analyst?*
+            (let [transforms (or (:transforms instance)
+                                 (when-let [tag-ids (seq (:tag_ids instance))]
+                                   (transform/transforms-with-tags tag-ids)))]
+              (if (seq transforms)
+                (every? mi/can-write? transforms)
+                true)))))
+  ([_model pk]
+   (when-let [job (t2/select-one :model/TransformJob :id pk)]
+     (mi/can-write? job))))
+
+(defmethod mi/can-create? :model/TransformJob
+  [_model instance]
+  (or api/*is-superuser?*
+      (and api/*is-data-analyst?*
+           ;; Support batch hydration: check pre-hydrated :transforms first,
+           ;; then fall back to looking up transforms from :tag_ids
+           (let [transforms (or (:transforms instance)
+                                (when-let [tag-ids (seq (:tag_ids instance))]
+                                  (transform/transforms-with-tags tag-ids)))]
+             (if (seq transforms)
+               (every? mi/can-write? transforms)
+               true)))))
 
 (mi/define-batched-hydration-method tag-ids
   :tag_ids

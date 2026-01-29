@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
@@ -31,11 +32,15 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
-    isLoading,
-    error,
+    isLoading: isLoadingTransform,
+    error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken, {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
+  const { readOnly, isLoadingDatabases, databasesError } =
+    useTransformPermissions({ transform });
+  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const error = transformError || databasesError;
 
   if (isPolling !== isPollingNeeded(transform)) {
     setIsPolling(isPollingNeeded(transform));
@@ -51,8 +56,8 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
 
   return (
     <PageContainer data-testid="transforms-run-content">
-      <TransformHeader transform={transform} />
-      <RunSection transform={transform} />
+      <TransformHeader transform={transform} readOnly={readOnly} />
+      <RunSection transform={transform} readOnly={readOnly} />
     </PageContainer>
   );
 }

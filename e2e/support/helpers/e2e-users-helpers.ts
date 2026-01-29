@@ -4,8 +4,8 @@ interface User {
   last_name?: string | null;
 }
 
-export function setUserAsAnalyst(userId: number) {
-  cy.request("PUT", `/api/user/${userId}`, { is_data_analyst: true });
+export function setUserAsAnalyst(userId: number, enabled = true) {
+  cy.request("PUT", `/api/user/${userId}`, { is_data_analyst: enabled });
 }
 
 /**

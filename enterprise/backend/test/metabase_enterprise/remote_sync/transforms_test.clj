@@ -279,7 +279,7 @@
 
 (defn- generate-transform-yaml
   "Generates YAML content for a transform."
-  [entity-id name]
+  [entity-id name database-id table-id]
   (format "name: %s
 description: null
 entity_id: %s
@@ -289,10 +289,10 @@ creator_id: rasta@metabase.com
 source:
   type: query
   query:
-    database: 1
+    database: %d
     type: query
     query:
-      source-table: 1
+      source-table: %d
 target:
   type: table
   name: test_output
@@ -302,7 +302,7 @@ serdes/meta:
   label: %s
   model: Transform
 "
-          name entity-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+          name entity-id database-id table-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
 (defn- generate-transforms-namespace-collection-yaml
   "Generates YAML content for a transforms-namespace collection."
@@ -334,15 +334,15 @@ is_sample: false
     (mt/with-premium-features #{:transforms}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                coll-entity-id "transforms-coll-xxx"
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                coll-entity-id      "transforms-coll-xxx"
                 transform-entity-id "test-transform-xxxxx"
-                test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
-                                    (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
-                                    (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_test_transform.yaml")
-                                    (generate-transform-yaml transform-entity-id "Test Transform")}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)
-                result (impl/import! (source.p/snapshot mock-source) task-id)]
+                test-files          {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
+                                             (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
+                                             (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_test_transform.yaml")
+                                             (generate-transform-yaml transform-entity-id "Test Transform" (mt/id) (mt/id :venues))}}
+                mock-source         (test-helpers/create-mock-source :initial-files test-files)
+                result              (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/Collection :entity_id coll-entity-id :namespace "transforms")
                 "Transforms-namespace collection should be imported")
@@ -390,7 +390,7 @@ is_sample: false
               (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
                                            (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
                                            (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
-                                           (generate-transform-yaml transform-eid "Child Transform")}}
+                                           (generate-transform-yaml transform-eid "Child Transform" (mt/id) (mt/id :venues))}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
@@ -478,7 +478,7 @@ is_sample: false
               (let [test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
                                         (str "collections/" coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
-                                        (generate-transform-yaml remote-transform-entity-id "Remote Transform")}}
+                                        (generate-transform-yaml remote-transform-entity-id "Remote Transform" (mt/id) (mt/id :venues))}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result))

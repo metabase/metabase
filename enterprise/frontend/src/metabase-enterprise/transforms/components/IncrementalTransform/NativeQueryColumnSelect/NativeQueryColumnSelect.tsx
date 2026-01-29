@@ -17,6 +17,7 @@ type NativeQueryColumnSelectProps = {
   descriptionProps?: InputDescriptionProps & DataAttributes;
   placeholder: string;
   query: Lib.Query;
+  disabled?: boolean;
 };
 
 export function NativeQueryColumnSelect({
@@ -26,6 +27,7 @@ export function NativeQueryColumnSelect({
   descriptionProps,
   placeholder,
   query,
+  disabled,
 }: NativeQueryColumnSelectProps) {
   const [columns, setColumns] = useState<string[] | null>(null);
   const [extractColumns, { isLoading }] = useExtractColumnsFromQueryMutation();
@@ -75,7 +77,7 @@ export function NativeQueryColumnSelect({
       <FormSelect
         name={name}
         rightSection={isLoading ? <Loader size="sm" /> : null}
-        disabled={isLoading}
+        disabled={disabled || isLoading}
         label={label}
         description={description}
         placeholder={placeholder}
@@ -92,6 +94,7 @@ export function NativeQueryColumnSelect({
       placeholder={placeholder}
       description={description}
       descriptionProps={descriptionProps}
+      disabled={disabled}
     />
   );
 }

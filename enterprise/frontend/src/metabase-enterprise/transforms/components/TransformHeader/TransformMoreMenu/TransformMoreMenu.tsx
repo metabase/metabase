@@ -44,6 +44,7 @@ export function TransformMoreMenu({
         <TransformRevisionHistorySidebar
           transform={transform}
           onClose={() => setIsHistorySidebarOpen(false)}
+          readOnly={readOnly}
         />
       )}
     </>

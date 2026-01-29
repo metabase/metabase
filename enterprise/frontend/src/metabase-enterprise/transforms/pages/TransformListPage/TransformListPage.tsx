@@ -1,5 +1,12 @@
 import type { Row } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
@@ -36,9 +43,11 @@ import { PaneHeader } from "metabase-enterprise/data-studio/common/components/Pa
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
+import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
@@ -56,6 +65,10 @@ const countTransforms = (node: TreeNode): number => {
     }
     return count + countTransforms(child);
   }, 0);
+};
+
+const isRowDisabled = (row: Row<TreeNode>) => {
+  return row.original.source_readable === false;
 };
 
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
@@ -81,6 +94,8 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = ({ location }: WithRouterProps) => {
+  const { transformsDatabases = [], isLoadingDatabases } =
+    useTransformPermissions();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
@@ -108,7 +123,8 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     isLoading: isLoadingTransforms,
   } = useListTransformsQuery({});
 
-  const isLoading = isLoadingCollections || isLoadingTransforms;
+  const isLoading =
+    isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
 
   const treeData = useMemo(() => {
@@ -120,18 +136,29 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         nodeType: "library",
         icon: "snippet",
         url: Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH }),
+        source_readable: transformsDatabases.length > 0,
       });
     }
     return data;
-  }, [collections, transforms]);
+  }, [collections, transforms, transformsDatabases]);
 
   const defaultExpanded = useMemo(
     () => getDefaultExpandedIds(targetCollectionId, targetCollection),
     [targetCollectionId, targetCollection],
   );
 
-  const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(
-    () => [
+  const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
+    type EllipsifiedProps = ComponentProps<
+      typeof EntityNameCell
+    >["ellipsifiedProps"];
+    const unreadableTransformEllipsifiedProps: EllipsifiedProps = {
+      alwaysShowTooltip: true,
+      tooltipProps: {
+        openDelay: 300,
+        label: t`Sorry, you don’t have permission to see that.`,
+      },
+    };
+    return [
       {
         id: "name",
         accessorKey: "name",
@@ -145,6 +172,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             icon={row.original.icon}
             iconColor={getNodeIconColor(row.original)}
             name={row.original.name}
+            ellipsifiedProps={
+              isRowDisabled(row)
+                ? unreadableTransformEllipsifiedProps
+                : undefined
+            }
           />
         ),
       },
@@ -219,11 +251,13 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             />
           ) : null,
       },
-    ],
-    [],
-  );
+    ];
+  }, []);
 
   const getRowHref = useCallback((row: Row<TreeNode>) => {
+    if (isRowDisabled(row)) {
+      return null;
+    }
     if (row.original.nodeType === "transform" && row.original.transformId) {
       return Urls.transform(row.original.transformId);
     }
@@ -293,7 +327,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {!isRemoteSyncReadOnly && <CreateTransformMenu />}
+          {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
+            <CreateTransformMenu />
+          )}
         </Flex>
 
         <Card withBorder p={0}>
@@ -306,7 +342,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
                 emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
               }
               onRowClick={handleRowClick}
+              isRowDisabled={isRowDisabled}
               getRowHref={getRowHref}
+              classNames={{ rowDisabled: S.rowDisabled }}
             />
           )}
         </Card>

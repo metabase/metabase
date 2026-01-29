@@ -1290,6 +1290,7 @@
                      :model/Transform t3 {:name "Python Transform"
                                           :description "Simple python transform"
                                           :source {:type "python"
+                                                   :source-database (mt/id)
                                                    :body "print('hello world')"
                                                    :source-tables {}}
                                           :target {:type "table"
@@ -1327,6 +1328,7 @@
                                           :description "Simple Python transform"
                                           :source {:type "python"
                                                    :body "print('hello world')"
+                                                   :source-database (mt/id)
                                                    :source-tables {}}
                                           :target {:type "table"
                                                    :name "t2_table"
@@ -1354,7 +1356,7 @@
                                              :conversation_id conversation-id}))))))))))
 
 (deftest get-transform-python-library-details-test
-  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

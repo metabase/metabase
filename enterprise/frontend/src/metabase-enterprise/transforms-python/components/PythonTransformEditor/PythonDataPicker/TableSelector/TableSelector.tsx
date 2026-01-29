@@ -95,15 +95,17 @@ export function TableSelector({
           </Stack>
         </Button>
 
-        <Tooltip label={t`Remove this table`}>
-          <ActionIcon
-            onClick={onRemove}
-            pr="sm"
-            aria-label={t`Remove this table`}
-          >
-            <Icon name="close" c="text-primary" />
-          </ActionIcon>
-        </Tooltip>
+        {!disabled && (
+          <Tooltip label={t`Remove this table`}>
+            <ActionIcon
+              onClick={onRemove}
+              pr="sm"
+              aria-label={t`Remove this table`}
+            >
+              <Icon name="close" c="text-primary" />
+            </ActionIcon>
+          </Tooltip>
+        )}
       </Group>
       {isOpened && (
         <DataPickerModal
