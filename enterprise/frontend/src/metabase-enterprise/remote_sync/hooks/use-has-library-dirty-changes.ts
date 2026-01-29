@@ -4,9 +4,12 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { buildCollectionTree } from "metabase/entities/collections";
+import type { CollectionId } from "metabase-types/api";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
+
+const isNumericId = (id: CollectionId): id is number => typeof id === "number";
 
 export function useHasLibraryDirtyChanges(): boolean {
   const { isVisible: isGitSyncVisible } = useGitSyncVisible();
@@ -42,9 +45,7 @@ export function useHasLibraryDirtyChanges(): boolean {
     const snippetsTree = buildCollectionTree(snippetsCollections);
     const snippetsCollectionIds = getAllDescendantIds(snippetsTree);
     const numericSnippetCollectionIds = new Set(
-      [...snippetsCollectionIds].filter(
-        (id): id is number => typeof id === "number",
-      ),
+      [...snippetsCollectionIds].filter(isNumericId),
     );
 
     const hasSnippetDirtyChanges = dirty.some((entity) => {
@@ -75,11 +76,7 @@ export function useHasLibraryDirtyChanges(): boolean {
     const libraryCollectionIds = getAllDescendantIds(libraryTree);
 
     // Filter to only numeric IDs for the dirty check
-    const numericIds = new Set(
-      [...libraryCollectionIds].filter(
-        (id): id is number => typeof id === "number",
-      ),
-    );
+    const numericIds = new Set([...libraryCollectionIds].filter(isNumericId));
 
     return hasDirtyInCollectionTree(numericIds);
   }, [

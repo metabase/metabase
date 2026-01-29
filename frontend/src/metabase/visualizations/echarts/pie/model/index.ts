@@ -334,7 +334,7 @@ export function getPieChartModel(
     if (!hasMultipleRings) {
       return hexColor;
     }
-    const accentKey = hexToAccentColorMap.get(hexColor);
+    const accentKey = hexToAccentColorMap.get(hexColor.toUpperCase());
     if (accentKey == null) {
       return hexColor;
     }
