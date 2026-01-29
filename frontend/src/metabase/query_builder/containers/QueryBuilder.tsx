@@ -2,7 +2,7 @@ import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
-import type { Route, WithRouterProps } from "react-router";
+import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
@@ -213,9 +213,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type QueryBuilderInnerProps = ReduxProps &
   WithRouterProps &
-  EntityListLoaderMergedProps & {
-    route: Route;
-  };
+  EntityListLoaderMergedProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useFavicon({ favicon: props.pageFavicon ?? null });
@@ -243,7 +241,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
@@ -485,7 +482,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
       />
     </>
   );

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
@@ -18,13 +17,11 @@ type DataModelNewMeasurePageParams = {
 
 type DataModelNewMeasurePageProps = {
   params: DataModelNewMeasurePageParams;
-  route: Route;
   children?: ReactNode;
 };
 
 export function DataModelNewMeasurePage({
   params,
-  route,
 }: DataModelNewMeasurePageProps) {
   const databaseId = Number(params.databaseId);
   const schemaName = getSchemaName(params.schemaId);
@@ -44,7 +41,6 @@ export function DataModelNewMeasurePage({
 
   return (
     <NewMeasurePage
-      route={route}
       table={table}
       breadcrumbs={<DataModelMeasureBreadcrumbs table={table} />}
       getSuccessUrl={(measure) =>

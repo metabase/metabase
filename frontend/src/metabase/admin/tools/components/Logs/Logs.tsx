@@ -1,8 +1,7 @@
-import type { Location } from "history";
 import * as React from "react";
 import { type ReactNode, useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
-import { Link, withRouter } from "react-router";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -13,6 +12,7 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { openSaveDialog } from "metabase/lib/dom";
+import { useCompatLocation } from "metabase/routing/compat";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
@@ -26,7 +26,6 @@ import {
 
 interface LogsProps {
   children?: ReactNode;
-  location: Location;
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
@@ -35,11 +34,11 @@ interface LogsProps {
 
 export const DEFAULT_POLLING_DURATION_MS = 1000;
 
-const LogsBase = ({
+export const Logs = ({
   children,
-  location,
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
+  const location = useCompatLocation();
   const [{ process, query }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,
@@ -163,5 +162,3 @@ const LogsBase = ({
     </>
   );
 };
-
-export const Logs = withRouter(LogsBase);

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -21,14 +20,12 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
 
 type NewMeasurePageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
 };
 
 export function NewMeasurePage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
@@ -129,7 +126,7 @@ export function NewMeasurePage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -83,7 +82,6 @@ type CollectionPermissionsPageProps = {
   savePermissions: () => void;
   loadPermissions: () => void;
   initialize: () => void;
-  route: Route;
 };
 
 function CollectionsPermissionsPageView({
@@ -96,7 +94,6 @@ function CollectionsPermissionsPageView({
   updateCollectionPermission,
   navigateToItem,
   initialize,
-  route,
 }: CollectionPermissionsPageProps) {
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
@@ -128,7 +125,6 @@ function CollectionsPermissionsPageView({
     <PermissionsPageLayout
       tab="collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}

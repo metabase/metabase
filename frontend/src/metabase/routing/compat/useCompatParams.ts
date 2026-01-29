@@ -27,13 +27,14 @@ export function useCompatParams<
     string | undefined
   >,
 >(): T {
-  // Always call both hooks to satisfy rules of hooks
-  const v7Params = useParamsV7();
-  const { params: v3Params } = useRouter();
-
+  // Only call the appropriate hook based on which router is active
+  // We cannot call v7 hooks when there's no v7 RouterProvider context
   if (USE_V7_PARAMS) {
-    return v7Params as T;
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useParamsV7() as T;
   }
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { params: v3Params } = useRouter();
   return (v3Params || {}) as T;
 }

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -41,7 +40,6 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
-  route: Route;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
@@ -79,7 +77,6 @@ function ActionCreator({
   onUpdateAction,
   onSubmit,
   onClose,
-  route,
 }: Props) {
   const {
     action,
@@ -105,7 +102,7 @@ function ActionCreator({
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
 
-  useBeforeUnload(!route && showUnsavedChangesWarning);
+  useBeforeUnload(showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -191,12 +188,7 @@ function ActionCreator({
         </Modal>
       )}
 
-      {route && (
-        <LeaveRouteConfirmModal
-          isEnabled={showUnsavedChangesWarning}
-          route={route}
-        />
-      )}
+      <LeaveRouteConfirmModal isEnabled={showUnsavedChangesWarning} />
     </>
   );
 }

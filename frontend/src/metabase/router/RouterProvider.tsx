@@ -1,8 +1,8 @@
 import type { History } from "history";
 import { type PropsWithChildren, createContext } from "react";
 import { Route, Router, type WithRouterProps, withRouter } from "react-router";
-import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 import type { createBrowserRouter } from "react-router-dom";
+import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 
 import { useHistory } from "metabase/history";
 import { USE_REACT_ROUTER_V7 } from "metabase/routing/compat";

@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 
 import { USE_REACT_ROUTER_V7 } from "./config";
+import { useRouterContext } from "./useCompatRoutes";
 import { useNavigation } from "./useNavigation";
 
 interface UseBlockNavigationInput {
@@ -53,8 +54,12 @@ interface UseBlockNavigationResult {
  * Works with both React Router v3 (using setRouteLeaveHook) and
  * React Router v7 (using useBlocker).
  *
+ * In v3 mode, router and route can be passed as props or will be
+ * automatically obtained from RouterContext.
+ *
  * Usage:
  * ```tsx
+ * // Simple usage (router/route obtained from context)
  * const { isBlocked, nextLocation, proceed, cancel } = useBlockNavigation({
  *   isEnabled: hasUnsavedChanges,
  *   isLocationAllowed: (loc) => loc?.pathname === '/allowed',
@@ -75,19 +80,19 @@ export function useBlockNavigation({
   router,
   route,
 }: UseBlockNavigationInput): UseBlockNavigationResult {
-  // Always call both hooks to satisfy rules of hooks
-  const v7Result = useBlockNavigationV7({ isEnabled, isLocationAllowed });
-  const v3Result = useBlockNavigationV3({
+  // Only call the appropriate hook based on which router is active
+  // We cannot call v7 hooks when there's no v7 RouterProvider context
+  if (USE_REACT_ROUTER_V7) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useBlockNavigationV7({ isEnabled, isLocationAllowed });
+  }
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useBlockNavigationV3({
     isEnabled,
     isLocationAllowed,
     router,
     route,
   });
-
-  if (USE_REACT_ROUTER_V7) {
-    return v7Result;
-  }
-  return v3Result;
 }
 
 /**
@@ -145,10 +150,16 @@ function useBlockNavigationV7({
 function useBlockNavigationV3({
   isEnabled,
   isLocationAllowed,
-  router,
-  route,
+  router: routerProp,
+  route: routeProp,
 }: UseBlockNavigationInput): UseBlockNavigationResult {
   const { push, replace, goBack } = useNavigation();
+  const routerContext = useRouterContext();
+
+  // Use props if provided, otherwise fall back to context
+  const router = routerProp ?? routerContext.router;
+  const route = routeProp ?? routerContext.route;
+
   const [nextLocation, setNextLocation] = useState<Location | undefined>();
   const [isBlocked, setIsBlocked] = useState(false);
   const [shouldProceed, setShouldProceed] = useState(false);

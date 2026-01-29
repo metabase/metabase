@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 import { useAsync } from "react-use";
 import _ from "underscore";
 
@@ -25,7 +24,6 @@ import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
   children: ReactNode;
-  route: typeof Route;
   params: {
     databaseId: DatabaseId;
   };
@@ -35,7 +33,6 @@ type DataPermissionsPageProps = {
 
 function DataPermissionsPage({
   children,
-  route,
   params,
   databases,
   groups,
@@ -92,7 +89,6 @@ function DataPermissionsPage({
       onSave={savePermissions}
       diff={diff as PermissionsGraph}
       isDirty={isDirty}
-      route={route}
       helpContent={<DataPermissionsHelp />}
       showSplitPermsModal={showSplitPermsModal}
     >

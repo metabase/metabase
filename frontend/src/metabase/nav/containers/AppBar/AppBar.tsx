@@ -33,7 +33,7 @@ import AppBarComponent from "../../components/AppBar";
  */
 function AppBarContainer() {
   const compatLocation = useCompatLocation();
-  const params = useCompatParams();
+  const _params = useCompatParams();
 
   // Cast to v3 Location type for selector compatibility
   const location = compatLocation as unknown as Location;

@@ -1,6 +1,6 @@
+import type { Location } from "history";
 import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -53,13 +53,18 @@ export const BASIC_ACTION_ORDER = [
   "navigate-browse-metric",
 ];
 
+interface UseCommandPaletteBasicActionsProps {
+  location: Location;
+  isLoggedIn: boolean;
+}
+
 export const useCommandPaletteBasicActions = ({
+  location,
   isLoggedIn,
-  ...props
-}: WithRouterProps & { isLoggedIn: boolean }) => {
+}: UseCommandPaletteBasicActionsProps) => {
   const dispatch = useDispatch();
   const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
+    Collections.selectors.getInitialCollectionId(state, { location }),
   );
 
   const { data: databases = [] } = useDatabaseListQuery({

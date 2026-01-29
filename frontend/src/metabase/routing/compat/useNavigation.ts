@@ -46,65 +46,44 @@ interface NavigationActions {
  * ```
  */
 export const useNavigation = (): NavigationActions => {
-  const dispatch = useDispatch();
+  // Only call the appropriate hook based on which router is active
+  // We cannot call v7 hooks when there's no v7 RouterProvider context
+  if (USE_V7_NAVIGATION) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useNavigationV7();
+  }
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useNavigationV3();
+};
 
-  // Always call the hook to satisfy rules of hooks, but only use in v7 mode
+function useNavigationV7(): NavigationActions {
   const navigateV7 = useNavigateV7();
 
   const pushAction = useCallback(
     (path: LocationDescriptor | string) => {
-      if (USE_V7_NAVIGATION && navigateV7) {
-        const to = typeof path === "string" ? path : convertToV7Path(path);
-        navigateV7(to);
-      } else {
-        dispatch(push(path));
-      }
+      const to = typeof path === "string" ? path : convertToV7Path(path);
+      navigateV7(to);
     },
-    [dispatch, navigateV7],
+    [navigateV7],
   );
 
   const replaceAction = useCallback(
     (path: LocationDescriptor | string) => {
-      if (USE_V7_NAVIGATION && navigateV7) {
-        const to = typeof path === "string" ? path : convertToV7Path(path);
-        navigateV7(to, { replace: true });
-      } else {
-        dispatch(replace(path));
-      }
+      const to = typeof path === "string" ? path : convertToV7Path(path);
+      navigateV7(to, { replace: true });
     },
-    [dispatch, navigateV7],
+    [navigateV7],
   );
 
   const goBackAction = useCallback(() => {
-    if (USE_V7_NAVIGATION && navigateV7) {
-      navigateV7(-1);
-    } else {
-      dispatch(goBack());
-    }
-  }, [dispatch, navigateV7]);
+    navigateV7(-1);
+  }, [navigateV7]);
 
   const navigate = useCallback(
     (to: To | number, options?: NavigateOptions) => {
-      if (USE_V7_NAVIGATION && navigateV7) {
-        navigateV7(to as To, options);
-      } else {
-        if (typeof to === "number") {
-          // Go back/forward by number
-          if (to === -1) {
-            dispatch(goBack());
-          }
-          // Note: v3 doesn't support go(n) for n != -1 easily
-        } else {
-          const path = typeof to === "string" ? to : convertToV7Path(to);
-          if (options?.replace) {
-            dispatch(replace(path));
-          } else {
-            dispatch(push(path));
-          }
-        }
-      }
+      navigateV7(to as To, options);
     },
-    [dispatch, navigateV7],
+    [navigateV7],
   );
 
   return {
@@ -113,7 +92,56 @@ export const useNavigation = (): NavigationActions => {
     goBack: goBackAction,
     navigate,
   };
-};
+}
+
+function useNavigationV3(): NavigationActions {
+  const dispatch = useDispatch();
+
+  const pushAction = useCallback(
+    (path: LocationDescriptor | string) => {
+      dispatch(push(path));
+    },
+    [dispatch],
+  );
+
+  const replaceAction = useCallback(
+    (path: LocationDescriptor | string) => {
+      dispatch(replace(path));
+    },
+    [dispatch],
+  );
+
+  const goBackAction = useCallback(() => {
+    dispatch(goBack());
+  }, [dispatch]);
+
+  const navigate = useCallback(
+    (to: To | number, options?: NavigateOptions) => {
+      if (typeof to === "number") {
+        // Go back/forward by number
+        if (to === -1) {
+          dispatch(goBack());
+        }
+        // Note: v3 doesn't support go(n) for n != -1 easily
+      } else {
+        const path = typeof to === "string" ? to : convertToV7Path(to);
+        if (options?.replace) {
+          dispatch(replace(path));
+        } else {
+          dispatch(push(path));
+        }
+      }
+    },
+    [dispatch],
+  );
+
+  return {
+    push: pushAction,
+    replace: replaceAction,
+    goBack: goBackAction,
+    navigate,
+  };
+}
 
 /**
  * Convert a v7 To object to a v3-compatible LocationDescriptor string

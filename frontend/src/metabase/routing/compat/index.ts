@@ -44,6 +44,7 @@ export {
   type CompatLocation,
 } from "./useCompatLocation";
 export { useCompatParams } from "./useCompatParams";
+export { useCompatRoutes, useRouterContext } from "./useCompatRoutes";
 export { useNavigation } from "./useNavigation";
 
 // Route Guards for v7

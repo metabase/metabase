@@ -1,6 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -32,11 +31,7 @@ import S from "./NewSnippetPage.module.css";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
-type NewSnippetPageProps = {
-  route: Route;
-};
-
-export function NewSnippetPage({ route }: NewSnippetPageProps) {
+export function NewSnippetPage() {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [name, setName] = useState(t`New SQL snippet`);
@@ -167,10 +162,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           </Stack>
         </Flex>
       </PageContainer>
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={!savedSnippet && !isSaving}
-      />
+      <LeaveRouteConfirmModal isEnabled={!savedSnippet && !isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}
         onSelect={handleCollectionSelected}

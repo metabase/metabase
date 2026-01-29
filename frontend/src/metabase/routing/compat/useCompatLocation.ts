@@ -21,7 +21,7 @@ export interface CompatLocation extends LocationV7 {
   // v7-style URLSearchParams
   searchParams: URLSearchParams;
   // v3-style action (for compatibility)
-  action?: "PUSH" | "REPLACE" | "POP";
+  action: "PUSH" | "REPLACE" | "POP";
 }
 
 /**
@@ -49,14 +49,14 @@ export interface CompatLocation extends LocationV7 {
  * ```
  */
 export const useCompatLocation = (): CompatLocation => {
-  // Always call both hooks to satisfy rules of hooks
-  const v7Result = useLocationV7Compat();
-  const v3Result = useLocationV3Compat();
-
+  // Only call the appropriate hook based on which router is active
+  // We cannot call v7 hooks when there's no v7 RouterProvider context
   if (USE_V7_LOCATION) {
-    return v7Result;
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useLocationV7Compat();
   }
-  return v3Result;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useLocationV3Compat();
 };
 
 /**
@@ -80,6 +80,7 @@ function useLocationV7Compat(): CompatLocation {
       ...location,
       query,
       searchParams,
+      action: "PUSH" as const,
     }),
     [location, query, searchParams],
   );
@@ -117,6 +118,7 @@ function useLocationV3Compat(): CompatLocation {
       key: v3Location?.key || "default",
       query,
       searchParams,
+      action: (v3Location?.action as "PUSH" | "REPLACE" | "POP") || "PUSH",
     }),
     [v3Location, query, searchParams],
   );

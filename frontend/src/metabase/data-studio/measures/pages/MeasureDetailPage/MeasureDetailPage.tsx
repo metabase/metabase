@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateMeasureMutation } from "metabase/api";
@@ -21,7 +20,6 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import type { MeasureTabUrls } from "../../types";
 
 type MeasureDetailPageProps = {
-  route: Route;
   measure: Measure;
   tabUrls: MeasureTabUrls;
   breadcrumbs: ReactNode;
@@ -29,7 +27,6 @@ type MeasureDetailPageProps = {
 };
 
 export function MeasureDetailPage({
-  route,
   measure,
   tabUrls,
   breadcrumbs,
@@ -135,7 +132,6 @@ export function MeasureDetailPage({
       {canWriteMeasures && (
         <LeaveRouteConfirmModal
           key={measure.id}
-          route={route}
           isEnabled={isDirty && !isSaving}
         />
       )}

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
@@ -15,13 +14,11 @@ type PublishedTableNewMeasurePageParams = {
 
 type PublishedTableNewMeasurePageProps = {
   params: PublishedTableNewMeasurePageParams;
-  route: Route;
   children?: ReactNode;
 };
 
 export function PublishedTableNewMeasurePage({
   params,
-  route,
 }: PublishedTableNewMeasurePageProps) {
   const tableId = Urls.extractEntityId(params.tableId);
 
@@ -39,7 +36,6 @@ export function PublishedTableNewMeasurePage({
 
   return (
     <NewMeasurePage
-      route={route}
       table={table}
       breadcrumbs={<PublishedTableMeasureBreadcrumbs table={table} />}
       getSuccessUrl={(measure) =>

@@ -1,56 +1,52 @@
 import type { Location } from "history";
 import { useEffect } from "react";
-import type { InjectedRouter, Route } from "react-router";
-import { withRouter } from "react-router";
 import { usePrevious } from "react-use";
 
-import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
+import { useBlockNavigation } from "metabase/routing/compat";
 
 import { LeaveConfirmModal } from "./LeaveConfirmModal";
 
 interface LeaveRouteConfirmModalProps {
   isEnabled: boolean;
   isLocationAllowed?: (location?: Location) => boolean;
-  route: Route;
-  router: InjectedRouter;
   onConfirm?: () => void;
   onOpenChange?: (opened: boolean) => void;
 }
 
-const LeaveRouteConfirmModalInner = ({
+/**
+ * Modal that confirms navigation away from the current route when there are
+ * unsaved changes.
+ *
+ * Uses useBlockNavigation which automatically obtains router/route from context.
+ */
+export const LeaveRouteConfirmModal = ({
   isEnabled,
   isLocationAllowed,
-  route,
-  router,
   onConfirm,
   onOpenChange,
 }: LeaveRouteConfirmModalProps) => {
-  const { opened, close, confirm } = useConfirmRouteLeaveModal({
+  const { isBlocked, cancel, proceed } = useBlockNavigation({
     isEnabled,
     isLocationAllowed,
-    route,
-    router,
   });
-  const previousIsOpened = usePrevious(opened);
+  const previousIsOpened = usePrevious(isBlocked);
 
   useEffect(() => {
-    if (previousIsOpened !== opened) {
-      onOpenChange?.(opened);
+    if (previousIsOpened !== isBlocked) {
+      onOpenChange?.(isBlocked);
     }
-  }, [opened, previousIsOpened, onOpenChange]);
+  }, [isBlocked, previousIsOpened, onOpenChange]);
 
   const handleConfirm = () => {
-    confirm();
+    proceed();
     onConfirm?.();
   };
 
   return (
     <LeaveConfirmModal
       onConfirm={handleConfirm}
-      onClose={close}
-      opened={opened}
+      onClose={cancel}
+      opened={isBlocked}
     />
   );
 };
-
-export const LeaveRouteConfirmModal = withRouter(LeaveRouteConfirmModalInner);

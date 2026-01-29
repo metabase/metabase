@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import type { Route, WithRouterProps } from "react-router";
+import type { WithRouterProps } from "react-router";
 import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -47,17 +47,12 @@ import { useSlowCardNotification } from "./use-slow-card-notification";
 interface DashboardAppProps
   extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
   dashboardId?: DashboardId;
-  route: Route;
 }
 
-type DashboardAppInnerProps = Pick<
-  DashboardAppProps,
-  "location" | "route" | "children"
->;
+type DashboardAppInnerProps = Pick<DashboardAppProps, "location" | "children">;
 
 function DashboardAppInner({
   location,
-  route,
   children,
 }: DashboardAppInnerProps) {
   useDashboardLocationSync({ location });
@@ -77,7 +72,7 @@ function DashboardAppInner({
   return (
     <>
       <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-        <DashboardLeaveConfirmationModal route={route} />
+        <DashboardLeaveConfirmationModal />
         <Dashboard />
         {/* For rendering modal urls */}
         {children}
@@ -93,7 +88,6 @@ export const DashboardApp = ({
   location,
   params,
   router,
-  route,
   dashboardId: _dashboardId,
   children,
 }: DashboardAppProps) => {
@@ -187,7 +181,7 @@ export const DashboardApp = ({
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardAppInner location={location} route={route}>
+        <DashboardAppInner location={location}>
           {children}
         </DashboardAppInner>
       </DashboardContextProvider>

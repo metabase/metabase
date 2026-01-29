@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -61,16 +60,10 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
     `${successUrl}/${segment.id}`;
 
   const { history } = renderWithProviders(
-    <Route
-      path="/"
-      component={() => (
-        <NewSegmentPage
-          route={{ path: "/" } as never}
-          table={table}
-          breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
-          getSuccessUrl={getSuccessUrl}
-        />
-      )}
+    <NewSegmentPage
+      table={table}
+      breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
+      getSuccessUrl={getSuccessUrl}
     />,
     {
       withRouter: true,

@@ -1,6 +1,4 @@
-import type { Location } from "history";
 import { useCallback } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
@@ -8,6 +6,11 @@ import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
+import {
+  useCompatLocation,
+  useCompatParams,
+  useNavigation,
+} from "metabase/routing/compat";
 
 import { resetPassword, validatePassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";
@@ -16,23 +19,19 @@ import { ResetPasswordForm } from "../ResetPasswordForm";
 
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
-interface ResetPasswordQueryParams {
-  token: string;
+type ResetPasswordQueryParams = {
+  token?: string;
   email?: string;
-}
+  [key: string]: string | undefined;
+};
 
-interface ResetPasswordProps {
-  params: ResetPasswordQueryParams;
-  location?: Location<{ redirect?: string; email?: string }>;
-}
-
-export const ResetPassword = ({
-  params,
-  location,
-}: ResetPasswordProps): JSX.Element | null => {
-  const { token } = params;
-  const redirectUrl = location?.query?.redirect;
-  const email = location?.query?.email;
+export const ResetPassword = (): JSX.Element | null => {
+  const params = useCompatParams<ResetPasswordQueryParams>();
+  const location = useCompatLocation();
+  const { replace } = useNavigation();
+  const token = params.token ?? "";
+  const redirectUrl = location.query?.redirect;
+  const email = location.query?.email;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const { data: status, isLoading } =
@@ -41,10 +40,10 @@ export const ResetPassword = ({
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
       await dispatch(resetPassword({ token, password })).unwrap();
-      dispatch(replace(redirectUrl || "/"));
+      replace(redirectUrl || "/");
       sendToast({ message: t`You've updated your password.` });
     },
-    [token, dispatch, redirectUrl, sendToast],
+    [token, dispatch, redirectUrl, sendToast, replace],
   );
 
   if (isLoading) {
