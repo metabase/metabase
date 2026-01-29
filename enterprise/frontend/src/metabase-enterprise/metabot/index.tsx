@@ -56,7 +56,7 @@ export function initializePlugin() {
       useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,
       useLazyMetabotGenerateContentQuery,
     });
-  } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
+  } else if (hasPremiumFeature("hosting")) {
     Object.assign(PLUGIN_METABOT, {
       getAdminRoutes: getAdminUpsellRoutes,
     });

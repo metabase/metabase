@@ -24,19 +24,14 @@
         (is (=? "Can only access Store API for Metabase Cloud instances."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
                                       {:terms_of_service true})))))
-    (testing "requires token feature 'offer-metabase-ai'"
-      (mt/with-premium-features #{:hosting}
-        (is (=? "Can only purchase add-ons for eligible subscriptions."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
-                                      {:terms_of_service true})))))
     (testing "requires current user being a store user"
-      (mt/with-premium-features #{:hosting :offer-metabase-ai}
+      (mt/with-premium-features #{:hosting}
         (is (=? "Only Metabase Store users can purchase add-ons."
                 (mt/user-http-request :crowberto :post 403 "ee/cloud-add-ons/metabase-ai"
                                       {:terms_of_service true})))))
     (testing "when all conditions are met"
       (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting :offer-metabase-ai :audit-app}
+        (mt/with-premium-features #{:hosting :audit-app}
           ;; FIXME: With `(mt/with-temporary-setting-values [token-status {:store-users [{:email (:email user)}]}])`,
           ;;  `(premium-features/token-status)` still returns `nil`; thus resort to `with-redefs`:
           (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})]
