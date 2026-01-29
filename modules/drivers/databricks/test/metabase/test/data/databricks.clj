@@ -88,9 +88,7 @@
 ;; Shared datasets are used in the CI testing as per discussion on QPD weekly. This makes the testing code simpler,
 ;; CI job faster and avoids reaching the quotas as it happened with Redshift.
 ;;
-;; If you need to add new dataset, first comment out (.setAutoCommit conn true) in
-;; `metabase.test.data.sql-jdbc.load-data/create-db-execute-server-statements!`.  Then, rebind the
-;; `*allow-database-creation*` and use standard functions, eg.:
+;; If you need to add new dataset, rebind the `*allow-database-creation*` and use standard functions, eg.:
 ;;
 ;; (mt/test-driver
 ;;   :databricks
