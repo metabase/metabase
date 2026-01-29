@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,7 +8,12 @@ import {
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
-import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
+import {
+  type Dashboard,
+  type RecentItem,
+  type VirtualDashboardCard,
+  isRecentCollectionItem,
+} from "metabase-types/api";
 
 import type { VisualizationProps } from "../types";
 
@@ -32,6 +37,20 @@ function DashCardPlaceholderInner({
     dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
     setQuestionPickerOpen(false);
   };
+
+  const recentFilter = useCallback(
+    (items: RecentItem[]) => {
+      return items.filter((item) => {
+        if (isRecentCollectionItem(item) && item.dashboard) {
+          if (item.dashboard.id !== dashboard.id) {
+            return false;
+          }
+        }
+        return true;
+      });
+    },
+    [dashboard.id],
+  );
 
   if (!isDashboard) {
     return null;
@@ -76,6 +95,7 @@ function DashCardPlaceholderInner({
           models={["card", "dataset", "metric"]}
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
+          recentFilter={recentFilter}
         />
       )}
     </>

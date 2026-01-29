@@ -133,6 +133,46 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
   });
 });
 
+describe("scenarios > dashboard cards > sections > questions from other dashboards (metabase#68612)", () => {
+  const questionInDashboardDetails = {
+    name: "Question In Dashboard",
+    query: { "source-table": 1, limit: 10 },
+    display: "table",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show questions from other dashboards in the recents tab", () => {
+    H.createDashboardWithQuestions({
+      dashboardDetails: { name: "Dashboard with question" },
+      questions: [questionInDashboardDetails],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+
+      H.createDashboard({ name: "New Dashboard" }).then(
+        ({ body: newDashboard }) => {
+          H.visitDashboard(newDashboard.id);
+
+          H.editDashboard();
+          addSection("KPIs w/ large chart below");
+
+          H.dashboardGrid()
+            .findAllByText("Select question")
+            .first()
+            .click({ force: true });
+
+          H.entityPickerModal()
+            .findByRole("tabpanel")
+            .should("not.contain", "Question In Dashboard");
+        },
+      );
+    });
+  });
+});
+
 function addSection(name) {
   cy.findByLabelText("Add section").click();
   H.menu().findByLabelText(name).click();
