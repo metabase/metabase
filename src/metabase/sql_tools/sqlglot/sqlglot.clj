@@ -1,3 +1,4 @@
+;; TODO: Rename or decompose or move sqlglot.core over here.
 (ns metabase.sql-tools.sqlglot.sqlglot
   "Interface to sqlglot Python library via GraalVM Polyglot.
 
