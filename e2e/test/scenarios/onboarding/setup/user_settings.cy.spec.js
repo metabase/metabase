@@ -131,7 +131,7 @@ describe("user > settings", () => {
     cy.findByLabelText("Nama depan").should("exist");
 
     // We need some UI element other than a string, and cannot get by labels as they could be translated
-    cy.icon("mode").should("exist");
+    H.getProfileLink().should("exist");
   });
 
   it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
@@ -145,7 +145,7 @@ describe("user > settings", () => {
             cy.request("PUT", `/api/user/${user.id}`, { locale });
             cy.visit("/");
             cy.wait("@getUser");
-            cy.icon("mode").should("exist");
+            H.getProfileLink().should("exist");
           });
         },
       );
@@ -301,9 +301,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
-          .findByRole("img")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
@@ -334,9 +333,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
-          .findByRole("img")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
