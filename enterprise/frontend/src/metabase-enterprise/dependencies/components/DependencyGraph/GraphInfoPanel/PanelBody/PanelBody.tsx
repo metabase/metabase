@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
@@ -47,7 +48,11 @@ function DescriptionSection({ node }: SectionProps) {
   }
 
   return (
-    <Box c={description ? "text-primary" : "text-secondary"} lh="h4">
+    <Box
+      className={CS.textWrap}
+      c={description ? "text-primary" : "text-secondary"}
+      lh="h4"
+    >
       {description.length > 0 ? description : t`No description`}
     </Box>
   );
@@ -111,13 +116,20 @@ function FieldsSection({ node }: SectionProps) {
 
   return (
     <Stack gap="md" lh="1rem">
-      <Title order={6}>{getNodeFieldsLabel(fields.length)}</Title>
+      <Title className={CS.textWrap} order={6}>
+        {getNodeFieldsLabel(fields.length)}
+      </Title>
       {fields.map((field, fieldIndex) => {
         const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
         const fieldIcon = getColumnIcon(fieldTypeInfo);
 
         return (
-          <Group key={fieldIndex} gap="sm" wrap="nowrap">
+          <Group
+            className={CS.textWrap}
+            key={fieldIndex}
+            gap="sm"
+            wrap="nowrap"
+          >
             <FixedSizeIcon name={fieldIcon} c="text-secondary" />
             {field.display_name}
           </Group>

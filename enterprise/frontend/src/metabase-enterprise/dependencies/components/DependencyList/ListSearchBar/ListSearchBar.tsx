@@ -3,19 +3,20 @@ import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { FixedSizeIcon, Flex, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 
 import type { DependencyFilterOptions } from "../../../types";
-import { getSearchQuery } from "../../../utils";
+import { areFilterOptionsEqual, getSearchQuery } from "../../../utils";
 import { FilterOptionsPicker } from "../../FilterOptionsPicker";
 import type { DependencyListMode } from "../types";
-import { getAvailableGroupTypes } from "../utils";
+import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";
 
 type ListSearchBarProps = {
   mode: DependencyListMode;
   query?: string;
   filterOptions: DependencyFilterOptions;
-  hasLoader: boolean;
+  isFetching: boolean;
+  isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
@@ -24,11 +25,17 @@ export const ListSearchBar = memo(function ListSearchBar({
   mode,
   query,
   filterOptions,
-  hasLoader,
+  isFetching,
+  isLoading,
   onQueryChange,
   onFilterOptionsChange,
 }: ListSearchBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
+  const hasLoader = isFetching && !isLoading;
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(mode),
+  );
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newSearchValue = event.target.value;
@@ -51,7 +58,7 @@ export const ListSearchBar = memo(function ListSearchBar({
   };
 
   return (
-    <Flex gap="md" align="center">
+    <Group gap="md" align="center" wrap="nowrap">
       <TextInput
         value={searchValue}
         placeholder={t`Search…`}
@@ -64,8 +71,10 @@ export const ListSearchBar = memo(function ListSearchBar({
       <FilterOptionsPicker
         filterOptions={filterOptions}
         availableGroupTypes={getAvailableGroupTypes(mode)}
+        isDisabled={isLoading}
+        hasDefaultFilterOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={handleFilterOptionsChange}
       />
-    </Flex>
+    </Group>
   );
 });

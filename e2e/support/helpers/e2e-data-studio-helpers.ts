@@ -2,6 +2,7 @@ import type { MeasureId, SegmentId, TableId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
+const { H } = cy;
 
 const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
@@ -22,6 +23,7 @@ export const DataStudio = {
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
+    pythonResults: () => cy.findByTestId("python-results"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
@@ -38,6 +40,7 @@ export const DataStudio = {
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
+    editor: () => cy.findByTestId("python-editor"),
   },
   Snippets: {
     newPage: newSnippetPage,
@@ -111,6 +114,10 @@ export const DataStudio = {
           .findByTestId("table-description-section")
           .findByPlaceholderText("No description"),
     },
+    openFilterPopover: () => {
+      cy.findByRole("button", { name: "Filter" }).click();
+      H.popover();
+    },
   },
   Library: {
     visit: () => {
@@ -130,27 +137,5 @@ export const DataStudio = {
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
-  },
-  Tasks: {
-    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
-    visitUnreferencedEntities: () =>
-      cy.visit("/data-studio/tasks/unreferenced"),
-    list: () => cy.findByTestId("dependency-list"),
-    searchInput: () => cy.findByTestId("dependency-list-search-input"),
-    filterButton: () => cy.findByTestId("dependency-filter-button"),
-    sidebar: () => cy.findByTestId("dependency-list-sidebar"),
-
-    Sidebar: {
-      get: () => cy.findByTestId("dependency-list-sidebar"),
-      header: () => cy.findByTestId("dependency-list-sidebar-header"),
-      locationSection: () => cy.findByRole("region", { name: "Location" }),
-      transformSection: () => cy.findByRole("region", { name: "Transform" }),
-      missingColumnsSection: () =>
-        cy.findByRole("region", { name: "Missing columns" }),
-      creationSection: () =>
-        cy.findByRole("region", { name: "Creator and last editor" }),
-      brokenDependentsSection: () =>
-        cy.findByRole("region", { name: "Broken dependents" }),
-    },
   },
 };

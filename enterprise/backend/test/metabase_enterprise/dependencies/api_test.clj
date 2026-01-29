@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
@@ -316,7 +317,7 @@
 
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check_transform"
-    (mt/with-premium-features #{:dependencies}
+    (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
         (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform" transform)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
@@ -663,7 +664,7 @@
 
 (deftest check-transform-permissions-test
   (testing "POST /api/ee/dependencies/check_transform requires read permissions on the input transform"
-    (mt/with-premium-features #{:dependencies}
+    (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform transform {:name "test transform"}]
         (testing "Returns 403 when user is not an admin (only admins can read transforms)"
           (is (= "You don't have permissions to do that."
@@ -2272,3 +2273,310 @@
       (create-dependent! base-card user "Should not appear")
       (is (=? [{:data {:name "A Match"}} {:data {:name "B Match"}} {:data {:name "C Match"}}]
               (get-dependents base-card-id :query "Match" :sort_column :name :sort_direction :asc))))))
+
+(deftest ^:sequential node-errors-filtering-test
+  (testing "node-errors filters by source visibility"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Collection {coll-id :id}     {}
+                     :model/Card       {card-id :id}     {:collection_id coll-id}
+                     :model/Card       {visible-src :id} {:collection_id coll-id}
+                     :model/Card       {archived-src :id} {:collection_id coll-id :archived true}]
+        ;; Create errors: one with visible source, one with archived source, one with nil source
+        (t2/insert! :model/AnalysisFindingError
+                    [{:analyzed_entity_type "card"
+                      :analyzed_entity_id   card-id
+                      :source_entity_type   "card"
+                      :source_entity_id     visible-src
+                      :error_type           "missing-column"
+                      :error_detail         "col1"}
+                     {:analyzed_entity_type "card"
+                      :analyzed_entity_id   card-id
+                      :source_entity_type   "card"
+                      :source_entity_id     archived-src
+                      :error_type           "missing-column"
+                      :error_detail         "col2"}
+                     {:analyzed_entity_type "card"
+                      :analyzed_entity_id   card-id
+                      :source_entity_type   nil
+                      :source_entity_id     nil
+                      :error_type           "invalid-query"}])
+        (let [result      (#'deps.api/node-errors {:card [card-id]})
+              card-errors (get result [:card card-id])]
+          (testing "includes errors with visible source"
+            (is (contains? card-errors {:type :missing-column :detail "col1"})))
+          (testing "excludes errors with archived source"
+            (is (not (contains? card-errors {:type :missing-column :detail "col2"}))))
+          (testing "includes errors with nil source"
+            (is (contains? card-errors {:type :invalid-query}))))))))
+
+(deftest ^:sequential node-downstream-errors-filtering-test
+  (testing "node-downstream-errors filters by analyzed entity visibility"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Collection {coll-id :id}       {}
+                     :model/Card       {source-card :id}   {:collection_id coll-id}
+                     :model/Card       {visible-card :id}  {:collection_id coll-id}
+                     :model/Card       {archived-card :id} {:collection_id coll-id :archived true}]
+        ;; Create errors: one with visible analyzed entity, one with archived analyzed entity
+        (t2/insert! :model/AnalysisFindingError
+                    [{:analyzed_entity_type "card"
+                      :analyzed_entity_id   visible-card
+                      :source_entity_type   "card"
+                      :source_entity_id     source-card
+                      :error_type           "missing-column"}
+                     {:analyzed_entity_type "card"
+                      :analyzed_entity_id   archived-card
+                      :source_entity_type   "card"
+                      :source_entity_id     source-card
+                      :error_type           "missing-column"}])
+        (let [result      (#'deps.api/node-downstream-errors {:card [source-card]})
+              card-errors (get result [:card source-card])]
+          (testing "includes errors with visible analyzed entity"
+            (is (= 1 (count card-errors))))
+          (testing "the included error is the visible one"
+            (is (= visible-card (:analyzed_entity_id (first card-errors))))))))))
+
+(deftest ^:sequential broken-endpoint-error-visibility-filtering-test
+  (testing "GET /api/ee/dependencies/graph/broken - pagination and sorting work with error visibility filtering"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a archived-dep-b]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-a (create-model-card! user "A Model - errvistest")
+                        model-card-b (create-model-card! user "B Model - errvistest")
+                        ;; Create visible dependents
+                        visible-dep-a (create-dependent-card-on-model! user model-card-a "Visible Dep A - errvistest")
+                        visible-dep-b (create-dependent-card-on-model! user model-card-b "Visible Dep B - errvistest")
+                        ;; Create archived dependents
+                        archived-dep-a (create-dependent-card-on-model! user model-card-a "Archived Dep A - errvistest")
+                        archived-dep-b (create-dependent-card-on-model! user model-card-b "Archived Dep B - errvistest")]
+                    [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a archived-dep-b]))]
+            ;; Archive the archived dependents
+            (t2/update! :model/Card (:id archived-dep-a) {:archived true})
+            (t2/update! :model/Card (:id archived-dep-b) {:archived true})
+            ;; Break both models
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card-a)
+              (break-model-card! model-card-b))
+            ;; Run analysis to detect broken references
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id visible-dep-a))
+              (run-analysis-for-card! (:id visible-dep-b))
+              (run-analysis-for-card! (:id archived-dep-a))
+              (run-analysis-for-card! (:id archived-dep-b)))
+            (testing "pagination works correctly with error filtering"
+              ;; Both model cards should appear in results with only visible errors
+              (let [page-1 (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/broken"
+                                                 :types "card"
+                                                 :query "errvistest"
+                                                 :offset 0
+                                                 :limit 1
+                                                 :sort_column "name"
+                                                 :sort_direction "asc")
+                    page-2 (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/broken"
+                                                 :types "card"
+                                                 :query "errvistest"
+                                                 :offset 1
+                                                 :limit 1
+                                                 :sort_column "name"
+                                                 :sort_direction "asc")]
+                (testing "total count reflects all breaking entities"
+                  (is (= 2 (:total page-1)))
+                  (is (= 2 (:total page-2))))
+                (testing "pagination returns different entities"
+                  (is (= (:id model-card-a) (-> page-1 :data first :id)))
+                  (is (= (:id model-card-b) (-> page-2 :data first :id))))))
+            (testing "dependents_errors contains only errors for visible entities"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   "ee/dependencies/graph/broken"
+                                                   :types "card"
+                                                   :query "errvistest")
+                    model-a-result (first (filter #(= (:id %) (:id model-card-a)) (:data response)))
+                    model-b-result (first (filter #(= (:id %) (:id model-card-b)) (:data response)))
+                    model-a-error-entities (set (map :analyzed_entity_id (:dependents_errors model-a-result)))
+                    model-b-error-entities (set (map :analyzed_entity_id (:dependents_errors model-b-result)))]
+                (testing "errors for visible dependents are included"
+                  (is (contains? model-a-error-entities (:id visible-dep-a)))
+                  (is (contains? model-b-error-entities (:id visible-dep-b))))
+                (testing "errors for archived dependents are excluded"
+                  (is (not (contains? model-a-error-entities (:id archived-dep-a))))
+                  (is (not (contains? model-b-error-entities (:id archived-dep-b)))))))
+            (testing "sorting by dependents-errors works with filtering"
+              ;; Add extra errors to model-b so it has more visible errors
+              (t2/insert! :model/AnalysisFindingError
+                          {:analyzed_entity_type "card"
+                           :analyzed_entity_id   (:id visible-dep-b)
+                           :source_entity_type   "card"
+                           :source_entity_id     (:id model-card-b)
+                           :error_type           "missing-column"
+                           :error_detail         "extra_col"})
+              (let [asc-response (mt/user-http-request :crowberto :get 200
+                                                       "ee/dependencies/graph/broken"
+                                                       :types "card"
+                                                       :query "errvistest"
+                                                       :sort_column "dependents-errors"
+                                                       :sort_direction "asc")
+                    desc-response (mt/user-http-request :crowberto :get 200
+                                                        "ee/dependencies/graph/broken"
+                                                        :types "card"
+                                                        :query "errvistest"
+                                                        :sort_column "dependents-errors"
+                                                        :sort_direction "desc")]
+                (testing "ascending order puts fewer errors first"
+                  (is (= (:id model-card-a) (-> asc-response :data first :id))))
+                (testing "descending order puts more errors first"
+                  (is (= (:id model-card-b) (-> desc-response :data first :id))))))))))))
+
+(deftest ^:sequential broken-endpoint-sort-by-visible-errors-only-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting counts only visible errors, not archived"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Setup: Model A has fewer VISIBLE errors but more TOTAL errors (due to archived dependents)
+          ;;        Model B has more VISIBLE errors but fewer TOTAL errors
+          ;; If sorting counts all errors: A (3 total) > B (2 total) -> B first in asc
+          ;; If sorting counts only visible: A (1 visible) < B (2 visible) -> A first in asc
+          (let [[model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-a (create-model-card! user "A Model - sortviserr")
+                        model-card-b (create-model-card! user "B Model - sortviserr")
+                        visible-dep-a (create-dependent-card-on-model! user model-card-a "Visible Dep A - sortviserr")
+                        visible-dep-b (create-dependent-card-on-model! user model-card-b "Visible Dep B - sortviserr")
+                        archived-dep-a-1 (create-dependent-card-on-model! user model-card-a "Archived Dep A1 - sortviserr")
+                        archived-dep-a-2 (create-dependent-card-on-model! user model-card-a "Archived Dep A2 - sortviserr")]
+                    [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]))]
+            ;; Archive model-a's extra dependents
+            (t2/update! :model/Card (:id archived-dep-a-1) {:archived true})
+            (t2/update! :model/Card (:id archived-dep-a-2) {:archived true})
+            ;; Insert errors directly to ensure we control exactly what's in the DB
+            ;; Model A: 1 visible error, 2 archived errors = 3 total
+            ;; Model B: 2 visible errors = 2 total
+            (t2/insert! :model/AnalysisFindingError
+                        [{:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-a)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col1"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id archived-dep-a-1)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col2"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id archived-dep-a-2)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col3"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-b)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-b)
+                          :error_type           "missing-column"
+                          :error_detail         "col4"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-b)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-b)
+                          :error_type           "missing-column"
+                          :error_detail         "col5"}])
+            (let [asc-response (mt/user-http-request :crowberto :get 200
+                                                     "ee/dependencies/graph/broken"
+                                                     :types "card"
+                                                     :query "sortviserr"
+                                                     :sort_column "dependents-errors"
+                                                     :sort_direction "asc")]
+              (testing "ascending order should put A first (1 visible error < 2 visible errors)"
+                ;; BUG: Without fix, this fails because sort counts total errors (A=3, B=2)
+                ;; so B comes first. With fix, sort counts visible errors (A=1, B=2) so A comes first.
+                (is (= (:id model-card-a) (-> asc-response :data first :id)))))))))))
+
+(deftest ^:sequential unreferenced-pagination-with-archived-items-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - pagination works correctly with archived items"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency]
+        (mt/with-temp [:model/Card _              {:name "A Card - unreftest" :archived true}
+                       :model/Card {card2-id :id} {:name "B Card - unreftest"}
+                       :model/Card {card3-id :id} {:name "C Card - unreftest"}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :types "card"
+                                               :query "unreftest"
+                                               :offset 0
+                                               :limit 2
+                                               :sort_column "name"
+                                               :sort_direction "asc")]
+            (is (=? {:data   [{:id card2-id} {:id card3-id}]
+                     :total  2
+                     :offset 0
+                     :limit  2}
+                    response))))))))
+
+(deftest ^:sequential unreferenced-pagination-with-archived-dependents-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - should return items if all dependents are archived"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency]
+        (mt/with-temp [:model/Card {card1-id :id, :as card1} {:name "A Card - unreftest"}
+                       :model/Card card2                     {:name "B Card - unreftest"}
+                       :model/Card _                         {:name "C Card - unreftest"
+                                                              :dataset_query (wrap-card-query card1)
+                                                              :archived true}
+                       :model/Card {card4-id :id}            {:name "D Card - unreftest"
+                                                              :dataset_query (wrap-card-query card2)}
+                       :model/Card _                         {:name "E Card - unreftest"
+                                                              :dataset_query (wrap-card-query card2)
+                                                              :archived true}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :types "card"
+                                               :query "unreftest"
+                                               :sort_column "name"
+                                               :sort_direction "asc")]
+            (is (=? {:data  [{:id card1-id}, {:id card4-id}]
+                     :total 2}
+                    response))))))))
+
+;;; ------------------------------------------------ Table API Tests -------------------------------------------------
+;;; Tests for dependency-related filtering on the /api/table endpoint
+
+(deftest unused-only-filter-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "GET /api/table?unused-only=true"
+      (testing "filters tables that have no non-transform dependents"
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {table-1-id :id} {:db_id db-id, :name "table_1", :active true}
+                       :model/Table {table-2-id :id} {:db_id db-id, :name "table_2", :active true}]
+          (testing "both tables returned without filter"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table")
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (testing "both tables returned with unused_only=false"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (mt/with-temp [:model/Card card {:database_id   db-id
+                                           :table_id      table-1-id
+                                           :dataset_query {:database db-id
+                                                           :type     :query
+                                                           :query    {:source-table table-1-id}}}]
+            (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
+            (testing "after creating card that depends on table-1, only table-2 is unused"
+              (is (= #{table-2-id}
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only true)
+                          (filter #(= (:db_id %) db-id))
+                          (map :id)
+                          set))))))))))

@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 
 import { Box, Flex, Loader, Text } from "metabase/ui";
@@ -11,24 +11,28 @@ import type {
 
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 import { CollectionSyncRow } from "../CollectionSyncRow";
+import { TransformsSyncRow } from "../TransformsSyncRow";
+
+import S from "./CollectionSyncList.module.css";
 
 interface CollectionSyncListProps {
   collections: CollectionItem[];
-  isLoading: boolean;
-  error: string | null;
   emptyMessage: string;
+  error: string | null;
+  isLoading: boolean;
+  showTransformsRow?: boolean;
 }
 
 export const CollectionSyncList = ({
   collections,
-  isLoading,
-  error,
   emptyMessage,
+  error,
+  isLoading,
+  showTransformsRow,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
 
-  const syncMap: CollectionSyncPreferences = values[COLLECTIONS_KEY] ?? {};
   const currentType = values[TYPE_KEY];
   const isReadOnly = currentType === "read-only";
   const previousType = usePrevious(currentType);
@@ -48,6 +52,37 @@ export const CollectionSyncList = ({
     [setFieldValue],
   );
 
+  const syncRows = useMemo(() => {
+    const syncMap: CollectionSyncPreferences = values[COLLECTIONS_KEY] ?? {};
+    const rowsItems = collections.map((collection) => (
+      <CollectionSyncRow
+        key={collection.id}
+        collection={collection}
+        isChecked={syncMap[collection.id] ?? false}
+        onToggle={handleToggle}
+        isReadOnly={isReadOnly}
+      />
+    ));
+
+    if (showTransformsRow) {
+      const transformsRow = (
+        <TransformsSyncRow key="transforms" isReadOnly={isReadOnly} />
+      );
+      const libraryIndex = collections.findIndex(
+        (collection) => collection.type === "library",
+      );
+
+      // Insert transforms row before library collection or as last item
+      if (libraryIndex !== -1) {
+        rowsItems.splice(libraryIndex + 1, 0, transformsRow);
+      } else {
+        rowsItems.push(transformsRow);
+      }
+    }
+
+    return rowsItems;
+  }, [collections, handleToggle, isReadOnly, showTransformsRow, values]);
+
   if (isLoading) {
     return (
       <Flex justify="center" py="lg">
@@ -60,29 +95,9 @@ export const CollectionSyncList = ({
     return <Text c="error">{error}</Text>;
   }
 
-  if (collections.length === 0) {
+  if (!syncRows.length) {
     return <Text c="text-secondary">{emptyMessage}</Text>;
   }
 
-  return (
-    <Box
-      bg="background-primary"
-      style={{
-        borderRadius: "var(--mantine-radius-md)",
-        border: "1px solid var(--mb-color-border)",
-        overflow: "hidden",
-      }}
-    >
-      {collections.map((collection, index) => (
-        <CollectionSyncRow
-          key={collection.id}
-          collection={collection}
-          isChecked={syncMap[collection.id] ?? false}
-          onToggle={handleToggle}
-          isLast={index === collections.length - 1}
-          isReadOnly={isReadOnly}
-        />
-      ))}
-    </Box>
-  );
+  return <Box className={S.collectionSyncList}>{syncRows}</Box>;
 };

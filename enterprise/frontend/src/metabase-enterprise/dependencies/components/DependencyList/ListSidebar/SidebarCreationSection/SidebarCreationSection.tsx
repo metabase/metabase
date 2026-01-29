@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
 import { getUserName } from "metabase/lib/user";
 import { Box, Card, Group, Stack } from "metabase/ui";
@@ -72,7 +72,7 @@ function UserSection({ label, name, date }: UserSectionProps) {
         <Box className={CS.textWrap} c="text-primary">
           {name}
         </Box>
-        <DateTime value={date} unit="day" />
+        <DateTime className={CS.textNoWrap} value={date} unit="day" />
       </Group>
     </Stack>
   );

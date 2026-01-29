@@ -524,8 +524,13 @@
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))]
-    (merge fields segments)))
+                            {["Segment" segment-id] {"Table" id}}))
+        measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
+                                                              {:where [:and
+                                                                       [:= :table_id id]
+                                                                       (when skip-archived [:not :archived])]})]
+                            {["Measure" measure-id] {"Table" id}}))]
+    (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]

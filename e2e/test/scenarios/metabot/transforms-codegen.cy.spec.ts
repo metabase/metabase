@@ -10,7 +10,7 @@ const SOURCE_TABLE = "Animals";
 const visitTransformListPage = () => cy.visit("/data-studio/transforms");
 
 const suggestions = () => cy.findAllByTestId("metabot-chat-suggestion");
-// eslint-disable-next-line no-unsafe-element-filtering
+// eslint-disable-next-line metabase/no-unsafe-element-filtering
 const lastSuggestion = () => suggestions().last();
 
 const viewLastSuggestion = () =>

@@ -554,3 +554,59 @@ serdes/meta:
             "")
           entity-id
           (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-measure-yaml
+  "Generates YAML content for a measure with the given `measure-name`, `table-name`, and `db-name`.
+  Optional keyword args include `:schema`, `:description`, `:entity-id`, and `:agg-field-name`
+  for the aggregation field. Returns a string containing the YAML representation of the measure."
+  [measure-name table-name db-name & {:keys [schema description entity-id agg-field-name]
+                                      :or {description "Test measure"
+                                           agg-field-name "Some Field"}}]
+  (let [eid (or entity-id measure-name)]
+    (format "archived: false
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+definition:
+  database: %s
+  query:
+    aggregation:
+    - - sum
+      - - field
+        - - %s
+          - %s
+          - %s
+          - %s
+        - null
+    source-table:
+    - %s
+    - %s
+    - %s
+  type: query
+description: %s
+entity_id: %s
+name: %s
+table_id:
+- %s
+- %s
+- %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: Measure
+"
+            db-name
+            db-name
+            (or schema "null")
+            table-name
+            agg-field-name
+            db-name
+            (or schema "null")
+            table-name
+            description
+            eid
+            measure-name
+            db-name
+            (or schema "null")
+            table-name
+            eid
+            (str/replace (u/lower-case-en measure-name) #"\s+" "_"))))

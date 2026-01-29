@@ -2163,3 +2163,30 @@
             (fn [^Connection conn]
               (with-open [stmt (.createStatement conn)]
                 (.execute stmt "SELECT pg_sleep(6)")))))))))
+
+(deftest ^:parallel parse-final-identifier-test
+  (mt/test-driver
+    :postgres
+
+    (testing "`final` is allowed as identifier and parsed correctly"
+      (mt/with-temp [:model/Database db {:engine "postgres"
+                                         :name "final"
+                                         :initial_sync_status "complete"}
+                     :model/Table t {:name "final"
+                                     :schema "public"
+                                     :db_id (:id db)}
+                     :model/Field _ {:name "final"
+                                     :table_id (:id t)}]
+        (mt/with-db
+          db
+          (let [mp (mt/metadata-provider)
+                query (lib/native-query mp "select final from final")
+                broken-query (lib/native-query mp "select final, xix from final")]
+            (is (=? #{{:table (:id t)}}
+                    (driver/native-query-deps :postgres query)))
+            (is (=? [{:name "final"
+                      :lib/desired-column-alias "final"}]
+                    (driver/native-result-metadata :postgres query)))
+            (is (=? {:type :missing-column
+                     :name "xix"}
+                    (first (driver/validate-native-query-fields :postgres broken-query))))))))))

@@ -2,9 +2,9 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import SelectList from "metabase/common/components/SelectList";
+import { SelectList } from "metabase/common/components/SelectList";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";

@@ -1,6 +1,7 @@
 import { sql } from "@codemirror/lang-sql";
 import { useLayoutEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
+import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -54,11 +55,12 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
     [content, snippet],
   );
 
+  const previousSnippet = usePreviousDistinct(snippet);
   useLayoutEffect(() => {
-    if (snippet) {
+    if (snippet && previousSnippet?.id !== snippet.id) {
       setContent(snippet.content);
     }
-  }, [snippet]);
+  }, [snippet, previousSnippet]);
 
   const handleSave = async () => {
     if (!snippet) {

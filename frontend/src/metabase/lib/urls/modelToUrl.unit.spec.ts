@@ -95,4 +95,25 @@ describe("urls > modelToUrl", () => {
       }),
     ).toBe("/question#?db=456&table=789&segment=123");
   });
+
+  it("should return a measure URL for a measure", () => {
+    expect(
+      modelToUrl({
+        model: "measure",
+        name: "My Cool Measure",
+        id: 123,
+        table_id: 456,
+      }),
+    ).toBe("/data-studio/library/tables/456/measures/123");
+  });
+
+  it("should return 404 for a measure without table_id", () => {
+    expect(
+      modelToUrl({
+        model: "measure",
+        name: "My Cool Measure",
+        id: 123,
+      }),
+    ).toBe("/404");
+  });
 });

@@ -315,13 +315,14 @@
   Returns a compound [:or ...] clause checking whether entities at those columns are readable.
 
   Handles different entity types:
-  - Superuser-only (:model/Transform, :model/Sandbox): Only if api/*is-superuser?* is true
+  - Superuser-only (:model/Sandbox): Only if api/*is-superuser?* is true
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
   - Table: Uses perms/visible-table-filter-select with appropriate permissions and filters by active/visibility_type.
     Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
-    Note: archived_at is not checked separately as archived tables always have active=false."
+    Note: archived_at is not checked separately as archived tables always have active=false.
+  - Transform: Analysts can view any transform they have source view permission to."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
   ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]
@@ -330,12 +331,32 @@
                  (let [table-name (t2/table-name model)
                        id-column (keyword (name table-name) "id")]
                    (case model
-                     ;; Superuser-only entities
-                     (:model/Transform :model/Sandbox)
+                     ;; Sandbox is superuser-only
+                     :model/Sandbox
                      (when api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id] :from [table-name]}]])
+
+                     :model/Transform
+                     (cond
+                       api/*is-superuser?*
+                       [:and
+                        [:= entity-type-field (name entity-type)]
+                        [:in entity-id-field {:select [:id] :from [table-name]}]]
+
+                       api/*is-data-analyst?*
+                       [:and
+                        [:= entity-type-field (name entity-type)]
+                        [:in entity-id-field
+                         {:select [:id]
+                          :from   [table-name]
+                          :where  [:in :source_database_id
+                                   (perms/visible-database-filter-select
+                                    {:user-id          api/*current-user-id*
+                                     :is-superuser?    api/*is-superuser?*
+                                     :is-data-analyst? api/*is-data-analyst?*}
+                                    {:perms/create-queries [:query-builder :query-builder-and-native]})]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
@@ -347,41 +368,41 @@
                          [:and
                           [:= entity-type-field (name entity-type)]
                           [:in entity-id-field {:select [:id]
-                                                :from [table-name]
-                                                :where [:and
-                                                        ;; Filter by collection visibility
-                                                        (collection/visible-collection-filter-clause
-                                                         (keyword (name table-name) "collection_id")
-                                                         {:include-archived-items include-archived-items}
-                                                         {:current-user-id api/*current-user-id*
-                                                          :is-superuser? api/*is-superuser?*})
-                                                        ;; Filter by entity archived status
-                                                        (case include-archived-items
-                                                          :exclude [:= archived-column false]
-                                                          :only    [:= archived-column true]
-                                                          :all     nil)]}]]))
+                                                :from   [table-name]
+                                                :where  [:and
+                                                         ;; Filter by collection visibility
+                                                         (collection/visible-collection-filter-clause
+                                                          (keyword (name table-name) "collection_id")
+                                                          {:include-archived-items include-archived-items}
+                                                          {:current-user-id api/*current-user-id*
+                                                           :is-superuser?   api/*is-superuser?*})
+                                                         ;; Filter by entity archived status
+                                                         (case include-archived-items
+                                                           :exclude [:= archived-column false]
+                                                           :only [:= archived-column true]
+                                                           :all nil)]}]]))
 
                      ;; Table with visible-filter-clause and active/visibility_type filtering
                      :model/Table
-                     (let [active-column (keyword (name table-name) "active")
+                     (let [active-column          (keyword (name table-name) "active")
                            visibility-type-column (keyword (name table-name) "visibility_type")]
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id]
-                                              :from [table-name]
-                                              :where [:and
-                                                      [:in id-column
-                                                       (perms/visible-table-filter-select
-                                                        :id
-                                                        {:user-id api/*current-user-id*
-                                                         :is-superuser? api/*is-superuser?*}
-                                                        {:perms/view-data :unrestricted
-                                                         :perms/create-queries :query-builder})]
-                                                      (case include-archived-items
-                                                        :exclude [:and
-                                                                  [:= active-column true]
-                                                                  [:= visibility-type-column nil]]
-                                                        (:only :all) nil)]}]])
+                                              :from   [table-name]
+                                              :where  [:and
+                                                       [:in id-column
+                                                        (perms/visible-table-filter-select
+                                                         :id
+                                                         {:user-id       api/*current-user-id*
+                                                          :is-superuser? api/*is-superuser?*}
+                                                         {:perms/view-data      :unrestricted
+                                                          :perms/create-queries :query-builder})]
+                                                       (case include-archived-items
+                                                         :exclude [:and
+                                                                   [:= active-column true]
+                                                                   [:= visibility-type-column nil]]
+                                                         (:only :all) nil)]}]])
 
                      ;; Segment/Measure with table permissions and archived filtering
                      (:model/Segment :model/Measure)
@@ -390,27 +411,27 @@
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id]
-                                              :from [table-name]
-                                              :where [:and
-                                                      ;; Check that user can see the table this entity belongs to
-                                                      [:in table-id-column
-                                                       {:select [:metabase_table.id]
-                                                        :from [:metabase_table]
-                                                        ;; using this clause because we had to change the mi/visible-filter-clause
-                                                        ;; to allow returning CTE based filters
-                                                        ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                                        :where [:in :metabase_table.id
-                                                                (perms/visible-table-filter-select
-                                                                 :id
-                                                                 {:user-id api/*current-user-id*
-                                                                  :is-superuser? api/*is-superuser?*}
-                                                                 {:perms/view-data :unrestricted
-                                                                  :perms/create-queries :query-builder})]}]
-                                                      ;; Filter by archived status
-                                                      (case include-archived-items
-                                                        :exclude [:= archived-column false]
-                                                        :only [:= archived-column true]
-                                                        :all nil)]}]])))))
+                                              :from   [table-name]
+                                              :where  [:and
+                                                       ;; Check that user can see the table this entity belongs to
+                                                       [:in table-id-column
+                                                        {:select [:metabase_table.id]
+                                                         :from   [:metabase_table]
+                                                         ;; using this clause because we had to change the mi/visible-filter-clause
+                                                         ;; to allow returning CTE based filters
+                                                         ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
+                                                         :where  [:in :metabase_table.id
+                                                                  (perms/visible-table-filter-select
+                                                                   :id
+                                                                   {:user-id       api/*current-user-id*
+                                                                    :is-superuser? api/*is-superuser?*}
+                                                                   {:perms/view-data      :unrestricted
+                                                                    :perms/create-queries :query-builder})]}]
+                                                       ;; Filter by archived status
+                                                       (case include-archived-items
+                                                         :exclude [:= archived-column false]
+                                                         :only [:= archived-column true]
+                                                         :all nil)]}]])))))
          deps.dependency-types/dependency-type->model)))
 
 (defn- broken-entities-filter-clause
@@ -477,14 +498,18 @@
 
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
+   Filters out errors where the analyzed entity is not visible to the current user.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
    the entity is causing in other entities that depend on it."
   [nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
               (let [finding-errors (t2/select :model/AnalysisFindingError
-                                              :source_entity_type source-type
-                                              :source_entity_id [:in ids])]
+                                              {:where [:and
+                                                       [:= :source_entity_type (name source-type)]
+                                                       [:in :source_entity_id ids]
+                                                       (visible-entities-filter-clause
+                                                        :analyzed_entity_type :analyzed_entity_id)]})]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
                             identity conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -493,6 +518,7 @@
 
 (defn- node-errors
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
+   Filters out errors where the source entity is not visible to the current user.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
   [nodes-by-type]
   (letfn [(normalize-finding-error
@@ -502,8 +528,13 @@
           (errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
               (let [finding-errors (t2/select :model/AnalysisFindingError
-                                              :analyzed_entity_type type
-                                              :analyzed_entity_id [:in ids])]
+                                              {:where [:and
+                                                       [:= :analyzed_entity_type (name type)]
+                                                       [:in :analyzed_entity_id ids]
+                                                       [:or
+                                                        [:= :source_entity_type nil]
+                                                        (visible-entities-filter-clause
+                                                         :source_entity_type :source_entity_id)]]})]
                 (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
                             normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -758,20 +789,28 @@
                         (:segment :measure) :table.display_name)}))
 
 (defn- query-type-join-and-filter
-  [query-type entity-type]
+  [query-type entity-type {:keys [include-archived-items]}]
   (case query-type
     :unreferenced {:join [:dependency [:and
                                        [:= :dependency.to_entity_id :entity.id]
-                                       [:= :dependency.to_entity_type (name entity-type)]]]
-                   :filter [:= :dependency.id nil]}
+                                       [:= :dependency.to_entity_type (name entity-type)]
+                                       (visible-entities-filter-clause
+                                        :dependency.from_entity_type
+                                        :dependency.from_entity_id
+                                        {:include-archived-items include-archived-items})]]
+                   :join-filter [:= :dependency.id nil]}
     :broken {:join [:analysis_finding [:and
                                        [:= :analysis_finding.analyzed_entity_id :entity.id]
                                        [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-             :filter [:= :analysis_finding.result false]}
+             :join-filter [:= :analysis_finding.result false]}
     :breaking {:join [:analysis_finding_error [:and
                                                [:= :analysis_finding_error.source_entity_id :entity.id]
-                                               [:= :analysis_finding_error.source_entity_type (name entity-type)]]]
-               :filter [:!= :analysis_finding_error.id nil]}))
+                                               [:= :analysis_finding_error.source_entity_type (name entity-type)]
+                                               (visible-entities-filter-clause
+                                                :analysis_finding_error.analyzed_entity_type
+                                                :analysis_finding_error.analyzed_entity_id
+                                                {:include-archived-items include-archived-items})]]
+               :join-filter [:!= :analysis_finding_error.id nil]}))
 
 (defn- location-joins-for-entity
   "Returns the set of join keywords needed for location-based operations."
@@ -840,7 +879,9 @@
                                       :from [:analysis_finding_error]
                                       :where [:and
                                               [:= :source_entity_id :entity.id]
-                                              [:= :source_entity_type (name entity-type)]]}
+                                              [:= :source_entity_type (name entity-type)]
+                                              (visible-entities-filter-clause
+                                               :analyzed_entity_type :analyzed_entity_id)]}
                         :sort-joins #{}}
     :dependents-with-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
                                                                           [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
@@ -848,7 +889,9 @@
                                            :from [:analysis_finding_error]
                                            :where [:and
                                                    [:= :source_entity_id :entity.id]
-                                                   [:= :source_entity_type (name entity-type)]]}
+                                                   [:= :source_entity_type (name entity-type)]
+                                                   (visible-entities-filter-clause
+                                                    :analyzed_entity_type :analyzed_entity_id)]}
                              :sort-joins #{}}
     {:sort-column name-column
      :sort-joins #{}}))
@@ -863,11 +906,14 @@
     (:table joins) (conj [:metabase_table :table] [:= :entity.table_id :table.id])))
 
 (defn- dependency-items-query
-  [{:keys [query-type entity-type sort-column] :as params}]
+  [{:keys [query-type entity-type sort-column include-archived-items] :as params}]
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        {:keys [join filter]} (query-type-join-and-filter query-type entity-type)
+        {:keys [join join-filter]} (query-type-join-and-filter query-type entity-type
+                                                               {:include-archived-items include-archived-items})
         {:keys [filters filter-joins]} (build-optional-filters params config)
         {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
+        visible-filter (visible-entities-filter-clause (name entity-type) :entity.id
+                                                       {:include-archived-items include-archived-items})
         all-required-joins (set/union filter-joins sort-joins)
         select-clause [[[:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
@@ -875,7 +921,7 @@
     {(if (= query-type :breaking) :select-distinct :select) select-clause
      :from [[table-name :entity]]
      :left-join (build-left-joins join all-required-joins)
-     :where (into [:and filter] (keep identity) filters)}))
+     :where (into [:and join-filter visible-filter] (keep identity) filters)}))
 
 (def ^:private breaking-items-sort-columns
   "Valid sort columns for /graph/broken and /graph/unreferenced endpoints."

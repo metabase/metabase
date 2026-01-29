@@ -5,7 +5,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -46,8 +45,7 @@
             (when-not icon
               {:icon timeline-event/default-icon}))]
     (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
-      (when config/ee-available?
-        (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*})))))
+      (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -123,8 +121,7 @@
     (when (and (some? archived) (not= current-archived archived))
       (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
     (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)
-      (when config/ee-available?
-        (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*})))))
+      (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -136,8 +133,7 @@
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
     (t2/delete! :model/Timeline :id id)
-    (when config/ee-available?
-      (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*})))
+    (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

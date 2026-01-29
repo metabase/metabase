@@ -23,11 +23,6 @@
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
-(defn- all-top-level-remote-synced-collections
-  "Returns a vector of primary keys for all top-level remote-synced collections."
-  []
-  (t2/select-pks-vec :model/Collection :is_remote_synced true))
-
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
   inserts new ones for each imported entity, marking them as 'synced' with the given timestamp.
@@ -49,25 +44,32 @@
   entity-id based model, deletes entities whose entity_id is not in the imported set.
 
   Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
-  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id."
+  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
+
+  Uses specs-for-deletion to process models in dependency order (models with FK references to
+  Collection are deleted before Collection itself)."
   [synced-collection-ids imported-entities-by-model]
-  (doseq [[model-key model-spec] (spec/specs-by-identity-type :entity-id)
+  (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :let [serdes-model (:model-type model-spec)
                 entity-ids (get imported-entities-by-model serdes-model [])
                 entity-id-clause (if (seq entity-ids)
                                    [:not-in entity-ids]
                                    :entity_id)
                 ;; :scope-key determines collection scoping - nil means global
-                scope-key (get-in model-spec [:removal :scope-key])]]
+                scope-key (get-in model-spec [:removal :scope-key])
+                ;; Extra conditions to protect certain rows from removal (e.g. built-in TransformTags)
+                extra-conditions (into [] cat (get-in model-spec [:removal :conditions]))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
       (when (seq synced-collection-ids)
-        (t2/delete! model-key
-                    scope-key [:in synced-collection-ids]
-                    :entity_id entity-id-clause))
+        (apply t2/delete! model-key
+               scope-key [:in synced-collection-ids]
+               :entity_id entity-id-clause
+               extra-conditions))
       ;; Global: delete by entity_id only
-      (t2/delete! model-key
-                  :entity_id entity-id-clause))))
+      (apply t2/delete! model-key
+             :entity_id entity-id-clause
+             extra-conditions))))
 
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
@@ -91,6 +93,9 @@
 
     (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
     "This repository contains tenant collections, but the tenants feature is disabled on your instance."
+
+    (str/includes? (ex-message e) "Missing commit")
+    "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
@@ -139,7 +144,9 @@
               (log/infof (:message <>)))
             (let [path-filters (cond-> [#"collections/.*" #"databases/.*" #"actions/.*"]
                                  (settings/remote-sync-transforms)
-                                 (conj #"transforms/.*"))
+                                 (conj #"transforms/.*" #"python-libraries/.*")
+                                 (settings/library-is-remote-synced?)
+                                 (conj #"snippets/.*"))
                   ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
@@ -174,10 +181,8 @@
                                              :field_name (-> path last :id)}))))]
               (remote-sync.task/update-progress! task-id 0.8)
               (t2/with-transaction [_conn]
-                (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
-                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths)
-                (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
-                  (collection/create-remote-synced-collection!)))
+                (remove-unsynced! (spec/all-syncable-collection-ids) imported-entities-by-model)
+                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id
@@ -343,7 +348,14 @@
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (handle-task-result! (sync-fn task-id) task-id branch)))
+       (handle-task-result!
+        (try
+          (sync-fn task-id)
+          (catch Exception e
+            (log/error e "Remote sync task failed")
+            {:status :error
+             :message (source-error-message e)}))
+        task-id branch)))
     task))
 
 (defn async-import!
@@ -395,43 +407,7 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (when (or (nil? (collection/remote-synced-collection)) (= :read-only (settings/remote-sync-type)))
+      (when (= :read-only (settings/remote-sync-type))
         (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))
-
-(defn sync-transform-tracking!
-  "Called when remote-sync-transforms setting changes.
-   When enabled: mark all existing transforms, transform tags, and transforms-namespace collections
-   as 'create' for initial sync.
-   When disabled: remove all transform-related tracking entries."
-  [enabled?]
-  (let [timestamp (t/offset-date-time)]
-    (if enabled?
-      (do
-        ;; Mark all transforms-namespace collections for initial sync
-        (doseq [coll (t2/select [:model/Collection :id :name] :namespace (name collection/transforms-ns))]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type        "Collection"
-                       :model_id          (:id coll)
-                       :model_name        (:name coll)
-                       :status            "create"
-                       :status_changed_at timestamp}))
-        ;; Mark all existing transforms and transform tags for initial sync
-        (doseq [[model name-key] [[:model/Transform :name]
-                                  [:model/TransformTag :name]]]
-          (doseq [entity (t2/select [model :id name-key])]
-            (t2/insert! :model/RemoteSyncObject
-                        {:model_type        (name (last (str/split (name model) #"/")))
-                         :model_id          (:id entity)
-                         :model_name        (get entity name-key)
-                         :status            "create"
-                         :status_changed_at timestamp}))))
-      ;; Remove all transform-related tracking (including transforms-namespace collections)
-      (let [transform-coll-ids (t2/select-pks-set :model/Collection :namespace (name collection/transforms-ns))]
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type [:in ["Transform" "TransformTag"]])
-        (when (seq transform-coll-ids)
-          (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id [:in transform-coll-ids]))))))

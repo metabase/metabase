@@ -10,7 +10,7 @@ export function getDataStudioDependencyRoutes() {
   return <IndexRoute component={DependencyGraphPage} />;
 }
 
-export function getDataStudioTasksRoutes() {
+export function getDataStudioDependencyDiagnosticsRoutes() {
   return (
     <>
       <IndexRedirect to="broken" />

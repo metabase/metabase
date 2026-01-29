@@ -26,6 +26,7 @@ import type {
   DependencySortOptions,
 } from "../../../../types";
 import {
+  areFilterOptionsEqual,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
   getNodeIcon,
@@ -63,6 +64,10 @@ export function SidebarDependentsSection({
   const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
     getDefaultSortOptions(),
   );
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(),
+  );
 
   const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
     getListRequest(node, filterOptions, sortOptions),
@@ -88,7 +93,7 @@ export function SidebarDependentsSection({
           {isFetching && <Loader size="sm" />}
         </Group>
         {count > DEPENDENTS_SEARCH_THRESHOLD && (
-          <Group gap={0}>
+          <Group gap={0} wrap="nowrap">
             <SortOptionsPicker
               sortOptions={sortOptions}
               availableSortColumns={BROKEN_DEPENDENTS_SORT_COLUMNS}
@@ -97,7 +102,8 @@ export function SidebarDependentsSection({
             <FilterOptionsPicker
               filterOptions={filterOptions}
               availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
-              compact
+              isCompact
+              hasDefaultFilterOptions={hasDefaultFilterOptions}
               onFilterOptionsChange={setFilterOptions}
             />
           </Group>
@@ -161,7 +167,11 @@ function DependentItem({ node }: DependentItemProps) {
               pl="sm"
             >
               {location.links.map((link, linkIndex) => (
-                <Box key={linkIndex} className={CS.textWrap} lh="1rem">
+                <Box
+                  key={linkIndex}
+                  className={cx(S.link, CS.textWrap)}
+                  lh="1rem"
+                >
                   {link.label}
                 </Box>
               ))}

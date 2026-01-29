@@ -6,7 +6,7 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -49,6 +49,7 @@ interface Props {
   table: Table;
   activeFieldId?: FieldId;
   activeTab: DataStudioTableMetadataTab;
+  canPublish: boolean;
   hasLibrary: boolean;
   onSyncOptionsClick: () => void;
 }
@@ -59,6 +60,7 @@ const TableSectionBase = ({
   table,
   activeFieldId,
   activeTab,
+  canPublish,
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
@@ -215,7 +217,7 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        {!remoteSyncReadOnly && (
+        {canPublish && !remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"
@@ -241,7 +243,7 @@ const TableSectionBase = ({
               entry: { id: Number(table.id), type: "table" },
             })}
             p="sm"
-            leftSection={<Icon name="network" />}
+            leftSection={<Icon name="dependencies" />}
             style={{
               flexGrow: 0,
               width: 40,
@@ -262,7 +264,7 @@ const TableSectionBase = ({
 
       {table.is_published && <TableCollection table={table} />}
 
-      <Box px="lg">
+      <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
             <Tabs.Tab
@@ -311,7 +313,11 @@ const TableSectionBase = ({
               </Group>
 
               {!hasFields && (
-                <EmptyState message={t`This table has no fields`} />
+                <EmptyState
+                  className={S.EmptyState}
+                  message={t`This table has no fields`}
+                  spacing="sm"
+                />
               )}
 
               {hasFields && (

@@ -43,7 +43,7 @@ export function GraphEntryInput({
 
   return (
     <>
-      <Card p={0} bdrs={0} bg="transparent">
+      <Card p={0} flex="0 1 auto" bdrs={0} bg="transparent">
         {node != null ? (
           <EntryButton
             node={node}

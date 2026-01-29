@@ -376,7 +376,11 @@ export abstract class MetabaseEmbedElement
       console.error("unable to construct the URL:", error);
     }
 
-    return hostname === "localhost" || hostname === "127.0.0.1";
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
   }
 
   private _validateEmbedSettings(settings: SdkIframeEmbedElementSettings) {
