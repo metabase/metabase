@@ -644,7 +644,7 @@ const expectElementToHaveNoAppliedCssRules = (selector: string) => {
     if (rules.length > 0) {
       console.warn("rules matching", selector, rules);
     }
-    expect(rules, `No css rules should match ${selector}`).to.have.length(0);
+    expect(rules, `No css rules should match ${selector}`).to.be.empty;
   });
 };
 

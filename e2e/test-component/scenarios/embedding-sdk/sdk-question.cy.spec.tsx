@@ -107,7 +107,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         error.message.includes(
           "Error converting :aggregation reference: no aggregation at index 0",
         ),
-      ).to.equal(false);
+      ).to.be.false;
     });
 
     popover().findByText("See these Orders").click();
@@ -340,7 +340,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.findByTestId("aggregation-picker").should("be.visible");
 
     cy.on("uncaught:exception", (error) => {
-      expect(error.message.includes("Stage 1 does not exist")).to.equal(false);
+      expect(error.message.includes("Stage 1 does not exist")).to.be.false;
     });
   });
 

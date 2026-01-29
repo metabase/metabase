@@ -536,7 +536,7 @@ describe("scenarios > question > offset", () => {
       cy.on("uncaught:exception", (error) => {
         // this check is intended to catch possible normalization errors if BE or FE code changes
         // does not run by default
-        expect(error.message.includes("Error normalizing")).to.equal(false);
+        expect(error.message.includes("Error normalizing")).to.be.false;
       });
     });
 

@@ -67,7 +67,6 @@ export const setupLicense: CliStepMethod = async (state) => {
   const spinner = ora();
 
   // Activate the license
-   
   while (true) {
     try {
       const token = await input({

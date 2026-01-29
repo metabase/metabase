@@ -1978,7 +1978,7 @@ function verifyEmail({
   const hasCompanyName = [...document.querySelectorAll("*")].some((element) => {
     return element.textContent?.trim() === "Metabase, Inc.";
   });
-  expect(hasCompanyName).to.equal(true);
+  expect(hasCompanyName).to.be.true;
 
   cy.log("Metabase company address");
   const hasCompanyAddress = [...document.querySelectorAll("*")].some(
@@ -1986,7 +1986,7 @@ function verifyEmail({
       element.textContent?.trim() ===
       "9740 Campo Rd., Suite 1029, Spring Valley, CA 91977",
   );
-  expect(hasCompanyAddress).to.equal(true);
+  expect(hasCompanyAddress).to.be.true;
 
   cy.log("Metabase website");
   expect(

@@ -36,7 +36,6 @@ export const generateReactComponentFiles: CliStepMethod = async (state) => {
 
   let reactComponentPath: string;
 
-   
   while (true) {
     reactComponentPath = await input({
       message: "Where do you want to save the example React components?",

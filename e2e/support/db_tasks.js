@@ -87,8 +87,6 @@ export async function resetWritableDb({ type = "postgres" }) {
 
 export async function resetTable({ type = "postgres", table = "testTable1" }) {
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
-
-   
   return testTables?.[table]?.(dbClient);
 }
 

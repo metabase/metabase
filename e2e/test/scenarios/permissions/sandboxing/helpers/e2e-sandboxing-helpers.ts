@@ -450,12 +450,12 @@ export function rowsShouldContainGizmosAndWidgets({
     expect(
       response.body.data.is_sandboxed,
       `Results are not sandboxed in ${questionDesc}`,
-    ).to.equal(false);
+    ).to.be.false;
     const rows = response.body.data.rows;
     expect(
       rows.some((row) => row.includes("Gizmo")),
       `Results include at least one Gizmo in ${questionDesc}`,
-    ).to.equal(true);
+    ).to.be.true;
 
     expect(
       rows.some(
@@ -465,7 +465,7 @@ export function rowsShouldContainGizmosAndWidgets({
           row.includes("Doohickey"),
       ),
       `Results include at least one Widget, Gadget, or Doohickey in ${questionDesc}`,
-    ).to.equal(true);
+    ).to.be.true;
   });
 }
 
@@ -490,7 +490,7 @@ export function rowsShouldContainOnlyOneCategory({
     expect(
       response?.body.data.is_sandboxed,
       `Response is sandboxed for: ${questionDesc}`,
-    ).to.equal(true);
+    ).to.be.true;
 
     const rows = response.body.data.rows;
 
@@ -502,14 +502,14 @@ export function rowsShouldContainOnlyOneCategory({
           row[0] === null,
       ),
       `Every result should have have a ${productCategory} in: ${questionDesc}`,
-    ).to.equal(true);
+    ).to.be.true;
     productCategories
       .filter((category) => category !== productCategory)
       .forEach((otherCategory) => {
         expect(
           !rows.some((row) => row.includes(otherCategory)),
           `No results should have ${otherCategory}s in: ${questionDesc}`,
-        ).to.equal(true);
+        ).to.be.true;
       });
   });
 }

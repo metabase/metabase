@@ -15,6 +15,7 @@ import jestDomPlugin from "eslint-plugin-jest-dom";
 import jestFormattingPlugin from "eslint-plugin-jest-formatting";
 import testingLibraryPlugin from "eslint-plugin-testing-library";
 import cypressPlugin from "eslint-plugin-cypress";
+import chaiFriendlyPlugin from "eslint-plugin-chai-friendly";
 import noOnlyTestsPlugin from "eslint-plugin-no-only-tests";
 import dependPlugin from "eslint-plugin-depend";
 import storybookPlugin from "eslint-plugin-storybook";
@@ -465,6 +466,7 @@ const configs = [
     },
     plugins: {
       cypress: cypressPlugin,
+      "chai-friendly": chaiFriendlyPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
@@ -476,6 +478,10 @@ const configs = [
       "cypress/no-assigning-return-values": "error",
       "cypress/no-async-tests": "error",
       "cypress/no-pause": "error",
+      // Use chai-friendly version to allow Chai assertions like expect(x).to.be.true
+      "no-unused-expressions": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+      "chai-friendly/no-unused-expressions": "error",
       quotes: ["error", "double", { avoidEscape: true }],
       "no-restricted-imports": [
         "error",

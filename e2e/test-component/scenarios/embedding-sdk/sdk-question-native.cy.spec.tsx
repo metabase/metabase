@@ -118,7 +118,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
             error.message.includes(
               "preview-query cannot be called on native queries",
             ),
-          ).to.equal(false);
+          ).to.be.false;
         });
       });
     });

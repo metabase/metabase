@@ -187,8 +187,9 @@ describe("DashCard", () => {
   it("should show card's description in a tooltip", async () => {
     setup();
     expect(screen.queryByText("This is a table card")).not.toBeInTheDocument();
-    await userEvent.hover(getIcon("info"));
+    const hoverPromise = userEvent.hover(getIcon("info"));
     expect(await screen.findByText("This is a table card")).toBeVisible();
+    await hoverPromise;
   });
 
   it("should not show the info icon if a card doesn't have description", () => {

@@ -195,7 +195,7 @@ describe("Native SQL generation", () => {
           const codeEditor = request.body.context.user_is_viewing.find(
             (ctx: { type: string }) => ctx.type === "code_editor",
           );
-          expect(codeEditor).to.not.equal(undefined);
+          expect(codeEditor).to.exist;
           expect(codeEditor.buffers).to.have.length(1);
           expect(codeEditor.buffers[0].source.language).to.eq("sql");
           expect(codeEditor.buffers[0].source.database_id).to.eq(1); // Sample Database

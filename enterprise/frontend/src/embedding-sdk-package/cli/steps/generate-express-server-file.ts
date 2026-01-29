@@ -20,7 +20,6 @@ export const generateExpressServerFile: CliStepMethod = async (state) => {
 
   let mockServerDir: string;
 
-   
   while (true) {
     mockServerDir = await input({
       message: "Where should we save the example Express mock server folder?",

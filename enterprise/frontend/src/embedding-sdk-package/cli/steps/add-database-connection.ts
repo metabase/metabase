@@ -25,7 +25,6 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
 
   const engineChoices = getEngineChoices(settings);
 
-   
   while (true) {
     const engineKey = await search({
       pageSize: 10,

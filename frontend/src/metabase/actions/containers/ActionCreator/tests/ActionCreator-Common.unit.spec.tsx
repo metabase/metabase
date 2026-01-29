@@ -149,10 +149,9 @@ async function ensureSidebarIsOpen() {
  */
 async function openSidebar() {
   await userEvent.click(
-      screen.getByRole("button", { name: "Action settings" }),
-    );
+    screen.getByRole("button", { name: "Action settings" }),
+  );
   await waitFor(async () => {
-
     expect(screen.getByTestId("sidebar-header-title")).toBeInTheDocument();
   });
 }

@@ -67,7 +67,9 @@ describe("ValuesSourceSettings", () => {
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
 
     // hovering over the button shows the tooltip"
-    await userEvent.hover(screen.getByTestId("values-source-settings-edit-btn"));
+    await userEvent.hover(
+      screen.getByTestId("values-source-settings-edit-btn"),
+    );
     expect(
       await screen.findByText(
         "You can’t customize selectable values for this filter because it is linked to another one.",
