@@ -17,7 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]

@@ -2378,6 +2378,11 @@
            settings
            util}}
 
+  enterprise/transforms
+  {:team "Querying"
+   :api  #{}
+   :uses #{}}
+
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api

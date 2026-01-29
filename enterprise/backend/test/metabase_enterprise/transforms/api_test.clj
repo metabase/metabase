@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.api-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "EE-only tests for /api/transform feature gating."
   (:require
    [clojure.test :refer :all]

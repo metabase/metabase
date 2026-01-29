@@ -276,11 +276,11 @@
                                        :target {:type   "table"
                                                 :schema schema
                                                 :name   table-name}}
-                    created (mt/user-http-request :lucky :post 200 "transform" transform-payload)]
-                (let [response (mt/user-http-request :lucky :put 200
-                                                     (format "transform/%d" (:id created))
-                                                     (assoc transform-payload :name "Updated Transform"))]
-                  (is (= "Updated Transform" (:name response))))))))))))
+                    created (mt/user-http-request :lucky :post 200 "transform" transform-payload)
+                    response (mt/user-http-request :lucky :put 200
+                                                   (format "transform/%d" (:id created))
+                                                   (assoc transform-payload :name "Updated Transform"))]
+                (is (= "Updated Transform" (:name response)))))))))))
 
 (deftest-oss run-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

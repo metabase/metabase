@@ -45,5 +45,5 @@
 (defenterprise db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database."
   metabase-enterprise.database-routing.model
-  [db-or-id]
+  [_db-or-id]
   false)
