@@ -1,10 +1,10 @@
 import type {
   OpaqueDatasetQuery,
-  QuerySpecWithDatabase,
+  TestQuerySpecWithDatabase,
 } from "metabase-types/api";
 
 export function createTestQuery(
-  querySpec: QuerySpecWithDatabase,
+  querySpec: TestQuerySpecWithDatabase,
 ): Cypress.Chainable<OpaqueDatasetQuery> {
   return cy
     .request<OpaqueDatasetQuery>("POST", "/api/testing/query", querySpec)

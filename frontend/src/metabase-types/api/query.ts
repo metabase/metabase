@@ -440,99 +440,105 @@ export type DimensionReference =
   | DimensionReferenceWithOptions
   | TemplateTagReference;
 
-export type TableSourceSpec = {
+export type TestTableSourceSpec = {
   type: "table";
   id: TableId;
 };
 
-export type CardSourceSpec = {
+export type TestCardSourceSpec = {
   type: "card";
   id: CardId;
 };
 
-export type SourceSpec = TableSourceSpec | CardSourceSpec;
+export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
-export type ColumnSpec = {
+export type TestColumnSpec = {
   type: "column";
   name: string;
   sourceName?: string;
 };
 
-export type ExpressionSpec = LiteralSpec | OperatorSpec | ColumnSpec;
+export type TestExpressionSpec =
+  | TestLiteralSpec
+  | TestOperatorSpec
+  | TestColumnSpec;
 
-export type FilterSpec = ExpressionSpec;
+export type TestFilterSpec = TestExpressionSpec;
 
-export type AggregationSpec = ExpressionSpec | NamedExpressionSpec;
+export type TestAggregationSpec = TestExpressionSpec | TestNamedExpressionSpec;
 
-export type NamedExpressionSpec = {
+export type TestNamedExpressionSpec = {
   name: string;
-  value: ExpressionSpec;
+  value: TestExpressionSpec;
 };
 
-export type LiteralSpec = {
+export type TestLiteralSpec = {
   type: "literal";
-  value: number | bigint | string | boolean;
+  value: NumericLiteral | StringLiteral | BooleanLiteral | DatetimeLiteral;
 };
 
-export type OperatorSpec = {
+export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args: ExpressionSpec[];
+  args: TestExpressionSpec[];
 };
 
-export type TemporalBucketSpec = {
+export type TestTemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type BinCountSpec = {
+export type TestBinCountSpec = {
   bins?: number;
 };
 
-export type BinWidthSpec = {
+export type TestBinWidthSpec = {
   binWidth?: number;
 };
 
-type BinningSpec = TemporalBucketSpec | BinCountSpec | BinWidthSpec;
+type TestBinningSpec =
+  | TestTemporalBucketSpec
+  | TestBinCountSpec
+  | TestBinWidthSpec;
 
-export type BreakoutSpec = ColumnSpec & BinningSpec;
+export type TestBreakoutSpec = TestColumnSpec & TestBinningSpec;
 
-export type JoinSpec = {
-  source: SourceSpec;
+export type TestJoinSpec = {
+  source: TestSourceSpec;
   strategy: JoinStrategy;
 
   // If not set we will use the suggested join conditions
-  conditions?: JoinConditionSpec[];
+  conditions?: TestJoinConditionSpec[];
 };
 
-type JoinConditionSpec = {
+type TestJoinConditionSpec = {
   operator: Lib.JoinConditionOperator;
-  left: (ColumnSpec & BinningSpec) | ExpressionSpec;
-  right: (ColumnSpec & BinningSpec) | ExpressionSpec;
+  left: (TestColumnSpec & TestBinningSpec) | TestExpressionSpec;
+  right: (TestColumnSpec & TestBinningSpec) | TestExpressionSpec;
 };
 
-export type OrderBySpec = ColumnSpec & {
+export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
 };
 
-export type StageSpec = {
-  fields?: ColumnSpec[];
-  expressions?: NamedExpressionSpec[];
-  joins?: JoinSpec[];
-  filters?: FilterSpec[];
-  aggregations?: AggregationSpec[];
-  breakouts?: BreakoutSpec[];
-  orderBys?: OrderBySpec[];
+export type TestStageSpec = {
+  fields?: TestColumnSpec[];
+  expressions?: TestNamedExpressionSpec[];
+  joins?: TestJoinSpec[];
+  filters?: TestFilterSpec[];
+  aggregations?: TestAggregationSpec[];
+  breakouts?: TestBreakoutSpec[];
+  orderBys?: TestOrderBySpec[];
   limit?: number;
 };
 
-export type StageSpecWithSource = StageSpec & {
-  source: SourceSpec;
+export type TestStageWithSourceSpec = TestStageSpec & {
+  source: TestSourceSpec;
 };
 
-export type QuerySpec = {
-  stages: [StageSpecWithSource, ...StageSpec[]];
+export type TestQuerySpec = {
+  stages: [TestStageWithSourceSpec, ...TestStageSpec[]];
 };
 
-export type QuerySpecWithDatabase = QuerySpec & {
+export type TestQuerySpecWithDatabase = TestQuerySpec & {
   database: DatabaseId;
 };
