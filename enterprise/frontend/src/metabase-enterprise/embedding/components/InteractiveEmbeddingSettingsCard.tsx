@@ -23,7 +23,7 @@ export function InteractiveEmbeddingSettingsCard() {
         {
           icon: "reference",
           title: t`Documentation`,
-          href: fullAppEmbeddingDocumentationUrl?.url,
+          href: fullAppEmbeddingDocumentationUrl.url,
         },
       ]}
     >

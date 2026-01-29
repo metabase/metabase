@@ -43,14 +43,13 @@ describe("InteractiveEmbeddingSettingsCard", () => {
   it("should show a link to the doc", async () => {
     await setup({ enabled: true });
 
-    expect(await screen.findByText("Documentation")).toBeInTheDocument();
+    const linkToDoc = await screen.findByRole("link", {
+      name: "Documentation",
+    });
 
-    // eslint-disable-next-line testing-library/no-node-access
-    const linkToDoc = (await screen.findByText("Documentation")).closest("a");
-
-    expect(linkToDoc).not.toBeNull();
-
-    expect(linkToDoc?.href).toBe(
+    expect(linkToDoc).toBeVisible();
+    expect(linkToDoc).toHaveAttribute(
+      "href",
       "https://www.metabase.com/docs/latest/embedding/full-app-embedding.html",
     );
   });
