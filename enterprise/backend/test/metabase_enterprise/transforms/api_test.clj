@@ -1507,6 +1507,44 @@
                       (finally
                         (t2/delete! :model/Transform :id (:id transform))))))))))))))
 
+(deftest root-collection-items-include-transforms-test
+  (testing "GET /api/collection/root/items"
+    (testing "Includes transforms in root collection items"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name "Root Transform"
+                        :description "A transform at root"}]
+          (testing "Transform appears in unfiltered results"
+            (let [items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                          "collection/root/items"
+                                                          :namespace "transforms"))
+                             (filter #(= "transform" (:model %))))]
+              (is (= 1 (count items)))
+              (is (= "transform" (:model (first items))))
+              (is (= "Root Transform" (:name (first items))))))
+          (testing "Transform appears when filtered by models=trans form"
+
+            (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                     "collection/root/items"
+                                                     :namespace "transforms"
+                                                     :models "transform"))]
+              (is (= 1 (count items)))
+              (is (= transform-id (:id (first items))))))
+
+          (testing "Transform NOT returned when filtering for other models only"
+            (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                     "collection/root/items"
+                                                     :namespace "transforms"
+                                                     :models "card"))]
+              (is (empty? items))))
+
+          (testing "Non-admin users don't see transforms"
+            (let [items (->> (:data (mt/user-http-request :rasta :get 200
+                                                          "collection/root/items"
+                                                          :namespace "transforms"))
+                             (filter #(= "transform" (:model %))))]
+              (is (empty? items)))))))))
+
 (deftest transforms-appear-in-here-test
   (testing "GET /api/collection/:id/items"
     (testing "Transforms in a collection appear in its :here field"
