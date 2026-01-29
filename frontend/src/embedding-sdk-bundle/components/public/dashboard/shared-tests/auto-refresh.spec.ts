@@ -1,6 +1,7 @@
 import { waitFor } from "@testing-library/react";
 
 import { findRequests } from "__support__/server-mocks";
+import { screen } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import type { SetupSdkDashboardOptions } from "../tests/setup";
@@ -13,55 +14,62 @@ export function addEnterpriseAutoRefreshTests(
   describe("autoRefreshInterval property", () => {
     const DASHBOARD_CARD_QUERY_REQUEST_COUNT = 1;
 
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it("should support auto-refreshing dashboards for positive integers", async () => {
       jest.useFakeTimers();
 
-      try {
-        await setup({ props: { autoRefreshInterval: 10 } });
+      await setup({ props: { autoRefreshInterval: 10 } });
 
-        // Wait for initial dashboard load
-        await waitFor(async () => {
-          const initialRequests = await getDashboardQueryRequests();
-          expect(initialRequests.length).toBe(
-            1 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-          );
-        });
+      // Wait for initial dashboard load
+      await waitFor(async () => {
+        const initialRequests = await getDashboardQueryRequests();
+        expect(initialRequests.length).toBe(
+          1 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
+        );
+      });
 
-        // Advance time by the auto-refresh interval (10 seconds)
-        jest.advanceTimersByTime(10_000);
+      // Advance time by the auto-refresh interval (10 seconds)
+      jest.advanceTimersByTime(10_000);
 
-        // Wait for the auto-refresh request to be made
-        await waitFor(async () => {
-          const requestsAfterRefresh = await getDashboardQueryRequests();
-          expect(requestsAfterRefresh.length).toBe(
-            2 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-          );
-        });
+      // Wait for the auto-refresh request to be made
+      await waitFor(async () => {
+        const requestsAfterRefresh = await getDashboardQueryRequests();
+        expect(requestsAfterRefresh.length).toBe(
+          2 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
+        );
+      });
 
-        // Advance time again to test multiple refresh cycles
-        jest.advanceTimersByTime(10_000);
+      // Advance time again to test multiple refresh cycles
+      jest.advanceTimersByTime(10_000);
 
-        await waitFor(async () => {
-          const requestsAfterSecondRefresh = await getDashboardQueryRequests();
-          expect(requestsAfterSecondRefresh.length).toBe(
-            3 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-          );
-        });
-      } finally {
-        jest.runOnlyPendingTimers();
-        jest.useRealTimers();
-      }
+      await waitFor(async () => {
+        const requestsAfterSecondRefresh = await getDashboardQueryRequests();
+        expect(requestsAfterSecondRefresh.length).toBe(
+          3 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
+        );
+      });
     });
 
-    it.each([
+    it("should show the auto-refresh indicator in the dashboard header for positive integers", async () => {
+      await setup({ props: { autoRefreshInterval: 10 } });
+
+      expect(
+        screen.getByRole("button", { name: "Auto Refresh" }),
+      ).toBeVisible();
+    });
+
+    describe.each([
       { name: "null", value: null },
       { name: "undefined", value: undefined },
       { name: "0", value: 0 },
       { name: "negative", value: -10 },
-    ])("should not auto-refresh when interval is $name", async ({ value }) => {
-      jest.useFakeTimers();
+    ])("when interval is $name", ({ value }) => {
+      it("should not auto-refresh", async () => {
+        jest.useFakeTimers();
 
-      try {
         // Forces the type, because users can literally pass any type here
         await setup({ props: { autoRefreshInterval: value as number } });
 
@@ -79,10 +87,16 @@ export function addEnterpriseAutoRefreshTests(
         // Verify no additional requests were made
         const finalRequests = await getDashboardQueryRequests();
         expect(finalRequests.length).toBe(DASHBOARD_CARD_QUERY_REQUEST_COUNT);
-      } finally {
-        jest.runOnlyPendingTimers();
-        jest.useRealTimers();
-      }
+      });
+
+      it("should not show the auto-refresh indicator in the dashboard header", async () => {
+        // Forces the type, because users can literally pass any type here
+        await setup({ props: { autoRefreshInterval: value as number } });
+
+        expect(
+          screen.queryByRole("button", { name: "Auto Refresh" }),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 }
