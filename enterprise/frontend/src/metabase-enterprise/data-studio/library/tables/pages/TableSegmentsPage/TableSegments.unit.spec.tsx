@@ -1,9 +1,19 @@
 import { Route } from "react-router";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EnterpriseSettings, Table } from "metabase-types/api";
-import { createMockTable, createMockUser } from "metabase-types/api/mocks";
+import type {
+  EnterpriseSettings,
+  Table,
+  TokenFeatures,
+} from "metabase-types/api";
+import {
+  createMockTable,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { TableSegments } from "./TableSegments";
 
@@ -26,17 +36,26 @@ const setup = ({
     ...table,
   });
 
+  const tokenFeatures: Partial<TokenFeatures> = {
+    remote_sync: !!remoteSyncType,
+  };
+  const settings = mockSettings({
+    "remote-sync-type": remoteSyncType,
+    "remote-sync-enabled": !!remoteSyncType,
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
+  const state = createMockState({
+    currentUser: createMockUser({ is_superuser: isAdmin }),
+    settings,
+  });
+
+  ["remote_sync"].forEach(setupEnterpriseOnlyPlugin);
+
   renderWithProviders(
     <Route path="/" component={() => <TableSegments table={mockTable} />} />,
     {
+      storeInitialState: state,
       withRouter: true,
-      storeInitialState: {
-        settings: mockSettings({
-          "remote-sync-type": remoteSyncType,
-          "remote-sync-enabled": !!remoteSyncType,
-        }),
-        currentUser: createMockUser({ is_superuser: isAdmin }),
-      },
     },
   );
 };

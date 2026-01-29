@@ -1,12 +1,17 @@
 import { Route } from "react-router";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
   EnterpriseSettings,
   NativeQuerySnippet,
+  TokenFeatures,
 } from "metabase-types/api";
-import { createMockNativeQuerySnippet } from "metabase-types/api/mocks";
+import {
+  createMockNativeQuerySnippet,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { SnippetHeader } from "./SnippetHeader";
@@ -19,6 +24,20 @@ type SetupOps = {
 const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   const mockSnippet = createMockNativeQuerySnippet(snippet);
 
+  const tokenFeatures: Partial<TokenFeatures> = {
+    remote_sync: !!remoteSyncType,
+  };
+  const settings = mockSettings({
+    "remote-sync-type": remoteSyncType,
+    "remote-sync-enabled": !!remoteSyncType,
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
+  const state = createMockState({
+    settings,
+  });
+
+  ["remote_sync"].forEach(setupEnterpriseOnlyPlugin);
+
   renderWithProviders(
     <Route
       path="/"
@@ -30,12 +49,7 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
       )}
     />,
     {
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "remote-sync-type": remoteSyncType,
-          "remote-sync-enabled": !!remoteSyncType,
-        }),
-      }),
+      storeInitialState: state,
       withRouter: true,
     },
   );
