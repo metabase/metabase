@@ -173,14 +173,21 @@
   (when (rz/sexpr-able? zloc)
     (let [sexpr (rz/sexpr zloc)]
       (cond
-        ;; Symbol mutations (like and -> or)
+        ;; Symbol mutations (like and -> or, plus always try nil)
         (symbol? sexpr)
-        (when-let [replacement (get mutation-rules sexpr)]
-          [{:mutation (rz/root-string (rz/replace zloc (n/token-node replacement)))
-            :description (str "Replace " sexpr " with " replacement)
-            :original sexpr
-            :replacement replacement
-            :position (meta (rz/node zloc))}])
+        (let [nil-mutation {:mutation (rz/root-string (rz/replace zloc (n/token-node nil)))
+                            :description (str "Replace " sexpr " with nil")
+                            :original sexpr
+                            :replacement nil
+                            :position (meta (rz/node zloc))}]
+          (if-let [replacement (get mutation-rules sexpr)]
+            [{:mutation (rz/root-string (rz/replace zloc (n/token-node replacement)))
+              :description (str "Replace " sexpr " with " replacement)
+              :original sexpr
+              :replacement replacement
+              :position (meta (rz/node zloc))}
+             nil-mutation]
+            [nil-mutation]))
 
         ;; Keyword mutations (like :id -> :id__)
         ;; auto-resolved keywords don't work quite right when using rz/sexpr
@@ -190,7 +197,8 @@
         (keyword? sexpr)
         (let [keyword-string (rz/string zloc)
               sexpr (read-string keyword-string)]
-          (when (not (schema-keyword? sexpr))
+          (when (and (not (schema-keyword? sexpr))
+                     (not= sexpr :else))
             (let [mutated-keyword (keyword (str (name sexpr) "__"))]
               [{:mutation (rz/root-string (rz/replace zloc (n/token-node mutated-keyword)))
                 :description (str "Replace " sexpr " with " mutated-keyword)
@@ -292,21 +300,40 @@
 
 (defn test-namespace [target-ns test-ns-s]
   (let [coverage (ns-coverage [target-ns] test-ns-s)
-        mutations (for [[f tests] (:coverage coverage)]
-                    (let [results (test-mutations f tests)]
-                      (assoc results :function f :tests tests)))
+        covered (into {}
+                      (for [[f tests] (:coverage coverage)
+                            :let [results (test-mutations f tests)]]
+                        [f (assoc results :function f :tests tests)]))
         uncovered (into {}
                         (for [f (:uncovered-fns coverage)
                               :let [fn-info (find-function-source f)
                                     source (when fn-info (read-function-from-file fn-info))]]
                           [f {:function f :original-source source}]))]
+    (merge uncovered covered)))
 
-    {:uncovered-fns uncovered
-     :fully-covered (index-by :function (filter #(empty? (:survived %)) mutations))
-     :partially-covered (index-by :function (filter #(seq (:survived %)) mutations))}))
+(defonce state (atom nil))
+
+(defn init! [target-ns test-ns-s]
+  (reset! state (test-namespace target-ns test-ns-s)))
+
+(defn add-test [fq-name test-name]
+  (swap! state update-in [fq-name :tests] (fnil conj #{}) test-name))
+
+(defn retest-function! [fq-name]
+  (let [entry (get @state fq-name)
+        test-names (:tests entry)
+        results (test-mutations fq-name test-names)
+        new-entry (assoc results :function fq-name :tests test-names)]
+    (swap! state assoc fq-name new-entry)
+    results))
 
 (defn generate-report [target-ns test-ns-s out-file]
   (let [results (test-namespace target-ns test-ns-s)
+        fns (vals results)
+        uncovered (sort-by :function (filter #(not (contains? % :tests)) fns))
+        partially-covered (sort-by :function (filter #(seq (:survived %)) fns))
+        fully-covered (sort-by :function (filter #(and (contains? % :tests)
+                                                       (empty? (:survived %))) fns))
         s #_:clj-kondo/ignore ;; it's wrapped in `with-out-str`
         (with-out-str
           (println "# Mutation Testing Namespace Report")
@@ -315,12 +342,12 @@
           (println)
           (println "Test namespaces:" (str/join ", " (sort test-ns-s)))
 
-          (when (seq (:uncovered-fns results))
+          (when (seq uncovered)
             (println)
             (println "## Uncovered Functions")
             (println)
             (println "These functions are never executed when the tests are run.")
-            (doseq [{:keys [function original-source]} (sort-by :function (vals (:uncovered-fns results)))]
+            (doseq [{:keys [function original-source]} uncovered]
               (println)
               (println "###" function)
               (println)
@@ -328,13 +355,12 @@
               (println original-source)
               (println "```")))
 
-          (when (seq (:partially-covered results))
+          (when (seq partially-covered)
             (println)
             (println "## Partially Covered Functions")
             (println)
             (println "These functions are executed but have mutations that survive.")
-
-            (doseq [{:keys [function survived original-source]} (sort-by :function (vals (:partially-covered results)))]
+            (doseq [{:keys [function survived original-source]} partially-covered]
               (println)
               (println "###" function)
               (println)
@@ -351,12 +377,12 @@
                 (println mutation)
                 (println "```"))))
 
-          (when (seq (:fully-covered results))
+          (when (seq fully-covered)
             (println)
             (println "## Fully Covered Functions")
             (println)
             (println "These functions are fully covered by the test namespaces.")
-            (doseq [{:keys [original-source function]} (sort-by :function (vals (:fully-covered results)))]
+            (doseq [{:keys [original-source function]} fully-covered]
               (println)
               (println "###" function)
               (println)
