@@ -21,18 +21,24 @@ export const SetupPermissionsAndTenantsPage = () => {
     useState(false);
 
   const completedSteps = useMemo(() => {
-    // When data segregation is finally configured, we permanently
-    // mark this step as done. Otherwise rely on UI state.
     const isDataSegregationComplete =
-      checklist?.["setup-data-segregation-strategy"] ||
-      isDataSegregationSelected;
+      checklist?.["setup-data-segregation-strategy"] ?? false;
+    const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
+    const isTenantsCreated = checklist?.["create-tenants"] ?? false;
 
     return {
-      "enable-tenants": checklist?.["enable-tenants"] ?? false,
-      "data-segregation": isDataSegregationComplete ?? false,
-      "select-data": isDataSegregationComplete ?? false,
-      "create-tenants": checklist?.["create-tenants"] ?? false,
-      summary: false,
+      "enable-tenants": isTenantsEnabled,
+
+      // When data segregation is finally configured, we permanently
+      // mark this step as done. Otherwise rely on UI state.
+      "select-data-segregation-strategy":
+        isDataSegregationSelected || isDataSegregationComplete,
+
+      "select-data-for-segregation": isDataSegregationComplete,
+      "create-tenants": isTenantsCreated,
+
+      summary:
+        isTenantsEnabled && isDataSegregationComplete && isTenantsCreated,
     };
   }, [checklist, isDataSegregationSelected]);
 
