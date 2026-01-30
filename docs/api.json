@@ -1147,6 +1147,683 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.agent-api.api.construct-query-metric-request" : {
+        "description" : "Request schema for constructing a query from a metric.\n   Only supports filters and group_by (aggregation is defined by the metric).",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "filters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "group_by" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.group-by"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "metric_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "metric_id" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.agent-api.api.construct-query-request" : {
+        "description" : "Request schema for /v1/construct-query. Accepts either table_id or metric_id.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.construct-query-table-request"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.construct-query-metric-request"
+        } ]
+      },
+      "metabase-enterprise.agent-api.api.construct-query-response" : {
+        "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute.",
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "query" ]
+      },
+      "metabase-enterprise.agent-api.api.construct-query-table-request" : {
+        "description" : "Request schema for constructing a query from a table.\n\n   Query components:\n   - filters: Filter conditions to apply\n   - fields: Specific fields to select (omit for all fields)\n   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.\n   - group_by: Fields to group by, with optional temporal granularity\n   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.\n   - limit: Maximum rows to return",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "aggregations" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.aggregation"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "fields" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "filters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "group_by" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.group-by"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "limit" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "order_by" : {
+              "description" : "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation.",
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.order-by"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "table_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "table_id" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.agent-api.api.entity-type" : {
+        "description" : "The type of queryable entity.",
+        "type" : "string",
+        "enum" : [ "table", "metric" ]
+      },
+      "metabase-enterprise.agent-api.api.execute-query-request" : {
+        "description" : "Request schema for /v1/execute. Accepts a base64-encoded MBQL query.",
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "query" ]
+      },
+      "metabase-enterprise.agent-api.api.field" : {
+        "description" : "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields.",
+        "type" : "object",
+        "properties" : {
+          "database_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field_id" : {
+            "type" : "string"
+          },
+          "field_values" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.field-type"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "field_id", "name" ]
+      },
+      "metabase-enterprise.agent-api.api.field-type" : {
+        "description" : "A data type for a field derived from Metabase's type hierarchy.",
+        "type" : "string",
+        "enum" : [ "boolean", "date", "datetime", "time", "number", "string" ]
+      },
+      "metabase-enterprise.agent-api.api.field-values" : {
+        "description" : "Statistics and sample values for a specific field.",
+        "type" : "object",
+        "properties" : {
+          "field_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "statistics" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.statistics"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "values" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase-enterprise.agent-api.api.metric" : {
+        "description" : "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts.",
+        "type" : "object",
+        "properties" : {
+          "default_time_dimension_field_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "queryable_dimensions" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.field"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "segments" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.segment"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "metric"
+          },
+          "verified" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "type", "name" ]
+      },
+      "metabase-enterprise.agent-api.api.metric-summary" : {
+        "description" : "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts.",
+        "type" : "object",
+        "properties" : {
+          "default_time_dimension_field_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "metric"
+          }
+        },
+        "required" : [ "id", "type", "name" ]
+      },
+      "metabase-enterprise.agent-api.api.related-table" : {
+        "description" : "A table related to the queried entity via foreign key. The related_by field indicates the FK field name.",
+        "type" : "object",
+        "properties" : {
+          "database_engine" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "related_by" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "table"
+          },
+          "fields" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.field"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "type", "name" ]
+      },
+      "metabase-enterprise.agent-api.api.search-response" : {
+        "description" : "Search results containing tables and metrics matching the query.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.search-result-item"
+            }
+          },
+          "total_count" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "data", "total_count" ]
+      },
+      "metabase-enterprise.agent-api.api.search-result-item" : {
+        "description" : "A table or metric returned from search.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "verified" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "table", "metric" ]
+          },
+          "database_schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "type", "name" ]
+      },
+      "metabase-enterprise.agent-api.api.segment" : {
+        "description" : "A predefined filter condition that can be applied to queries via the segment_id in filters.",
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "metabase-enterprise.agent-api.api.statistics" : {
+        "description" : "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges.",
+        "type" : "object",
+        "properties" : {
+          "min" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent_url" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "average_length" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "earliest" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "q1" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "max" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "distinct_count" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent_state" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent_null" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "avg" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sd" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent_email" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "latest" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "q3" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent_json" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase-enterprise.agent-api.api.table" : {
+        "description" : "Full details of a table including its fields, related tables, metrics, and segments.",
+        "type" : "object",
+        "properties" : {
+          "database_engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "related_tables" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.related-table"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "segments" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.segment"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.entity-type"
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.field"
+            }
+          },
+          "database_schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "metrics" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.metric-summary"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
+      },
       "metabase-enterprise.data-studio.api.table.bulk-table-info" : {
         "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
         "type" : "object",
@@ -1310,6 +1987,24 @@
           }
         },
         "required" : [ "success" ]
+      },
+      "metabase-enterprise.dependencies.api.broken-dependent-entity" : {
+        "description" : "Entity returned by /graph/broken endpoint - includes errors but no dependents_count.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "data" ]
       },
       "metabase-enterprise.dependencies.api.card-body" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
@@ -1920,683 +2615,6 @@
           }
         },
         "required" : [ "id", "analyzed_entity_type", "analyzed_entity_id", "error_type" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.construct-query-metric-request" : {
-        "description" : "Request schema for constructing a query from a metric.\n   Only supports filters and group_by (aggregation is defined by the metric).",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "filters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "group_by" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.group-by"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "metric_id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          },
-          "required" : [ "metric_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.construct-query-request" : {
-        "description" : "Request schema for /v1/construct-query. Accepts either table_id or metric_id.",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.construct-query-table-request"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.construct-query-metric-request"
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.construct-query-response" : {
-        "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute.",
-        "type" : "object",
-        "properties" : {
-          "query" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        },
-        "required" : [ "query" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.construct-query-table-request" : {
-        "description" : "Request schema for constructing a query from a table.\n\n   Query components:\n   - filters: Filter conditions to apply\n   - fields: Specific fields to select (omit for all fields)\n   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.\n   - group_by: Fields to group by, with optional temporal granularity\n   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.\n   - limit: Maximum rows to return",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "aggregations" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.aggregation"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "fields" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "filters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "group_by" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.group-by"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "limit" : {
-              "oneOf" : [ {
-                "description" : "value must be an integer greater than zero.",
-                "type" : "integer",
-                "minimum" : 1
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "order_by" : {
-              "description" : "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation.",
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.order-by"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "table_id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          },
-          "required" : [ "table_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.entity-type" : {
-        "description" : "The type of queryable entity.",
-        "type" : "string",
-        "enum" : [ "table", "metric" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.execute-query-request" : {
-        "description" : "Request schema for /v1/execute. Accepts a base64-encoded MBQL query.",
-        "type" : "object",
-        "properties" : {
-          "query" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        },
-        "required" : [ "query" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.field" : {
-        "description" : "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields.",
-        "type" : "object",
-        "properties" : {
-          "database_type" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "field_id" : {
-            "type" : "string"
-          },
-          "field_values" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : { }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "semantic_type" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.field-type"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "field_id", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.field-type" : {
-        "description" : "A data type for a field derived from Metabase's type hierarchy.",
-        "type" : "string",
-        "enum" : [ "boolean", "date", "datetime", "time", "number", "string" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.field-values" : {
-        "description" : "Statistics and sample values for a specific field.",
-        "type" : "object",
-        "properties" : {
-          "field_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "statistics" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.statistics"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "values" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : { }
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.metric" : {
-        "description" : "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts.",
-        "type" : "object",
-        "properties" : {
-          "default_time_dimension_field_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "queryable_dimensions" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.field"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "segments" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.segment"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "metric"
-          },
-          "verified" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "type", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.metric-summary" : {
-        "description" : "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts.",
-        "type" : "object",
-        "properties" : {
-          "default_time_dimension_field_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "type" : {
-            "const" : "metric"
-          }
-        },
-        "required" : [ "id", "type", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.related-table" : {
-        "description" : "A table related to the queried entity via foreign key. The related_by field indicates the FK field name.",
-        "type" : "object",
-        "properties" : {
-          "database_engine" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "related_by" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display_name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "table"
-          },
-          "fields" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.field"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "type", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.search-response" : {
-        "description" : "Search results containing tables and metrics matching the query.",
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.search-result-item"
-            }
-          },
-          "total_count" : {
-            "type" : "integer"
-          }
-        },
-        "required" : [ "data", "total_count" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.search-result-item" : {
-        "description" : "A table or metric returned from search.",
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "verified" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "updated_at" : {
-            "oneOf" : [ { }, {
-              "type" : "null"
-            } ]
-          },
-          "display_name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "table", "metric" ]
-          },
-          "database_schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "created_at" : {
-            "oneOf" : [ { }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "type", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.segment" : {
-        "description" : "A predefined filter condition that can be applied to queries via the segment_id in filters.",
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display_name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.statistics" : {
-        "description" : "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges.",
-        "type" : "object",
-        "properties" : {
-          "min" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "percent_url" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "average_length" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "earliest" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "q1" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "max" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "distinct_count" : {
-            "oneOf" : [ {
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "percent_state" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "percent_null" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "avg" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "sd" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "percent_email" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "latest" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "q3" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "percent_json" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
-      "metabase-enterprise.metabot-v3.agent-api.api.table" : {
-        "description" : "Full details of a table including its fields, related tables, metrics, and segments.",
-        "type" : "object",
-        "properties" : {
-          "database_engine" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "database_id" : {
-            "type" : "integer"
-          },
-          "related_tables" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.related-table"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "segments" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.segment"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.entity-type"
-          },
-          "fields" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.field"
-            }
-          },
-          "database_schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "metrics" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.metric-summary"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "type" : "object",
@@ -14096,7 +14114,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.construct-query-response"
+                  "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.construct-query-response"
                 }
               }
             }
@@ -14112,7 +14130,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.construct-query-request"
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.construct-query-request"
               }
             }
           }
@@ -14147,7 +14165,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.execute-query-request"
+                "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.execute-query-request"
               }
             }
           }
@@ -14219,7 +14237,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.metric"
+                  "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.metric"
                 }
               }
             }
@@ -14262,7 +14280,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.field-values"
+                  "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.field-values"
                 }
               }
             }
@@ -14320,7 +14338,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.search-response"
+                  "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.search-response"
                 }
               }
             }
@@ -14454,7 +14472,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.table"
+                  "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.table"
                 }
               }
             }
@@ -14497,7 +14515,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.agent-api.api.field-values"
+                  "$ref" : "#/components/schemas/metabase-enterprise.agent-api.api.field-values"
                 }
               }
             }
@@ -23789,10 +23807,10 @@
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
-    "/api/ee/dependencies/graph/broken" : {
+    "/api/ee/dependencies/graph/breaking" : {
       "get" : {
-        "summary" : "GET /api/ee/dependencies/graph/broken",
-        "description" : "Returns a list of entities that are causing errors in downstream dependents\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)\n   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "summary" : "GET /api/ee/dependencies/graph/breaking",
+        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)\n   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -23890,6 +23908,104 @@
                     }
                   },
                   "required" : [ "data", "total", "offset", "limit" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/broken" : {
+      "get" : {
+        "summary" : "GET /api/ee/dependencies/graph/broken",
+        "description" : "Returns the broken dependents for a specific source entity.\n   These are entities that have validation errors traced back to the specified source.\n\n   Required parameters:\n   - `id`: The ID of the source entity\n   - `type`: The type of the source entity (card, table)\n\n   Optional parameters:\n   - `dependent_types`: Dependency types to filter by. Can be single value or array.\n   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.\n   - `include_personal_collections`: Include items in personal collections (default: false)\n   - `sort_column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort_direction`: Sort direction - asc or desc (default: asc)",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+          }
+        }, {
+          "in" : "query",
+          "name" : "dependent_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+            }, {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dependent_card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "question", "metric", "model" ]
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "question", "metric", "model" ]
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_personal_collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "name", "view-count", "location" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "desc", "asc" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-dependent-entity"
+                  }
                 }
               }
             }
@@ -29961,7 +30077,8 @@
                     "type" : "object",
                     "additionalProperties" : {
                       "type" : "integer"
-                    }
+                    },
+                    "minProperties" : 1
                   }
                 },
                 "required" : [ "code", "source_tables" ]
