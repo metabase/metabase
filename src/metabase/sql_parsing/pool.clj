@@ -288,6 +288,6 @@
 (defn python-context
   "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
   []
-  (if config/is-dev?
+  (if #_config/is-dev? false
     (acquire-dev-context)
     (acquire-context @python-context-pool)))
