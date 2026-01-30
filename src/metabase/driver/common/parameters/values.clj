@@ -49,6 +49,7 @@
 (def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
 (def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
 (def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
+(def ^:private ReferencedTableQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedTableQuery))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -255,6 +256,31 @@
                  :tag               tag
                  :type              qp.error-type/invalid-parameter}
                 e))))))
+
+(mu/defmethod parse-tag :table :- ReferencedTableQuery
+  [{:keys [table-id table-name table-schema name field-id start stop] :as tag} _params]
+  (when-not (or table-id table-name)
+    (throw (ex-info ":table template tag missing both table-id and table-name"
+                    {:tag tag})))
+  (let [mp (qp.store/metadata-provider)
+        table (if table-id
+                (lib.metadata/table mp table-id)
+                (some (fn [table]
+                        (when (and (= (:name table) table-name)
+                                   (or (not table-schema)
+                                       (= (:schema table) table-schema)))
+                          table))
+                      (lib.metadata/tables mp)))]
+    (params/map->ReferencedTableQuery
+     (merge
+      {:name name}
+      (when table
+        (-> (lib/query mp table)
+            (cond->
+             (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
+             (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
+            limit/disable-max-results
+            qp.compile/compile))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag

@@ -58,6 +58,24 @@
   [x]
   (instance? ReferencedCardQuery x))
 
+;; A "ReferencedTableQuery" paramter expands to a query selecting from a specific table, potenially with a filter on a
+;; specific column.
+;;
+;; `query` is a native query selecting from the relevant card
+;;
+;; `params` are the positional parameters for a parameterized native query
+;;
+;; `name` is the name of the tag
+(p.types/defrecord+ ReferencedTableQuery [name query]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))
+
+(defn ReferencedTableQuery?
+  "Is `x` an instance of the `ReferencedTableQuery` record type?"
+  [x]
+  (instance? ReferencedTableQuery x))
+
 ;; A `ReferencedQuerySnippet` expands to the partial query snippet stored in the `NativeQuerySnippet` table in the
 ;; application DB.
 ;;

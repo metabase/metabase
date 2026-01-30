@@ -30,6 +30,7 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
+    ReferencedTableQuery
     ReferencedQuerySnippet
     TemporalUnit)))
 
@@ -408,3 +409,10 @@
                             (field->clause field (when (not= value params/no-value)
                                                    {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
+
+(defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
+  [_ {:keys [query params name] :as param}]
+  {:prepared-statement-args params
+   :replacement-snippet (if query
+                          (sql.qp/make-nestable-sql query)
+                          (str "{{" name "}}"))})
