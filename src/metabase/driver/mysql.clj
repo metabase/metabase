@@ -1236,15 +1236,16 @@
   [_driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
   ;; We create a separate database for workspace isolation.
-  (let [db-name  (driver.u/workspace-isolation-namespace-name workspace)
-        user     (driver.u/workspace-isolation-user-name workspace)
-        password (driver.u/random-workspace-password)]
+  (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
+        user             (driver.u/workspace-isolation-user-name workspace)
+        password         (driver.u/random-workspace-password)
+        escaped-password (sql.u/escape-sql password :ansi)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (mysql-user-exists? t-conn user)
                        (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user password)
+                               user escaped-password)
                        (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user password))]
+                               user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
                        (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
