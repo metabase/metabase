@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -101,6 +102,17 @@
           (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
                  (mt/rows (qp/process-query (mt/native-query query))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::case-branch-coersion]
+  [_driver _feature _database]
+  true)
+
+;; Don't test bigquery because it can't do the case with a default. It requires all
+;; case branches to return the same type while others will coerce if they can.
+;; The assertion above should be enough for BigQuery.
+(defmethod driver/database-supports? [:bigquery-cloud-sdk ::case-branch-coersion]
+  [_driver _feature _database]
+  false)
+
 (deftest convert-timezone-in-case-with-default-test
   (testing "convert-timezone inside case with a default value should not double-convert (#68712)"
     (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
@@ -124,12 +136,7 @@
             (testing "MBQL: case with and without default should produce the same result for matching rows"
               ;; Should not have a timezone
               (is (not (str/ends-with? original-without-default-val "Z"))))
-            (mt/test-drivers (disj (mt/normal-drivers-with-feature :convert-timezone)
-                                   ;; Don't test bigquery because it can't do the case with a default. It requires all
-                                   ;; case branches to return the same type while others will coerce if they can.
-                                   ;; The assertion above should be enough for BigQuery.
-                                   #_:clj-kondo/ignore
-                                   :bigquery-cloud-sdk)
+            (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone ::case-branch-coersion)
               (let [mp (mt/metadata-provider)
                     query (lib/query mp (lib.metadata/table mp (mt/id :times)))
                     dt-tz-col (lib.metadata/field mp (mt/id :times :dt_tz))
