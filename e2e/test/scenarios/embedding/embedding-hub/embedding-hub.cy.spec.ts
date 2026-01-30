@@ -346,5 +346,45 @@ describe("scenarios - embedding hub", () => {
         .scrollIntoView()
         .should("be.visible");
     });
+
+    describe("Metabot card", () => {
+      it("should show the Metabot card on Cloud and navigate to /admin/metabot", () => {
+        H.restore("setup");
+        cy.signInAsAdmin();
+
+        // bleeding-edge contains both `hosted` and `metabot` features enabled
+        H.activateToken("bleeding-edge");
+
+        cy.visit("/admin/embedding/setup-guide");
+
+        cy.log("metabot card should be visible");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Set up AI")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByTestId("admin-layout-content")
+          .findByText("Embed natural language querying")
+          .scrollIntoView()
+          .should("be.visible")
+          .click();
+
+        cy.log("should navigate to Metabot admin page");
+        cy.url().should("include", "/admin/metabot");
+      });
+
+      it("should not show the Metabot card on self-hosted", () => {
+        H.restore("setup");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
+
+        cy.visit("/admin/embedding/setup-guide");
+
+        cy.log("metabot card should not be visible on self-hosted");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Embed natural language querying")
+          .should("not.exist");
+      });
+    });
   });
 });

@@ -129,7 +129,11 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             <Stack justify="space-between" h="100%">
                               <Stack gap="xs" h="100%">
                                 <Text
-                                  size={card.optional ? "md" : "lg"}
+                                  size={
+                                    card.optional && !hasOnlyOptionalCards
+                                      ? "md"
+                                      : "lg"
+                                  }
                                   fw="bold"
                                   c={
                                     card.done
