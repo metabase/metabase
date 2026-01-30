@@ -62,4 +62,10 @@
                        :ref_id        (:ref_id original)
                        :old_global_id (:global_id original)
                        :new_global_id (:global_id instance)}))))
-  instance)
+  ;; Mark the definition as changed when source or target is updated.
+  ;; This is also set redundantly by [[metabase-enterprise.workspaces.impl/increment-analysis-version!]] in the API
+  ;; layer, but having it here ensures correctness regardless of the code path used to update the transform.
+  (cond-> instance
+    (or (contains? (t2/changes instance) :source)
+        (contains? (t2/changes instance) :target))
+    (assoc :definition_changed true)))

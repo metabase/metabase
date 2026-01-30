@@ -513,10 +513,11 @@
    _query-params
    ;; Hmmm, I wonder why this isn't a boolean? T_T
    {:keys [stale_only]} :- [:map [:stale_only {:optional true} [:or [:= 1] :boolean]]]]
-  (let [workspace (t2/select-one :model/Workspace :id ws-id)]
-    (api/check-404 workspace)
-    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-    (ws.impl/execute-workspace! workspace (ws.impl/get-or-calculate-graph! workspace) {:stale-only stale_only})))
+  (let [workspace (t2/select-one :model/Workspace :id ws-id)
+        _         (api/check-404 workspace)
+        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        graph     (ws.impl/get-or-calculate-graph! workspace)]
+    (ws.impl/execute-workspace! workspace graph {:stale-only stale_only})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
@@ -762,7 +763,7 @@
    [:last_run_status [:maybe :string]]
    [:last_run_message [:maybe :string]]])
 
-(def ^:private workspace-transform-alias {:target_stale :stale})
+(def ^:private workspace-transform-alias {:target_stale :definition_changed})
 
 (defn- attach-isolated-target [{:keys [workspace_id ref_id] :as ws-transform}]
   (let [{:keys [db_id isolated_schema isolated_table]}
@@ -916,11 +917,12 @@
   App DB changes are rolled back. Warehouse DB changes persist."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace  (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
-    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-    (check-transforms-enabled! (:database_id workspace))
-    (ws.impl/run-transform! workspace (ws.impl/get-or-calculate-graph! workspace) transform)))
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _         (check-transforms-enabled! (:database_id workspace))
+        graph     (ws.impl/get-or-calculate-graph! workspace)]
+    (ws.impl/run-transform! workspace graph transform)))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
   :- ::ws.t/dry-run-result
@@ -930,11 +932,12 @@
   Does not update last_run_at or create any database tables."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace  (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
-    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-    (check-transforms-enabled! (:database_id workspace))
-    (ws.impl/dry-run-transform workspace (ws.impl/get-or-calculate-graph! workspace) transform)))
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _         (check-transforms-enabled! (:database_id workspace))
+        graph     (ws.impl/get-or-calculate-graph! workspace)]
+    (ws.impl/dry-run-transform workspace graph transform)))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."

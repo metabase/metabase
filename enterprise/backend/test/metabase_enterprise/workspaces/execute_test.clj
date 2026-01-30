@@ -265,3 +265,40 @@
                 :body          "import pandas as pd"
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))))
+
+(deftest run-transform-marks-not-stale-on-success
+  (testing "Successful transform run marks definition_changed=false"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)]
+        (testing "initially stale"
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (ws.tu/mock-run-transform! workspace-id t1-ref)
+
+        (testing "after run: definition_changed cleared"
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))
+
+(deftest transform-stale-lifecycle
+  (testing "Transform stale lifecycle: create -> run (not stale) -> update (stale)"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)]
+        (testing "sanity check that it's stale to start with"
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (testing "Run (mocked): should mark definition_changed as false"
+          (ws.tu/mock-run-transform! workspace-id t1-ref)
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (testing "Update source: should mark definition_changed as true"
+          (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id :ref_id t1-ref}
+                      {:source {:type "query" :query (mt/native-query {:query "SELECT 2 as id, 'world' as name"})}})
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))

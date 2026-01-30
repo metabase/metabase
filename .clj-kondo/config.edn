@@ -429,6 +429,7 @@
   metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
   metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
   metabase-enterprise.transforms.execute/with-transform-lifecycle                       clojure.core/let
+  metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
