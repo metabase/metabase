@@ -1,6 +1,7 @@
-.EditorButton:not([data-css-specificity-hack]) {
+.sdkActionIcon:not([data-css-specificity-hack]) {
   color: var(--mb-color-text-primary);
   background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
 
   &:hover {
     background: var(--mb-color-background-hover);
@@ -9,6 +10,7 @@
   &[data-active="true"] {
     color: var(--mb-color-text-primary-inverse);
     background: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
 
     &:hover {
       background: color-mix(in srgb, var(--mb-color-brand), transparent 20%);
