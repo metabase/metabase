@@ -56,7 +56,6 @@
    :exclude
    [filter])
   (:require
-   ["dayjs" :as dayjs]
    [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
@@ -92,18 +91,6 @@
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
-
-(defn- dayjs-utc->local-date
-  "Convert a dayjs UTC value to a JavaScript Date in local time, preserving the time values.
-   This is needed because coerce-to-timestamp returns dayjs objects in UTC mode, but the FE expects
-   Date objects in local time with the same year/month/day/hour/minute/second values.
-   dayjs.local(true) doesn't work like moment.local(true), so we format and reparse as local time."
-  [value]
-  (when (u.time/valid? value)
-    (-> value
-        (.format "YYYY-MM-DDTHH:mm:ss.SSS")
-        dayjs
-        (.toDate))))
 
 (defn ^:export suggestedName
   "Return a nice description of a query.
@@ -1176,7 +1163,7 @@
     (let [{:keys [operator column values with-time?]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map dayjs-utc->local-date values))
+           :values   (to-array (map u.time/dayjs-utc->local-date values))
            :hasTime  with-time?})))
 
 (defn ^:export relative-date-filter-clause

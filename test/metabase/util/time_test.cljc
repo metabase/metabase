@@ -543,3 +543,22 @@
     "2020-04-18"              (shared.ut/local-date 2020 4 18)                   :type/Date
     "2020-04-18"              (shared.ut/local-date-time 2020 4 18 0 0 0)        :type/Date
     "2020-04-18T15:25:18.500" (shared.ut/local-date-time 2020 4 18 15 25 18 500) :type/DateTime))
+
+#?(:cljs
+   (deftest ^:parallel dayjs-utc->local-date-test
+     (testing "converts a dayjs UTC value to a JS Date preserving time values"
+       (let [utc-dayjs (.utc dayjs "2024-11-28T10:20:30.123")
+             result    (shared.ut/dayjs-utc->local-date utc-dayjs)]
+         (is (instance? js/Date result))
+         ;; The JS Date should have the same year/month/day/hour/minute/second/millisecond
+         ;; as the original UTC dayjs, but interpreted in local time
+         (is (= 2024 (.getFullYear result)))
+         (is (= 10 (.getMonth result)))  ;; JS months are 0-indexed, so November = 10
+         (is (= 28 (.getDate result)))
+         (is (= 10 (.getHours result)))
+         (is (= 20 (.getMinutes result)))
+         (is (= 30 (.getSeconds result)))
+         (is (= 123 (.getMilliseconds result)))))
+     (testing "returns nil for invalid dayjs values"
+       (is (nil? (shared.ut/dayjs-utc->local-date (dayjs "invalid-date"))))
+       (is (nil? (shared.ut/dayjs-utc->local-date nil))))))

@@ -734,3 +734,15 @@
     :month-of-year    (inc (.month t)) ;; `month` is 0-11
     :quarter-of-year  (.quarter t)
     :year             (.year t)))
+
+(defn dayjs-utc->local-date
+  "Convert a dayjs UTC value to a JavaScript Date in local time, preserving the time values.
+   This is needed because coerce-to-timestamp returns dayjs objects in UTC mode, but the FE expects
+   Date objects in local time with the same year/month/day/hour/minute/second values.
+   dayjs.local(true) doesn't work like moment.local(true), so we format and reparse as local time."
+  [value]
+  (when (valid? value)
+    (-> value
+        (.format "YYYY-MM-DDTHH:mm:ss.SSS")
+        dayjs
+        (.toDate))))
