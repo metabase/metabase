@@ -55,6 +55,7 @@ You'll need to be an admin to set up Remote Sync.
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
 6. [Create a personal access token for production](#6-create-a-personal-access-token-for-production)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
+8. [Configure Transforms syncing (optional)](#8-configure-transforms-syncing-optional)
 
 ### 1. Set up a repository to store your content
 
