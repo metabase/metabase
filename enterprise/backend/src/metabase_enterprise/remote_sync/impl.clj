@@ -337,10 +337,11 @@
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
-  Takes a result map with a :status key (either :success or :error) and optional :message key, a RemoteSyncTask ID,
-  and an optional branch name. On success, updates the remote-sync-branch setting (if branch provided), marks the
-  task complete, and invalidates the remote changes cache. On error, marks the task as failed with the error message.
-  For any other status, marks the task as failed with 'Unexpected Error'."
+  Takes a result map with a :status key (either :success, :conflict, or :error) and optional :message key, a
+  RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
+  provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
+  stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
+  task as failed with 'Unexpected Error'."
   [result task-id & [branch]]
   (case (:status result)
     :success (do
@@ -349,6 +350,9 @@
                    (settings/remote-sync-branch! branch))
                  (remote-sync.task/complete-sync-task! task-id))
                (invalidate-remote-changes-cache!))
+    :conflict (do
+                (remote-sync.task/set-version! task-id (:version result))
+                (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
     :error (remote-sync.task/fail-sync-task! task-id (:message result))
     (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))
 

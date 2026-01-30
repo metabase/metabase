@@ -5,7 +5,7 @@
 
 (def TaskStatus
   "Status of a remote sync task."
-  [:enum :running :successful :errored :cancelled :timed-out])
+  [:enum :running :successful :errored :cancelled :timed-out :conflict])
 
 (def TaskType
   "Type of remote sync task."
@@ -24,6 +24,7 @@
    [:version {:optional true} [:maybe :string]]
    [:cancelled {:optional true} [:maybe :boolean]]
    [:error_message {:optional true} [:maybe :string]]
+   [:conflicts {:optional true} [:maybe [:sequential :string]]]
    [:status TaskStatus]])
 
 ;;; ------------------------------------------- Dirty Item Schemas -------------------------------------------
