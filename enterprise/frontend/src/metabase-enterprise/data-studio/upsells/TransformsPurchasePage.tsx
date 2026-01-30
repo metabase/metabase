@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { Fragment, useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -165,13 +166,10 @@ export function TransformsPurchasePage({
                         withBorder
                         p={0}
                         radius="md"
-                        style={{
-                          borderColor:
-                            selectedTier === option.value
-                              ? "var(--mb-color-brand)"
-                              : undefined,
-                          borderWidth: selectedTier === option.value ? 2 : 1,
-                        }}
+                        className={cx({
+                          [S.selectedTierOptionCard]:
+                            selectedTier === option.value,
+                        })}
                       >
                         <Radio.Card value={option.value} p="md" radius="md">
                           <Flex direction="row" align="flex-start" gap="md">
