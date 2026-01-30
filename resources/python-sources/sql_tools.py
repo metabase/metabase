@@ -176,27 +176,26 @@ def table_parts(table):
         return None
     return (table.db or None, name)
 
-# TODO: Add type info
-def referenced_tables(dialect, sql, default_table_schema):
+def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
-    Return referenced tables.
+    Extract table references from a SQL query.
 
-    :param dialect: dialect to use for parsing
-    :param sql: sql string
-    :param catalog: Name of the database query runs on
-    :param db: In Metabase jargon, default schema for tables without namespace
+    Returns a JSON array of [schema_or_null, table_name] pairs:
+    [[null, "users"], ["public", "orders"]]
 
-    Most reliable way I've found to exclude all table like entities that are
-    presented as `exp.Table` is `Scope` traversal, selecting its `.sources`.
-    Other entities are presented as `Scope` in the `.sources`, so those
-    can be exluded easily.
+    Excludes CTEs, subquery aliases, and UDTFs.
+
+    :param sql: SQL query string
+    :param dialect: SQL dialect (postgres, mysql, snowflake, bigquery, redshift, duckdb)
+
+    Examples:
+        referenced_tables("SELECT * FROM users")
+        => '[[null, "users"]]'
+
+        referenced_tables("SELECT * FROM public.users u1 LEFT JOIN other.users u2 ON ...")
+        => '[["other", "users"], ["public", "users"]]'
     """
     ast = sqlglot.parse_one(sql, read=dialect)
-    ast = qualify.qualify(ast,
-                          db=default_table_schema,
-                          dialect=dialect,
-                          infer_schema=True,
-                          sql=sql)
     root_scope = optimizer.build_scope(ast)
 
     tables = set()
@@ -207,7 +206,8 @@ def referenced_tables(dialect, sql, default_table_schema):
                 if parts is not None:
                     tables.add(parts)
 
-    return json.dumps(tuple(tables))
+    # Sort for deterministic output (nulls sort first via empty string)
+    return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1])))
 
 # TODO: Double check when settled.
 def is_pure_column(root):

@@ -421,18 +421,25 @@
 ;;;; Shim part
 
 (defn referenced-tables
-  "WIP"
-  [dialect sql default-table-schema]
-  (with-open [^Closeable ctx (if config/is-dev?
-                               (acquire-dev-context)
-                               (acquire-context @python-context-pool))]
-    (eval-python ctx "import sql_tools")
-    (-> ^Value (eval-python ctx "sql_tools.referenced_tables")
-        (.execute ^Value (object-array [dialect sql
-                                        default-table-schema]))
-        .asString
-        json/decode
-        vec)))
+  "Extract table references from SQL.
+
+   Returns a vector of [schema-or-nil table-name] pairs:
+   [[nil \"users\"] [\"public\" \"orders\"]]
+
+   This is the pure parsing layer - it returns what's literally in the SQL.
+   Default schema resolution happens in the matching layer (core.clj)."
+  ([sql]
+   (referenced-tables sql "postgres"))
+  ([sql dialect]
+   (with-open [^Closeable ctx (if config/is-dev?
+                                (acquire-dev-context)
+                                (acquire-context @python-context-pool))]
+     (eval-python ctx "import sql_tools")
+     (-> ^Value (eval-python ctx "sql_tools.referenced_tables")
+         (.execute ^Value (object-array [sql dialect]))
+         .asString
+         json/decode
+         vec))))
 
 ;; TODO: Rename lineage to something more accurate
 (defn returned-columns-lineage

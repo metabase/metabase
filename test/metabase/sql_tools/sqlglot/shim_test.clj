@@ -173,6 +173,37 @@
       (is (= ["users"] (:tables_source result)))
       (is (= ["id" "name"] (sort (:columns result)))))))
 
+;;; ------------------------------------------ referenced-tables API Tests -----------------------------------------
+
+(deftest ^:parallel referenced-tables-basic-test
+  (testing "Simple table extraction"
+    (is (= [[nil "users"]]
+           (sqlglot.shim/referenced-tables "SELECT * FROM users" "postgres"))))
+
+  (testing "Multiple tables from JOIN"
+    (is (= [[nil "orders"] [nil "users"]]
+           (sqlglot.shim/referenced-tables
+            "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id"
+            "postgres"))))
+
+  (testing "Schema-qualified tables are preserved"
+    (is (= [["other" "users"] ["public" "users"]]
+           (sqlglot.shim/referenced-tables
+            "SELECT public.users.id, other.users.id
+             FROM public.users u1
+             LEFT JOIN other.users u2 ON u1.id = u2.id"
+            "postgres"))))
+
+  (testing "CTE names are excluded"
+    (is (= [[nil "users"]]
+           (sqlglot.shim/referenced-tables
+            "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active"
+            "postgres"))))
+
+  (testing "Dialect defaults to postgres"
+    (is (= [[nil "users"]]
+           (sqlglot.shim/referenced-tables "SELECT * FROM users")))))
+
 (deftest ^:parallel cte-test
   (testing "CTE (WITH clause) parsing"
     (let [result (sqlglot.shim/p "WITH active_users AS (SELECT * FROM users WHERE active)
@@ -241,7 +272,7 @@
     (doseq [[dialect sql] udtf-queries]
       (testing (str "dialect: " dialect " - pure UDTF query")
         ;; Table functions shouldn't appear as referenced tables - they're not real tables
-        (let [result (sqlglot.shim/referenced-tables (name dialect) sql "public")]
+        (let [result (sqlglot.shim/referenced-tables sql (name dialect))]
           (is (vector? result)
               (format "dialect %s: should return vector, got %s" dialect (type result)))
           (is (every? vector? result)
@@ -249,7 +280,7 @@
 
     (doseq [[dialect sql] udtf-with-table-queries]
       (testing (str "dialect: " dialect " - UDTF mixed with real table")
-        (let [result (sqlglot.shim/referenced-tables (name dialect) sql "public")]
+        (let [result (sqlglot.shim/referenced-tables sql (name dialect))]
           ;; Case-insensitive comparison since dialects like Snowflake uppercase identifiers
           (is (some #(= "orders" (u/lower-case-en (second %))) result)
               (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
@@ -345,7 +376,7 @@
     (doseq [[dialect ops] dialect->set-operation->query
             [op-type sql] ops]
       (testing (str "dialect: " (name dialect) " - " (name op-type))
-        (let [result (sqlglot.shim/referenced-tables (name dialect) sql "public")
+        (let [result (sqlglot.shim/referenced-tables sql (name dialect))
               found-tables (into #{} (map (comp u/lower-case-en second) result))]
           (is (= #{"a" "b"} found-tables)
               (format "%s/%s should find tables a and b, got %s"

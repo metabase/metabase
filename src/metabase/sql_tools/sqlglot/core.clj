@@ -108,15 +108,15 @@
   (let [db-tables (lib.metadata/tables query)
         db-transforms (lib.metadata/transforms query)
         sql (lib/raw-native-query query)
-        default-table-schema* (driver.sql/default-schema driver)
-        query-tables (sqlglot.shim/referenced-tables
-                      (driver->dialect driver) sql default-table-schema*)]
+        default-schema (driver.sql/default-schema driver)
+        query-tables (sqlglot.shim/referenced-tables sql (driver->dialect driver))]
     (into #{}
           (keep (fn [[table-schema table]]
                   (sql-tools.common/find-table-or-transform
                    driver db-tables db-transforms
                    (sql-tools.common/normalize-table-spec
-                    driver {:table table :schema table-schema}))))
+                    driver {:table table
+                            :schema (or table-schema default-schema)}))))
           query-tables)))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
