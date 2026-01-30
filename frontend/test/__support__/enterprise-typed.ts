@@ -25,6 +25,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   dependencies: "metabase-enterprise/dependencies",
   feature_level_permissions: "metabase-enterprise/feature_level_permissions",
   shared: "metabase-enterprise/shared",
+  transforms: "metabase-enterprise/transforms",
   "transforms-python": "metabase-enterprise/transforms-python",
   remote_sync: "metabase-enterprise/remote_sync",
   public: "metabase-enterprise/public",
