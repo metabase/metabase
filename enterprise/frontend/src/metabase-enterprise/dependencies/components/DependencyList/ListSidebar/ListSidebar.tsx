@@ -3,19 +3,20 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
+import type { DependencyListMode } from "../types";
 
+import { BrokenDependentsSection } from "./BrokenDependentsSection";
+import { ErrorsSection } from "./ErrorsSection";
+import { FieldsSection } from "./FieldsSection";
+import { InfoSection } from "./InfoSection";
 import S from "./ListSidebar.module.css";
-import { SidebarCreationSection } from "./SidebarCreationSection";
-import { SidebarDependentsSection } from "./SidebarDependentsSection";
-import { SidebarErrorSection } from "./SidebarErrorSection";
+import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarLocationSection } from "./SidebarLocationSection";
 import { SidebarResizableBox } from "./SidebarResizableBox";
-import { SidebarTransformSection } from "./SidebarTransformSection";
 
 type ListSidebarProps = {
   node: DependencyNode;
+  mode: DependencyListMode;
   containerWidth: number;
   onResizeStart: () => void;
   onResizeStop: () => void;
@@ -24,14 +25,12 @@ type ListSidebarProps = {
 
 export const ListSidebar = memo(function ListSidebar({
   node,
+  mode,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
 }: ListSidebarProps) {
-  const errors = getDependencyErrors(node.dependents_errors ?? []);
-  const errorGroups = getDependencyErrorGroups(errors);
-
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
@@ -47,18 +46,12 @@ export const ListSidebar = memo(function ListSidebar({
       >
         <Stack gap="lg">
           <SidebarHeader node={node} onClose={onClose} />
-          <SidebarLocationSection node={node} />
-          <SidebarTransformSection node={node} />
-          <SidebarCreationSection node={node} />
+          <LocationSection node={node} />
+          <InfoSection node={node} />
         </Stack>
-        {errorGroups.map((errorGroup) => (
-          <SidebarErrorSection
-            key={errorGroup.type}
-            type={errorGroup.type}
-            errors={errorGroup.errors}
-          />
-        ))}
-        <SidebarDependentsSection node={node} />
+        {mode === "broken" && <ErrorsSection node={node} />}
+        {mode === "broken" && <BrokenDependentsSection node={node} />}
+        {mode === "unreferenced" && <FieldsSection node={node} />}
       </Stack>
     </SidebarResizableBox>
   );

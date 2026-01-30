@@ -10,21 +10,3 @@
 .searchInput {
   margin-bottom: 1rem;
 }
-
-button.newButton {
-  width: 50%;
-  color: var(--mb-color-text-primary);
-  border-color: var(--mb-color-border);
-
-  &:hover {
-    color: var(--mb-color-brand);
-    border-color: var(--mb-color-brand-light);
-    background: var(--mb-color-brand-lighter);
-  }
-
-  &:active {
-    color: var(--mb-color-brand);
-    border-color: var(--mb-color-brand);
-    background: var(--mb-color-brand-light);
-  }
-}

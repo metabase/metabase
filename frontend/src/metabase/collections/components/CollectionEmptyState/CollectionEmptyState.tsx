@@ -35,7 +35,7 @@ const CollectionEmptyState = ({
 const TrashEmptyState = () => {
   return (
     <EmptyStateWrapper>
-      <Icon name="trash" size={80} c="brand-light" />
+      <Icon name="trash" size={80} c="background-brand" />
       <EmptyStateTitle>{t`Nothing here`}</EmptyStateTitle>
       <EmptyStateSubtitle>
         {t`Deleted items will appear here.`}

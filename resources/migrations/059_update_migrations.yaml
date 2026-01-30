@@ -1,5 +1,62 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:23
+      author: nvoxland
+      comment: Add source_database_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_database_id
+                  type: int
+                  remarks: The database containing the source data for this transform
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:24
+      author: nvoxland
+      comment: Add index for transform.source_database_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_source_database_id
+            columns:
+              - column:
+                  name: source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:25
+      author: nvoxland
+      comment: Add foreign key on transform(source_database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:26
+      author: nvoxland
+      comment: Transfer data from transform.source to transform.source_database_id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.SetTransformSourceDatabaseId"
+      rollback: # No need to roll back
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:27
+      author: nvoxland
+      comment: Make transform.source_database_id not nullable
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
   - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
@@ -743,6 +800,88 @@ databaseChangeLog:
         - sql:
             sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
       rollback:
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:00
+      author: nvoxland
+      comment: Add transform_name for preserving history when transform is deleted
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: transform_name
+                  type: varchar(254)
+                  remarks: Name of transform at time of run, stored for historical purposes
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:01
+      author: nvoxland
+      comment: Add transform_entity_id column for potential reconnection when transform is recreated
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: transform_entity_id
+                  type: char(21)
+                  remarks: Original transform entity_id, stored for historical purposes
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:02
+      author: nvoxland
+      comment: Backfill transform_name and transform_entity_id for existing runs
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform_run
+              SET transform_name = (SELECT name FROM transform WHERE transform.id = transform_run.transform_id),
+                  transform_entity_id = (SELECT entity_id FROM transform WHERE transform.id = transform_run.transform_id)
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform_run SET transform_name = NULL, transform_entity_id = NULL
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:03
+      author: nvoxland
+      comment: Drop existing FK constraint on transform_run.transform_id to change to SET NULL behavior
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:04
+      author: nvoxland
+      comment: Make transform_id nullable to support orphaned runs when transform is deleted
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform_run
+            columnName: transform_id
+            columnDataType: int
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:05
+      author: nvoxland
+      comment: Re-add FK constraint with ON DELETE SET NULL behavior to preserve runs when transform is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: SET NULL
+
 
   - changeSet:
       id: v59.2026-01-27T12:00:00
