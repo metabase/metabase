@@ -3,10 +3,18 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Text, Tooltip } from "metabase/ui";
-import type { TransformRun, TransformTag } from "metabase-types/api";
+import type {
+  TransformRun,
+  TransformTag,
+  TransformTagId,
+} from "metabase-types/api";
 
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
-import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
+import {
+  formatRunMethod,
+  formatStatus,
+  parseTimestampWithTimezone,
+} from "../../../utils";
 
 import { TagList } from "./TagList";
 
@@ -14,27 +22,31 @@ function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "transform",
     header: t`Transform`,
+    minWidth: 320,
     enableSorting: false,
-    cell: ({ row }) => {
+    accessorFn: (run) => {
+      return run.transform?.name || t`Unnamed transform`;
+    },
+    cell: ({ row, getValue }) => {
       const run = row.original;
+      const value = String(getValue());
       const isTransformDeleted = run.transform?.deleted === true;
-      const transformName = run.transform?.name || t`Unnamed transform`;
 
       return (
         <Ellipsified>
           {isTransformDeleted ? (
-            <Tooltip label={t`${transformName} has been deleted`}>
+            <Tooltip label={t`${value} has been deleted`}>
               <Text
                 c="text-tertiary"
                 component="span"
                 display="inline"
                 fs="italic"
               >
-                {transformName}
+                {value}
               </Text>
             </Tooltip>
           ) : (
-            transformName
+            value
           )}
         </Ellipsified>
       );
@@ -48,16 +60,16 @@ function getStartedAtColumn(
   return {
     id: "started-at",
     header: t`Started at`,
+    width: "auto",
     enableSorting: false,
-    cell: ({ row }) => {
-      const run = row.original;
-      return (
-        <Ellipsified>
-          {parseTimestampWithTimezone(run.start_time, systemTimezone).format(
-            "lll",
-          )}
-        </Ellipsified>
+    accessorFn: (run) => {
+      return parseTimestampWithTimezone(run.start_time, systemTimezone).format(
+        "lll",
       );
+    },
+    cell: ({ getValue }) => {
+      const value = getValue();
+      return <Ellipsified>{String(value)}</Ellipsified>;
     },
   };
 }
@@ -68,18 +80,16 @@ function getEndedAtColumn(
   return {
     id: "ended-at",
     header: t`Ended at`,
+    width: "auto",
     enableSorting: false,
-    cell: ({ row }) => {
-      const run = row.original;
-      return (
-        <Ellipsified>
-          {run.end_time
-            ? parseTimestampWithTimezone(run.end_time, systemTimezone).format(
-                "lll",
-              )
-            : null}
-        </Ellipsified>
-      );
+    accessorFn: (run) => {
+      return run.end_time != null
+        ? parseTimestampWithTimezone(run.end_time, systemTimezone).format("lll")
+        : null;
+    },
+    cell: ({ getValue }) => {
+      const value = getValue();
+      return value != null ? <Ellipsified>{String(value)}</Ellipsified> : null;
     },
   };
 }
@@ -90,7 +100,9 @@ function getStatusColumn(
   return {
     id: "status",
     header: t`Status`,
+    width: 100,
     enableSorting: false,
+    accessorFn: (row) => formatStatus(row.status),
     cell: ({ row }) => {
       const run = row.original;
       return (
@@ -116,22 +128,47 @@ function getTriggerColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "trigger",
     header: t`Trigger`,
+    width: "auto",
     enableSorting: false,
-    cell: ({ row }) => {
-      const run = row.original;
-      return <Ellipsified>{formatRunMethod(run.run_method)}</Ellipsified>;
+    accessorFn: (row) => formatRunMethod(row.run_method),
+    cell: ({ getValue }) => {
+      const value = String(getValue());
+      return <Ellipsified>{value}</Ellipsified>;
     },
   };
 }
 
-function getTagsColumn(tags: TransformTag[]): TreeTableColumnDef<TransformRun> {
+function getTagById(
+  tags: TransformTag[],
+): Record<TransformTagId, TransformTag> {
+  return Object.fromEntries(tags.map((tag) => [tag.id, tag]));
+}
+
+function getTagList(
+  tagIds: TransformTagId[],
+  tagById: Record<TransformTagId, TransformTag>,
+) {
+  return tagIds.map((tagId) => tagById[tagId]).filter((tag) => tag != null);
+}
+
+function getTagsLabel(tags: TransformTag[]) {
+  return tags.map((tag) => tag.name).join(", ");
+}
+
+function getTagsColumn(
+  tagsById: Record<TransformTagId, TransformTag>,
+): TreeTableColumnDef<TransformRun> {
   return {
     id: "tags",
     header: t`Tags`,
+    width: "auto",
     enableSorting: false,
+    accessorFn: (row) =>
+      getTagsLabel(getTagList(row.transform?.tag_ids ?? [], tagsById)),
     cell: ({ row }) => {
       const run = row.original;
-      return <TagList tags={tags} tagIds={run.transform?.tag_ids ?? []} />;
+      const tags = getTagList(run.transform?.tag_ids ?? [], tagsById);
+      return <TagList tags={tags} />;
     },
   };
 }
@@ -140,12 +177,14 @@ export function getColumns(
   tags: TransformTag[],
   systemTimezone: string | undefined,
 ): TreeTableColumnDef<TransformRun>[] {
+  const tagsById = getTagById(tags);
+
   return [
     getTransformColumn(),
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
     getStatusColumn(systemTimezone),
     getTriggerColumn(),
-    getTagsColumn(tags),
+    getTagsColumn(tagsById),
   ];
 }
