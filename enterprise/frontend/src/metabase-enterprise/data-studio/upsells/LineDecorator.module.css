@@ -1,20 +1,16 @@
-/* CSS variable for line color - matches the dotted pattern color */
-:global {
-  :root {
-    --mb-color-upsell-pattern: color-mix(
-      in srgb,
-      var(--mb-color-brand),
-      transparent 80%
-    );
-  }
-}
-
 .root {
+  --mb-color-upsell-pattern: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    transparent 80%
+  );
+
   position: relative;
   display: flex;
 }
 
 .border {
+  pointer-events: none;
   position: absolute;
 }
 
@@ -46,8 +42,6 @@
   width: 1px;
   height: calc(100% + 250px);
   top: -75px;
-  /* background-color does not accept gradients, so this results in no color being shown.
-     To display a vertical gradient border, use background-image instead: */
   background-image: linear-gradient(
     to bottom,
     transparent,
