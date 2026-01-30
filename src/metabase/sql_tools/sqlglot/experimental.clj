@@ -86,7 +86,7 @@
   (let [sqlglot-schema* (sqlglot-schema driver query)
         sql-str (lib/raw-native-query query)
         default-schema* (driver.sql/default-schema driver)
-        lineage (sql-parsing/returned-columns-lineage
+        lineage "returned-columns-lineage is commented out below." #_(returned-columns-lineage
                  (driver->dialect driver) sql-str default-schema* sqlglot-schema*)
         normalized-lienage (mapv (partial normalized-dependencies driver)
                                  lineage)

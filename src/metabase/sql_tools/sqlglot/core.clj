@@ -87,7 +87,7 @@
 ;; TODO: The original, Macaw impl returns multiple errors for a query.
 ;; This should be extended the same way (e.g. by adding the checks over lineage).
 ;; For now we return #{<err>}, single error to conform previous implementation.
-(defn validate-query
+#_(defn validate-query
   "Validate the native `query`."
   [driver query]
   (log/warn "I'm using sqlglot-schema, please fix me.")
@@ -101,6 +101,6 @@
       (let [processed (process-error driver validation-result)]
         #{processed}))))
 
-(defmethod sql-tools/validate-query-impl :sqlglot
+#_(defmethod sql-tools/validate-query-impl :sqlglot
   [_parser driver query]
   (validate-query driver query))
