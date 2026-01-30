@@ -134,7 +134,10 @@
   [lens-type ctx]
   (let [definition (make-lens-definition lens-type ctx)
         cards (generate-cards lens-type ctx)]
-    (assoc definition :cards cards)))
+    (cond-> (assoc definition :cards cards)
+      ;; Include visited-fields when available (useful for interestingness)
+      (seq (:all (:visited-fields ctx)))
+      (assoc :visited-fields (:visited-fields ctx)))))
 
 (defn get-lens
   "Generate a lens by ID.

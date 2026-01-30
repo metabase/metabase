@@ -902,16 +902,34 @@
   "Phase 1: Discover available lenses for a transform.
    Returns structural metadata and available lens types.
 
-   This is a cheap operation - no query execution."
+   This is a cheap operation - no query execution.
+
+   If transform hasn't run yet (no target table), returns :not-run status
+   with empty available-lenses."
   [transform :- :map]
   (let [target-table (inspector.context/get-target-table transform)]
-    (assert target-table)
-    (let [ctx              (inspector.context/build-base-context transform)
-          available-lenses (lenses.core/available-lenses ctx)]
-      {:name             (str "Transform Inspector: " (:name transform))
-       :sources          (:sources ctx)
-       :target           (:target ctx)
-       :available-lenses available-lenses})))
+    (if-not target-table
+      ;; Transform hasn't run - minimal response
+      (let [sources (inspector.context/extract-sources transform)
+            sources-info (mapv #(inspector.context/build-table-info %) sources)]
+        {:name             (str "Transform Inspector: " (:name transform))
+         :description      (tru "Transform has not been run yet. Run the transform to see inspection data.")
+         :status           :not-run
+         :sources          sources-info
+         :target           nil
+         :available-lenses []})
+      ;; Transform has run - full discovery
+      (let [ctx              (inspector.context/build-lens-context transform)
+            available-lenses (lenses.core/available-lenses ctx)]
+        (cond-> {:name             (str "Transform Inspector: " (:name transform))
+                 :description      (tru "Analysis of transform inputs, outputs, and joins")
+                 :status           :ready
+                 :sources          (:sources ctx)
+                 :target           (:target ctx)
+                 :available-lenses available-lenses}
+          ;; Include visited-fields when available
+          (seq (:all (:visited-fields ctx)))
+          (assoc :visited-fields (:visited-fields ctx)))))))
 
 (mu/defn get-lens :- ::inspector.schema/lens
   "Phase 2: Get full lens contents for a transform.

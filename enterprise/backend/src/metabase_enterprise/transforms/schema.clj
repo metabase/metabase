@@ -217,12 +217,13 @@
    [:cards [:sequential ::inspector-card]]])
 
 (mr/def ::visited-fields
-  "Field IDs that are used in semantically important query clauses (JOINs, WHERE, GROUP BY).
+  "Field IDs that are used in semantically important query clauses (JOINs, WHERE, GROUP BY, ORDER BY).
    Used to preselect interesting columns in the frontend."
   [:map
    [:join-fields {:optional true} [:set pos-int?]]
    [:filter-fields {:optional true} [:set pos-int?]]
    [:group-by-fields {:optional true} [:set pos-int?]]
+   [:order-by-fields {:optional true} [:set pos-int?]]
    [:all {:optional true} [:set pos-int?]]])
 
 (mr/def ::inspector-result

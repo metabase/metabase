@@ -49,6 +49,24 @@
    [:column-count :int]
    [:fields [:sequential ::field]]])
 
+;;; -------------------------------------------------- Visited Fields --------------------------------------------------
+
+(mr/def ::visited-fields
+  "Field IDs that are used in semantically important query clauses.
+   Used to preselect interesting columns in the frontend and extend interestingness scoring.
+
+   - join-fields: Fields used in JOIN conditions
+   - filter-fields: Fields used in WHERE/FILTER clauses
+   - group-by-fields: Fields used in GROUP BY clauses
+   - order-by-fields: Fields used in ORDER BY clauses
+   - all: Union of all the above"
+  [:map
+   [:join-fields {:optional true} [:set pos-int?]]
+   [:filter-fields {:optional true} [:set pos-int?]]
+   [:group-by-fields {:optional true} [:set pos-int?]]
+   [:order-by-fields {:optional true} [:set pos-int?]]
+   [:all {:optional true} [:set pos-int?]]])
+
 ;;; -------------------------------------------------- Lens Metadata  --------------------------------------------------
 
 (mr/def ::lens-metadata
@@ -136,14 +154,30 @@
    [:cards [:sequential ::card]]
    ;; Internal: trigger definitions for heuristics evaluation
    [:alert-triggers {:optional true} [:sequential :map]]
-   [:drill-lens-triggers {:optional true} [:sequential :map]]])
+   [:drill-lens-triggers {:optional true} [:sequential :map]]
+   ;; Visited fields for interestingness scoring
+   [:visited-fields {:optional true} [:maybe ::visited-fields]]])
 
 ;;; -------------------------------------------------- Discovery Response  --------------------------------------------------
 
+(mr/def ::inspector-status
+  "Status of the inspector result."
+  [:enum :not-run :ready])
+
 (mr/def ::discovery-response
-  "Response from GET /api/ee/transform/:id/inspect"
+  "Response from GET /api/ee/transform/:id/inspect
+
+   Phase 1 discovery returns structural metadata and available lenses.
+   This is a cheap operation - no query execution.
+
+   - status: :not-run if target table doesn't exist yet, :ready otherwise
+   - visited-fields: Fields used in semantically important clauses (for interestingness)
+   - available-lenses: Lenses that apply to this transform"
   [:map
    [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:status ::inspector-status]
    [:sources [:sequential ::source-table]]
    [:target {:optional true} [:maybe ::target-table]]
+   [:visited-fields {:optional true} [:maybe ::visited-fields]]
    [:available-lenses [:sequential ::lens-metadata]]])

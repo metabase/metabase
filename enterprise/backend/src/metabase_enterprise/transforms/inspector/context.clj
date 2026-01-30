@@ -267,15 +267,18 @@
                         (into #{} (mapcat lib.walk.util/all-field-ids) filters))
         group-by-fields (when-let [breakout (:breakout stage)]
                           (into #{} (mapcat lib.walk.util/all-field-ids) breakout))
+        order-by-fields (when-let [order-by (:order-by stage)]
+                          (into #{} (mapcat lib.walk.util/all-field-ids) order-by))
         join-fields (when-let [joins (:joins stage)]
                       (into #{}
                             (mapcat (fn [join]
                                       (mapcat lib.walk.util/all-field-ids (:conditions join))))
                             joins))]
-    {:join-fields     (or join-fields #{})
-     :filter-fields   (or filter-fields #{})
-     :group-by-fields (or group-by-fields #{})
-     :all             (into #{} cat [join-fields filter-fields group-by-fields])}))
+    {:join-fields      (or join-fields #{})
+     :filter-fields    (or filter-fields #{})
+     :group-by-fields  (or group-by-fields #{})
+     :order-by-fields  (or order-by-fields #{})
+     :all              (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
 
 (defn- extract-columns-from-ast-node
   "Recursively extract column nodes from a Macaw AST expression."
