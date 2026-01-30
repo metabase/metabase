@@ -6,9 +6,9 @@ import {
   DEPENDENCY_SORT_COLUMNS,
   type DependencyNode,
   type DependencySortColumn,
-  type DependencySortingOptions,
 } from "metabase-types/api";
 
+import type { DependencySortOptions } from "../../../types";
 import {
   getDependentErrorNodesCount,
   getNodeLabel,
@@ -107,16 +107,16 @@ export function getColumnWidths(mode: DependencyListMode): number[] {
 }
 
 export function getSortingState(
-  sorting: DependencySortingOptions | undefined,
+  sortOptions: DependencySortOptions | undefined,
 ): SortingState {
-  return sorting != null
-    ? [{ id: sorting.column, desc: sorting.direction === "desc" }]
+  return sortOptions?.column != null
+    ? [{ id: sortOptions.column, desc: sortOptions.direction === "desc" }]
     : [];
 }
 
 export function getSortingOptions(
   sortingState: SortingState,
-): DependencySortingOptions | undefined {
+): DependencySortOptions | undefined {
   if (sortingState.length === 0) {
     return undefined;
   }

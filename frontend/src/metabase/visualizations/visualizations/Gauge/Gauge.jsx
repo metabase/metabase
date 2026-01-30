@@ -58,7 +58,7 @@ const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 const radians = (degrees) => (degrees * Math.PI) / 180;
 const degrees = (radians) => (radians * 180) / Math.PI;
 
-export default class Gauge extends Component {
+export class Gauge extends Component {
   static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";

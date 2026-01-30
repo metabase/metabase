@@ -3,6 +3,9 @@ import fetchMock from "fetch-mock";
 import type {
   CheckDependenciesResponse,
   DependencyGraph,
+  DependencyNode,
+  ListBreakingGraphNodesResponse,
+  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 export function setupGetDependencyGraphEndpoint(response: DependencyGraph) {
@@ -29,4 +32,24 @@ export function setupCheckTransformDependenciesEndpoint(
   response: CheckDependenciesResponse,
 ) {
   fetchMock.post("path:/api/ee/dependencies/check_transform", response);
+}
+
+export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
+  fetchMock.get("path:/api/ee/dependencies/graph/dependents", nodes);
+}
+
+export function setupListBreakingGraphNodesEndpoint(
+  response: ListBreakingGraphNodesResponse,
+) {
+  fetchMock.get("path:/api/ee/dependencies/graph/breaking", response);
+}
+
+export function setupListBrokenGraphNodesEndpoint(nodes: DependencyNode[]) {
+  fetchMock.get("path:/api/ee/dependencies/graph/broken", nodes);
+}
+
+export function setupListUnreferencedGraphNodesEndpoint(
+  response: ListUnreferencedGraphNodesResponse,
+) {
+  fetchMock.get("path:/api/ee/dependencies/graph/unreferenced", response);
 }

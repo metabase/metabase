@@ -7,11 +7,9 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type {
-  DependencyNode,
-  DependencySortingOptions,
-} from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
+import type { DependencySortOptions } from "../../../types";
 import { getNodeId } from "../../../utils";
 import { ListEmptyState } from "../ListEmptyState";
 import type { DependencyListMode } from "../types";
@@ -27,22 +25,25 @@ import {
 type ListBodyProps = {
   nodes: DependencyNode[];
   mode: DependencyListMode;
-  sorting: DependencySortingOptions | undefined;
+  sortOptions: DependencySortOptions | undefined;
   isLoading?: boolean;
   onSelect: (node: DependencyNode) => void;
-  onSortingChange: (sorting: DependencySortingOptions | undefined) => void;
+  onSortOptionsChange: (sortOptions: DependencySortOptions | undefined) => void;
 };
 
 export const ListBody = function ListBody({
   nodes,
   mode,
-  sorting,
+  sortOptions,
   isLoading = false,
   onSelect,
-  onSortingChange,
+  onSortOptionsChange,
 }: ListBodyProps) {
   const columns = useMemo(() => getColumns(mode), [mode]);
-  const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
+  const sortingState = useMemo(
+    () => getSortingState(sortOptions),
+    [sortOptions],
+  );
 
   const handleRowActivate = useCallback(
     (row: Row<DependencyNode>) => onSelect(row.original),
@@ -53,9 +54,9 @@ export const ListBody = function ListBody({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingChange(getSortingOptions(newSortingState));
+      onSortOptionsChange(getSortingOptions(newSortingState));
     },
-    [sortingState, onSortingChange],
+    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<DependencyNode>({
@@ -69,7 +70,13 @@ export const ListBody = function ListBody({
   });
 
   return (
-    <Card flex={1} mih={0} p={0} withBorder data-testid="dependency-list">
+    <Card
+      flex="0 1 auto"
+      mih={0}
+      p={0}
+      withBorder
+      data-testid="dependency-list"
+    >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={getColumnWidths(mode)} />
       ) : (

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useInterval } from "react-use";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
 import {
   isUploadAborted,
   isUploadCompleted,

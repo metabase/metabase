@@ -15,10 +15,14 @@ import { MoveTransformModal } from "./MoveTransformModal";
 import type { TransformMoreMenuModalType } from "./types";
 
 type TransformMoreMenuProps = {
+  readOnly?: boolean;
   transform: Transform;
 };
 
-export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
+export function TransformMoreMenu({
+  readOnly,
+  transform,
+}: TransformMoreMenuProps) {
   const [modalType, setModalType] = useState<TransformMoreMenuModalType>();
   const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);
 
@@ -27,6 +31,7 @@ export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
       <TransformMenu
         onOpenModal={setModalType}
         onShowHistory={() => setIsHistorySidebarOpen(true)}
+        readOnly={readOnly}
       />
       {modalType != null && (
         <TransformModal
@@ -39,6 +44,7 @@ export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
         <TransformRevisionHistorySidebar
           transform={transform}
           onClose={() => setIsHistorySidebarOpen(false)}
+          readOnly={readOnly}
         />
       )}
     </>
@@ -48,9 +54,14 @@ export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
 type TransformMenuProps = {
   onOpenModal: (modalType: TransformMoreMenuModalType) => void;
   onShowHistory: () => void;
+  readOnly?: boolean;
 };
 
-function TransformMenu({ onOpenModal, onShowHistory }: TransformMenuProps) {
+function TransformMenu({
+  onOpenModal,
+  onShowHistory,
+  readOnly,
+}: TransformMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -70,18 +81,22 @@ function TransformMenu({ onOpenModal, onShowHistory }: TransformMenuProps) {
         >
           {t`History`}
         </Menu.Item>
-        <Menu.Item
-          leftSection={<Icon name="move" />}
-          onClick={() => onOpenModal("move")}
-        >
-          {t`Move`}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<Icon name="trash" />}
-          onClick={() => onOpenModal("delete")}
-        >
-          {t`Delete`}
-        </Menu.Item>
+        {!readOnly && (
+          <>
+            <Menu.Item
+              leftSection={<Icon name="move" />}
+              onClick={() => onOpenModal("move")}
+            >
+              {t`Move`}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              onClick={() => onOpenModal("delete")}
+            >
+              {t`Delete`}
+            </Menu.Item>
+          </>
+        )}
       </Menu.Dropdown>
     </Menu>
   );

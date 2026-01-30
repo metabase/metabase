@@ -46,6 +46,7 @@ export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transformId?: TransformId;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
@@ -81,7 +82,7 @@ type QuestionDependenciesSectionProps = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
-  getDataStudioTasksRoutes: () => ReactNode;
+  getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -175,7 +176,7 @@ export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  getDataStudioTasksRoutes: () => null,
+  getDataStudioDependencyDiagnosticsRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

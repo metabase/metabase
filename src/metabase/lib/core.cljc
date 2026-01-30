@@ -280,7 +280,6 @@
   add-field
   fieldable-columns
   fields
-  find-column-for-name
   find-visible-column-for-ref
   remove-field
   with-fields]

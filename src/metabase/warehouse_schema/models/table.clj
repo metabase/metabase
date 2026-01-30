@@ -340,6 +340,25 @@
      :id
      {:default false})))
 
+(methodical/defmethod t2/batched-hydrate [:model/Table :owner]
+  "Add owner (user) to a table. If owner_user_id is set, fetches the user.
+   If owner_email is set instead, returns a map with just the email."
+  [_model _k tables]
+  (if-not (seq tables)
+    tables
+    (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
+          id->owner (when (seq owner-user-ids)
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        :id [:in owner-user-ids]))]
+      (for [table tables]
+        (assoc table :owner
+               (cond
+                 (:owner_user_id table)
+                 (get id->owner (:owner_user_id table))
+
+                 (:owner_email table)
+                 {:email (:owner_email table)}))))))
+
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 
 (mu/defmethod mi/visible-filter-clause :model/Table
@@ -524,8 +543,13 @@
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))]
-    (merge fields segments)))
+                            {["Segment" segment-id] {"Table" id}}))
+        measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
+                                                              {:where [:and
+                                                                       [:= :table_id id]
+                                                                       (when skip-archived [:not :archived])]})]
+                            {["Measure" measure-id] {"Table" id}}))]
+    (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]

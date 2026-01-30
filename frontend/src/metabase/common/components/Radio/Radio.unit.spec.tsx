@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import Radio from "./Radio";
+import { Radio } from "./Radio";
 
 describe("Radio", () => {
   const options = [

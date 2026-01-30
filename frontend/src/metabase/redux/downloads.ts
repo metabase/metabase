@@ -590,7 +590,7 @@ export const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
   const fileName = `${name}-${date}.png`;
-  // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
   return branded ? `Metabase-${fileName}` : fileName;
 };
 
@@ -600,7 +600,7 @@ export const getDashboardPdfFileName = (
 ) => {
   const originalFileName = `${dashboard.name}.pdf`;
   const fileName = branded
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
       `Metabase - ${originalFileName}`
     : originalFileName;
   return fileName;

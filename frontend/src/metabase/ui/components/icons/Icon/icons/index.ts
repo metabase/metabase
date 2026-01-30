@@ -308,6 +308,8 @@ import metabot_sad_component from "./metabot_sad.svg?component";
 import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
+import mode_component from "./mode.svg?component";
+import mode_source from "./mode.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -402,6 +404,8 @@ import schema_component from "./schema.svg?component";
 import schema_source from "./schema.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
+import search_check_component from "./search_check.svg?component";
+import search_check_source from "./search_check.svg?source";
 import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
@@ -1143,6 +1147,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: metric_component,
       source: metric_source,
     },
+    mode: {
+      component: mode_component,
+      source: mode_source,
+    },
     model: {
       component: model_component,
       source: model_source,
@@ -1378,6 +1386,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     search: {
       component: search_component,
       source: search_source,
+    },
+    search_check: {
+      component: search_check_component,
+      source: search_check_source,
     },
     section: {
       component: section_component,
@@ -1806,6 +1818,7 @@ export type IconName =
   | "metabot"
   | "metabot_sad"
   | "metric"
+  | "mode"
   | "model"
   | "model_with_badge"
   | "moon"
@@ -1866,6 +1879,7 @@ export type IconName =
   | "ruler"
   | "schema"
   | "search"
+  | "search_check"
   | "section"
   | "segment"
   | "segment2"

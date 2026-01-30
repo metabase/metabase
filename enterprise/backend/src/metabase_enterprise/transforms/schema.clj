@@ -75,8 +75,13 @@
    ["table" ::table-target]
    ["table-incremental" ::table-incremental-target]])
 
+(mr/def ::id pos-int?)
+
+(mr/def ::run-id pos-int?)
+
 (mr/def ::transform
   [:map
+   [:id ::id]
    [:description {:optional true} [:maybe :string]]
    [:name :string]
    [:source [:ref ::transform-source]]

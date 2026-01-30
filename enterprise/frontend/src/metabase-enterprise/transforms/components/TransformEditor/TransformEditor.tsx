@@ -6,6 +6,7 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -26,6 +27,7 @@ type TransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   onBlur?: () => void;
+  isEditMode?: boolean;
   readOnly?: boolean;
   transformId?: TransformId;
 };
@@ -40,6 +42,7 @@ export function TransformEditor({
   onAcceptProposed,
   onRejectProposed,
   onBlur,
+  isEditMode,
   readOnly,
   transformId,
 }: TransformEditorProps) {
@@ -56,9 +59,13 @@ export function TransformEditor({
     [proposedSource, metadata],
   );
   const uiOptions = useMemo(
-    () => getEditorOptions(databases, readOnly),
-    [databases, readOnly],
+    () => getEditorOptions(databases, !isEditMode),
+    [databases, isEditMode],
   );
+
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditDefinitionButton =
+    !!transformId && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -82,8 +89,7 @@ export function TransformEditor({
       onRejectProposed={onRejectProposed}
       onBlur={onBlur}
       topBarInnerContent={
-        readOnly &&
-        !!transformId && (
+        showEditDefinitionButton && (
           <EditDefinitionButton
             bg="transparent"
             fz="sm"

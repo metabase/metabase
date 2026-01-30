@@ -2,13 +2,13 @@ import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { ResizableBoxProps } from "react-resizable";
 
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";

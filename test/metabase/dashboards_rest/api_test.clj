@@ -2088,7 +2088,7 @@
 (deftest update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-      (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
+      (testing "if a dashboard has multiple tabs, check if all cards from the request has a tab_id"
         (is (= "This dashboard has tab, makes sure every card has a tab"
                (mt/user-http-request :crowberto :put 400 (format "dashboard/%d" dashboard-id)
                                      {:dashcards (conj
@@ -2099,6 +2099,30 @@
                                                    :col    1
                                                    :row    1})
                                       :tabs      (tabs dashboard-id)})))))))
+
+(deftest update-cards-auto-assign-single-tab-test
+  (testing "PUT /api/dashboard/:id - auto-assign null dashboard_tab_id to the single tab (metabase#67971)"
+    (mt/with-temp
+      [:model/Dashboard     {dashboard-id :id} {}
+       :model/Card          {card-id :id}      {}
+       :model/DashboardTab  {tab-id :id}       {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+       :model/DashboardCard _                  {:dashboard_id     dashboard-id
+                                                :card_id          card-id
+                                                :dashboard_tab_id tab-id}]
+      (testing "when dashboard has exactly one tab, cards with null dashboard_tab_id are auto-assigned to that tab"
+        (let [resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                                         {:dashcards (conj
+                                                      (current-cards dashboard-id)
+                                                      {:id     -1
+                                                       :size_x 4
+                                                       :size_y 4
+                                                       :col    1
+                                                       :row    1
+                                                       :card_id card-id})
+                                          :tabs      [{:id tab-id :name "Tab 1"}]})
+              new-card (last (sort-by :id (:dashcards resp)))]
+          ;; The new card should have been auto-assigned to the single tab
+          (is (= tab-id (:dashboard_tab_id new-card))))))))
 
 (deftest update-tabs-track-snowplow-test
   (mt/with-temp

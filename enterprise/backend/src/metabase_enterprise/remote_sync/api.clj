@@ -138,6 +138,8 @@
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]
+       [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
+       [:remote-sync-transforms {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
@@ -162,11 +164,10 @@
   (events/publish-event! :event/remote-sync-settings-update
                          {:details {:remote-sync-type remote-sync-type}
                           :user-id api/*current-user-id*})
-  (let [task-id (impl/finish-remote-config!)]
-    (if task-id
-      {:success true
-       :task_id task-id}
-      {:success true})))
+  (if-let [task-id (impl/finish-remote-config!)]
+    {:success true
+     :task_id task-id}
+    {:success true}))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured source.

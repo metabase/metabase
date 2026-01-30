@@ -11,7 +11,7 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import SavedEntityPicker from "./SavedEntityPicker";
+import { SavedEntityPicker } from "./SavedEntityPicker";
 
 const CURRENT_USER = {
   id: 1,

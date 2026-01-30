@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 
-import Legend from "./Legend";
-import LegendActions from "./LegendActions";
+import { Legend } from "./Legend";
+import { LegendActions } from "./LegendActions";
 import {
   ChartContainer,
   LegendContainer,

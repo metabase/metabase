@@ -5,14 +5,16 @@ import { t } from "ttag";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isResourceNotFoundError } from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Card } from "metabase/ui";
+import { Alert, Box, Card, Stack } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
@@ -36,7 +38,8 @@ export function PythonLibraryEditorPage({
   route,
 }: PythonLibraryEditorPageProps) {
   const { path } = params;
-  const [source, setSource] = useState("");
+  const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const {
     data: library,
@@ -73,12 +76,14 @@ export function PythonLibraryEditorPage({
 
   // When the library loads, set the source to the current library source
   useLayoutEffect(() => {
-    if (library != null) {
+    if (library?.source) {
       setSource(library.source);
+    } else {
+      setSource(EMPTY_LIBRARY_SOURCE);
     }
   }, [library]);
 
-  const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
+  const isDirty = source !== (library?.source || EMPTY_LIBRARY_SOURCE);
 
   if (isLoading || (error && !isResourceNotFoundError(error))) {
     return (
@@ -91,12 +96,25 @@ export function PythonLibraryEditorPage({
   return (
     <>
       <PageContainer>
-        <PythonLibraryEditorHeader
-          onSave={handleSave}
-          onRevert={handleRevert}
-          isDirty={isDirty}
-          isSaving={isSaving}
-        />
+        <Stack>
+          <PythonLibraryEditorHeader
+            onSave={handleSave}
+            onRevert={handleRevert}
+            isDirty={isDirty && !isRemoteSyncReadOnly}
+            isSaving={isSaving}
+          />
+
+          {isRemoteSyncReadOnly && (
+            <Alert
+              className={S.flexStart}
+              color="warning"
+              p="0.75rem"
+              title={t`The Python library is not editable because Remote Sync is in read-only mode.`}
+              variant="outline"
+              w="auto"
+            />
+          )}
+        </Stack>
 
         <Card withBorder p={0}>
           <PythonEditor
@@ -105,6 +123,7 @@ export function PythonLibraryEditorPage({
             withPandasCompletions
             className={S.editor}
             data-testid="python-editor"
+            readOnly={isRemoteSyncReadOnly}
           />
         </Card>
       </PageContainer>

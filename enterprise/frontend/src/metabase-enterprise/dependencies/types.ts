@@ -3,6 +3,8 @@ import type { IconName } from "metabase/ui";
 import type {
   AnalysisFindingErrorType,
   DependencyGroupType,
+  DependencySortColumn,
+  DependencySortDirection,
 } from "metabase-types/api";
 
 export type NodeId = string;
@@ -40,4 +42,14 @@ export type DependencyErrorGroup = {
 export type DependencyErrorInfo = {
   label: string;
   detail?: string | null;
+};
+
+export type DependencyFilterOptions = {
+  groupTypes: DependencyGroupType[];
+  includePersonalCollections: boolean;
+};
+
+export type DependencySortOptions = {
+  column: DependencySortColumn;
+  direction: DependencySortDirection;
 };

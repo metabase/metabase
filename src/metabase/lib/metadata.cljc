@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata
-  (:refer-clojure :exclude [every? empty? #?(:clj doseq) get-in #?(:clj for)])
+  (:refer-clojure :exclude [every? empty? not-empty #?(:clj doseq) get-in #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
@@ -14,7 +14,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [every? empty? #?(:clj doseq) get-in #?(:clj for)]]))
+   [metabase.util.performance :refer [every? empty? not-empty #?(:clj doseq) get-in #?(:clj for)]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -129,7 +129,9 @@
 (mu/defn transforms :- [:maybe [:sequential ::lib.schema.metadata/transform]]
   "Gets all Transforms"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
-  (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable)))
+  (->> (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable))
+       (map #(m/update-existing-in % [:source :query] normalize-query metadata-providerable))
+       not-empty))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."

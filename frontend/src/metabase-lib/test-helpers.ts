@@ -422,7 +422,7 @@ export function createLegendItemClickObject(
   return { dimensions: [dimension] };
 }
 
-type CreateTestQueryOpts = {
+export type CreateTestQueryOpts = {
   databaseId: DatabaseId;
   stages: [TestQueryStageWithSource, ...TestQueryStage[]];
 };
@@ -647,10 +647,11 @@ function findSource(
   provider: Lib.MetadataProvider,
   source: TestQuerySource,
 ): Lib.TableMetadata | Lib.CardMetadata {
-  const metadata = Lib.tableOrCardMetadata(provider, source.id);
+  const id = source.type === "card" ? `card__${source.id}` : source.id;
+  const metadata = Lib.tableOrCardMetadata(provider, id);
 
   if (!metadata) {
-    throw new Error(`Could not find source metadata for source: ${source.id}`);
+    throw new Error(`Could not find source metadata for source: ${id}`);
   }
 
   return metadata;

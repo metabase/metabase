@@ -6,6 +6,7 @@
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.providers.saml :as saml.p]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
    [metabase.premium-features.token-check :as token-check]
@@ -61,21 +62,13 @@
 (def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
 (def ^:private slo-idp-cert               (slurp "test_resources/sso/idp.cert"))
 
-(defn call-with-default-saml-config! [f]
-  (let [current-features (token-check/*token-features*)]
-    (mt/with-premium-features #{:sso-saml}
-      (mt/with-temporary-setting-values [saml-enabled                       true
-                                         saml-identity-provider-uri         default-idp-uri
-                                         saml-identity-provider-certificate default-idp-cert
-                                         saml-keystore-path                 nil
-                                         saml-keystore-password             nil
-                                         saml-keystore-alias                nil
-                                         site-url                           "http://localhost:3000"]
-        (mt/with-premium-features current-features
-          (f))))))
+(def call-with-default-saml-config!
+  "Execute a function with default SAML configuration set up.
+   Delegates to [[sso.test-setup/call-with-default-saml-config!]]."
+  sso.test-setup/call-with-default-saml-config!)
 
 (defmacro with-default-saml-config! [& body]
-  `(call-with-default-saml-config!
+  `(sso.test-setup/call-with-default-saml-config!
     (fn []
       ~@body)))
 
@@ -89,33 +82,22 @@
   (when some-bytes
     (String. some-bytes "UTF-8")))
 
-(defn call-with-login-attributes-cleared!
+(def call-with-login-attributes-cleared!
   "If login_attributes remain after these tests run, depending on the order that the tests run, lots of tests will
-  fail as the login_attributes data from this tests is unexpected in those other tests"
-  [thunk]
-  (try
-    (thunk)
-    (finally
-      (u/ignore-exceptions
-        (t2/update! :model/User {} {:login_attributes nil})
-        (t2/update! :model/User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
+  fail as the login_attributes data from this tests is unexpected in those other tests.
+  Delegates to [[sso.test-setup/call-with-login-attributes-cleared!]]."
+  sso.test-setup/call-with-login-attributes-cleared!)
 
-(defmacro with-saml-default-setup! [& body]
-  ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
-  `(mt/test-helpers-set-global-values!
-     (mt/with-additional-premium-features #{:sso-saml}
-       (call-with-login-attributes-cleared!
-        (fn []
-          (call-with-default-saml-config!
-           (fn []
-             ~@body)))))))
+(defmacro with-saml-default-setup!
+  "Set up default SAML configuration for tests.
+   Delegates to [[sso.test-setup/with-saml-default-setup!]]."
+  [& body]
+  `(sso.test-setup/with-saml-default-setup! ~@body))
 
-(defn successful-login?
-  "Return true if the response indicates a successful user login"
-  [resp]
-  (or
-   (string? (get-in resp [:cookies request/metabase-session-cookie :value]))
-   (some #(str/starts-with? % request/metabase-session-cookie) (get-in resp [:headers "Set-Cookie"]))))
+(def successful-login?
+  "Return true if the response indicates a successful user login.
+  Delegates to [[sso.test-setup/successful-login?]]."
+  sso.test-setup/successful-login?)
 
 (defn- do-with-some-validators-disabled!
   "The sample responses all have `InResponseTo=\"_1\"` and invalid assertion signatures (they were edited by hand) so

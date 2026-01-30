@@ -135,6 +135,7 @@
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
         {:keys [field-name lib-column-key]} checkpoint-config]
     {:name transform-name
+     :source_database_id (mt/id)
      :source (case transform-type
                :native {:type "query"
                         :query (make-incremental-source-query schema checkpoint-config)
@@ -480,6 +481,29 @@
                                 checkpoint (get-checkpoint-value transform)]
                             (is (= 18 row-count) "Should append 2 new rows (16 + 2 = 18)")
                             (is (some? checkpoint) "Checkpoint should be updated")))))))))))))))
+
+(deftest unsupported-checkpoint-column-type-test
+  (testing "Transform fails at runtime with unsupported checkpoint column type"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target-table "unsupported_type_test"]
+            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                  ;; Create transform with text column (unsupported type) as checkpoint
+                  transform-payload {:name "Invalid Checkpoint Type Transform"
+                                     :source {:type "query"
+                                              :query (make-incremental-source-query-without-template-tag schema)
+                                              :source-incremental-strategy {:type "checkpoint"
+                                                                            :checkpoint-filter "name"}}
+                                     :target {:type "table-incremental"
+                                              :schema schema
+                                              :name target-table
+                                              :database (mt/id)
+                                              :target-incremental-strategy {:type "append"}}}]
+              (testing "API validation rejects unsupported checkpoint column type"
+                (let [response (mt/user-http-request :crowberto :post 400 "ee/transform" transform-payload)]
+                  (is (string? response))
+                  (is (re-find #"unsupported type" response)))))))))))
 
 (deftest ^:postgres-only native-query-with-temporal-checkpoint-test
   (testing "Native query with temporal checkpoint"

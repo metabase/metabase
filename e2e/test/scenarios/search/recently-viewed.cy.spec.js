@@ -153,10 +153,10 @@ describe("search > recently viewed > enterprise features", () => {
 });
 
 const assertRecentlyViewedItem = (index, title, type) => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")
     .eq(index)
     .should("have.text", title);
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("result-link-wrapper").eq(index).should("have.text", type);
 };

@@ -68,11 +68,12 @@ export type TableDependencyNodeData = Pick<
   | "db"
   | "fields"
   | "transform"
+  | "owner"
 >;
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "created_at"
+  "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -250,8 +251,11 @@ export type ListNodeDependentsRequest = {
   type: DependencyType;
   dependent_types?: DependencyType[];
   dependent_card_types?: CardType[];
-  broken?: boolean;
+  query?: string;
+  include_personal_collections?: boolean;
   archived?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type CheckDependenciesResponse = {
@@ -272,6 +276,7 @@ export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
+  "view-count",
   "dependents-errors",
   "dependents-with-errors",
 ] as const;
@@ -281,19 +286,7 @@ export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
 
-export type DependencySortingOptions = {
-  column: DependencySortColumn;
-  direction: DependencySortDirection;
-};
-
-/**
- * Entity types that can be the source of validation errors (breaking other entities).
- * Only tables and cards can be sources of errors in analysis_finding_error.
- */
-export const BREAKING_ENTITY_TYPES = ["card", "table"] as const;
-export type BreakingEntityType = (typeof BREAKING_ENTITY_TYPES)[number];
-
-export type ListBrokenGraphNodesRequest = PaginationRequest & {
+export type ListBreakingGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
@@ -302,8 +295,18 @@ export type ListBrokenGraphNodesRequest = PaginationRequest & {
   sort_direction?: DependencySortDirection;
 };
 
-export type ListBrokenGraphNodesResponse = PaginationResponse & {
+export type ListBreakingGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type ListBrokenGraphNodesRequest = {
+  id: DependencyId;
+  type: DependencyType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
@@ -317,4 +320,11 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type DependencyListUserParams = {
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };

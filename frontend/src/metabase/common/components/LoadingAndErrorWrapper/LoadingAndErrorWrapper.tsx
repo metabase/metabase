@@ -10,7 +10,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 
 export interface LoadingAndErrorWrapperProps {

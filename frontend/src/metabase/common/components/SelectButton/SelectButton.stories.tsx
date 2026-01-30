@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import SelectButton, { type SelectButtonProps } from "./SelectButton";
+import { SelectButton, type SelectButtonProps } from "./SelectButton";
 
 export default {
   title: "Components/Ask Before Using/SelectButton",
