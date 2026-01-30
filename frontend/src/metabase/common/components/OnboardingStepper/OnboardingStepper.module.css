@@ -1,8 +1,3 @@
-.StepperRoot {
-  /* Add left margin to make room for the step labels that extend outside */
-  margin-left: 1.5rem;
-}
-
 /* Active step styles (expanded) */
 .ActiveStepRoot {
   position: relative;
@@ -20,7 +15,7 @@
   margin-bottom: 1rem;
 }
 
-.ActiveStepLabel {
+.ActiveStepNumber {
   position: absolute;
   top: 1.5rem;
   left: 0;
@@ -35,17 +30,17 @@
   background-color: var(--mb-color-background-primary);
 }
 
-.ActiveStepLabelCompleted {
+.ActiveStepNumberCompleted {
   background-color: var(--mb-color-background-success);
 }
 
-.ActiveStepLabelText {
+.ActiveStepNumberText {
   color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 }
 
-.ActiveStepLabelIcon {
+.ActiveStepNumberIcon {
   width: 1rem;
   height: 1rem;
   color: var(--mb-color-success);
@@ -86,7 +81,7 @@
   color: var(--mb-color-text-secondary);
 }
 
-.InactiveStepLabel {
+.InactiveStepNumber {
   position: absolute;
   top: 50%;
   left: 0;
@@ -101,17 +96,17 @@
   background-color: var(--mb-color-background-primary);
 }
 
-.InactiveStepLabelCompleted {
+.InactiveStepNumberCompleted {
   background-color: var(--mb-color-background-success);
 }
 
-.InactiveStepLabelText {
+.InactiveStepNumberText {
   color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 }
 
-.InactiveStepLabelIcon {
+.InactiveStepNumberIcon {
   width: 1rem;
   height: 1rem;
   color: var(--mb-color-success);

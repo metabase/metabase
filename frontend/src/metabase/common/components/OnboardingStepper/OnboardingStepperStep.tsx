@@ -39,14 +39,14 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
         >
           <div
             className={cx(
-              S.ActiveStepLabel,
-              isCompleted && S.ActiveStepLabelCompleted,
+              S.ActiveStepNumber,
+              isCompleted && S.ActiveStepNumberCompleted,
             )}
           >
             {isCompleted ? (
-              <Icon name="check" className={S.ActiveStepLabelIcon} />
+              <Icon name="check" className={S.ActiveStepNumberIcon} />
             ) : (
-              <span className={S.ActiveStepLabelText}>{label}</span>
+              <span className={S.ActiveStepNumberText}>{label}</span>
             )}
           </div>
           <div
@@ -76,14 +76,14 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
       >
         <div
           className={cx(
-            S.InactiveStepLabel,
-            isCompleted && S.InactiveStepLabelCompleted,
+            S.InactiveStepNumber,
+            isCompleted && S.InactiveStepNumberCompleted,
           )}
         >
           {isCompleted ? (
-            <Icon name="check" className={S.InactiveStepLabelIcon} />
+            <Icon name="check" className={S.InactiveStepNumberIcon} />
           ) : (
-            <span className={S.InactiveStepLabelText}>{label}</span>
+            <span className={S.InactiveStepNumberText}>{label}</span>
           )}
         </div>
         <div
