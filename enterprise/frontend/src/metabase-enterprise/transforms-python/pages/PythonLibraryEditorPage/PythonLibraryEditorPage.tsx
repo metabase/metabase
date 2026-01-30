@@ -76,14 +76,14 @@ export function PythonLibraryEditorPage({
 
   // When the library loads, set the source to the current library source
   useLayoutEffect(() => {
-    if (library != null) {
+    if (library?.source) {
       setSource(library.source);
     } else {
       setSource(EMPTY_LIBRARY_SOURCE);
     }
   }, [library]);
 
-  const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
+  const isDirty = source !== (library?.source || EMPTY_LIBRARY_SOURCE);
 
   if (isLoading || (error && !isResourceNotFoundError(error))) {
     return (
