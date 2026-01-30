@@ -10,7 +10,7 @@
 
 ;;; ------------------------------------------- extract-tool-input Tests -------------------------------------------
 
-(deftest extract-tool-input-test
+(deftest ^:parallel extract-tool-input-test
   (testing "valid tool_use response extracts input"
     (let [response {:content [{:type "tool_use"
                                :id "123"
@@ -54,7 +54,7 @@
 
 ;;; ------------------------------------------- build-request-headers Tests -------------------------------------------
 
-(deftest build-request-headers-test
+(deftest ^:parallel build-request-headers-test
   (testing "includes required headers"
     (let [headers (#'anthropic/build-request-headers "sk-test-key")]
       (is (= "sk-test-key" (get headers "x-api-key")))
@@ -93,7 +93,7 @@
 
 ;;; ------------------------------------------- generate-sql-tool Tests -------------------------------------------
 
-(deftest generate-sql-tool-test
+(deftest ^:parallel generate-sql-tool-test
   (testing "tool definition has correct structure"
     (let [tool @#'anthropic/generate-sql-tool]
       (is (= "generate_sql" (:name tool)))

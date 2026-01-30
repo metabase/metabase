@@ -50,10 +50,9 @@
       (is (true? (llm.settings/llm-sql-generation-enabled)))))
 
   (testing "returns false when no API key and metabot not enabled"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
-      ;; This depends on premium-features/enable-metabot-v3? state
-      ;; In test context without premium features, should be false
-      (is (boolean? (llm.settings/llm-sql-generation-enabled))))))
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+        (is (false? (llm.settings/llm-sql-generation-enabled)))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 

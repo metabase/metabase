@@ -91,11 +91,30 @@
   [source]
   (decode source true))
 
+(defn- parse-charset
+  "Parse charset from content-type header, e.g. 'application/json; charset=utf-8' -> 'utf-8'.
+   Returns nil if no charset is specified."
+  [content-type]
+  (when content-type
+    (second (re-find #"(?i)charset=([^\s;]+)" content-type))))
+
+(defn- decode-with-encoding
+  "Decode JSON from body, respecting the charset from content-type header."
+  [body content-type]
+  (let [encoding (or (parse-charset content-type) "UTF-8")]
+    (cond
+      (string? body)                 (decode body true)
+      (instance? InputStream body)  (with-open [r (io/reader body :encoding encoding)]
+                                      (cheshire/parse-stream r true))
+      (instance? Reader body)       (cheshire/parse-stream body true)
+      (nil? body)                   nil
+      :else                         (decode body true))))
+
 (defn decode-body
   "Given a response map, decodes body if headers indicate it's a JSON response, or just slurps if it's not a string."
   [res]
   (let [ctype (get-in res [:headers "content-type"])]
     (cond
-      (some-> ctype (str/starts-with? "application/json")) (update res :body decode+kw)
+      (some-> ctype (str/starts-with? "application/json")) (update res :body decode-with-encoding ctype)
       (string? (:body res))                                res
       :else                                                (update res :body slurp))))
