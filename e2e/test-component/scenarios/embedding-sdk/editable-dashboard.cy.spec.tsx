@@ -387,7 +387,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
               "be.visible",
             );
             cy.findByText(
-              "You’ll need to save your changes before leaving to create a new question.",
+              "You'll need to save your changes before leaving to create a new question.",
             ).should("be.visible");
 
             cy.button("Save changes").should("be.visible").click();
