@@ -266,7 +266,6 @@
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))))
 
-
 (deftest remap-sql-source-test
   (let [remap-sql-source #'ws.execute/remap-sql-source
         make-source      (fn [sql] {:type "query", :query {:database 1, :type :native, :stages [{:native sql}]}})]

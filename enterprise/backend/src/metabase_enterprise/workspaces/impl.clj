@@ -148,7 +148,7 @@
 
    Output mappings take precedence over input mappings (merged last).
    This is used to remap queries, sources and targets to reflect the \"isolated\" tables used to seal the Workspace."
-  [workspace]
+  [workspace _graph]
   (let [outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
                                      :isolated_schema :isolated_table :isolated_table_id]
