@@ -172,4 +172,3 @@
                              :prompt 1500
                              :completion 250}}
                     result))))))))
-
