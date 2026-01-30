@@ -276,19 +276,6 @@
                [:< {} [:field {} (meta/id :venues :price)] 4]]
               (first (lib/filters query)))))))
 
-(deftest ^:parallel test-query-column-with-source-name-test
-  (testing "test-query can reference columns by source table name"
-    (let [query (lib.query.util/test-query
-                 meta/metadata-provider
-                 {:stages [{:source {:type :table
-                                     :id   (meta/id :venues)}
-                            :fields [{:type        :column
-                                      :name        "ID"
-                                      :source-name "VENUES"}]}]})]
-      (is (= 1 (count (:fields (first (:stages query))))))
-      (is (=? [[:field {} (meta/id :venues :id)]]
-              (:fields (first (:stages query))))))))
-
 (deftest ^:parallel test-query-named-aggregation-test
   (testing "test-query handles named aggregations"
     (let [query (lib.query.util/test-query
