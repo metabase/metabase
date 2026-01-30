@@ -458,7 +458,7 @@
                                                                :value 2}]}}]}]})]
       (is (= 2 (count (:stages query))))
       (is (= 1 (count (lib/aggregations query 0))))
-      (is (= 1 (count (:expressions (second (:stages query)))))))))
+      (is (= 1 (count (lib/expressions query 1)))))))
 
 (deftest ^:parallel test-query-multiple-filters-test
   (testing "test-query handles multiple independent filters"
