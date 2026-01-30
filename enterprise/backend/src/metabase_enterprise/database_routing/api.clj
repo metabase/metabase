@@ -109,6 +109,9 @@
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
     (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
+    ;; TODO(Timothy, 2026-01-30): I'm making assumptions here about UX design that need to be validated
+    ;;  once we have UX defined
+    (api/check-400 (not (:write_database_id db)) "Cannot enable database routing for a database with a write connection configured")
     (setting/with-database db
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
