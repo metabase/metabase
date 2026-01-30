@@ -14,13 +14,18 @@ const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
   const { data: checklist } = useGetEmbeddingHubChecklistQuery();
+
+  // The "Which data segregation strategy does your database use?"
+  // is a purely UI step for choosing which strategy to use.
   const [isDataSegregationSelected, _setIsDataSegregationSelected] =
     useState(false);
 
   const completedSteps = useMemo(() => {
+    // When data segregation is finally configured, we permanently
+    // mark this step as done. Otherwise rely on UI state.
     const isDataSegregationComplete =
-      isDataSegregationSelected ||
-      checklist?.["setup-data-segregation-strategy"];
+      checklist?.["setup-data-segregation-strategy"] ||
+      isDataSegregationSelected;
 
     return {
       "enable-tenants": checklist?.["enable-tenants"] ?? false,
