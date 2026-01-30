@@ -127,7 +127,7 @@ function createCardFromQuery({
 
 describe("ViewOnlyTag", () => {
   describe("cards", () => {
-    it("should show the View-only badge when the source card is inaccessible", () => {
+    it("should show the View-only badge when the source card is inaccessible", async () => {
       setup({
         card: createCardFromQuery({
           query: createQuery({
@@ -144,10 +144,10 @@ describe("ViewOnlyTag", () => {
       });
 
       expect(screen.getByText("View-only")).toBeInTheDocument();
-      expectNoPopover();
+      await expectNoPopover();
     });
 
-    it("should show the View-only badge when a joined card is inaccessible", () => {
+    it("should show the View-only badge when a joined card is inaccessible", async () => {
       setup({
         card: createCardFromQuery({
           query: createQuery({
@@ -176,7 +176,7 @@ describe("ViewOnlyTag", () => {
       });
 
       expect(screen.getByText("View-only")).toBeInTheDocument();
-      expectNoPopover();
+      await expectNoPopover();
     });
 
     it("should not show the View-only badge when the source card is accessible", () => {
