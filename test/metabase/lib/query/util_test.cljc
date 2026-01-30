@@ -175,8 +175,9 @@
                             :joins  [{:source   {:type :table
                                                  :id   (meta/id :categories)}
                                       :strategy :left-join}]}]})]
-      (is (= 1 (count (lib/joins query))))
-      (is (= :left-join (-> query (lib/joins) first :strategy))))))
+      (is (=? [{:strategy :left-join}]
+              (lib/joins query))))))
+              
 
 (deftest ^:parallel test-query-with-join-conditions-test
   (testing "test-query adds joins with explicit conditions"
