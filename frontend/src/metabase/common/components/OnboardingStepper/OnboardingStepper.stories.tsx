@@ -46,8 +46,7 @@ const DefaultExample = () => {
     <Box maw={600} ml="xl">
       <OnboardingStepper completedSteps={completedSteps}>
         <OnboardingStepper.Step
-          value="step-1"
-          label={1}
+          stepId="step-1"
           title="Connect to your database"
         >
           <Stack gap="lg">
@@ -67,11 +66,7 @@ const DefaultExample = () => {
           </Stack>
         </OnboardingStepper.Step>
 
-        <OnboardingStepper.Step
-          value="step-2"
-          label={2}
-          title="Invite your team"
-        >
+        <OnboardingStepper.Step stepId="step-2" title="Invite your team">
           <Stack gap="lg">
             <Text>
               Invite colleagues to collaborate on dashboards and questions.
@@ -89,8 +84,7 @@ const DefaultExample = () => {
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
-          value="step-3"
-          label={3}
+          stepId="step-3"
           title="Create your first dashboard"
         >
           <Stack gap="lg">
@@ -136,30 +130,28 @@ const LockedStepsExample = () => {
         lockedSteps={{ "step-3": true, "step-4": true, "step-5": true }}
       >
         <OnboardingStepper.Step
-          value="step-1"
-          label={1}
+          stepId="step-1"
           title="Add a database connection"
         >
           <Text>Connect your database to Metabase.</Text>
         </OnboardingStepper.Step>
 
-        <OnboardingStepper.Step value="step-2" label={2} title="Configure SSO">
+        <OnboardingStepper.Step stepId="step-2" title="Configure SSO">
           <Text>Set up single sign-on for your team.</Text>
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
-          value="step-3"
-          label={3}
+          stepId="step-3"
           title="Select data to make available"
         >
           <Text>Choose which data to expose to your customers.</Text>
         </OnboardingStepper.Step>
 
-        <OnboardingStepper.Step value="step-4" label={4} title="Create tenants">
+        <OnboardingStepper.Step stepId="step-4" title="Create tenants">
           <Text>Set up tenants for multi-tenant embedding.</Text>
         </OnboardingStepper.Step>
 
-        <OnboardingStepper.Step value="step-5" label={5} title="Summary">
+        <OnboardingStepper.Step stepId="step-5" title="Summary">
           <Text>Review your setup.</Text>
         </OnboardingStepper.Step>
       </OnboardingStepper>

@@ -18,15 +18,15 @@ const TestStepper = ({
     lockedSteps={lockedSteps}
     onChange={onChange}
   >
-    <OnboardingStepper.Step value="step-1" label={1} title="First step">
+    <OnboardingStepper.Step stepId="step-1" title="First step">
       First step content
     </OnboardingStepper.Step>
 
-    <OnboardingStepper.Step value="step-2" label={2} title="Second step">
+    <OnboardingStepper.Step stepId="step-2" title="Second step">
       Second step content
     </OnboardingStepper.Step>
 
-    <OnboardingStepper.Step value="step-3" label={3} title="Third step">
+    <OnboardingStepper.Step stepId="step-3" title="Third step">
       Third step content
     </OnboardingStepper.Step>
   </OnboardingStepper>

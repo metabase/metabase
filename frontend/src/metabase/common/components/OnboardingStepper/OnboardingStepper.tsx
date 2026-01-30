@@ -16,17 +16,20 @@ const OnboardingStepperRoot = ({
   lockedSteps = {},
   onChange,
 }: OnboardingStepperProps) => {
-  // Extract step IDs from children
-  const stepIds = useMemo(() => {
+  // Extract step IDs and compute labels from children
+  const { stepIds, stepNumbers } = useMemo(() => {
     const ids: string[] = [];
+    const stepNumbers: Record<string, number> = {};
 
     Children.forEach(children, (child) => {
-      if (isValidElement(child) && child.props.value) {
-        ids.push(child.props.value);
+      if (isValidElement(child) && child.props.stepId) {
+        const stepId = child.props.stepId;
+        ids.push(stepId);
+        stepNumbers[stepId] = ids.length;
       }
     });
 
-    return ids;
+    return { stepIds: ids, stepNumbers };
   }, [children]);
 
   // Calculate default active step: first incomplete step, or null if all complete
@@ -43,9 +46,9 @@ const OnboardingStepperRoot = ({
     onChange,
   );
 
-  const setActiveStep = (value: string | null) => {
-    setActiveStepState(value);
-    handleStepChange(value);
+  const setActiveStep = (stepId: string | null) => {
+    setActiveStepState(stepId);
+    handleStepChange(stepId);
   };
 
   // Move on to next incomplete step when completedSteps changes
@@ -61,6 +64,7 @@ const OnboardingStepperRoot = ({
         activeStep,
         completedSteps,
         lockedSteps,
+        stepNumbers,
         stepRefs,
         setActiveStep,
       }}

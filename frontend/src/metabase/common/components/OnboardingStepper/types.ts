@@ -6,13 +6,13 @@ export interface StepperContextValue {
   activeStep: string | null;
   completedSteps: Record<string, boolean>;
   lockedSteps: Record<string, boolean>;
+  stepNumbers: Record<string, number>;
   stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
-  setActiveStep: (value: string | null) => void;
+  setActiveStep: (stepId: string | null) => void;
 }
 
 export interface ItemContextValue {
-  value: string;
-  label: number;
+  stepId: string;
   icon?: IconName;
 }
 
@@ -31,15 +31,12 @@ export interface OnboardingStepperProps {
 
 export interface OnboardingStepperStepProps {
   /** Unique identifier for this step */
-  value: string;
-
-  /** Step number to display in the badge */
-  label: number;
+  stepId: string;
 
   /** Title displayed in the step header */
   title: string;
 
-  /** Optional icon for inactive state (defaults to showing the label number) */
+  /** Optional icon for inactive state (defaults to showing the step number) */
   icon?: IconName;
 
   /** Content to show when the step is active */

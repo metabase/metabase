@@ -9,8 +9,7 @@ import type { OnboardingStepperStepProps } from "./types";
 
 export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
   {
-    value,
-    label,
+    stepId,
     title,
     icon,
     children,
@@ -18,15 +17,22 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
   }: OnboardingStepperStepProps,
   forwardedRef: Ref<HTMLDivElement>,
 ) {
-  const { activeStep, completedSteps, lockedSteps, stepRefs, setActiveStep } =
-    useContext(StepperContext);
-  const ref = forwardedRef ?? stepRefs[value];
-  const isActive = activeStep === value;
-  const isCompleted = completedSteps[value] ?? false;
-  const isLocked = lockedSteps[value] ?? false;
+  const {
+    activeStep,
+    completedSteps,
+    lockedSteps,
+    stepNumbers,
+    stepRefs,
+    setActiveStep,
+  } = useContext(StepperContext);
+  const ref = forwardedRef ?? stepRefs[stepId];
+  const isActive = activeStep === stepId;
+  const isCompleted = completedSteps[stepId] ?? false;
+  const isLocked = lockedSteps[stepId] ?? false;
+  const stepNumber = stepNumbers[stepId] ?? 0;
 
   return (
-    <ItemContext.Provider value={{ value, label, icon }}>
+    <ItemContext.Provider value={{ stepId, icon }}>
       <Box
         component="section"
         ref={ref}
@@ -37,13 +43,19 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
         data-active={isActive}
         data-locked={isLocked}
         data-testid={testId}
-        onClick={isActive || isLocked ? undefined : () => setActiveStep(value)}
+        onClick={() => {
+          if (isActive || isLocked) {
+            return;
+          }
+
+          setActiveStep(stepId);
+        }}
       >
         <div className={S.StepNumber} data-completed={isCompleted}>
           {isCompleted ? (
             <Icon name="check" className={S.StepNumberIcon} />
           ) : (
-            <span className={S.StepNumberText}>{label}</span>
+            <span className={S.StepNumberText}>{stepNumber}</span>
           )}
         </div>
 
