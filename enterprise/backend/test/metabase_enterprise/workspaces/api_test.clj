@@ -30,19 +30,9 @@
 
 (use-fixtures :once (fn [thunk] (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table) (thunk))))
 
-(defn- append-part [url part]
-  (case [(str/starts-with? part "/")
-         (str/ends-with? url "/")]
-    [false false] (str url \/ part)
-    ([true false]
-     [false true]) (str url part)
-    (str url (subs part 1))))
-
-(defn ws-url [id & path]
-  (when (some nil? (cons id path))
-    (throw (ex-info "Cannot build workspace URL without key resources"
-                    {:id id, :path path})))
-  (reduce append-part (str "ee/workspace/" id) (map str path)))
+(def ws-url
+  "Alias for ws.tu/ws-url for convenience."
+  ws.tu/ws-url)
 
 (def ^:private ->native
   "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."

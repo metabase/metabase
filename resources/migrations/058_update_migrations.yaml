@@ -4684,36 +4684,6 @@ databaseChangeLog:
       rollback: # will be removed along with the table
 
   - changeSet:
-      id: v58.2026-01-09T12:00:00
-      author: johnswanson
-      comment: Create data-analyst magic permissions group
-      changes:
-        - sql:
-            sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
-      rollback:
-        - sql:
-            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
-
-  - changeSet:
-      id: v58.2026-01-09T12:00:01
-      author: johnswanson
-      comment: Grant read permissions on existing Library collections to Data Analysts group
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO permissions (group_id, object)
-              SELECT pg.id, '/collection/' || c.id || '/'
-              FROM permissions_group pg, collection c
-              WHERE pg.magic_group_type = 'data-analyst'
-                AND c.type IN ('library', 'library-data', 'library-metrics')
-      rollback:
-        - sql:
-            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
-            sql: >-
-              DELETE FROM permissions
-              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
-
-  - changeSet:
       id: v58.2026-01-09T10:00:00
       author: qnkhuat
       comment: Drop stale column from workspace_transform
@@ -4754,24 +4724,34 @@ databaseChangeLog:
             columnName: definition_changed
 
   - changeSet:
-      id: v58.2026-01-16T10:00:00
-      author: qnkhuat
-      comment: Add input_data_changed column to workspace_transform table
+      id: v58.2026-01-09T12:00:00
+      author: johnswanson
+      comment: Create data-analyst magic permissions group
       changes:
-        - addColumn:
-            tableName: workspace_transform
-            columns:
-              - column:
-                  name: input_data_changed
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: Indicates if upstream data has changed and transform needs re-execution
-                  constraints:
-                    nullable: false
+        - sql:
+            sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
       rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: input_data_changed
+        - sql:
+            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
+
+  - changeSet:
+      id: v58.2026-01-09T12:00:01
+      author: johnswanson
+      comment: Grant read permissions on existing Library collections to Data Analysts group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/' || c.id || '/'
+              FROM permissions_group pg, collection c
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+      rollback:
+        - sql:
+            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
+            sql: >-
+              DELETE FROM permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
   - changeSet:
       id: v58.2026-01-12T10:47:48
@@ -5204,6 +5184,26 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_database
             columnName: workspace_permissions_status
+
+  - changeSet:
+      id: v58.2026-01-16T10:00:00
+      author: qnkhuat
+      comment: Add input_data_changed column to workspace_transform table
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: input_data_changed
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if upstream data has changed and transform needs re-execution
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: input_data_changed
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
