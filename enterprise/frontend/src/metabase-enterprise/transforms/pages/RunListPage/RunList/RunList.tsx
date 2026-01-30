@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -69,8 +70,15 @@ export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   };
 
   return (
-    <Stack gap="lg">
-      <Card p={0} shadow="none" withBorder>
+    <Stack gap="lg" flex="0 1 auto" mih={0}>
+      <Card
+        className={CS.overflowHidden}
+        p={0}
+        flex="0 1 auto"
+        mih={0}
+        shadow="none"
+        withBorder
+      >
         <TreeTable
           instance={treeTableInstance}
           emptyState={<ListEmptyState label={notFoundLabel} />}

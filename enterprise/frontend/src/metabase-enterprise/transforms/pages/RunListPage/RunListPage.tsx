@@ -102,7 +102,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   return (
-    <Stack>
+    <Stack flex="0 1 auto" mih={0}>
       <RunFilterList params={params} transforms={transforms} tags={tags} />
       <RunList
         runs={data.data}

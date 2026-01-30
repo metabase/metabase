@@ -23,7 +23,8 @@ function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "transform",
     header: t`Transform`,
-    minWidth: 320,
+    width: "auto",
+    maxAutoWidth: 520,
     enableSorting: false,
     accessorFn: (run) => {
       return run.transform?.name || t`Unnamed transform`;

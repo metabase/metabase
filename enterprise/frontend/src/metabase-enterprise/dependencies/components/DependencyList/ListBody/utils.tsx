@@ -26,7 +26,8 @@ function getNameColumn(
   return {
     id: "name" satisfies DependencySortColumn,
     header: mode === "broken" ? t`Dependency` : t`Name`,
-    minWidth: 100,
+    width: "auto",
+    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
@@ -40,7 +41,8 @@ function getLocationColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "location" satisfies DependencySortColumn,
     header: t`Location`,
-    minWidth: 100,
+    width: "auto",
+    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (node) => {
       const location = getNodeLocationInfo(node);
@@ -58,7 +60,8 @@ function getDependentsErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-errors" satisfies DependencySortColumn,
     header: t`Problems`,
-    minWidth: 100,
+    width: "auto",
+    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (node) => node.dependents_errors?.length ?? 0,
     cell: ({ row }) => {
@@ -76,6 +79,7 @@ function getDependentsWithErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-with-errors" satisfies DependencySortColumn,
     header: t`Broken dependents`,
+    width: "auto",
     minWidth: 100,
     enableSorting: true,
     accessorFn: (node) =>
