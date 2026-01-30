@@ -1,8 +1,5 @@
 import { Children, isValidElement, useMemo, useState } from "react";
 
-import { Box } from "metabase/ui";
-
-import S from "./OnboardingStepper.module.css";
 import { StepperContext } from "./OnboardingStepperContext";
 import { OnboardingStepperStep } from "./OnboardingStepperStep";
 import { useScrollStepIntoView } from "./hooks/use-scroll-step-into-view";
@@ -54,9 +51,7 @@ const OnboardingStepperRoot = ({
     <StepperContext.Provider
       value={{ activeStep, completedSteps, stepRefs, setActiveStep }}
     >
-      <Box className={S.StepperRoot} role="list">
-        {children}
-      </Box>
+      {children}
     </StepperContext.Provider>
   );
 };
