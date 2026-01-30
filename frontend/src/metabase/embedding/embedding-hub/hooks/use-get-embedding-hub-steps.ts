@@ -90,7 +90,9 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
           to: "/admin/embedding/setup-guide/permissions",
           variant: "outline",
-          stepId: "configure-permissions-tenants",
+
+          // TODO(EMB-1265): update this to "setup-permissions-and-tenants"
+          stepId: "setup-tenants",
         },
       ],
     };

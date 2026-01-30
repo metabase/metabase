@@ -22,7 +22,8 @@ export const SetupPermissionsAndTenantsPage = () => {
         {t`Configure data permissions and enable tenants`}
       </Title>
 
-      <OnboardingStepper>
+      {/* TODO(EMB-1266): implement completed and locked steps logic */}
+      <OnboardingStepper completedSteps={{}} lockedSteps={{}}>
         <OnboardingStepper.Step
           stepId="enable-tenants"
           title={t`Enable multi-tenant user strategy`}
