@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
@@ -130,7 +131,9 @@ export function QueryEditorBody({
 
     return (
       <NativeQueryEditor
-        className={S.nativeQueryEditor}
+        className={cx(S.nativeQueryEditor, {
+          [S.readOnly]: readOnly,
+        })}
         availableHeight={availableHeight}
         question={question}
         proposedQuestion={proposedQuestion}
@@ -165,6 +168,7 @@ export function QueryEditorBody({
         onRejectProposed={onRejectProposed}
         topBarInnerContent={topBarInnerContent}
         extraButton={extraButton}
+        resizable={!readOnly}
       />
     );
   }

@@ -102,6 +102,24 @@
              :write
              :none))))
 
+(mu/defn- add-transforms-perms-info :- [:maybe
+                                        [:sequential
+                                         [:map
+                                          [:transforms_permissions [:enum :write :none]]]]]
+  "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
+  creating/running Transforms. Will be either `:write` or `:none`."
+  [dbs :- [:maybe [:sequential :map]]]
+  (for [db dbs]
+    (assoc db
+           :transforms_permissions
+           (if (perms/user-has-permission-for-database?
+                api/*current-user-id*
+                :perms/transforms
+                :yes
+                (u/the-id db))
+             :write
+             :none))))
+
 (defn- card-database-supports-nested-queries? [{{database-id :database, :as query} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
@@ -294,7 +312,7 @@
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
-    (cond-> (add-native-perms-info dbs)
+    (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
@@ -1294,6 +1312,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
+                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
     (->> db

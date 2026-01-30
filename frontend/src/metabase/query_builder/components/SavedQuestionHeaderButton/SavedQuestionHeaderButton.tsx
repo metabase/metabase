@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -13,7 +13,7 @@ interface SavedQuestionHeaderButtonProps {
   onSave: (name: string) => void;
 }
 
-function SavedQuestionHeaderButton({
+export function SavedQuestionHeaderButton({
   question,
   onSave,
 }: SavedQuestionHeaderButtonProps) {
@@ -47,5 +47,3 @@ function SavedQuestionHeaderButton({
     </Flex>
   );
 }
-
-export { SavedQuestionHeaderButton };

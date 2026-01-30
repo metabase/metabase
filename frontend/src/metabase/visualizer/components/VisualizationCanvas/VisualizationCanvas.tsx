@@ -110,6 +110,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
             rawSeries={rawSeries}
             // TableInteractive crashes when trying to use metabase-lib
             isDashboard
+            isVisualizer
           />
         </Box>
 

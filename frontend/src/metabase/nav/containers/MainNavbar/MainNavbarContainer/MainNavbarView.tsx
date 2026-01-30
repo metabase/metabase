@@ -10,7 +10,7 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";

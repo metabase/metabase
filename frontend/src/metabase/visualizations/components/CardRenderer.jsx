@@ -2,10 +2,10 @@
 import PropTypes from "prop-types";
 import { Component, forwardRef } from "react";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-class CardRenderer extends Component {
+class CardRendererInner extends Component {
   static propTypes = {
     className: PropTypes.string,
     series: PropTypes.array.isRequired,
@@ -100,11 +100,11 @@ class CardRenderer extends Component {
 
 const CardRendererWithRef = forwardRef(
   function _CardRendererWithRef(props, ref) {
-    return <CardRenderer {...props} forwardedRef={ref} />;
+    return <CardRendererInner {...props} forwardedRef={ref} />;
   },
 );
 
-export default ExplicitSize({
+export const CardRenderer = ExplicitSize({
   wrapped: true,
   // Avoid using debounce when isDashboard=true because there should not be any initial delay when rendering cards
   refreshMode: (props) => (props.isDashboard ? "debounceLeading" : "throttle"),

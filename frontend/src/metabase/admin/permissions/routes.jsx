@@ -11,8 +11,8 @@ import {
 
 import { CollectionPermissionsPage } from "./pages/CollectionPermissionsPage/CollectionPermissionsPage";
 import DataPermissionsPage from "./pages/DataPermissionsPage";
-import DatabasesPermissionsPage from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
-import GroupsPermissionsPage from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
+import { DatabasesPermissionsPage } from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
+import { GroupsPermissionsPage } from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 
 const getRoutes = () => (
   <Route>
@@ -47,4 +47,4 @@ const getRoutes = () => (
   </Route>
 );
 
-export default getRoutes;
+export { getRoutes };

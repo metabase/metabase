@@ -235,12 +235,20 @@
   [(prometheus/gauge :metabase-info/build
                      {:description "An info metric used to attach build info like version, which is high cardinality."
                       :labels [:tag :hash :date :version :major-version]})
+   (prometheus/gauge :metabase-startup/jvm-to-complete-millis
+                     {:description "Duration in milliseconds from JVM start to Metabase initialization complete."})
+   (prometheus/gauge :metabase-startup/init-duration-millis
+                     {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
+   (prometheus/counter :metabase-geocoding/requests
+                       {:description "Number of successful IP geocoding requests via GeoJS."})
+   (prometheus/counter :metabase-geocoding/errors
+                       {:description "Number of errors when geocoding IP addresses via GeoJS."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -348,6 +356,9 @@
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/counter :metabase-search/semantic-error-fallback
+                       {:description "Number of times semantic search failed with an error and fell back to another engine"
                         :labels [:fallback-engine]})
    (prometheus/histogram :metabase-search/semantic-results-before-fallback
                          {:description "Distribution of result counts from semantic search when fallback is triggered"
@@ -486,6 +497,9 @@
                           :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
+                        :labels [:status]})
+   (prometheus/counter :metabase-token-check/attempt
+                       {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})])
 
 (defn- quartz-collectors
@@ -622,6 +636,19 @@
    (when-not system
      (setup!))
    (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
+
+(defn inc-if-initialized!
+  "Call iapetos.core/inc on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric] (when system (inc! metric nil 1)))
+  ([metric labels-or-amount]
+   (when system
+     (if (number? labels-or-amount)
+       (inc! metric nil labels-or-amount)
+       (inc! metric labels-or-amount 1))))
+  ([metric labels amount]
+   (when system
+     (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.

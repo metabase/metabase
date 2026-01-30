@@ -19,6 +19,7 @@ import {
   useGetTableQuery,
   useListMentionsQuery,
 } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
 import {
   type IconModel,
@@ -516,8 +517,8 @@ export const SmartLinkComponent = memo(
 
     return (
       <NodeViewWrapper as="span" data-type="smart-link">
-        <a
-          href={entityUrl || "#"}
+        <Link
+          to={entityUrl || "#"}
           target="_blank"
           rel="noreferrer"
           tabIndex={-1}
@@ -531,7 +532,7 @@ export const SmartLinkComponent = memo(
             <Icon name={iconData.name} className={styles.icon} />
             {getName(entity)}
           </span>
-        </a>
+        </Link>
       </NodeViewWrapper>
     );
   },

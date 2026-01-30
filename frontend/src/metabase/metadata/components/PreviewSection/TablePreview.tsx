@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Repeat, Skeleton, Stack } from "metabase/ui";

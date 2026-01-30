@@ -220,7 +220,8 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match]}                    ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match
+                                    metabase.lib.util.match/match-lite]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -239,7 +240,6 @@
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
     (metabase.lib.util.match/match-lite)
-    (metabase.lib.util.match/match-lite-recursive)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)

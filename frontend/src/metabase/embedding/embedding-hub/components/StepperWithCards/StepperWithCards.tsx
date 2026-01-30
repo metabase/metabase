@@ -235,16 +235,9 @@ const StepAlert = ({
   message: string;
 }) => (
   <Alert
-    icon={
-      <Icon
-        size={14}
-        name={type === "success" ? "check" : "info"}
-        c={type === "success" ? "success" : "text-secondary"}
-      />
-    }
+    icon={<Icon size={14} name={type === "success" ? "check" : "info"} />}
     mt="xl"
-    bg={type === "success" ? "background-success" : "brand-light"}
-    bd={type === "success" ? "1px solid var(--mb-color-success)" : undefined}
+    color={type === "info" ? "brand" : type}
     lh="lg"
     classNames={{
       wrapper: S.infoAlertWrapper,

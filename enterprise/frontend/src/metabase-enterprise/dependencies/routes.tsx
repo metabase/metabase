@@ -10,11 +10,11 @@ export function getDataStudioDependencyRoutes() {
   return <IndexRoute component={DependencyGraphPage} />;
 }
 
-export function getDataStudioTasksRoutes() {
+export function getDataStudioDependencyDiagnosticsRoutes() {
   return (
     <>
-      <IndexRedirect to="broken" />
-      <Route path="broken" component={BrokenDependencyListPage} />
+      <IndexRedirect to="breaking" />
+      <Route path="breaking" component={BrokenDependencyListPage} />
       <Route path="unreferenced" component={UnreferencedDependencyListPage} />
     </>
   );

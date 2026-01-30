@@ -1,9 +1,10 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
@@ -89,8 +90,8 @@
 (derive :event/update-transform ::transform-deps)
 
 ;; On *saving* a transform, the upstream deps of its query are computed and saved.
-(defn- drop-outdated-target-dep! [{:keys [id source target] :as _transform}]
-  (let [db-id                (some-> source :query :database)
+(defn- drop-outdated-target-dep! [{:keys [id target] :as transform}]
+  (let [db-id                (transforms/transform-source-database transform)
         downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
                                                :from_entity_type :table
                                                :to_entity_type   :transform
@@ -276,23 +277,6 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
 
-(defn- check-all-dependents! [type->objects recur-through-transforms?]
-  (let [graph (if recur-through-transforms?
-                (models.dependency/graph-dependents)
-                (models.dependency/filtered-graph-dependents
-                 nil
-                 (fn [type-field _id-field]
-                   [:not= type-field "transform"])))
-        children-map (models.dependency/transitive-mbql-dependents graph type->objects)]
-    (doseq [[type children] children-map
-            :when (deps.findings/supported-entities type)
-            instances (partition 50 50 nil children)]
-      (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
-          deps.findings/analyze-instances!))))
-
-(defn- check-dependents! [type object recur-through-transforms?]
-  (check-all-dependents! {type [object]} recur-through-transforms?))
-
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
 (derive :event/card-update ::check-card-dependents)
@@ -303,8 +287,11 @@
   (when (and (premium-features/has-feature? :dependencies)
              (not (models.dependency/is-native-entity? :card object)))
     (lib-be/with-metadata-provider-cache
-      (deps.findings/upsert-analysis! object)
-      (check-dependents! :card object false))))
+      (let [has-stale-dependents? (t2/with-transaction [_conn]
+                                    (deps.findings/upsert-analysis! object)
+                                    (deps.findings/mark-dependents-stale! :card (:id object)))]
+        (when has-stale-dependents?
+          (task.entity-check/trigger-entity-check-job!))))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
@@ -327,8 +314,11 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
-      (deps.findings/upsert-analysis! object)
-      (check-dependents! :segment object false))))
+      (let [has-stale-dependents? (t2/with-transaction [_conn]
+                                    (deps.findings/upsert-analysis! object)
+                                    (deps.findings/mark-dependents-stale! :segment (:id object)))]
+        (when has-stale-dependents?
+          (task.entity-check/trigger-entity-check-job!))))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
@@ -336,8 +326,8 @@
 (methodical/defmethod events/publish-event! ::check-transform-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (lib-be/with-metadata-provider-cache
-      (check-dependents! :transform {:id (:transform-id object)} true))))
+    (when (deps.findings/mark-dependents-stale! :transform (:transform-id object))
+      (task.entity-check/trigger-entity-check-job!))))
 
 (defn- synced-db->direct-dependents-of-changed-tables
   "Given the `:db_id` of a freshly synced database, this examines all tables in the DB which were updated, or have
@@ -380,7 +370,7 @@
 (methodical/defmethod events/publish-event! ::sync-completed-on-database
   [_ {db-id :database_id}]
   (when (premium-features/has-feature? :dependencies)
-    (lib-be/with-metadata-provider-cache
-      (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
-        (when (seq changes)
-          (check-all-dependents! {:table changes} true))))))
+    (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
+      (when (and (seq changes)
+                 (deps.findings/mark-all-dependents-stale! {:table changes}))
+        (task.entity-check/trigger-entity-check-job!)))))

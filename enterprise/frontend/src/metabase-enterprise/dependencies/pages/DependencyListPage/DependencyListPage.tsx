@@ -1,52 +1,91 @@
 import type { Location } from "history";
+import { useEffect, useMemo, useRef } from "react";
 import { replace } from "react-router-redux";
 
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import type * as Urls from "metabase/lib/urls";
 
 import { DependencyList } from "../../components/DependencyList";
+import type {
+  DependencyListMode,
+  DependencyListParamsOptions,
+} from "../../components/DependencyList/types";
 
 import type { DependencyListQueryParams } from "./types";
-import { parseParams } from "./utils";
+import {
+  getPageUrl,
+  getUserParams,
+  isEmptyParams,
+  parseUrlParams,
+  parseUserParams,
+} from "./utils";
 
 type DependencyListPageProps = {
-  location: Location<DependencyListQueryParams>;
+  location: Pick<Location<DependencyListQueryParams>, "query">;
 };
 
-export function BrokenDependencyListPage({
+type DependencyListPageOwnProps = DependencyListPageProps & {
+  mode: DependencyListMode;
+};
+
+export function DependencyListPage({
+  mode,
   location,
-}: DependencyListPageProps) {
-  const params = parseParams(location.query);
+}: DependencyListPageOwnProps) {
+  const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 
-  const handleParamsChange = (params: Urls.DependencyListParams) => {
-    dispatch(replace(Urls.brokenDependencies(params)));
+  const {
+    value: rawLastUsedParams,
+    isLoading: isLoadingParams,
+    setValue: setLastUsedParams,
+  } = useUserKeyValue({
+    namespace: "dependency_list",
+    key: mode,
+  });
+
+  const params = useMemo(() => {
+    return isEmptyParams(location.query)
+      ? parseUserParams(rawLastUsedParams)
+      : parseUrlParams(location.query);
+  }, [location.query, rawLastUsedParams]);
+
+  const handleParamsChange = (
+    params: Urls.DependencyListParams,
+    { withSetLastUsedParams = false }: DependencyListParamsOptions = {},
+  ) => {
+    if (withSetLastUsedParams) {
+      setLastUsedParams(getUserParams(params));
+    }
+    dispatch(replace(getPageUrl(mode, params)));
   };
+
+  useEffect(() => {
+    if (!isInitializingRef.current && !isLoadingParams) {
+      isInitializingRef.current = true;
+      dispatch(replace(getPageUrl(mode, params)));
+    }
+  }, [mode, params, isLoadingParams, dispatch]);
 
   return (
     <DependencyList
-      mode="broken"
+      mode={mode}
       params={params}
+      isLoadingParams={isLoadingParams}
       onParamsChange={handleParamsChange}
     />
   );
 }
 
+export function BrokenDependencyListPage({
+  location,
+}: DependencyListPageProps) {
+  return <DependencyListPage mode="breaking" location={location} />;
+}
+
 export function UnreferencedDependencyListPage({
   location,
 }: DependencyListPageProps) {
-  const params = parseParams(location.query);
-  const dispatch = useDispatch();
-
-  const handleParamsChange = (params: Urls.DependencyListParams) => {
-    dispatch(replace(Urls.unreferencedDependencies(params)));
-  };
-
-  return (
-    <DependencyList
-      mode="unreferenced"
-      params={params}
-      onParamsChange={handleParamsChange}
-    />
-  );
+  return <DependencyListPage mode="unreferenced" location={location} />;
 }

@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals */
+/* eslint-disable metabase/no-color-literals */
 import type { MetabaseThemeV2 } from "../../types";
 import { LIGHT_THEME_ACCENT_COLORS } from "../accent-colors";
 import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";
@@ -19,11 +19,12 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "background-disabled": baseColors.orionAlpha[10],
     "background-disabled-inverse": baseColors.orionAlphaInverse[10],
     "background-error-secondary": baseColors.lobster[5],
-    "background-hover":
-      "color-mix(in srgb, var(--mb-color-brand) 21%, transparent)",
-    "background-hover-light":
+    "background-highlight":
       "color-mix(in srgb, var(--mb-color-brand) 7%, transparent)",
-    "background-selected": baseColors.brand[50],
+    "background-hover":
+      "color-mix(in srgb, var(--mb-color-brand) 7%, transparent)",
+    "background-selected":
+      "color-mix(in srgb, var(--mb-color-brand) 21%, transparent)",
     "background-primary": baseColors.white,
     "background-secondary": baseColors.orion[5],
     "background-tertiary": baseColors.orion[10],
@@ -31,25 +32,20 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "background-secondary-inverse": baseColors.orion[70],
     "background-tertiary-inverse": baseColors.orion[40],
     overlay: baseColors.orionAlpha[60],
-    "bg-ocean-alpha-light": baseColors.oceanAlpha[5],
     "background-error": baseColors.lobster[10],
     "background-success": baseColors.palm[5],
-    "brand-alpha-04":
-      "color-mix(in srgb, var(--mb-color-brand) 4%, transparent)",
-    "brand-alpha-88":
-      "color-mix(in srgb, var(--mb-color-brand) 88%, transparent)",
-    "brand-dark": baseColors.brand[60],
-    "brand-darker": baseColors.brand[70],
-    "brand-light": baseColors.brand[10],
-    "brand-lighter": baseColors.brand[5],
     brand: baseColors.blue[40],
+    "brand-hover": baseColors.brand[50],
     danger: baseColors.lobster[50],
     error: baseColors.lobster[50],
     filter: baseColors.octopus[50],
     focus: baseColors.blue[20],
-    "icon-primary": baseColors.brand[40],
+    "icon-brand": baseColors.brand[40],
+    "icon-primary": baseColors.orionAlpha[80],
     "icon-disabled": baseColors.orionAlpha[30],
     "icon-secondary": baseColors.orionAlpha[50],
+    "illustration-brand-secondary": baseColors.brand[10],
+    "illustration-brand-tertiary": baseColors.brand[5],
     "metabase-brand": baseColors.blue[40],
     "saturated-blue": baseColors.ocean[60],
     "saturated-green": baseColors.palm[60],
@@ -72,7 +68,7 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "text-primary-inverse": baseColors.orionAlphaInverse[80],
     "text-secondary": baseColors.orionAlpha[60],
     "text-secondary-inverse": baseColors.orionAlphaInverse[60],
-    "text-selected": baseColors.white,
+    "text-selected": baseColors.orionAlpha[80],
     "tooltip-background-focused": `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
     "tooltip-background": baseColors.orion[80],
     "tooltip-text-secondary": baseColors.orionAlphaInverse[60],
@@ -83,6 +79,7 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "background-info": baseColors.orion[10],
     white: baseColors.white,
     border: baseColors.orion[20],
+    "border-brand": baseColors.brand[10],
     "border-strong": baseColors.orionAlpha[50],
     "border-subtle": baseColors.orionAlpha[10],
     copper: "#B87333",

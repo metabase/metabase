@@ -138,7 +138,7 @@ describe("scenarios > embedding > questions", () => {
     H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({
@@ -170,27 +170,27 @@ describe("scenarios > embedding > questions", () => {
     H.visitIframe();
 
     // Global (Data model) settings should be preserved
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID as Title");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Awesome Concrete Shoes");
 
     // Custom column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Math");
 
     // Base question visualization settings should reset to the defaults (inherit global formatting)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("February 11, 2025, 9:40 PM");
 
     cy.findAllByTestId("mini-bar-container").should("not.exist");
 
     // Data model: Subtotal is turned off globally
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
   });
 

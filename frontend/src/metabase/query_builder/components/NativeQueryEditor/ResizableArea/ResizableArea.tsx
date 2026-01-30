@@ -34,10 +34,14 @@ export function ResizableArea(props: {
 
   const resize = useCallback(
     (height: number) => {
+      if (!resizable) {
+        return;
+      }
+
       onResize?.(height);
       setHeight(height);
     },
-    [onResize],
+    [onResize, resizable],
   );
 
   const handleResize = useCallback(
@@ -64,11 +68,19 @@ export function ResizableArea(props: {
     setHeight(initialHeight);
   }
 
-  const dragHandle = resizable ? (
+  const dragHandle = (
     <div className={S.dragHandleContainer} data-testid="drag-handle">
       <div className={S.dragHandle} />
     </div>
-  ) : null;
+  );
+
+  if (!resizable) {
+    return (
+      <Flex w="100%" flex="1" h="100%" className={className}>
+        {children}
+      </Flex>
+    );
+  }
 
   return (
     <Resizable

@@ -1562,6 +1562,14 @@
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
 
+(deftest reactivate-second-to-last-admin-test
+  (mt/with-single-admin-user! [{id :id}]
+    (testing "With two admins, one deactivated"
+      (mt/with-temp [:model/User {other-user :id} {:is_superuser true}]
+        (mt/user-http-request id :delete 200 (format "user/%d" other-user))
+        (testing "We can reactivate the other admin"
+          (mt/user-http-request id :put 200 (format "user/%d/reactivate" other-user)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

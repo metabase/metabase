@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   FixedSizeIcon,
+  Indicator,
   Popover,
   Stack,
 } from "metabase/ui";
@@ -19,14 +20,18 @@ import { TypeFilterPicker } from "./TypeFilterPicker";
 type FilterOptionsPickerProps = {
   filterOptions: DependencyFilterOptions;
   availableGroupTypes?: DependencyGroupType[];
-  compact?: boolean;
+  isCompact?: boolean;
+  isDisabled?: boolean;
+  hasDefaultFilterOptions?: boolean;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function FilterOptionsPicker({
   filterOptions,
   availableGroupTypes = [],
-  compact = false,
+  isCompact = false,
+  isDisabled = false,
+  hasDefaultFilterOptions = false,
   onFilterOptionsChange,
 }: FilterOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
@@ -34,19 +39,29 @@ export function FilterOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        {compact ? (
-          <ActionIcon aria-label={t`Filter`} onClick={toggle}>
-            <FixedSizeIcon c="text-primary" name="filter" />
-          </ActionIcon>
-        ) : (
-          <Button
-            leftSection={<FixedSizeIcon name="filter" aria-hidden />}
-            data-testid="dependency-filter-button"
-            onClick={toggle}
-          >
-            {t`Filter`}
-          </Button>
-        )}
+        <Indicator
+          offset={isCompact ? 6 : 12}
+          disabled={hasDefaultFilterOptions}
+        >
+          {isCompact ? (
+            <ActionIcon
+              aria-label={t`Filter`}
+              disabled={isDisabled}
+              onClick={toggle}
+            >
+              <FixedSizeIcon c="text-primary" name="filter" />
+            </ActionIcon>
+          ) : (
+            <Button
+              leftSection={<FixedSizeIcon name="filter" aria-hidden />}
+              disabled={isDisabled}
+              data-testid="dependency-filter-button"
+              onClick={toggle}
+            >
+              {t`Filter`}
+            </Button>
+          )}
+        </Indicator>
       </Popover.Target>
       <Popover.Dropdown>
         <FilterOptionsPopover

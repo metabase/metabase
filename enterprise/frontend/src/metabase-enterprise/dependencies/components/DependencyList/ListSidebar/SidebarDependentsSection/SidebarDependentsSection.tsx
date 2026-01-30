@@ -17,7 +17,7 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
-import { useListNodeDependentsQuery } from "metabase-enterprise/api";
+import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
 import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../../constants";
@@ -26,6 +26,7 @@ import type {
   DependencySortOptions,
 } from "../../../../types";
 import {
+  areFilterOptionsEqual,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
   getNodeIcon,
@@ -63,8 +64,12 @@ export function SidebarDependentsSection({
   const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
     getDefaultSortOptions(),
   );
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(),
+  );
 
-  const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
+  const { data: dependents = [], isFetching } = useListBrokenGraphNodesQuery(
     getListRequest(node, filterOptions, sortOptions),
     {
       skip: count === 0,
@@ -97,7 +102,8 @@ export function SidebarDependentsSection({
             <FilterOptionsPicker
               filterOptions={filterOptions}
               availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
-              compact
+              isCompact
+              hasDefaultFilterOptions={hasDefaultFilterOptions}
               onFilterOptionsChange={setFilterOptions}
             />
           </Group>

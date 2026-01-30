@@ -38,7 +38,7 @@ export function modifyPermission(
 }
 
 export function selectPermissionRow(item, permissionIndex) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   getPermissionRowPermissions(item).eq(permissionIndex).click();
 }
 
@@ -80,19 +80,20 @@ export function assertPermissionForItem(
   permissionColumnIndex,
   permissionValue,
 ) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   getPermissionRowPermissions(item)
     .eq(permissionColumnIndex)
     .should("have.text", permissionValue);
 }
 
 /**
- * @param {string} index
+ * @param {string} row
+ * @param {number} index
  * @param {string} permission
  * @param {boolean} isDisabled
  */
 export function isPermissionDisabled(row, index, permission, isDisabled) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return getPermissionRowPermissions(row)
     .eq(index)
     .should("have.attr", "aria-disabled", isDisabled.toString())

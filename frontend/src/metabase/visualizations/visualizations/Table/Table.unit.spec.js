@@ -6,7 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,

@@ -288,6 +288,12 @@ export const many_schemas = async (dbClient) => {
   return schemas;
 };
 
+export const empty_schema = async (dbClient) => {
+  const schemaName = "empty_schema";
+  await dbClient.schema.createSchemaIfNotExists(schemaName);
+  return null;
+};
+
 export const cached_table = async (dbClient) => {
   const tableName = "cached_table";
 

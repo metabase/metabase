@@ -32,12 +32,12 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-hover);
   }
 
-  &:focus {
+  &:focus:not(.disabled) {
     outline: none;
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-hover);
   }
 
   &:focus-visible {
@@ -45,11 +45,11 @@
   }
 }
 
-.active {
-  background-color: var(--mb-color-brand-light);
+.content.active {
+  background-color: var(--mb-color-background-selected);
 
   &:hover {
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-selected);
   }
 }
 
