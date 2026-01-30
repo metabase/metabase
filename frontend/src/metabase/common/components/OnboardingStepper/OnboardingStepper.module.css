@@ -8,11 +8,11 @@
 }
 
 .StepRoot[data-active="true"] {
-  padding: 1.5rem 2rem;
+  padding: 1.5rem 4rem;
 }
 
 .StepRoot[data-active="false"] {
-  padding: 1rem 2rem;
+  padding: 1rem 4rem;
   cursor: pointer;
   transition: background-color 0.15s ease;
 
