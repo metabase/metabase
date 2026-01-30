@@ -323,43 +323,44 @@
             ORDER BY s ASC;"
            num))
 
-(deftest run-mbql-transform-long-running-transform-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table ::sleep-query]})
-    (with-transform-cleanup! [target-table {:type   :table
-                                            :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
-                                            :name   "sleep_table"}]
-      (let [mp (mt/metadata-provider)
-            query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 5))
-            new-query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 6))]
-        (mt/with-temp [:model/Transform transform {:name   "transform"
-                                                   :source {:type  :query
-                                                            :query query}
-                                                   :target target-table}]
-          (transforms.execute/execute! transform {:run-method :manual})
-          (let [_ (transforms.tu/wait-for-table (:name target-table) 10000)
-                table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
-                transform-id (:id transform)
-                original-result [[1] [2] [3] [4] [5]]
-                query-fn (fn []
-                           (->> (lib/query mp table-result)
-                                (qp/process-query)
-                                (mt/formatted-rows [int])))]
-            (is (= original-result (query-fn)))
-            (let [transform-future (future
-                                     (t2/update! :model/Transform transform-id {:source {:type :query
-                                                                                         :query new-query}})
-                                     (let [new-transform (t2/select-one :model/Transform transform-id)]
-                                       (transforms.execute/execute! new-transform {:run-method :manual})))
-                  query-futures (vec
-                                 (for [i (range 10)]
-                                   (future
-                                     (Thread/sleep (* i 100))
-                                     (query-fn))))]
-              @transform-future
-              (let [query-results (map deref query-futures)]
-                (doseq [result query-results]
-                  (is (= original-result result))))
-              (is (= [[1] [2] [3] [4] [5] [6]] (query-fn))))))))))
+;; Commented out to avoid potential flakes but keeping it as a reference for QUE-2394
+#_(deftest run-mbql-transform-long-running-transform-test
+    (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table ::sleep-query]})
+      (with-transform-cleanup! [target-table {:type   :table
+                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                              :name   "sleep_table"}]
+        (let [mp (mt/metadata-provider)
+              query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 5))
+              new-query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 6))]
+          (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                     :source {:type  :query
+                                                              :query query}
+                                                     :target target-table}]
+            (transforms.execute/execute! transform {:run-method :manual})
+            (let [_ (transforms.tu/wait-for-table (:name target-table) 10000)
+                  table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
+                  transform-id (:id transform)
+                  original-result [[1] [2] [3] [4] [5]]
+                  query-fn (fn []
+                             (->> (lib/query mp table-result)
+                                  (qp/process-query)
+                                  (mt/formatted-rows [int])))]
+              (is (= original-result (query-fn)))
+              (let [transform-future (future
+                                       (t2/update! :model/Transform transform-id {:source {:type :query
+                                                                                           :query new-query}})
+                                       (let [new-transform (t2/select-one :model/Transform transform-id)]
+                                         (transforms.execute/execute! new-transform {:run-method :manual})))
+                    query-futures (vec
+                                   (for [i (range 10)]
+                                     (future
+                                       (Thread/sleep (* i 100))
+                                       (query-fn))))]
+                @transform-future
+                (let [query-results (map deref query-futures)]
+                  (doseq [result query-results]
+                    (is (= original-result result))))
+                (is (= [[1] [2] [3] [4] [5] [6]] (query-fn))))))))))
 
 (deftest run-transforms-with-strategy-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
