@@ -109,7 +109,6 @@
             :where
             [:and
              [:= 1 2]
-             [:or [:!= :search_index.model [:inline "transform"]] [:= [:inline 0] [:inline 1]]]
              [:or [:= nil :search_index.dashboard_id] nil]]}
            (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
     (is (= {:select [:some :stuff],
@@ -117,7 +116,6 @@
             :where
             [:and
              [:in :search_index.model ["a"]]
-             [:or [:!= :search_index.model [:inline "transform"]] [:= [:inline 0] [:inline 1]]]
              [:or [:= nil :search_index.dashboard_id] nil]]}
            (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
 
@@ -151,7 +149,6 @@
               [:< [:cast :search_index.model_created_at :date] #t "2024-10-02"]
               [:in :search_index.model_id ["1" "2" "3" "4"]]
               [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]
-              [:or [:!= :search_index.model [:inline "transform"]] [:= [:inline 0] [:inline 1]]]
               [:>= [:cast :search_index.model_created_at :date] #t "2024-10-01"]
               [:= :search_index.non_temporal_dim_ids "[1]"]
               [:= :search_index.has_temporal_dim true]

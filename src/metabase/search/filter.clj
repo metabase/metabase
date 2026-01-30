@@ -142,40 +142,44 @@
            ;; nor within one of their sub-collections
            ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
 
+(defn transform-source-type-where-clause
+  "Build a clause that limits transforms to enabled source types.
+  When a `model-col` is provided, non-transform models always pass through."
+  ([source-type-col]
+   (let [enabled-types (transforms.gating/enabled-source-types)]
+     (if (seq enabled-types)
+       [:in source-type-col enabled-types]
+       [:= [:inline 0] [:inline 1]])))
+  ([model-col source-type-col]
+   [:or
+    [:!= model-col [:inline "transform"]]
+    (transform-source-type-where-clause source-type-col)]))
+
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
-  (let [enabled-types (transforms.gating/enabled-source-types)
-        transform-source-type-clause [:or
-                                      [:!= :search_index.model [:inline "transform"]]
-                                      (if (seq enabled-types)
-                                        [:in :search_index.source_type enabled-types]
-                                        [:=
-                                         [:inline 0]
-                                         [:inline 1]])]]
-    (as-> qry qry
-      (sql.helpers/where qry (if (seq (:models search-context))
-                               [:in :search_index.model (:models search-context)]
-                               ;; Ideally, we would not get this far, and bail out earlier.
-                               [:= 1 2]))
-      (sql.helpers/where qry transform-source-type-clause)
-      (sql.helpers/where qry (when-let [ids (:ids search-context)]
-                               [:and
-                                [:in :search_index.model_id (map str ids)]
-                                ;; NOTE: we limit id-based search to only a subset of the models
-                                ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                                [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
-      (sql.helpers/where qry [:or
-                              ;; leverage the fact that only card-related models populate this attribute
-                              [:= nil :search_index.dashboard_id]
-                              (when (:include-dashboard-questions? search-context)
-                                [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])])
-      (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
-                (or (when-some [v (get search-context context-key)]
-                      (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
-                      (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
-                        (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
-                          (sql.helpers/where qry c))))
-                    qry))
-              qry
-              (vals (dissoc search.config/filters :id :native-query))))))
+  (as-> qry qry
+    (sql.helpers/where qry (if (seq (:models search-context))
+                             [:in :search_index.model (:models search-context)]
+                             ;; Ideally, we would not get this far, and bail out earlier.
+                             [:= 1 2]))
+    (sql.helpers/where qry (when-let [ids (:ids search-context)]
+                             [:and
+                              [:in :search_index.model_id (map str ids)]
+                              ;; NOTE: we limit id-based search to only a subset of the models
+                              ;; TODO this should just become part of the model spec e.g. :search-by-id?
+                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
+    (sql.helpers/where qry [:or
+                            ;; leverage the fact that only card-related models populate this attribute
+                            [:= nil :search_index.dashboard_id]
+                            (when (:include-dashboard-questions? search-context)
+                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])])
+    (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
+              (or (when-some [v (get search-context context-key)]
+                    (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
+                    (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
+                      (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+                        (sql.helpers/where qry c))))
+                  qry))
+            qry
+            (vals (dissoc search.config/filters :id :native-query)))))

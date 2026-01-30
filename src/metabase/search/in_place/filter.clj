@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -29,13 +30,6 @@
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
-
-(defn- transform-source-type-clause
-  []
-  (let [enabled-types (transforms.gating/enabled-source-types)]
-    (if (seq enabled-types)
-      [:in (search.config/column-with-model-alias "transform" :source_type) enabled-types]
-      false-clause)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
@@ -394,7 +388,8 @@
                 display-type]} search-context]
     (cond-> honeysql-query
       (= model "transform")
-      (sql.helpers/where (transform-source-type-clause))
+      (sql.helpers/where (search.filter/transform-source-type-where-clause
+                          (search.config/column-with-model-alias "transform" :source_type)))
 
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
