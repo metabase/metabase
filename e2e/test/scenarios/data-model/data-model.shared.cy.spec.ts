@@ -1832,6 +1832,193 @@ describe.each<Area>(areas)(
               .should("be.visible")
               .and("have.value", "Title");
           });
+
+          it("should allow 'Custom mapping' null values", () => {
+            const remappedNullValue = "nothin";
+
+            cy.signInAsAdmin();
+            H.addSqliteDatabase();
+
+            cy.get<number>("@sqliteID").then((databaseId) => {
+              H.withDatabase(
+                databaseId,
+                ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
+                  cy.request("GET", `/api/database/${databaseId}/schemas`).then(
+                    ({ body }) => {
+                      const [schemaName] = body;
+
+                      context.visit({
+                        databaseId,
+                        schemaId: `${databaseId}:${schemaName}`,
+                        tableId: NUMBER_WITH_NULLS_ID,
+                        fieldId: NUM,
+                      });
+                    },
+                  );
+
+                  cy.log("Change `null` to custom mapping");
+                  FieldSection.getDisplayValuesInput().scrollIntoView().click();
+                  H.popover().findByText("Custom mapping").click();
+                  cy.wait("@updateFieldValues");
+                  H.expectUnstructuredSnowplowEvent({
+                    event: "metadata_edited",
+                    event_detail: "display_values",
+                    triggered_from: context.getTriggeredFrom(),
+                  });
+                  H.undoToast().should(
+                    "contain.text",
+                    "Display values of Num updated",
+                  );
+                  H.undoToast().icon("close").click({
+                    force: true, // it's behind a modal
+                  });
+
+                  H.modal()
+                    .should("be.visible")
+                    .within(() => {
+                      cy.findAllByPlaceholderText("Enter value")
+                        .filter("[value='null']")
+                        .clear()
+                        .type(remappedNullValue);
+                      cy.button("Save").click();
+                    });
+                  cy.wait("@updateFieldValues");
+                  H.undoToast().should(
+                    "contain.text",
+                    "Display values of Num updated",
+                  );
+
+                  cy.log("Make sure custom mapping appears in QB");
+                  H.openTable({
+                    database: databaseId,
+                    table: NUMBER_WITH_NULLS_ID,
+                  });
+                  cy.findAllByRole("gridcell", {
+                    name: remappedNullValue,
+                  }).should("be.visible");
+                },
+              );
+            });
+          });
+
+          it("should correctly show remapped column value", () => {
+            context.visit({ databaseId: SAMPLE_DB_ID });
+
+            // edit "Product ID" column in "Orders" table
+            TablePicker.getTable("Orders").click();
+            TableSection.clickField("Product ID");
+
+            // remap its original value to use foreign key
+            FieldSection.getDisplayValuesInput().click();
+            H.popover().findByText("Use foreign key").click();
+            H.popover().findByText("Title").click();
+            cy.wait("@updateFieldDimension");
+            H.undoToast().should(
+              "contain.text",
+              "Display values of Product ID updated",
+            );
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            verifyObjectDetailPreview({
+              rowNumber: 2,
+              row: ["Product ID", "Awesome Concrete Shoes"],
+            });
+            verifyTablePreview({
+              column: "Product ID",
+              values: [
+                "Awesome Concrete Shoes",
+                "Mediocre Wooden Bench",
+                "Fantastic Wool Shirt",
+                "Awesome Bronze Plate",
+                "Sleek Steel Table",
+              ],
+            });
+
+            FieldSection.get()
+              .findByText(
+                "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+              )
+              .scrollIntoView()
+              .should("be.visible");
+
+            cy.log("Name of the product should be displayed instead of its ID");
+            H.openOrdersTable();
+            cy.findByRole("gridcell", {
+              name: "Awesome Concrete Shoes",
+            }).should("be.visible");
+          });
+
+          it("should correctly apply and display custom remapping for numeric values", () => {
+            // this test also indirectly reproduces metabase#12771
+            const customMap = {
+              1: "Awful",
+              2: "Unpleasant",
+              3: "Meh",
+              4: "Enjoyable",
+              5: "Perfecto",
+            };
+
+            context.visit({ databaseId: SAMPLE_DB_ID });
+            // edit "Rating" values in "Reviews" table
+            TablePicker.getTable("Reviews").click();
+            TableSection.clickField("Rating");
+
+            // apply custom remapping for "Rating" values 1-5
+            FieldSection.getDisplayValuesInput().click();
+            H.popover().findByText("Custom mapping").click();
+            cy.wait("@updateFieldValues");
+            H.undoToast().should(
+              "contain.text",
+              "Display values of Rating updated",
+            );
+            H.undoToast().icon("close").click({
+              force: true, // it's behind a modal
+            });
+            H.modal().within(() => {
+              cy.findByText(
+                "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+              ).should("be.visible");
+
+              Object.entries(customMap).forEach(([key, value]) => {
+                cy.findByDisplayValue(key).click().clear().type(value);
+              });
+
+              cy.button("Save").click();
+            });
+            cy.wait("@updateFieldValues");
+            cy.wait("@updateFieldDimension");
+            H.undoToast().should(
+              "contain.text",
+              "Display values of Rating updated",
+            );
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            verifyTablePreview({
+              column: "Rating",
+              values: [
+                "Perfecto",
+                "Enjoyable",
+                "Perfecto",
+                "Enjoyable",
+                "Perfecto",
+              ],
+            });
+            verifyObjectDetailPreview({
+              rowNumber: 3,
+              row: ["Rating", "Perfecto"],
+            });
+
+            cy.log("Numeric ratings should be remapped to custom strings");
+            H.openReviewsTable();
+            Object.values(customMap).forEach((rating) => {
+              cy.findAllByText(rating)
+                .eq(0)
+                .scrollIntoView()
+                .should("be.visible");
+            });
+          });
         });
       });
     });
