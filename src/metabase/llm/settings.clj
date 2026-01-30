@@ -25,6 +25,31 @@
   :encryption :no
   :default "claude-sonnet-4-5-20250929"
   :visibility :settings-manager
+  :default "claude-opus-4-5-20251101"
+  :export? false
+  :doc false)
+
+(defsetting llm-anthropic-api-url
+  (deferred-tru "Anthropic Base API URL for AI-assisted SQL generation.")
+  :encryption :no
+  :visibility :internal
+  :default "https://api.anthropic.com"
+  :export? false
+  :doc false)
+
+(defsetting llm-anthropic-api-url
+  (deferred-tru "Anthropic API URL for AI-assisted SQL generation.")
+  :encryption :no
+  :visibility :internal
+  :default "https://api.anthropic.com/v1/messages"
+  :export? false
+  :doc false)
+
+(defsetting llm-anthropic-api-version
+  (deferred-tru "Anthropic API version for AI-assisted SQL generation.")
+  :encryption :no
+  :visibility :internal
+  :default "2023-06-01"
   :export? false
   :doc false)
 

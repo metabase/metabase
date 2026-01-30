@@ -779,13 +779,13 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init}
-   :uses #{api
+   :uses #{analytics
+           api
            lib
            lib-be
            models
            premium-features
            request
-           server
            settings
            sync
            util

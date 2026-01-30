@@ -1,7 +1,7 @@
 (ns metabase.llm.anthropic-test
   (:require
    [cheshire.core :as json]
-   [clj-http.fake :as fake]
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
    [metabase.test :as mt]))
@@ -102,7 +102,7 @@
       (is (contains? (get-in tool [:input_schema :properties]) :sql))
       (is (= ["sql"] (get-in tool [:input_schema :required]))))))
 
-;;; ------------------------------------------- chat-completion error handling Tests -------------------------------------------
+;;; ------------------------------------------- chat-completion Tests -------------------------------------------
 
 (deftest chat-completion-not-configured-test
   (testing "throws when API key not configured"
@@ -124,30 +124,69 @@
 
 (deftest list-models-success-test
   (testing "list-models returns sorted models with selected fields"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"]
-      (let [mock-response {:data [{:id "claude-sonnet-4-20250514"
-                                   :display_name "Claude Sonnet 4"
-                                   :created_at "2025-05-14T00:00:00Z"
-                                   :type "model"}
-                                  {:id "claude-sonnet-4-5-20250929"
-                                   :display_name "Claude Sonnet 4.5"
-                                   :created_at "2025-09-29T00:00:00Z"
-                                   :type "model"}
-                                  {:id "claude-opus-4-5-20251101"
-                                   :display_name "Claude Opus 4.5"
-                                   :created_at "2025-11-01T00:00:00Z"
-                                   :type "model"}]
-                           :first_id "claude-sonnet-4-20250514"
-                           :last_id "claude-opus-4-5-20251101"
-                           :has_more false}]
-        (fake/with-fake-routes
-          {"https://api.anthropic.com/v1/models"
-           (constantly {:status 200
-                        :headers {"content-type" "application/json"}
-                        :body (json/encode mock-response)})}
+    (let [mock-response-body {:data [{:id "claude-sonnet-4-20250514"
+                                      :display_name "Claude Sonnet 4"
+                                      :created_at "2025-05-14T00:00:00Z"
+                                      :type "model"}
+                                     {:id "claude-sonnet-4-5-20250929"
+                                      :display_name "Claude Sonnet 4.5"
+                                      :created_at "2025-09-29T00:00:00Z"
+                                      :type "model"}
+                                     {:id "claude-opus-4-5-20251101"
+                                      :display_name "Claude Opus 4.5"
+                                      :created_at "2025-11-01T00:00:00Z"
+                                      :type "model"}]
+                              :first_id "claude-sonnet-4-20250514"
+                              :last_id "claude-opus-4-5-20251101"
+                              :has_more false}]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+        (with-redefs [http/get (constantly {:status 200
+                                            :body (json/encode mock-response-body)})]
           (let [result (anthropic/list-models)]
             ;; Should be sorted by created_at descending (newest first)
             (is (= [{:id "claude-opus-4-5-20251101" :display_name "Claude Opus 4.5"}
                     {:id "claude-sonnet-4-5-20250929" :display_name "Claude Sonnet 4.5"}
                     {:id "claude-sonnet-4-20250514" :display_name "Claude Sonnet 4"}]
                    (:models result)))))))))
+
+(deftest chat-completion-returns-usage-test
+  (testing "chat-completion returns result, usage, and duration"
+    (let [mock-response {:body {:id "msg_123"
+                                :model "claude-sonnet-4-5-20250929"
+                                :content [{:type "tool_use"
+                                           :id "tool_123"
+                                           :name "generate_sql"
+                                           :input {:sql "SELECT * FROM users"
+                                                   :explanation "Fetches all users"}}]
+                                :usage {:input_tokens 1500
+                                        :output_tokens 250}}}]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"
+                                         llm-anthropic-model "claude-sonnet-4-5-20250929"]
+        (with-redefs [http/post (constantly mock-response)]
+          (let [result (anthropic/chat-completion {:system "You are a SQL expert"
+                                                   :messages [{:role "user" :content "get all users"}]})]
+            (is (=? {:result {:sql "SELECT * FROM users"
+                              :explanation "Fetches all users"}
+                     :duration-ms #(and (number? %) (pos? %))
+                     :usage {:model "anthropic/claude-sonnet-4-5"
+                             :prompt 1500
+                             :completion 250}}
+                    result))))))))
+
+;;; ------------------------------------------- model->simplified-provider-model Tests -------------------------------------------
+
+(deftest ^:parallel model->simplified-provider-model-test
+  (testing "strips date suffix and adds provider prefix"
+    (is (= "anthropic/claude-sonnet-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-sonnet-4-5-20250929")))
+    (is (= "anthropic/claude-opus-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-opus-4-5-20250514")))))
+
+(deftest ^:parallel model->simplified-provider-model-no-suffix-test
+  (testing "handles model without date suffix"
+    (is (= "anthropic/claude-sonnet-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-sonnet-4-5")))))
+
+(deftest ^:parallel model->simplified-provider-model-nil-model-test
+  (testing "returns nil for nil input"
+    (is (nil? (#'anthropic/model->simplified-provider-model nil)))))
