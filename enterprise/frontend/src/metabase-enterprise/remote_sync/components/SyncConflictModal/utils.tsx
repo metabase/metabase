@@ -32,7 +32,7 @@ export const getModalTitle = (
     case "setup":
       return (
         <>
-          {t`Your local data is about to be overwritten with the remote branch.`}{" "}
+          {t`Your local data will be overwritten by the remote branch.`}{" "}
           {t`What do you want to do?`}
         </>
       );

@@ -4,12 +4,14 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
 } from "metabase-enterprise/api";
-import type { RemoteSyncConflictVariant } from "metabase-types/api";
+import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
+import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
@@ -26,12 +28,12 @@ import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
 type DropdownView = "options" | "branch";
 
 export const GitSyncControls = () => {
+  const dispatch = useDispatch();
+  const conflictVariant = useSelector(getSyncConflictVariant);
   const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
-  const [syncConflictVariant, setSyncConflictVariant] =
-    useState<RemoteSyncConflictVariant>();
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export const GitSyncControls = () => {
         const hasDirtyChanges = freshDirtyData.dirty.length > 0;
 
         if (hasDirtyChanges && !isNewBranch) {
-          setSyncConflictVariant("switch-branch");
+          dispatch(syncConflictVariantUpdated("switch-branch"));
         } else {
           await changeBranch(branch, isNewBranch);
           setNextBranch(null);
@@ -103,7 +105,7 @@ export const GitSyncControls = () => {
         setNextBranch(null);
       }
     },
-    [currentBranch, changeBranch, refetchDirty, sendToast],
+    [currentBranch, refetchDirty, dispatch, changeBranch, sendToast],
   );
 
   const handlePushClick = useCallback(() => {
@@ -127,7 +129,7 @@ export const GitSyncControls = () => {
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
 
       if (hasConflict) {
-        setSyncConflictVariant("pull");
+        dispatch(syncConflictVariantUpdated("pull"));
         return;
       }
 
@@ -138,12 +140,12 @@ export const GitSyncControls = () => {
     }
 
     combobox.closeDropdown();
-  }, [combobox, currentBranch, importChanges, sendToast]);
+  }, [combobox, currentBranch, dispatch, importChanges, sendToast]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
-    setSyncConflictVariant(undefined);
+    dispatch(syncConflictVariantUpdated(null));
     setNextBranch(null);
-  }, []);
+  }, [dispatch]);
 
   const handleSwitchBranchClick = useCallback(() => {
     setDropdownView("branch");
@@ -223,12 +225,12 @@ export const GitSyncControls = () => {
         />
       )}
 
-      {syncConflictVariant && (
+      {conflictVariant && (
         <SyncConflictModal
           currentBranch={currentBranch}
           nextBranch={nextBranch}
           onClose={handleCloseSyncConflictModal}
-          variant={syncConflictVariant}
+          variant={conflictVariant}
         />
       )}
     </>

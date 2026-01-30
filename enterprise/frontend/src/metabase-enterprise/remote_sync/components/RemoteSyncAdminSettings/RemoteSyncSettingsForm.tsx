@@ -75,6 +75,13 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const { onCancel, onSaveSuccess, variant = "admin" } = props;
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const useTenants = useSetting("use-tenants");
+  const applicationName = useSelector(getApplicationName);
+  const dispatch = useDispatch();
+  const conflictVariant = useSelector(getSyncConflictVariant);
+  const { currentBranch } = useGitSyncVisible();
+
   const [
     updateRemoteSyncSettings,
     { isLoading: isUpdatingRemoteSyncSettings },
@@ -82,16 +89,10 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
+    skip: !isRemoteSyncEnabled,
   });
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
-
-  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
-  const useTenants = useSetting("use-tenants");
-  const applicationName = useSelector(getApplicationName);
-  const dispatch = useDispatch();
-  const conflictVariant = useSelector(getSyncConflictVariant);
-  const { currentBranch } = useGitSyncVisible();
 
   // Fetch top-level collections to build initial sync state
   const { data: topLevelCollectionsData } = useListCollectionItemsQuery(
@@ -283,7 +284,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     },
   );
 
-  const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
+  const hasUnsyncedChanges = !!dirtyData?.dirty?.length && isRemoteSyncEnabled;
 
   return (
     <>

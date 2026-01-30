@@ -99,6 +99,7 @@ export type RemoteSyncTaskStatus =
   | "successful"
   | "timed-out"
   | "cancelled"
+  | "conflict"
   | "errored";
 
 export type RemoteSyncTaskType = "import" | "export" | null;
