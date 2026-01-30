@@ -19,20 +19,20 @@ const OnboardingStepperRoot = ({
   // Extract step IDs and compute labels from children
   const { stepIds, stepNumbers } = useMemo(() => {
     const ids: string[] = [];
-    const stepNumbers: Record<string, number> = {};
+    const stepIdToNumber: Record<string, number> = {};
 
     Children.forEach(children, (child) => {
       if (isValidElement(child) && child.props.stepId) {
         const stepId = child.props.stepId;
         ids.push(stepId);
-        stepNumbers[stepId] = ids.length;
+        stepIdToNumber[stepId] = ids.length;
       }
     });
 
-    return { stepIds: ids, stepNumbers };
+    return { stepIds: ids, stepNumbers: stepIdToNumber };
   }, [children]);
 
-  // Calculate default active step: first incomplete step, or null if all complete
+  // First incomplete step will be active by default
   const defaultActiveStep = useMemo(() => {
     return stepIds.find((id) => !completedSteps[id]) ?? null;
   }, [stepIds, completedSteps]);
@@ -41,6 +41,7 @@ const OnboardingStepperRoot = ({
     defaultActiveStep,
   );
 
+  // Scroll to the active step when the active step changes
   const { stepRefs, handleStepChange } = useScrollStepIntoView(
     stepIds,
     onChange,

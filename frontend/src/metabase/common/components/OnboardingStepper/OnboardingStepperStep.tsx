@@ -1,5 +1,4 @@
-import type { Ref } from "react";
-import { forwardRef, useContext } from "react";
+import { useContext } from "react";
 
 import { Box, Icon } from "metabase/ui";
 
@@ -7,16 +6,13 @@ import S from "./OnboardingStepper.module.css";
 import { ItemContext, StepperContext } from "./OnboardingStepperContext";
 import type { OnboardingStepperStepProps } from "./types";
 
-export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
-  {
-    stepId,
-    title,
-    icon,
-    children,
-    "data-testid": testId,
-  }: OnboardingStepperStepProps,
-  forwardedRef: Ref<HTMLDivElement>,
-) {
+export function OnboardingStepperStep({
+  stepId,
+  title,
+  icon,
+  children,
+  "data-testid": testId,
+}: OnboardingStepperStepProps) {
   const {
     activeStep,
     completedSteps,
@@ -25,7 +21,8 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
     stepRefs,
     setActiveStep,
   } = useContext(StepperContext);
-  const ref = forwardedRef ?? stepRefs[stepId];
+
+  const ref = stepRefs[stepId];
   const isActive = activeStep === stepId;
   const isCompleted = completedSteps[stepId] ?? false;
   const isLocked = lockedSteps[stepId] ?? false;
@@ -73,4 +70,4 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
       </Box>
     </ItemContext.Provider>
   );
-});
+}
