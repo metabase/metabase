@@ -63,9 +63,11 @@
                                                    :args     [{:type :column
                                                                :name "PRICE"}
                                                               {:type  :literal
-                                                               :value 2}]}}]}]})]
-      (is (= 1 (count (:expressions (first (:stages query))))))
-      (is (= "double-price" (-> query :stages first :expressions first second :lib/expression-name))))))
+                                                               :value 2}]}}]}]})
+           exprs (lib/expressions query 0)]
+      (is (= 1 (count exprs)))
+      (is (= "double-price" (-> exprs first lib.options/options :lib/expression-name))))))
+      
 
 (deftest ^:parallel test-query-with-filters-test
   (testing "test-query adds filters to the query"
@@ -79,12 +81,8 @@
                                                    :name "PRICE"}
                                                   {:type  :literal
                                                    :value 3}]}]}]})]
-      (is (= 1 (count (lib/filters query))))
-      (is (=? [:>
-               {}
-               [:field {} (meta/id :venues :price)]
-               3]
-              (first (lib/filters query)))))))
+      (is (=? [[:> {} [:field {} (meta/id :venues :price)] 3]]
+              (lib/filters query))))))
 
 (deftest ^:parallel test-query-with-aggregations-test
   (testing "test-query adds aggregations to the query"
@@ -136,7 +134,9 @@
                                          :name "PRICE"
                                          :bins 10}]}]})]
       (is (= 1 (count (lib/breakouts query))))
-      (is (=? {:strategy :num-bins :num-bins 10} (-> query lib/breakouts first second :binning))))))
+      (is (=? {:strategy :num-bins :num-bins 10}
+              (-> query lib/breakouts first lib/binning))))))
+              
 
 (deftest ^:parallel test-query-with-bin-width-breakout-test
   (testing "test-query adds breakouts with bin width binning"
