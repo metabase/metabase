@@ -1,16 +1,16 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [metabase-enterprise.transforms-base.interface :as transforms-base.i]
+   [metabase-enterprise.transforms-base.ordering :as transforms-base.ordering]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
-   [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.schema :as transforms.schema]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -55,7 +55,7 @@
   We now supported table-ref as source but since FE is still expecting table-id we need to temporarily do this.
   Should update FE to fully use table-ref"
   [transform]
-  (if (transforms.util/python-transform? transform)
+  (if (transforms-base.util/python-transform? transform)
     (update-in transform [:source :source-tables]
                (fn [source-tables]
                  (update-vals source-tables #(if (int? %) % (:table_id %)))))
@@ -76,21 +76,21 @@
 
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (transforms.i/target-db-id transform))
+  (let [database (api/check-400 (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
-        features (transforms.util/required-database-features transform)]
+        features (transforms-base.util/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
                    (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+    (api/check-400 (not (transforms-base.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn- check-feature-enabled!
   [transform]
-  (api/check (transforms.util/check-feature-enabled transform)
+  (api/check (transforms-base.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
 (defn get-transforms
@@ -100,10 +100,10 @@
   (let [where      (when type [:in :source_type (map #(if (= % "query") "mbql" %) type)])
         transforms (t2/select :model/Transform {:where (or where true) :order-by [[:id :asc]]})]
     (into []
-          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
+          (comp (transforms-base.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (transforms-base.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms-base.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (map #(update % :last_run transforms-base.util/localize-run-timestamps))
                 (map python-source-table-ref->table-id))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))))
 
@@ -168,7 +168,7 @@
   be supported by all drivers or for all query types."
   [driver database-id query]
   (some->> (extract-all-columns-from-query driver database-id query)
-           (filter (comp transforms.util/supported-incremental-filter-type? :base_type))
+           (filter (comp transforms-base.util/supported-incremental-filter-type? :base_type))
            (mapv :name)))
 
 (defn- validate-incremental-column-type!
@@ -191,7 +191,7 @@
           checkpoint-filter-unique-key
           (let [column (lib/column-with-unique-key query checkpoint-filter-unique-key)]
             (api/check-400 column (deferred-tru "Checkpoint column not found in query."))
-            (api/check-400 (transforms.util/supported-incremental-filter-type? (:base-type column))
+            (api/check-400 (transforms-base.util/supported-incremental-filter-type? (:base-type column))
                            (deferred-tru "Checkpoint column type {0} is not supported. Only numeric and temporal types are supported for incremental filtering."
                                          (pr-str (:base-type column)))))
 
@@ -199,7 +199,7 @@
           checkpoint-filter
           (when-some [column-metadata (seq (extract-all-columns-from-query driver-name database-id query))]
             (when-some [column (first (filter #(= checkpoint-filter (:name %)) column-metadata))]
-              (api/check-400 (transforms.util/supported-incremental-filter-type? (:base_type column))
+              (api/check-400 (transforms-base.util/supported-incremental-filter-type? (:base_type column))
                              (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
                                            checkpoint-filter
                                            (pr-str (:base_type column)))))))))))
@@ -253,7 +253,7 @@
   (check-feature-enabled! body)
   (validate-incremental-column-type! body)
 
-  (api/check (not (transforms.util/target-table-exists? body))
+  (api/check (not (transforms-base.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
   (-> (create-transform! body) python-source-table-ref->table-id))
@@ -262,10 +262,10 @@
   "Get a specific transform."
   [id]
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
-        target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
+        target-table (transforms-base.util/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
-        (u/update-some :last_run transforms.util/localize-run-timestamps)
+        (u/update-some :last_run transforms-base.util/localize-run-timestamps)
         (assoc :table target-table)
         python-source-table-ref->table-id)))
 
@@ -289,7 +289,8 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        global-ordering (transforms.ordering/transform-ordering (vals id->transform))
+        _ (api/check-404 (get id->transform id))
+        global-ordering (transforms-base.ordering/transform-ordering (vals id->transform))
         dep-ids (get global-ordering id)
         dependencies (map id->transform dep-ids)]
     (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator :owner))))
@@ -347,7 +348,7 @@
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
-      (update :data #(map transforms.util/localize-run-timestamps %))))
+      (update :data #(map transforms-base.util/localize-run-timestamps %))))
 
 (defn update-transform!
   "Update a transform. Validates features, database support, cycles, and target conflicts.
@@ -362,12 +363,12 @@
                       (check-feature-enabled! new)
                       (check-database-feature new)
                       (validate-incremental-column-type! new)
-                      (when (transforms.util/query-transform? old)
-                        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+                      (when (transforms-base.util/query-transform? old)
+                        (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
-                                           (transforms.util/target-table-exists? new)))
+                                           (transforms-base.util/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
                     (t2/update! :model/Transform id (dissoc body :tag_ids))
@@ -426,7 +427,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (transforms.util/delete-target-table-by-id! id)
+  (transforms-base.util/delete-target-table-by-id! id)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -440,7 +441,7 @@
   (let [transform (api/write-check :model/Transform id)
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
-    (when (transforms.util/python-transform? transform)
+    (when (transforms-base.util/python-transform? transform)
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 

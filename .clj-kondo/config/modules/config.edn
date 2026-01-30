@@ -2122,6 +2122,7 @@
            warehouses-rest
            enterprise/dependencies
            enterprise/transforms
+           enterprise/transforms-base
            enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2344,9 +2345,24 @@
            revisions
            search
            settings
-           sync
            task
            task-history
+           util
+           enterprise/transforms-base}}
+
+  enterprise/transforms-base
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms-base.core
+           metabase-enterprise.transforms-base.interface
+           metabase-enterprise.transforms-base.ordering
+           metabase-enterprise.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           premium-features
+           query-processor
+           sync
            util}}
 
   enterprise/transforms-python
@@ -2364,7 +2380,8 @@
            query-processor
            settings
            util
-           enterprise/transforms}}
+           enterprise/transforms
+           enterprise/transforms-base}}
 
   enterprise/upload-management
   {:team "UX West"

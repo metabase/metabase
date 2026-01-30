@@ -94,55 +94,73 @@
   ^String [timestamp-string]
   (-> timestamp-string parse-instant str))
 
+(def ^:private max-poll-iterations
+  "Hard limit on polling iterations to prevent runaway loops in tests."
+  200)
+
 (defn wait-for-table
   "Wait for a table to appear in metadata, with timeout."
   [^String table-name timeout-ms]
   (let [timer (u/start-timer)]
-    (loop []
+    (loop [iterations 0]
       (let [table (t2/select-one :model/Table :name table-name)
             fields (t2/select :model/Field :table_id (:id table))]
         (cond
           (and table (seq fields)) table
+          (>= iterations max-poll-iterations)
+          (throw (ex-info (format "Table %s exceeded max poll iterations: %d" table-name max-poll-iterations)
+                          {:table-name table-name}))
           (> (u/since-ms timer) timeout-ms)
           (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
                           {:table-name table-name :timeout-ms timeout-ms}))
           :else (do (Thread/sleep 100)
-                    (recur)))))))
+                    (recur (inc iterations))))))))
 
-(defn test-run
+(defn test-run!
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
         timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
             resp))
-    (loop [last-resp nil]
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {:resp last-resp})))
-      (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
-            status (some-> resp :last_run :status keyword)]
-        (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transform run failed with status " status) {:resp resp :status status})))
-        (when-not (some? (:table resp))
-          (Thread/sleep 100)
-          (recur resp))))))
+    ;; Suppress DEBUG logs during polling to avoid log spam
+    (mt/with-log-level [metabase.server.middleware.log :warn]
+      (loop [last-resp nil
+             iterations 0]
+        (when (>= iterations max-poll-iterations)
+          (throw (ex-info (str "Transform run exceeded max poll iterations: " max-poll-iterations) {:resp last-resp})))
+        (when (> (System/currentTimeMillis) limit)
+          (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {:resp last-resp})))
+        (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
+              status (some-> resp :last_run :status keyword)]
+          (when-not (contains? #{:started :succeeded} status)
+            (throw (ex-info (str "Transform run failed with status " status) {:resp resp :status status})))
+          ;; Wait for both table existence AND succeeded status
+          (when-not (and (some? (:table resp)) (= :succeeded status))
+            (Thread/sleep 100)
+            (recur resp (inc iterations))))))))
 
-(defn wait-for-transform-completion
+(defn wait-for-transform-completion!
   "Wait for a transform run to complete without triggering a new run.
    Polls the transform status until it succeeds or times out."
   [transform-id timeout-ms]
-  (let [start-time (u/start-timer)]
-    (loop []
-      (when (> (u/since-ms start-time) timeout-ms)
-        (throw (ex-info (format "Transform %d did not complete after %dms" transform-id timeout-ms)
-                        {:transform-id transform-id :timeout-ms timeout-ms})))
-      (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))
-            status (some-> resp :last_run :status keyword)]
-        (case status
-          :succeeded resp
-          (:started :running) (do (Thread/sleep 100) (recur))
-          (throw (ex-info (format "Transform run failed with status %s" status)
-                          {:resp resp :status status})))))))
+  ;; Suppress DEBUG logs during polling to avoid log spam
+  (mt/with-log-level [metabase.server.middleware.log :warn]
+    (let [start-time (u/start-timer)]
+      (loop [iterations 0]
+        (when (>= iterations max-poll-iterations)
+          (throw (ex-info (format "Transform %d exceeded max poll iterations: %d" transform-id max-poll-iterations)
+                          {:transform-id transform-id})))
+        (when (> (u/since-ms start-time) timeout-ms)
+          (throw (ex-info (format "Transform %d did not complete after %dms" transform-id timeout-ms)
+                          {:transform-id transform-id :timeout-ms timeout-ms})))
+        (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))
+              status (some-> resp :last_run :status keyword)]
+          (case status
+            :succeeded resp
+            (:started :running) (do (Thread/sleep 100) (recur (inc iterations)))
+            (throw (ex-info (format "Transform run failed with status %s" status)
+                            {:resp resp :status status}))))))))
 
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
