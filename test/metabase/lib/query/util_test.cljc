@@ -400,14 +400,16 @@
                                                     :right     {:type      :column
                                                                 :name      "LONGITUDE"
                                                                 :bin-width 20}}]}]}]})]
-      (is (= 1 (count (lib/joins query))))
-      (let [condition (-> query lib/joins first :conditions first)
-            operator (first condition)
-            left (nth condition 2)
-            right (nth condition 2)]
-        (is (=? operator :=))
-        (is (=? (:binning (second left)) {:bin-width 20.0 :strategy :bin-width}))
-        (is (=? (:binning (second right)) {:bin-width 20.0 :strategy :bin-width}))))))
+      (is (=? [{:conditions [[:= {}
+                              [:field {:join-alias (symbol "nil \"key is not present.\"")
+                                       :binning    {:bin-width 20.0
+                                                    :strategy  :bin-width}}
+                               (meta/id :venues :latitude)]
+                              [:field {:join-alias "Venues"
+                                       :binning    {:bin-width 20.0
+                                                    :strategy  :bin-width}}
+                               (meta/id :venues :longitude)]]]}]
+              (lib/joins query))))))
 
 (deftest ^:parallel test-query-order-by-with-temporal-bucket-test
   (testing "test-query adds order-by with temporal bucketing"
