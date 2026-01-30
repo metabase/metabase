@@ -151,18 +151,18 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
       };
     case "dashboard":
       return {
-        label: `View this dashboard`,
+        label: t`View this dashboard`,
         url: Urls.dashboard({ id: node.id, name: node.data.name }),
       };
     case "document":
       return {
-        label: `View this document`,
+        label: t`View this document`,
         url: Urls.document({ id: node.id }),
       };
     case "sandbox":
       if (node.data.table != null) {
         return {
-          label: `View this permission`,
+          label: t`View this permission`,
           url: Urls.tableDataPermissions(
             node.data.table.db_id,
             node.data.table.schema,

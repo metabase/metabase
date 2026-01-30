@@ -863,6 +863,7 @@
            models
            permissions
            premium-features
+           remote-sync
            util}}
 
   notification
@@ -2263,6 +2264,7 @@
            native-query-snippets
            permissions
            premium-features
+           remote-sync
            util}}
 
   enterprise/sso
