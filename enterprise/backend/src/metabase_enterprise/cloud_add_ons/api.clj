@@ -136,11 +136,11 @@
     response-not-eligible
 
     (and (= product-type "python-execution")
-         (not (premium-features/enable-python-transforms?)))
+         (premium-features/enable-python-transforms?))
     response-not-eligible
 
     (and (= product-type "transforms")
-         (not (premium-features/enable-transforms?)))
+         (premium-features/enable-transforms?))
     response-not-eligible
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))
