@@ -55,7 +55,7 @@ type ModalTitleProps = {
 function ModalTitle({ title }: ModalTitleProps) {
   return (
     <Group gap="sm">
-      <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
+      <Center w="2rem" h="2rem" c="brand" bg="background-brand" bdrs="md">
         <FixedSizeIcon name="repository" />
       </Center>
       <Title order={3}>{title}</Title>

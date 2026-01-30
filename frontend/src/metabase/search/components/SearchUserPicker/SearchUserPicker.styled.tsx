@@ -34,11 +34,11 @@ export const SelectedUserButton = styled(Button)<
 >`
   ${() => {
     return css`
-      background-color: var(--mb-color-brand-lighter) !important;
+      background-color: var(--mb-color-background-brand) !important;
       border: 0;
 
       &:hover {
-        background-color: var(--mb-color-brand-light) !important;
+        background-color: var(--mb-color-background-hover) !important;
       }
     `;
   }}

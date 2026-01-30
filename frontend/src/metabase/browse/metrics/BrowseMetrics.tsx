@@ -81,7 +81,7 @@ export function BrowseMetrics() {
           >
             <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon size={24} c="icon-primary" name="metric" />
+                <Icon size={24} c="icon-brand" name="metric" />
                 {t`Metrics`}
               </Group>
             </Title>
