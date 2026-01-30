@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockTransform,
@@ -15,6 +19,8 @@ type SetupOpts = {
 };
 
 function setup({ runs = [] }: SetupOpts = {}) {
+  mockGetBoundingClientRect({ width: 800, height: 600 });
+
   return renderWithProviders(
     <>
       <Route
@@ -36,12 +42,12 @@ function setup({ runs = [] }: SetupOpts = {}) {
 }
 
 describe("RunList", () => {
-  it("should render transform name", () => {
+  it("should render transform name", async () => {
     const transform = createMockTransform({ name: "My Transform" });
     const run = createMockTransformRun({ transform });
     setup({ runs: [run] });
 
-    expect(screen.getByText("My Transform")).toBeInTheDocument();
+    expect(await screen.findByText("My Transform")).toBeInTheDocument();
   });
 
   it("should navigate to transform detail when clicking a row", async () => {
@@ -49,7 +55,7 @@ describe("RunList", () => {
     const run = createMockTransformRun({ transform });
     const { history } = setup({ runs: [run] });
 
-    const row = screen.getByRole("row", { name: /Test Transform/ });
+    const row = await screen.findByRole("row", { name: /Test Transform/ });
     await userEvent.click(row);
 
     expect(history?.getCurrentLocation()?.pathname).toBe(
@@ -59,7 +65,7 @@ describe("RunList", () => {
   });
 
   describe("deleted transforms", () => {
-    it("should show deleted indicator for deleted transforms", () => {
+    it("should show deleted indicator for deleted transforms", async () => {
       const transform = createMockTransform({
         name: "Deleted Transform",
         deleted: true,
@@ -67,7 +73,7 @@ describe("RunList", () => {
       const run = createMockTransformRun({ transform });
       setup({ runs: [run] });
 
-      expect(screen.getByText("Deleted Transform")).toBeInTheDocument();
+      expect(await screen.findByText("Deleted Transform")).toBeInTheDocument();
     });
 
     it("should not navigate when clicking a row with deleted transform", async () => {
@@ -79,7 +85,9 @@ describe("RunList", () => {
       const run = createMockTransformRun({ transform });
       const { history } = setup({ runs: [run] });
 
-      const row = screen.getByRole("row", { name: /Deleted Transform/ });
+      const row = await screen.findByRole("row", {
+        name: /Deleted Transform/,
+      });
       await userEvent.click(row);
 
       expect(history?.getCurrentLocation()?.pathname).toBe(

@@ -1,24 +1,26 @@
-import cx from "classnames";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Card, Flex, Group, Stack, Text, Tooltip } from "metabase/ui";
+import {
+  Card,
+  Group,
+  Stack,
+  TreeTable,
+  useTreeTableInstance,
+} from "metabase/ui";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
-import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 import { hasFilterParams } from "../utils";
 
-import S from "./RunList.module.css";
-import { TagList } from "./TagList";
-import { TimezoneIndicator } from "./TimezoneIndicator";
+import { getColumns } from "./utils";
 
 type RunListProps = {
   runs: TransformRun[];
@@ -29,150 +31,34 @@ type RunListProps = {
 
 export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   const { page = 0 } = params;
-  const hasPagination = totalCount > PAGE_SIZE;
-
-  if (runs.length === 0) {
-    const hasFilters = hasFilterParams(params);
-    return (
-      <Card p={0} shadow="none" withBorder>
-        <ListEmptyState
-          label={hasFilters ? t`No runs found` : t`No runs yet`}
-        />
-      </Card>
-    );
-  }
-
-  return (
-    <Stack gap="lg">
-      <RunTable runs={runs} tags={tags} />
-      {hasPagination && (
-        <Group justify="end">
-          <RunTablePaginationControls
-            page={page}
-            itemCount={runs.length}
-            totalCount={totalCount}
-            params={params}
-          />
-        </Group>
-      )}
-    </Stack>
-  );
-}
-
-type RunTableProps = {
-  runs: TransformRun[];
-  tags: TransformTag[];
-};
-
-function RunTable({ runs, tags }: RunTableProps) {
+  const dispatch = useDispatch();
   const systemTimezone = useSetting("system-timezone");
-  const dispatch = useDispatch();
 
-  const handleRowClick = (run: TransformRun) => {
-    if (run.transform && !run.transform.deleted) {
-      dispatch(push(Urls.transform(run.transform.id)));
-    }
-  };
-
-  return (
-    <Card p={0} shadow="none" withBorder>
-      <AdminContentTable
-        columnTitles={[
-          t`Transform`,
-          <Flex key="started-at" align="center" gap="xs">
-            <span className={S.nowrap}>{t`Started at`}</span>{" "}
-            <TimezoneIndicator />
-          </Flex>,
-          <Flex key="end-at" align="center" gap="xs">
-            <span className={S.nowrap}>{t`Ended at`}</span>{" "}
-            <TimezoneIndicator />
-          </Flex>,
-          t`Status`,
-          t`Trigger`,
-          t`Tags`,
-        ]}
-      >
-        {runs.map((run) => {
-          const isTransformDeleted = run.transform?.deleted === true;
-          const transformName = run.transform?.name || t`Unnamed transform`;
-
-          return (
-            <tr
-              key={run.id}
-              className={cx(S.row, { [S.deletedRow]: isTransformDeleted })}
-              onClick={() => handleRowClick(run)}
-            >
-              <td className={S.wrap}>
-                {isTransformDeleted ? (
-                  <Tooltip label={t`${transformName} has been deleted`}>
-                    <Text
-                      c="text-tertiary"
-                      component="span"
-                      display="inline"
-                      fs="italic"
-                    >
-                      {transformName}
-                    </Text>
-                  </Tooltip>
-                ) : (
-                  transformName
-                )}
-              </td>
-              <td className={S.nowrap}>
-                {parseTimestampWithTimezone(
-                  run.start_time,
-                  systemTimezone,
-                ).format("lll")}
-              </td>
-              <td className={S.nowrap}>
-                {run.end_time
-                  ? parseTimestampWithTimezone(
-                      run.end_time,
-                      systemTimezone,
-                    ).format("lll")
-                  : null}
-              </td>
-              <td className={S.wrap}>
-                <RunStatusInfo
-                  transform={run.transform}
-                  status={run.status}
-                  message={run.message}
-                  endTime={
-                    run.end_time != null
-                      ? parseTimestampWithTimezone(
-                          run.end_time,
-                          systemTimezone,
-                        ).toDate()
-                      : null
-                  }
-                />
-              </td>
-              <td className={S.wrap}>{formatRunMethod(run.run_method)}</td>
-              <td className={S.wrap}>
-                <TagList tags={tags} tagIds={run.transform?.tag_ids ?? []} />
-              </td>
-            </tr>
-          );
-        })}
-      </AdminContentTable>
-    </Card>
+  const columns = useMemo(
+    () => getColumns(tags, systemTimezone),
+    [tags, systemTimezone],
   );
-}
 
-type RunTablePaginationControlsProps = {
-  page: number;
-  itemCount: number;
-  totalCount: number;
-  params: Urls.TransformRunListParams;
-};
+  const notFoundLabel = hasFilterParams(params)
+    ? t`No runs found`
+    : t`No runs yet`;
 
-function RunTablePaginationControls({
-  page,
-  itemCount,
-  totalCount,
-  params,
-}: RunTablePaginationControlsProps) {
-  const dispatch = useDispatch();
+  const handleRowActivate = useCallback(
+    (row: Row<TransformRun>) => {
+      const run = row.original;
+      if (run.transform && !run.transform.deleted) {
+        dispatch(push(Urls.transform(run.transform.id)));
+      }
+    },
+    [dispatch],
+  );
+
+  const treeTableInstance = useTreeTableInstance<TransformRun>({
+    data: runs,
+    columns,
+    getNodeId: (run) => String(run.id),
+    onRowActivate: handleRowActivate,
+  });
 
   const handlePreviousPage = () => {
     dispatch(push(Urls.transformRunList({ ...params, page: page - 1 })));
@@ -183,14 +69,25 @@ function RunTablePaginationControls({
   };
 
   return (
-    <PaginationControls
-      page={page}
-      pageSize={PAGE_SIZE}
-      itemsLength={itemCount}
-      total={totalCount}
-      showTotal
-      onPreviousPage={handlePreviousPage}
-      onNextPage={handleNextPage}
-    />
+    <Stack gap="lg">
+      <Card p={0} shadow="none" withBorder>
+        <TreeTable
+          instance={treeTableInstance}
+          emptyState={<ListEmptyState label={notFoundLabel} />}
+          onRowClick={handleRowActivate}
+        />
+      </Card>
+      <Group justify="end">
+        <PaginationControls
+          page={page}
+          pageSize={PAGE_SIZE}
+          itemsLength={runs.length}
+          total={totalCount}
+          showTotal
+          onPreviousPage={handlePreviousPage}
+          onNextPage={handleNextPage}
+        />
+      </Group>
+    </Stack>
   );
 }
