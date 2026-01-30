@@ -20,6 +20,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -31,7 +32,10 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import {
+  useCreateLibraryMutation,
+  useGetLibraryCollectionQuery,
+} from "metabase-enterprise/api";
 import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
@@ -52,7 +56,9 @@ import {
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
+  SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
+  TRANSFORMS_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -67,6 +73,10 @@ export type RemoteSyncSettingsFormProps = {
   variant?: "admin" | "settings-modal";
 };
 
+type RemoteSyncSettingsFormState = RemoteSyncConfigurationSettings & {
+  [SYNC_LIBRARY_PENDING_KEY]?: boolean;
+};
+
 export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const { onCancel, onSaveSuccess, variant = "admin" } = props;
   const { data: settingValues } = useGetSettingsQuery();
@@ -75,6 +85,8 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     updateRemoteSyncSettings,
     { isLoading: isUpdatingRemoteSyncSettings },
   ] = useUpdateRemoteSyncSettingsMutation();
+  const [createLibrary, { isLoading: isCreatingLibrary }] =
+    useCreateLibraryMutation();
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
@@ -92,10 +104,13 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     { skip: !isRemoteSyncEnabled },
   );
 
+  const isModalVariant = variant === "settings-modal";
+
   // Fetch library collection to build initial sync state
+  // For modal variant, always fetch to enable default-checked toggles
   const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
     undefined,
-    { skip: !isRemoteSyncEnabled },
+    { skip: !isRemoteSyncEnabled && !isModalVariant },
   );
   // Library collection endpoint returns { data: null } when not found
   const libraryCollection =
@@ -122,20 +137,49 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     show: showDisableConfirmation,
     modalContent: disableConfirmationModal,
   } = useConfirmation();
-  const isModalVariant = variant === "settings-modal";
 
   const handleSubmit = useCallback(
-    async (values: RemoteSyncConfigurationSettings) => {
+    async (values: RemoteSyncSettingsFormState) => {
       const didBranchChange =
         values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
 
+      const collectionsMap: Record<number, boolean> = {
+        ...values[COLLECTIONS_KEY],
+      };
+
+      // If user wants to sync library but it doesn't exist yet, create it first
+      const wantsSyncLibrary = values[SYNC_LIBRARY_PENDING_KEY];
+      if (isModalVariant && !libraryCollection && wantsSyncLibrary) {
+        try {
+          const newLibrary = await createLibrary().unwrap();
+          // Cast to number since the newly created library will have a numeric ID
+          collectionsMap[newLibrary.id as number] = true;
+        } catch (error) {
+          sendToast({
+            message: t`Failed to create Library`,
+            icon: "warning",
+          });
+          throw error;
+        }
+      }
+
       // Don't send collections when in read-only mode
-      const settingsToSave =
-        values[TYPE_KEY] === "read-only"
-          ? (Object.fromEntries(
-              Object.entries(values).filter(([key]) => key !== COLLECTIONS_KEY),
-            ) as RemoteSyncConfigurationSettings)
-          : values;
+      // Also filter out the sync-library-pending key as it's not a real setting
+      const isReadOnly = values[TYPE_KEY] === "read-only";
+      const settingsToSave: RemoteSyncConfigurationSettings = {
+        [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
+        [URL_KEY]: values[URL_KEY],
+        [TOKEN_KEY]: values[TOKEN_KEY],
+        [TYPE_KEY]: values[TYPE_KEY],
+        [BRANCH_KEY]: values[BRANCH_KEY],
+        [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
+        [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
+        ...(isReadOnly
+          ? {}
+          : {
+              [COLLECTIONS_KEY]: collectionsMap,
+            }),
+      };
 
       const saveSettings = async (
         settings: RemoteSyncConfigurationSettings,
@@ -196,6 +240,8 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       settingValues,
       updateRemoteSyncSettings,
       isModalVariant,
+      libraryCollection,
+      createLibrary,
       sendToast,
       onSaveSuccess,
       showChangeBranchConfirmation,
@@ -237,10 +283,14 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     // Build initial collection sync map from server data
     const collectionSyncMap: Record<number, boolean> = {};
 
+    // For modal variant during first-time setup, default library to checked
+    const shouldDefaultToChecked = isModalVariant && !isRemoteSyncEnabled;
+
     // Add library collection
     if (libraryCollection) {
-      collectionSyncMap[libraryCollection.id] =
-        libraryCollection.is_remote_synced ?? false;
+      collectionSyncMap[libraryCollection.id] = shouldDefaultToChecked
+        ? true
+        : (libraryCollection.is_remote_synced ?? false);
     }
 
     // Add top-level collections (excluding personal)
@@ -259,6 +309,13 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       ...values,
       [TOKEN_KEY]: tokenValue,
       [COLLECTIONS_KEY]: collectionSyncMap,
+      // For modal variant during first-time setup, default transforms to checked (if enabled)
+      [TRANSFORMS_KEY]:
+        shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
+          ? true
+          : values[TRANSFORMS_KEY],
+      // For modal variant when library doesn't exist, default to wanting to create and sync it
+      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
     };
   }, [
     settingValues,
@@ -266,6 +323,8 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     libraryCollection,
     topLevelCollectionsData,
     tenantCollectionsData,
+    isModalVariant,
+    isRemoteSyncEnabled,
   ]);
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
@@ -281,7 +340,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   return (
     <>
       <FormProvider
-        initialValues={initialValues as RemoteSyncConfigurationSettings}
+        initialValues={initialValues}
         enableReinitialize
         validationSchema={REMOTE_SYNC_SCHEMA}
         validationContext={settingValues}
@@ -432,11 +491,14 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   </RemoteSyncSettingsSection>
                 )}
 
-              {/* Read-write mode info */}
+              {/* Content to sync section for modal variant */}
               {isModalVariant && values?.[TYPE_KEY] === "read-write" && (
-                <Text c="text-secondary" size="sm">
-                  {t`In read-write mode, the Library collection will be enabled for syncing.`}
-                </Text>
+                <RemoteSyncSettingsSection
+                  title={t`Content to sync`}
+                  variant={variant}
+                >
+                  <TopLevelCollectionsList skipCollections />
+                </RemoteSyncSettingsSection>
               )}
 
               {/* Footer Actions - Outside Sections */}
@@ -477,7 +539,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     }
                     variant="filled"
                     disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}
-                    loading={isUpdatingRemoteSyncSettings}
+                    loading={isUpdatingRemoteSyncSettings || isCreatingLibrary}
                   />
                 </Flex>
               </Flex>
