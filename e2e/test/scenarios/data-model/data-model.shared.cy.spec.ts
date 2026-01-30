@@ -1606,6 +1606,116 @@ describe.each<Area>(areas)(
             },
           );
         });
+
+        describe("Filtering", () => {
+          it("should let you change filtering to 'Search box'", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.QUANTITY,
+            });
+
+            FieldSection.getFilteringInput()
+              .should("have.value", "A list of all values")
+              .click();
+            H.popover().findByText("Search box").click();
+            cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "filtering_change",
+              triggered_from: area === "admin" ? "admin" : "data_studio",
+            });
+            verifyAndCloseToast("Filtering of Quantity updated");
+
+            cy.log("verify preview");
+            TableSection.clickField("Quantity");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.getPreviewTypeInput()
+              .findByText("Filtering")
+              .click();
+            PreviewSection.get().within(() => {
+              cy.findByPlaceholderText("Enter a number").should("be.visible");
+              cy.button(/Add filter/).should("not.exist");
+            });
+
+            cy.reload();
+            FieldSection.getFilteringInput()
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.value", "Search box");
+          });
+
+          it("should let you change filtering to 'Plain input box'", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.QUANTITY,
+            });
+
+            FieldSection.getFilteringInput()
+              .should("have.value", "A list of all values")
+              .click();
+            H.popover().findByText("Plain input box").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Filtering of Quantity updated");
+
+            cy.log("verify preview");
+            TableSection.clickField("Quantity");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.getPreviewTypeInput()
+              .findByText("Filtering")
+              .click();
+            PreviewSection.get().within(() => {
+              cy.findByPlaceholderText("Min").should("be.visible");
+              cy.findByPlaceholderText("Max").should("be.visible");
+              cy.button(/Add filter/).should("not.exist");
+            });
+
+            cy.reload();
+            FieldSection.getFilteringInput()
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.value", "Plain input box");
+          });
+
+          it("should let you change filtering to 'A list of all values'", () => {
+            cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+              has_field_values: "none",
+            });
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.QUANTITY,
+            });
+
+            FieldSection.getFilteringInput()
+              .should("have.value", "Plain input box")
+              .click();
+            H.popover().findByText("A list of all values").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Filtering of Quantity updated");
+
+            cy.log("verify preview");
+            TableSection.clickField("Quantity");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.getPreviewTypeInput()
+              .findByText("Filtering")
+              .click();
+            PreviewSection.get().within(() => {
+              cy.findByPlaceholderText("Search the list").should("be.visible");
+              cy.button(/Add filter/).should("not.exist");
+            });
+
+            cy.reload();
+            FieldSection.getFilteringInput()
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.value", "A list of all values");
+          });
+        });
       });
     });
   },
