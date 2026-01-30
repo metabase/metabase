@@ -24,6 +24,7 @@ export type StaticDashboardProps = Omit<
   | "drillThroughQuestionProps"
   | "drillThroughQuestionHeight"
   | "renderDrillThroughQuestion"
+  | "enableEntityNavigation"
 > &
   SdkDashboardEntityPublicProps;
 
