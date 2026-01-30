@@ -57,16 +57,24 @@
                   ;; Ignore cleanup errors
                   nil)))))))))
 
-(deftest is-temp-transform-tables-test
+(mt/deftest-oss is-temp-transform-tables-oss-test
   (testing "tables with shcema"
     (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
           table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
-      (mt/with-premium-features #{}
-        (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
-        (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
-      (mt/with-premium-features #{:transforms}
-        (is (transforms.util/is-temp-transform-table? table-without-schema))
-        (is (transforms.util/is-temp-transform-table? table-with-schema)))))
+      (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
+      (is (true? (transforms.util/is-temp-transform-table? table-without-schema))))))
+
+(deftest is-temp-transform-tables-ee-test
+  (mt/when-ee-evailable
+   (testing "tables with shcema"
+     (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
+           table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
+       (mt/with-premium-features #{}
+         (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
+         (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
+       (mt/with-premium-features #{:transforms}
+         (is (transforms.util/is-temp-transform-table? table-without-schema))
+         (is (transforms.util/is-temp-transform-table? table-with-schema))))))
 
   (testing "Ignores non-transform tables"
     (mt/with-premium-features #{:transforms}

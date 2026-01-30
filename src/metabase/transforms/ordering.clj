@@ -44,8 +44,8 @@
         (let [message (i18n/trs "Failed to run transform because the database {0} has database routing turned on. Running transforms on databases with db routing enabled is not supported." (:database-name data))]
           (throw (ex-info message
                           {:metabase.transforms.jobs/transform-failure true
-                           :metabase.transforms.jobs/failures [{:metabase-enterprise.transforms.jobs/transform transform
-                                                                :metabase-enterprise.transforms.jobs/message message}]}
+                           :metabase.transforms.jobs/failures [{:metabase.transforms.jobs/transform transform
+                                                                :metabase.transforms.jobs/message message}]}
                           e)))
         (throw e)))))
 
