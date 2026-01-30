@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
 import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
@@ -67,6 +68,7 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const navigation = useSdkInternalNavigationOptional();
 
   const {
     resourceId: questionId,
@@ -185,7 +187,7 @@ export const SdkQuestionProvider = ({
     navigateToNewCard:
       userNavigateToNewCard !== undefined
         ? userNavigateToNewCard
-        : navigateToNewCard,
+        : (navigation?.navigateToNewCard ?? navigateToNewCard),
     plugins,
     question,
     originalQuestion,
@@ -211,6 +213,24 @@ export const SdkQuestionProvider = ({
 
     loadAndQueryQuestion();
   }, [loadAndQueryQuestion, tokenError]);
+
+  // Push question to navigation stack once loaded (similar to dashboard init)
+  // Only if stack is empty (i.e., this is the root question, not navigated to)
+  useEffect(() => {
+    if (
+      question &&
+      !!questionId &&
+      navigation &&
+      navigation.stack.length === 0
+    ) {
+      navigation.push({
+        type: "question",
+        id: questionId,
+        name: question.displayName() || t`Question`,
+      });
+    }
+    // Only run when question is first loaded
+  }, [questionId, question, navigation]);
 
   const dispatch = useSdkDispatch();
 

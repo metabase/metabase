@@ -82,6 +82,7 @@ export type DashboardEmbedOptions = StrictUnion<
   // parameters
   initialParameters?: ParameterValues;
   hiddenParameters?: string[];
+  enableEntityNavigation?: boolean;
 
   // incompatible options
   template?: never;
