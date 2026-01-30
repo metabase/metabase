@@ -27,7 +27,6 @@ import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQues
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
 import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
-import { NewQuestionBuilder } from "../SdkQuestion/NewQuestionBuilder";
 
 import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
 import {
@@ -71,26 +70,14 @@ const SdkInternalNavigationProviderInner = ({
   }, []);
 
   const pop = useCallback(() => {
+    // Get the entry being popped before updating state
+    const poppedEntry = stack.at(-1);
     setStack((prev) => prev.slice(0, -1));
-  }, []);
-
-  const updateCurrentEntry = useCallback(
-    (
-      updater: (
-        entry: SdkInternalNavigationEntry,
-      ) => SdkInternalNavigationEntry,
-    ) => {
-      setStack((prev) => {
-        if (prev.length === 0) {
-          return prev;
-        }
-        const updated = [...prev];
-        updated[updated.length - 1] = updater(updated[updated.length - 1]);
-        return updated;
-      });
-    },
-    [],
-  );
+    // Call onPop after state update to avoid calling setState inside setState
+    if (poppedEntry?.type === "placeholder" && poppedEntry.onPop) {
+      poppedEntry.onPop();
+    }
+  }, [stack]);
 
   // Initialize the stack with a dashboard entry (called by dashboard components)
   const initWithDashboard = useCallback(
@@ -104,8 +91,7 @@ const SdkInternalNavigationProviderInner = ({
     [stack.length],
   );
 
-  // Custom navigateToNewCard that pushes to the navigation stack
-  // This is used when drilling from a question to another ad-hoc question
+  // Navigate to a new card (used for drilling from questions)
   const navigateToNewCard = useCallback(
     async (params: NavigateToNewCardParams) => {
       // Prevent race conditions from rapid clicks
@@ -126,11 +112,15 @@ const SdkInternalNavigationProviderInner = ({
         // If we're already on an adhoc question, just update its path instead of pushing
         // otherwise we'll have an entry for each filter change done from drills
         if (currentEntry?.type === "adhoc-question") {
-          updateCurrentEntry(() => ({
-            type: "adhoc-question",
-            questionPath: url,
-            name: nextCard.name || t`Question`,
-          }));
+          setStack((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              type: "adhoc-question",
+              questionPath: url,
+              name: nextCard.name || t`Question`,
+            };
+            return updated;
+          });
         } else {
           push({
             type: "adhoc-question",
@@ -144,7 +134,7 @@ const SdkInternalNavigationProviderInner = ({
         isNavigatingRef.current = false;
       }
     },
-    [push, stack, updateCurrentEntry],
+    [push, stack],
   );
 
   // Navigate to a new card from a dashboard context (for drills and "go to card" actions)
@@ -238,9 +228,11 @@ const SdkInternalNavigationProviderInner = ({
 
   const currentEntry = value.currentEntry;
 
-  // If stack is empty or only has initial entry, render children
-
-  const content = match({ currentEntry, stackLength: stack.length })
+  const content = match({
+    currentEntry,
+    stackLength: stack.length,
+  })
+    .with({ currentEntry: { type: "placeholder" } }, () => children)
     .when(
       ({ stackLength }) => stackLength <= 1,
       () => children,
@@ -280,23 +272,17 @@ const SdkInternalNavigationProviderInner = ({
         {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
       </SdkAdHocQuestion>
     ))
-    .with({ currentEntry: { type: "new-question" } }, ({ currentEntry }) => (
-      <NewQuestionBuilder
-        dashboardId={currentEntry.dashboardId}
-        dashboardName={currentEntry.dashboardName}
-        dataPickerProps={currentEntry.dataPickerProps}
-        onNavigateBack={pop}
-        onQuestionCreated={(question, _dashboardTabId) => {
-          currentEntry.onQuestionCreated(question);
-          pop();
-        }}
-      />
-    ))
     .otherwise(() => children);
+
+  // Only wrap in styled wrapper when rendering actual navigation content,
+  // not when rendering children (placeholder or initial entry).
+  // Changing the wrapper causes React to remount children, resetting their state.
+  const isRenderingNavigationContent =
+    stack.length > 1 && currentEntry?.type !== "placeholder";
 
   return (
     <SdkInternalNavigationContext.Provider value={value}>
-      {stack.length > 1 ? (
+      {isRenderingNavigationContent ? (
         <SdkDashboardStyledWrapper className={className} style={style}>
           {content}
         </SdkDashboardStyledWrapper>

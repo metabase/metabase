@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type PropsWithChildren,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -17,7 +18,6 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
-import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
@@ -73,6 +73,10 @@ import {
 } from "./SdkDashboardStyleWrapper";
 import { SdkDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
+import {
+  useSdkInternalNavigation,
+  useSdkInternalNavigationOptional,
+} from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 
 /**
  * @interface
@@ -162,7 +166,6 @@ const SdkDashboardInner = ({
   withDownloads = false,
   withSubscriptions = false,
   hiddenParameters = [],
-  enableEntityNavigation = false,
   drillThroughQuestionHeight,
   plugins,
   onLoad,
@@ -184,7 +187,6 @@ const SdkDashboardInner = ({
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
-  const internalNavigation = useSdkInternalNavigationOptional();
 
   const {
     resourceId: dashboardId,
@@ -218,7 +220,7 @@ const SdkDashboardInner = ({
     adhocQuestionUrl,
     onNavigateBackToDashboard,
     onEditQuestion,
-    onNavigateToNewCardFromDashboard,
+    onNavigateToNewCardFromDashboard: baseOnNavigateToNewCardFromDashboard,
   } = useCommonDashboardParams({
     dashboardId,
   });
@@ -232,6 +234,8 @@ const SdkDashboardInner = ({
   const finalRenderMode: RenderMode = adhocQuestionUrl
     ? "question"
     : renderModeState;
+
+  console.log("DEBUG finalRenderMode", { renderModeState, finalRenderMode });
 
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
   const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
@@ -281,6 +285,20 @@ const SdkDashboardInner = ({
 
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
+
+  const sdkNavigation = useSdkInternalNavigationOptional();
+
+  // Wrap the navigation handler to push a placeholder for back button support
+  const onNavigateToNewCardFromDashboard = useCallback(
+    (opts: Parameters<typeof baseOnNavigateToNewCardFromDashboard>[0]) => {
+      baseOnNavigateToNewCardFromDashboard(opts);
+      sdkNavigation?.push({
+        type: "placeholder",
+        onPop: () => onNavigateBackToDashboard(),
+      });
+    },
+    [baseOnNavigateToNewCardFromDashboard, sdkNavigation, onNavigateBackToDashboard],
+  );
 
   if (isLocaleLoading) {
     return (
@@ -342,37 +360,21 @@ const SdkDashboardInner = ({
             : onNavigateToNewCardFromDashboard
         }
         onNewQuestion={() => {
-          const openNewQuestion = () => {
-            if (internalNavigation && dashboard) {
-              // Use the navigation stack when inside SdkInternalNavigationProvider
-              internalNavigation.push({
-                type: "new-question",
-                dashboardId: dashboard.id,
-                dashboardName: dashboard.name,
-                name: dashboard.name,
-                dataPickerProps,
-                onQuestionCreated: (question) => {
-                  setNewDashboardQuestionId(question.id);
-                  dashboardContextProviderRef.current?.refetchDashboard();
-                },
-              });
-            } else {
-              // Fall back to local state when not inside navigation provider
-              setRenderMode("queryBuilder");
-            }
-          };
-
           if (isDashboardDirty) {
             show({
               title: t`Save your changes?`,
-              message: t`You'll need to save your changes before leaving to create a new question.`,
+              message: t`You’ll need to save your changes before leaving to create a new question.`,
               confirmButtonText: t`Save changes`,
               onConfirm: async () => {
                 /**
                  * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
                  * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
                  */
-                openNewQuestion();
+                sdkNavigation?.push({
+                  type: "placeholder",
+                  onPop: () => setRenderMode("dashboard"),
+                });
+                setRenderMode("queryBuilder");
                 dispatch(dismissAllUndo());
                 await dispatch(updateDashboardAndCards());
                 // After saving the dashboard, it will exit the editing mode.
@@ -383,7 +385,11 @@ const SdkDashboardInner = ({
               },
             });
           } else {
-            openNewQuestion();
+            sdkNavigation?.push({
+              type: "placeholder",
+              onPop: () => setRenderMode("dashboard"),
+            });
+            setRenderMode("queryBuilder");
           }
         }}
         downloadsEnabled={displayOptions.downloadsEnabled}
@@ -405,7 +411,6 @@ const SdkDashboardInner = ({
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
         autoScrollToDashcardId={autoScrollToDashcardId}
-        enableEntityNavigation={enableEntityNavigation}
       >
         {match({ finalRenderMode, isGuestEmbed })
           .with({ finalRenderMode: "question" }, () => (
@@ -434,9 +439,6 @@ const SdkDashboardInner = ({
                   className={className}
                   style={style}
                 >
-                  {/* <SdkInternalNavigationBackButton
-                    style={{ border: "5px solid yellow" }}
-                  /> */}
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                 </SdkDashboardStyledWrapperWithRef>
               )}
@@ -453,11 +455,11 @@ const SdkDashboardInner = ({
               <DashboardQueryBuilder
                 onCreate={(question) => {
                   setNewDashboardQuestionId(question.id);
-                  setRenderMode("dashboard");
+                  sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
                   dashboardContextProviderRef.current?.refetchDashboard();
                 }}
                 onNavigateBack={() => {
-                  setRenderMode("dashboard");
+                  sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
                 }}
                 dataPickerProps={dataPickerProps}
                 onVisualizationChange={onVisualizationChange}
@@ -547,6 +549,7 @@ function DashboardQueryBuilder({
         name: dashboard.name,
       }}
       entityTypes={dataPickerProps?.entityTypes}
+      withResetButton
       withChartTypeSelector
       // The default value is 600px and it cuts off the "Visualize" button.
       height="700px"

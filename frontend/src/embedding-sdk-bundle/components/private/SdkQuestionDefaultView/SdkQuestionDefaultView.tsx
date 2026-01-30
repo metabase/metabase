@@ -53,6 +53,7 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
+import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
@@ -183,6 +184,8 @@ export const SdkQuestionDefaultView = ({
       canWriteToTargetCollection,
     }) && isSaveEnabled;
 
+  console.log("DEBUG IS THIS IT", showSaveButton);
+
   return (
     <FlexibleSizeComponent
       height={height}
@@ -195,15 +198,17 @@ export const SdkQuestionDefaultView = ({
         className={InteractiveQuestionS.TopBar}
         gap="sm"
         p="md"
-        data-hide-empty
+        // data-hide-empty
       >
         <Group
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
-          data-hide-empty
+          // data-hide-empty
         >
-          <Group gap="xs" data-hide-empty>
+          <Group
+            gap="xs" // data-hide-empty
+          >
             <DefaultViewTitle title={title} />
           </Group>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
