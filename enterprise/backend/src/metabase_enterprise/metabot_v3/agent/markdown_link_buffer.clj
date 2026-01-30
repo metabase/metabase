@@ -25,28 +25,6 @@
   [state queries charts]
   (assoc state :queries queries :charts charts))
 
-;;; Link Resolution
-
-(def ^:private link-pattern
-  "Regex matching a complete markdown link [text](url)."
-  #"\[([^\[\]]*)\]\(([^()]*)\)")
-
-(defn- resolve-link
-  "Resolve a single markdown link match. Returns the replacement string."
-  [{:keys [queries charts]} [_ link-text url]]
-  (if-not (str/starts-with? url "metabase://")
-    (str "[" link-text "](" url ")")
-    (if-let [resolved (links/resolve-metabase-uri url queries charts)]
-      (str "[" link-text "](" resolved ")")
-      (do
-        (log/warn "Failed to resolve link URL" {:url url})
-        link-text))))
-
-(defn- resolve-links
-  "Resolve all complete markdown links in text."
-  [state text]
-  (str/replace text link-pattern (partial resolve-link state)))
-
 ;;; Buffering Logic
 
 (defn- find-potential-link-start
@@ -57,7 +35,7 @@
     (when last-open
       ;; Check if there's a complete link starting at or after this position
       (let [suffix (subs text last-open)]
-        (when-not (re-find link-pattern suffix)
+        (when-not (re-find links/link-pattern suffix)
           ;; No complete link, but could be start of one if we have '[' without matching ']('...')'
           ;; or '[...](' without closing ')'
           (when (or (re-find #"\[[^\]]*$" suffix)           ; unclosed [
@@ -70,7 +48,7 @@
   [{:keys [buffer] :as state} chunk]
   (let [text        (str buffer chunk)
         ;; First resolve any complete links
-        resolved    (resolve-links state text)
+        resolved    (links/resolve-links text (:queries state) (:charts state))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
     (if split-point
