@@ -118,15 +118,11 @@ export const translateAggregationDisplayName = (
     const withMarker = pattern(VALUE_MARKER);
     const markerIndex = withMarker.indexOf(VALUE_MARKER);
 
-    if (markerIndex === -1) {
-      continue;
-    }
-
     const prefix = withMarker.substring(0, markerIndex);
     const suffix = withMarker.substring(markerIndex + VALUE_MARKER.length);
 
-    const hasPrefix = prefix === "" || displayName.startsWith(prefix);
-    const hasSuffix = suffix === "" || displayName.endsWith(suffix);
+    const hasPrefix = displayName.startsWith(prefix);
+    const hasSuffix = displayName.endsWith(suffix);
 
     if (hasPrefix && hasSuffix) {
       const innerStart = prefix.length;
@@ -169,17 +165,14 @@ export const translateDisplayNames = <T>(
           fieldsToTranslate.includes(key as string) &&
           typeof value === "string";
 
-        const newValue = match({ shouldTranslate })
-          .with({ shouldTranslate: false }, () => traverse(value as T))
-          .with({ shouldTranslate: true }, () =>
-            // We can't detect if an element is an aggregation-related or not here.
-            // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
-            // the `source` field contains the `fields` value, not the `aggregation` one.
-            // As the solution, we always try to translate the display name as an aggregation one,
-            // and inside `translateAggregationDisplayName` we fallback to regular tc() call if no aggregation pattern is matched.
-            translateAggregationDisplayName(value as string, tc),
-          )
-          .exhaustive();
+        // We can't detect if an element is an aggregation-related or not here.
+        // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
+        // the `source` field contains the `fields` value, not the `aggregation` one.
+        // As the solution, we always try to translate the display name as an aggregation one,
+        // and inside `translateAggregationDisplayName` we fallback to regular tc() call if no aggregation pattern is matched.
+        const newValue = shouldTranslate
+          ? translateAggregationDisplayName(value as string, tc)
+          : traverse(value as T);
 
         return I.assoc(acc, key, newValue);
       }, element);

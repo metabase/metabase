@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type AggregationItem,
@@ -16,7 +17,7 @@ export interface SDKAggregationItem extends AggregationItem {
 
 export const useSummarizeData = () => {
   const { question, updateQuestion } = useSdkQuestionContext();
-  const tc = PLUGIN_CONTENT_TRANSLATION.useTranslateContent();
+  const tc = useTranslateContent();
 
   const query = question?.query();
   const stageIndex = -1;
