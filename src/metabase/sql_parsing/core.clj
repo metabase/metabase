@@ -58,10 +58,50 @@
         .asString
         json/decode+kw)))
 
+(defn referenced-fields
+  "Extract field references from SQL, returning only fields from actual database tables.
+
+   Returns a vector of [table-name field-name] pairs:
+   [[\"users\" \"id\"] [\"users\" \"email\"] [\"orders\" \"total\"]]
+
+   Includes:
+   - Wildcards as [\"table-name\" \"*\"] (both qualified like users.* and unqualified SELECT *)
+   - All specific column references
+
+   Excludes:
+   - Fields from CTEs or subqueries
+   - Table aliases (returns actual table names)
+
+   Examples:
+   (referenced-fields \"postgres\" \"SELECT t.id, u.* FROM transactions t LEFT JOIN users u ON t.user_id = u.id\")
+   => [[\"transactions\" \"id\"] [\"transactions\" \"user_id\"] [\"users\" \"*\"] [\"users\" \"id\"]]
+
+   (referenced-fields \"postgres\" \"SELECT * FROM users\")
+   => [[\"users\" \"*\"]]
+
+   (referenced-fields \"postgres\" \"SELECT * FROM users u LEFT JOIN transactions t ON u.id = t.user_id\")
+   => [[\"transactions\" \"*\"] [\"transactions\" \"user_id\"] [\"users\" \"*\"] [\"users\" \"id\"]]"
+  [dialect sql]
+  (with-open [^Closeable ctx (python.pool/python-context)]
+    (common/eval-python ctx "import sql_tools")
+    (-> ^Value (common/eval-python ctx "sql_tools.referenced_fields")
+        (.execute ^Value (object-array [sql dialect]))
+        .asString
+        json/decode
+        vec)))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
   (validate-sql-query "postgres" "SELECT * FROM users")
 
   (validate-sql-query "postgres" "SELECT * FORM users")
+
+  (referenced-fields "postgres" "SELECT t.id, u.* FROM transactions t LEFT JOIN users u ON t.user_id = u.id")
+
+  (referenced-fields "postgres" "SELECT * from users u left join transactions t on u.id = t.user_id")
+
+  (referenced-fields "postgres" "select * from people")
+
+  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true")
   )

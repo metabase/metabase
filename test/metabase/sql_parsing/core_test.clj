@@ -401,3 +401,72 @@
     (let [result (validate-test-case tc)]
       (when-not (:passed result)
         (println "FAILED:" (:name tc) "-" (:reason result))))))
+
+;;; -------------------------------------------- Referenced Fields Tests --------------------------------------------
+
+(defn- load-referenced-fields-test-cases
+  "Load referenced fields test cases from EDN file."
+  []
+  (let [resource (io/resource "metabase/sql_parsing/referenced_fields_test_cases.edn")]
+    (when-not resource
+      (throw (ex-info "Could not find referenced_fields_test_cases.edn" {})))
+    (read-string (slurp resource))))
+
+(defn- normalize-fields
+  "Normalize field references for comparison (sort and ensure consistent format)."
+  [fields]
+  (vec (sort-by (fn [[table field]] [(u/lower-case-en table) (u/lower-case-en field)])
+                (map (fn [[table field]] [(u/lower-case-en table) (u/lower-case-en field)]) fields))))
+
+(defn- fields-match?
+  "Check if actual fields match expected fields (case-insensitive, order-independent)."
+  [expected actual]
+  (= (normalize-fields expected)
+     (normalize-fields actual)))
+
+(deftest ^:parallel referenced-fields-test
+  (testing "Referenced fields extraction from SQL queries"
+    (let [test-cases (:test-cases (load-referenced-fields-test-cases))]
+      (doseq [test-case test-cases]
+        (testing (:name test-case)
+          (let [{:keys [sql dialect expected]} test-case
+                actual (sql-parsing/referenced-fields dialect sql)]
+            (is (fields-match? expected actual)
+                (str "Test '" (:name test-case) "' failed"
+                     "\n  SQL: " sql
+                     "\n  Expected: " (pr-str (normalize-fields expected))
+                     "\n  Actual:   " (pr-str (normalize-fields actual))))))))))
+
+(deftest ^:parallel referenced-fields-dialect-support-test
+  (testing "Referenced fields works across different SQL dialects"
+    (doseq [dialect ["postgres" "mysql" "snowflake" "bigquery" "redshift" "duckdb"]]
+      (testing (str "dialect: " dialect)
+        (let [result (sql-parsing/referenced-fields dialect "SELECT id, name FROM users WHERE active = true")]
+          (is (seq result)
+              (str "Should return fields for " dialect))
+          (is (every? #(and (vector? %) (= 2 (count %))) result)
+              (str "Each field should be [table field] pair for " dialect)))))))
+
+(deftest ^:parallel referenced-fields-wildcard-test
+  (testing "Wildcard handling in referenced fields"
+    (testing "Unqualified wildcard - single table"
+      (let [result (sql-parsing/referenced-fields "postgres" "SELECT * FROM users")]
+        (is (fields-match? [["users" "*"]] result))))
+
+    (testing "Unqualified wildcard - multiple tables"
+      (let [result (sql-parsing/referenced-fields "postgres" "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id")]
+        (is (some #(= ["orders" "*"] %) (normalize-fields result))
+            "Should include orders wildcard")
+        (is (some #(= ["users" "*"] %) (normalize-fields result))
+            "Should include users wildcard")))
+
+    (testing "Qualified wildcard"
+      (let [result (sql-parsing/referenced-fields "postgres" "SELECT u.* FROM users u")]
+        (is (fields-match? [["users" "*"]] result))))
+
+    (testing "Mixed wildcards and specific columns"
+      (let [result (sql-parsing/referenced-fields "postgres" "SELECT u.*, t.total FROM users u, transactions t WHERE u.id = t.user_id")]
+        (is (some #(= ["users" "*"] %) (normalize-fields result))
+            "Should include users wildcard")
+        (is (some #(= ["transactions" "total"] %) (normalize-fields result))
+            "Should include transactions.total")))))
