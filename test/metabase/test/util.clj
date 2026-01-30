@@ -410,7 +410,7 @@
                             (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id merged-attributes)
                                            :workspace_id (:workspace_id merged-attributes)))]
         (try
-          (t/testing (format "\nwith temporary %s\n" (pr-str model))
+          (testing (format "\nwith temporary %s\n" (pr-str model))
             (f temp-object))
           (finally
             (t2/delete! model :toucan/pk ((t2/select-pks-fn model) temp-object))))))))
