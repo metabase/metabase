@@ -128,6 +128,7 @@
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
                                          [:name {:optional true} :string]
+                                         [:deleted {:optional true} :boolean]
                                          [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
 
 (defn- check-is-data-analyst
