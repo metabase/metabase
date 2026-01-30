@@ -9,8 +9,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
-   [metabase.test :as mt]
-   [metabase.transforms.feature-gating :as transforms.gating]))
+   [metabase.test :as mt]))
 
 (def default-search-ctx
   {:search-string                  nil

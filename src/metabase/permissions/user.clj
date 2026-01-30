@@ -3,7 +3,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]))
 
 (defenterprise user->tenant-collection-and-descendant-ids
