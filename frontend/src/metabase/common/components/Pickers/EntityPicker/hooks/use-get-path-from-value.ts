@@ -483,6 +483,7 @@ async function getCollectionPathFromValue({
       id: item.id,
       name: item.name,
       model: value.model,
+      ...("can_write" in item ? { can_write: item.can_write } : {}),
     });
   }
 
