@@ -145,6 +145,11 @@
           (is (true? (write-connection.oss/using-write-connection? write-effective)))
           (is (false? (write-connection.oss/using-write-connection? primary-effective))))))))
 
+;; TODO(Timothy, 2026-01-30): I really just wanted a sanity check for the transforms, and didn't want to
+;; go through the trouble of running full transforms in test envs at the time, so I just asked Claude to
+;; make me a sanity test. This should be deleted, revised, moved, and/or replaced by real transforms tests,
+;; probably with a real write-db in each environment. See QUE-3026.
+
 (deftest transform-details-db-id-uses-parent-id-test
   (testing "Both MBQL and Python transforms use parent DB ID in :db-id of transform-details"
     (mt/with-premium-features #{:advanced-permissions}
