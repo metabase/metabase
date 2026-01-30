@@ -979,7 +979,7 @@ databaseChangeLog:
             tableName: analysis_finding
             indexName: idx_analysis_finding_stale
 
-- changeSet:
+  - changeSet:
       id: v59.2026-01-29T12:00:00
       author: galdre
       comment: Add write_database_id column to metabase_database for PRO-86 separate write connections
