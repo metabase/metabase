@@ -127,14 +127,6 @@
          (not quantity))
     response-no-quantity
 
-    (and (= product-type "metabase-ai")
-         (not (premium-features/offer-metabase-ai-trial?)))
-    response-not-eligible
-
-    (and (= product-type "metabase-ai-tiered")
-         (not (premium-features/offer-metabase-ai-paid?)))
-    response-not-eligible
-
     (and (= product-type "python-execution")
          (not (premium-features/enable-python-transforms?)))
     response-not-eligible

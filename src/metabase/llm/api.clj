@@ -231,6 +231,22 @@
                           :result       result}
                          api/*current-user-id*))
 
+;;; ------------------------------------------ List Models Endpoint ------------------------------------------
+
+(api.macros/defendpoint :get "/list-models"
+  :- [:map [:models [:sequential [:map
+                                  [:id :string]
+                                  [:display_name :string]]]]]
+  "List available LLM models from the configured provider.
+
+   Requires LLM to be configured (Anthropic API key set in admin settings)."
+  [_route-params
+   _query-params]
+  (when-not (llm.settings/llm-enabled?)
+    (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
+                    {:status-code 403})))
+  (llm.anthropic/list-models))
+
 ;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
 (def ^:private table-with-columns-schema

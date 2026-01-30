@@ -79,6 +79,30 @@
                       exception)))
     (throw exception)))
 
+(defn- get-api-key-or-throw
+  "Gets Anthropic API key from settings or throws an unconfigured error."
+  []
+  (let [api-key (llm-settings/llm-anthropic-api-key)]
+    (when (str/blank? api-key)
+      (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
+                      {:type :llm-not-configured})))
+    api-key))
+
+(defn list-models
+  "Send a list models request to Anthropic
+   Returns a map with :models"
+  []
+  (try
+    (let [url (str (llm-settings/llm-anthropic-api-url) "/v1/models")
+          response (http/get url
+                             {:headers            {"x-api-key"         (get-api-key-or-throw)
+                                                   "anthropic-version" (llm-settings/llm-anthropic-api-version)}})
+          body (json/decode+kw (:body response))
+          models (reverse (sort-by :created_at (:data body)))]
+      {:models (map #(select-keys % [:id :display_name]) models)})
+    (catch Exception e
+      (handle-api-error e))))
+
 (defn chat-completion
   "Send a chat completion request to Anthropic.
    Returns a map with:
@@ -91,30 +115,27 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (let [api-key (llm-settings/llm-anthropic-api-key)]
-    (when-not api-key
-      (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
-                      {:type :llm-not-configured})))
-    (let [model      (or model (llm-settings/llm-anthropic-model))
-          request    {:model    model
-                      :system   system
-                      :messages messages}
-          start-time (u/start-timer)]
-      (try
-        (let [response    (http/post (llm-settings/llm-anthropic-api-url)
-                                     {:headers            (build-request-headers api-key)
-                                      :body               (json/encode (build-request-body request))
-                                      :as                 :json
-                                      :content-type       :json
-                                      :socket-timeout     (llm-settings/llm-request-timeout-ms)
-                                      :connection-timeout (llm-settings/llm-connection-timeout-ms)})
-              duration-ms (u/since-ms start-time)
-              body        (:body response)
-              usage       (:usage body)]
-          {:result      (extract-tool-input body)
-           :duration-ms duration-ms
-           :usage       {:model      (model->simplified-provider-model model)
-                         :prompt     (:input_tokens usage)
-                         :completion (:output_tokens usage)}})
-        (catch Exception e
-          (handle-api-error e))))))
+  (let [model      (or model (llm-settings/llm-anthropic-model))
+        request    {:model    model
+                    :system   system
+                    :messages messages}
+        start-time (u/start-timer)]
+    (try
+      (let [url (str (llm-settings/llm-anthropic-api-url) "/v1/messages")
+            response    (http/post url
+                                   {:headers            (build-request-headers (get-api-key-or-throw))
+                                    :body               (json/encode (build-request-body request))
+                                    :as                 :json
+                                    :content-type       :json
+                                    :socket-timeout     (llm-settings/llm-request-timeout-ms)
+                                    :connection-timeout (llm-settings/llm-connection-timeout-ms)})
+            duration-ms (u/since-ms start-time)
+            body        (:body response)
+            usage       (:usage body)]
+        {:result      (extract-tool-input body)
+         :duration-ms duration-ms
+         :usage       {:model      (model->simplified-provider-model model)
+                       :prompt     (:input_tokens usage)
+                       :completion (:output_tokens usage)}})
+      (catch Exception e
+        (handle-api-error e)))))

@@ -42,18 +42,12 @@ describe("Native SQL generation", () => {
       toggleInlineSQLPrompt();
       inlinePrompt().should("not.exist");
     });
-  });
-
-  describe("oss llm", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-test",
-      });
-    });
 
     it("should show table bar and support full generation workflow", () => {
+      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
+        value: "sk-ant-api03-test-token",
+      });
+
       const finalSQL =
         "SELECT o.*, p.*\nFROM public.orders o\nJOIN public.people p ON o.user_id = p.id";
       cy.intercept("POST", "/api/llm/generate-sql", {
@@ -90,7 +84,8 @@ describe("Native SQL generation", () => {
       tablePill("Orders").should("be.visible");
 
       cy.log("typing in table bar input renders search results");
-      tableBarInput().type("people");
+      tableBarInput().click();
+      cy.realType("people", { pressDelay: 10 });
       cy.findByRole("option", { name: /People/i }).should("be.visible");
 
       cy.log("selecting People from dropdown adds it to the list");
@@ -99,7 +94,8 @@ describe("Native SQL generation", () => {
       tablePill("Orders").should("be.visible");
 
       cy.log("selecting Reviews from dropdown adds it to the list");
-      tableBarInput().type("reviews");
+      tableBarInput().click();
+      cy.realType("reviews", { pressDelay: 10 });
       cy.findByRole("option", { name: /Reviews/i }).should("be.visible");
       cy.findByRole("option", { name: /Reviews/i }).click();
       tablePill("Reviews").should("be.visible");
@@ -108,13 +104,14 @@ describe("Native SQL generation", () => {
 
       cy.log("can remove table pill by clicking and pressing backspace");
       tablePill("Reviews").click();
-      tableBarInput().type("{backspace}");
+      cy.realPress("Backspace");
       tablePill("Reviews").should("not.exist");
       tablePill("People").should("be.visible");
       tablePill("Orders").should("be.visible");
 
       cy.log("generate button enables after typing prompt");
-      inlinePromptInput().click().type("show me orders");
+      inlinePromptInput().click();
+      cy.realType("show me orders", { pressDelay: 10 });
       generateButton().should("be.enabled");
 
       cy.log("clicking generate shows loading state and sends correct request");
@@ -152,6 +149,7 @@ describe("Native SQL generation", () => {
       H.NativeEditor.get().realPress("Backspace");
       H.NativeEditor.type(
         "SELECT * FROM ORDERS JOIN REVIEWS ON ORDERS.PRODUCT_ID = REVIEWS.PRODUCT_ID",
+        { delay: 10 },
       );
       toggleInlineSQLPrompt();
       tablePill("Orders").should("be.visible");
@@ -183,7 +181,8 @@ describe("Native SQL generation", () => {
         cy.log("table bar should not be shown for EE");
         tableBar().should("not.exist");
 
-        inlinePromptInput().type("select all users");
+        inlinePromptInput().click();
+        cy.realType("select all users", { pressDelay: 10 });
         generateButton().should("be.enabled");
 
         H.mockMetabotResponse({
@@ -239,7 +238,8 @@ describe("Native SQL generation", () => {
 
         // cancel button should cancel inflight request
         toggleInlineSQLPrompt();
-        inlinePromptInput().type("select all users");
+        inlinePromptInput().click();
+        cy.realType("select all users", { pressDelay: 10 });
         H.mockMetabotResponse({
           body: mockCodeEditResponse("SELECT * FROM users"),
           delay: 1000,
@@ -269,7 +269,8 @@ describe("Native SQL generation", () => {
 
         // open input, send a prompt, get suggestion back
         toggleInlineSQLPrompt();
-        inlinePromptInput().type("select all users");
+        inlinePromptInput().click();
+        cy.realType("select all users", { pressDelay: 10 });
         H.mockMetabotResponse({
           body: mockCodeEditResponse("SELECT * FROM users"),
         });
@@ -287,7 +288,8 @@ describe("Native SQL generation", () => {
         inlinePrompt().should("be.visible");
 
         // send another message, history should contain rejection info
-        inlinePromptInput().type("try again");
+        inlinePromptInput().click();
+        cy.realType("try again", { pressDelay: 10 });
         H.mockMetabotResponse({
           body: mockCodeEditResponse("SELECT id FROM users"),
         });
@@ -309,7 +311,8 @@ describe("Native SQL generation", () => {
 
         // open again, send a prompt, req.body.history should be empty
         toggleInlineSQLPrompt();
-        inlinePromptInput().type("select something");
+        inlinePromptInput().click();
+        cy.realType("select something", { pressDelay: 10 });
         H.mockMetabotResponse({
           body: mockCodeEditResponse("SELECT 123"),
         });
@@ -328,7 +331,8 @@ describe("Native SQL generation", () => {
         H.startNewNativeQuestion();
         H.NativeEditor.get().should("be.visible");
         toggleInlineSQLPrompt();
-        inlinePromptInput().type("new prompt");
+        inlinePromptInput().click();
+        cy.realType("new prompt", { pressDelay: 10 });
         H.mockMetabotResponse({
           body: mockCodeEditResponse("SELECT 456"),
         });
@@ -351,7 +355,8 @@ describe("Native SQL generation", () => {
         H.NativeEditor.get().should("be.visible");
 
         toggleInlineSQLPrompt();
-        inlinePromptInput().type("do something");
+        inlinePromptInput().click();
+        cy.realType("do something", { pressDelay: 10 });
         H.mockMetabotResponse({
           body: mockTextOnlyResponse("I can help with that!"),
         });

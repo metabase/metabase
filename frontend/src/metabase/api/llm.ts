@@ -3,9 +3,11 @@ import type {
   ExtractTablesResponse,
   GenerateSqlRequest,
   GenerateSqlResponse,
+  ListModelsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { listTag } from "./tags";
 
 export const llmApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -23,7 +25,18 @@ export const llmApi = Api.injectEndpoints({
         body,
       }),
     }),
+    listModels: builder.query<ListModelsResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/llm/list-models",
+      }),
+      providesTags: () => [listTag("llm-models")],
+    }),
   }),
 });
 
-export const { useGenerateSqlMutation, useExtractTablesQuery } = llmApi;
+export const {
+  useGenerateSqlMutation,
+  useExtractTablesQuery,
+  useListModelsQuery,
+} = llmApi;

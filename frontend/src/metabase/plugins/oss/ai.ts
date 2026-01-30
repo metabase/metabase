@@ -20,7 +20,7 @@ import type {
   TimelineEvent,
   VisualizationDisplay,
 } from "metabase-types/api";
-import type { AdminPath, State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 export type PluginAiSqlFixer = {
   FixSqlQueryButton: ComponentType<Record<string, never>>;
@@ -66,19 +66,15 @@ type PluginMetabotType = {
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
-  getAdminPaths: () => AdminPath[];
-  getAdminRoutes: () => React.ReactElement;
+  getAdminRoutes: (() => JSX.Element[]) | null;
   getMetabotRoutes: () => React.ReactElement | null;
-  MetabotAdminPage: ComponentType;
   getMetabotQueryBuilderRoute: () => React.ReactElement | null;
   getNewMenuItemAIExploration: (
     hasDataAccess: boolean,
     collectionId?: CollectionId,
   ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, conversation_id: string) => boolean;
-  MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
-  MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
   useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
@@ -149,16 +145,12 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
         children,
       );
   },
-  getAdminPaths: () => [],
-  getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
+  getAdminRoutes: null,
   getMetabotRoutes: () => null,
-  MetabotAdminPage: () => `placeholder`,
   getMetabotQueryBuilderRoute: () => null,
   getNewMenuItemAIExploration: () => undefined,
   getMetabotVisible: () => false,
-  MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
-  MetabotAdminAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
   useLazyMetabotGenerateContentQuery:

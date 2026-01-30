@@ -178,11 +178,17 @@
           (is (str/includes? (str response) "not configured")))))
 
     (testing "400 when no tables found"
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
         (let [response (mt/user-http-request :rasta :post 400 "llm/generate-sql"
                                              {:prompt "no table mentions here"
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "No tables found")))))))
+
+(deftest list-models-unconfigured-test
+  (testing "Returns 403 when LLM is not configured"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (let [response (mt/user-http-request :rasta :get 403 "llm/list-models")]
+        (is (str/includes? (str response) "not configured"))))))
 
 ;;; ------------------------------------------- Snowplow Tests -------------------------------------------
 
@@ -198,7 +204,7 @@
                                         :prompt 1000
                                         :completion 200}
                                 :duration-ms 500}]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
           (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)
                         snowplow/track-event! (fn [schema data user-id]
                                                 (swap! tracked-events conj {:schema schema
@@ -235,7 +241,7 @@
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
       (let [tracked-events (atom [])]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
           (with-redefs [llm.anthropic/chat-completion (fn [_] (throw (Exception. "API error")))
                         snowplow/track-event! (fn [schema data user-id]
                                                 (swap! tracked-events conj {:schema schema

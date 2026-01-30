@@ -25,3 +25,12 @@ export interface ExtractTablesRequest {
 export interface ExtractTablesResponse {
   tables: Table[];
 }
+
+export interface LLMModel {
+  id: string;
+  display_name: string;
+}
+
+export interface ListModelsResponse {
+  models: LLMModel[];
+}
