@@ -74,6 +74,8 @@
                    "Cannot configure auxiliary connection for a destination database")
     (api/check-400 (not (t2/exists? :model/Database :router_database_id id))
                    "Cannot configure auxiliary connection for a router database")
+    (api/check-400 (not (database/is-write-database? db))
+                   "Cannot configure auxiliary connection for a write database")
     ;; Connection validation is opt-in, matching the DB Routing pattern
     ;; (see database_routing/api.clj POST /destination-database).
     ;; It's not an invariant that all database details are always valid?

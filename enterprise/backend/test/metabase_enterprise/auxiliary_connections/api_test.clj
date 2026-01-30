@@ -139,6 +139,18 @@
                                      {:name    "Write Connection"
                                       :details {:db "write.db"}})))))))
 
+(deftest post-blocks-write-database-test
+  (testing "POST returns 400 for a write database"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-model-cleanup [:model/Database]
+        (mt/with-temp [:model/Database {parent-id :id} {}]
+          (let [resp (mt/user-http-request :crowberto :post 200 (aux-url parent-id)
+                                           {:name "Write DB" :details {:db "write.db"}})
+                write-db-id (:database_id resp)]
+            (is (= "Cannot configure auxiliary connection for a write database"
+                   (mt/user-http-request :crowberto :post 400 (aux-url write-db-id)
+                                         {:name "Nested" :details {:db "nested.db"}})))))))))
+
 (deftest endpoints-require-superuser-test
   (testing "All auxiliary connection endpoints require superuser"
     (mt/with-premium-features #{:advanced-permissions}
