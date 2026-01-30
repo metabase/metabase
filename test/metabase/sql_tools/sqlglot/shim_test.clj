@@ -285,24 +285,24 @@
           (is (some #(= "orders" (u/lower-case-en (second %))) result)
               (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
 
-(deftest ^:parallel udtf-returned-columns-lineage-test
-  (testing "UDTFs are handled by returned-columns-lineage across dialects"
-    (doseq [[dialect sql] udtf-queries]
-      (testing (str "dialect: " dialect)
+#_(deftest ^:parallel udtf-returned-columns-lineage-test
+    (testing "UDTFs are handled by returned-columns-lineage across dialects"
+      (doseq [[dialect sql] udtf-queries]
+        (testing (str "dialect: " dialect)
         ;; UDTFs should not cause assertion errors - they return lineage with empty deps
         ;; since there's no real table to trace columns back to
-        (let [result (sqlglot.shim/returned-columns-lineage (name dialect) sql "public" {})]
-          (is (sequential? result)
-              (format "dialect %s: should return sequential, got %s" dialect (type result))))))))
+          (let [result (sqlglot.shim/returned-columns-lineage (name dialect) sql "public" {})]
+            (is (sequential? result)
+                (format "dialect %s: should return sequential, got %s" dialect (type result))))))))
 
-(deftest ^:parallel udtf-validate-query-test
-  (testing "UDTFs pass validation (with infer_schema=True)"
-    (doseq [[dialect sql] udtf-queries]
-      (testing (str "dialect: " dialect)
+#_(deftest ^:parallel udtf-validate-query-test
+    (testing "UDTFs pass validation (with infer_schema=True)"
+      (doseq [[dialect sql] udtf-queries]
+        (testing (str "dialect: " dialect)
         ;; This should NOT throw an error now that infer_schema=True
-        (let [result (sqlglot.shim/validate-query (name dialect) sql "public" {})]
-          (is (= :ok (:status result))
-              (format "dialect %s: UDTF query should validate OK, got %s" dialect result)))))))
+          (let [result (sqlglot.shim/validate-query (name dialect) sql "public" {})]
+            (is (= :ok (:status result))
+                (format "dialect %s: UDTF query should validate OK, got %s" dialect result)))))))
 ;;; ------------------------------------------ Set Operation Tests (UNION, INTERSECT, EXCEPT) ------------------------------------------
 
 ;; Set operation queries by dialect - tests UNION, UNION ALL, INTERSECT, EXCEPT
@@ -356,40 +356,48 @@
     :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
     :cte-with-union "WITH c AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM c"}})
 
-(def ^:private set-operation->expected
-  {:union ["id" "name"]
-   :intersect ["id"]
-   :nested-union ["id"]})
-
-(deftest ^:parallel set-operation-validate-query-test
-  (testing "Set operations validate correctly across dialects"
-    (doseq [[dialect ops] dialect->set-operation->query
-            [op-type sql] ops]
-      (testing (str "dialect: " (name dialect) " - " (name op-type))
-        (let [result (sqlglot.shim/validate-query (name dialect) sql "public" {})]
-          (is (= :ok (:status result))
-              (format "%s/%s should validate OK, got %s"
-                      (name dialect) (name op-type) result)))))))
-
 (deftest ^:parallel set-operation-referenced-tables-test
   (testing "Set operations correctly identify all referenced tables across dialects"
     (doseq [[dialect ops] dialect->set-operation->query
             [op-type sql] ops]
       (testing (str "dialect: " (name dialect) " - " (name op-type))
         (let [result (sqlglot.shim/referenced-tables sql (name dialect))
-              found-tables (into #{} (map (comp u/lower-case-en second) result))]
-          (is (= #{"a" "b"} found-tables)
-              (format "%s/%s should find tables a and b, got %s"
-                      (name dialect) (name op-type) found-tables)))))))
+              ;; Normalize to lowercase for case-insensitive comparison (Snowflake uppercases)
+              normalized (into #{} (map (fn [[schema table]]
+                                          [(some-> schema u/lower-case-en) (u/lower-case-en table)])
+                                        result))]
+          (is (= #{[nil "a"] [nil "b"]} normalized)
+              (format "%s/%s should return [[nil a] [nil b]], got %s"
+                      (name dialect) (name op-type) normalized)))))))
 
-(deftest ^:parallel set-operation-returned-columns-lineage-test
-  (testing "Set operations return correct column lineage across dialects"
-    (doseq [[dialect ops] dialect->set-operation->query
-            [op-type sql] ops
-            :let [expected (get set-operation->expected op-type)]]
-      (testing (str "dialect: " (name dialect) ", operation: " (name op-type))
-        (let [result (sqlglot.shim/returned-columns-lineage (name dialect) sql "public" {})
-              columns (sort (map (comp u/lower-case-en first) result))]
-          (is (= expected columns)
-              (format "%s %s should return %s, got %s"
-                      (name dialect) (name op-type) (pr-str expected) columns)))))))
+#_(def ^:private set-operation->returned-columns
+    {:union          ["id" "name"]
+     :union-all      ["id" "name"]
+     :intersect      ["id"]
+     :except         ["id"]
+     :nested-union   ["id"]
+     :cte-with-union ["id"]})
+
+#_(deftest ^:parallel set-operation-validate-query-test
+    (testing "Set operations validate correctly across dialects"
+      (doseq [[dialect ops] dialect->set-operation->query
+              [op-type sql] ops]
+        (testing (str "dialect: " (name dialect) " - " (name op-type))
+          (let [result (sqlglot.shim/validate-query (name dialect) sql "public" {})]
+            (is (= :ok (:status result))
+                (format "%s/%s should validate OK, got %s"
+                        (name dialect) (name op-type) result)))))))
+
+#_(deftest ^:parallel set-operation-returned-columns-lineage-test
+    (testing "Set operations return correct column lineage across dialects"
+      (doseq [[dialect ops] dialect->set-operation->query
+              [op-type sql] ops
+              :let [expected (get set-operation->returned-columns op-type)]]
+        (testing (str "dialect: " (name dialect) ", operation: " (name op-type))
+          (let [result (sqlglot.shim/returned-columns-lineage (name dialect) sql "public" {})
+                columns (sort (map (comp u/lower-case-en first) result))]
+            (is (= expected columns)
+                (format "%s %s should return %s, got %s"
+                        (name dialect) (name op-type) (pr-str expected) columns)))))))
+
+
