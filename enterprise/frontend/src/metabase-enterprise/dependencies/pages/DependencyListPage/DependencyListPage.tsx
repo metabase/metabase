@@ -81,7 +81,7 @@ export function DependencyListPage({
 export function BrokenDependencyListPage({
   location,
 }: DependencyListPageProps) {
-  return <DependencyListPage mode="breaking" location={location} />;
+  return <DependencyListPage mode="broken" location={location} />;
 }
 
 export function UnreferencedDependencyListPage({
