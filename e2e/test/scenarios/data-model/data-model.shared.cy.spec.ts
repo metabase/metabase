@@ -9,7 +9,8 @@ const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } =
   cy.H.DataModel;
 
-const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, FEEDBACK_ID, FEEDBACK, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
@@ -976,6 +977,225 @@ describe.each<Area>(areas)(
           cy.get("@fieldValues.all").should("have.length", 0);
         });
       });
+
+      describe("Data", () => {
+        describe("Coercion strategy", () => {
+          it("should allow you to cast a field to a data type", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: FEEDBACK_ID,
+              fieldId: FEEDBACK.RATING,
+            });
+
+            cy.log(
+              "Ensure that Coercion strategy has been humanized (metabase#44723)",
+            );
+            FieldSection.getCoercionToggle().parent().scrollIntoView().click();
+            H.popover().should("not.contain.text", "Coercion");
+            H.popover().findByText("UNIX seconds → Datetime").click();
+            cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "type_casting",
+              triggered_from: area === "admin" ? "admin" : "data_studio",
+            });
+            verifyAndCloseToast("Casting enabled for Rating");
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            verifyTablePreview({
+              column: "Rating",
+              values: [
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+              ],
+            });
+            verifyObjectDetailPreview({
+              rowNumber: 4,
+              row: ["Rating", "December 31, 1969, 4:00 PM"],
+            });
+
+            cy.log("verify viz");
+            H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
+            cy.findAllByTestId("cell-data")
+              .contains("December 31, 1969, 4:00 PM")
+              .should("have.length.greaterThan", 0);
+          });
+
+          it("should allow to enable, change, and disable coercion strategy", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: FEEDBACK_ID,
+              fieldId: FEEDBACK.RATING,
+            });
+
+            cy.log("show error when strategy not chosen after toggling");
+            FieldSection.getCoercionToggle()
+              .parent()
+              .click({ scrollBehavior: "center" });
+            clickAway();
+            FieldSection.get()
+              .findByText("To enable casting, please select a data type")
+              .should("be.visible");
+
+            cy.log("enable casting");
+            FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
+            H.popover().findByText("UNIX nanoseconds → Datetime").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Casting enabled for Rating");
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            // ideally we should change the formatting to show smaller values and assert those
+            // but we can't set formatting on a coerced field (metabase#60483)
+            verifyTablePreview({
+              column: "Rating",
+              values: [
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+                "December 31, 1969, 4:00 PM",
+              ],
+            });
+            verifyObjectDetailPreview({
+              rowNumber: 4,
+              row: ["Rating", "December 31, 1969, 4:00 PM"],
+            });
+
+            cy.log("change casting");
+            FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
+            H.popover().findByText("UNIX seconds → Datetime").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Casting updated for Rating");
+
+            cy.log("disable casting");
+            FieldSection.getCoercionToggle()
+              .parent()
+              .click({ scrollBehavior: "center" });
+            cy.wait("@updateField");
+            verifyAndCloseToast("Casting disabled for Rating");
+
+            cy.log("enable casting");
+            FieldSection.getCoercionToggle()
+              .parent()
+              .click({ scrollBehavior: "center" });
+            H.popover().findByText("UNIX seconds → Datetime").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Casting enabled for Rating");
+
+            H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
+            cy.findAllByTestId("cell-data")
+              .contains("December 31, 1969, 4:00 PM")
+              .should("have.length.greaterThan", 0);
+          });
+        });
+      });
+
+      describe("Metadata", () => {
+        describe("Semantic type", () => {
+          it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.PRODUCT_ID,
+            });
+            cy.wait(["@metadata", "@metadata"]);
+
+            FieldSection.getSemanticTypeInput()
+              .should("have.value", "Foreign Key")
+              // it should allow to just type to search (metabase#59052)
+              .type("no sema{downarrow}{enter}");
+            cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "semantic_type_change",
+              triggered_from: area === "admin" ? "admin" : "data_studio",
+            });
+            H.undoToast().should(
+              "contain.text",
+              "Semantic type of Product ID updated",
+            );
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            cy.wait("@dataset");
+            PreviewSection.get()
+              .findAllByTestId("cell-data")
+              .should("have.length", 6)
+              .eq(1)
+              // FKs get blueish background
+              .should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+
+            cy.reload();
+            cy.wait("@metadata");
+
+            FieldSection.getSemanticTypeInput().should(
+              "have.value",
+              "No semantic type",
+            );
+          });
+
+          it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.QUANTITY,
+            });
+
+            FieldSection.getSemanticTypeInput()
+              .should("have.value", "Quantity")
+              .click();
+            H.popover().findByText("Foreign Key").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Semantic type of Quantity updated");
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            cy.wait("@dataset");
+            PreviewSection.get()
+              .findAllByTestId("cell-data")
+              .should("have.length", 6)
+              .eq(1)
+              // FKs get blueish background
+              .should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+
+            FieldSection.getSemanticTypeFkTarget()
+              .should("have.value", "")
+              // it should allow to just type to search (metabase#59052)
+              .type("products{downarrow}{enter}");
+            cy.wait("@updateField");
+            H.undoToast().should(
+              "contain.text",
+              "Semantic type of Quantity updated",
+            );
+
+            cy.log("verify preview");
+            cy.wait("@dataset");
+            PreviewSection.get()
+              .findAllByTestId("cell-data")
+              .should("have.length", 6)
+              .eq(1)
+              // FKs get blueish background
+              .should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+
+            cy.reload();
+            cy.wait(["@metadata", "@metadata"]);
+
+            FieldSection.getSemanticTypeFkTarget()
+              .scrollIntoView() //This should not be necessary, but CI consistently fails to scroll into view on mount
+              .should("be.visible")
+              .and("have.value", "Products → ID");
+          });
+        });
+      });
     });
   },
 );
@@ -1065,4 +1285,8 @@ function verifyObjectDetailPreview({
       .eq(foundRowIndex)
       .should("contain", value);
   });
+}
+
+function clickAway() {
+  cy.get("body").click(0, 0);
 }
