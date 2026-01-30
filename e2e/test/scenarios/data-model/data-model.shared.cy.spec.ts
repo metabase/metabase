@@ -4,13 +4,22 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } =
   cy.H.DataModel;
 
-const { ORDERS_ID, ORDERS, FEEDBACK_ID, FEEDBACK, PRODUCTS, PRODUCTS_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS_ID,
+  ORDERS,
+  FEEDBACK_ID,
+  FEEDBACK,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
@@ -2018,6 +2027,100 @@ describe.each<Area>(areas)(
                 .scrollIntoView()
                 .should("be.visible");
             });
+          });
+
+          it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: REVIEWS_ID,
+              fieldId: REVIEWS.RATING,
+            });
+
+            FieldSection.getFilteringInput().click();
+            H.popover().findByText("Search box").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Filtering of Rating updated");
+
+            FieldSection.getDisplayValuesInput().click();
+            H.popover()
+              .findByRole("option", { name: /Custom mapping/ })
+              .should("have.attr", "data-combobox-disabled", "true");
+            H.popover()
+              .findByRole("option", { name: /Custom mapping/ })
+              .icon("info")
+              .realHover();
+            H.tooltip()
+              .should("be.visible")
+              .and(
+                "have.text",
+                'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
+              );
+
+            cy.log("close popover by clicking on element inside panel");
+            FieldSection.get().findByText("Field settings").click();
+
+            cy.log("open popover");
+            FieldSection.getFilteringInput().click();
+            H.popover().findByText("A list of all values").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Filtering of Rating updated");
+
+            FieldSection.getDisplayValuesInput().click();
+            H.popover()
+              .findByRole("option", { name: /Custom mapping/ })
+              .should("not.have.attr", "data-combobox-disabled");
+          });
+
+          it("should allow to map FK to date fields (metabase#7108)", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.USER_ID,
+            });
+
+            FieldSection.getDisplayValuesInput().click();
+            H.popover().findByText("Use foreign key").click();
+            cy.wait("@updateFieldDimension");
+            verifyAndCloseToast("Display values of User ID updated");
+
+            FieldSection.getDisplayValuesFkTargetInput().click();
+
+            H.popover().within(() => {
+              cy.findByText("Birth Date").scrollIntoView().should("be.visible");
+              cy.findByText("Created At")
+                .scrollIntoView()
+                .should("be.visible")
+                .click();
+            });
+            cy.wait("@updateFieldDimension");
+            H.undoToast().should(
+              "contain.text",
+              "Display values of User ID updated",
+            );
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            verifyTablePreview({
+              column: "User ID",
+              values: [
+                "2023-10-07T01:34:35.462-07:00",
+                "2023-10-07T01:34:35.462-07:00",
+                "2023-10-07T01:34:35.462-07:00",
+                "2023-10-07T01:34:35.462-07:00",
+                "2023-10-07T01:34:35.462-07:00",
+              ],
+            });
+            verifyObjectDetailPreview({
+              rowNumber: 1,
+              row: ["User ID", "2023-10-07T01:34:35.462-07:00"],
+            });
+
+            H.visitQuestion(ORDERS_QUESTION_ID);
+            cy.findAllByTestId("cell-data")
+              .eq(10) // 1st data row, 2nd column (User ID)
+              .should("have.text", "2023-10-07T01:34:35.462-07:00");
           });
         });
       });

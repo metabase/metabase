@@ -4,10 +4,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  NODATA_USER_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -1046,100 +1043,6 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Behavior", () => {
       describe("Display values", () => {
-        it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.RATING,
-          });
-
-          FieldSection.getFilteringInput().click();
-          H.popover().findByText("Search box").click();
-          cy.wait("@updateField");
-          verifyAndCloseToast("Filtering of Rating updated");
-
-          FieldSection.getDisplayValuesInput().click();
-          H.popover()
-            .findByRole("option", { name: /Custom mapping/ })
-            .should("have.attr", "data-combobox-disabled", "true");
-          H.popover()
-            .findByRole("option", { name: /Custom mapping/ })
-            .icon("info")
-            .realHover();
-          H.tooltip()
-            .should("be.visible")
-            .and(
-              "have.text",
-              'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
-            );
-
-          cy.log("close popover by clicking on element inside panel");
-          FieldSection.get().findByText("Field settings").click();
-
-          cy.log("open popover");
-          FieldSection.getFilteringInput().click();
-          H.popover().findByText("A list of all values").click();
-          cy.wait("@updateField");
-          verifyAndCloseToast("Filtering of Rating updated");
-
-          FieldSection.getDisplayValuesInput().click();
-          H.popover()
-            .findByRole("option", { name: /Custom mapping/ })
-            .should("not.have.attr", "data-combobox-disabled");
-        });
-
-        it("should allow to map FK to date fields (metabase#7108)", () => {
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.USER_ID,
-          });
-
-          FieldSection.getDisplayValuesInput().click();
-          H.popover().findByText("Use foreign key").click();
-          cy.wait("@updateFieldDimension");
-          verifyAndCloseToast("Display values of User ID updated");
-
-          FieldSection.getDisplayValuesFkTargetInput().click();
-
-          H.popover().within(() => {
-            cy.findByText("Birth Date").scrollIntoView().should("be.visible");
-            cy.findByText("Created At")
-              .scrollIntoView()
-              .should("be.visible")
-              .click();
-          });
-          cy.wait("@updateFieldDimension");
-          H.undoToast().should(
-            "contain.text",
-            "Display values of User ID updated",
-          );
-
-          cy.log("verify preview");
-          FieldSection.getPreviewButton().click();
-          verifyTablePreview({
-            column: "User ID",
-            values: [
-              "2023-10-07T01:34:35.462-07:00",
-              "2023-10-07T01:34:35.462-07:00",
-              "2023-10-07T01:34:35.462-07:00",
-              "2023-10-07T01:34:35.462-07:00",
-              "2023-10-07T01:34:35.462-07:00",
-            ],
-          });
-          verifyObjectDetailPreview({
-            rowNumber: 1,
-            row: ["User ID", "2023-10-07T01:34:35.462-07:00"],
-          });
-
-          H.visitQuestion(ORDERS_QUESTION_ID);
-          cy.findAllByTestId("cell-data")
-            .eq(10) // 1st data row, 2nd column (User ID)
-            .should("have.text", "2023-10-07T01:34:35.462-07:00");
-        });
-
         it("should allow analysts to change display values to use foreign key without data access", () => {
           H.setUserAsAnalyst(NODATA_USER_ID);
           cy.signIn("nodata");
