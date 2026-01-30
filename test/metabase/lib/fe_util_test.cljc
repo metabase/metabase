@@ -578,6 +578,18 @@
         (lib.filter/is-null (meta/field-metadata :venues :name))
         (lib.filter/and (lib.filter/= column true) true)))))
 
+(deftest ^:parallel specific-date-filter-clause-bucketing-test
+  (testing "specific-date-filter-clause adds bucketing appropriately"
+    (let [query  (lib.tu/venues-query)
+          column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
+                     (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
+      (doseq [[with-time? bucket date] [[true :minute (u.time/local-date-time 2024 11 28 0 0)]
+                                        [false :day (u.time/local-date-time 2024 11 28 0 0)]
+                                        [false :day (u.time/local-date 2024 11 28)]]]
+        (is (=? bucket
+                (-> (lib.fe-util/specific-date-filter-clause := column [date] with-time?)
+                    (get-in [2 1 :temporal-unit]))))))))
+
 (defn- format-date-filter-parts
   [{:keys [with-time?], :as parts}]
   (update parts :values
