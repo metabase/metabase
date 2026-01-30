@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
+import { IndexRoute, Route } from "react-router";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, jt, t } from "ttag";
@@ -47,6 +48,13 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
+
+export function getAdminRoutes() {
+  return [
+    <IndexRoute key="index" component={MetabotAdminPage} />,
+    <Route key="route" path=":metabotId" component={MetabotAdminPage} />,
+  ];
+}
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
@@ -129,7 +137,7 @@ function MetabotNavPane() {
   }
 
   return (
-    <Flex direction="column" w="266px" flex="0 0 auto">
+    <Flex direction="column" flex="0 0 auto">
       <AdminNavWrapper>
         {metabots?.map((metabot) => (
           <AdminNavItem

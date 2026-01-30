@@ -75,7 +75,22 @@ export function useEntitySuggestions({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [modal, setModal] = useState<SuggestionPickerModalType>(null);
   const [selectedSearchModel, setSelectedSearchModel] =
-    useState<SuggestionModel | null>(null);
+    useState<SuggestionModel | null>(
+      searchModels?.length === 1 ? searchModels[0] : null,
+    );
+
+  // sync selectedSearchModel when searchModels changes
+  useEffect(() => {
+    if (searchModels?.length === 1) {
+      setSelectedSearchModel(searchModels[0]);
+    } else if (
+      selectedSearchModel &&
+      !searchModels?.includes(selectedSearchModel)
+    ) {
+      // Reset if current selection is no longer valid
+      setSelectedSearchModel(null);
+    }
+  }, [searchModels, selectedSearchModel]);
 
   const handleRecentSelect = useCallback(
     (item: RecentItem) => {
@@ -162,7 +177,10 @@ export function useEntitySuggestions({
   const hasSearchModels = (searchModels?.length ?? 0) > 0;
   const hasMatchingFilteredModels = (filteredSearchModels?.length ?? 0) > 0;
   const isInModelSelectionMode =
-    !selectedSearchModel && hasSearchModels && hasMatchingFilteredModels;
+    !selectedSearchModel &&
+    hasSearchModels &&
+    hasMatchingFilteredModels &&
+    (searchModels?.length ?? 0) > 1;
 
   const {
     menuItems: entityMenuItems,

@@ -1052,3 +1052,6 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
+
+(defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
+  "llm/prompts/dialects/bigquery.md")

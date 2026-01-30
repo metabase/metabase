@@ -539,3 +539,6 @@
   (assert (empty? (get-in query [:native :params]))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
+
+(defmethod driver/llm-sql-dialect-resource :athena [_]
+  "llm/prompts/dialects/athena.md")
