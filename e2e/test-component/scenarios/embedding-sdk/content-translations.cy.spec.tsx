@@ -382,7 +382,11 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       uploadTranslationDictionaryViaAPI([
-        { locale: "de", msgid: "Test Collection", msgstr: "DE-Test Collection" },
+        {
+          locale: "de",
+          msgid: "Test Collection",
+          msgstr: "DE-Test Collection",
+        },
         {
           locale: "de",
           msgid: "Test Dashboard",
