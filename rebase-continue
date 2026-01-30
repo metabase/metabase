@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-1265-add-configure-data-permissions-and-enable-tenants-skeleton"
+    }
+  ]
 }
