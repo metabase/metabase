@@ -497,6 +497,7 @@ function createCustomElement<Arr extends readonly string[]>(
 const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
   "token",
+  "auto-refresh-interval",
   "with-title",
   "with-downloads",
   "with-subscriptions",

@@ -30,6 +30,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
+    "autoRefreshInterval",
     "withTitle",
     "withDownloads",
     "withSubscriptions",
@@ -66,6 +67,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof BrowserEmbedOptions)[],
   metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
+
 export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   base: [
     "apiKey",
@@ -76,6 +78,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "token",
+    "autoRefreshInterval",
     "withTitle",
     "withDownloads",
     "initialParameters",
