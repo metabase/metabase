@@ -271,6 +271,8 @@ const SdkIframeEmbedView = ({
           <MetabotQuestion
             key={rerenderKey}
             layout={settings.layout}
+            isSaveEnabled={settings.isSaveEnabled}
+            targetCollection={settings.targetCollection}
             height="100%"
           />
         ),

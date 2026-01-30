@@ -36,7 +36,7 @@ const MetabotQuestionInner = ({
   className,
   style,
   layout = "auto",
-  isSaveEnabled,
+  isSaveEnabled = false,
   targetCollection,
 }: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();

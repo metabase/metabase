@@ -73,7 +73,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     });
   });
 
-  it.only("should allow to save a question", () => {
+  it("should allow to save a question", () => {
     cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");
 
     setup(metabotResponseWithNavigateTo);

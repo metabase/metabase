@@ -161,6 +161,16 @@ export interface MetabotEmbedOptions {
   /** Layout mode for the metabot interface */
   layout?: "auto" | "sidebar" | "stacked";
 
+  /**
+   * The collection to save a question to
+   */
+  targetCollection?: CollectionId;
+
+  /**
+   * Is the save button enabled
+   */
+  isSaveEnabled?: boolean;
+
   // incompatible options
   template?: never;
   questionId?: never;
