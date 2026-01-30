@@ -1,22 +1,26 @@
 (ns metabase.sql-parsing.pool
+  "Namespace to handle python environment. Has only a single public function, [[python-context]] which will return a
+  python context. This is an internal detail to the sql-parsing module. If you want something from this, add a
+  function to the core namespace that uses this. No one should know about this implmentation detail."
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.sql-parsing.common :as common]
-   [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [potemkin :as p])
   (:import
-   (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools)
+   (io.aleph.dirigiste
+    IPool$Controller
+    IPool$Generator
+    Pool
+    Pools)
    (java.io Closeable File)
    (java.nio.file Files Path)
    (java.util.concurrent TimeUnit)
-   (org.graalvm.polyglot Context HostAccess Value)))
+   (org.graalvm.polyglot Context HostAccess)))
 
 (set! *warn-on-reflection* true)
 
