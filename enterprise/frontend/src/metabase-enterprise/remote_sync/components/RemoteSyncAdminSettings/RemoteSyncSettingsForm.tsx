@@ -7,7 +7,7 @@ import {
   useGetSettingsQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
@@ -53,7 +53,6 @@ import {
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
   TOKEN_KEY,
-  TRANSFORMS_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -432,21 +431,6 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     </Stack>
                   </RemoteSyncSettingsSection>
                 )}
-
-              {/* Section 5: Transforms sync */}
-              {(isRemoteSyncEnabled || values?.[TYPE_KEY] === "read-write") && (
-                <RemoteSyncSettingsSection
-                  title={t`Transforms`}
-                  variant={variant}
-                >
-                  <FormSwitch
-                    label={t`Sync transforms with git`}
-                    description={t`When enabled, all transforms and transform tags will be synced.`}
-                    name={TRANSFORMS_KEY}
-                    size="sm"
-                  />
-                </RemoteSyncSettingsSection>
-              )}
 
               {/* Read-write mode info */}
               {isModalVariant && values?.[TYPE_KEY] === "read-write" && (

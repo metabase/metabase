@@ -9,15 +9,15 @@ import {
 } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
+import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,

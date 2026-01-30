@@ -12,7 +12,7 @@
 (deftest all-specs-have-required-keys-test
   (testing "Every spec has all required keys"
     (let [required-keys #{:model-type :model-key :identity :events :eligibility
-                          :archived-key :tracking :removal :export-path :enabled?}]
+                          :archived-key :tracking :removal :enabled?}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (let [missing-keys (set/difference required-keys (set (keys spec)))]
@@ -39,7 +39,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -78,15 +78,6 @@
           (is (keyword? scope-key)
               "removal :scope-key should be a keyword when present"))))))
 
-(deftest all-specs-have-valid-export-path-test
-  (testing "Every spec has valid export-path configuration"
-    (let [valid-path-types #{:collection-entity :table-path :field-path
-                             :segment-path :measure-path :transform-path :transform-tag-path}]
-      (doseq [[model-key spec] spec/remote-sync-specs]
-        (testing (str "Spec for " model-key)
-          (is (contains? valid-path-types (get-in spec [:export-path :type]))
-              (str "Invalid export-path type: " (get-in spec [:export-path :type]))))))))
-
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 
 (deftest spec-for-model-type-test
@@ -116,7 +107,7 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 12 (count types))))))
+      (is (= 13 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -151,7 +142,10 @@
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
-        (is (empty? excluded))))))
+        ;; NativeQuerySnippet is still excluded because Library isn't remote-synced
+        (is (not (contains? excluded "Transform")))
+        (is (not (contains? excluded "TransformTag")))
+        (is (contains? excluded "NativeQuerySnippet"))))))
 
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
@@ -235,20 +229,20 @@
 ;; The actual paths are tested in impl_test.clj integration tests which verify
 ;; the full export/import cycle with real database entities.
 
-;;; --------------------------------------------- Select Fields for Sync Tests -----------------------------------------
+;;; --------------------------------------------- Fields for Sync Tests -----------------------------------------------
 
-(deftest select-fields-for-sync-test
-  (testing "select-fields-for-sync returns spec fields"
+(deftest fields-for-sync-test
+  (testing "fields-for-sync returns spec fields"
     (is (= [:name :collection_id :display]
-           (spec/select-fields-for-sync "Card")))
+           (spec/fields-for-sync "Card")))
     (is (= [:name :collection_id]
-           (spec/select-fields-for-sync "Dashboard")))
-    (is (= [:name :id]
-           (spec/select-fields-for-sync "NativeQuerySnippet"))))
+           (spec/fields-for-sync "Dashboard")))
+    (is (= [:name :collection_id]
+           (spec/fields-for-sync "NativeQuerySnippet"))))
 
-  (testing "select-fields-for-sync returns default for unknown type"
+  (testing "fields-for-sync returns default for unknown type"
     (is (= [:id :name :collection_id]
-           (spec/select-fields-for-sync "UnknownModel")))))
+           (spec/fields-for-sync "UnknownModel")))))
 
 ;;; --------------------------------------------- Export Scope Tests -------------------------------------------------
 

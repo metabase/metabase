@@ -4,8 +4,9 @@ import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -28,6 +29,7 @@ import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/co
 import { LibraryEmptyState } from "metabase-enterprise/data-studio/common/components/LibraryEmptyState";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
+import { LibraryUpsellPage } from "metabase-enterprise/data-studio/upsells";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -89,6 +91,16 @@ function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
+  const hasLibraryFeature = useHasTokenFeature("data_studio");
+
+  if (!hasLibraryFeature) {
+    return <LibraryUpsellPage />;
+  }
+
+  return <LibrarySectionContent />;
+}
+
+function LibrarySectionContent() {
   const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,

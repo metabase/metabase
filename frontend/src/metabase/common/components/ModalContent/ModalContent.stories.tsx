@@ -3,7 +3,8 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ModalContent, {
+import {
+  ModalContent,
   ModalContentActionIcon,
   type ModalContentProps,
 } from "./index";

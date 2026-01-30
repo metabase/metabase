@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
@@ -1038,6 +1038,7 @@ export class UnconnectedDataSelector extends Component {
           onDismiss={this.handleDismiss}
           position="bottom-start"
           opened={this.isPopoverOpen()}
+          disabled={this.props.readOnly}
         >
           <Popover.Target>
             <Box

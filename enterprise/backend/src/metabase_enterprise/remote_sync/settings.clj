@@ -123,7 +123,11 @@
 (defn- sync-transform-tracking-on-change
   "Called when remote-sync-transforms setting changes."
   [_old-value new-value]
-  (sync-transform-tracking! (boolean new-value)))
+  ;; new-value may be a string "true"/"false" or a boolean, so we need to parse it
+  (let [enabled? (if (string? new-value)
+                   (parse-boolean new-value)
+                   (boolean new-value))]
+    (sync-transform-tracking! enabled?)))
 
 (defsetting remote-sync-transforms
   (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
@@ -193,3 +197,11 @@
           (when (and (contains? settings k)
                      (not (and (= k :remote-sync-token) obfuscated?)))
             (setting/set! k (k settings))))))))
+
+(defn library-is-remote-synced?
+  "Returns true if the Library collection exists and is remote-synced.
+   When true, all snippets and snippet collections should be synced."
+  []
+  (boolean
+   (when-let [library (collection/library-collection)]
+     (collection/remote-synced-collection? library))))

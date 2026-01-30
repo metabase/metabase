@@ -6,7 +6,7 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -24,6 +24,7 @@ import {
 } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import type { Transform, UserId } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";
@@ -34,16 +35,18 @@ import { UpdateTargetModal } from "./UpdateTargetModal";
 
 type TransformSettingsSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
 export const TransformSettingsSection = ({
   transform,
+  readOnly,
 }: TransformSettingsSectionProps) => {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   return (
     <Stack gap="2.5rem">
-      <OwnerSection transform={transform} />
+      <OwnerSection transform={transform} readOnly={readOnly} />
       <TitleSection
         label={t`Transform target`}
         description={t`Change what this transform generates and where.`}
@@ -51,13 +54,19 @@ export const TransformSettingsSection = ({
         <Group p="lg">
           <TargetInfo transform={transform} />
         </Group>
-        <Divider />
-        <Group p="lg">
-          {!isRemoteSyncReadOnly && <EditTargetButton transform={transform} />}
-          <EditMetadataButton transform={transform} />
-        </Group>
+        {!readOnly && (
+          <>
+            <Divider />
+            <Group p="lg">
+              {!isRemoteSyncReadOnly && (
+                <EditTargetButton transform={transform} />
+              )}
+              <EditMetadataButton transform={transform} />
+            </Group>
+          </>
+        )}
       </TitleSection>
-      <UpdateIncrementalSettings transform={transform} />
+      <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
     </Stack>
   );
 };
@@ -241,9 +250,10 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
 
 type OwnerSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-function OwnerSection({ transform }: OwnerSectionProps) {
+function OwnerSection({ transform, readOnly }: OwnerSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
@@ -279,18 +289,25 @@ function OwnerSection({ transform }: OwnerSectionProps) {
       description={t`Specify who is responsible for this transform.`}
     >
       <Group p="lg">
-        <UserInput
-          email={transform.owner_email ?? null}
-          label={t`Owner`}
-          userId={
-            !transform.owner_email && !transform.owner_user_id
-              ? "unknown"
-              : (transform.owner_user_id ?? null)
-          }
-          unknownUserLabel={t`No owner`}
-          onEmailChange={handleOwnerEmailChange}
-          onUserIdChange={handleOwnerUserIdChange}
-        />
+        {readOnly ? (
+          <>
+            <Text fw="bold">{t`Owner`}</Text>
+            <TransformOwnerAvatar transform={transform} />
+          </>
+        ) : (
+          <UserInput
+            email={transform.owner_email ?? null}
+            label={t`Owner`}
+            userId={
+              !transform.owner_email && !transform.owner_user_id
+                ? "unknown"
+                : (transform.owner_user_id ?? null)
+            }
+            unknownUserLabel={t`No owner`}
+            onEmailChange={handleOwnerEmailChange}
+            onUserIdChange={handleOwnerUserIdChange}
+          />
+        )}
       </Group>
     </TitleSection>
   );

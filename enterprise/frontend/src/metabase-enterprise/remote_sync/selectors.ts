@@ -61,9 +61,9 @@ export const getHasPendingMutation = createSelector(
 /**
  * Checks if the remote sync is enabled and in read-only mode.
  */
-export function getIsRemoteSyncReadOnly(state: State): boolean {
+export const getIsRemoteSyncReadOnly = (state: State): boolean => {
   return !!(
     getSetting(state, "remote-sync-enabled") &&
     getSetting(state, "remote-sync-type") === "read-only"
   );
-}
+};

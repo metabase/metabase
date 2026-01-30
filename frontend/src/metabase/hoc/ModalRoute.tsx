@@ -4,7 +4,7 @@ import * as React from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 

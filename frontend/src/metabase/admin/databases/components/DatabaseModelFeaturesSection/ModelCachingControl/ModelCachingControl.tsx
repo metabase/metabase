@@ -6,7 +6,7 @@ import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";

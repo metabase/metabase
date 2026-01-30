@@ -6,7 +6,7 @@ type IconButtonWrapperProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   circle?: boolean;
 };
 
-const IconButtonWrapper = styled(
+export const IconButtonWrapper = styled(
   forwardRef<HTMLButtonElement, IconButtonWrapperProps>(
     function IconButtonWrapper({ circle, type = "button", ...props }, ref) {
       return <button {...props} type={type} ref={ref} />;
@@ -19,6 +19,3 @@ const IconButtonWrapper = styled(
   border-radius: ${(props) => (props.circle ? "50%" : "6px")};
   cursor: pointer;
 `;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default IconButtonWrapper;

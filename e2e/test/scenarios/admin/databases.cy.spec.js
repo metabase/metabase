@@ -953,7 +953,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("not.exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -970,7 +970,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {

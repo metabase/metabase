@@ -2,10 +2,10 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
-import ErrorDetails from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";

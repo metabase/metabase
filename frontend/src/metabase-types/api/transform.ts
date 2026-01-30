@@ -25,6 +25,10 @@ export type Transform = {
   collection_id: number | null;
   created_at: string;
   updated_at: string;
+  source_readable: boolean;
+
+  // true when transform was deleted but still referenced by runs
+  deleted?: boolean;
 
   // creator fields
   creator_id?: UserId;
@@ -138,6 +142,7 @@ export type TransformTag = {
   name: string;
   created_at: string;
   updated_at: string;
+  can_run: boolean;
 };
 
 export type TransformJob = {

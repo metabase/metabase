@@ -4,7 +4,7 @@ import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
 import {
   Form,
