@@ -115,7 +115,7 @@
 
 (deftest ^:parallel matching-timestamp?-test
   (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
-    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+    (let [matching-timestamp? #'transforms-base.util/matching-timestamp?
           field-path          [:start_time]
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}

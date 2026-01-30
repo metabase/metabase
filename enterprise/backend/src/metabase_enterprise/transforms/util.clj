@@ -10,12 +10,10 @@
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.query-processor.pipeline :as qp.pipeline]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running.
