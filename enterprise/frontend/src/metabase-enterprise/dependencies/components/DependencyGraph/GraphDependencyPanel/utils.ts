@@ -11,7 +11,7 @@ import type {
   DependencySortOptions,
 } from "../../../types";
 import {
-  canHaveViewCount,
+  canNodeHaveViewCount,
   getCardType,
   getDependencyType,
 } from "../../../utils";
@@ -63,7 +63,7 @@ export function getAvailableSortColumns(
   return [
     "name",
     "location",
-    ...(canHaveViewCount(getDependencyType(groupType))
+    ...(canNodeHaveViewCount(getDependencyType(groupType))
       ? ["view-count" as const]
       : []),
   ];
@@ -72,7 +72,7 @@ export function getAvailableSortColumns(
 export function getDefaultSortOptions(
   groupType: DependencyGroupType,
 ): DependencySortOptions {
-  return canHaveViewCount(getDependencyType(groupType))
+  return canNodeHaveViewCount(getDependencyType(groupType))
     ? { column: "view-count", direction: "desc" }
     : { column: "name", direction: "asc" };
 }

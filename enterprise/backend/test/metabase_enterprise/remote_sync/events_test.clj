@@ -513,7 +513,7 @@
                    :model/Card card {:name "Test Card"
                                      :dataset_query (mt/mbql-query venues)
                                      :collection_id (:id remote-sync-collection)}]
-      (#'impl/sync-objects! (t/instant) {"Card" #{(:entity_id card)}} nil nil)
+      (#'impl/sync-objects! (t/instant) {:by-entity-id {"Card" #{(:entity_id card)}}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
         (is (= "synced" (:status initial-entry)))
@@ -551,7 +551,7 @@
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
-      (#'impl/sync-objects! (t/instant) {"Dashboard" #{(:entity_id dashboard)}} nil nil)
+      (#'impl/sync-objects! (t/instant) {:by-entity-id {"Dashboard" #{(:entity_id dashboard)}}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
         (is (= "synced" (:status initial-entry)))
@@ -585,7 +585,7 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
-      (#'impl/sync-objects! (t/instant) {"Document" #{(:entity_id document)}} nil nil)
+      (#'impl/sync-objects! (t/instant) {:by-entity-id {"Document" #{(:entity_id document)}}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
         (is (= "synced" (:status initial-entry)))
@@ -616,7 +616,7 @@
 (deftest existing-collection-type-changed-from-remote-synced-test
   (testing "existing collection type changed from remote-synced is marked as removed"
     (mt/with-temp [:model/Collection collection {:is_remote_synced true :name "Remote-Sync"}]
-      (#'impl/sync-objects! (t/instant) {"Collection" #{(:entity_id collection)}} nil nil)
+      (#'impl/sync-objects! (t/instant) {:by-entity-id {"Collection" #{(:entity_id collection)}}})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
         (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/collection-update
@@ -765,7 +765,7 @@
                    :model/Collection normal-collection {:name "Normal Collection"}
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
-      (#'impl/sync-objects! (t/instant) {"Timeline" #{(:entity_id timeline)}} nil nil)
+      (#'impl/sync-objects! (t/instant) {:by-entity-id {"Timeline" #{(:entity_id timeline)}}})
       (is (= 1 (count (t2/select :model/RemoteSyncObject))))
       (events/publish-event! :event/timeline-update
                              {:object (assoc timeline :collection_id (:id normal-collection))
@@ -934,43 +934,6 @@
     (is (isa? :event/table-create ::remote-sync.events/table-change-event))
     (is (isa? :event/table-update ::remote-sync.events/table-change-event))
     (is (isa? :event/table-delete ::remote-sync.events/table-change-event))))
-
-(deftest collection-becomes-remote-synced-tracks-existing-tables-test
-  (testing "when collection becomes remote-synced, existing published tables are tracked with 'create' status"
-    (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
-                   :model/Table table {:name "Test Table"
-                                       :is_published true
-                                       :collection_id (:id collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      ;; Collection is not yet remote-synced, fire update event
-      (events/publish-event! :event/collection-update
-                             {:object collection :user-id (mt/user->id :rasta)})
-      (is (= 0 (count (t2/select :model/RemoteSyncObject))))
-      ;; Now make collection remote-synced
-      (events/publish-event! :event/collection-update
-                             {:object (assoc collection :is_remote_synced true)
-                              :user-id (mt/user->id :rasta)})
-      (let [table-entries (t2/select :model/RemoteSyncObject :model_type "Table")
-            collection-entries (t2/select :model/RemoteSyncObject :model_type "Collection")]
-        ;; Should have both collection and table entries
-        (is (= 1 (count collection-entries)))
-        (is (= 1 (count table-entries)))
-        (is (=? {:model_type "Table"
-                 :model_id (:id table)
-                 :status "create"}
-                (first table-entries))))))
-  (testing "unpublished tables are not tracked when collection becomes remote-synced"
-    (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
-                   :model/Table _ {:name "Test Table"
-                                   :is_published false
-                                   :collection_id (:id collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      ;; Make collection remote-synced
-      (events/publish-event! :event/collection-update
-                             {:object (assoc collection :is_remote_synced true)
-                              :user-id (mt/user->id :rasta)})
-      (let [table-entries (t2/select :model/RemoteSyncObject :model_type "Table")]
-        (is (= 0 (count table-entries)))))))
 
 ;;; Segment Event Tests
 

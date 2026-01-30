@@ -252,15 +252,19 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values :preview_display] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
            visibility-type  :visibility_type
-           has-field-values :has_field_values} field-or-field-id]
+           has-field-values :has_field_values
+           preview-display  :preview_display} field-or-field-id]
       (boolean
        (and
-        (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+        (not (contains? #{:retired :sensitive :hidden} (keyword visibility-type)))
+        ;; preview_display is set to false by sync for fields that shouldn't have FieldValues
+        ;; (e.g. long text fields, JSON columns, auto-cruft columns). Defaults to true if not provided.
+        (not (false? preview-display))
         (not (isa? (keyword base-type) :type/field-values-unsupported))
         (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))

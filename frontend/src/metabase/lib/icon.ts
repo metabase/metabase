@@ -22,7 +22,8 @@ export type IconModel =
   | "question"
   | "transform"
   | "user"
-  | "nativequerysnippet";
+  | "nativequerysnippet"
+  | "pythonlibrary";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -59,6 +60,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   timeline: "calendar",
   transform: "transform",
   user: "person",
+  pythonlibrary: "code_block",
 };
 
 export type IconData = {

@@ -108,7 +108,7 @@
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution"]]]
+                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution" "transforms"]]]
    _query-params
    {:keys            [quantity]
     terms-of-service :terms_of_service} :- [:map
@@ -137,6 +137,10 @@
 
     (and (= product-type "python-execution")
          (not (premium-features/enable-python-transforms?)))
+    response-not-eligible
+
+    (and (= product-type "transforms")
+         (not (premium-features/enable-transforms?)))
     response-not-eligible
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))

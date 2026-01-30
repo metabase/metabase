@@ -528,6 +528,64 @@
   [_driver]
   nil)
 
+(defmulti fake-sync-table-name
+  "Return the table name to use for fake sync Table rows.
+   Default uses `db-qualified-table-name` (e.g., 'test_data_venues') for drivers
+   that share a single database across datasets (like Redshift, Oracle).
+   Drivers with separate databases per dataset (like Snowflake) should override
+   to return just the table name."
+  {:arglists '([driver database-name table-name]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-table-name ::test-extensions
+  [_driver database-name table-name]
+  (db-qualified-table-name database-name table-name))
+
+(defmulti fake-sync-database-type
+  "Return the database_type string for fake sync Field rows.
+   By default uses `sql.tx/field-base-type->sql-type` (the DDL type used to create columns).
+   Drivers where the reported type differs from the creation type (like Snowflake where
+   TEXT becomes VARCHAR, FLOAT becomes DOUBLE) should override to return what the
+   database actually reports in INFORMATION_SCHEMA."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-database-type ::test-extensions
+  [driver base-type]
+  ;; Default: use the DDL type (what we create columns with)
+  ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
+
+(defmulti fake-sync-base-type
+  "Return the base_type for fake sync Field rows.
+   By default returns the base-type from the test definition unchanged.
+   Drivers where the reported type differs (like Snowflake where INTEGER columns
+   are reported as NUMBER with base_type :type/Number) should override."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-base-type ::test-extensions
+  [_driver base-type]
+  ;; Default: use the base-type from the test definition unchanged
+  base-type)
+
+(defmulti fake-sync-native-base-type
+  "Return the base_type for fake sync Field rows when using native database types.
+   Called when base-type is a map like {:native \"timestamptz\"} and no effective-type
+   is specified. By default returns :type/*, but drivers should override this to
+   return the base_type that sync would actually produce for that native type.
+   For example, Snowflake should map \"timestamptz\" -> :type/DateTimeWithLocalTZ."
+  {:arglists '([driver native-type-string]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-native-base-type ::test-extensions
+  [_driver _native-type]
+  ;; Default: return :type/* for unknown native types
+  :type/*)
+
 (defn on-master-or-release-branch?
   "Returns true if running on master or a release-* branch.
    Detection methods (in priority order):
@@ -1208,7 +1266,7 @@
 (defmethod agg-venues-by-category-id :athena
   [_driver]
   "select category_id, array_agg(name)
-   from test_data.venues
+   from v3_test_data.venues
    group by category_id
    order by 1 asc
    limit 2;")
