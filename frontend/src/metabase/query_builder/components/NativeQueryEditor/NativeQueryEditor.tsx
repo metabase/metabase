@@ -323,73 +323,82 @@ export const NativeQueryEditor = forwardRef<
             initialHeight={getInitialEditorHeight({ query, availableHeight })}
             className={S.resizableArea}
           >
-            <CodeMirrorEditor
-              ref={editorRef}
-              query={question.query()}
-              proposedQuery={proposedQuestion?.query()}
-              readOnly={readOnly}
-              placeholder={placeholder}
-              highlightedLineNumbers={highlightedLineNumbers}
-              extensions={extensions}
-              onChange={handleChange}
-              onRunQuery={runQuery}
-              onSelectionChange={setNativeEditorSelectedRange}
-              onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-              onRightClickSelection={handleRightClickSelection}
-              onFormatQuery={handleFormatQuery}
-            />
+            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
+              <CodeMirrorEditor
+                ref={editorRef}
+                query={question.query()}
+                proposedQuery={proposedQuestion?.query()}
+                readOnly={readOnly}
+                placeholder={placeholder}
+                highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
+                onChange={handleChange}
+                onRunQuery={runQuery}
+                onSelectionChange={setNativeEditorSelectedRange}
+                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                onRightClickSelection={handleRightClickSelection}
+                onFormatQuery={handleFormatQuery}
+              />
 
-            <Stack m="1rem" gap="md" mt="auto">
-              {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                <>
-                  <Tooltip label={t`Accept proposed changes`} position="top">
-                    <Button
-                      data-testid="accept-proposed-changes-button"
-                      variant="filled"
-                      bg="success"
-                      px="0"
-                      w="2.5rem"
-                      onClick={() => {
-                        const proposedQuery =
-                          proposedQuestion.legacyNativeQuery();
-                        if (proposedQuery) {
-                          handleChange(proposedQuery.queryText());
-                          onAcceptProposed(proposedQuery.datasetQuery());
-                        }
-                      }}
-                    >
-                      <Icon name="check" />
-                    </Button>
-                  </Tooltip>
-                  <Tooltip label={t`Reject proposed changes`} position="top">
-                    <Button
-                      data-testid="reject-proposed-changes-button"
-                      w="2.5rem"
-                      px="0"
-                      variant="filled"
-                      bg="danger"
-                      onClick={onRejectProposed}
-                    >
-                      <Icon name="close" />
-                    </Button>
-                  </Tooltip>
-                </>
-              )}
-              <Flex gap="sm">
-                {extraButton}
-                {hasRunButton && !readOnly && (
-                  <NativeQueryEditorRunButton
-                    cancelQuery={cancelQuery}
-                    isResultDirty={isResultDirty}
-                    isRunnable={isRunnable}
-                    isRunning={isRunning}
-                    nativeEditorSelectedText={nativeEditorSelectedText}
-                    runQuery={runQuery}
-                    questionErrors={Lib.validateTemplateTags(question.query())}
-                  />
+              <Stack
+                m="1rem"
+                mt="auto"
+                display={readOnly ? "none" : undefined}
+                gap="md"
+              >
+                {proposedQuestion && onRejectProposed && onAcceptProposed && (
+                  <>
+                    <Tooltip label={t`Accept proposed changes`} position="top">
+                      <Button
+                        data-testid="accept-proposed-changes-button"
+                        variant="filled"
+                        bg="success"
+                        px="0"
+                        w="2.5rem"
+                        onClick={() => {
+                          const proposedQuery =
+                            proposedQuestion.legacyNativeQuery();
+                          if (proposedQuery) {
+                            handleChange(proposedQuery.queryText());
+                            onAcceptProposed(proposedQuery.datasetQuery());
+                          }
+                        }}
+                      >
+                        <Icon name="check" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip label={t`Reject proposed changes`} position="top">
+                      <Button
+                        data-testid="reject-proposed-changes-button"
+                        w="2.5rem"
+                        px="0"
+                        variant="filled"
+                        bg="danger"
+                        onClick={onRejectProposed}
+                      >
+                        <Icon name="close" />
+                      </Button>
+                    </Tooltip>
+                  </>
                 )}
-              </Flex>
-            </Stack>
+                <Flex gap="sm">
+                  {extraButton}
+                  {hasRunButton && !readOnly && (
+                    <NativeQueryEditorRunButton
+                      cancelQuery={cancelQuery}
+                      isResultDirty={isResultDirty}
+                      isRunnable={isRunnable}
+                      isRunning={isRunning}
+                      nativeEditorSelectedText={nativeEditorSelectedText}
+                      runQuery={runQuery}
+                      questionErrors={Lib.validateTemplateTags(
+                        question.query(),
+                      )}
+                    />
+                  )}
+                </Flex>
+              </Stack>
+            </Flex>
           </ResizableArea>
         )}
       </div>

@@ -267,6 +267,7 @@ export type VisualizationSettings = {
     | "rotate-90";
 
   // Y-axis
+  "graph.y_axis.auto_range"?: boolean;
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
   "graph.y_axis.axis_enabled"?: boolean;
