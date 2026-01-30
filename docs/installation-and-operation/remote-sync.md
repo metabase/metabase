@@ -373,16 +373,6 @@ If you have local uncommitted changes when trying to pull or switch branches, Me
 
 When in doubt, create a new branch and push changes to that branch. That way you won't lose any work.
 
-### Overwrite behavior
-
-Git is the source of truth. When you switch to a branch or pull changes that include a collection with an entity ID matching a collection on your instance, the local copy is overwritten with what's in Git.
-
-**Library overwrite warning:** If you're about to overwrite your Library and it has unsynced local changes, Metabase shows a warning. You can:
-
-- Push your local changes first to preserve them
-- Confirm the overwrite to use Git's version
-- Cancel to keep working locally
-
 ### Pulling changes automatically
 
 In Read-only mode, you can set Metabase to auto-sync changes from your main branch.
