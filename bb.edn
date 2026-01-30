@@ -209,18 +209,20 @@
              (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc "Quickly run tests locally. Pass dirs/files as arguments to run them."
+  {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
    :examples [["./bin/mage run-tests" "launch interactive test picker"]
               ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
-              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
-              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and test/metabase/api_keys"]
+              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]
+              ["./bin/mage run-tests metabase.config-test" "run all tests in the metabase.config-test namespace (by name)"]
+              ["./bin/mage run-tests metabase.config-test/config-test" "run a single test by namespace/test-name"]]
    ;; TODO: add option to select files as well as dirs from fzf with styles
    :options [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
                 ;; all, file, dir
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
-                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
+                [:string {:name "file-dir-ns-or-test" :description "Files, directories (recursive), namespaces, or namespace/test-name to test"}]]
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 

@@ -1266,7 +1266,7 @@
 (defmethod agg-venues-by-category-id :athena
   [_driver]
   "select category_id, array_agg(name)
-   from test_data.venues
+   from v3_test_data.venues
    group by category_id
    order by 1 asc
    limit 2;")
