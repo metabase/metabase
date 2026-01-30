@@ -56,8 +56,7 @@
                       :created-by #{1}})))))
 
     (testing "created at"
-      (is (= (cond-> #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric"}
-               config/ee-available? (conj "transform"))
+      (is (= #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric" "transform"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -105,8 +104,7 @@
                       :last-edited-at "past3days"})))))
 
     (testing "search native query"
-      (is (= (cond-> #{"dataset" "action" "card" "metric"}
-               config/ee-available? (conj "transform"))
+      (is (= #{"dataset" "action" "card" "metric" "transform"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:search-native-query true})))))))
@@ -118,8 +116,7 @@
            (search.filter/search-context->applicable-models
             (merge default-search-ctx
                    {:is-superuser? true
-                    :models (cond-> #{"dashboard" "card" "transform"}
-                              config/ee-available? (conj "transform"))}))
+                    :models #{"dashboard" "card" "transform"}}))
            "transform")))
 
     (testing "Non-superuser does not see transform in applicable models"
@@ -127,8 +124,7 @@
                 (search.filter/search-context->applicable-models
                  (merge default-search-ctx
                         {:is-superuser? false
-                         :models (cond-> #{"dashboard" "card"}
-                                   config/ee-available? (conj "transform"))}))
+                         :models #{"dashboard" "card" "transform"}}))
                 "transform"))))
 
     (testing "Non-superuser with transform in models set - transform is filtered out"
