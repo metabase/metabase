@@ -13,7 +13,7 @@ const setupPremium = async (
     tokenFeatures: {
       embedding_sdk: true,
     },
-    enterprisePlugins: ["sdk_subscriptions"],
+    enterprisePlugins: ["sdk_notifications"],
     component: InteractiveDashboard,
   });
 };

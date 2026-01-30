@@ -61,6 +61,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
         questionId: resourceId,
         drills: true,
         withDownloads: false,
+        withAlerts: false,
         withTitle: true,
         isSaveEnabled: false,
         initialSqlParameters: {},
