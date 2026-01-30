@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-
-import { Group, Pill } from "metabase/ui";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Box } from "metabase/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
+
+import S from "./TagList.module.css";
 
 type TagListProps = {
   tagIds: TransformTagId[];
@@ -9,16 +10,27 @@ type TagListProps = {
 };
 
 export function TagList({ tagIds, tags }: TagListProps) {
-  const tagById = useMemo(() => getTagById(tags), [tags]);
+  const tagById = getTagById(tags);
+  const currentTags = getTagList(tagIds, tagById);
+  const currentTagsLabel = currentTags.map((tag) => tag.name).join(", ");
 
   return (
-    <Group gap="sm">
-      {getTagList(tagIds, tagById).map((tag) => (
-        <Pill key={tag.id} c="text-primary" bg="background-secondary">
+    <Ellipsified tooltip={currentTagsLabel}>
+      {currentTags.map((tag) => (
+        <Box
+          key={tag.id}
+          component="span"
+          className={S.tag}
+          c="text-primary"
+          fw="bold"
+          bg="background-secondary"
+          px="sm"
+          bdrs="xs"
+        >
           {tag.name}
-        </Pill>
+        </Box>
       ))}
-    </Group>
+    </Ellipsified>
   );
 }
 

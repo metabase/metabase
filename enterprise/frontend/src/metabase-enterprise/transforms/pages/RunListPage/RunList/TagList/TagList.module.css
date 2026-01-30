@@ -1,0 +1,5 @@
+.tag {
+  &:not(:last-child) {
+    margin-right: var(--mantine-spacing-sm);
+  }
+}
