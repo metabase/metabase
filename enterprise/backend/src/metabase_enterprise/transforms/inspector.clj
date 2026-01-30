@@ -1,14 +1,19 @@
 (ns metabase-enterprise.transforms.inspector
   "Transform Inspector: Provides visibility into what data transformations are doing
    before and after they run. Generates a dashboard-like structure with visualization
-   cards for inspection purposes."
+   cards for inspection purposes.
+"
   (:require
    [clojure.string :as str]
    [macaw.ast :as macaw.ast]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.inspector.context :as inspector.context]
+   [metabase-enterprise.transforms.inspector.lenses.comparison]
+   [metabase-enterprise.transforms.inspector.lenses.core :as lenses.core]
+   [metabase-enterprise.transforms.inspector.lenses.generic]
+   [metabase-enterprise.transforms.inspector.lenses.join-analysis]
+   [metabase-enterprise.transforms.inspector.schema :as inspector.schema]
    [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -24,72 +29,14 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(comment
+  metabase-enterprise.transforms.inspector.lenses.comparison/keep-me
+  metabase-enterprise.transforms.inspector.lenses.generic/keep-me
+  metabase-enterprise.transforms.inspector.lenses.join-analysis/keep-me)
+
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Source Extraction ---------------------------------------------------
-
-;; TODO: this is likely duplicated
-
-(defmulti extract-sources
-  "Extract source table information for a transform.
-   Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
-  (fn [transform] (transforms.util/transform-source-type (:source transform))))
-
-(defmethod extract-sources :mbql
-  [{:keys [source]}]
-  (try
-    (let [query (-> (:query source)
-                    transforms.util/massage-sql-query
-                    qp.preprocess/preprocess)
-          table-ids (lib/all-source-table-ids query)]
-      (when (seq table-ids)
-        (let [tables (t2/select :model/Table :id [:in table-ids])]
-          (mapv (fn [table]
-                  {:table-id   (:id table)
-                   :table-name (:name table)
-                   :schema     (:schema table)
-                   :db-id      (:db_id table)})
-                tables))))
-    (catch Exception e
-      (log/warn e "Failed to extract sources from MBQL transform")
-      nil)))
-
-(defmethod extract-sources :native
-  [{:keys [source] :as transform}]
-  (try
-    (let [query (:query source)
-          db-id (transforms.util/transform-source-database transform)
-          database (t2/select-one :model/Database :id db-id)
-          driver-kw (keyword (:engine database))
-          deps (driver/native-query-deps driver-kw query)]
-      (when (seq deps)
-        (let [table-ids (keep :table deps)
-              tables (when (seq table-ids)
-                       (t2/select :model/Table :id [:in table-ids]))]
-          (mapv (fn [table]
-                  {:table-id   (:id table)
-                   :table-name (:name table)
-                   :schema     (:schema table)
-                   :db-id      (:db_id table)})
-                tables))))
-    (catch Exception e
-      (log/warn e "Failed to extract sources from native transform")
-      nil)))
-
-(defmethod extract-sources :python
-  [transform]
-  (try
-    (let [source-tables (get-in transform [:source :source-tables])
-          normalized (transforms.util/normalize-source-tables source-tables)]
-      (for [[_alias {:keys [table_id database_id schema table]}] normalized
-            :when table_id]
-        {:table-id   table_id
-         :table-name table
-         :schema     schema
-         :db-id      database_id}))
-    (catch Exception e
-      (log/warn e "Failed to extract sources from Python transform")
-      nil)))
+;; TODO: remove
 
 ;;; -------------------------------------------------- Join Extraction & Statistics ---------------------------------------------------
 
@@ -701,14 +648,6 @@
      :column-count (count fields)
      :fields       fields}))
 
-;;; -------------------------------------------------- Target Table ---------------------------------------------------
-
-(defn get-target-table
-  "Get the target table for a transform. Returns nil if the target doesn't exist."
-  [{:keys [target] :as transform}]
-  (let [db-id (transforms.i/target-db-id transform)]
-    (transforms.util/target-table db-id target)))
-
 ;;; -------------------------------------------------- Column Matching ---------------------------------------------------
 
 (defn- parse-joined-column-name
@@ -874,8 +813,8 @@
    Returns a dashboard-like structure with summary stats, join info, and visualization cards."
   [transform :- :map]
   (let [source-type (transforms.util/transform-source-type (:source transform))
-        sources (extract-sources transform)
-        target-table (get-target-table transform)]
+        sources (inspector.context/extract-sources transform)
+        target-table (inspector.context/get-target-table transform)]
 
     (if-not target-table
       ;; Target table doesn't exist - transform hasn't run yet
@@ -956,3 +895,31 @@
           ;; Add visited fields for frontend preselection
           (and visited-fields (seq (:all visited-fields)))
           (assoc :visited-fields visited-fields))))))
+
+;;; -------------------------------------------------- Lens-Based API (v2) ---------------------------------------------------
+
+(mu/defn discover-lenses :- ::inspector.schema/discovery-response
+  "Phase 1: Discover available lenses for a transform.
+   Returns structural metadata and available lens types.
+
+   This is a cheap operation - no query execution."
+  [transform :- :map]
+  (let [target-table (inspector.context/get-target-table transform)]
+    (assert target-table)
+    (let [ctx              (inspector.context/build-base-context transform)
+          available-lenses (lenses.core/available-lenses ctx)]
+      {:name             (str "Transform Inspector: " (:name transform))
+       :sources          (:sources ctx)
+       :target           (:target ctx)
+       :available-lenses available-lenses})))
+
+(mu/defn get-lens :- ::inspector.schema/lens
+  "Phase 2: Get full lens contents for a transform.
+   Returns sections, cards, and trigger definitions.
+
+   Cards contain dataset_query that FE executes.
+   Trigger evaluation is done client-side using the cljc heuristics module."
+  [transform :- :map
+   lens-id :- :string]
+  (let [ctx (inspector.context/build-lens-context transform)]
+    (lenses.core/get-lens ctx lens-id)))

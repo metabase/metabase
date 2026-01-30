@@ -533,6 +533,30 @@
     (api/read-check :model/Table table-id))
   (transforms.inspector/inspect-tables input-table-ids output-table-id))
 
+;;; -------------------------------------------------- Lens-Based Inspector API --------------------------------------------------
+
+(api.macros/defendpoint :get "/:id/inspect/lenses"
+  :- ::inspector.schema/discovery-response
+  "Phase 1: Discover available lenses for a transform.
+   Returns structural metadata and available lens types.
+   This is a cheap operation - no query execution."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (check-feature-enabled! transform)
+    (transforms.inspector/discover-lenses transform)))
+
+(api.macros/defendpoint :get "/:id/inspect/lens/:lens-id"
+  :- ::inspector.schema/lens
+  "Phase 2: Get full lens contents for a transform.
+   Returns sections, cards with dataset_query, and trigger definitions.
+   Frontend executes the cards and optionally posts results for feedback."
+  [{:keys [id lens-id]} :- [:map
+                            [:id ms/PositiveInt]
+                            [:lens-id ms/NonBlankString]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (check-feature-enabled! transform)
+    (transforms.inspector/get-lens transform lens-id)))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
   (handlers/routes
