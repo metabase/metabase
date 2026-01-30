@@ -176,6 +176,13 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       cy.wait(300);
       helpers.type(`{${key}}`, { focus: false });
     },
+    rejectCompletion() {
+      helpers.completions().should("be.visible");
+
+      // Avoid flakiness with CodeMirror not processing the escape immediately
+      cy.wait(300);
+      cy.realPress(["Escape"]);
+    },
     selectCompletion(name: string) {
       helpers.completions().should("be.visible");
 

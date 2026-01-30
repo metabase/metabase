@@ -29,6 +29,7 @@
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
             ;; get initialized fields
             workspace    (t2/select-one :model/Workspace (:id workspace))
+            graph        (ws.impl/get-or-calculate-graph! workspace)
             ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
@@ -39,7 +40,7 @@
                    :table      {:name   #(str/includes? % output-table)
                                 :schema ws-schema}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.impl/run-transform! workspace ws-transform))))
+                    (ws.impl/run-transform! workspace graph ws-transform))))
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
 
@@ -71,6 +72,7 @@
                                  :schema   nil
                                  :name     "ws_dryrun_test"}}
           ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+          graph        (ws.impl/get-or-calculate-graph! workspace)
           before       {:xf    (t2/count :model/Transform)
                         :xfrun (t2/count :model/TransformRun)}]
 
@@ -79,7 +81,7 @@
                  :data   {:rows [[1 "hello"] [2 "world"]]
                           :cols [{:name #"(ID)|(id)"} {:name #"(NAME)|(name)"}]}}
                 (mt/with-current-user (mt/user->id :crowberto)
-                  (ws.impl/dry-run-transform workspace ws-transform)))))
+                  (ws.impl/dry-run-transform workspace graph ws-transform)))))
 
       (testing "last_run_at is NOT updated in dry-run mode"
         (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
@@ -106,6 +108,7 @@
                                    :schema   nil
                                    :name     "ws_python_dryrun_test"}}
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            graph        (ws.impl/get-or-calculate-graph! workspace)
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
 
@@ -114,7 +117,7 @@
                    :data   {:rows [[1 "hello"] [2 "world"]]
                             :cols [{:name "id"} {:name "name"}]}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.impl/dry-run-transform workspace ws-transform)))))
+                    (ws.impl/dry-run-transform workspace graph ws-transform)))))
 
         (testing "last_run_at is NOT updated in dry-run mode"
           (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
@@ -263,6 +266,7 @@
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))))
 
+
 (deftest remap-sql-source-test
   (let [remap-sql-source #'ws.execute/remap-sql-source
         make-source      (fn [sql] {:type "query", :query {:database 1, :type :native, :stages [{:native sql}]}})]
@@ -297,3 +301,40 @@
       (testing label
         (is (= (make-source expected-sql)
                (remap-sql-source table-mapping (make-source input-sql))))))))
+
+(deftest run-transform-marks-not-stale-on-success
+  (testing "Successful transform run marks definition_changed=false"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)]
+        (testing "initially stale"
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (ws.tu/mock-run-transform! workspace-id t1-ref)
+
+        (testing "after run: definition_changed cleared"
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))
+
+(deftest transform-stale-lifecycle
+  (testing "Transform stale lifecycle: create -> run (not stale) -> update (stale)"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)]
+        (testing "sanity check that it's stale to start with"
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (testing "Run (mocked): should mark definition_changed as false"
+          (ws.tu/mock-run-transform! workspace-id t1-ref)
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (testing "Update source: should mark definition_changed as true"
+          (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id :ref_id t1-ref}
+                      {:source {:type "query" :query (mt/native-query {:query "SELECT 2 as id, 'world' as name"})}})
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))

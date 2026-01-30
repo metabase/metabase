@@ -30,51 +30,15 @@
 
 (use-fixtures :once (fn [thunk] (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table) (thunk))))
 
-(defn- append-part [url part]
-  (case [(str/starts-with? part "/")
-         (str/ends-with? url "/")]
-    [false false] (str url \/ part)
-    ([true false]
-     [false true]) (str url part)
-    (str url (subs part 1))))
-
-(defn ws-url [id & path]
-  (when (some nil? (cons id path))
-    (throw (ex-info "Cannot build workspace URL without key resources"
-                    {:id id, :path path})))
-  (reduce append-part (str "ee/workspace/" id) (map str path)))
+(def ws-url
+  "Alias for ws.tu/ws-url for convenience."
+  ws.tu/ws-url)
 
 (def ^:private ->native
   "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."
   (comp mt/native-query ws.tu/mbql->native))
 
-(deftest workspace-endpoints-require-superuser-test
-  (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
-    (testing "GET /api/ee/workspace requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/workspace"))))
-
-    (testing "GET /api/ee/workspace/:id requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "")))))
-
-    (testing "POST /api/ee/workspace requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/workspace"
-                                   {:name "Unauthorized Workspace"}))))
-
-    (testing "PUT /api/ee/workspace/:id requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
-                                   {:name "Updated"}))))
-
-    (testing "DELETE /api/ee/workspace/:id requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) "")))))
-
-    (testing "POST /api/ee/workspace/:id/promote requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
+;;; Authorization tests for all workspace routes are in service-user-authorization-test at the bottom of this file.
 
 (deftest workspace-crud-flow-test
   (let [workspace-name (str "Workspace " (random-uuid))
@@ -206,11 +170,6 @@
               "access_granted should be true after unarchive"))))))
 
 (deftest merge-workspace-test
-  (testing "POST /api/ee/workspace/:id/promote requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Promote Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge"))))))
-
   (testing "Cannot merge an already archived workspace"
     (ws.tu/with-workspaces! [workspace {:name "Archived Workspace"}]
       (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
@@ -697,17 +656,6 @@
               (is (= (:name ws-x-3)
                      (t2/select-one-fn :name :model/Transform :id new-global-id))))))))))
 
-(deftest create-workspace-transform-permissions-test
-  (testing "POST /api/ee/workspace/:id/transform requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Transform Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
-                                   {:name   "Should Fail"
-                                    :source {:type  "query"
-                                             :query {}}
-                                    :target {:type "table"
-                                             :name "should_fail"}}))))))
-
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
     (ws.tu/with-workspaces! [workspace {:name "Archived"}]
@@ -773,13 +721,6 @@
                                                    :query (->native (mt/mbql-query venues))}
                                           :target {:type "table"
                                                    :name "should_fail"}})))))))))
-
-(deftest add-entities-requires-superuser-test
-  (testing "POST /api/ee/workspace/:id/add requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
-                                   {:name "blah", :source {}, :target {}}))))))
 
 (deftest create-workspace-transform-test
   (mt/dataset transforms-dataset/transforms-test
@@ -905,74 +846,6 @@
 ;; outputs:         B (from X1) and C (from X2)
 ;; external-inputs: A (raw-inputs - outputs)
 
-;;;; Card dependency rejection tests
-
-(defn- query-with-source-card
-  "Create a pMBQL query that uses a card as its source."
-  [card-id]
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type    :mbql.stage/mbql
-               :source-card card-id}]})
-
-(defn- create-transform-with-card-source!
-  "Create a transform whose source query depends on a card.
-  The after-insert hook triggers dependency calculation automatically."
-  [card]
-  (t2/insert-returning-instance! :model/Transform
-                                 {:name   "Transform depending on card"
-                                  :source {:type  :query
-                                           :query (query-with-source-card (:id card))}
-                                  :target {:type     "table"
-                                           :database (mt/id)
-                                           :schema   "public"
-                                           :name     "card_dep_output"}}))
-
-(deftest add-transform-rejects-card-dependencies-test
-  (testing "Cannot add transforms that depend on cards"
-    (mt/with-temp [:model/Card card {:name          "Test Card"
-                                     :database_id   (mt/id)
-                                     :dataset_query (mt/mbql-query venues)}]
-      (let [tx        (create-transform-with-card-source! card)
-            ws        (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                            {:name        "Card Dep Workspace"
-                                             :database_id (mt/id)})
-            ;; TODO add validation
-            _response (mt/user-http-request :crowberto :post 200 #_403 (ws-url (:id ws) "/transform") tx)]
-        #_(is (re-find #"Cannot add transforms that depend on saved questions" ws))))))
-
-(deftest add-transform-rejects-transitive-card-dependencies-test
-  (testing "Cannot add transforms that transitively depend on cards"
-    (mt/with-temp [:model/Card card {:name          "Base Card"
-                                     :database_id   (mt/id)
-                                     :dataset_query (mt/mbql-query venues)}]
-      ;; tx1 depends on card
-      (let [tx1 (create-transform-with-card-source! card)
-            ;; tx2 depends on tx1 (via a manually created dependency - simulating transform chain)
-            tx2 (t2/insert-returning-instance! :model/Transform
-                                               {:name   "Transform 2 - depends on tx1"
-                                                :source {:type  :query
-                                                         :query {:database (mt/id)
-                                                                 :type     :native
-                                                                 :native   {:query "SELECT 1"}}}
-                                                :target {:type     "table"
-                                                         :database (mt/id)
-                                                         :schema   "public"
-                                                         :name     "tx2_output"}})]
-        ;; Create dependency: tx2 depends on tx1
-        (t2/insert! :model/Dependency
-                    {:from_entity_type "transform"
-                     :from_entity_id   (:id tx2)
-                     :to_entity_type   "transform"
-                     :to_entity_id     (:id tx1)})
-        ;; Try to add tx2 (which transitively depends on card via tx1) to workspace
-        (let [ws        (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                              {:name        "Transitive Card Dep Workspace"
-                                               :database_id (mt/id)})
-              ;; TODO add validation
-              _response (mt/user-http-request :crowberto :post 200 #_403 (ws-url (:id ws) "/transform") tx2)]
-          #_(is (re-find #"Cannot add transforms that depend on saved questions" response)))))))
-
 (deftest rename-workspace-test
   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
     (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
@@ -982,31 +855,12 @@
                (:name response)
                (t2/select-one-fn :name :model/Workspace :id (:id workspace)))))))
 
-  (testing "Requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace))
-                                   {:name "Should Fail"})))))
-
   (testing "Cannot rename an archived workspace"
     (ws.tu/with-workspaces! [workspace {:name "Archived"}]
       (t2/update! :model/Workspace (:id workspace) {:base_status :archived})
       (is (= "Cannot update an archived workspace"
              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
                                    {:name "Should Fail"}))))))
-
-(deftest add-transform-rejects-card-dependencies-to-existing-workspace-test
-  (testing "Cannot add transforms with card dependencies to existing workspace"
-    (mt/with-temp [:model/Card card {:name          "Test Card"
-                                     :database_id   (mt/id)
-                                     :dataset_query (mt/mbql-query venues)}]
-      (let [tx           (create-transform-with-card-source! card)
-            workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                    {:name        "Empty Workspace"
-                                                     :database_id (mt/id)}))
-            ;; TODO add validation
-            _response    (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/transform") tx)]
-        #_(is (re-find #"Cannot add transforms that depend on saved questions" response))))))
 
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :db_id (mt/id) :active true {:where [:not [:like :schema "mb__%"]]})]
@@ -1151,16 +1005,13 @@
           (is (=? {:transforms [{:ref_id (:ref_id tx1)}
                                 {:ref_id (:ref_id tx2)}]}
                   (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform")))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "/transform")))))))
-    (testing "returns empty list when no transforms"
-      (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
-        (is (= {:transforms []}
-               (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform"))))))
-    (testing "returns 404 for non-existent workspace"
-      (is (= "Not found."
-             (mt/user-http-request :crowberto :get 404 "ee/workspace/999999/transform"))))))
+        (testing "returns empty list when no transforms"
+          (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
+            (is (= {:transforms []}
+                   (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform"))))))
+        (testing "returns 404 for non-existent workspace"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/workspace/999999/transform"))))))))
 
 (deftest get-workspace-transform-by-id-test
   (testing "GET /api/ee/workspace/:id/transform/:txid"
@@ -1178,11 +1029,7 @@
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :get 404
-                                       (ws-url (:id workspace2) "/transform" (:ref_id transform))))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403
-                                       (ws-url (:id workspace1) "/transform" (:ref_id transform))))))))))
+                                       (ws-url (:id workspace2) "/transform" (:ref_id transform))))))))))
 
 (deftest update-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid"
@@ -1204,11 +1051,6 @@
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform))
-                                       {:name "Should Fail"}))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403
-                                       (ws-url (:id workspace1) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
 
 (deftest delete-workspace-transform-test
@@ -1219,14 +1061,12 @@
                                                            :workspace_id (:id workspace1)}
                      :model/WorkspaceTransform transform2 {:name         "To Delete"
                                                            :workspace_id (:id workspace1)}]
+        (is (:ref_id transform1) "Transform 1 created successfully")
+        (is (:ref_id transform2) "Transform 2 created successfully")
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform1))))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403
-                                       (ws-url (:id workspace1) "/transform" (:ref_id transform1))))))
         (testing "deletes transform"
           (is (nil? (mt/user-http-request :crowberto :delete 204
                                           (ws-url (:id workspace1) "/transform" (:ref_id transform2)))))
@@ -1249,22 +1089,6 @@
             (is (= "Not found."
                    (mt/user-http-request :crowberto :post 404
                                          (ws-url (:id ws2) "/transform/" ref-id "/run"))))))))))
-
-(deftest run-workspace-transform-permissions-test
-  (testing "POST /api/ee/workspace/:id/transform/:txid/run requires superuser"
-    (transforms.tu/with-transform-cleanup! [output-table "ws_api_perms"]
-      (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
-        (mt/with-temp [:model/Transform x1 {:name   "Transform"
-                                            :source {:type  "query"
-                                                     :query (mt/native-query {:query "SELECT count(*) from orders"})}
-                                            :target {:type     "table"
-                                                     :database (mt/id)
-                                                     :schema   "public"
-                                                     :name     output-table}}]
-          (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") x1))]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403
-                                         (ws-url (:id ws) "/transform/" ref-id "/run"))))))))))
 
 (deftest run-workspace-transform-success-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run successful execution"
@@ -1406,10 +1230,6 @@
             (is (= "Not found."
                    (mt/user-http-request :crowberto :post 404
                                          (ws-url (:id ws2) "/transform/" ref-id "/dry-run")))))
-          (testing "Not found by different user"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403
-                                         (ws-url (:id ws1) "/transform/" ref-id "/dry-run")))))
           (testing "returns succeeded status with data"
             (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))]
               (is (=? {:status "succeeded"
@@ -1752,9 +1572,7 @@
 
 (deftest enabled-test
   (let [url "ee/workspace/enabled"]
-    (testing "Requires admin"
-      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 url)))
-      (is (= {:supported true} (mt/user-http-request :crowberto :get 200 url))))
+    (is (= {:supported true} (mt/user-http-request :crowberto :get 200 url)))
     (mt/with-temp [:model/Database {db-1 :id} {:name "Y", :engine "postgres"}
                    ;; For some reason, using a real but unsupported value like "databricks" is returning support :-C
                    :model/Database {db-2 :id} {:name "N", :engine "crazy"}]
@@ -1847,11 +1665,6 @@
                                         :workspace {:id (:id ws1) :name "Workspace One"}}]}
                   (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
                                         :transform-id (:id tx)))))
-
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "ee/workspace/checkout"
-                                       :transform-id (:id tx)))))
 
         (testing "returns 404 for non-existent transform"
           (is (= "Not found."
@@ -2022,3 +1835,78 @@
           (testing "transform targets the specified database"
             (is (= other-db-id
                    (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
+
+;;; ============================================ Authorization Test Matrix ============================================
+
+(def ^:private admin-only-routes
+  "Routes that require superuser access"
+  [[:get  "/"]
+   [:post "/"]
+   [:get  "/enabled"]
+   [:get  "/database"]
+   [:get  "/checkout"]
+   [:put  "/:ws-id"]
+   [:post "/:ws-id/archive"]
+   [:post "/:ws-id/unarchive"]
+   [:delete "/:ws-id"]
+   [:post "/:ws-id/merge"]
+   [:post "/:ws-id/transform/:tx-id/merge"]
+   [:post "/test-resources"]])
+
+(def ^:private service-user-routes
+  "Routes that allow workspace service users ({:access :workspace})"
+  [[:get  "/:ws-id"]
+   [:get  "/:ws-id/table"]
+   [:get  "/:ws-id/log"]
+   [:get  "/:ws-id/graph"]
+   [:get  "/:ws-id/problem"]
+   [:get  "/:ws-id/external/transform"]
+   [:get  "/:ws-id/transform"]
+   [:post "/:ws-id/transform"]
+   [:get  "/:ws-id/transform/:tx-id"]
+   [:put  "/:ws-id/transform/:tx-id"]
+   [:delete "/:ws-id/transform/:tx-id"]
+   [:post "/:ws-id/transform/:tx-id/archive"]
+   [:post "/:ws-id/transform/:tx-id/unarchive"]
+   [:post "/:ws-id/run"]
+   [:post "/:ws-id/transform/:tx-id/run"]
+   [:post "/:ws-id/transform/:tx-id/dry-run"]
+   [:post "/:ws-id/transform/validate/target"]])
+
+(def ^:private permission-denied-msg "You don't have permissions to do that.")
+
+(deftest service-user-authorization-test
+  (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
+                           ws2 {:name "Workspace 2"}]
+    (mt/with-temp [:model/WorkspaceTransform tx {:name         "Test Transform"
+                                                 :workspace_id (:id ws1)}]
+      (let [service-user-1 (:execution_user ws1)
+            service-user-2 (:execution_user ws2)
+            resolve-url    (fn [pattern]
+                             (-> pattern
+                                 (str/replace ":ws-id" (str (:id ws1)))
+                                 (str/replace ":tx-id" (:ref_id tx))
+                                 (->> (str "ee/workspace"))))]
+
+        ;; We don't test whether an admin can access the routes - that's implicit in the regular tests for each route.
+
+        (testing "Admin-only routes reject service users and other non-admins"
+          (doseq [[method pattern] admin-only-routes
+                  :let [url (resolve-url pattern)]]
+            (testing (str method " " pattern)
+              (is (= permission-denied-msg (mt/user-http-request :rasta method 403 url))
+                  "Should reject regular users")
+              (is (= permission-denied-msg (mt/user-http-request service-user-1 method 403 url))
+                  "Should reject even its own service user"))))
+
+        (testing "Workspace routes allow own service user, reject others"
+          (doseq [[method pattern] service-user-routes
+                  :let [url (resolve-url pattern)]]
+            (testing (str method " " pattern)
+              ;; We check for NOT 403 since some routes may 404 without full setup.
+              ;; If auth passes, we won't get the permission-denied message.
+              (let [resp (mt/user-http-request-full-response service-user-1 method url)]
+                (is (not= 403 (:status_code resp)) "Should allow its own service user")
+                (is (not= permission-denied-msg (:body resp)) "Should allow its own service user"))
+              (is (= permission-denied-msg (mt/user-http-request service-user-2 method 403 url))
+                  "Should reject other service users"))))))))

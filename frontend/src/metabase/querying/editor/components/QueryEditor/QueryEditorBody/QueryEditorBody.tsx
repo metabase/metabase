@@ -164,7 +164,7 @@ export function QueryEditorBody({
         isResultDirty={isResultDirty}
         isShowingDataReference={isShowingDataReference}
         isShowingSnippetSidebar={isShowingSnippetSidebar}
-        runQuery={onRunQuery}
+        runQuery={hideRunButton ? undefined : onRunQuery}
         cancelQuery={onCancelQuery}
         databaseIsDisabled={shouldDisableDatabase}
         setDatasetQuery={handleNativeQueryChange}

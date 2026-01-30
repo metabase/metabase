@@ -1475,8 +1475,8 @@ LIMIT
       });
       H.NativeEditor.get().should("have.attr", "contenteditable", "false");
       H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
-      H.DataStudio.Transforms.editDefinition().should("be.visible");
-      H.DataStudio.Transforms.editDefinition().should(
+      H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
+      H.DataStudio.Transforms.editDefinitionButton().should(
         "have.attr",
         "href",
         "/data-studio/transforms/1/edit",
@@ -1490,8 +1490,8 @@ LIMIT
         .findByText("Animals")
         .closest("button")
         .should("be.disabled");
-      H.DataStudio.Transforms.editDefinition().should("be.visible");
-      H.DataStudio.Transforms.editDefinition().should(
+      H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
+      H.DataStudio.Transforms.editDefinitionButton().should(
         "have.attr",
         "href",
         "/data-studio/transforms/1/edit",
@@ -1644,7 +1644,7 @@ LIMIT
           cy.button("Cancel").click();
         });
 
-        H.DataStudio.Transforms.editDefinition().should("not.exist");
+        H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
         H.DataStudio.Transforms.saveChangesButton()
           .should("be.visible")
           .and("be.enabled");
@@ -1712,8 +1712,8 @@ LIMIT
         );
 
         cy.log("should be in read-only mode by default");
-        H.DataStudio.Transforms.editDefinition().should("be.visible");
-        H.DataStudio.Transforms.editDefinition().should(
+        H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
+        H.DataStudio.Transforms.editDefinitionButton().should(
           "have.attr",
           "href",
           "/data-studio/transforms/1/edit",
@@ -1763,7 +1763,7 @@ LIMIT
         cy.findByTestId("python-results").should("be.visible");
 
         cy.log("Edit definition button should be hidden in edit mode");
-        H.DataStudio.Transforms.editDefinition().should("not.exist");
+        H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
       },
     );
 
@@ -1801,7 +1801,7 @@ LIMIT
 
         cy.log("should return to read-only mode after save");
         cy.url().should("not.include", "/edit");
-        H.DataStudio.Transforms.editDefinition().should("be.visible");
+        H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
         cy.findByTestId("python-data-picker").should("not.exist");
         cy.findByTestId("python-results").should("not.exist");
       },
@@ -2872,7 +2872,7 @@ LIMIT
       cy.visit("/data-studio/transforms/1");
 
       cy.log("'edit definition' button is not displayed");
-      H.DataStudio.Transforms.editDefinition().should("not.exist");
+      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
 
       cy.log("visit the Run tab");
       H.DataStudio.Transforms.runTab().click();

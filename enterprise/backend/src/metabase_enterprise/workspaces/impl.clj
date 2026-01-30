@@ -254,11 +254,66 @@
   []
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
+(def ^:private workspace-transform-id-xf
+  "Transducer that extracts :id from workspace-transform nodes."
+  (keep #(when (= :workspace-transform (:node-type %)) (:id %))))
+
+(defn- workspace-transform-ids
+  "Extract ref-ids from nodes that are workspace transforms."
+  [nodes]
+  (into [] workspace-transform-id-xf nodes))
+
+(declare get-or-calculate-graph!)
+
+(defn upstream-ancestors
+  "Given a graph and a ref-id, find all upstream workspace transform ancestors.
+   Returns ancestor ref-ids (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents) and traverses upstream."
+  [graph ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform :id ref-id}]
+                       :rf (workspace-transform-id-xf conj))))
+
+(defn downstream-descendants
+  "Given a graph and a ref-id, find all downstream workspace transform descendants.
+   Returns descendant ref-ids (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents), reverses it for downstream traversal."
+  [graph ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (let [forward-edges (ws.dag/reverse-graph deps-map)]
+      (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform :id ref-id}]
+                         :rf (workspace-transform-id-xf conj)))))
+
+(defn- any-internal-ancestor-stale?
+  "Check if any in-workspace entity ancestor is stale.
+   Returns true if any ancestor had its definition or input data changed since it last ran.
+   Note: external transforms are not checked here, their staleness must be checked separately."
+  [graph workspace ref-id]
+  (when-let [upstream-ids (seq (upstream-ancestors graph ref-id))]
+    (t2/exists? :model/WorkspaceTransform
+                :workspace_id (:id workspace)
+                :ref_id [:in upstream-ids]
+                {:where [:or
+                         [:= :definition_changed true]
+                         [:= :input_data_changed true]]})))
+
+(defn- mark-descendants-input-datastale!
+  "Mark all transitive downstream workspace transforms as input_data_changed.
+   Traverses the dependency graph downward from the given transform."
+  [graph workspace ref-id]
+  (when-let [downstream-ids (seq (downstream-descendants graph ref-id))]
+    (t2/update! :model/WorkspaceTransform
+                {:workspace_id (:id workspace)
+                 :ref_id [:in downstream-ids]}
+                {:input_data_changed true})))
+
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
-  ([workspace transform]
-   (run-transform! workspace transform (build-remapping workspace)))
-  ([workspace transform remapping]
+  ([workspace graph transform]
+   (run-transform! workspace graph transform (build-remapping workspace graph)))
+  ([workspace graph transform remapping]
    (let [ref-id      (:ref_id transform)
          external-id (:id transform)
          start-time  (db-time)
@@ -277,10 +332,21 @@
                           :table      (select-keys (ws.execute/remapped-target transform remapping) [:schema :name])}))]
      ;; We don't currently keep any record of when enclosed transforms were run.
      (when ref-id
-       (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
-                   {:last_run_at      (:end_time result)
-                    :last_run_status  (name (:status result))
-                    :last_run_message (:message result)}))
+       (let [succeeded? (= :succeeded (:status result))
+             pre-stale? (any-internal-ancestor-stale? graph workspace ref-id)]
+         (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
+                     (cond-> {:last_run_at      (:end_time result)
+                              :last_run_status  (some-> (:status result) name)
+                              :last_run_message (:message result)}
+                       ;; On success, always clear definition_changed
+                       succeeded? (assoc :definition_changed false)
+                       ;; On success, clear input_data_changed only if no ancestors are stale
+                       (and succeeded? (not pre-stale?))
+                       (assoc :input_data_changed false)))
+         ;; Always mark transitive downstream as stale when we run successfully
+         ;; (their input data may have changed even if nothing was "stale")
+         (when succeeded?
+           (mark-descendants-input-datastale! graph workspace ref-id))))
      (when (= :succeeded (:status result))
        (if ref-id
          ;; Workspace transform
@@ -292,12 +358,10 @@
 (defn dry-run-transform
   "Execute the given workspace transform without persisting to the target table.
    Returns the first 2000 rows of transform output for preview purposes."
-  ([workspace transform]
-   (dry-run-transform workspace transform (build-remapping workspace)))
-  ([workspace transform remapping]
-   (ws.isolation/with-workspace-isolation
-     workspace
-     (ws.execute/run-transform-preview transform remapping))))
+  [workspace graph transform]
+  (ws.isolation/with-workspace-isolation
+    workspace
+    (ws.execute/run-transform-preview transform (build-remapping workspace graph))))
 
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 
@@ -329,9 +393,12 @@
 (defn increment-analysis-version!
   "Atomically increment analysis_version for a transform. Used to invalidate cached analysis."
   [workspace-id ref-id]
+  ;; definition_changed is also set by the WorkspaceTransform before-update hook when source/target changes,
+  ;; but we set it here as well since this function is also called for unarchive (where source/target don't change).
   (t2/update! :model/WorkspaceTransform
               {:workspace_id workspace-id, :ref_id ref-id}
-              {:analysis_version [:+ :analysis_version 1]}))
+              {:analysis_version [:+ :analysis_version 1]
+               :definition_changed true}))
 
 ;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
 
@@ -573,37 +640,114 @@
     ;; This decreases the chance of returning a graph with transient corruption.
     (or (graph-with-minimum-version ws-id (inc version)) graph)))
 
+(defn- fetch-staleness-map
+  "Fetch staleness flags for workspace transforms from the database.
+   Returns a map of ref-id -> {:definition_changed bool, :input_data_changed bool}.
+   Only fetches rows where at least one flag is true; callers can rely on nil-punning
+   for missing entries (missing = not stale)."
+  [ws-id ref-ids]
+  (when (seq ref-ids)
+    (t2/select-fn->fn :ref_id #(select-keys % [:definition_changed :input_data_changed])
+                      :model/WorkspaceTransform
+                      :workspace_id ws-id
+                      :ref_id [:in ref-ids]
+                      {:where [:or
+                               [:= :definition_changed true]
+                               [:= :input_data_changed true]]})))
+
+(defn- workspace-transform? [entity]
+  (= :workspace-transform (:node-type entity)))
+
+(defn- external-transform? [entity]
+  (= :external-transform (:node-type entity)))
+
+(defn- transform? [entity]
+  (#{:workspace-transform :external-transform} (:node-type entity)))
+
+(defn annotate-staleness
+  "Annotate graph entities with transitive staleness given a staleness-map.
+   An entity is stale if:
+   - Its definition_changed is true (definition changed since last run), OR
+   - Its input_data_changed is true (input data changed since last run), OR
+   - Any of its ancestors are stale (transitively)
+
+   Takes a graph and a staleness-map: {entity-id -> {:definition_changed bool, :input_data_changed bool}}
+   Returns updated graph with :stale, :definition_changed, :input_data_changed on each transform entity.
+
+   This propagates staleness down the graph using a BFS from all initially stale nodes.
+   Both workspace transforms and external transforms are marked as stale so they can be
+   executed in the correct toposorted order."
+  [graph staleness-map]
+  (let [locally-stale? (fn [entity]
+                         (let [staleness (get staleness-map (:id entity))]
+                           (or (:definition_changed staleness)
+                               (:input_data_changed staleness))))
+        init-stale     (filter (every-pred workspace-transform? locally-stale?)
+                               (:entities graph))
+        forward-edges  (some-> (:dependencies graph) ws.dag/reverse-graph)
+        ;; BFS traverses through ALL nodes (including external transforms) to find all stale transforms
+        all-reachable  (if forward-edges
+                         (ws.dag/bfs-reduce forward-edges init-stale :include-start? true :init #{})
+                         (set init-stale))
+        ;; Include both workspace and external transforms in the stale set
+        all-stale      (set (filter transform? all-reachable))
+        annotate       (fn [entity]
+                         (cond
+                           (workspace-transform? entity)
+                           (-> entity
+                               (merge (get staleness-map (:id entity)
+                                           {:definition_changed false :input_data_changed false}))
+                               (assoc :stale (contains? all-stale entity)))
+
+                           (external-transform? entity)
+                           (assoc entity :stale (contains? all-stale entity))
+
+                           :else
+                           entity))]
+    (update graph :entities #(mapv annotate %))))
+
+(defn with-staleness
+  "Annotate graph entities with transitive staleness.
+   Takes a workspace and a graph, fetches staleness from the database, and annotates the graph.
+   Returns updated graph with :stale, :definition_changed, :input_data_changed on each workspace transform entity.
+
+   Use `annotate-staleness` directly if you already have a staleness-map."
+  [{ws-id :id} graph]
+  (let [staleness-map (->> (:entities graph) workspace-transform-ids (fetch-staleness-map ws-id))]
+    (annotate-staleness graph staleness-map)))
+
 (defn get-or-calculate-graph!
   "Return the dependency graph for a workspace.
    Uses cached graph if version matches, otherwise recalculates it.
    Thread-safe via epochal versioning.
-   Also syncs workspace_output_external and workspace_input_external tables when recalculating."
+   Also syncs workspace_output_external and workspace_input_external tables when recalculating.
+
+   Use `with-staleness` to annotate the graph with transitive staleness."
   [{ws-id :id, graph-version :graph_version :as workspace}]
   (or (fully-persisted-graph ws-id graph-version)
       (calculate-and-persist-graph! workspace graph-version)))
 
 (defn- transforms-to-execute
-  "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
-  [{ws-id :id :as workspace} & {:keys [stale-only?]}]
-  ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
-  ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
-  ;; Why is there all this weird code then? To avoid unused references.
-  (let [stale-clause (if stale-only? {:where [:= :stale true]} {})
-        entities     (:entities (get-or-calculate-graph! workspace))
+  "Given a workspace, graph, and an optional filter, return the global and workspace definitions to run, in order."
+  [{ws-id :id :as workspace} graph & {:keys [stale-only?]}]
+  (let [graph        (cond->> graph
+                       stale-only? (with-staleness workspace))
+        entities     (:entities graph)
+        entities     (if stale-only?
+                       (filter :stale entities)
+                       entities)
         type->ids    (u/group-by :node-type :id entities)
         id->tx       (merge
                       {}
                       (when-let [ids (seq (type->ids :external-transform))]
                         (t2/select-fn->fn :id identity
                                           [:model/Transform :id :name :source :target]
-                                          :id [:in ids]
-                                          stale-clause))
+                                          :id [:in ids]))
                       (when-let [ref-ids (seq (type->ids :workspace-transform))]
                         (t2/select-fn->fn :ref_id identity
                                           [:model/WorkspaceTransform :ref_id :name :source :target]
                                           :workspace_id ws-id
-                                          :ref_id [:in ref-ids]
-                                          stale-clause)))]
+                                          :ref_id [:in ref-ids])))]
     (keep (comp id->tx :id) entities)))
 
 (defn- id->str [ref-id-or-id]
@@ -613,16 +757,16 @@
 
 (defn execute-workspace!
   "Execute all the transforms within a given workspace."
-  [workspace & {:keys [stale-only?] :or {stale-only? false}}]
+  [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
-        remapping (build-remapping workspace)]
+        remapping (build-remapping workspace graph)]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
          (try
            ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (run-transform! workspace transform remapping)))
+           (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
              (update acc :succeeded conj id-str)
              ;; Perhaps the status might indicate it never ran?
              (update acc :failed conj id-str))
@@ -632,4 +776,4 @@
      {:succeeded []
       :failed    []
       :not_run   []}
-     (transforms-to-execute workspace {:stale-only stale-only?}))))
+     (transforms-to-execute workspace graph {:stale-only stale-only?}))))

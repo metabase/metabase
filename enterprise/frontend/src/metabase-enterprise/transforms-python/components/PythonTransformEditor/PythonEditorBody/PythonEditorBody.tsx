@@ -55,7 +55,8 @@ export function PythonEditorBody({
   onRejectProposed,
 }: PythonEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
-  const editorHeight = useInitialEditorHeight(isEditMode);
+  const showResizeHandle = isEditMode && withDebugger;
+  const editorHeight = useInitialEditorHeight(isEditMode, showResizeHandle);
   const dispatch = useDispatch();
 
   const navigateToCommonLibrary = useCallback(
@@ -84,80 +85,100 @@ export function PythonEditorBody({
     [navigateToCommonLibrary],
   );
 
-  return (
-    <ResizableBox
-      axis="y"
-      height={editorHeight}
-      handle={<ResizableBoxHandle />}
-      resizeHandles={!isEditMode || !withDebugger ? [] : ["s"]}
-      style={isResizing ? undefined : { transition: "height 0.25s" }}
-      onResizeStart={() => setIsResizing(true)}
-      onResizeStop={() => setIsResizing(false)}
-    >
-      <Flex h="100%" align="end" bg="background-secondary" pos="relative">
-        <PythonEditor
-          value={source}
-          proposedValue={proposedSource}
-          onChange={onChange}
-          withPandasCompletions
-          readOnly={!isEditMode || disabled}
-          extensions={[clickableTokensExtension]}
-          data-testid="python-editor"
-        />
+  const editorContent = (
+    <Flex h="100%" align="end" bg="background-secondary" pos="relative">
+      <PythonEditor
+        value={source}
+        proposedValue={proposedSource}
+        onChange={onChange}
+        withPandasCompletions
+        readOnly={!isEditMode || disabled}
+        extensions={[clickableTokensExtension]}
+        data-testid="python-editor"
+      />
 
-        {isEditMode && (
-          <Stack m="1rem" gap="md" mt="auto">
-            {proposedSource && onRejectProposed && onAcceptProposed && (
-              <>
-                <Tooltip label={t`Accept proposed changes`} position="left">
-                  <Button
-                    data-testid="accept-proposed-changes-button"
-                    variant="filled"
-                    bg="success"
-                    px="0"
-                    w="2.5rem"
-                    onClick={onAcceptProposed}
-                  >
-                    <Icon name="check" />
-                  </Button>
-                </Tooltip>
-                <Tooltip label={t`Reject proposed changes`} position="left">
-                  <Button
-                    data-testid="reject-proposed-changes-button"
-                    w="2.5rem"
-                    px="0"
-                    variant="filled"
-                    bg="danger"
-                    onClick={onRejectProposed}
-                  >
-                    <Icon name="close" />
-                  </Button>
-                </Tooltip>
-              </>
-            )}
-            {!hideRunButton && (
-              <RunButtonWithTooltip
-                disabled={!isRunnable}
-                isRunning={isRunning}
-                isDirty={isDirty}
-                onRun={onRun}
-                onCancel={onCancel}
-                getTooltip={() => t`Run Python script`}
-              />
-            )}
-          </Stack>
-        )}
-      </Flex>
-    </ResizableBox>
+      {isEditMode && (
+        <Stack m="1rem" gap="md" mt="auto">
+          {proposedSource && onRejectProposed && onAcceptProposed && (
+            <>
+              <Tooltip label={t`Accept proposed changes`} position="left">
+                <Button
+                  data-testid="accept-proposed-changes-button"
+                  variant="filled"
+                  bg="success"
+                  px="0"
+                  w="2.5rem"
+                  onClick={onAcceptProposed}
+                >
+                  <Icon name="check" />
+                </Button>
+              </Tooltip>
+              <Tooltip label={t`Reject proposed changes`} position="left">
+                <Button
+                  data-testid="reject-proposed-changes-button"
+                  w="2.5rem"
+                  px="0"
+                  variant="filled"
+                  bg="danger"
+                  onClick={onRejectProposed}
+                >
+                  <Icon name="close" />
+                </Button>
+              </Tooltip>
+            </>
+          )}
+          {!hideRunButton && (
+            <RunButtonWithTooltip
+              disabled={!isRunnable}
+              isRunning={isRunning}
+              isDirty={isDirty}
+              onRun={onRun}
+              onCancel={onCancel}
+              getTooltip={() => t`Run Python script`}
+            />
+          )}
+        </Stack>
+      )}
+    </Flex>
+  );
+
+  if (showResizeHandle) {
+    return (
+      <ResizableBox
+        axis="y"
+        height={editorHeight}
+        handle={<ResizableBoxHandle />}
+        resizeHandles={["s"]}
+        style={isResizing ? undefined : { transition: "height 0.25s" }}
+        onResizeStart={() => setIsResizing(true)}
+        onResizeStop={() => setIsResizing(false)}
+      >
+        {editorContent}
+      </ResizableBox>
+    );
+  }
+
+  return (
+    <Flex h="100%" direction="column">
+      {editorContent}
+    </Flex>
   );
 }
 
-function useInitialEditorHeight(isEditMode?: boolean) {
+function useInitialEditorHeight(
+  isEditMode?: boolean,
+  showResizeHandle?: boolean,
+) {
   const { height: windowHeight } = useWindowSize();
   const availableHeight = windowHeight - HEADER_HEIGHT;
 
   if (!isEditMode) {
     // When not in edit mode, we don't need to split the container to show the results panel on the bottom
+    return availableHeight;
+  }
+
+  if (!showResizeHandle) {
+    // No preview panel (e.g. workspace) – height is not used; container uses 100%
     return availableHeight;
   }
 

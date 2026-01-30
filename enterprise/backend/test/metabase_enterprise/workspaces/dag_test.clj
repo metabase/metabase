@@ -122,6 +122,93 @@
             {:check-outs   #{:x3 :m6 :m10 :m13}
              :dependencies (dag-abstract/expand-shorthand example-graph)})))))
 
+;;;; Graph utility tests
+
+(deftest reverse-graph-test
+  (testing "empty graph"
+    (is (= {} (ws.dag/reverse-graph {}))))
+
+  (testing "single edge"
+    (is (= {:a [:b]}
+           (ws.dag/reverse-graph {:b [:a]}))))
+
+  (testing "chain graph - reverses direction"
+    (is (= {:a [:b], :b [:c], :c [:d]}
+           (ws.dag/reverse-graph {:b [:a], :c [:b], :d [:c]}))))
+
+  (testing "diamond graph - a -> b -> d, a -> c -> d"
+    (is (= {:a [:b :c], :b [:d], :c [:d]}
+           (ws.dag/reverse-graph {:b [:a], :c [:a], :d [:b :c]}))))
+
+  (testing "multiple parents become multiple children - x has parents [a b c] => a, b, c each get child x"
+    (is (= {:a [:x], :b [:x], :c [:x]}
+           (ws.dag/reverse-graph {:x [:a :b :c]})))))
+
+(deftest bfs-reduce-test
+  (testing "empty adjacency returns empty"
+    (is (= [] (ws.dag/bfs-reduce {} [:a]))))
+
+  (testing "no neighbors returns empty"
+    (is (= [] (ws.dag/bfs-reduce {:a []} [:a]))))
+
+  (testing "single hop"
+    (is (= [:b :c]
+           (ws.dag/bfs-reduce {:a [:b :c]} [:a]))))
+
+  (testing "chain traversal - collects all reachable nodes"
+    (let [graph {:a [:b], :b [:c], :c [:d], :d []}]
+      (is (= [:b :c :d] (ws.dag/bfs-reduce graph [:a])))
+      (is (= [:c :d] (ws.dag/bfs-reduce graph [:b])))
+      (is (= [:d] (ws.dag/bfs-reduce graph [:c])))
+      (is (= [] (ws.dag/bfs-reduce graph [:d])))))
+
+  (testing "diamond graph - no duplicates (a -> b -> d, a -> c -> d)"
+    (let [graph {:a [:b :c], :b [:d], :c [:d], :d []}]
+      (is (= [:b :c :d] (ws.dag/bfs-reduce graph [:a])))))
+
+  (testing "works with map nodes (like workspace transform nodes)"
+    (let [tx1 {:node-type :workspace-transform :id "tx1"}
+          tx2 {:node-type :workspace-transform :id "tx2"}
+          tx3 {:node-type :workspace-transform :id "tx3"}
+          tbl {:node-type :table :id {:db 1 :schema "public" :table "foo"}}
+          graph {tx1 [tx2 tbl], tx2 [tx3], tx3 [], tbl []}]
+      (is (= [tx2 tbl tx3] (ws.dag/bfs-reduce graph [tx1])))
+      (is (= [tx3] (ws.dag/bfs-reduce graph [tx2])))))
+
+  (testing "handles cycles gracefully - a -> b -> c -> a (cycle), should not infinite loop"
+    (let [graph {:a [:b], :b [:c], :c [:a]}]
+      (is (= [:b :c :a] (ws.dag/bfs-reduce graph [:a])))))
+
+  (testing "include-start? option"
+    (let [graph {:a [:b], :b [:c], :c []}]
+      (is (= [:a :b :c] (ws.dag/bfs-reduce graph [:a] :include-start? true)))
+      (is (= [:b :c] (ws.dag/bfs-reduce graph [:a] :include-start? false)))))
+
+  (testing "multiple start nodes"
+    (let [graph {:a [:x], :b [:y], :x [], :y []}]
+      (is (= [:x :y] (ws.dag/bfs-reduce graph [:a :b])))
+      (is (= [:a :b :x :y] (ws.dag/bfs-reduce graph [:a :b] :include-start? true)))))
+
+  (testing "traverses through different node types"
+    (let [tx1 {:node-type :workspace-transform :id "tx1"}
+          tx2 {:node-type :workspace-transform :id "tx2"}
+          ext {:node-type :external-transform :id "ext"}
+          graph {tx1 [ext], ext [tx2], tx2 []}]
+      (is (= [ext tx2] (ws.dag/bfs-reduce graph [tx1])))))
+
+  (testing "custom :init collects into a set"
+    (let [graph {:a [:b :c], :b [:d], :c [:d], :d []}]
+      (is (= #{:b :c :d} (ws.dag/bfs-reduce graph [:a] :init #{})))
+      (is (= #{:a :b :c :d} (ws.dag/bfs-reduce graph [:a] :init #{} :include-start? true)))))
+
+  (testing "custom :rf filters during traversal"
+    (let [tx1 {:node-type :workspace-transform :id "t1"}
+          tx2 {:node-type :workspace-transform :id "t2"}
+          tbl {:node-type :table :id "tbl"}
+          graph {tx1 [tx2 tbl], tx2 [], tbl []}
+          xf (keep #(when (= :workspace-transform (:node-type %)) (:id %)))]
+      (is (= ["t2"] (ws.dag/bfs-reduce graph [tx1] :rf (xf conj)))))))
+
 (deftest collapse-test
   (is (= {:x1 [:x2 :x3]
           :x2 [:t3]

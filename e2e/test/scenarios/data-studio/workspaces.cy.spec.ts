@@ -261,7 +261,7 @@ describe("scenarios > data studio > workspaces", () => {
         verifyAndCloseToast("Workspace archived successfully");
         cy.log("Updates setup logs (GDGT-1583)");
         Workspaces.getWorkspaceContent()
-          .findByText("Workspace is archived")
+          .findByText(/Workspace is archived/)
           .should("be.visible");
         Workspaces.getWorkspaceItem(workspaceName).should(
           "contain.text",
@@ -1259,7 +1259,9 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       H.NativeEditor.type(" LIMIT 1;");
-      cy.findByTestId("run-button").click();
+      Workspaces.getSaveTransformButton().click();
+      cy.log("open preview");
+      cy.findByLabelText("Get Answer").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Preview (SQL transform)", [
@@ -1277,6 +1279,77 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
+    it("should open preview on Cmd+Enter when no unsaved changes, and not when there are changes", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open SQL transform and save");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Cmd+Enter opens preview when transform is saved");
+      H.NativeEditor.focus();
+      cy.realPress([
+        Cypress.platform === "darwin" ? "Meta" : "Control",
+        "Enter",
+      ]);
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("Preview (SQL transform)", [
+          "Setup",
+          "Graph",
+          "SQL transform",
+          "Preview (SQL transform)",
+        ]);
+      });
+
+      cy.log("Close preview tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByRole("tab", { name: "Preview (SQL transform)" })
+          .icon("close")
+          .click();
+      });
+
+      cy.log("Go back to SQL transform tab and make a change");
+      Workspaces.getWorkspaceContent()
+        .findByRole("tab", { name: "SQL transform" })
+        .click();
+      H.NativeEditor.type(" ");
+
+      cy.log("Cmd+Enter does not open preview when there are unsaved changes");
+      cy.realPress([
+        Cypress.platform === "darwin" ? "Meta" : "Control",
+        "Enter",
+      ]);
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
+      });
+    });
+
+    it("should not show Python transform preview section in workspace", () => {
+      H.setPythonRunnerSettings();
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open Python transform in workspace");
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
+
+      cy.log("Inline preview section (Results/Output) should not be displayed");
+      cy.findByTestId("python-results").should("not.exist");
+
+      cy.log("Python editor should fill available height (no white box)");
+      const MIN_EDITOR_HEIGHT = 590;
+      cy.findByTestId("python-editor").should(($editor) => {
+        const height = $editor.height();
+        expect(height).to.be.at.least(
+          MIN_EDITOR_HEIGHT,
+          `Editor height should be at least ${MIN_EDITOR_HEIGHT}px, got ${height}`,
+        );
+      });
+    });
+
     it(
       "should show ad-hoc results for Python transform",
       { tags: ["@python"] },
@@ -1291,7 +1364,8 @@ describe("scenarios > data studio > workspaces", () => {
           .findByText("Python transform")
           .click();
 
-        cy.findByTestId("run-button").click();
+        Workspaces.getSaveTransformButton().click();
+        cy.findByLabelText("Get Answer").click();
 
         Workspaces.getWorkspaceTabs().within(() => {
           H.tabsShouldBe("Preview (Python transform)", [
@@ -1318,7 +1392,8 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       H.NativeEditor.type(" INVALID SYNTAX");
-      cy.findByTestId("run-button").click();
+      Workspaces.getSaveTransformButton().click();
+      cy.findByLabelText("Get Answer").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Preview (SQL transform)", [
@@ -1347,7 +1422,8 @@ describe("scenarios > data studio > workspaces", () => {
           .click();
 
         H.PythonEditor.clear().paste("invalid python syntax !!!");
-        cy.findByTestId("run-button").click();
+        Workspaces.getSaveTransformButton().click();
+        cy.findByLabelText("Get Answer").click();
 
         Workspaces.getWorkspaceContent().within(() => {
           H.tabsShouldBe("Preview (Python transform)", [
@@ -2298,7 +2374,9 @@ describe("scenarios > data studio > workspaces", () => {
         .findByRole("menuitem", { name: /SQL Transform/ })
         .click();
       H.NativeEditor.type("INVALID SQL QUERY");
+      H.NativeEditor.rejectCompletion();
       Workspaces.getSaveTransformButton().click();
+
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Failing transform");
         cy.findByText("Save").click();

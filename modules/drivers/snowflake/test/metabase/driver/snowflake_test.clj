@@ -295,28 +295,26 @@
 
 (deftest describe-database-test
   (mt/test-driver :snowflake
-    (testing "describe-database"
-      (let [expected {:tables
-                      #{{:name "users",      :schema "PUBLIC", :description nil}
-                        {:name "venues",     :schema "PUBLIC", :description nil}
-                        {:name "checkins",   :schema "PUBLIC", :description nil}
-                        {:name "categories", :schema "PUBLIC", :description nil}
-                        {:name "orders",     :schema "PUBLIC", :description nil}
-                        {:name "people",     :schema "PUBLIC", :description nil}
-                        {:name "products",   :schema "PUBLIC", :description nil}
-                        {:name "reviews",    :schema "PUBLIC", :description nil}}}]
-        (testing "should work with normal details"
-          (is (= expected
-                 (driver/describe-database :snowflake (mt/db)))))
-        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
-          (is (= expected
-                 (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
-        (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
-          (is (thrown? Exception
-                       (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
-        (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
-          (is (= expected
-                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+    (mt/dataset airports
+      (testing "describe-database"
+        (let [expected {:tables
+                        #{{:name "continent", :schema "PUBLIC", :description nil}
+                          {:name "municipality", :schema "PUBLIC", :description nil}
+                          {:name "region", :schema "PUBLIC", :description nil}
+                          {:name "country", :schema "PUBLIC", :description nil}
+                          {:name "airport", :schema "PUBLIC", :description nil}}}]
+          (testing "should work with normal details"
+            (is (= expected
+                   (driver/describe-database :snowflake (mt/db)))))
+          (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
+            (is (= expected
+                   (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
+          (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
+            (is (thrown? Exception
+                         (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+          (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
+            (is (= expected
+                   (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"

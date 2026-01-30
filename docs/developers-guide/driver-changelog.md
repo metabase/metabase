@@ -6,13 +6,18 @@ title: Driver interface changelog
 
 ## Metabase 0.59.0
 
-- Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
+- Added `sql-jdbc.execute/db-type-name` multimethod. Override this method when your sql-jdbc-based driver needs to
+  customize how database type names are retrieved from result set metadata, for example when certain types need to be
+  remapped based on precision or connection settings. For example, the `:mysql` implementation remaps `TINYINT` with
+  precision 1 to `BIT` (boolean), ensuring type consistency between sync and query execution.
 
 - Added workspace isolation multimethods for enterprise workspaces feature:
-  - `init-workspace-isolation!` - Initialize database isolation for a workspace (create isolated schema/database and user credentials)
+  - `init-workspace-isolation!`    - Initialize database isolation for a workspace by creating an isolated schema or
+                                     database with user credentials
   - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation
   - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user
-  - `check-isolation-permissions` - Check if database connection has sufficient permissions for workspace isolation by testing the actual operations
+  - `check-isolation-permissions`  - Check if the database connection has sufficient permissions for workspace isolation
+                                     by testing the actual operations
 
 ## Metabase 0.58.0
 
@@ -44,10 +49,17 @@ title: Driver interface changelog
   longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
   `qp.add.source-column-alias` with parent column names as needed.
 
-- Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
-  metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
-  metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
-  and metabase.driver.sql/default-schema to implement sql transforms.
+- Added the following driver methods to implement sql transforms.
+  - metabase.driver/compile-drop-table
+  - metabase.driver/compile-transform
+  - metabase.driver/connection-spec
+  - metabase.driver/drop-transform-target!
+  - metabase.driver/execute-raw-queries!
+  - metabase.driver/native-query-deps
+  - metabase.driver/run-transform!
+  - metabase.driver/table-exists?
+  - metabase.driver.sql/default-schema
+  - metabase.driver.sql/normalize-name
 
 - Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
   pairs that has been topologically sorted.
@@ -61,7 +73,15 @@ title: Driver interface changelog
 - Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase
   type (from the type hierarchy) as a HoneySQL spec. This method handles general Metabase base types.
 
-- Added driver multimethods driver/native-result-metadata, driver/validate-native-query-fields, driver.sql/resolve-field, driver.sql.normalize-unquoted-name, driver.sql.normalize/reserved-literal, driver.sql.references/find-used-fields, driver.sql.references/find-returned-fields, and driver.sql.references/field-references-impl for use with the :dependencies/native feature.
+- Added the following driver multimethods for use with the :dependencies/native feature:
+  - driver/native-result-metadata
+  - driver/validate-native-query-fields
+  - driver.sql.normalize-unquoted-name
+  - driver.sql.normalize/reserved-literal
+  - driver.sql.references/field-references-impl
+  - driver.sql.references/find-returned-fields
+  - driver.sql.references/find-used-fields
+  - driver.sql/resolve-field
 
 - Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources
   into existing tables. This multimethod dispatches on both the driver and the data source type

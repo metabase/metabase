@@ -325,7 +325,8 @@
           (throw (ex-info "An error occurred while copying table data to S3"
                           {:table-id table-id
                            :transform-message (or (:transform-message (ex-data t))
-                                                  (i18n/tru "Failed to copy table contents to shared storage {0} ({1})" table-name table-id))}
+                                                  ;; Cast table-id to string manually, to avoid thousands separators.
+                                                  (i18n/tru "Failed to copy table contents to shared storage: {0} ({1})" table-name (str table-id)))}
                           t)))
         (finally
           (safe-delete tmp-data-file)

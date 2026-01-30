@@ -26,6 +26,7 @@
 .selected {
   background-color: var(--mb-color-background-tertiary);
 }
+
 .name {
   flex: 1;
   min-width: 0;

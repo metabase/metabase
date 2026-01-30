@@ -4684,6 +4684,46 @@ databaseChangeLog:
       rollback: # will be removed along with the table
 
   - changeSet:
+      id: v58.2026-01-09T10:00:00
+      author: qnkhuat
+      comment: Drop stale column from workspace_transform
+      changes:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: stale
+      rollback:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Indicates if the target configuration needs to be refreshed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-09T10:00:02
+      author: qnkhuat
+      comment: Add definition_changed column to workspace_transform table
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: definition_changed
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Indicates if the transform definition has changed and needs re-execution
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: definition_changed
+
+  - changeSet:
       id: v58.2026-01-09T12:00:00
       author: johnswanson
       comment: Create data-analyst magic permissions group
@@ -5144,6 +5184,26 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_database
             columnName: workspace_permissions_status
+
+  - changeSet:
+      id: v58.2026-01-16T10:00:00
+      author: qnkhuat
+      comment: Add input_data_changed column to workspace_transform table
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: input_data_changed
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if upstream data has changed and transform needs re-execution
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: input_data_changed
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

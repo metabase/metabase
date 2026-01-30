@@ -96,14 +96,35 @@ describe(
     });
 
     it("should not allow to enable workspaces for a db user that cannot create users/schemas", () => {
-      H.restore();
+      H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
-      visitDatabase(SAMPLE_DB_ID);
+      // Create a limited postgres user without CREATE USER/SCHEMA permissions
+      const limitedUser = "limited_user";
+      const limitedPassword = "limited_pass";
+
+      H.queryWritableDB(`
+        DROP USER IF EXISTS ${limitedUser};
+        CREATE USER ${limitedUser} WITH PASSWORD '${limitedPassword}';
+      `);
+
+      // Update the existing database connection to use the limited user
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
+        details: {
+          host: "localhost",
+          port: QA_POSTGRES_PORT,
+          dbname: "writable_db",
+          user: limitedUser,
+          password: limitedPassword,
+        },
+      });
+
+      visitDatabase(WRITABLE_DB_ID);
 
       cy.findByLabelText("Enable workspaces").should("not.be.checked");
       cy.findByLabelText("Enable workspaces").parent().click();
+
       cy.wait("@checkPermissions");
 
       cy.findByTestId("database-workspaces-section").should(
@@ -111,6 +132,9 @@ describe(
         "Failed to initialize workspace isolation",
       );
       cy.findByLabelText("Enable workspaces").should("not.be.checked");
+
+      // Cleanup: just drop the postgres user, H.restore() resets the DB connection
+      H.queryWritableDB(`DROP USER IF EXISTS ${limitedUser};`);
     });
   },
 );

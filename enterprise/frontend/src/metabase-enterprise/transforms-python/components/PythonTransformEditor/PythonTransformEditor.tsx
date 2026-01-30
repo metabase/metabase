@@ -107,6 +107,10 @@ export function PythonTransformEditor({
     if (!isEditMode) {
       return;
     }
+    // In workspaces, disable run shortcut when transform has unsaved changes (hideRunButton)
+    // if (uiOptions?.hideRunButton) {
+    //   return;
+    // }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
@@ -147,7 +151,7 @@ export function PythonTransformEditor({
             source={source.body}
             proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
-            withDebugger={isEditMode || !uiOptions?.hidePreview}
+            withDebugger={isEditMode && !uiOptions?.hidePreview}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />

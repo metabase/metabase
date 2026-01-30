@@ -33,11 +33,12 @@
                      :done?      #(= :ready (:db_status %))
                      :timeout-ms 5000})
             (let [workspace           (t2/select-one :model/Workspace (:id workspace))
+                  graph               (ws.impl/get-or-calculate-graph! workspace)
                   isolated-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
                   executed-transform (mt/with-current-user (mt/user->id :crowberto)
                                       ;; trigger analysis, so we get the RO grants
                                        (ws.impl/analyze-transform-if-stale! workspace isolated-transform)
-                                       (ws.impl/run-transform! workspace isolated-transform))
+                                       (ws.impl/run-transform! workspace graph isolated-transform))
                   output-table       (-> executed-transform :table)
                   schema              (:schema output-table)
                   table-name          (:name output-table)]
@@ -54,9 +55,11 @@
 
               (testing "changing the query without granting access will fail"
                 (t2/update! :model/WorkspaceTransform
-                            {:ref_id (:ref_id isolated-transform)}
+                            {:workspace_id (:id workspace) :ref_id (:ref_id isolated-transform)}
                             {:source {:type  "query"
                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues {:limit 1})))}})
-                (is (=? {:status :failed}
-                        (mt/with-current-user (mt/user->id :crowberto)
-                          (ws.impl/run-transform! workspace (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))))))))))))))
+                (let [ref-id    (:ref_id isolated-transform)
+                      transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref-id)]
+                  (is (=? {:status :failed}
+                          (mt/with-current-user (mt/user->id :crowberto)
+                            (ws.impl/run-transform! workspace graph transform)))))))))))))
