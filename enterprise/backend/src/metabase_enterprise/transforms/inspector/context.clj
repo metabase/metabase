@@ -144,7 +144,7 @@
                {:stats stats})))
           fields)))
 
-(defn- build-table-info
+(defn build-table-info
   "Build table info map with fields."
   [{:keys [table-id table-name schema db-id]}]
   (let [fields (collect-field-metadata table-id)]

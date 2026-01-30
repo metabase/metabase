@@ -177,10 +177,14 @@
 
 (defmethod lenses.core/generate-cards :column-comparison
   [_ ctx]
+  ;; Generate cards for ALL column matches - FE does the interestingness filtering
+  ;; Cards include :interestingness score for FE to use
   (let [column-matches   (:column-matches ctx)
         sources          (:sources ctx)
         target           (:target ctx)
         source-table-id  (get-source-table-id ctx)
-        interesting      (filter-interesting-matches column-matches 0.3)]
+        ;; Add interestingness scores but don't filter
+        scored-matches   (->> column-matches
+                              (map #(assoc % :interestingness (score-column-match %))))]
     (vec (mapcat (partial make-comparison-cards-for-match sources target source-table-id)
-                 interesting))))
+                 scored-matches))))

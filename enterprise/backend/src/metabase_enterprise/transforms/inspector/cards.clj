@@ -139,6 +139,8 @@
           card-id (str table-name "-" field-name "-distribution")
           main-card (cond-> {:id             card-id
                              :section-id     section-id
+                             :table-name     table-name
+                             :field-name     field-name
                              :title          (str field-name " (" table-name ")")
                              :display        display
                              :dataset-query  (make-distribution-query db-id table-id field-id)
