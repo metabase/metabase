@@ -10,7 +10,8 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import (clojure.lang ITransientCollection)))
 
 ;; TODO (chris 2025/12/15) Should we leverage data-authority table metadata to speed things up?
 
@@ -205,24 +206,28 @@
 
    Options:
    - :include-start? - include start node(s) in result (default: false)
-   - :rf             - reducing function for collecting results (default: conj)
-   - :init           - initial value for the result accumulator (default: [])
+   - :rf             - reducing function for collecting results
+   - :init           - initial value for the result accumulator (default: transient [])
+
+   When init is a transient collection, rf defaults to conj! and the result is
+   automatically persisted. When init is persistent, rf defaults to conj.
 
    Returns the accumulated result in BFS order (no duplicates)."
-  [edges-map starts & {:keys [include-start? rf init]
-                       :or   {include-start? false, rf conj, init []}}]
-  (let [init-nodes    (vec starts)
-        init-set      (set init-nodes)
+  [edges-map starts & {:keys [include-start? rf init]}]
+  (let [init          (if (some? init) init (transient []))
+        transient?    (instance? ITransientCollection init)
+        rf            (or rf (if transient? conj! conj))
+        init-set      (set starts)
         get-children  #(get edges-map % [])
         ;; Queue always starts with children of start nodes (excluding start nodes themselves)
-        init-children (into [] (comp (mapcat get-children) (remove init-set)) init-nodes)]
+        init-children (into [] (comp (mapcat get-children) (remove init-set)) starts)]
     (loop [queue   init-children
            ;; Only mark start nodes as visited if we're including them in result
            ;; This allows routes between start nodes to be detected when include-start? is false
            visited (transient (if include-start? init-set #{}))
-           result  (if include-start? (reduce rf init init-nodes) init)]
+           result  (if include-start? (reduce rf init starts) init)]
       (if (empty? queue)
-        result
+        (cond-> result transient? persistent!)
         (let [current (first queue)
               queue   (subvec queue 1)]
           (if (visited current)
