@@ -5,5 +5,13 @@
   },
   "upstream": {
     "branch": "emb-1265-add-configure-data-permissions-and-enable-tenants-skeleton"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 68895,
+        "gqlID": "PR_kwDOAczgH87ATL2J"
+      }
+    }
   }
 }
