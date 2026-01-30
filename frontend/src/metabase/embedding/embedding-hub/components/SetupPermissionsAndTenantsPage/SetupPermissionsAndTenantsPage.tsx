@@ -31,10 +31,10 @@ export const SetupPermissionsAndTenantsPage = () => {
 
       // When data segregation is finally configured, we permanently
       // mark this step as done. Otherwise rely on UI state.
-      "select-data-segregation-strategy":
+      "data-segregation":
         isDataSegregationSelected || isDataSegregationComplete,
 
-      "select-data-for-segregation": isDataSegregationComplete,
+      "select-data": isDataSegregationComplete,
       "create-tenants": isTenantsCreated,
 
       summary:

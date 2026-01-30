@@ -1,6 +1,9 @@
+import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const { H } = cy;
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
@@ -329,10 +332,6 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
@@ -345,6 +344,62 @@ describe("scenarios - embedding hub", () => {
         .findByText("Configure data permissions and enable tenants")
         .scrollIntoView()
         .should("be.visible");
+    });
+
+    it("permissions setup page should mark steps as completed", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("all 5 steps are present and none are completed at first");
+      H.main().within(() => {
+        cy.findByText("Enable multi-tenant user strategy")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Which data segregation strategy does your database use?")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Select data to make available")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Create tenants").scrollIntoView().should("be.visible");
+        cy.findByText("Summary").scrollIntoView().should("be.visible");
+
+        // No steps should be completed yet (no check icons)
+        cy.icon("check").should("not.exist");
+      });
+
+      cy.log("enable tenants");
+      H.updateSetting("use-tenants", true);
+
+      cy.log("create a tenant");
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Test Tenant",
+        slug: "test-tenant",
+      });
+
+      cy.log("check steps 1 and 4 are completed");
+      cy.reload();
+      H.main().icon("check").should("have.length", 2);
+
+      cy.log("setup row-level security");
+      cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
+        ({ body: group }) => {
+          cy.sandboxTable({
+            table_id: STATIC_ORDERS_ID,
+            group_id: group.id,
+          });
+        },
+      );
+
+      cy.log("check all 5 steps are completed");
+      cy.reload();
+      H.main().icon("check").should("have.length", 5);
     });
   });
 });
