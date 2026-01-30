@@ -126,25 +126,25 @@
      (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
      ;; already legacy MBQL
      (apply merge-with merge-source-ids
-            (lib.util.match/match query
-              (m :guard (every-pred map? :qp/stage-is-from-source-card))
+            (lib.util.match/match-many query
+              (m :guard (and (map? m) (:qp/stage-is-from-source-card m)))
               (merge-with merge-source-ids
                           (when-not parent-source-card-id
                             {:card-ids #{(:qp/stage-is-from-source-card m)}})
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-              (m :guard (every-pred map? :query-permissions/sandboxed-table))
+              (m :guard (and (map? m) (:query-permissions/sandboxed-table m)))
               (merge-with merge-source-ids
                           {:table-ids #{(:query-permissions/sandboxed-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
 
-              (m :guard (every-pred map? :native))
+              {:native identity}
               (when-not parent-source-card-id
                 {:native? true})
 
-              (m :guard (every-pred map? #(pos-int? (:source-table %))))
+              (m :guard (and (map? m) (pos-int? (:source-table m))))
               (merge-with merge-source-ids
                           {:table-ids #{(:source-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)

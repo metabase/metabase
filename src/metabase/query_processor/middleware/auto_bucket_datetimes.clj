@@ -189,10 +189,10 @@
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-clauses (lib.util.match/match (cons filters breakouts)
-                                (_clause :guard (partial should-not-be-autobucketed? query stage-path)) nil
-                                :expression                                  &match
-                                :field                                       &match)]
+  (if-let [unbucketed-clauses (lib.util.match/match-many (cons filters breakouts)
+                                (clause :guard (should-not-be-autobucketed? query stage-path clause)) nil
+                                [:expression & _]                                                     &match
+                                [:field & _]                                                          &match)]
     ;; if we found some unbucketed breakouts/filters, fetch the Fields & type info that are referred to by those
     ;; breakouts/filters...
     (let [unbucketed-fields (filter (comp (partial = :field) first) unbucketed-clauses)

@@ -17,8 +17,8 @@
    [metabase.util.performance :refer [mapv select-keys some not-empty]]))
 
 (defn- stage-has-window-aggregation? [stage]
-  (lib.util.match/match (:aggregation stage)
-    #{:cum-sum :cum-count :offset}))
+  (lib.util.match/match-lite (:aggregation stage)
+    [#{:cum-sum :cum-count :offset} & _] true))
 
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))
@@ -33,8 +33,8 @@
                          [tag
                           (select-keys opts [:join-alias :temporal-unit :bucketing])
                           id-or-name]))
-        (lib.util.match/match (concat (:breakout stage) (:aggregation stage) (:expressions stage))
-          #{:field :expression})))
+        (lib.util.match/match-many (concat (:breakout stage) (:aggregation stage) (:expressions stage))
+          [#{:field :expression} & _] &match)))
 
 (mu/defn- new-first-stage :- ::lib.schema/stage
   "Remove breakouts, aggregations, order bys, and limit. Add `:fields` to return the things needed by the second stage."

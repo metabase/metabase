@@ -722,7 +722,7 @@
   (not-empty
    (into #{}
          (comp cat (filter some?))
-         (lib.util.match/match coll
+         (lib.util.match/match-many coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
 
