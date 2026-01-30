@@ -1,6 +1,7 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
+import { t } from "ttag";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -64,6 +65,82 @@ export const translateContentString: TranslateContentStringFunction = (
   return msgstr;
 };
 
+export type AggregationPattern = (value: string) => string;
+
+/**
+ * Patterns for aggregation display names.
+ * These must match the patterns used in the backend (metabase.lib.aggregation).
+ * Each pattern is a function that takes a column name and returns the full display name.
+ * More specific patterns must come before less specific ones.
+ */
+const AGGREGATION_PATTERNS: AggregationPattern[] = [
+  (value: string) => t`Average of ${value}`,
+  (value: string) => t`Count of ${value}`,
+  (value: string) => t`Cumulative count of ${value}`,
+  (value: string) => t`Cumulative sum of ${value}`,
+  (value: string) => t`Distinct values of ${value}`,
+  (value: string) => t`Max of ${value}`,
+  (value: string) => t`Median of ${value}`,
+  (value: string) => t`Min of ${value}`,
+  (value: string) => t`Standard deviation of ${value}`,
+  (value: string) => t`Sum of ${value} matching condition`,
+  (value: string) => t`Sum of ${value}`,
+  (value: string) => t`Variance of ${value}`,
+];
+
+// Unique marker to find where the value placeholder is in a pattern
+const VALUE_MARKER = "\u0000";
+
+/**
+ * Translates an aggregation column display name by recursively parsing the
+ * aggregation pattern and translating the inner column name.
+ *
+ * Handles patterns where the value can be:
+ * - At the start: "{value} של סכום" (Hebrew, right-to-left)
+ * - At the end: "Sum of {value}" (English)
+ * - Wrapped: "Somme de {value} totale" (hypothetical)
+ *
+ * Examples:
+ * - "Total" => tc("Total") (no aggregation pattern matched)
+ * - "Sum of Total" => t`Sum of ${tc("Total")}`
+ * - "Sum of Min of Total" => t`Sum of ${t`Min of ${tc("Total")}`}`
+ */
+export const translateAggregationDisplayName = (
+  displayName: string,
+  tc: ContentTranslationFunction,
+  patterns: AggregationPattern[] = AGGREGATION_PATTERNS,
+): string => {
+  if (!hasTranslations(tc)) {
+    return displayName;
+  }
+
+  for (const pattern of patterns) {
+    const withMarker = pattern(VALUE_MARKER);
+    const markerIndex = withMarker.indexOf(VALUE_MARKER);
+
+    const prefix = withMarker.substring(0, markerIndex);
+    const suffix = withMarker.substring(markerIndex + VALUE_MARKER.length);
+
+    const hasPrefix = displayName.startsWith(prefix);
+    const hasSuffix = displayName.endsWith(suffix);
+
+    if (hasPrefix && hasSuffix) {
+      const innerStart = prefix.length;
+      const innerEnd = displayName.length - suffix.length;
+
+      if (innerStart <= innerEnd) {
+        const innerPart = displayName.substring(innerStart, innerEnd);
+
+        return pattern(
+          translateAggregationDisplayName(innerPart, tc, patterns),
+        );
+      }
+    }
+  }
+
+  return tc(displayName);
+};
+
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
   _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
 
@@ -76,21 +153,34 @@ export const translateDisplayNames = <T>(
   if (!hasTranslations(tc)) {
     return obj;
   }
-  const traverse = (o: T): T => {
-    if (Array.isArray(o)) {
-      return o.map((item) => traverse(item)) as T;
+
+  const traverse = (element: T): T => {
+    if (Array.isArray(element)) {
+      return element.map((item) => traverse(item)) as T;
     }
-    if (isRecord(o)) {
-      return Object.entries(o).reduce((acc, [key, value]) => {
-        const newValue =
-          fieldsToTranslate.includes(key as string) && typeof value === "string"
-            ? tc(value)
-            : traverse(value as T);
+
+    if (isRecord(element)) {
+      return Object.entries(element).reduce((acc, [key, value]) => {
+        const shouldTranslate =
+          fieldsToTranslate.includes(key as string) &&
+          typeof value === "string";
+
+        // We can't detect if an element is an aggregation-related or not here.
+        // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
+        // the `source` field contains the `fields` value, not the `aggregation` one.
+        // As the solution, we always try to translate the display name as an aggregation one,
+        // and inside `translateAggregationDisplayName` we fallback to regular tc() call if no aggregation pattern is matched.
+        const newValue = shouldTranslate
+          ? translateAggregationDisplayName(value as string, tc)
+          : traverse(value as T);
+
         return I.assoc(acc, key, newValue);
-      }, o);
+      }, element);
     }
-    return o;
+
+    return element;
   };
+
   return traverse(obj);
 };
 

@@ -17,6 +17,7 @@ export interface Measure {
   created_at: string;
   creator_id: number;
   creator?: UserInfo;
+  updated_at: string;
 }
 
 export interface CreateMeasureRequest {
