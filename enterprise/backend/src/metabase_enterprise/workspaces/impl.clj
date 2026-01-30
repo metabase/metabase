@@ -196,17 +196,14 @@
   []
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
-(defn- ids-for-type
-  "Extract ids from nodes with the given :node-type."
-  [node-type nodes]
-  (into []
-        (keep #(when (= node-type (:node-type %)) (:id %)))
-        nodes))
+(def ^:private workspace-transform-id-xf
+  "Transducer that extracts :id from workspace-transform nodes."
+  (keep #(when (= :workspace-transform (:node-type %)) (:id %))))
 
 (defn- workspace-transform-ids
   "Extract ref-ids from nodes that are workspace transforms."
   [nodes]
-  (ids-for-type :workspace-transform nodes))
+  (into [] workspace-transform-id-xf nodes))
 
 (declare get-or-calculate-graph!)
 
@@ -217,7 +214,8 @@
    Takes a graph with :dependencies map (child->parents) and traverses upstream."
   [graph ref-id]
   (when-let [deps-map (:dependencies graph)]
-    (workspace-transform-ids (ws.dag/bfs-descendants deps-map {:node-type :workspace-transform :id ref-id}))))
+    (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform :id ref-id}]
+                       :rf (workspace-transform-id-xf conj))))
 
 (defn downstream-descendants
   "Given a graph and a ref-id, find all downstream workspace transform descendants.
@@ -227,7 +225,8 @@
   [graph ref-id]
   (when-let [deps-map (:dependencies graph)]
     (let [forward-edges (ws.dag/reverse-graph deps-map)]
-      (workspace-transform-ids (ws.dag/bfs-descendants forward-edges {:node-type :workspace-transform :id ref-id})))))
+      (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform :id ref-id}]
+                         :rf (workspace-transform-id-xf conj)))))
 
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
@@ -628,7 +627,7 @@
         forward-edges  (some-> (:dependencies graph) ws.dag/reverse-graph)
         ;; BFS traverses through ALL nodes (including external transforms) to find all stale transforms
         all-reachable  (if forward-edges
-                         (set (ws.dag/bfs-descendants forward-edges init-stale :include-start? true))
+                         (ws.dag/bfs-reduce forward-edges init-stale :include-start? true :init #{})
                          (set init-stale))
         ;; Include both workspace and external transforms in the stale set
         all-stale      (set (filter transform? all-reachable))

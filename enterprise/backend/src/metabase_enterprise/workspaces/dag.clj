@@ -197,20 +197,21 @@
           {}
           deps-map))
 
-(defn bfs-descendants
+(defn bfs-reduce
   "BFS traversal from start node(s) through an edge map.
 
    edges-map - adjacency map from node to its neighbors
-   start     - a single node or collection of start nodes
+   starts    - a collection of start nodes
 
    Options:
    - :include-start? - include start node(s) in result (default: false)
+   - :rf             - reducing function for collecting results (default: conj)
+   - :init           - initial value for the result accumulator (default: [])
 
-   Returns a vector of reachable nodes in BFS order (no duplicates)."
-  [edges-map start & {:keys [include-start?]
-                      :or   {include-start? false}}]
-  (let [start-nodes   (if (or (sequential? start) (set? start)) start [start])
-        init-nodes    (vec start-nodes)
+   Returns the accumulated result in BFS order (no duplicates)."
+  [edges-map starts & {:keys [include-start? rf init]
+                       :or   {include-start? false, rf conj, init []}}]
+  (let [init-nodes    (vec starts)
         init-set      (set init-nodes)
         get-children  #(get edges-map % [])
         ;; Queue always starts with children of start nodes (excluding start nodes themselves)
@@ -219,9 +220,9 @@
            ;; Only mark start nodes as visited if we're including them in result
            ;; This allows routes between start nodes to be detected when include-start? is false
            visited (transient (if include-start? init-set #{}))
-           result  (transient (if include-start? init-nodes []))]
+           result  (if include-start? (reduce rf init init-nodes) init)]
       (if (empty? queue)
-        (persistent! result)
+        result
         (let [current (first queue)
               queue   (subvec queue 1)]
           (if (visited current)
@@ -230,7 +231,7 @@
                   new-nodes (remove visited children)]
               (recur (into queue new-nodes)
                      (conj! visited current)
-                     (conj! result current)))))))))
+                     (rf result current)))))))))
 
 (defn path-induced-subgraph
   "Given a list of internal entities, compute the path-induced subgraph.
