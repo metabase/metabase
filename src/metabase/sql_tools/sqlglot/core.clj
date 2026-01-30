@@ -7,9 +7,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
+   ;; To register implementation of referenced columns
+   [metabase.sql-tools.sqlglot.experimental]
    [metabase.sql-tools.sqlglot.shim :as sqlglot.shim]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]))
+   [metabase.util.log :as log]))
 
 ;; TODO: explain namespacing, catalog, db...
 
@@ -32,74 +34,10 @@
           {}
           (lib.metadata/tables mp)))
 
-(defn- schema->table->col
-  [mp]
-  (reduce (fn [acc table]
-            (assoc-in acc [(:schema table) (:name table)]
-                      (u/for-map
-                       [field (lib.metadata/fields mp (:id table))]
-                       [(:name field) field])))
-          {}
-          (lib.metadata/tables mp)))
-
 (defn- driver->dialect
   [driver]
   (when-not (= :h2 driver)
     (name driver)))
-
-;;;; Columns
-
-;; TODO: Clean this up. This is breaking lib encapsulation.
-(defn- resolve-column
-  [schema->table->col single-lineage]
-  (let [[alias pure? [[table-schema table column]]] single-lineage]
-    (merge
-     (if-not pure?
-       {:base-type :type/*
-        :effective-type :type/*
-        :semantic-type :type/*}
-       (select-keys (get-in schema->table->col [table-schema table column])
-                    [:base-type :effective-type :semantic-type :database-type]))
-     {:lib/type :metadata/column
-      :lib/desired-column-alias alias
-      :name alias
-      :display-name (u.humanization/name->human-readable-name :simple alias)})))
-
-(defn- lineage->returned-columns
-  [schema->table->col* lineage]
-  (mapv (partial resolve-column schema->table->col*) lineage))
-
-(defn- normalize-dependency
-  [driver dependency]
-  (mapv (fn [component]
-          (when (string? (not-empty component))
-            (sql.normalize/normalize-name driver component)))
-        dependency))
-
-(defn- normalized-dependencies
-  [driver [_alias _pure? _dependencies :as single-lineage]]
-  (update single-lineage 2 #(mapv (partial normalize-dependency driver)
-                                  %)))
-
-(defn returned-columns
-  "Given a native query return columns it produces.
-
-  Normalizes identifiers returned by the Sqlglot. (TODO: questionable! get back to this.)"
-  [driver query]
-  (let [sqlglot-schema* (sqlglot-schema driver query)
-        sql-str (lib/raw-native-query query)
-        default-schema* (driver.sql/default-schema driver)
-        lineage (sqlglot.shim/returned-columns-lineage
-                 (driver->dialect driver) sql-str default-schema* sqlglot-schema*)
-        normalized-lienage (mapv (partial normalized-dependencies driver)
-                                 lineage)
-        schema->table->col* (schema->table->col query)
-        returned-columns (lineage->returned-columns schema->table->col* normalized-lienage)]
-    returned-columns))
-
-(defmethod sql-tools/returned-columns-impl :sqlglot
-  [_parser driver query]
-  (returned-columns driver query))
 
 ;;;; Tables
 
@@ -153,6 +91,7 @@
 (defn validate-query
   "Validate the native `query`."
   [driver query]
+  (log/warn "I'm using sqlglot-schema, please fix me.")
   (let [sql (lib/raw-native-query query)
         default-table-schema* (driver.sql/default-schema driver)
         sqlglot-schema* (sqlglot-schema driver query)

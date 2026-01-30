@@ -441,10 +441,10 @@
          json/decode
          vec))))
 
-;; TODO: Rename lineage to something more accurate
 (defn returned-columns-lineage
   "WIP"
   [dialect sql default-table-schema sqlglot-schema]
+  (log/warn "I'm using sqlglot-schema, please fix me.")
   (with-open [^Closeable ctx (if config/is-dev?
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
@@ -463,9 +463,11 @@
       (update :status (comp u/->kebab-case-en keyword))
       (m/update-existing :type (comp u/->kebab-case-en keyword))))
 
+;; TODO: Implement so schema is `sqlglot-schema` (generated from appdb sync data) is not needed.
 (defn validate-query
   "WIP"
   [dialect sql default-table-schema sqlglot-schema]
+  (log/warn "I'm using sqlglot-schema, please fix me.")
   (with-open [^Closeable ctx (if config/is-dev?
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
