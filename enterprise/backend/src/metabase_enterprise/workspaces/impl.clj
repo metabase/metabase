@@ -718,4 +718,4 @@
      {:succeeded []
       :failed    []
       :not_run   []}
-     (transforms-to-execute workspace graph {:stale-only stale-only?}))))
+     (transforms-to-execute workspace graph {:stale-only? stale-only?}))))
