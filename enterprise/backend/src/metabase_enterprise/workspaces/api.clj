@@ -6,8 +6,8 @@
    [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
@@ -85,7 +85,7 @@
   [db-id]
   (let [database (api/check-400 (t2/select-one :model/Database db-id)
                                 (deferred-tru "The target database cannot be found."))]
-    (api/check (transforms.util/check-feature-enabled nil)
+    (api/check (transforms-base.util/check-feature-enabled nil)
                [402 (deferred-tru "Premium features required for transforms are not enabled.")])
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
@@ -93,7 +93,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (driver.u/supports? (:engine database) :transforms/table database)
                    (deferred-tru "The database does not support the requested transform target type."))
-    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+    (api/check-400 (not (transforms-base.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (def ^:private ws-prefix "/api/ee/workspace/\\d+")
@@ -785,7 +785,7 @@
             [:source ::transform-source]
             ;; Not sure why this schema is giving trouble
             #_[:target ::transform-target]]]
-  (api/check (transforms.util/check-feature-enabled body)
+  (api/check (transforms-base.util/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
