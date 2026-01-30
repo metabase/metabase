@@ -218,82 +218,11 @@
       (str/join ", " parts))))
 
 (defn- semantic-type->hint
-  "Convert a semantic type to a short hint string for DDL comments.
-   Returns nil for types that don't have a useful short representation."
+  "Extract the type name from a semantic type keyword for DDL comments.
+   e.g. :type/Email -> \"Email\", :type/CreationTimestamp -> \"CreationTimestamp\"
+   Returns nil if semantic-type is nil."
   [semantic-type]
-  (case semantic-type
-    ;; Keys and relationships
-    :type/PK       "PK"
-    :type/FK       "FK"
-
-    ;; Contact/Communication
-    :type/Email    "email"
-    :type/URL      "URL"
-    :type/AvatarURL "avatar URL"
-
-    ;; Categorical
-    :type/Category "category"
-    :type/Enum     "enum"
-
-    ;; Financial
-    :type/Currency "currency"
-    :type/Price    "price"
-    :type/Cost     "cost"
-    :type/Discount "discount"
-    :type/GrossMargin "gross margin"
-
-    ;; Identifiers
-    :type/Name     "name"
-    :type/Title    "title"
-    :type/Company  "company"
-    :type/Product  "product"
-
-    ;; Geographic
-    :type/Address  "address"
-    :type/City     "city"
-    :type/State    "state"
-    :type/Country  "country"
-    :type/ZipCode  "zip code"
-    :type/Latitude "latitude"
-    :type/Longitude "longitude"
-
-    ;; Temporal
-    :type/CreationTimestamp "created at"
-    :type/CreationDate      "created date"
-    :type/CreationTime      "created time"
-    :type/UpdatedTimestamp  "updated at"
-    :type/UpdatedDate       "updated date"
-    :type/UpdatedTime       "updated time"
-    :type/CancelationTimestamp "canceled at"
-    :type/CancelationDate   "canceled date"
-    :type/DeletionTimestamp "deleted at"
-    :type/DeletionDate      "deleted date"
-    :type/Birthdate         "birthdate"
-    :type/JoinTimestamp     "joined at"
-    :type/JoinDate          "joined date"
-
-    ;; Quantitative
-    :type/Quantity   "quantity"
-    :type/Score      "score"
-    :type/Percentage "percentage"
-    :type/Duration   "duration"
-    :type/Income     "income"
-
-    ;; User/Person
-    :type/Author     "author"
-    :type/Owner      "owner"
-    :type/User       "user"
-
-    ;; Content
-    :type/Description "description"
-    :type/Comment     "comment"
-    :type/SerializedJSON "JSON"
-
-    ;; Source tracking
-    :type/Source    "source"
-
-    ;; No match - return nil
-    nil))
+  (some-> semantic-type name))
 
 ;;; -------------------------------------------- Column Comment Building --------------------------------------------
 

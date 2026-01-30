@@ -5,6 +5,7 @@
    using tool_use for structured output."
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
@@ -13,16 +14,6 @@
    (com.fasterxml.jackson.core JsonParseException)))
 
 (set! *warn-on-reflection* true)
-
-(defn- model->simplified-provider-model
-  "Given a precise model name, return a simplified name with the provider prefixed.
-
-  E.g. \"claude-sonnet-4-5-20250929\" -> \"anthropic/claude-sonnet-4-5\"
-
-  Useful when we don't care to distinguish between minor model differences, like for telemetry or cost estimation."
-  [model]
-  (when model
-    (str "anthropic/" (str/replace model #"-\d{8}$" ""))))
 
 (def ^:private generate-sql-tool
   "Tool definition for structured SQL output.
@@ -88,20 +79,27 @@
                       {:type :llm-not-configured})))
     api-key))
 
+(def ^:private list-models*
+  "Memoized implementation of list-models with 5-minute TTL."
+  (memoize/ttl
+   (fn [api-key]
+     (try
+       (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
+             response (http/get url
+                                {:headers {"x-api-key"         api-key
+                                           "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
+             body (json/decode+kw (:body response))
+             models (reverse (sort-by :created_at (:data body)))]
+         {:models (map #(select-keys % [:id :display_name]) models)})
+       (catch Exception e
+         (handle-api-error e))))
+   :ttl/threshold (* 5 60 1000)))
+
 (defn list-models
-  "Send a list models request to Anthropic
-   Returns a map with :models"
+  "Send a list models request to Anthropic.
+   Returns a map with :models. Results are cached for 5 minutes."
   []
-  (try
-    (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
-          response (http/get url
-                             {:headers {"x-api-key"         (get-api-key-or-throw)
-                                        "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
-          body (json/decode+kw (:body response))
-          models (reverse (sort-by :created_at (:data body)))]
-      {:models (map #(select-keys % [:id :display_name]) models)})
-    (catch Exception e
-      (handle-api-error e))))
+  (list-models* (get-api-key-or-throw)))
 
 (defn chat-completion
   "Send a chat completion request to Anthropic.
@@ -134,7 +132,7 @@
             usage       (:usage body)]
         {:result      (extract-tool-input body)
          :duration-ms duration-ms
-         :usage       {:model      (model->simplified-provider-model model)
+         :usage       {:model      model
                        :prompt     (:input_tokens usage)
                        :completion (:output_tokens usage)}})
       (catch Exception e

@@ -21,7 +21,6 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [stencil.core :as stencil]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
@@ -54,9 +53,10 @@
    Memoized since dialect files are static resources."
   (memoize
    (fn [engine]
-     (when-let [resource-path (driver/llm-sql-dialect-resource engine)]
-       (when-let [resource (io/resource resource-path)]
-         (slurp resource))))))
+     (when engine
+       (when-let [resource-path (driver/llm-sql-dialect-resource engine)]
+         (when-let [resource (io/resource resource-path)]
+           (slurp resource)))))))
 
 (def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
 
@@ -78,17 +78,6 @@
                                 :current_time         (current-datetime-str)
                                 :dialect_instructions dialect-instructions}
                          source-sql (assoc :source_sql source-sql))))
-
-(defn- parse-sql-response
-  "Parse the structured JSON response and extract the SQL."
-  [response]
-  (cond
-    (map? response)    (:sql response)
-    (string? response) (try
-                         (:sql (json/decode+kw response))
-                         (catch Exception _
-                           response))
-    :else              response))
 
 (defn- track-token-usage!
   "Track token usage for LLM API calls via Snowplow."
@@ -243,7 +232,9 @@
                                         (or explicit-table-ids #{})
                                         (or implicit-table-ids #{}))]
       (when (empty? table-ids)
-        (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
+        (throw (ex-info (if (and source_sql (empty? implicit-table-ids))
+                          (tru "Failed to parse SQL. Use @mentions to provide table references.")
+                          (tru "No tables found. Use @mentions or provide source SQL with table references."))
                         {:status-code 400})))
       (let [{:keys [ddl tables]} (llm.context/build-schema-context database_id table-ids)]
         (when-not ddl
@@ -270,7 +261,7 @@
               (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
                                     :result "success"
                                     :engine engine})
-              (let [sql                 (parse-sql-response result)
+              (let [sql                 (:sql result)
                     referenced-entities (mapv #(assoc % :model "table") tables)]
                 {:sql                 sql
                  :referenced_entities referenced-entities}))

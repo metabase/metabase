@@ -207,7 +207,7 @@
   (testing "semantic type hints"
     (is (= "PK"
            (#'context/build-column-comment {:semantic_type :type/PK} nil nil)))
-    (is (= "email"
+    (is (= "Email"
            (#'context/build-column-comment {:semantic_type :type/Email} nil nil))))
 
   (testing "numeric fingerprint stats"

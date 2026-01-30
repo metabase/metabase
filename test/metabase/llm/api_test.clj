@@ -1,6 +1,5 @@
 (ns metabase.llm.api-test
   (:require
-   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,47 +13,22 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------- parse-sql-response Tests -------------------------------------------
-
-(deftest parse-sql-response-test
-  (testing "map input extracts :sql key"
-    (is (= "SELECT 1" (#'api/parse-sql-response {:sql "SELECT 1" :explanation "..."}))))
-
-  (testing "valid JSON string parses and extracts :sql"
-    (is (= "SELECT 1" (#'api/parse-sql-response "{\"sql\": \"SELECT 1\"}"))))
-
-  (testing "invalid JSON returns raw string (current behavior)"
-    (is (= "not json" (#'api/parse-sql-response "not json"))))
-
-  (testing "map without :sql key returns nil"
-    (is (nil? (#'api/parse-sql-response {:explanation "no sql here"}))))
-
-  (testing "nil input returns nil"
-    (is (nil? (#'api/parse-sql-response nil))))
-
-  (testing "empty string returns nil (JSON decode returns nil)"
-    (is (nil? (#'api/parse-sql-response "")))))
-
 ;;; ------------------------------------------- database-dialect Tests -------------------------------------------
 
-(deftest database-dialect-test
+(deftest database-engine-test
   (mt/with-temp [:model/Database postgres-db {:engine :postgres}
                  :model/Database mysql-db   {:engine :mysql}
-                 :model/Database bigquery-db {:engine :bigquery}
-                 :model/Database custom-db  {:engine :customdb}]
-    (testing "known engine returns mapped dialect name"
-      (is (= "PostgreSQL" (#'api/database-dialect (:id postgres-db))))
-      (is (= "MySQL" (#'api/database-dialect (:id mysql-db))))
-      (is (= "BigQuery" (#'api/database-dialect (:id bigquery-db)))))
+                 :model/Database bigquery-db {:engine :bigquery}]
+    (testing "returns engine keyword for database"
+      (is (= :postgres (#'api/database-engine (:id postgres-db))))
+      (is (= :mysql (#'api/database-engine (:id mysql-db))))
+      (is (= :bigquery (#'api/database-engine (:id bigquery-db)))))
 
-    (testing "unknown engine capitalizes keyword name"
-      (is (= "Customdb" (#'api/database-dialect (:id custom-db)))))
+    (testing "nil database returns nil"
+      (is (nil? (#'api/database-engine nil))))
 
-    (testing "nil database returns fallback"
-      (is (= "SQL" (#'api/database-dialect nil))))
-
-    (testing "non-existent database returns fallback"
-      (is (= "SQL" (#'api/database-dialect 99999999))))))
+    (testing "non-existent database returns nil"
+      (is (nil? (#'api/database-engine 99999999))))))
 
 ;;; ------------------------------------------- load-dialect-instructions Tests -------------------------------------------
 
@@ -64,26 +38,8 @@
       (is (string? instructions))
       (is (str/includes? instructions "PostgreSQL"))))
 
-  (testing "bigquery-cloud-sdk engine loads bigquery instructions"
-    (let [instructions (#'api/load-dialect-instructions :bigquery-cloud-sdk)]
-      (is (string? instructions))
-      (is (str/includes? instructions "BigQuery"))))
-
-  (testing "unknown engine returns nil"
-    (is (nil? (#'api/load-dialect-instructions :totally-unknown))))
-
   (testing "nil engine returns nil"
     (is (nil? (#'api/load-dialect-instructions nil)))))
-
-;;; ------------------------------------------- engine->dialect-file mapping Tests -------------------------------------------
-
-(deftest engine-dialect-mapping-completeness-test
-  (testing "all engines in dialect-file map have corresponding resource files"
-    (let [engine->dialect-file @#'api/engine->dialect-file]
-      (doseq [[engine dialect-file] engine->dialect-file]
-        (let [resource-path (str "llm/prompts/dialects/" dialect-file ".md")]
-          (is (some? (io/resource resource-path))
-              (str "Engine " engine " maps to " dialect-file " but resource " resource-path " not found")))))))
 
 ;;; ------------------------------------------- Table ID extraction Tests -------------------------------------------
 
