@@ -5,7 +5,7 @@
   font-size: var(--mantine-font-size-md);
   border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-text-selected);
-  background-color: var(--mb-color-background-selected);
+  background-color: var(--mb-color-background-brand);
 }
 
 .remove {

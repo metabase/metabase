@@ -73,7 +73,7 @@ export function SimpleDataPickerView({
               const isSelected = selectedEntity === option.id;
               const iconColor = isSelected
                 ? "text-primary-inverse"
-                : "icon-primary";
+                : "icon-brand";
               return (
                 <NavLink
                   key={option.id}

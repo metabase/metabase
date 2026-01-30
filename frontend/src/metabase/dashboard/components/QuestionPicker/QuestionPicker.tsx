@@ -84,8 +84,7 @@ function QuestionPickerInner({
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
-              variant="outline"
-              className={S.newButton}
+              w="50%"
               leftSection={<Icon aria-hidden name="insight" />}
               onClick={onNewQuestion}
             >
@@ -94,8 +93,7 @@ function QuestionPickerInner({
           )}
           {hasNativeWrite && !isEmbeddingSdk() && (
             <Button
-              variant="outline"
-              className={S.newButton}
+              w="50%"
               leftSection={<Icon aria-hidden name="sql" />}
               onClick={onNewNativeQuestion}
             >

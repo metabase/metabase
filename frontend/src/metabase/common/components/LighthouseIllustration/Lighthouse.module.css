@@ -9,7 +9,7 @@
 
 .LighthouseColors {
   --illustration-primary: var(--mb-color-brand);
-  --illustration-secondary: var(--mb-color-brand-light);
+  --illustration-secondary: var(--mb-color-illustration-brand-secondary);
   --illustration-background: var(--mb-color-background-primary);
 }
 
