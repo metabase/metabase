@@ -815,6 +815,86 @@ describe.each<Area>(areas)(
         });
       });
     });
+
+    describe("Field section", () => {
+      beforeEach(() => {
+        H.resetSnowplow();
+        H.enableTracking();
+      });
+
+      afterEach(() => {
+        H.expectNoBadSnowplowEvents();
+      });
+
+      describe("Name and description", () => {
+        it("should allow changing the field name", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.TAX,
+          });
+
+          FieldSection.getNameInput().clear().type("New tax").blur();
+          cy.wait("@updateField");
+          verifyAndCloseToast("Name of Tax updated");
+          TableSection.getFieldNameInput("New tax").should("exist");
+
+          cy.log("verify preview");
+          TableSection.clickField("New tax");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "New tax",
+            values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
+          });
+          verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
+
+          cy.log("verify viz");
+          H.openOrdersTable();
+          H.tableHeaderColumn("New tax").should("be.visible");
+          H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+            "not.exist",
+          );
+        });
+
+        it("should allow changing the field description", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.TOTAL,
+          });
+
+          FieldSection.getDescriptionInput()
+            .clear()
+            .type("New description")
+            .blur();
+          cy.wait("@updateField");
+          verifyAndCloseToast("Description of Total updated");
+          TableSection.getFieldDescriptionInput("Total").should(
+            "have.value",
+            "New description",
+          );
+
+          cy.log("verify preview");
+          TableSection.clickField("Total");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Total",
+            description: "New description",
+            values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+          });
+
+          cy.visit(
+            `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+          );
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Total").should("be.visible");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("New description").should("be.visible");
+        });
+      });
+    });
   },
 );
 
