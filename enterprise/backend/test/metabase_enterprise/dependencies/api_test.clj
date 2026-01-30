@@ -2794,3 +2794,61 @@
                       card-ids (set (map :id response))]
                   (is (contains? card-ids (:id dependent-in-personal)))
                   (is (contains? card-ids (:id dependent-regular))))))))))))
+
+(deftest ^:sequential unreferenced-table-owner-test
+  (testing "GET /api/ee/dependencies/unreferenced - table owner is returned"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency]
+        (mt/with-temp [:model/Table {table1-id :id} {:name          "User Owned Table - ownertest"
+                                                     :owner_user_id (mt/user->id :crowberto)}
+                       :model/Table {table2-id :id} {:name        "Email Owned Table - ownertest"
+                                                     :owner_email "external@example.com"}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :types "table" :query "ownertest"
+                                               :sort_column "name" :sort_direction "asc")]
+            (is (=? {:data [{:id   table2-id
+                             :type "table"
+                             :data {:name  "Email Owned Table - ownertest"
+                                    :owner {:email "external@example.com"}}}
+                            {:id   table1-id
+                             :type "table"
+                             :data {:name  "User Owned Table - ownertest"
+                                    :owner {:id    (mt/user->id :crowberto)
+                                            :email "crowberto@metabase.com"}}}]}
+                    response))))))))
+
+(deftest ^:sequential unreferenced-transform-owner-test
+  (testing "GET /api/ee/dependencies/unreferenced - transform owner is returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp       (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-model-cleanup [:model/Dependency]
+          (mt/with-temp [:model/Transform {transform1-id :id} {:name          "User Owned Transform - ownertest"
+                                                               :owner_user_id (mt/user->id :crowberto)
+                                                               :source        {:type  :query
+                                                                               :query (lib/query mp products)}
+                                                               :target        {:schema "PUBLIC"
+                                                                               :name   "user_owned_transform_table"}}
+                         :model/Transform {transform2-id :id} {:name        "Email Owned Transform - ownertest"
+                                                               :owner_email "external@example.com"
+                                                               :source      {:type  :query
+                                                                             :query (lib/query mp products)}
+                                                               :target      {:schema "PUBLIC"
+                                                                             :name   "email_owned_transform_table"}}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/unreferenced"
+                                                 :types "transform" :query "ownertest"
+                                                 :sort_column "name" :sort_direction "asc")]
+              (is (=? {:data [{:id   transform2-id
+                               :type "transform"
+                               :data {:name  "Email Owned Transform - ownertest"
+                                      :owner {:email "external@example.com"}}}
+                              {:id   transform1-id
+                               :type "transform"
+                               :data {:name  "User Owned Transform - ownertest"
+                                      :owner {:id    (mt/user->id :crowberto)
+                                              :email "crowberto@metabase.com"}}}]}
+                      response)))))))))

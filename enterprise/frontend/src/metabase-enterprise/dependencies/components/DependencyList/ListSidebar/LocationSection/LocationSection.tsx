@@ -7,11 +7,11 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
 
-type SidebarLocationSectionProps = {
+type LocationSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarLocationSection({ node }: SidebarLocationSectionProps) {
+export function LocationSection({ node }: LocationSectionProps) {
   const locationInfo = getNodeLocationInfo(node);
 
   if (locationInfo == null) {
