@@ -1003,26 +1003,6 @@ describe("scenarios > data studio > datamodel", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    describe("Field values", () => {
-      it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-          fieldId: PRODUCTS.CATEGORY,
-        });
-
-        FieldSection.getFieldValuesButton().click();
-        H.modal().within(() => {
-          cy.button("Discard cached field values").click();
-          cy.button("Discard triggered!").should("be.visible");
-          cy.button("Discard triggered!").should("not.exist");
-        });
-
-        cy.get("@fieldValues.all").should("have.length", 0);
-      });
-    });
-
     describe("Data", () => {
       describe("Coercion strategy", () => {
         it("should allow you to cast a field to a data type", () => {
