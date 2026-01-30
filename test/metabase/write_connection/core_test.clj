@@ -40,8 +40,4 @@
       (testing "with only :transforms, write connection is NOT activated"
         (mt/with-premium-features #{:transforms}
           (is (nil? (write-connection/get-write-database-id (:id parent-db))))
-          (is (= (:id parent-db) (write-connection/get-effective-database-id (:id parent-db))))))
-      (testing "with :advanced-permissions, write connection IS activated"
-        (mt/with-premium-features #{:advanced-permissions}
-          (is (= (:id write-db) (write-connection/get-write-database-id (:id parent-db))))
-          (is (= (:id write-db) (write-connection/get-effective-database-id (:id parent-db)))))))))
+          (is (= (:id parent-db) (write-connection/get-effective-database-id (:id parent-db)))))))))

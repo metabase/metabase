@@ -309,7 +309,7 @@
   (testing "EE write connection functions require :advanced-permissions feature"
     (mt/with-temp [:model/Database parent-db {}
                    :model/Database write-db {}]
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+      (database/link-write-database! (:id parent-db) (:id write-db))
       (testing "with :advanced-permissions, EE implementation is active"
         (mt/with-premium-features #{:advanced-permissions}
           (is (= (:id write-db) (write-connection.oss/get-write-database-id (:id parent-db))))
