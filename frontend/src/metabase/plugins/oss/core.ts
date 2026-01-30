@@ -5,7 +5,7 @@ import { t } from "ttag";
 import noResultsSource from "assets/img/no_results.svg";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard, Pulse } from "metabase-types/api";
+import type { Dashboard, DashboardSubscription } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
 // Types
@@ -20,7 +20,7 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
     parameters: UiParameter[];
     hiddenParameters?: string;
     dashboard: Dashboard;
-    pulse: Pulse;
+    pulse: DashboardSubscription;
     setPulseParameters: (parameters: UiParameter[]) => void;
   }>;
 }

@@ -15,6 +15,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  DashboardSubscription,
   Pulse,
   PulseParameter,
   ScheduleSettings,
@@ -28,7 +29,7 @@ export const NEW_PULSE_TEMPLATE = {
   skip_if_empty: false,
   collection_id: null,
   parameters: [],
-};
+} satisfies Partial<DashboardSubscription>;
 
 export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
   switch (channel.channel_type) {
@@ -129,10 +130,10 @@ export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
 }
 
 export function dashboardPulseIsValid(
-  pulse: Pulse,
+  pulse: Pick<Pulse, "channels">,
   channelSpecs: ChannelSpecs,
 ) {
-  return pulseChannelsAreValid(pulse, channelSpecs);
+  return pulseChannelsAreValid(pulse as Pulse, channelSpecs);
 }
 
 export function emailIsEnabled(pulse: Pulse) {
@@ -208,7 +209,7 @@ export function createChannel(
   };
 }
 
-export function getPulseParameters(pulse: Pulse) {
+export function getPulseParameters(pulse: Pulse | DashboardSubscription) {
   return pulse?.parameters || [];
 }
 

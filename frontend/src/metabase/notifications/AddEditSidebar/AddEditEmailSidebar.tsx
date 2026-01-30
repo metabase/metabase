@@ -28,7 +28,6 @@ import type {
   ChannelSpec,
   Dashboard,
   DashboardSubscription,
-  Pulse,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
@@ -57,7 +56,7 @@ interface AddEditEmailSidebarProps {
   ) => void;
   testPulse: () => void;
   toggleSkipIfEmpty: () => void;
-  setPulse: (pulse: Pulse) => void;
+  setPulse: (pulse: DashboardSubscription) => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
 }

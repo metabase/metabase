@@ -14,7 +14,11 @@ import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardSubscription,
+  ParameterId,
+} from "metabase-types/api";
 
 import { getSortedParameters } from "./utils";
 
@@ -22,7 +26,7 @@ export type MutableParametersSectionProps = {
   className?: string;
   parameters: UiParameter[];
   dashboard: Dashboard;
-  pulse: Pulse;
+  pulse: DashboardSubscription;
   setPulseParameters: (parameters: UiParameter[]) => void;
   hiddenParameters?: string;
 };

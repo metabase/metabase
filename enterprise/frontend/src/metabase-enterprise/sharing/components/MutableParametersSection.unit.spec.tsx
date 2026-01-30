@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard, Pulse } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardSubscription,
+  Pulse,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockDashboard,
@@ -26,7 +30,7 @@ function setup({ parameters, dashboard, pulse }: SetupOpts) {
     <MutableParametersSection
       parameters={parameters}
       dashboard={dashboard}
-      pulse={pulse}
+      pulse={pulse as unknown as DashboardSubscription}
       setPulseParameters={setPulseParameters}
     />,
   );
