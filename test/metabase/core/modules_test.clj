@@ -2,6 +2,7 @@
   "Tests that the modules config file is configured correctly."
   (:require
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,7 +17,8 @@
 (defn- modules-config
   "Kondo modules config."
   []
-  (-> (slurp ".clj-kondo/config/modules/config.edn")
+  (-> (io/resource "metabase/config/modules.edn")
+      slurp
       edn/read-string
       :metabase/modules))
 
@@ -43,7 +45,7 @@
 (defn- modules-config-zipper
   "Return a zipper pointing to the modules config map node (the value of the `:metabase/modules` key)."
   []
-  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. "resources/metabase/config/modules.edn"))]
     (let [node               (r.parser/parse-all r)
           forms-zloc         (z/of-node node)
           top-level-map-zloc (z/find forms-zloc (fn [zloc]
@@ -138,7 +140,7 @@
                   uses))))))))
 
 (deftest ^:parallel modules-config-up-to-date-test
-  (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
+  (testing (str "Please update resources/metabase/config/modules.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [deps     (dev.deps-graph/dependencies)
           expected (dev.deps-graph/generate-config deps (dev.deps-graph/kondo-config))

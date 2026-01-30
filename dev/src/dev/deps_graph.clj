@@ -425,7 +425,7 @@
         (full-dependencies deps)))
 
 (defn generate-config
-  "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
+  "Generate the Kondo config that should go in `resources/metabase/config/modules.edn`."
   ([]
    (generate-config (dependencies) (kondo-config)))
 
@@ -439,7 +439,7 @@
 (defn kondo-config
   "Read out the Kondo config for the modules linter."
   []
-  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. "resources/metabase/config/modules.edn"))]
         (edn/read r))
       :metabase/modules
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
