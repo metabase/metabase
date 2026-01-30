@@ -26,6 +26,9 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+(defmethod mi/non-timestamped-fields :model/Transform [_]
+  #{:dependency_analysis_version})
+
 ;; Only superusers can access transforms, and writes/creates are blocked globally in remote-sync read-only mode
 (defmethod mi/can-read? :model/Transform
   ([_instance]
