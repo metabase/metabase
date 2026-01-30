@@ -373,14 +373,19 @@ export const configureSandboxPolicy = (
       statusCode: 500,
       body: { message: "Stubbed to prevent flaky test" },
     }).as("activityRecents");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
 
     cy.findByText(
       /Use a saved question to create a custom view for this table/,
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
-    H.pickEntity({
-      path: ["Our analytics", /Sandboxing/, customViewName],
-      select: true,
+
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+    H.entityPickerModal().within(() => {
+      cy.findByText(/Our analytics/).click();
+      cy.findByText(/Sandboxing/).click();
+      cy.contains(customViewName).click();
+      cy.findByText("Select").click();
     });
   }
 
