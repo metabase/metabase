@@ -1,0 +1,550 @@
+# Metabase Agent API - Complete Reference
+
+The Agent API is a REST API for building headless, agentic BI applications on
+top of Metabase's semantic layer. It supports discovering tables and metrics,
+inspecting their fields, constructing queries, and executing them — all scoped
+to the authenticated user's permissions.
+
+Base path: /api/agent
+
+Requires: Metabase Pro/Enterprise with the `agent-api` feature enabled.
+
+## Key concepts
+
+- **Tables**: Database tables visible to the user.
+- **Metrics**: Standalone saved queries that represent pre-defined aggregations
+  (e.g., "Total Revenue"). Metrics are stored in collections and can be used
+  as a data source in the API. They have a fixed aggregation, but can be
+  filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
+  inspect a metric's dimensions, and POST /v1/construct-query with `metric_id`
+  to query one.
+- **Measures**: Lightweight, reusable aggregation expressions (e.g.,
+  `SUM(total)`) associated with a specific table. Unlike metrics, measures are
+  not standalone queries — they are building blocks that can be referenced in
+  table queries via `measure_id` in the aggregations array. Discover available
+  measures for a table via GET /v1/table/{id}?with-measures=true.
+- **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
+  be applied to queries by referencing their segment_id.
+- **Field IDs**: Opaque string identifiers for columns, formatted as
+  `<prefix><entity-id>-<column-index>`. Prefix is `t` for table fields and
+  `c` for metric fields. Example: `t42-3` means column at index 3 of table 42.
+  Field IDs are returned by the table/metric detail endpoints and must be used
+  as-is in query construction. They are positional — always fetch current
+  entity details before constructing queries.
+
+## Authentication
+
+Two modes, both requiring JWT to be configured in Metabase admin settings
+(Admin > Settings > Authentication > JWT):
+
+### 1. Stateless JWT (recommended for agents)
+
+Pass a signed JWT directly in each request:
+
+```
+Authorization: Bearer <jwt>
+```
+
+The JWT must be signed with the shared secret configured in Metabase. Required
+claims:
+
+| Claim   | Type   | Required | Description                          |
+|---------|--------|----------|--------------------------------------|
+| iat     | int    | Yes      | Issued-at time (Unix seconds). JWT   |
+|         |        |          | must be <180 seconds old.            |
+| email   | string | Yes      | Email matching a Metabase user. The  |
+|         |        |          | claim name is configurable via the   |
+|         |        |          | jwt-attribute-email admin setting    |
+|         |        |          | (default: "email").                  |
+
+Optional claims: first_name, last_name, groups (for group sync).
+
+Example JWT payload:
+
+```json
+{
+  "iat": 1706640000,
+  "email": "analyst@example.com"
+}
+```
+
+### 2. Session-based
+
+Exchange a JWT at `POST /auth/sso` to get a session token, then pass it via:
+
+```
+X-Metabase-Session: <session-token>
+```
+
+### Error responses (401)
+
+```json
+{"error": "missing_authorization", "message": "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
+{"error": "invalid_authorization_format", "message": "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
+{"error": "invalid_jwt", "message": "Invalid or expired JWT token."}
+{"error": "jwt_not_configured", "message": "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
+```
+
+## Permissions
+
+All endpoints enforce the authenticated user's data permissions. If the user
+lacks access to a table or metric, the API returns 403.
+
+## Parameter naming conventions
+
+Query parameters on GET endpoints use kebab-case (e.g., `with-fields`,
+`with-related-tables`). JSON request and response bodies use snake_case (e.g.,
+`table_id`, `field_id`, `field_granularity`). This applies consistently across
+all endpoints.
+
+## Endpoints
+
+### GET /v1/ping
+
+Health check.
+
+Response: `{"message": "pong"}`
+
+### GET /v1/table/{id}
+
+Get details for a table including fields, related tables, metrics, and
+segments.
+
+Query parameters (all boolean, all optional):
+
+| Parameter           | Default | Description                             |
+|---------------------|---------|-----------------------------------------|
+| with-fields         | true    | Include field metadata                  |
+| with-field-values   | true    | Include sample values on each field     |
+| with-related-tables | true    | Include FK-related tables               |
+| with-metrics        | true    | Include metrics defined on this table   |
+| with-measures       | false   | Include measures                        |
+| with-segments       | false   | Include segments defined on this table  |
+
+Response:
+
+```json
+{
+  "type": "table",
+  "id": 42,
+  "name": "ORDERS",
+  "display_name": "Orders",
+  "database_id": 1,
+  "database_engine": "postgres",
+  "database_schema": "PUBLIC",
+  "description": "All customer orders",
+  "fields": [
+    {
+      "field_id": "t42-0",
+      "name": "ID",
+      "type": "number",
+      "description": "Primary key",
+      "database_type": "BIGINT",
+      "semantic_type": "type/PK",
+      "field_values": [1, 2, 3]
+    }
+  ],
+  "related_tables": [
+    {
+      "id": 43,
+      "type": "table",
+      "name": "PRODUCTS",
+      "display_name": "Products",
+      "database_id": 1,
+      "related_by": "PRODUCT_ID"
+    }
+  ],
+  "metrics": [
+    {
+      "id": 10,
+      "type": "metric",
+      "name": "Total Revenue",
+      "default_time_dimension_field_id": "c10-2"
+    }
+  ],
+  "measures": [
+    {"id": 5, "name": "Sum of Total", "description": "Sum of the total column"}
+  ],
+  "segments": [
+    {"id": 1, "name": "Active Users", "description": "Users who logged in within 30 days"}
+  ]
+}
+```
+
+### GET /v1/metric/{id}
+
+Get details for a metric including its queryable dimensions.
+
+Query parameters (all boolean, all optional):
+
+| Parameter                       | Default | Description                           |
+|---------------------------------|---------|---------------------------------------|
+| with-default-temporal-breakout  | true    | Include default time dimension        |
+| with-field-values               | true    | Include sample values on dimensions   |
+| with-queryable-dimensions       | true    | Include dimensions for group_by       |
+| with-segments                   | false   | Include applicable segments           |
+
+Response:
+
+```json
+{
+  "type": "metric",
+  "id": 10,
+  "name": "Total Revenue",
+  "description": "Sum of order totals",
+  "default_time_dimension_field_id": "c10-2",
+  "verified": true,
+  "queryable_dimensions": [
+    {
+      "field_id": "c10-0",
+      "name": "CREATED_AT",
+      "type": "datetime"
+    }
+  ],
+  "segments": []
+}
+```
+
+### GET /v1/table/{id}/field/{field-id}/values
+### GET /v1/metric/{id}/field/{field-id}/values
+
+Get statistics and sample values for a field. Accepts optional `limit` query
+parameter.
+
+Response:
+
+```json
+{
+  "field_id": "t42-3",
+  "statistics": {
+    "distinct_count": 200,
+    "percent_null": 0.02,
+    "min": 1.5,
+    "max": 500.0,
+    "avg": 75.3,
+    "q1": 25.0,
+    "q3": 120.0,
+    "sd": 45.2,
+    "earliest": "2020-01-01T00:00:00Z",
+    "latest": "2024-12-31T23:59:59Z"
+  },
+  "values": ["Gadget", "Widget", "Doohickey"]
+}
+```
+
+Statistics fields vary by field type. Numeric fields include min/max/avg/q1/q3/sd.
+Date fields include earliest/latest. String fields include average_length and
+percent_email/percent_url/percent_state/percent_json.
+
+### POST /v1/search
+
+Search for tables and metrics. Supports keyword and semantic search. Results
+are ranked using Reciprocal Rank Fusion when both query types are provided.
+
+Request:
+
+```json
+{
+  "term_queries": ["revenue", "orders"],
+  "semantic_queries": ["how much money did we make"]
+}
+```
+
+At least one of `term_queries` or `semantic_queries` should be provided. Both
+are arrays of strings.
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "type": "table",
+      "id": 42,
+      "name": "ORDERS",
+      "display_name": "Orders",
+      "description": "All customer orders",
+      "database_id": 1,
+      "database_schema": "PUBLIC",
+      "verified": false
+    },
+    {
+      "type": "metric",
+      "id": 10,
+      "name": "Total Revenue",
+      "verified": true
+    }
+  ],
+  "total_count": 2
+}
+```
+
+### POST /v1/construct-query
+
+Construct a query from a table or metric. Returns a base64-encoded query to
+pass to /v1/execute.
+
+**Important**: Field IDs used here must come from the detail endpoints
+(/v1/table/{id} or /v1/metric/{id}). Always fetch entity details first.
+
+#### Table query request
+
+All fields except `table_id` are optional:
+
+```json
+{
+  "table_id": 42,
+  "filters": [],
+  "fields": [{"field_id": "t42-0"}, {"field_id": "t42-1"}],
+  "aggregations": [{"field_id": "t42-3", "function": "sum"}],
+  "group_by": [{"field_id": "t42-5", "field_granularity": "month"}],
+  "order_by": [{"field": {"field_id": "t42-1"}, "direction": "desc"}],
+  "limit": 100
+}
+```
+
+#### Metric query request
+
+Metrics have a pre-defined aggregation, so only filters and group_by are
+supported:
+
+```json
+{
+  "metric_id": 10,
+  "filters": [{"field_id": "c10-2", "operation": "greater-than", "value": "2024-01-01"}],
+  "group_by": [{"field_id": "c10-2", "field_granularity": "month"}]
+}
+```
+
+#### Response
+
+```json
+{"query": "eyJkYXRhYmFzZSI6MSwi..."}
+```
+
+#### Filter types
+
+Filters are polymorphic. The required fields depend on the operation.
+
+**Segment filter** — apply a pre-defined segment:
+
+```json
+{"segment_id": 5}
+```
+
+**Existence filters** — no value needed:
+
+| Operation            | Description            |
+|----------------------|------------------------|
+| is-null              | Field is null          |
+| is-not-null          | Field is not null      |
+| string-is-empty      | String is empty        |
+| string-is-not-empty  | String is not empty    |
+| is-true              | Boolean is true        |
+| is-false             | Boolean is false       |
+
+```json
+{"field_id": "t42-0", "operation": "is-not-null"}
+```
+
+**Temporal filters** — for date/datetime fields. Optional `bucket` specifies
+temporal bucketing granularity for the comparison. Accepts both truncation
+units (`minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`) and
+extraction units (`day-of-week`, `day-of-month`, `day-of-year`,
+`week-of-year`, `month-of-year`, `quarter-of-year`, `hour-of-day`,
+`minute-of-hour`, `second-of-minute`). Note: this is a broader set of
+values than `field_granularity` in group_by, which only accepts truncation
+units.
+
+| Operation             | Description                     |
+|-----------------------|---------------------------------|
+| equals                | Equals value                    |
+| not-equals            | Does not equal value            |
+| greater-than          | After (dates) / greater than    |
+| greater-than-or-equal | On or after / greater or equal  |
+| less-than             | Before (dates) / less than      |
+| less-than-or-equal    | On or before / less or equal    |
+
+```json
+{"field_id": "t42-5", "operation": "greater-than", "value": "2024-01-01"}
+```
+
+For multiple values, use `values` (array) instead of `value`:
+
+```json
+{"field_id": "t42-5", "operation": "equals", "values": ["2024-01-01", "2024-06-01"]}
+```
+
+**Temporal extraction filters** — filter by date component:
+
+| Operation              | Value type |
+|------------------------|------------|
+| year-equals            | int        |
+| year-not-equals        | int        |
+| quarter-equals         | int (1-4)  |
+| quarter-not-equals     | int        |
+| month-equals           | int (1-12) |
+| month-not-equals       | int        |
+| day-of-week-equals     | int (1-7)  |
+| day-of-week-not-equals | int        |
+| hour-equals            | int (0-23) |
+| hour-not-equals        | int        |
+| minute-equals          | int (0-59) |
+| minute-not-equals      | int        |
+| second-equals          | int (0-59) |
+| second-not-equals      | int        |
+
+```json
+{"field_id": "t42-5", "operation": "month-equals", "value": 12}
+```
+
+For multiple values: `{"field_id": "t42-5", "operation": "month-equals", "values": [1, 2, 3]}`
+
+**String filters**:
+
+| Operation           | Description                          |
+|---------------------|--------------------------------------|
+| equals              | Exact match                          |
+| not-equals          | Does not match                       |
+| string-contains     | Contains substring                   |
+| string-not-contains | Does not contain substring           |
+| string-starts-with  | Starts with prefix                   |
+| string-ends-with    | Ends with suffix                     |
+
+```json
+{"field_id": "t42-2", "operation": "string-contains", "value": "acme"}
+```
+
+For multiple values: `{"field_id": "t42-2", "operation": "equals", "values": ["A", "B"]}`
+
+**Numeric filters**:
+
+| Operation             | Description            |
+|-----------------------|------------------------|
+| equals                | Equals value           |
+| not-equals            | Does not equal value   |
+| greater-than          | Greater than           |
+| greater-than-or-equal | Greater than or equal  |
+| less-than             | Less than              |
+| less-than-or-equal    | Less than or equal     |
+
+```json
+{"field_id": "t42-3", "operation": "greater-than", "value": 100}
+```
+
+For multiple values: `{"field_id": "t42-3", "operation": "equals", "values": [10, 20, 30]}`
+
+#### Aggregations
+
+Field-based aggregation — `function` is required:
+
+| Function       | Description                |
+|----------------|----------------------------|
+| avg            | Average                    |
+| count          | Count of rows              |
+| count-distinct | Count of distinct values   |
+| max            | Maximum value              |
+| min            | Minimum value              |
+| sum            | Sum                        |
+
+```json
+{"field_id": "t42-3", "function": "sum"}
+```
+
+For `count`, `field_id` is optional (count operates on rows, not a specific
+field):
+
+```json
+{"function": "count"}
+```
+
+To sort by an aggregation result, use `sort_order` on the aggregation itself
+(not `order_by`):
+
+```json
+{"field_id": "t42-3", "function": "sum", "sort_order": "desc"}
+```
+
+Measure-based aggregation — uses a pre-defined measure:
+
+```json
+{"measure_id": 5, "sort_order": "asc"}
+```
+
+#### Group by
+
+```json
+{"field_id": "t42-5", "field_granularity": "month"}
+```
+
+`field_granularity` is optional and controls temporal grouping granularity.
+Valid values: `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`,
+`day-of-week`. Note: this is a smaller set than the `bucket` field on
+filters, which also accepts extraction units like `day-of-month` and
+`hour-of-day`.
+
+#### Order by
+
+Order by a field (not an aggregation — use `sort_order` for that):
+
+```json
+{"field": {"field_id": "t42-1"}, "direction": "desc"}
+```
+
+### POST /v1/execute
+
+Execute a query returned by /v1/construct-query.
+
+Request:
+
+```json
+{"query": "eyJkYXRhYmFzZSI6MSwi..."}
+```
+
+Response (HTTP 202):
+
+```json
+{
+  "status": "completed",
+  "data": {
+    "cols": [
+      {"name": "CREATED_AT", "base_type": "type/DateTime", "display_name": "Created At"},
+      {"name": "sum", "base_type": "type/Float", "display_name": "Sum of Total"}
+    ],
+    "rows": [
+      ["2024-01-01T00:00:00Z", 15234.50],
+      ["2024-02-01T00:00:00Z", 18102.75]
+    ]
+  },
+  "row_count": 2,
+  "running_time": 142
+}
+```
+
+On failure: `{"status": "failed", "error": "message"}`
+
+Row limits are enforced automatically:
+- Simple queries (no aggregation): 2000 rows max
+- Aggregated queries: 10000 rows max
+
+## Typical workflow
+
+1. **Search** — POST /v1/search to find relevant tables or metrics
+2. **Inspect** — GET /v1/table/{id} or /v1/metric/{id} to get field IDs and
+   understand the schema
+3. **Explore field values** — GET /v1/table/{id}/field/{field-id}/values if
+   you need to know valid filter values or field statistics
+4. **Build query** — POST /v1/construct-query with filters, aggregations,
+   group_by, etc.
+5. **Execute** — POST /v1/execute with the base64-encoded query
+6. **Iterate** — Adjust filters/aggregations and repeat steps 4-5
+
+## Error handling
+
+| HTTP Status | Meaning                                  |
+|-------------|------------------------------------------|
+| 200         | Success (GET endpoints, construct-query) |
+| 202         | Success (execute — streaming response)   |
+| 401         | Authentication failure                   |
+| 403         | Insufficient permissions                 |
+| 404         | Entity not found                         |
