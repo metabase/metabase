@@ -409,9 +409,8 @@
       (is (=? [{:lib/type   :mbql/join
                 :strategy   :left-join
                 :conditions [[:= {}
-                              [:field {:join-alias (symbol "nil \"key is not present.\"")
-                                       :binning    {:bin-width 20.0
-                                                    :strategy  :bin-width}}
+                              [:field {:binning {:bin-width 20.0
+                                                 :strategy  :bin-width}}
                                (meta/id :venues :latitude)]
                               [:field {:join-alias "Venues"
                                        :binning    {:bin-width 20.0
