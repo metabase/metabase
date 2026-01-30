@@ -6,10 +6,12 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.task-history.core :as task-history]
@@ -27,6 +29,23 @@
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private transform-temp-table-prefix
+  "Prefix used for temporary tables created during transforms."
+  "mb_transform_temp_table")
+
+(defn- transforms-enabled?
+  "Whether any transforms are enabled."
+  []
+  (or (not config/ee-available?)
+      (premium-features/has-feature? :transforms)))
+
+(defn is-temp-transform-table?
+  "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
+  [table]
+  (boolean
+   (when (and (transforms-enabled?) (:name table))
+     (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
 (derive ::event :metabase/event)
 

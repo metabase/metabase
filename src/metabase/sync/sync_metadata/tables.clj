@@ -16,7 +16,6 @@
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.sync.util :as sync-util]
-   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -251,7 +250,7 @@
   (into #{}
         (remove (fn [table]
                   (or (metabase-metadata/is-metabase-metadata-table? table)
-                      (transforms/is-temp-transform-table? table))))
+                      (sync-util/is-temp-transform-table? table))))
         (:tables db-metadata)))
 
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
