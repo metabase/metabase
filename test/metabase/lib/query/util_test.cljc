@@ -40,15 +40,22 @@
     (let [query (lib.query.util/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
-                                     :id   (meta/id :venues)}
+                                     :id   (meta/id :orders)}
                             :fields [{:type :column
                                       :name "ID"
-                                      :source-name "VENUES"}
+                                      :source-name "ORDERS"}
+
+                                     ;; column without source-name can be found if it is unambiguous
+                                     {:type :column
+                                      :name "TOTAL"}
+
+                                     ;; implicitly joined column
                                      {:type :column
                                       :name "NAME"
-                                      :source-name "VENUES"}]}]})]
-      (is (=? [[:field {} (meta/id :venues :id)]
-               [:field {} (meta/id :venues :name)]]
+                                      :source-name "PEOPLE"}]}]})]
+      (is (=? [[:field {} (meta/id :orders :id)]
+               [:field {} (meta/id :orders :total)]
+               [:field {} (meta/id :people :name)]]
               (:fields (first (:stages query))))))))
 
 (deftest ^:parallel test-query-with-expressions-test
@@ -399,7 +406,9 @@
                                                     :right     {:type      :column
                                                                 :name      "LONGITUDE"
                                                                 :bin-width 20}}]}]}]})]
-      (is (=? [{:conditions [[:= {}
+      (is (=? [{:lib/type   :mbql/join
+                :strategy   :left-join
+                :conditions [[:= {}
                               [:field {:join-alias (symbol "nil \"key is not present.\"")
                                        :binning    {:bin-width 20.0
                                                     :strategy  :bin-width}}
@@ -480,11 +489,9 @@
                                                    :name "LATITUDE"}
                                                   {:type  :literal
                                                    :value 40}]}]}]})]
-      (is (= 2 (count (lib/filters query))))
-      (is (=? [:> {} [:field {} (meta/id :venues :price)] 2]
-              (first (lib/filters query))))
-      (is (=? [:< {} [:field {} (meta/id :venues :latitude)] 40]
-              (second (lib/filters query)))))))
+      (is (=? [[:> {} [:field {} (meta/id :venues :price)] 2]
+               [:< {} [:field {} (meta/id :venues :latitude)] 40]]
+              (-> query lib/filters))))))
 
 (deftest ^:parallel test-query-multiple-joins-test
   (testing "test-query handles multiple joins"
