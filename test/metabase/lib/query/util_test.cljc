@@ -498,6 +498,43 @@
       (is (= :left-join (-> query (lib/joins) first :strategy)))
       (is (= :left-join (-> query (lib/joins) second :strategy))))))
 
+(deftest ^:parallel test-query-with-implicit-join-test
+  (testing "test-query handles implicit joins in most clauses"
+    (let [query (lib.query.util/test-query
+                 meta/metadata-provider
+                 {:stages [{:source {:type :table
+                                     :id   (meta/id :orders)}
+                            :filters [{:type     :operator
+                                       :operator :=
+                                       :args     [{:type :column
+                                                   :source-name "PRODUCTS"
+                                                   :name "CATEGORY"}
+                                                  {:type :literal
+                                                   :value "Gadget"}]}]
+
+                            :aggregations [{:type     :operator
+                                            :operator :sum
+                                            :args     [{:type :column
+                                                        :source-name "PRODUCTS"
+                                                        :name "PRICE"}]}]
+                            :breakouts    [{:type :column
+                                            :source-name "PRODUCTS"
+                                            :name "CREATED_AT"}]}]})]
+      (is (=? [:field
+               {:source-field (meta/id :orders :product-id)}
+               (meta/id :products :category)]
+              (-> query lib/filters first (nth 2))))
+
+      (is (=? [:field
+               {:source-field (meta/id :orders :product-id)}
+               (meta/id :products :price)]
+              (-> query lib/aggregations first (nth 2))))
+
+      (is (=? [:field
+               {:source-field (meta/id :orders :product-id)}
+               (meta/id :products :created-at)]
+              (-> query lib/breakouts first))))))
+
 (deftest ^:parallel test-query-three-stage-test
   (testing "test-query handles three stages"
     (let [query (lib.query.util/test-query
