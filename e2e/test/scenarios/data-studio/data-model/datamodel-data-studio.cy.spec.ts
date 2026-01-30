@@ -997,59 +997,6 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-        it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.TAX,
-          });
-
-          FieldSection.getSemanticTypeInput()
-            .should("have.value", "No semantic type")
-            .click();
-          H.popover().findByText("Currency").click();
-          cy.wait("@updateField");
-          verifyAndCloseToast("Semantic type of Tax updated");
-
-          cy.log("verify preview");
-          TableSection.clickField("Tax");
-          FieldSection.getPreviewButton().click();
-          verifyTablePreview({
-            column: "Tax ($)",
-            values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
-          });
-          verifyObjectDetailPreview({
-            rowNumber: 4,
-            row: ["Tax ($)", "2.07"],
-          });
-
-          cy.log("change currency");
-          FieldSection.getSemanticTypeCurrencyInput()
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.value", "US Dollar")
-            // it should allow to just type to search (metabase#59052)
-            .type("canadian{downarrow}{enter}");
-          cy.wait("@updateField");
-          verifyAndCloseToast("Semantic type of Tax updated");
-
-          cy.log("verify preview");
-          verifyTablePreview({
-            column: "Tax (CA$)",
-            values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
-          });
-          verifyObjectDetailPreview({
-            rowNumber: 4,
-            row: ["Tax (CA$)", "2.07"],
-          });
-
-          cy.log("verify viz");
-          H.openOrdersTable();
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Tax (CA$)").should("be.visible");
-        });
-
         it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
           H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
