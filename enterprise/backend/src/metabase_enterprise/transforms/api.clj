@@ -548,8 +548,7 @@
 (api.macros/defendpoint :get "/:id/inspect/lens/:lens-id"
   :- ::inspector.schema/lens
   "Phase 2: Get full lens contents for a transform.
-   Returns sections, cards with dataset_query, and trigger definitions.
-   Frontend executes the cards and optionally posts results for feedback."
+   Returns sections, cards with dataset_query, and trigger definitions."
   [{:keys [id lens-id]} :- [:map
                             [:id ms/PositiveInt]
                             [:lens-id ms/NonBlankString]]]
