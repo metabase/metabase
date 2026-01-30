@@ -1,5 +1,6 @@
 .root {
   position: relative;
+  overflow: hidden;
   background-color: var(--mb-dotted-bg-background);
 }
 
@@ -16,8 +17,4 @@
   background-position: center;
   background-repeat: round round;
   background-size: var(--mb-dotted-bg-spacing) var(--mb-dotted-bg-spacing);
-}
-
-.root > * {
-  position: relative;
 }
