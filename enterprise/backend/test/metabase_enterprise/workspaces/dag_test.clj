@@ -207,7 +207,7 @@
           tbl {:node-type :table :id "tbl"}
           graph {tx1 [tx2 tbl], tx2 [], tbl []}
           xf (keep #(when (= :workspace-transform (:node-type %)) (:id %)))]
-      (is (= ["t2"] (ws.dag/bfs-reduce graph [tx1] :rf (xf conj!)))))))
+      (is (= ["t2"] (ws.dag/bfs-reduce graph [tx1] :rf (xf conj)))))))
 
 (deftest collapse-test
   (is (= {:x1 [:x2 :x3]

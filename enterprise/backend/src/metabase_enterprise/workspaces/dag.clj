@@ -10,8 +10,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize])
-  (:import (clojure.lang ITransientCollection)))
+   [toucan2.realize :as t2.realize]))
 
 ;; TODO (chris 2025/12/15) Should we leverage data-authority table metadata to speed things up?
 
@@ -206,18 +205,13 @@
 
    Options:
    - :include-start? - include start node(s) in result (default: false)
-   - :rf             - reducing function for collecting results
-   - :init           - initial value for the result accumulator (default: transient [])
-
-   When init is a transient collection, rf defaults to conj! and the result is
-   automatically persisted. When init is persistent, rf defaults to conj.
+   - :rf             - reducing function for collecting results (default: conj)
+   - :init           - initial value for the result accumulator (default: [])
 
    Returns the accumulated result in BFS order (no duplicates)."
-  [edges-map starts & {:keys [include-start? rf init]}]
-  (let [init          (if (some? init) init (transient []))
-        transient?    (instance? ITransientCollection init)
-        rf            (or rf (if transient? conj! conj))
-        init-set      (set starts)
+  [edges-map starts & {:keys [include-start? rf init]
+                       :or   {rf conj, init []}}]
+  (let [init-set      (set starts)
         get-children  #(get edges-map % [])
         ;; Queue always starts with children of start nodes (excluding start nodes themselves)
         init-children (into [] (comp (mapcat get-children) (remove init-set)) starts)]
@@ -227,7 +221,7 @@
            visited (transient (if include-start? init-set #{}))
            result  (if include-start? (reduce rf init starts) init)]
       (if (empty? queue)
-        (cond-> result transient? persistent!)
+        result
         (let [current (first queue)
               queue   (subvec queue 1)]
           (if (visited current)

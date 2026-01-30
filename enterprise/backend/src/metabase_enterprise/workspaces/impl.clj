@@ -215,7 +215,7 @@
   [graph ref-id]
   (when-let [deps-map (:dependencies graph)]
     (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform :id ref-id}]
-                       :rf (workspace-transform-id-xf conj!))))
+                       :rf (workspace-transform-id-xf conj))))
 
 (defn downstream-descendants
   "Given a graph and a ref-id, find all downstream workspace transform descendants.
@@ -226,7 +226,7 @@
   (when-let [deps-map (:dependencies graph)]
     (let [forward-edges (ws.dag/reverse-graph deps-map)]
       (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform :id ref-id}]
-                         :rf (workspace-transform-id-xf conj!)))))
+                         :rf (workspace-transform-id-xf conj)))))
 
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
