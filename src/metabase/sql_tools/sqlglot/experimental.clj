@@ -4,8 +4,8 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.sqlglot.shim :as sqlglot.shim]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]))
 
@@ -86,7 +86,7 @@
   (let [sqlglot-schema* (sqlglot-schema driver query)
         sql-str (lib/raw-native-query query)
         default-schema* (driver.sql/default-schema driver)
-        lineage (sqlglot.shim/returned-columns-lineage
+        lineage (sql-parsing/returned-columns-lineage
                  (driver->dialect driver) sql-str default-schema* sqlglot-schema*)
         normalized-lienage (mapv (partial normalized-dependencies driver)
                                  lineage)
