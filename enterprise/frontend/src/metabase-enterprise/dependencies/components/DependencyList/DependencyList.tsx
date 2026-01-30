@@ -6,7 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import type * as Urls from "metabase/lib/urls";
 import { Center, Flex, Stack } from "metabase/ui";
 import {
-  useListBrokenGraphNodesQuery,
+  useListBreakingGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
@@ -55,8 +55,8 @@ export function DependencyList({
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useListGraphNodesQuery =
-    mode === "broken"
-      ? useListBrokenGraphNodesQuery
+    mode === "breaking"
+      ? useListBreakingGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
 
   const {

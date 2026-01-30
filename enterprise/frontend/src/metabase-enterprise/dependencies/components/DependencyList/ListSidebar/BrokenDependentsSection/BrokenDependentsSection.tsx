@@ -17,7 +17,7 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
-import { useListNodeDependentsQuery } from "metabase-enterprise/api";
+import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
 import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../../constants";
@@ -69,7 +69,7 @@ export function BrokenDependentsSection({
     getDefaultFilterOptions(),
   );
 
-  const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
+  const { data: dependents = [], isFetching } = useListBrokenGraphNodesQuery(
     getListRequest(node, filterOptions, sortOptions),
     {
       skip: count === 0,

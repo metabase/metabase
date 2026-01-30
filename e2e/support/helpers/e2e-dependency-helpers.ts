@@ -1,6 +1,6 @@
 import type {
   DependencyNode,
-  ListBrokenGraphNodesResponse,
+  ListBreakingGraphNodesResponse,
 } from "metabase-types/api";
 
 export const DependencyGraph = {
@@ -12,8 +12,8 @@ export const DependencyGraph = {
 };
 
 export const DependencyDiagnostics = {
-  visitBrokenDependencies: () =>
-    cy.visit("/data-studio/dependency-diagnostics/broken"),
+  visitBreakingDependencies: () =>
+    cy.visit("/data-studio/dependency-diagnostics/breaking"),
   visitUnreferencedEntities: () =>
     cy.visit("/data-studio/dependency-diagnostics/unreferenced"),
   list: () => cy.findByTestId("dependency-list"),
@@ -38,21 +38,21 @@ export const DependencyDiagnostics = {
 const WAIT_TIMEOUT = 10000;
 const WAIT_INTERVAL = 100;
 
-export function waitForBrokenDependencies(
+export function waitForBreakingDependencies(
   filter: (nodes: DependencyNode[]) => boolean,
   timeout = WAIT_TIMEOUT,
 ): Cypress.Chainable {
   return cy
-    .request<ListBrokenGraphNodesResponse>(
+    .request<ListBreakingGraphNodesResponse>(
       "GET",
-      "/api/ee/dependencies/graph/broken",
+      "/api/ee/dependencies/graph/breaking",
     )
     .then((response) => {
       if (filter(response.body.data)) {
         return cy.wrap(response);
       } else if (timeout > 0) {
         cy.wait(WAIT_INTERVAL);
-        return waitForBrokenDependencies(filter, timeout - WAIT_INTERVAL);
+        return waitForBreakingDependencies(filter, timeout - WAIT_INTERVAL);
       } else {
         throw new Error("Dependency analysis retry timeout");
       }
