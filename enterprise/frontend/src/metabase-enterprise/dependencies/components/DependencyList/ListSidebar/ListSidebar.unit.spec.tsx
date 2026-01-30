@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupListNodeDependentsEndpoint } from "__support__/server-mocks";
+import { setupListBrokenGraphNodesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DependencyNode } from "metabase-types/api";
 import {
@@ -28,7 +28,7 @@ function setup({
   const onResizeStop = jest.fn();
   const onClose = jest.fn();
 
-  setupListNodeDependentsEndpoint();
+  setupListBrokenGraphNodesEndpoint([]);
   renderWithProviders(
     <Route
       path="/"
