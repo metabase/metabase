@@ -893,6 +893,37 @@ describe.each<Area>(areas)(
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("New description").should("be.visible");
         });
+
+        it("should remap FK display value from field section", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.PRODUCT_ID,
+          });
+
+          FieldSection.getNameInput()
+            .clear()
+            .type("Remapped Product ID")
+            .realPress("Tab");
+          cy.wait("@updateField");
+          verifyAndCloseToast("Name of Product ID updated");
+
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Remapped Product ID",
+            values: ["14", "123", "105", "94", "132"],
+          });
+          verifyObjectDetailPreview({
+            rowNumber: 2,
+            row: ["Remapped Product ID", "14"],
+          });
+
+          cy.log("verify viz");
+          H.openOrdersTable({ limit: 5 });
+          H.tableHeaderColumn("Remapped Product ID").should("be.visible");
+        });
       });
     });
   },
