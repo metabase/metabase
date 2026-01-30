@@ -6,12 +6,18 @@ import { OnboardingStepper } from "./OnboardingStepper";
 
 const TestStepper = ({
   completedSteps = {},
+  lockedSteps = {},
   onChange,
 }: {
   completedSteps?: Record<string, boolean>;
+  lockedSteps?: Record<string, boolean>;
   onChange?: (value: string | null) => void;
 }) => (
-  <OnboardingStepper completedSteps={completedSteps} onChange={onChange}>
+  <OnboardingStepper
+    completedSteps={completedSteps}
+    lockedSteps={lockedSteps}
+    onChange={onChange}
+  >
     <OnboardingStepper.Step value="step-1" label={1} title="First step">
       First step content
     </OnboardingStepper.Step>
@@ -112,5 +118,24 @@ describe("OnboardingStepper", () => {
 
     await userEvent.click(screen.getByText("Second step"));
     expect(onChange).toHaveBeenCalledWith("step-2");
+  });
+
+  it("shows lock icon for locked steps", () => {
+    setup({ lockedSteps: { "step-2": true, "step-3": true } });
+
+    expect(screen.getAllByRole("img", { name: /lock/i })).toHaveLength(2);
+  });
+
+  it("does not expand locked steps when clicked", async () => {
+    setup({ lockedSteps: { "step-2": true } });
+
+    // first step is active by default
+    expect(screen.getByText("First step content")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Second step"));
+
+    // second step is locked, so first step should still be active
+    expect(screen.getByText("First step content")).toBeInTheDocument();
+    expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
   });
 });

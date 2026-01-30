@@ -9,11 +9,15 @@ import {
 
 const args: OnboardingStepperProps = {
   completedSteps: {},
+  lockedSteps: {},
   children: null,
 };
 
 const argTypes = {
   completedSteps: {
+    control: { type: "object" },
+  },
+  lockedSteps: {
     control: { type: "object" },
   },
 };
@@ -119,6 +123,57 @@ export const Default = {
       description: {
         story:
           "Click the buttons to mark steps as complete. The stepper will automatically open the next incomplete step.",
+      },
+    },
+  },
+};
+
+const LockedStepsExample = () => {
+  return (
+    <Box maw={600} ml="xl">
+      <OnboardingStepper
+        completedSteps={{ "step-1": true }}
+        lockedSteps={{ "step-3": true, "step-4": true, "step-5": true }}
+      >
+        <OnboardingStepper.Step
+          value="step-1"
+          label={1}
+          title="Add a database connection"
+        >
+          <Text>Connect your database to Metabase.</Text>
+        </OnboardingStepper.Step>
+
+        <OnboardingStepper.Step value="step-2" label={2} title="Configure SSO">
+          <Text>Set up single sign-on for your team.</Text>
+        </OnboardingStepper.Step>
+
+        <OnboardingStepper.Step
+          value="step-3"
+          label={3}
+          title="Select data to make available"
+        >
+          <Text>Choose which data to expose to your customers.</Text>
+        </OnboardingStepper.Step>
+
+        <OnboardingStepper.Step value="step-4" label={4} title="Create tenants">
+          <Text>Set up tenants for multi-tenant embedding.</Text>
+        </OnboardingStepper.Step>
+
+        <OnboardingStepper.Step value="step-5" label={5} title="Summary">
+          <Text>Review your setup.</Text>
+        </OnboardingStepper.Step>
+      </OnboardingStepper>
+    </Box>
+  );
+};
+
+export const LockedSteps = {
+  render: () => <LockedStepsExample />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Steps can be locked to indicate they are not yet available. A lock icon appears on the right side of locked steps.",
       },
     },
   },

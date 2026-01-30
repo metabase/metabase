@@ -5,6 +5,7 @@ import type { ItemContextValue, StepperContextValue } from "./types";
 export const StepperContext = createContext<StepperContextValue>({
   activeStep: null,
   completedSteps: {},
+  lockedSteps: {},
   stepRefs: {},
   setActiveStep: () => {},
 });

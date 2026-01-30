@@ -18,11 +18,12 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
   }: OnboardingStepperStepProps,
   forwardedRef: Ref<HTMLDivElement>,
 ) {
-  const { activeStep, completedSteps, stepRefs, setActiveStep } =
+  const { activeStep, completedSteps, lockedSteps, stepRefs, setActiveStep } =
     useContext(StepperContext);
   const ref = forwardedRef ?? stepRefs[value];
   const isActive = activeStep === value;
   const isCompleted = completedSteps[value] ?? false;
+  const isLocked = lockedSteps[value] ?? false;
 
   return (
     <ItemContext.Provider value={{ value, label, icon }}>
@@ -34,8 +35,9 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
         aria-label={title}
         aria-current={isActive ? "step" : undefined}
         data-active={isActive}
+        data-locked={isLocked}
         data-testid={testId}
-        onClick={isActive ? undefined : () => setActiveStep(value)}
+        onClick={isActive || isLocked ? undefined : () => setActiveStep(value)}
       >
         <div className={S.StepNumber} data-completed={isCompleted}>
           {isCompleted ? (
@@ -45,8 +47,14 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
           )}
         </div>
 
-        <div className={S.StepTitle} data-completed={isCompleted}>
-          {title}
+        <div className={S.StepHeader}>
+          <div className={S.StepTitle} data-completed={isCompleted}>
+            {title}
+          </div>
+
+          {isLocked && (
+            <Icon name="lock" className={S.StepLockIcon} aria-label="Locked" />
+          )}
         </div>
 
         {isActive && <div className={S.StepContent}>{children}</div>}

@@ -5,6 +5,7 @@ import type { IconName } from "metabase/ui";
 export interface StepperContextValue {
   activeStep: string | null;
   completedSteps: Record<string, boolean>;
+  lockedSteps: Record<string, boolean>;
   stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
   setActiveStep: (value: string | null) => void;
 }
@@ -23,6 +24,9 @@ export interface OnboardingStepperProps {
 
   /** Record of step values to their completion status */
   completedSteps?: Record<string, boolean>;
+
+  /** Record of step values to their locked status */
+  lockedSteps?: Record<string, boolean>;
 }
 
 export interface OnboardingStepperStepProps {

@@ -21,6 +21,21 @@
   }
 }
 
+.StepRoot[data-locked="true"] {
+  cursor: not-allowed;
+
+  &:hover {
+    background-color: var(--mb-color-background-primary);
+  }
+}
+
+/* Step header (title + lock icon) */
+.StepHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 /* Step title */
 .StepTitle {
   color: var(--mb-color-brand);
@@ -28,11 +43,11 @@
   font-weight: 700;
 }
 
-.StepRoot[data-active="true"] .StepTitle {
+.StepRoot[data-active="true"] .StepHeader {
   margin-bottom: 1rem;
 }
 
-.StepRoot[data-active="false"] .StepTitle {
+.StepRoot[data-active="false"] .StepHeader {
   margin: 0.5rem 0;
 }
 
@@ -78,6 +93,12 @@
   width: 1rem;
   height: 1rem;
   color: var(--mb-color-success);
+}
+
+.StepLockIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--mb-color-text-tertiary);
 }
 
 /* Step content (only shown when active) */

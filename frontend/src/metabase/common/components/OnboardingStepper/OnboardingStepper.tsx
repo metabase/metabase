@@ -13,6 +13,7 @@ export type {
 const OnboardingStepperRoot = ({
   children,
   completedSteps = {},
+  lockedSteps = {},
   onChange,
 }: OnboardingStepperProps) => {
   // Extract step IDs from children
@@ -56,7 +57,13 @@ const OnboardingStepperRoot = ({
 
   return (
     <StepperContext.Provider
-      value={{ activeStep, completedSteps, stepRefs, setActiveStep }}
+      value={{
+        activeStep,
+        completedSteps,
+        lockedSteps,
+        stepRefs,
+        setActiveStep,
+      }}
     >
       {children}
     </StepperContext.Provider>
