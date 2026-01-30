@@ -9,18 +9,20 @@
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.transforms.feature-gating :as transforms.gating]))
 
 (def default-search-ctx
-  {:search-string               nil
-   :archived?                   false
-   :models                      search.config/all-models
-   :model-ancestors?            false
-   :current-user-id             1
-   :is-superuser?               true
-   :is-data-analyst?            false
-   :current-user-perms          #{"/"}
-   :calculate-available-models? false})
+  {:search-string                  nil
+   :archived?                      false
+   :models                         search.config/all-models
+   :model-ancestors?               false
+   :current-user-id                1
+   :is-superuser?                  true
+   :is-data-analyst?               false
+   :current-user-perms             #{"/"}
+   :calculate-available-models?    false
+   :enabled-transform-source-types #{"mbql"}})
 
 (deftest ^:parallel ->applicable-models-test
   (testing "without optional filters"
@@ -34,7 +36,11 @@
       (is (= search.config/all-models
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:archived? true})))))))
+                     {:archived? true}))))
+      (is (= (disj search.config/all-models "transform")
+             (search.filter/search-context->applicable-models
+              (merge default-search-ctx
+                     {:enabled-transform-source-types #{}})))))))
 
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"

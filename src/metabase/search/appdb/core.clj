@@ -161,6 +161,7 @@
                        (add-collection-join-and-where-clauses search-ctx)
                        (add-table-where-clauses search-ctx)
                        (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                               search-ctx
                                                :search_index.model
                                                :search_index.source_type)))
                        (search.scoring/with-scores search-ctx scorers)
@@ -185,6 +186,7 @@
     (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
          (add-collection-join-and-where-clauses search-ctx)
          (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                 search-ctx
                                  :search_index.model
                                  :search_index.source_type)))
          (search.filter/with-filters search-ctx)

@@ -8,7 +8,8 @@
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.feature-gating :as transforms.gating]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -24,7 +25,9 @@
   (math.combo/subsets (remove #{:archived? :table-db-id} (filter-keys))))
 
 (defn- with-all-models [search-ctx]
-  (assoc search-ctx :models search.config/all-models))
+  (assoc search-ctx
+         :models search.config/all-models
+         :enabled-transform-source-types (transforms.gating/enabled-source-types)))
 
 (defn- with-all-models-and-regular-user [search-ctx]
   (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false)))

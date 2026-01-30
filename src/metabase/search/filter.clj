@@ -7,7 +7,6 @@
    [metabase.search.config :as search.config]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
-   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2])
@@ -145,15 +144,15 @@
 (defn transform-source-type-where-clause
   "Build a clause that limits transforms to enabled source types.
   When a `model-col` is provided, non-transform models always pass through."
-  ([source-type-col]
-   (let [enabled-types (transforms.gating/enabled-source-types)]
+  ([search-context source-type-col]
+   (let [enabled-types (:enabled-transform-source-types search-context)]
      (if (seq enabled-types)
        [:in source-type-col enabled-types]
        [:= [:inline 0] [:inline 1]])))
-  ([model-col source-type-col]
+  ([search-context model-col source-type-col]
    [:or
     [:!= model-col [:inline "transform"]]
-    (transform-source-type-where-clause source-type-col)]))
+    (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."

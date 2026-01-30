@@ -63,7 +63,7 @@
 (defmethod check-permissions-for-model :transform
   [search-ctx instance]
   (and (:is-superuser? search-ctx)
-       (let [enabled-types (transforms.gating/enabled-source-types)
+       (let [enabled-types (:enabled-transform-source-types search-ctx)
              source-type   (some-> (:source_type instance) name)]
          (contains? enabled-types source-type))
        (if (:archived? search-ctx)
@@ -321,14 +321,15 @@
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
-  (let [models (if (seq models) models search.config/all-models)
-        engine (parse-engine search-engine)
-        fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
+  (let [models                          (if (seq models) models search.config/all-models)
+        engine                          (parse-engine search-engine)
+        fvalue                          (fn [filter-key] (search.config/filter-default engine context filter-key))
         ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
                         :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
+                        :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?

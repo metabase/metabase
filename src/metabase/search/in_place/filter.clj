@@ -21,7 +21,6 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
@@ -351,7 +350,7 @@
                 has-temporal-dim
                 display-type
                 is-superuser?]} search-context
-        enabled-types (transforms.gating/enabled-source-types)
+        enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
@@ -389,6 +388,7 @@
     (cond-> honeysql-query
       (= model "transform")
       (sql.helpers/where (search.filter/transform-source-type-where-clause
+                          search-context
                           (search.config/column-with-model-alias "transform" :source_type)))
 
       (not (str/blank? search-string))

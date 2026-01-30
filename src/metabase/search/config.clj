@@ -274,7 +274,8 @@
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
    [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]])
+   [:has-temporal-dim                    {:optional true} :boolean]
+   [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string
   "Turn a complex column into a string"
