@@ -11,12 +11,12 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -81,12 +81,6 @@
     #"^lobos_migrations$"
     ;; MSSQL
     #"^syncobj_0x.*"})
-
-(defenterprise is-temp-transform-table?
-  "Return true if `table` references a temporary transform table created during transforms execution."
-  metabase.transforms.util
-  [_table]
-  false)
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
@@ -257,7 +251,7 @@
   (into #{}
         (remove (fn [table]
                   (or (metabase-metadata/is-metabase-metadata-table? table)
-                      (is-temp-transform-table? table))))
+                      (transforms/is-temp-transform-table? table))))
         (:tables db-metadata)))
 
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]

@@ -58,6 +58,17 @@
          (is (= #{normal-table temp-table}
                 (#'sync-tables/table-set db-metadata))))))))
 
+(mt/deftest-oss transform-temp-tables-are-skipped-on-oss
+  (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
+                      :schema "public"}
+        normal-table {:name   "orders"
+                      :schema "public"}
+        db-metadata  {:tables #{temp-table normal-table}}]
+    (mt/with-premium-features #{}
+      (testing "table-set excludes transform temporary tables on OSS"
+        (is (= #{normal-table}
+               (#'sync-tables/table-set db-metadata)))))))
+
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
     (mt/with-temp [:model/Database db {}
