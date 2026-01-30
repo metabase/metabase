@@ -2303,6 +2303,141 @@ describe.each<Area>(areas)(
           });
         });
       });
+
+      describe("Formatting", () => {
+        it("should let you to change field formatting", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.QUANTITY,
+          });
+
+          FieldSection.getStyleInput().click();
+          H.popover().findByText("Percent").click();
+          cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "formatting",
+            triggered_from: context.getTriggeredFrom(),
+          });
+          verifyAndCloseToast("Formatting of Quantity updated");
+
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Quantity",
+            values: ["200%", "300%", "200%", "600%", "500%"],
+          });
+          verifyObjectDetailPreview({
+            rowNumber: 8,
+            row: ["Quantity", "200%"],
+          });
+        });
+
+        it("should only show currency formatting options for currency fields", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.DISCOUNT,
+          });
+          cy.wait("@metadata");
+
+          cy.findByTestId("column-settings")
+            .scrollIntoView()
+            .within(() => {
+              cy.findByText("Unit of currency").should("be.visible");
+              cy.findByText("Currency label style").should("be.visible");
+            });
+
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.QUANTITY,
+          });
+          cy.wait("@metadata");
+
+          cy.findByTestId("column-settings")
+            .scrollIntoView()
+            .within(() => {
+              // shouldnt show currency settings by default for quantity field
+              cy.findByText("Unit of currency").should("not.be.visible");
+              cy.findByText("Currency label style").should("not.be.visible");
+
+              cy.get("#number_style").click();
+            });
+
+          // if you change the style to currency, currency settings should appear
+          H.popover().findByText("Currency").click();
+          cy.wait("@updateField");
+          verifyAndCloseToast("Formatting of Quantity updated");
+
+          cy.findByTestId("column-settings").within(() => {
+            cy.findByText("Unit of currency").should("be.visible");
+            cy.findByText("Currency label style").should("be.visible");
+          });
+        });
+
+        it("should save and obey field prefix formatting settings", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.QUANTITY,
+          });
+          cy.wait("@metadata");
+
+          FieldSection.getPrefixInput().scrollIntoView().type("about ").blur();
+          cy.wait("@updateField");
+          verifyAndCloseToast("Formatting of Quantity updated");
+
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Quantity",
+            values: ["about 2", "about 3", "about 2", "about 6", "about 5"],
+          });
+          verifyObjectDetailPreview({
+            rowNumber: 8,
+            row: ["Quantity", "about 2"],
+          });
+
+          cy.log("verify viz");
+          H.visitQuestionAdhoc({
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["sum", ["field", ORDERS.QUANTITY, null]]],
+              },
+              type: "query",
+            },
+          });
+          cy.findByTestId("visualization-root")
+            .findByText("about 69,540")
+            .should("be.visible");
+        });
+
+        it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.QUANTITY,
+          });
+          cy.wait("@metadata");
+
+          FieldSection.getPrefixInput().focus().blur();
+          cy.get("@updateFieldSpy").should("not.have.been.called");
+          H.undoToast().should("not.exist");
+
+          FieldSection.getSuffixInput().focus().blur();
+          cy.get("@updateFieldSpy").should("not.have.been.called");
+          H.undoToast().should("not.exist");
+        });
+      });
     });
   },
 );
