@@ -1175,7 +1175,7 @@
             (let [result  (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
                             (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
               (is (=? {:status     "failed"
-                       :message    #"(?s).*nocolumn.*"
+                       :message    #"(?si).*nocolumn.*"
                        :start_time some?
                        :end_time   some?
                        :table      {:schema (:schema ws)
@@ -1184,7 +1184,7 @@
           (testing "transform has last_run_message mentioning the bad column"
             (is (=? {:last_run_at      some?
                      :last_run_status  "failed"
-                     :last_run_message #"(?s).*nocolumn.*"}
+                     :last_run_message #"(?si).*nocolumn.*"}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
 (deftest execute-workspace-test
