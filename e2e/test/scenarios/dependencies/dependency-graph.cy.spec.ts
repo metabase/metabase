@@ -1079,7 +1079,7 @@ function createSnippetBasedTransform({
 }
 
 function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/ee/transform/${transformId}/run`);
+  cy.request("POST", `/api/transform/${transformId}/run`);
   H.waitForSucceededTransformRuns();
 }
 

@@ -44,6 +44,7 @@ import { initializePlugin as initializeSupport } from "./support";
 import { initializePlugin as initializeTableEditing } from "./table-editing";
 import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTools } from "./tools";
+import { initializePlugin as initializeTransforms } from "./transforms";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
@@ -90,6 +91,7 @@ export function initializePlugins() {
   initializeTableEditing();
   initializeDependencies();
   initializeSemanticSearch();
+  initializeTransforms();
   initializeTransformsPython();
   initializeSupport();
   initializeTenants?.();

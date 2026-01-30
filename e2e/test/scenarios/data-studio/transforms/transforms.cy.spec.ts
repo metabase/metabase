@@ -40,15 +40,13 @@ describe("scenarios > admin > transforms", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/ee/transform").as("createTransform");
-    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/ee/transform/*/table").as(
-      "deleteTransformTable",
-    );
-    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+    cy.intercept("POST", "/api/transform").as("createTransform");
+    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
+    cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
+    cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
+    cy.intercept("POST", "/api/transform-tag").as("createTag");
+    cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
+    cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
     cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
       "checkTransformDependencies",
     );
@@ -949,7 +947,7 @@ LIMIT
 
       // Stub the updateTransform call to track how many times it's called
       let updateCallCount = 0;
-      cy.intercept("PUT", "/api/ee/transform/*", (req) => {
+      cy.intercept("PUT", "/api/transform/*", (req) => {
         updateCallCount++;
         req.continue();
       }).as("updateTransformCounted");
@@ -982,7 +980,7 @@ LIMIT
       let requestCount = 0;
 
       // Intercept and delay the first request using a Promise
-      cy.intercept("PUT", "/api/ee/transform/*", (req) => {
+      cy.intercept("PUT", "/api/transform/*", (req) => {
         requestCount++;
         if (requestCount === 1) {
           // Delay the first request by 1 second
@@ -1067,7 +1065,7 @@ LIMIT
       isIncrementalSwitchDisabled();
 
       cy.log("Intercept and force the update to fail");
-      cy.intercept("PUT", "/api/ee/transform/*", {
+      cy.intercept("PUT", "/api/transform/*", {
         statusCode: 500,
         body: { message: "Internal server error" },
       }).as("updateTransformError");
@@ -1096,7 +1094,7 @@ LIMIT
       isIncrementalSwitchDisabled();
 
       cy.log("Intercept and simulate network failure");
-      cy.intercept("PUT", "/api/ee/transform/*", {
+      cy.intercept("PUT", "/api/transform/*", {
         forceNetworkError: true,
       }).as("updateTransformNetworkError");
 
@@ -1125,7 +1123,7 @@ LIMIT
 
       let requestCount = 0;
       cy.log("Intercept and fail the first request after a delay");
-      cy.intercept("PUT", "/api/ee/transform/*", (req) => {
+      cy.intercept("PUT", "/api/transform/*", (req) => {
         requestCount++;
         if (requestCount === 1) {
           // First request fails after a delay to ensure second change happens while it's in progress
@@ -1604,7 +1602,7 @@ LIMIT
 
       cy.get<TransformId>("@transformId").then((transformId) => {
         cy.log("run the transform to create the output table");
-        cy.request("POST", `/api/ee/transform/${transformId}/run`);
+        cy.request("POST", `/api/transform/${transformId}/run`);
         H.waitForSucceededTransformRuns();
         H.resyncDatabase({
           dbId: WRITABLE_DB_ID,
@@ -2815,7 +2813,7 @@ LIMIT
         .should("be.visible");
 
       cy.log("Revert to an earlier revision");
-      cy.intercept("GET", "/api/ee/transform/*").as("transformReload");
+      cy.intercept("GET", "/api/transform/*").as("transformReload");
       cy.findByTestId("transform-history-list")
         .findByText(/created this/)
         .parent()
@@ -2925,15 +2923,13 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     H.activateToken("bleeding-edge");
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/ee/transform").as("createTransform");
-    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/ee/transform/*/table").as(
-      "deleteTransformTable",
-    );
-    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+    cy.intercept("POST", "/api/transform").as("createTransform");
+    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
+    cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
+    cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
+    cy.intercept("POST", "/api/transform-tag").as("createTag");
+    cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
+    cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
   });
 
   it("should be not be possible to create a new schema when updating a transform target", () => {
@@ -2973,9 +2969,9 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.intercept("POST", "/api/ee/transform-job").as("createJob");
-    cy.intercept("PUT", "/api/ee/transform-job/*").as("updateJob");
-    cy.intercept("DELETE", "/api/ee/transform-job/*").as("deleteJob");
+    cy.intercept("POST", "/api/transform-job").as("createJob");
+    cy.intercept("PUT", "/api/transform-job/*").as("updateJob");
+    cy.intercept("DELETE", "/api/transform-job/*").as("deleteJob");
   });
 
   describe("creation", () => {
@@ -4055,7 +4051,7 @@ describe("scenarios > data studio > transforms > permissions", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+    cy.intercept("POST", "/api/transform").as("createTransform");
   });
 
   it("should allow non-admin users with data-studio permission to create transforms", () => {

@@ -31,3 +31,10 @@ export const getShouldShowTransformsUpsell = createSelector(
   (state: State) => getTokenFeature(state, "transforms"),
   (isHosted, hasTransformsFeature) => isHosted && !hasTransformsFeature,
 );
+
+export const getShouldShowPythonTransformsUpsell = createSelector(
+  getIsHosted,
+  (state: State) => getTokenFeature(state, "transforms-python"),
+  (isHosted, hasPythonTransformsFeature) =>
+    isHosted && !hasPythonTransformsFeature,
+);

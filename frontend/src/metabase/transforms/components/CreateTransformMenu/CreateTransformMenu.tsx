@@ -6,9 +6,10 @@ import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
 import { trackTransformCreate } from "../../analytics";
@@ -30,6 +31,10 @@ export const CreateTransformMenu = () => {
   ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+
+  const shouldShowPythonTransformsUpsell = useSelector(
+    getShouldShowPythonTransformsUpsell,
+  );
 
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
@@ -81,15 +86,20 @@ export const CreateTransformMenu = () => {
               >
                 {t`SQL query`}
               </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="code_block" />}
-                rightSection={
-                  !hasPythonTransformsFeature ? <UpsellGem size={14} /> : null
-                }
-                onClick={handlePythonClick}
-              >
-                {t`Python script`}
-              </Menu.Item>
+
+              {(shouldShowPythonTransformsUpsell ||
+                hasPythonTransformsFeature) && (
+                <Menu.Item
+                  leftSection={<Icon name="code_block" />}
+                  rightSection={
+                    !hasPythonTransformsFeature ? <UpsellGem size={14} /> : null
+                  }
+                  onClick={handlePythonClick}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
+
               <Menu.Item
                 leftSection={<Icon name="insight" />}
                 onClick={() => {
