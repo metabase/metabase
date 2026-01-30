@@ -12,8 +12,8 @@ export type {
 
 const OnboardingStepperRoot = ({
   children,
-  completedSteps = {},
-  lockedSteps = {},
+  completedSteps,
+  lockedSteps,
   onChange,
 }: OnboardingStepperProps) => {
   // Extract step IDs and compute labels from children

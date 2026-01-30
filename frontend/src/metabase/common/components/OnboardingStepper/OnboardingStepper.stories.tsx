@@ -44,7 +44,7 @@ const DefaultExample = () => {
 
   return (
     <Box maw={600} ml="xl">
-      <OnboardingStepper completedSteps={completedSteps}>
+      <OnboardingStepper completedSteps={completedSteps} lockedSteps={{}}>
         <OnboardingStepper.Step
           stepId="step-1"
           title="Connect to your database"

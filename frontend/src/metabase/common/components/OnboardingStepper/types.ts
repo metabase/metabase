@@ -19,14 +19,14 @@ export interface ItemContextValue {
 export interface OnboardingStepperProps {
   children: ReactNode;
 
-  /** Callback when the active step changes */
-  onChange?: (value: string | null) => void;
-
   /** Record of step values to their completion status */
-  completedSteps?: Record<string, boolean>;
+  completedSteps: Record<string, boolean>;
 
   /** Record of step values to their locked status */
-  lockedSteps?: Record<string, boolean>;
+  lockedSteps: Record<string, boolean>;
+
+  /** Callback when the active step changes */
+  onChange?: (value: string | null) => void;
 }
 
 export interface OnboardingStepperStepProps {
