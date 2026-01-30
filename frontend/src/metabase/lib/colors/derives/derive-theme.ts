@@ -1,3 +1,4 @@
+import Color from "color";
 import _ from "underscore";
 
 import type { MetabaseEmbeddingThemeV2 } from "metabase/embedding-sdk/theme";
@@ -9,15 +10,9 @@ import { PROTECTED_COLORS } from "../constants/protected-colors";
 import { getThemeFromColorScheme } from "../theme-from-color-scheme";
 import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "../types";
 
-<<<<<<< HEAD:frontend/src/metabase/lib/colors/derives/derive-theme.ts
 import { deriveColorsFromInputs } from "./derive-colors";
-=======
-import { mapChartColorsToAccents } from "./accents";
-import { PROTECTED_COLORS } from "./constants/protected-colors";
-import { getThemeFromColorScheme } from "./theme-from-color-scheme";
-import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
-import Color from "color";
->>>>>>> 4eceeaf8228 (temp):frontend/src/metabase/lib/colors/derive-theme.ts
+import { detectLightnessStep, generateLightnessStops } from "./lightness-stops";
+import { LightnessStop } from "../types/lightness-stops";
 
 /**
  * Derives the _full_ metabase themes given a theme configuration.
@@ -87,18 +82,28 @@ type AccessoryColors = Extract<
   "filter" | "summarize" | "accent0" | "accent1"
 >;
 
+const getColorAtStop = (source: string, stop: LightnessStop) => {
+  return generateLightnessStops(source).solid[stop];
+};
+
+const DEFAULT_BRAND = "#509EE2";
+
 export const suggestColors = (
   _brand: string,
 ): Record<AccessoryColors, string> => {
-  const brand = Color(_brand);
+  const brand =
+    Color(_brand).saturationl() < 20 ? Color(DEFAULT_BRAND) : Color(_brand);
+  const brandStop = detectLightnessStep(brand.rgb().toString());
 
-  const getChartColor = (index) =>
+  console.log({ stop: brandStop });
+
+  const getChartColor = (index: number) =>
     brand
       .rotate(index * 45)
       .rgb()
       .toString();
 
-  return {
+  const rawColors = {
     filter: brand.rotate(90).rgb().toString(),
     summarize: brand.rotate(-90).rgb().toString(),
     positive: brand.hue(359).rgb().toString(),
@@ -112,4 +117,11 @@ export const suggestColors = (
     chart7: getChartColor(6),
     chart8: getChartColor(7),
   };
+
+  return Object.fromEntries(
+    Object.entries(rawColors).map(([key, value]) => {
+      // Transform the value (e.g., double it)
+      return [key, getColorAtStop(value, brandStop)];
+    }),
+  );
 };

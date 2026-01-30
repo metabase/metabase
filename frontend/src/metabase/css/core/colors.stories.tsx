@@ -1,9 +1,9 @@
-import ColorInput from "metabase/common/components/ColorInput";
-import ColorPicker from "metabase/common/components/ColorPicker";
-import { ColorPill } from "metabase/common/components/ColorPill";
-import { suggestColors } from "metabase/lib/colors/derive-theme";
-import { Box, Card, Flex, Group, Stack, Text } from "metabase/ui";
 import { useState } from "react";
+
+import { ColorPicker } from "metabase/common/components/ColorPicker";
+import { ColorPill } from "metabase/common/components/ColorPill";
+import { suggestColors } from "metabase/lib/colors/derives/derive-theme";
+import { Box, Card, Flex, Group, Stack, Text } from "metabase/ui";
 
 export default {
   title: "Design System/Colors",
@@ -82,10 +82,8 @@ export function ColorHarmony() {
   const suggestions = suggestColors(brand);
 
   return (
-    <Box>
-      <ColorPicker value={brand} onChange={(val) => val && setBrand(val)} />
-
-      <Group mt="lg">
+    <Box p="md">
+      <Group mb="lg" gap="lg">
         {Object.keys(suggestions).map((name) => (
           <Stack key={name} gap="xs" align="center">
             <ColorPill color={suggestions[name]} />
@@ -93,6 +91,8 @@ export function ColorHarmony() {
           </Stack>
         ))}
       </Group>
+      <ColorPicker value={brand} onChange={(val) => val && setBrand(val)} />
+      <Text>Brand</Text>
     </Box>
   );
 }
