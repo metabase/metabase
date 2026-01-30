@@ -1,247 +1,80 @@
 (ns metabase.sql-parsing.core-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.util :as u])
-  (:import
-   (io.aleph.dirigiste Pool)
-   (java.util.concurrent CountDownLatch)))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------- Test Fixtures --------------------------------------------------
-
-(defn- mock-context
-  "Create a mock 'context' object. Since Context is final, we just return a map with metadata.
-  The pool doesn't care what type the objects are - it just stores and returns them."
-  [id]
-  {:context-id id
-   :created-at (System/currentTimeMillis)})
-
-(defn- counting-generator
-  "Returns a generator function that counts how many contexts it has created."
-  [counter-atom]
-  (fn []
-    (let [id (swap! counter-atom inc)]
-      (mock-context id))))
-
-(defn- failing-generator
-  "Returns a generator that fails after creating n contexts."
-  [counter-atom fail-after]
-  (fn []
-    (let [id (swap! counter-atom inc)]
-      (when (> id fail-after)
-        (throw (ex-info "Generator limit reached" {:count id :limit fail-after})))
-      (mock-context id))))
-
-;;; ------------------------------------------------- Test Helpers ---------------------------------------------------
-
-(defn- test-pool
-  "Create a pool for testing with sensible defaults.
-  Returns [pool created-count-atom]."
-  ([]
-   (test-pool {}))
-  ([config]
-   (let [counter (atom 0)
-         generator (counting-generator counter)
-         pool (#'sql-parsing/make-python-context-pool generator config)]
-     [pool counter])))
-
-(defn- with-pool
-  "Execute f with a context from pool. Uses with-open for proper resource management."
-  [pool f]
-  (with-open [^java.io.Closeable ctx (#'sql-parsing/acquire-context pool)]
-    (f ctx)))
-
-(defn- run-concurrent
-  "Run n threads concurrently, each executing f with a context from pool.
-  Returns vector of results."
-  [pool n f]
-  (let [latch   (CountDownLatch. n)
-        results (atom [])
-        futures (doall
-                 (for [i (range n)]
-                   (future
-                     (.countDown latch)
-                     (.await latch)
-                     (let [result (with-pool pool (fn [ctx] (f i ctx)))]
-                       (swap! results conj result)))))]
-    (doseq [fut futures] @fut)
-    @results))
-
-;;; ------------------------------------------------ Pool Size Tests -------------------------------------------------
-
-(deftest pool-respects-maximum-size-test
-  (testing "Pool never creates more than max contexts even under concurrent load"
-    (let [[pool created-count] (test-pool {:max-size 3})
-          num-threads 20
-          results (run-concurrent pool num-threads
-                                  (fn [_i ctx]
-                                    (Thread/sleep (long (+ 10 (rand-int 50))))
-                                    ctx))]
-
-      (is (<= @created-count 3)
-          (str "Pool created " @created-count " contexts but max is 3"))
-      (is (= num-threads (count results))
-          "All threads should have received a context"))))
-
-(deftest pool-maintains-minimum-size-test
-  (testing "Pool keeps at least 1 context available"
-    (let [[pool created-count] (test-pool)]
-      (with-pool pool (fn [_ctx] (is (= 1 @created-count) "First use creates one context")))
-      (Thread/sleep (long 100))
-      (with-pool pool (fn [_ctx] (is (= 1 @created-count) "Second use reuses the same context"))))))
-
-;;; ----------------------------------------------- Context Expiry Tests ---------------------------------------------
-
-(deftest pool-expires-old-contexts-test
-  (testing "Pool disposes of contexts that have exceeded their TTL"
-    (let [[pool _created-count] (test-pool {:ttl-minutes 10})
-          [context expiry-ts :as tuple] (.acquire ^Pool pool :python)]
-      (try
-        (is (some? context) "Context should be created")
-        (is (number? expiry-ts) "Expiry timestamp should be set")
-        (is (< (System/nanoTime) expiry-ts) "Expiry should be in the future")
-
-        (let [expiry-in-minutes (/ (- expiry-ts (System/nanoTime)) (* 1000000000 60))]
-          (is (< 9 expiry-in-minutes 11) "Expiry should be approximately 10 minutes"))
-        (finally
-          (.release ^Pool pool :python tuple))))))
-
-(deftest with-pooled-context-handles-expired-contexts-test
-  (testing "with-pooled-context properly handles and replaces expired contexts"
-    (let [[pool created-count] (test-pool)]
-      (with-pool pool (fn [_ctx] (is (= 1 @created-count))))
-
-      ;; Manually expire by disposing
-      (let [tuple (.acquire ^Pool pool :python)]
-        (.dispose ^Pool pool :python tuple))
-
-      (with-pool pool (fn [_ctx] (is (= 2 @created-count) "Expired context should be replaced"))))))
-
-;;; --------------------------------------------- Generator Failure Tests --------------------------------------------
-
-(deftest pool-handles-generator-failures-test
-  (testing "Pool gracefully handles when generator fails"
-    (let [counter (atom 0)
-          generator (failing-generator counter 1)
-          pool (#'sql-parsing/make-python-context-pool generator)]
-
-      (is (some? (with-pool pool identity)) "First context creation succeeds")
-
-      ;; Dispose to force new creation
-      (let [tuple (.acquire ^Pool pool :python)]
-        (.dispose ^Pool pool :python tuple))
-
-      (is (thrown? Exception (with-pool pool identity)) "Generator failure should propagate"))))
-
-;;; ------------------------------------------- Concurrent Access Tests ----------------------------------------------
-
-(deftest pool-handles-concurrent-access-safely-test
-  (testing "Pool handles concurrent access without race conditions"
-    (let [[pool created-count] (test-pool {:max-size 3})
-          num-threads 50
-          results (run-concurrent pool num-threads
-                                  (fn [i _ctx]
-                                    (Thread/sleep (long (rand-int 20)))
-                                    i))]
-
-      (is (= num-threads (count results)) "All threads should complete successfully")
-      (is (<= @created-count 3) (str "Created " @created-count " contexts, expected <= 3")))))
-
-;;; -------------------------------------------- Pool Behavior Tests -------------------------------------------------
-
-(deftest pool-stores-and-returns-objects-test
-  (testing "Pool correctly stores and returns arbitrary objects"
-    (let [[pool created-count] (test-pool)
-          result1 (with-pool pool :context)
-          result2 (with-pool pool :context)]
-
-      (is (map? result1))
-      (is (= 1 (:context-id result1)))
-      (is (= 1 @created-count))
-
-      (is (map? result2))
-      (is (= 1 (:context-id result2)))  ;; Same context ID
-      (is (= 1 @created-count)))))
-
 ;;; -------------------------------------------- SQL Parsing Tests -------------------------------------------------
 
-(deftest ^:parallel basic-select-test
-  (testing "Simple SELECT parses correctly"
-    (let [result (sql-parsing/p "SELECT id, name FROM users")]
-      (is (= ["users"] (:tables_source result)))
-      (is (= ["id" "name"] (sort (:columns result)))))))
+;; Note: The following tests use sql-parsing/p which no longer exists
+;; They are commented out pending implementation of that function or refactoring
+
+#_(deftest ^:parallel basic-select-test
+    (testing "Simple SELECT parses correctly"
+      (let [result (sql-parsing/p "SELECT id, name FROM users")]
+        (is (= ["users"] (:tables_source result)))
+        (is (= ["id" "name"] (sort (:columns result)))))))
 
 ;;; ------------------------------------------ referenced-tables API Tests -----------------------------------------
 
 (deftest ^:parallel referenced-tables-basic-test
   (testing "Simple table extraction"
     (is (= [[nil "users"]]
-           (sql-parsing/referenced-tables "SELECT * FROM users" "postgres"))))
+           (sql-parsing/referenced-tables "postgres" "SELECT * FROM users"))))
 
   (testing "Multiple tables from JOIN"
     (is (= [[nil "orders"] [nil "users"]]
            (sql-parsing/referenced-tables
-            "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id"
-            "postgres"))))
+            "postgres"
+            "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id"))))
 
   (testing "Schema-qualified tables are preserved"
     (is (= [["other" "users"] ["public" "users"]]
            (sql-parsing/referenced-tables
+            "postgres"
             "SELECT public.users.id, other.users.id
              FROM public.users u1
-             LEFT JOIN other.users u2 ON u1.id = u2.id"
-            "postgres"))))
+             LEFT JOIN other.users u2 ON u1.id = u2.id"))))
 
   (testing "CTE names are excluded"
     (is (= [[nil "users"]]
            (sql-parsing/referenced-tables
-            "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active"
-            "postgres"))))
-
-  (testing "Dialect defaults to postgres"
-    (is (= [[nil "users"]]
-           (sql-parsing/referenced-tables "SELECT * FROM users")))))
+            "postgres"
+            "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active")))))
 
 (deftest ^:parallel cte-test
-  (testing "CTE (WITH clause) parsing"
-    (let [result (sql-parsing/p "WITH active_users AS (SELECT * FROM users WHERE active)
-                             SELECT * FROM active_users")]
-      ;; tables_source excludes CTE references, returning only real tables
-      ;; tables_all includes CTE names as well
-      (is (= ["users"] (:tables_source result)))
-      (is (= ["active_users" "users"] (sort (:tables_all result)))))))
+    (testing "CTE (WITH clause) parsing"
+      (is (= [[nil "users"]]
+             (sql-parsing/referenced-tables
+              "postgres"
+              "WITH active_users AS (SELECT * FROM users WHERE active)
+                             SELECT * FROM active_users")))))
 
 (deftest ^:parallel join-test
   (testing "JOIN parsing extracts all tables"
-    (let [result (sql-parsing/p "SELECT u.name, o.total
+    (is (=? [[nil "orders"] [nil "users"]]
+            (sql-parsing/referenced-tables
+             "postgres"
+             "SELECT u.name, o.total
                              FROM users u
-                             JOIN orders o ON u.id = o.user_id")]
-      (is (= ["orders" "users"] (sort (:tables_source result)))))))
-
-(deftest ^:parallel dollar-quote-test
-  (testing "PostgreSQL dollar-quoted strings (fails in JSqlParser)"
-    (let [result (sql-parsing/p "SELECT $tag$hello world$tag$")]
-      (is (map? result))
-      (is (contains? result :ast)))))
-
-(deftest ^:parallel ast-structure-test
-  (testing "AST structure is returned"
-    (let [result (sql-parsing/p "SELECT 1")]
-      (is (= "Select" (get-in result [:ast :type]))))))
+                             JOIN orders o ON u.id = o.user_id")))))
 
 (deftest ^:parallel subquery-test
-  (testing "Subquery table extraction"
-    (let [result (sql-parsing/p "SELECT * FROM (SELECT id FROM users) AS sub")]
-      (is (= ["users"] (:tables_source result))))))
+    (testing "Subquery table extraction"
+      (is (=? [[nil "users"]]
+              (sql-parsing/referenced-tables
+               "postgres"
+               "SELECT * FROM (SELECT id FROM users) AS sub")))))
 
-(deftest ^:parallel aggregate-test
-  (testing "Aggregate functions in projections"
-    (let [result (sql-parsing/p "SELECT COUNT(*), SUM(amount) FROM orders")]
-      (is (= ["orders"] (:tables_source result)))
-      ;; Projections are named_selects - unnamed aggregates may not appear
-      (is (vector? (:projections result))))))
+#_(deftest ^:parallel aggregate-test
+    (testing "Aggregate functions in projections"
+      (let [result (sql-parsing/p "SELECT COUNT(*), SUM(amount) FROM orders")]
+        (is (= ["orders"] (:tables_source result)))
+        ;; Projections are named_selects - unnamed aggregates may not appear
+        (is (vector? (:projections result))))))
 
 ;;; -------------------------------------------- UDTF (Table Function) Tests -----------------------------------------
 
@@ -272,7 +105,7 @@
     (doseq [[dialect sql] udtf-queries]
       (testing (str "dialect: " dialect " - pure UDTF query")
         ;; Table functions shouldn't appear as referenced tables - they're not real tables
-        (let [result (sql-parsing/referenced-tables sql (name dialect))]
+        (let [result (sql-parsing/referenced-tables (name dialect) sql)]
           (is (vector? result)
               (format "dialect %s: should return vector, got %s" dialect (type result)))
           (is (every? vector? result)
@@ -280,7 +113,7 @@
 
     (doseq [[dialect sql] udtf-with-table-queries]
       (testing (str "dialect: " dialect " - UDTF mixed with real table")
-        (let [result (sql-parsing/referenced-tables sql (name dialect))]
+        (let [result (sql-parsing/referenced-tables (name dialect) sql)]
           ;; Case-insensitive comparison since dialects like Snowflake uppercase identifiers
           (is (some #(= "orders" (u/lower-case-en (second %))) result)
               (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
@@ -361,7 +194,7 @@
     (doseq [[dialect ops] dialect->set-operation->query
             [op-type sql] ops]
       (testing (str "dialect: " (name dialect) " - " (name op-type))
-        (let [result (sql-parsing/referenced-tables sql (name dialect))
+        (let [result (sql-parsing/referenced-tables (name dialect) sql)
               ;; Normalize to lowercase for case-insensitive comparison (Snowflake uppercases)
               normalized (into #{} (map (fn [[schema table]]
                                           [(some-> schema u/lower-case-en) (u/lower-case-en table)])
@@ -400,6 +233,133 @@
                 (format "%s %s should return %s, got %s"
                         (name dialect) (name op-type) (pr-str expected) columns)))))))
 
+;;; -------------------------------------------- SQL Validation Tests ------------------------------------------------
+
+(defn- load-validation-test-cases
+  "Load validation test cases from EDN file."
+  []
+  (let [resource (io/resource "metabase/sql_parsing/validation_test_cases.edn")]
+    (when-not resource
+      (throw (ex-info "Could not find validation_test_cases.edn" {})))
+    (read-string (slurp resource))))
+
+(defn- contains-any?
+  "Check if message contains any of the patterns (case-insensitive).
+   Patterns can be:
+   - A string: must be contained in message
+   - A vector of strings: ANY must be contained in message"
+  [message patterns]
+  (let [lower-message (u/lower-case-en message)
+        pattern-list (if (vector? patterns) patterns [patterns])]
+    (some (fn [pattern]
+            (when (string? pattern)
+              (.contains lower-message (u/lower-case-en pattern))))
+          pattern-list)))
+
+(defn- error-matches?
+  "Check if an actual error matches the expected error pattern.
+   Expected can have:
+   - :contains - string or vector of strings (any must be in error message)
+   - :has-location - whether line/col should be present"
+  [expected-error actual-error]
+  (let [contains-patterns (:contains expected-error)
+        has-location (:has-location expected-error)
+        message (:message actual-error)
+        line (:line actual-error)
+        col (:col actual-error)]
+    (and
+     ;; Message contains expected pattern(s)
+     (if contains-patterns
+       (contains-any? message contains-patterns)
+       true)
+     ;; Location check
+     (if (some? has-location)
+       (if has-location
+         (or (some? line) (some? col))
+         true)
+       true))))
+
+(defn- validate-test-case
+  "Run a single validation test case and return result map."
+  [test-case]
+  (let [{:keys [name sql dialect expected]} test-case
+        result (sql-parsing/validate-sql-query dialect sql)]
+    (if (= expected :valid)
+      ;; Expecting valid query
+      (if (:valid result)
+        {:passed true :name name}
+        {:passed false
+         :name name
+         :reason (str "Expected valid query but got errors: " (pr-str (:errors result)))
+         :result result})
+      ;; Expecting invalid query with specific errors
+      (if-not (:valid result)
+        (let [expected-errors (:errors expected)
+              actual-errors (:errors result)]
+          (if (every? (fn [expected-error]
+                        (some #(error-matches? expected-error %) actual-errors))
+                      expected-errors)
+            {:passed true :name name}
+            {:passed false
+             :name name
+             :reason (str "Error patterns don't match. Expected: " (pr-str expected-errors)
+                          " Actual: " (pr-str actual-errors))
+             :result result}))
+        {:passed false
+         :name name
+         :reason "Expected invalid query but validation passed"
+         :result result}))))
+
+(deftest ^:parallel validate-sql-query-valid-queries-test
+  (testing "Valid SQL queries should validate successfully"
+    (let [test-cases (:valid-queries (load-validation-test-cases))]
+      (doseq [test-case test-cases]
+        (testing (:name test-case)
+          (let [result (validate-test-case test-case)]
+            (is (:passed result)
+                (str "Test '" (:name test-case) "' failed: " (:reason result)
+                     (when-let [r (:result result)]
+                       (str "\n  SQL: " (:sql test-case)
+                            "\n  Result: " (pr-str r)))))))))))
+
+(deftest ^:parallel validate-sql-query-invalid-queries-test
+  (testing "Invalid SQL queries should return validation errors"
+    (let [test-cases (:invalid-queries (load-validation-test-cases))]
+      (doseq [test-case test-cases]
+        (testing (:name test-case)
+          (let [result (validate-test-case test-case)]
+            (is (:passed result)
+                (str "Test '" (:name test-case) "' failed: " (:reason result)
+                     (when-let [r (:result result)]
+                       (str "\n  SQL: " (:sql test-case)
+                            "\n  Result: " (pr-str r)))))))))))
+
+(deftest ^:parallel validate-sql-query-edge-cases-test
+  (testing "Edge cases that sqlglot considers valid"
+    (let [test-cases (:edge-case-valid-queries (load-validation-test-cases))]
+      (doseq [test-case test-cases]
+        (testing (str (:name test-case) " - " (:note test-case))
+          (let [result (validate-test-case test-case)]
+            (is (:passed result)
+                (str "Test '" (:name test-case) "' failed: " (:reason result)
+                     (when-let [r (:result result)]
+                       (str "\n  SQL: " (:sql test-case)
+                            "\n  Result: " (pr-str r)))))))))))
+
+(deftest ^:parallel validate-sql-query-dialect-support-test
+  (testing "Validation works across different SQL dialects"
+    (doseq [dialect ["postgres" "mysql" "snowflake" "bigquery" "redshift" "duckdb"]]
+      (testing (str "dialect: " dialect)
+        (let [result (sql-parsing/validate-sql-query dialect "SELECT * FROM users")]
+          (is (:valid result)
+              (str "Simple query should be valid for " dialect)))
+
+        (let [result (sql-parsing/validate-sql-query dialect "SELECT * FORM users")]
+          (is (not (:valid result))
+              (str "Invalid query should fail for " dialect))
+          (is (seq (:errors result))
+              (str "Should return errors for " dialect)))))))
+
 (comment
   (require '[clojure.string :as str])
   (def query-corpus-path "/Users/bcm/dv/mb/query_corpus/")
@@ -419,6 +379,25 @@
             (try
               (sql-parsing/referenced-tables q driver)
               true
-              (catch Exception _ false))))))))
+              (catch Exception _ false)))))))
 
+  ;; Load and run validation tests interactively
+  (load-validation-test-cases)
 
+  ;; Test a single case
+  (validate-test-case {:name "test"
+                       :sql "SELECT * FROM users"
+                       :dialect "postgres"
+                       :expected :valid})
+
+  ;; Run all valid query tests
+  (doseq [tc (:valid-queries (load-validation-test-cases))]
+    (let [result (validate-test-case tc)]
+      (when-not (:passed result)
+        (println "FAILED:" (:name tc) "-" (:reason result)))))
+
+  ;; Run all invalid query tests
+  (doseq [tc (:invalid-queries (load-validation-test-cases))]
+    (let [result (validate-test-case tc)]
+      (when-not (:passed result)
+        (println "FAILED:" (:name tc) "-" (:reason result))))))

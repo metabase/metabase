@@ -209,6 +209,84 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     # Sort for deterministic output (nulls sort first via empty string)
     return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1])))
 
+def validate_sql_query(sql: str, dialect: str = "postgres") -> str:
+    """
+    Validate a SQL query using sqlglot's parser.
+
+    Returns a JSON object with validation results:
+    - If valid: {"valid": true}
+    - If invalid: {"valid": false, "errors": [{"message": "...", "line": N, "col": N}, ...]}
+
+    :param sql: SQL query string to validate
+    :param dialect: SQL dialect (postgres, mysql, snowflake, bigquery, redshift, duckdb)
+
+    Examples:
+        validate_sql_query("SELECT * FROM users")
+        => '{"valid": true}'
+
+        validate_sql_query("SELECT * FORM users")
+        => '{"valid": false, "errors": [{"message": "...", "line": 1, "col": 10}]}'
+    """
+    errors = []
+
+    try:
+        # Try to parse the SQL
+        parsed = sqlglot.parse(sql, read=dialect)
+
+        # Check if parsing returned None or empty list
+        if not parsed:
+            errors.append({
+                "message": "Failed to parse SQL query",
+                "line": None,
+                "col": None
+            })
+        else:
+            # Check each parsed statement for errors
+            for statement in parsed:
+                if statement is None:
+                    errors.append({
+                        "message": "Invalid SQL statement",
+                        "line": None,
+                        "col": None
+                    })
+                # Check for parser errors stored in the statement
+                elif hasattr(statement, 'errors') and statement.errors:
+                    for error in statement.errors:
+                        error_dict = {
+                            "message": str(error.get('description', error.get('message', str(error)))),
+                            "line": error.get('line'),
+                            "col": error.get('col')
+                        }
+                        errors.append(error_dict)
+
+    except ParseError as e:
+        # Extract error details from ParseError
+        error_msg = str(e)
+        # Try to extract line and column info from error message
+        line_match = re.search(r'Line (\d+)', error_msg)
+        col_match = re.search(r'Col[:\s]+(\d+)', error_msg)
+
+        errors.append({
+            "message": error_msg,
+            "line": int(line_match.group(1)) if line_match else None,
+            "col": int(col_match.group(1)) if col_match else None
+        })
+
+    except Exception as e:
+        # Catch any other errors
+        errors.append({
+            "message": f"Unexpected error: {str(e)}",
+            "line": None,
+            "col": None
+        })
+
+    result = {
+        "valid": len(errors) == 0,
+        "errors": errors if errors else []
+    }
+
+    return json.dumps(result)
+
 # TODO: signal missing cases failures better?
 # TODO: Consider generic way of error extraction. It might make sense to do this in clojure.
 def serialize_error(e):
