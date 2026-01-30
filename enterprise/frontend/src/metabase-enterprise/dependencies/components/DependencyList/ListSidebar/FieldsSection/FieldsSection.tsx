@@ -60,7 +60,7 @@ function FieldListItem({ field }: FieldListItemProps) {
     <Stack className={S.item} p="md" gap="xs">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name={fieldIcon} c="brand" />
-        <Box className={CS.textWrap} lh="1rem">
+        <Box className={CS.textWrap} c="text-secondary" lh="1rem">
           {field.display_name}
         </Box>
       </Group>
