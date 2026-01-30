@@ -3,10 +3,12 @@
    [metabase.app-db.core :as app-db]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]))
 
-(defn user->tenant-collection-and-descendant-ids
+(defenterprise user->tenant-collection-and-descendant-ids
   "Returns descendant IDs for the user's tenant collection. Returns an empty vector in OSS since tenants are an EE feature."
+  metabase-enterprise.tenants.model
   [_user-or-id]
   [])
 
