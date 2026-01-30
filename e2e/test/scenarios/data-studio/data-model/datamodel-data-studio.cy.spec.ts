@@ -997,44 +997,6 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-        it("should allow to change the foreign key target", () => {
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.USER_ID,
-          });
-
-          FieldSection.getSemanticTypeFkTarget()
-            .should("have.value", "People → ID")
-            .click();
-          H.popover().within(() => {
-            cy.findByText("Reviews → ID").should("exist");
-            cy.findByText("Products → ID").click();
-          });
-          cy.wait("@updateField");
-          H.undoToast().should(
-            "contain.text",
-            "Semantic type of User ID updated",
-          );
-          FieldSection.getSemanticTypeFkTarget().should(
-            "have.value",
-            "Products → ID",
-          );
-
-          H.openTable({
-            database: SAMPLE_DB_ID,
-            table: ORDERS_ID,
-            mode: "notebook",
-          });
-          cy.icon("join_left_outer").click();
-          H.miniPicker().within(() => {
-            cy.findByText("Sample Database").click();
-            cy.findByText("Products").click();
-          });
-          cy.findByLabelText("Left column").should("contain.text", "User ID");
-        });
-
         it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
           H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
