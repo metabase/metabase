@@ -8,11 +8,11 @@
 }
 
 .StepRoot[data-active="true"] {
-  padding: 1.5rem 4rem;
+  padding: 4rem 4rem;
 }
 
 .StepRoot[data-active="false"] {
-  padding: 1rem 4rem;
+  padding: 1.5rem 4rem 1.5rem 2rem;
   cursor: pointer;
   transition: background-color 0.15s ease;
 
@@ -38,9 +38,16 @@
 
 /* Step title */
 .StepTitle {
-  color: var(--mb-color-brand);
-  font-size: 1rem;
+  color: var(--mb-color-text-primary);
   font-weight: 700;
+}
+
+.StepRoot[data-active="true"] .StepTitle {
+  font-size: 1.25rem;
+}
+
+.StepRoot[data-active="false"] .StepTitle {
+  font-size: 1.0625rem;
 }
 
 .StepRoot[data-active="true"] .StepHeader {
@@ -48,7 +55,7 @@
 }
 
 .StepRoot[data-active="false"] .StepHeader {
-  margin: 0.5rem 0;
+  margin: 0;
 }
 
 .StepTitle[data-completed="true"] {
@@ -71,7 +78,7 @@
 }
 
 .StepRoot[data-active="true"] .StepNumber {
-  top: 1.5rem;
+  top: 3.5rem;
 }
 
 .StepRoot[data-active="false"] .StepNumber {
