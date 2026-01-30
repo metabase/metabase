@@ -29,8 +29,8 @@
    [metabase.util.performance :refer [mapv]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {spec-id :id spec-type :type}     :- ::lib.schema.query/test-source-spec]
+  [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
+   {spec-id :id spec-type :type} :- ::lib.schema.query/test-source-spec]
   (case spec-type
     :table (lib.metadata/table metadata-providerable spec-id)
     :card  (lib.metadata/card metadata-providerable spec-id)))
@@ -44,10 +44,10 @@
     (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   available-columns      :- [:sequential ::lib.schema.metadata/column]
-   column-spec  :- ::lib.schema.query/test-column-spec]
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   available-columns :- [:sequential ::lib.schema.metadata/column]
+   column-spec       :- ::lib.schema.query/test-column-spec]
   (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
@@ -55,24 +55,24 @@
       (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 
 (mu/defn- append-fields :- ::lib.schema/query
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   field-specs    :- [:sequential ::lib.schema.query/test-column-spec]]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-specs  :- [:sequential ::lib.schema.query/test-column-spec]]
   (let [visible (lib.metadata.calculation/visible-columns query stage-number)]
     (->> field-specs
          (mapv (partial find-column query stage-number visible))
          (lib.field/with-fields query stage-number))))
 
 (mu/defn- matches-temporal-bucket? :- :boolean
-  [unit           :- ::lib.schema.temporal-bucketing/unit
-   option         :- ::lib.schema.temporal-bucketing/option]
+  [unit   :- ::lib.schema.temporal-bucketing/unit
+   option :- ::lib.schema.temporal-bucketing/option]
   (= unit (:unit option)))
 
 (mu/defn- find-temporal-bucket :- ::lib.schema.temporal-bucketing/option
-  [query         :- ::lib.schema/query
-   stage-number  :- :int
-   column        :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-   unit          :- ::lib.schema.temporal-bucketing/unit]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+   unit         :- ::lib.schema.temporal-bucketing/unit]
   (let [temporal-buckets (lib.temporal-bucket/available-temporal-buckets query stage-number column)
         matches (filterv (partial matches-temporal-bucket? unit) temporal-buckets)]
     (case (count matches)
@@ -184,32 +184,32 @@
        (lib.expression/expression query stage-number name)))
 
 (mu/defn- append-expressions :- ::lib.schema/query
-  [query             :- ::lib.schema/query
-   stage-number      :- :int
-   expression-specs  :- [:sequential ::lib.schema.query/test-named-expression-spec]]
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   expression-specs :- [:sequential ::lib.schema.query/test-named-expression-spec]]
   (let [available-columns (lib.expression/expressionable-columns query stage-number)]
     (reduce #(append-expression %1 stage-number available-columns %2)
             query
             expression-specs)))
 
 (mu/defn- matches-strategy? :- :boolean
-  [strategy-name :- ::lib.schema.join/strategy
+  [strategy-name      :- ::lib.schema.join/strategy
    {:keys [strategy]} :- ::lib.schema.join/strategy.option]
   (= strategy-name strategy))
 
 (mu/defn- find-join-strategy :- ::lib.schema.join/strategy.option
-  [query :- ::lib.schema/query
+  [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy :- ::lib.schema.join/strategy]
+   strategy     :- ::lib.schema.join/strategy]
   (let [available-strategies (lib.join/available-join-strategies query stage-number)]
-    (if-let [found-strategy (m/find-first #(= (:strategy %) strategy) available-strategies)]
+    (if-let [found-strategy (m/find-first (partial matches-strategy? strategy) available-strategies)]
       found-strategy
       (throw (ex-info "No join strategy found" {:available-strategies available-strategies, :strategy strategy})))))
 
 (mu/defn- join-condition-spec->join-condition :- ::lib.schema.join/condition
-  [query :- ::lib.schema/query
+  [query        :- ::lib.schema/query
    stage-number :- :int
-   target :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
+   target       :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
    {:keys [operator left right]} :- ::lib.schema.query/test-join-condition-spec]
   (let [lhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-lhs-columns query stage-number nil nil nil) left)
         rhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-rhs-columns query stage-number target lhs nil) right)
@@ -232,9 +232,9 @@
       (lib.join/join query stage-number join-clause))))
 
 (mu/defn- append-joins :- ::lib.schema/query
-  [query             :- ::lib.schema/query
-   stage-number      :- :int
-   join-specs  :- [:sequential ::lib.schema.query/test-join-spec]]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-specs   :- [:sequential ::lib.schema.query/test-join-spec]]
   (reduce #(append-join %1 stage-number %2)
           query
           join-specs))
@@ -247,24 +247,24 @@
        (lib.filter/filter query stage-number)))
 
 (mu/defn- append-filters :- ::lib.schema/query
-  [query         :- ::lib.schema/query
-   stage-number  :- :int
-   filter-specs  :- [:sequential ::lib.schema.query/test-expression-spec]]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   filter-specs :- [:sequential ::lib.schema.query/test-expression-spec]]
   (reduce #(append-filter %1 stage-number %2)
           query
           filter-specs))
 
 (mu/defn- append-aggregation :- ::lib.schema/query
-  [query             :- ::lib.schema/query
-   stage-number      :- :int
-   aggregation-spec  :- ::lib.schema.query/test-aggregation-spec]
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   aggregation-spec :- ::lib.schema.query/test-aggregation-spec]
   (->> (expression-spec->expression-clause query stage-number (lib.aggregation/aggregable-columns query stage-number) aggregation-spec)
        (lib.aggregation/aggregate query stage-number)))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   aggregation-specs  :- [:sequential ::lib.schema.query/test-aggregation-spec]]
+   aggregation-specs :- [:sequential ::lib.schema.query/test-aggregation-spec]]
   (reduce #(append-aggregation %1 stage-number %2)
           query
           aggregation-specs))
@@ -289,8 +289,8 @@
             order-by-specs)))
 
 (mu/defn- append-stage-clauses :- ::lib.schema/query
-  [query                         :- ::lib.schema/query
-   stage-number                  :- :int
+  [query        :- ::lib.schema/query
+   stage-number :- :int
    {:keys [fields expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
     (> stage-number 0) (lib.stage/append-stage)
