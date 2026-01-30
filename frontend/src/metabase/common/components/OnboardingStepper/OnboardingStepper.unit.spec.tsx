@@ -4,26 +4,35 @@ import { getIcon, render, screen } from "__support__/ui";
 
 import { OnboardingStepper } from "./OnboardingStepper";
 
-const setup = ({
+const TestStepper = ({
   completedSteps = {},
   onChange,
 }: {
   completedSteps?: Record<string, boolean>;
   onChange?: (value: string | null) => void;
-} = {}) => {
-  render(
-    <OnboardingStepper completedSteps={completedSteps} onChange={onChange}>
-      <OnboardingStepper.Step value="step-1" label={1} title="First step">
-        First step content
-      </OnboardingStepper.Step>
-      <OnboardingStepper.Step value="step-2" label={2} title="Second step">
-        Second step content
-      </OnboardingStepper.Step>
-      <OnboardingStepper.Step value="step-3" label={3} title="Third step">
-        Third step content
-      </OnboardingStepper.Step>
-    </OnboardingStepper>,
-  );
+}) => (
+  <OnboardingStepper completedSteps={completedSteps} onChange={onChange}>
+    <OnboardingStepper.Step value="step-1" label={1} title="First step">
+      First step content
+    </OnboardingStepper.Step>
+
+    <OnboardingStepper.Step value="step-2" label={2} title="Second step">
+      Second step content
+    </OnboardingStepper.Step>
+
+    <OnboardingStepper.Step value="step-3" label={3} title="Third step">
+      Third step content
+    </OnboardingStepper.Step>
+  </OnboardingStepper>
+);
+
+const setup = (props: Parameters<typeof TestStepper>[0] = {}) => {
+  const { rerender } = render(<TestStepper {...props} />);
+
+  return {
+    rerender: (newProps: Parameters<typeof TestStepper>[0]) =>
+      rerender(<TestStepper {...props} {...newProps} />),
+  };
 };
 
 describe("OnboardingStepper", () => {
@@ -65,15 +74,6 @@ describe("OnboardingStepper", () => {
     expect(screen.queryByText("First step content")).not.toBeInTheDocument();
   });
 
-  it("calls onChange when step changes", async () => {
-    const onChange = jest.fn();
-    setup({ onChange });
-
-    await userEvent.click(screen.getByText("Second step"));
-
-    expect(onChange).toHaveBeenCalledWith("step-2");
-  });
-
   it("shows checkmark icon for completed steps", () => {
     setup({ completedSteps: { "step-1": true, "step-2": true } });
 
@@ -90,5 +90,27 @@ describe("OnboardingStepper", () => {
     // should show content and still have check icon
     expect(screen.getByText("First step content")).toBeInTheDocument();
     expect(getIcon("check")).toBeInTheDocument();
+  });
+
+  it("move on to next incomplete step when completedSteps changes", () => {
+    const { rerender } = setup();
+
+    // first step is active by default
+    expect(screen.getByText("First step content")).toBeInTheDocument();
+
+    // mark first step as complete
+    rerender({ completedSteps: { "step-1": true } });
+
+    // should move on to second step
+    expect(screen.getByText("Second step content")).toBeInTheDocument();
+    expect(screen.queryByText("First step content")).not.toBeInTheDocument();
+  });
+
+  it("calls onChange when step changes", async () => {
+    const onChange = jest.fn();
+    setup({ onChange });
+
+    await userEvent.click(screen.getByText("Second step"));
+    expect(onChange).toHaveBeenCalledWith("step-2");
   });
 });

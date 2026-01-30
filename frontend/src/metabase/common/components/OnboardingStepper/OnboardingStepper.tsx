@@ -1,4 +1,4 @@
-import { Children, isValidElement, useMemo, useState } from "react";
+import { Children, isValidElement, useEffect, useMemo, useState } from "react";
 
 import { StepperContext } from "./OnboardingStepperContext";
 import { OnboardingStepperStep } from "./OnboardingStepperStep";
@@ -46,6 +46,13 @@ const OnboardingStepperRoot = ({
     setActiveStepState(value);
     handleStepChange(value);
   };
+
+  // Move on to next incomplete step when completedSteps changes
+  useEffect(() => {
+    const nextIncomplete = stepIds.find((id) => !completedSteps[id]) ?? null;
+
+    setActiveStepState(nextIncomplete);
+  }, [completedSteps, stepIds]);
 
   return (
     <StepperContext.Provider
