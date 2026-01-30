@@ -95,24 +95,25 @@
 (def ^:private python-source {:type "python"})
 
 (deftest run-transform-feature-flag-test
-  (testing "Query transforms are skipped without :transforms feature"
-    (mt/with-premium-features #{}
-      (let [query-transform {:id 1
-                             :source query-source
-                             :name "Test Query Transform"}
-            run-id 100
-            logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)]
-          (#'jobs/run-transform! run-id :scheduled nil query-transform)
-          (is (= 1 (count @logged-messages))
-              "Should log exactly one warning")
-          (is (= :warn (:level (first @logged-messages)))
-              "Should log at warn level")
-          (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
-                          (:message (first @logged-messages)))
-              "Warning message should indicate transform was skipped due to missing features")))))
+  (mt/when-ee-evailable
+   (testing "Query transforms are skipped without :transforms feature"
+     (mt/with-premium-features #{}
+       (let [query-transform {:id 1
+                              :source query-source
+                              :name "Test Query Transform"}
+             run-id 100
+             logged-messages (atom [])]
+         (with-redefs [log/log* (fn [_ level _ message]
+                                  (swap! logged-messages conj {:level level :message message}))
+                       transform-run/running-run-for-transform-id (constantly nil)]
+           (#'jobs/run-transform! run-id :scheduled nil query-transform)
+           (is (= 1 (count @logged-messages))
+               "Should log exactly one warning")
+           (is (= :warn (:level (first @logged-messages)))
+               "Should log at warn level")
+           (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
+                           (:message (first @logged-messages)))
+               "Warning message should indicate transform was skipped due to missing features"))))))
 
   (testing "Python transforms are skipped without :transforms-python feature"
     (mt/with-premium-features #{:transforms}
@@ -343,50 +344,51 @@
                       (is (mt/received-email-body? :crowberto #"transform2")))))))))))))
 
 (deftest run-mbql-transform-anonymous-user-routing-error-test
-  (mt/with-premium-features #{:database-routing :transforms}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/dataset transforms-dataset/transforms-test
-        (mt/with-model-cleanup [:model/Notification]
-          (mt/with-fake-inbox
-            (mt/with-model-cleanup [:model/Notification
-                                    :model/TransformJobRun]
-              (notification.seed/seed-notification!)
-              (let [mp (mt/metadata-provider)
-                    table (t2/select-one :model/Table (mt/id :transforms_products))
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:database-routing :transforms}
+     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+       (mt/dataset transforms-dataset/transforms-test
+         (mt/with-model-cleanup [:model/Notification]
+           (mt/with-fake-inbox
+             (mt/with-model-cleanup [:model/Notification
+                                     :model/TransformJobRun]
+               (notification.seed/seed-notification!)
+               (let [mp (mt/metadata-provider)
+                     table (t2/select-one :model/Table (mt/id :transforms_products))
                       ;; generate sql for different dbs
-                    sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
-                            (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
-                            (lib/limit 10)
-                            qp.compile/compile
-                            :query)]
-                (with-transform-cleanup! [target0 {:type "table"
-                                                   :schema (:schema table)
-                                                   :name "t0"}]
-                  (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                               :router_database_id (mt/id)
-                                                               :details {:destination_database true}}
-                                 :model/DatabaseRouter _ {:database_id (mt/id)
-                                                          :user_attribute "db_name"}
-                                 :model/TransformTag tag {:name "test-tag"}
-                                 :model/TransformJob job {:name "test-job"
-                                                          :schedule "0 0 * * * ? *"}
-                                 :model/TransformJobTransformTag _ {:job_id (:id job)
-                                                                    :tag_id (:id tag)
-                                                                    :position 0}
-                                   ;; independent transform
-                                 :model/Transform t0 {:name "transform0"
-                                                      :source {:type :query
-                                                               :query (lib/native-query mp sql)}
-                                                      :creator_id (mt/user->id :crowberto)
-                                                      :target target0}
-                                 :model/TransformTransformTag _tag0 {:transform_id (:id t0)
+                     sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                             (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
+                             (lib/limit 10)
+                             qp.compile/compile
+                             :query)]
+                 (with-transform-cleanup! [target0 {:type "table"
+                                                    :schema (:schema table)
+                                                    :name "t0"}]
+                   (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                                :router_database_id (mt/id)
+                                                                :details {:destination_database true}}
+                                  :model/DatabaseRouter _ {:database_id (mt/id)
+                                                           :user_attribute "db_name"}
+                                  :model/TransformTag tag {:name "test-tag"}
+                                  :model/TransformJob job {:name "test-job"
+                                                           :schedule "0 0 * * * ? *"}
+                                  :model/TransformJobTransformTag _ {:job_id (:id job)
                                                                      :tag_id (:id tag)
-                                                                     :position 0}]
+                                                                     :position 0}
+                                   ;; independent transform
+                                  :model/Transform t0 {:name "transform0"
+                                                       :source {:type :query
+                                                                :query (lib/native-query mp sql)}
+                                                       :creator_id (mt/user->id :crowberto)
+                                                       :target target0}
+                                  :model/TransformTransformTag _tag0 {:transform_id (:id t0)
+                                                                      :tag_id (:id tag)
+                                                                      :position 0}]
                       ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
                       ;; without a user context (e.g., from a cron job or background task).
                       ;; previously this could produce the wrong error message from the QP routing middleware.
-                    (try
-                      (jobs/run-job! (:id job) {:run-method :cron})
-                      (catch Exception _))
-                    (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-                    (is (mt/received-email-body? :crowberto #"transform0"))))))))))))
+                     (try
+                       (jobs/run-job! (:id job) {:run-method :cron})
+                       (catch Exception _))
+                     (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
+                     (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
