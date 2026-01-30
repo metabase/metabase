@@ -30,7 +30,7 @@ const tableBarInput = () => tableBar().find("input");
 const tablePill = (name: string) => tableBar().contains(name);
 
 describe("Native SQL generation", () => {
-  describe("OSS", () => {
+  describe("OSS", { tags: "@OSS" }, () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
