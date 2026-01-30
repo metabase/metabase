@@ -97,3 +97,40 @@
 (defmethod sql-tools/returned-columns-impl :sqlglot
   [_parser driver query]
   (returned-columns driver query))
+
+;; copied over from sql-parsing core. we aren't ready to do this yet.
+;; (defn returned-columns-lineage
+;;   "WIP"
+;;   [dialect sql default-table-schema sqlglot-schema]
+;;   (log/warn "I'm using sqlglot-schema, please fix me.")
+;;   (with-open [^Closeable ctx (python.pool/python-context)]
+;;     (common/eval-python ctx "import sql_tools")
+;;     (-> ^Value (common/eval-python ctx "sql_tools.returned_columns_lineage")
+;;         (.execute ^Value (object-array [dialect
+;;                                         sql
+;;                                         default-table-schema
+;;                                         sqlglot-schema]))
+;;         .asString
+;;         json/decode)))
+
+;; (defn- sanitize-validation-output
+;;   [validation-output]
+;;   (-> validation-output
+;;       (update :status (comp u/->kebab-case-en keyword))
+;;       (m/update-existing :type (comp u/->kebab-case-en keyword))))
+
+;; ;; TODO: Implement so schema is `sqlglot-schema` (generated from appdb sync data) is not needed.
+;; (defn validate-query
+;;   "WIP"
+;;   [dialect sql default-table-schema sqlglot-schema]
+;;   (log/warn "I'm using sqlglot-schema, please fix me.")
+;;   (with-open [^Closeable ctx (python.pool/python-context)]
+;;     (common/eval-python ctx "import sql_tools")
+;;     (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
+;;         (.execute ^Value (object-array [dialect
+;;                                         sql
+;;                                         default-table-schema
+;;                                         sqlglot-schema]))
+;;         .asString
+;;         json/decode+kw
+;;         sanitize-validation-output)))
