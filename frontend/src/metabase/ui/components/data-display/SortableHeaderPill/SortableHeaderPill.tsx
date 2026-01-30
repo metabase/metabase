@@ -15,10 +15,7 @@ interface SortableHeaderPillProps extends ComponentPropsWithoutRef<"div"> {
 export const SortableHeaderPill = forwardRef<
   HTMLDivElement,
   SortableHeaderPillProps
->(function SortableHeaderPill(
-  { name, sort, align, className, rightSection, ...props },
-  ref,
-) {
+>(function SortableHeaderPill({ name, sort, align, className, ...props }, ref) {
   return (
     <div
       ref={ref}
