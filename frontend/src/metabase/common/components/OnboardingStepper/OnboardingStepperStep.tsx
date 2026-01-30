@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { Ref } from "react";
 import { forwardRef, useContext } from "react";
 
@@ -25,78 +24,32 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
   const isActive = activeStep === value;
   const isCompleted = completedSteps[value] ?? false;
 
-  if (isActive) {
-    return (
-      <ItemContext.Provider value={{ value, label, icon }}>
-        <Box
-          component="section"
-          ref={ref}
-          className={S.ActiveStepRoot}
-          role="listitem"
-          aria-label={title}
-          aria-current="step"
-          data-testid={testId}
-        >
-          <div
-            className={cx(
-              S.ActiveStepNumber,
-              isCompleted && S.ActiveStepNumberCompleted,
-            )}
-          >
-            {isCompleted ? (
-              <Icon name="check" className={S.ActiveStepNumberIcon} />
-            ) : (
-              <span className={S.ActiveStepNumberText}>{label}</span>
-            )}
-          </div>
-
-          <div
-            className={cx(
-              S.ActiveStepTitle,
-              isCompleted && S.ActiveStepTitleCompleted,
-            )}
-          >
-            {title}
-          </div>
-
-          <div className={S.ActiveStepContent}>{children}</div>
-        </Box>
-      </ItemContext.Provider>
-    );
-  }
-
   return (
     <ItemContext.Provider value={{ value, label, icon }}>
       <Box
         component="section"
-        ref={ref as Ref<HTMLDivElement>}
-        className={S.InactiveStepRoot}
+        ref={ref}
+        className={S.StepRoot}
         role="listitem"
         aria-label={title}
+        aria-current={isActive ? "step" : undefined}
+        data-active={isActive}
         data-testid={testId}
-        onClick={() => setActiveStep(value)}
+        onClick={isActive ? undefined : () => setActiveStep(value)}
       >
-        <div
-          className={cx(
-            S.InactiveStepNumber,
-            isCompleted && S.InactiveStepNumberCompleted,
-          )}
-        >
+        <div className={S.StepNumber} data-completed={isCompleted}>
           {isCompleted ? (
-            <Icon name="check" className={S.InactiveStepNumberIcon} />
+            <Icon name="check" className={S.StepNumberIcon} />
           ) : (
-            <span className={S.InactiveStepNumberText}>{label}</span>
+            <span className={S.StepNumberText}>{label}</span>
           )}
         </div>
 
-        <div
-          className={cx(
-            S.InactiveStepTitle,
-            isCompleted && S.InactiveStepTitleCompleted,
-          )}
-        >
+        <div className={S.StepTitle} data-completed={isCompleted}>
           {title}
         </div>
+
+        {isActive && <div className={S.StepContent}>{children}</div>}
       </Box>
     </ItemContext.Provider>
   );

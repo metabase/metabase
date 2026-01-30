@@ -1,67 +1,18 @@
-/* Active step styles (expanded) */
-.ActiveStepRoot {
+/* Step root - shared styles */
+.StepRoot {
   position: relative;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  background-color: var(--mb-color-background-primary);
+}
+
+.StepRoot[data-active="true"] {
   padding: 1.5rem 2rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--mb-color-border);
-  border-radius: 0.5rem;
-  background-color: var(--mb-color-background-primary);
 }
 
-.ActiveStepTitle {
-  color: var(--mb-color-brand);
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
-.ActiveStepNumber {
-  position: absolute;
-  top: 1.5rem;
-  left: 0;
-  transform: translate(-50%, 0);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 2.625rem;
-  height: 2.625rem;
-  border: 1px solid var(--mb-color-border);
-  border-radius: 50%;
-  background-color: var(--mb-color-background-primary);
-}
-
-.ActiveStepNumberCompleted {
-  background-color: var(--mb-color-background-success);
-}
-
-.ActiveStepNumberText {
-  color: var(--mb-color-brand);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.ActiveStepNumberIcon {
-  width: 1rem;
-  height: 1rem;
-  color: var(--mb-color-success);
-}
-
-.ActiveStepTitleCompleted {
-  color: var(--mb-color-text-secondary);
-}
-
-.ActiveStepContent {
-  margin-top: 1rem;
-}
-
-/* Inactive step styles (collapsed) */
-.InactiveStepRoot {
-  position: relative;
-  border: 1px solid var(--mb-color-border);
-  border-radius: 0.5rem;
+.StepRoot[data-active="false"] {
   padding: 1rem 2rem;
-  margin-bottom: 1rem;
-  background-color: var(--mb-color-background-primary);
   cursor: pointer;
   transition: background-color 0.15s ease;
 
@@ -70,22 +21,30 @@
   }
 }
 
-.InactiveStepTitle {
+/* Step title */
+.StepTitle {
   color: var(--mb-color-brand);
   font-size: 1rem;
   font-weight: 700;
+}
+
+.StepRoot[data-active="true"] .StepTitle {
+  margin-bottom: 1rem;
+}
+
+.StepRoot[data-active="false"] .StepTitle {
   margin: 0.5rem 0;
 }
 
-.InactiveStepTitleCompleted {
+.StepTitle[data-completed="true"] {
   color: var(--mb-color-text-secondary);
 }
 
-.InactiveStepNumber {
+/* Step number (circle) */
+.StepNumber {
   position: absolute;
-  top: 50%;
   left: 0;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -96,18 +55,32 @@
   background-color: var(--mb-color-background-primary);
 }
 
-.InactiveStepNumberCompleted {
+.StepRoot[data-active="true"] .StepNumber {
+  top: 1.5rem;
+}
+
+.StepRoot[data-active="false"] .StepNumber {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.StepNumber[data-completed="true"] {
   background-color: var(--mb-color-background-success);
 }
 
-.InactiveStepNumberText {
+.StepNumberText {
   color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 }
 
-.InactiveStepNumberIcon {
+.StepNumberIcon {
   width: 1rem;
   height: 1rem;
   color: var(--mb-color-success);
+}
+
+/* Step content (only shown when active) */
+.StepContent {
+  margin-top: 1rem;
 }
