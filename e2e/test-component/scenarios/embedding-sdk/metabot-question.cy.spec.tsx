@@ -1,6 +1,9 @@
 const { H } = cy;
 
-import { MetabotQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  MetabotQuestion,
+} from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -67,6 +70,39 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
 
       cy.findByTestId("visualization-root").should("exist");
+    });
+  });
+
+  it.only("should allow to save a question", () => {
+    cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");
+
+    setup(metabotResponseWithNavigateTo);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+      cy.findByTestId("visualization-root").should("exist");
+
+      cy.findByText("Save").should("be.visible").click();
+
+      H.modal().within(() => {
+        cy.findByText("Save new question").should("be.visible");
+        cy.findByRole("button", { name: "Save" }).click();
+      });
+    });
+
+    cy.wait("@postCard").then((interception) => {
+      const response = interception.response?.body;
+      const questionId = response.id;
+
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+      getSdkRoot().within(() => {
+        cy.findByText(
+          "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
+        ).should("be.visible");
+      });
     });
   });
 
