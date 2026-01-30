@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { UPGRADE_URL } from "metabase/admin/upsells/constants";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 export function QuestionDependenciesSection({
@@ -20,8 +20,7 @@ export function QuestionDependenciesSection({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <Box
-      component={UpsellCard}
+    <UpsellCard
       large
       title={t`Visualize dependencies`}
       buttonText={t`Try for free`}
@@ -30,7 +29,6 @@ export function QuestionDependenciesSection({
       location="question-info-sidebar"
       maxWidth="initial"
       fullWidth
-      lh="1.5rem"
       buttonStyle={{
         marginInlineStart: "2rem",
         width: "10rem",
@@ -48,6 +46,6 @@ export function QuestionDependenciesSection({
           </>
         )}
       </Text>
-    </Box>
+    </UpsellCard>
   );
 }

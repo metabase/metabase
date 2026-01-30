@@ -3,7 +3,6 @@ import { Route } from "react-router";
 import { renderWithProviders, screen } from "__support__/ui";
 import type Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionDependenciesSection } from "./QuestionDependenciesSection";
 
@@ -17,9 +16,9 @@ function setup({ question }: { question: Question }) {
     />,
     {
       withRouter: true,
-      storeInitialState: createMockState({
+      storeInitialState: {
         currentUser: adminUser,
-      }),
+      },
     },
   );
 }
