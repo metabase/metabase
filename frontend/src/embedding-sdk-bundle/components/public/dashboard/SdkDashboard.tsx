@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -51,6 +52,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import type { RefreshPeriod } from "metabase/dashboard/types";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
@@ -115,6 +117,11 @@ export type SdkDashboardProps = PropsWithChildren<
     dashboardId: SdkDashboardId;
 
     /**
+     * The interval between auto refreshes on the dashboard, in seconds.
+     */
+    autoRefreshInterval?: number;
+
+    /**
      * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
@@ -155,6 +162,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
 const SdkDashboardInner = ({
   dashboardId: rawDashboardId,
   token: rawToken,
+  autoRefreshInterval,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -411,6 +419,7 @@ const SdkDashboardInner = ({
                   style={style}
                 >
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
+                  <AutoRefreshController refreshPeriod={autoRefreshInterval} />
                 </SdkDashboardStyledWrapperWithRef>
               )}
             </SdkDashboardProvider>
@@ -527,4 +536,23 @@ function DashboardQueryBuilder({
       onVisualizationChange={onVisualizationChange}
     />
   );
+}
+
+interface AutoRefreshControllerProps {
+  refreshPeriod: RefreshPeriod | undefined;
+}
+function AutoRefreshController({ refreshPeriod }: AutoRefreshControllerProps) {
+  const { onRefreshPeriodChange } = useDashboardContext();
+
+  useEffect(() => {
+    const normalizedRefreshPeriod =
+      refreshPeriod != null && refreshPeriod >= 0 ? refreshPeriod : null;
+    onRefreshPeriodChange(normalizedRefreshPeriod);
+  }, [refreshPeriod, onRefreshPeriodChange]);
+
+  useUnmount(() => {
+    onRefreshPeriodChange(null);
+  });
+
+  return null;
 }
