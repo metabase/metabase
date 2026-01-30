@@ -308,9 +308,6 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
             .should("be.visible")
             .click();
 
-          cy.button("Edit dashboard").should("be.visible").click();
-          cy.button("Add questions").should("be.visible").click();
-
           cy.log("create a new question again");
           cy.button("New Question").should("be.visible").click();
           H.popover().findByRole("link", { name: "Orders" }).click();
@@ -337,12 +334,16 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
            * I was supposed to test the dashcard auto-scroll here, but for some reason,
            * the test always fails on CI, but not locally. So I didn't test it here.
            */
-          cy.log("Now we should be back");
+          cy.log("Now we should be back on the dashboard in the edit mode");
+          cy.findByText("You're editing this dashboard.").should("be.visible");
           cy.findByText("Orders in a dashboard").should("be.visible");
           const NEW_DASHCARD_INDEX = 0;
           H.getDashboardCard(NEW_DASHCARD_INDEX)
             .findByText("Orders in a dashboard")
             .should("be.visible");
+
+          cy.button("Save").click();
+          cy.findByText("You're editing this dashboard.").should("not.exist");
         });
       });
     });
@@ -387,7 +388,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
               "be.visible",
             );
             cy.findByText(
-              "You'll need to save your changes before leaving to create a new question.",
+              "You’ll need to save your changes before leaving to create a new question.",
             ).should("be.visible");
 
             cy.button("Save changes").should("be.visible").click();

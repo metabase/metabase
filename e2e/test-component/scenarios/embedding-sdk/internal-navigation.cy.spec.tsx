@@ -301,8 +301,6 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         // Go back to Dashboard A
         cy.findByText("Back to Dashboard A").click();
 
-        cy.wait("@getDashboard");
-
         // Verify we're back on Dashboard A
         cy.findByText("Dashboard A").should("be.visible");
 
@@ -374,8 +372,6 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // Step 7: Go back to Dashboard A
         cy.findByText("Back to Dashboard A").click();
-
-        cy.wait("@getDashboard");
 
         // Verify we're back on Dashboard A (root)
         cy.findByText("Dashboard A").should("be.visible");

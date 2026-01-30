@@ -23,8 +23,15 @@ import type { StoreDashboard } from "metabase-types/store";
 
 export const useCommonDashboardParams = ({
   dashboardId,
+  onNavigationPush,
 }: {
   dashboardId: DashboardId | null;
+  /** Optional callback to push to navigation stack when navigating to a new card */
+  onNavigationPush?: (entry: {
+    type: "adhoc-question";
+    questionPath: string;
+    name: string;
+  }) => void;
 }) => {
   const dispatch = useSdkDispatch();
   const store = useSdkStore();
@@ -82,10 +89,17 @@ export const useCommonDashboardParams = ({
             },
           });
           setAdhocQuestionUrl(url);
+
+          // Push to navigation stack for back button support
+          onNavigationPush?.({
+            type: "adhoc-question",
+            questionPath: url,
+            name: nextCard.name || "Question",
+          });
         }
       }
     },
-    [dashboardId, dispatch, store],
+    [dashboardId, dispatch, store, onNavigationPush],
   );
 
   const handleNavigateBackToDashboard = useCallback(() => {

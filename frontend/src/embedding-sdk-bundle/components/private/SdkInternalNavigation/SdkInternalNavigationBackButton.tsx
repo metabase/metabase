@@ -15,11 +15,17 @@ export const SdkInternalNavigationBackButton = ({
 }) => {
   const navigation = useSdkInternalNavigationOptional();
 
+  console.log("DEBUG navigation", navigation);
+
   if (!navigation?.canGoBack) {
     return null;
   }
 
   const { previousEntry, pop } = navigation;
+
+  // Get the name from the previous entry (placeholder entries don't have names)
+  const previousName =
+    previousEntry && "name" in previousEntry ? previousEntry.name : undefined;
 
   return (
     <Button
@@ -31,7 +37,7 @@ export const SdkInternalNavigationBackButton = ({
       pl={0}
       style={style}
     >
-      {t`Back to ${previousEntry?.name}`}
+      {previousName ? t`Back to ${previousName}` : t`Back`}
     </Button>
   );
 };

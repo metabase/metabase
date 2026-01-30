@@ -35,11 +35,8 @@ export const InteractiveDashboardContent = (
   props: InteractiveDashboardProps,
 ) => {
   const globalPlugins = useSdkSelector(getPlugins);
-  const {
-    push: pushNavigation,
-    initWithDashboard,
-    navigateToNewCardFromDashboard,
-  } = useSdkInternalNavigation();
+  const { push: pushNavigation, initWithDashboard } =
+    useSdkInternalNavigation();
   const dashboard = useSdkSelector(getDashboardComplete);
 
   // Initialize the navigation stack with the dashboard when it loads
@@ -73,7 +70,8 @@ export const InteractiveDashboardContent = (
     () => ({
       ...props,
       getClickActionMode,
-      navigateToNewCardFromDashboard,
+      // Don't pass navigateToNewCardFromDashboard - dashboard uses its own local state
+      // via useCommonDashboardParams (which also pushes to navigation for back button)
       dashboardActions: [
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
@@ -87,7 +85,7 @@ export const InteractiveDashboardContent = (
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
         ),
     }),
-    [props, getClickActionMode, navigateToNewCardFromDashboard],
+    [props, getClickActionMode],
   );
 
   return <SdkDashboard {...dashboardProps} />;

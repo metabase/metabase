@@ -24,24 +24,12 @@ export type SdkInternalNavigationEntry =
       name: string;
       parameters?: ParameterValues;
     }
+  | { type: "placeholder"; onPop?: () => void }
   | {
       type: "adhoc-question";
       /** The URL path for the ad-hoc question (e.g., /question#... with serialized card) */
       questionPath: string;
       name: string;
-    }
-  | {
-      type: "new-question";
-      /** The dashboard ID to add the new question to */
-      dashboardId: SdkDashboardId;
-      /** The dashboard name for the back button */
-      dashboardName: string;
-      /** Display name for the back button (same as dashboardName) */
-      name: string;
-      /** Props to pass to the data picker (e.g., entityTypes filter) */
-      dataPickerProps?: Pick<SdkQuestionProps, "entityTypes">;
-      /** Callback when the question is successfully created */
-      onQuestionCreated: (question: MetabaseQuestion) => void;
     };
 
 export type SdkInternalNavigationContextValue = {
