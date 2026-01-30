@@ -498,6 +498,49 @@
   [_ _]
   false)
 
+(defmulti batch-check-eligibility
+  "Batch version of check-eligibility. Returns a map of instance-id -> eligible? boolean."
+  {:arglists '([spec instances])}
+  (fn [spec _instances] (get-in spec [:eligibility :type])))
+
+(defmethod batch-check-eligibility :library-synced
+  [_spec instances]
+  (let [eligible? (rs-settings/library-is-remote-synced?)]
+    (into {} (map (fn [inst] [(:id inst) eligible?])) instances)))
+
+(defmethod batch-check-eligibility :default
+  [spec instances]
+  (into {} (map (fn [inst] [(:id inst) (check-eligibility spec inst)])) instances))
+
+;;; -------------------------------------------- Editability Checking ------------------------------------------------
+
+(defn model-editable?
+  "Determines if a model instance is editable based on remote sync configuration.
+
+   Returns false if:
+   - The model has a spec in remote-sync-specs AND
+   - The instance is eligible for sync (via check-eligibility) AND
+   - remote-sync-type is :read-only
+
+   For models with global eligibility (e.g., :library-synced, :setting), the instance
+   argument can be nil or an empty map since eligibility doesn't depend on instance data."
+  [model-key instance]
+  (if-let [spec (spec-for-model-key model-key)]
+    (or (= (rs-settings/remote-sync-type) :read-write)
+        (not (check-eligibility spec instance)))
+    ;; Model not in spec, always editable
+    true))
+
+(defn batch-model-editable?
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  [model-key instances]
+  (if-let [spec (spec-for-model-key model-key)]
+    (if (= (rs-settings/remote-sync-type) :read-write)
+      (into {} (map (fn [inst] [(:id inst) true])) instances)
+      (let [eligibility-map (batch-check-eligibility spec instances)]
+        (into {} (map (fn [[id eligible?]] [id (not eligible?)])) eligibility-map)))
+    (into {} (map (fn [inst] [(:id inst) true])) instances)))
+
 ;;; ---------------------------------------------------- Hydration -----------------------------------------------------
 
 (defn hydrate-model-details
