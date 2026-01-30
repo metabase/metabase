@@ -128,47 +128,60 @@
 
 ;;; Markdown Link Processing
 
-(defn- find-markdown-links
-  "Find all markdown links in text. Returns seq of [full-match link-text url]."
-  [text]
-  (when (string? text)
-    (re-seq #"\[([^\]]*)\]\(([^)]+)\)" text)))
+(def link-pattern
+  "Regex matching a complete markdown link [text](url)."
+  #"\[([^\[\]]*)\]\(([^()]*)\)")
 
-(defn process-text-links
-  "Process all metabase:// links in text, replacing them with resolved URLs.
+(defn resolve-links
+  "Resolve all metabase:// links in text, replacing them with proper URLs.
 
   Takes text containing markdown links like [Chart](metabase://chart/uuid)
-  and replaces the URLs with proper Metabase URLs.
+  and replaces metabase:// URLs with proper Metabase URLs.
+  Non-metabase:// links are preserved unchanged.
 
   Returns the text with all resolvable links replaced."
   [text queries-state charts-state]
-  (if-let [links (find-markdown-links text)]
-    (reduce
-     (fn [txt [full-match link-text url]]
-       (if (and url (str/starts-with? url "metabase://"))
-         (if-let [resolved-url (resolve-metabase-uri url queries-state charts-state)]
-           (str/replace txt full-match (str "[" link-text "](" resolved-url ")"))
-           ;; If resolution fails, keep original (or just show link text)
-           txt)
-         txt))
-     text
-     links)
-    text))
+  (when (string? text)
+    (str/replace text link-pattern
+                 (fn [[_ link-text url]]
+                   (if (str/starts-with? url "metabase://")
+                     (if-let [resolved (resolve-metabase-uri url queries-state charts-state)]
+                       (str "[" link-text "](" resolved ")")
+                       (do
+                         (log/warn "Failed to resolve link URL" {:url url})
+                         link-text))
+                     (str "[" link-text "](" url ")"))))))
 
-;;; Part Processing
+(defn resolve-links-xf
+  "Transducer that resolves metabase:// links in text parts.
+
+  Takes queries-state and charts-state for link resolution.
+  For :text parts, resolves metabase:// links to proper URLs.
+  For other part types, passes through unchanged."
+  [queries-state charts-state]
+  (map (fn [part]
+         (if (and (= (:type part) :text) (:text part))
+           (update part :text resolve-links queries-state charts-state)
+           part))))
+
+;;; Part Processing (deprecated, use resolve-links-xf)
 
 (defn process-part-links
   "Process metabase:// links in a part's text content.
 
   For :text parts, processes the text to resolve metabase:// links.
-  For other part types, returns unchanged."
+  For other part types, returns unchanged.
+
+  Deprecated: Use resolve-links-xf transducer instead."
   [part queries-state charts-state]
   (if (and (= (:type part) :text) (:text part))
-    (update part :text process-text-links queries-state charts-state)
+    (update part :text resolve-links queries-state charts-state)
     part))
 
 (defn process-parts-links
   "Process metabase:// links in all parts.
-  Returns parts with all text links resolved."
+  Returns parts with all text links resolved.
+
+  Deprecated: Use resolve-links-xf transducer instead."
   [parts queries-state charts-state]
-  (mapv #(process-part-links % queries-state charts-state) parts))
+  (into [] (resolve-links-xf queries-state charts-state) parts))

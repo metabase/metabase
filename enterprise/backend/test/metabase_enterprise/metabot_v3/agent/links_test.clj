@@ -58,31 +58,31 @@
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
 
-(deftest process-text-links-test
-  (testing "processes metabase:// links in markdown"
+(deftest resolve-links-test
+  (testing "resolves metabase:// links in markdown"
     (let [query-id "test-query"
           query {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
           charts-state {}
           text "Check out [My Results](metabase://query/test-query) for details."
-          result (links/process-text-links text queries-state charts-state)]
+          result (links/resolve-links text queries-state charts-state)]
       (is (str/includes? result "[My Results](/question#"))
       (is (not (str/includes? result "metabase://")))))
 
   (testing "preserves non-metabase links"
     (let [text "Visit [Google](https://google.com) for more."
-          result (links/process-text-links text {} {})]
+          result (links/resolve-links text {} {})]
       (is (= text result))))
 
   (testing "handles multiple links"
     (let [text "[Model](metabase://model/1) and [Metric](metabase://metric/2)"
-          result (links/process-text-links text {} {})]
+          result (links/resolve-links text {} {})]
       (is (str/includes? result "[Model](/model/1)"))
       (is (str/includes? result "[Metric](/metric/2)"))))
 
   (testing "handles text without links"
     (let [text "Just some plain text"
-          result (links/process-text-links text {} {})]
+          result (links/resolve-links text {} {})]
       (is (= text result)))))
 
 (deftest process-part-links-test
@@ -108,6 +108,46 @@
       (is (= {:type :tool-input :function "search"} (second result)))
       (is (= "[B](/metric/2)" (-> result (nth 2) :text))))))
 
+(deftest resolve-links-xf-test
+  (testing "transducer processes text parts"
+    (let [parts [{:type :text :text "[A](metabase://model/1)"}
+                 {:type :tool-input :function "search"}
+                 {:type :text :text "[B](metabase://metric/2)"}]
+          result (into [] (links/resolve-links-xf {} {}) parts)]
+      (is (= 3 (count result)))
+      (is (= "[A](/model/1)" (-> result first :text)))
+      (is (= {:type :tool-input :function "search"} (second result)))
+      (is (= "[B](/metric/2)" (-> result (nth 2) :text)))))
+
+  (testing "transducer works with transduce"
+    (let [query-id "q1"
+          query {:database 1 :type :query :query {:source-table 1}}
+          queries-state {query-id query}
+          parts [{:type :text :text "[Query](metabase://query/q1)"}]
+          result (transduce (links/resolve-links-xf queries-state {})
+                            conj
+                            []
+                            parts)]
+      (is (= 1 (count result)))
+      (is (str/starts-with? (-> result first :text) "[Query](/question#"))))
+
+  (testing "transducer composes with other transducers"
+    (let [parts [{:type :text :text "[A](metabase://model/1)"}
+                 {:type :text :text "[B](metabase://model/2)"}
+                 {:type :tool-input :function "search"}]
+          result (into []
+                       (comp (links/resolve-links-xf {} {})
+                             (filter #(= :text (:type %))))
+                       parts)]
+      (is (= 2 (count result)))
+      (is (= "[A](/model/1)" (-> result first :text)))
+      (is (= "[B](/model/2)" (-> result second :text)))))
+
+  (testing "transducer handles nil state maps"
+    (let [parts [{:type :text :text "[Link](metabase://model/123)"}]
+          result (into [] (links/resolve-links-xf nil nil) parts)]
+      (is (= "[Link](/model/123)" (-> result first :text))))))
+
 ;;; Nil handling tests - important for robustness against LLM edge cases
 
 (deftest resolve-metabase-uri-nil-handling-test
@@ -121,26 +161,26 @@
     (is (= "/model/123" (links/resolve-metabase-uri "metabase://model/123" nil nil)))
     (is (= "/metric/456" (links/resolve-metabase-uri "metabase://metric/456" nil nil)))))
 
-(deftest process-text-links-nil-handling-test
+(deftest resolve-links-nil-handling-test
   (testing "handles nil text gracefully"
     ;; Note: This test verifies the function doesn't throw on edge cases
     ;; The actual behavior may need adjustment based on requirements
-    (let [result (links/process-text-links nil {} {})]
+    (let [result (links/resolve-links nil {} {})]
       (is (nil? result))))
 
   (testing "handles text with nil URL in regex capture groups"
     ;; This tests the case where markdown regex captures nil
     (let [text "Some text without links"
-          result (links/process-text-links text {} {})]
+          result (links/resolve-links text {} {})]
       (is (= text result))))
 
   (testing "handles empty text"
-    (let [result (links/process-text-links "" {} {})]
+    (let [result (links/resolve-links "" {} {})]
       (is (= "" result))))
 
   (testing "handles nil state maps"
     (let [text "[Link](metabase://model/123)"
-          result (links/process-text-links text nil nil)]
+          result (links/resolve-links text nil nil)]
       (is (str/includes? result "[Link](/model/123)")))))
 
 (deftest process-part-links-edge-cases-test
@@ -228,14 +268,14 @@
           query {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
           text "See [Model](metabase://model/1), [Metric](metabase://metric/2), and [Query](metabase://query/q1)"
-          result (links/process-text-links text queries-state {})]
+          result (links/resolve-links text queries-state {})]
       (is (str/includes? result "[Model](/model/1)"))
       (is (str/includes? result "[Metric](/metric/2)"))
       (is (str/includes? result "/question#"))))
 
   (testing "preserves text between links"
     (let [text "Start [A](metabase://model/1) middle [B](metabase://model/2) end"
-          result (links/process-text-links text {} {})]
+          result (links/resolve-links text {} {})]
       (is (str/includes? result "Start "))
       (is (str/includes? result " middle "))
       (is (str/includes? result " end")))))
@@ -243,7 +283,7 @@
 (deftest special-characters-in-links-test
   (testing "handles link text with special characters"
     (let [text   "[Link with (parens)](metabase://model/1)"
-          result (links/process-text-links text {} {})]
+          result (links/resolve-links text {} {})]
       ;; Markdown parser should handle this - may or may not match depending on regex
       (is (string? result))))
 
