@@ -143,12 +143,7 @@ export function specificDateFilterClause({
   values,
   hasTime,
 }: SpecificDateFilterParts): ExpressionClause {
-  return ML.specific_date_filter_clause(
-    operator,
-    column,
-    values.map((value) => dayjs(value).toDate()),
-    hasTime,
-  );
+  return ML.specific_date_filter_clause(operator, column, values, hasTime);
 }
 
 export function specificDateFilterParts(
@@ -156,23 +151,7 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  const filterParts = ML.specific_date_filter_parts(
-    query,
-    stageIndex,
-    filterClause,
-  );
-  if (!filterParts) {
-    return null;
-  }
-  return {
-    ...filterParts,
-    // The CLJS code returns dayjs objects in UTC mode. We need to convert them to local Date objects
-    // while preserving the time values (not converting the instant). dayjs.local(true) doesn't work
-    // like moment.local(true), so we format and reparse as local time.
-    values: filterParts.values.map((value: Dayjs) =>
-      dayjs(value.format("YYYY-MM-DDTHH:mm:ss.SSS")).toDate(),
-    ),
-  };
+  return ML.specific_date_filter_parts(query, stageIndex, filterClause);
 }
 
 export function relativeDateFilterClause({
