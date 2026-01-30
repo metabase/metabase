@@ -51,7 +51,7 @@ type SetupOpts = {
 };
 
 function setup({
-  mode = "breaking",
+  mode = "broken",
   location = { query: {} },
   nodes = [],
   total,
@@ -59,7 +59,7 @@ function setup({
 }: SetupOpts) {
   const path = getPageUrl(mode, {});
 
-  if (mode === "breaking") {
+  if (mode === "broken") {
     setupListBreakingGraphNodesEndpoint(
       createMockListBrokenGraphNodesResponse({
         data: nodes,
@@ -129,7 +129,7 @@ describe("DependencyListPage", () => {
   describe("URL parameters", () => {
     it("should set the group_types parameter when not all types are selected", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         location: { query: { group_types: ["table", "question", "model"] } },
       });
@@ -146,7 +146,7 @@ describe("DependencyListPage", () => {
 
     it("should not set the group_types parameter when all types are selected", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         location: { query: { group_types: ["table", "question"] } },
       });
@@ -161,7 +161,7 @@ describe("DependencyListPage", () => {
 
     it("should set the include_personal_collections parameter when it is unchecked", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         location: { query: { include_personal_collections: "true" } },
       });
@@ -181,7 +181,7 @@ describe("DependencyListPage", () => {
 
     it("should not set the include_personal_collections parameter when it is checked", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         location: { query: { include_personal_collections: "false" } },
       });
@@ -199,7 +199,7 @@ describe("DependencyListPage", () => {
 
     it("should set the page parameter when navigating to the next page and it is not the first page", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         total: 50,
         location: { query: {} },
@@ -213,7 +213,7 @@ describe("DependencyListPage", () => {
 
     it("should set the page parameter when navigating to the previous page and it is not the first page", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         total: 50,
         location: { query: { page: "2" } },
@@ -227,7 +227,7 @@ describe("DependencyListPage", () => {
 
     it("should not set the page parameter when it is the first page", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         location: { query: { page: "1" } },
         total: 50,
@@ -305,7 +305,7 @@ describe("DependencyListPage", () => {
 
     it("should update URL with last used parameters when there is no query string", async () => {
       const { history } = setup({
-        mode: "breaking",
+        mode: "broken",
         nodes: CARD_NODES,
         location: { query: {} },
         lastUsedParams: { group_types: ["table", "question"] },

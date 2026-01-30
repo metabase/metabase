@@ -21,8 +21,8 @@ export function getPageUrl(
   mode: DependencyListMode,
   params: Urls.DependencyListParams,
 ): string {
-  return mode === "breaking"
-    ? Urls.breakingDependencies(params)
+  return mode === "broken"
+    ? Urls.brokenDependencies(params)
     : Urls.unreferencedDependencies(params);
 }
 

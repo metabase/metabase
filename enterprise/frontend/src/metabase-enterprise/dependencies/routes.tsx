@@ -13,8 +13,8 @@ export function getDataStudioDependencyRoutes() {
 export function getDataStudioDependencyDiagnosticsRoutes() {
   return (
     <>
-      <IndexRedirect to="breaking" />
-      <Route path="breaking" component={BrokenDependencyListPage} />
+      <IndexRedirect to="broken" />
+      <Route path="broken" component={BrokenDependencyListPage} />
       <Route path="unreferenced" component={UnreferencedDependencyListPage} />
     </>
   );

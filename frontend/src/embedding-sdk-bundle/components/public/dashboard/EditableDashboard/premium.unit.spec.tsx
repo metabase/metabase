@@ -26,7 +26,7 @@ const setupPremium = async (
     tokenFeatures: {
       embedding_sdk: true,
     },
-    enterprisePlugins: ["sdk_subscriptions", "embedding"],
+    enterprisePlugins: ["sdk_notifications", "embedding"],
     component: EditableDashboard,
   });
 };

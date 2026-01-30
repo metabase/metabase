@@ -12,8 +12,8 @@ export const DependencyGraph = {
 };
 
 export const DependencyDiagnostics = {
-  visitBreakingDependencies: () =>
-    cy.visit("/data-studio/dependency-diagnostics/breaking"),
+  visitBrokenDependencies: () =>
+    cy.visit("/data-studio/dependency-diagnostics/broken"),
   visitUnreferencedEntities: () =>
     cy.visit("/data-studio/dependency-diagnostics/unreferenced"),
   list: () => cy.findByTestId("dependency-list"),
@@ -25,11 +25,11 @@ export const DependencyDiagnostics = {
     get: () => cy.findByTestId("dependency-list-sidebar"),
     header: () => cy.findByTestId("dependency-list-sidebar-header"),
     locationSection: () => cy.findByRole("region", { name: "Location" }),
-    transformSection: () => cy.findByRole("region", { name: "Transform" }),
+    infoSection: () => cy.findByRole("region", { name: "Info" }),
+    errorsSection: (name: string) => cy.findByRole("region", { name }),
     missingColumnsSection: () =>
       cy.findByRole("region", { name: "Missing columns" }),
-    creationSection: () =>
-      cy.findByRole("region", { name: "Creator and last editor" }),
+    fieldsSection: () => cy.findByRole("region", { name: "Fields" }),
     brokenDependentsSection: () =>
       cy.findByRole("region", { name: "Broken dependents" }),
   },
