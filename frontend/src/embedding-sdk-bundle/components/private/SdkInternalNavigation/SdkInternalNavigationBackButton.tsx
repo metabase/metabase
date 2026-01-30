@@ -29,10 +29,7 @@ export const SdkInternalNavigationBackButton = ({
       leftSection={<Icon name="chevronleft" />}
       onClick={pop}
       pl={0}
-      style={{
-        // border: "1px solid black",
-        ...style,
-      }}
+      style={style}
     >
       {t`Back to ${previousEntry?.name}`}
     </Button>

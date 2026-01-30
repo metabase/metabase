@@ -275,7 +275,6 @@ const SdkInternalNavigationProviderInner = ({
         questionPath={currentEntry.questionPath}
         onNavigateBack={pop}
         navigateToNewCard={navigateToNewCard}
-        // isSaveEnabled={false}
         {...drillThroughQuestionProps}
       >
         {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}

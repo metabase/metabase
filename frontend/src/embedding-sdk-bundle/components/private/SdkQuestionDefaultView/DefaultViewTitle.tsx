@@ -13,9 +13,7 @@ interface DefaultViewTitleTextProps
 const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
   return (
     <Stack gap="xs" align="flex-start">
-      <SdkInternalNavigationBackButton
-      // style={{ border: "1px solid green" }}
-      />
+      <SdkInternalNavigationBackButton />
       {typeof Title === "function" ? <Title></Title> : Title}
     </Stack>
   );

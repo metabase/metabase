@@ -289,7 +289,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     ];
 
     testCases.forEach((testCase) => {
-      it.only(`should allow creating a new question from the dashboard with ${testCase.name}`, () => {
+      it(`should allow creating a new question from the dashboard with ${testCase.name}`, () => {
         cy.get(testCase.alias).then((dashboardId) => {
           mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
         });
