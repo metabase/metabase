@@ -74,8 +74,9 @@
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
       (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
+        (log/debug "debug: request of deletion for %s %s %s" (:engine database) (pr-str (:name database)) existing-database-id)
         (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
-        (t2/delete! :model/Database existing-database-id)))
+        #_(t2/delete! :model/Database existing-database-id)))
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
