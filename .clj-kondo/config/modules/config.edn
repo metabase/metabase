@@ -1379,6 +1379,12 @@
            system
            util}}
 
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{config
+           util}}
+
   sql-tools
   {:team "DevEx"
    :api #{metabase.sql-tools.core
