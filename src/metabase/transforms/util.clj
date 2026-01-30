@@ -5,7 +5,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -118,22 +117,6 @@
   "Returns set of enabled source types for WHERE clause filtering."
   []
   (transforms.gating/enabled-source-types))
-
-(defn has-db-transforms-permission?
-  "Returns true if the given user has the transforms permission for the given source db."
-  [user-id database-id]
-  (and (not= database-id audit/audit-db-id)
-       (or (perms/is-superuser? user-id)
-           (perms/user-has-permission-for-database? user-id
-                                                    :perms/transforms
-                                                    :yes
-                                                    database-id))))
-
-(defn has-any-transforms-permission?
-  "Returns true if the current user has the transforms permission for _any_ source db."
-  [user-id]
-  (or (perms/is-superuser? user-id)
-      (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.

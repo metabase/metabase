@@ -19,7 +19,8 @@
   transform-type
   has-db-transforms-permission?
   enabled-source-types
-  is-temp-transform-table?]
+  is-temp-transform-table?
+  has-any-transforms-permission?]
  [metabase.models.transforms.transform-run
   timeout-run!])
 

@@ -12,18 +12,6 @@
   [_user-or-id]
   [])
 
-(defn has-any-transforms-permission?
-  "Returns true if the user has the transforms permission for any database."
-  [user-id]
-  #_{:clj-kondo/ignore [:metabase/modules]}
-  ((requiring-resolve 'metabase.transforms.util/has-any-transforms-permission?) user-id))
-
-(defn has-db-transforms-permission?
-  "Returns true if the user has the transforms permission for the given database."
-  [user-id database-id]
-  #_{:clj-kondo/ignore [:metabase/modules]}
-  ((requiring-resolve 'metabase.transforms.util/has-db-transforms-permission?) user-id database-id))
-
 (defn user-permissions-set
   "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]

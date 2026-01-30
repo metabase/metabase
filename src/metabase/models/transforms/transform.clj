@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.transforms.transform-run :as transform-run]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
@@ -40,7 +41,7 @@
 (defmethod mi/can-write? :model/Transform
   ([instance]
    (and (mi/can-read? instance)
-        (transforms.util/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+        (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
         (remote-sync/transforms-editable?)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
@@ -62,7 +63,7 @@
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (transforms.util/source-tables-readable? instance)))
-         (transforms.util/has-db-transforms-permission? api/*current-user-id* source-db-id)
+         (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
          (remote-sync/transforms-editable?))))
 
 (defn- keywordize-source-table-refs
