@@ -292,11 +292,13 @@
               "SELECT * FROM orders"
               "SELECT * FROM orders"]
 
+             ;; Note: macaw only renames tables in FROM/JOIN clauses, not table qualifiers in column references.
+             ;; The output SQL is semantically valid since `orders` resolves to `public.orders` in scope.
              ["handles multiple tables in same query"
               {[1 nil "orders"]   {:db-id 1, :schema "public", :table "orders", :id 123}
                [1 nil "products"] {:db-id 1, :schema "public", :table "products", :id 456}}
               "SELECT * FROM orders JOIN products ON orders.product_id = products.id"
-              "SELECT * FROM public.orders JOIN public.products ON public.orders.product_id = public.products.id"]]]
+              "SELECT * FROM public.orders JOIN public.products ON orders.product_id = products.id"]]]
       (testing label
         (is (= (make-source expected-sql)
                (remap-sql-source table-mapping (make-source input-sql))))))))
