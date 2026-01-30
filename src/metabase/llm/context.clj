@@ -154,12 +154,15 @@
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (into {}
-            (map (fn [{:keys [id name table_id]}]
-                   (let [table-name (t2/select-one-fn :name :model/Table :id table_id)]
-                     [id {:table table-name :field name}])))
-            (t2/select [:model/Field :id :name :table_id]
-                       :id [:in target-ids])))))
+      (let [fields      (t2/select [:model/Field :id :name :table_id]
+                                   :id [:in target-ids])
+            table-ids   (into #{} (map :table_id) fields)
+            table-names (when (seq table-ids)
+                          (t2/select-pk->fn :name :model/Table :id [:in table-ids]))]
+        (into {}
+              (map (fn [{:keys [id name table_id]}]
+                     [id {:table (get table-names table_id) :field name}]))
+              fields)))))
 
 ;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------
 
@@ -440,6 +443,20 @@
           columns)
     columns))
 
+(defn- format-columns-for-response
+  "Format columns for API response, resolving FK targets."
+  [columns fk-targets-map]
+  (mapv (fn [col]
+          (let [fk-info (get fk-targets-map (:fk_target_field_id col))]
+            (cond-> {:id            (:id col)
+                     :name          (:name col)
+                     :database_type (:database_type col)
+                     :description   (:description col)
+                     :semantic_type (some-> (:semantic_type col) name)}
+              fk-info (assoc :fk_target {:table_name (:table fk-info)
+                                         :field_name (:field fk-info)}))))
+        columns))
+
 (defn build-schema-context
   "Fetch table metadata for mentioned tables and format as DDL for LLM context.
 
@@ -454,7 +471,10 @@
    - database-id: Database containing the tables
    - table-ids: Set of table IDs to include
 
-   Returns a string containing CREATE TABLE statements, or nil."
+   Returns a map with:
+   - :ddl - DDL string for LLM context
+   - :tables - structured table metadata for API response
+   Or nil if no accessible tables found."
   [database-id table-ids]
   (when (and database-id (seq table-ids))
     (let [accessible-tables (fetch-accessible-tables table-ids)]
@@ -466,10 +486,12 @@
                 tables-with-columns
                 (keep (fn [[table-id table]]
                         (when-let [columns (seq (fetch-table-columns mp table-id))]
-                          {:name        (:name table)
-                           :schema      (:schema table)
-                           :description (:description table)
-                           :columns     columns}))
+                          {:id           table-id
+                           :name         (:name table)
+                           :schema       (:schema table)
+                           :display_name (:display_name table)
+                           :description  (:description table)
+                           :columns      columns}))
                       accessible-tables)
 
                 ;; Gather all columns for batch operations
@@ -491,17 +513,24 @@
                 field-values-map (fetch-field-values all-enriched-columns)
                 fk-targets-map   (fetch-fk-targets all-enriched-columns)
 
-                ;; Enrich columns with comments
+                ;; Enrich columns with comments for DDL
                 enriched-tables
                 (mapv (fn [table]
                         (update table :columns
                                 enrich-columns-with-comments
                                 field-values-map
                                 fk-targets-map))
+                      tables-with-enriched-fps)
+
+                ;; Format tables for API response (without :comment, with :fk_target)
+                response-tables
+                (mapv (fn [table]
+                        (update table :columns format-columns-for-response fk-targets-map))
                       tables-with-enriched-fps)]
 
             (when (seq enriched-tables)
-              (format-schema-ddl enriched-tables))))))))
+              {:ddl    (format-schema-ddl enriched-tables)
+               :tables response-tables})))))))
 
 (defn get-tables-with-columns
   "Fetch tables with their columns for the extract-tables endpoint.

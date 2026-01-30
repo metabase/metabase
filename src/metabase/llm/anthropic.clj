@@ -6,7 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [metabase.llm.settings :as llm-settings]
+   [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
@@ -40,14 +40,14 @@
   "Build headers for Anthropic API request."
   [api-key]
   {"x-api-key"         api-key
-   "anthropic-version" (llm-settings/llm-anthropic-api-version)
+   "anthropic-version" (llm.settings/llm-anthropic-api-version)
    "content-type"      "application/json"})
 
 (defn- build-request-body
   "Build the request body for Anthropic messages API."
   [{:keys [model system messages]}]
   (cond-> {:model       model
-           :max_tokens  (llm-settings/llm-max-tokens)
+           :max_tokens  (llm.settings/llm-max-tokens)
            :messages    messages
            :tools       [generate-sql-tool]
            :tool_choice {:type "tool" :name "generate_sql"}}
@@ -82,7 +82,7 @@
 (defn- get-api-key-or-throw
   "Gets Anthropic API key from settings or throws an unconfigured error."
   []
-  (let [api-key (llm-settings/llm-anthropic-api-key)]
+  (let [api-key (llm.settings/llm-anthropic-api-key)]
     (when (str/blank? api-key)
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
@@ -93,10 +93,10 @@
    Returns a map with :models"
   []
   (try
-    (let [url (str (llm-settings/llm-anthropic-api-url) "/v1/models")
+    (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
           response (http/get url
                              {:headers            {"x-api-key"         (get-api-key-or-throw)
-                                                   "anthropic-version" (llm-settings/llm-anthropic-api-version)}})
+                                                   "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
           body (json/decode+kw (:body response))
           models (reverse (sort-by :created_at (:data body)))]
       {:models (map #(select-keys % [:id :display_name]) models)})
@@ -115,20 +115,20 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (let [model      (or model (llm-settings/llm-anthropic-model))
+  (let [model      (or model (llm.settings/llm-anthropic-model))
         request    {:model    model
                     :system   system
                     :messages messages}
         start-time (u/start-timer)]
     (try
-      (let [url (str (llm-settings/llm-anthropic-api-url) "/v1/messages")
+      (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/messages")
             response    (http/post url
                                    {:headers            (build-request-headers (get-api-key-or-throw))
                                     :body               (json/encode (build-request-body request))
                                     :as                 :json
                                     :content-type       :json
-                                    :socket-timeout     (llm-settings/llm-request-timeout-ms)
-                                    :connection-timeout (llm-settings/llm-connection-timeout-ms)})
+                                    :socket-timeout     (llm.settings/llm-request-timeout-ms)
+                                    :connection-timeout (llm.settings/llm-connection-timeout-ms)})
             duration-ms (u/since-ms start-time)
             body        (:body response)
             usage       (:usage body)]

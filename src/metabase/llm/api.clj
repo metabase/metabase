@@ -352,15 +352,15 @@
       (when (empty? table-ids)
         (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                         {:status-code 400})))
-      (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
-        (when-not schema-ddl
+      (let [{:keys [ddl tables]} (llm.context/build-schema-context database_id table-ids)]
+        (when-not ddl
           (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                           {:status-code 400})))
         (let [engine               (database-engine database_id)
               dialect              (database-dialect database_id)
               dialect-instructions (load-dialect-instructions engine)
               system-prompt        (build-system-prompt {:dialect              dialect
-                                                         :schema-ddl           schema-ddl
+                                                         :schema-ddl           ddl
                                                          :dialect-instructions dialect-instructions
                                                          :source-sql           source_sql})
               timestamp            (current-timestamp)
@@ -383,8 +383,7 @@
                                     :result "success"
                                     :engine engine})
               (let [sql                 (parse-sql-response result)
-                    tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
-                    referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
+                    referenced-entities (mapv #(assoc % :model "table") tables)]
                 {:sql                 sql
                  :referenced_entities referenced-entities}))
             (catch Exception e
