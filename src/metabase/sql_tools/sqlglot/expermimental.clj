@@ -2,7 +2,6 @@
   "Do not use code from this ns. It uses lienage features and `sqlglot-schema`."
   (:require
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
@@ -70,7 +69,7 @@
   [driver dependency]
   (mapv (fn [component]
           (when (string? (not-empty component))
-            (sql.normalize/normalize-name driver component)))
+            (driver.sql/normalize-name driver component)))
         dependency))
 
 (defn- normalized-dependencies

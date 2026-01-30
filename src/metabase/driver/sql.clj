@@ -7,6 +7,7 @@
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -197,4 +198,6 @@
 ;;; |                                              Convenience Imports                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p/import-vars [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution])
+(p/import-vars
+ [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
+ [sql.normalize normalize-name reserved-literal])

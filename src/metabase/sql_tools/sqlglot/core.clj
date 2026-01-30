@@ -2,7 +2,6 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
@@ -78,7 +77,7 @@
 (defmethod process-error :column-not-resolved
   [driver {:keys [column] :as _validation-output}]
   (-> column
-      ((partial sql.normalize/normalize-name driver))
+      ((partial driver.sql/normalize-name driver))
       lib/missing-column-error))
 
 (defmethod process-error :invalid-expression

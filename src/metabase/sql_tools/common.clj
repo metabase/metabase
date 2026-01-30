@@ -1,16 +1,14 @@
 ^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase.sql-tools.common
   (:require
-   [metabase.driver.sql :as driver.sql]
-   ;; TODO what to do
-   [metabase.driver.sql.normalize :as sql.normalize]))
+   [metabase.driver.sql :as driver.sql]))
 
 ;; driver.sql
 (defn normalize-table-spec
   "WIP"
   [driver {:keys [table schema]}]
-  {:table (sql.normalize/normalize-name driver table)
-   :schema (some->> schema (sql.normalize/normalize-name driver))})
+  {:table (driver.sql/normalize-name driver table)
+   :schema (some->> schema (driver.sql/normalize-name driver))})
 
 ;; driver.sql
 (defn find-table-or-transform

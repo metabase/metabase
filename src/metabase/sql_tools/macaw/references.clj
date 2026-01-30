@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [macaw.ast-types :as macaw.ast-types]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util.malli :as mu]
@@ -70,7 +70,7 @@
 (defn- normalize-fields [driver m]
   (update-vals m
                #(if (string? %)
-                  (sql.normalize/normalize-name driver %)
+                  (driver.sql/normalize-name driver %)
                   %)))
 
 (defn- col-fields [driver m]
@@ -107,7 +107,7 @@
   (if (and (nil? (:table raw-col))
            (nil? (:schema raw-col))
            (nil? (:database raw-col))
-           (sql.normalize/reserved-literal driver (:column raw-col)))
+           (driver.sql/reserved-literal driver (:column raw-col)))
     []
     (let [{:keys [alias column table] :as expr} (col-fields driver raw-col)
           valid-sources (if table
@@ -223,7 +223,7 @@
 (defmethod find-returned-fields :default
   [driver sources withs {:keys [alias] :as expr}]
   [{:col {:alias (when alias
-                   (sql.normalize/normalize-name driver alias))
+                   (driver.sql/normalize-name driver alias))
           :type :custom-field
           :used-fields (into #{} (keep :col) (find-used-fields driver sources withs expr))}}])
 
@@ -317,7 +317,7 @@
       ;; :alias is a column alias, so this is presumably something like `select (select * from ...)`
       ;; there should only be one field returned, and that field should have the appropriate alias
       (do (assert (= 1 (count returned-fields)))
-          (map #(assoc-in % [:col :alias] (sql.normalize/normalize-name driver (:alias expr)))
+          (map #(assoc-in % [:col :alias] (driver.sql/normalize-name driver (:alias expr)))
                returned-fields))
       returned-fields)))
 
@@ -339,7 +339,7 @@
                    (comp cat (mapcat :errors))
                    [returned-fields current-used-fields local-withs])
      :names (when-let [alias (:table-alias expr)]
-              {:table-alias (sql.normalize/normalize-name driver alias)})}))
+              {:table-alias (driver.sql/normalize-name driver alias)})}))
 
 (defmethod field-references-impl [:sql :macaw.ast/join]
   [driver outside-sources withs expr]
@@ -355,14 +355,14 @@
                    (comp cat (mapcat :errors))
                    [used-fields returned-fields])
      :names (when-let [alias (:table-alias expr)]
-              {:table-alias (sql.normalize/normalize-name driver alias)})}))
+              {:table-alias (driver.sql/normalize-name driver alias)})}))
 
 (defmethod field-references-impl [:sql :macaw.ast/table-function]
   [driver _outside-sources _withs expr]
   {:used-fields #{}
    :returned-fields [{:type :unknown-columns}]
    :names (when-let [alias (:table-alias expr)]
-            {:table-alias (sql.normalize/normalize-name driver alias)})
+            {:table-alias (driver.sql/normalize-name driver alias)})
    :errors #{}})
 
 (defmethod field-references-impl :default
