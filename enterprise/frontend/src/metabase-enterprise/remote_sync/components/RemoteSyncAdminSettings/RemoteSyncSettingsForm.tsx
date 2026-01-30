@@ -74,7 +74,7 @@ export type RemoteSyncSettingsFormProps = {
 };
 
 type RemoteSyncSettingsFormState = RemoteSyncConfigurationSettings & {
-  "sync-library-pending"?: boolean;
+  [SYNC_LIBRARY_PENDING_KEY]?: boolean;
 };
 
 export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
@@ -346,7 +346,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         validationContext={settingValues}
         onSubmit={handleSubmit}
       >
-        {({ dirty, values, setFieldValue }) => (
+        {({ dirty, values }) => (
           <Form disabled={!dirty}>
             <Stack gap="xl" maw="52rem">
               {!isModalVariant && !isRemoteSyncEnabled && (
@@ -497,13 +497,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   title={t`Content to sync`}
                   variant={variant}
                 >
-                  <TopLevelCollectionsList
-                    skipCollections
-                    onLibraryPendingChange={(checked) =>
-                      setFieldValue(SYNC_LIBRARY_PENDING_KEY, checked)
-                    }
-                    isLibraryPendingChecked={values[SYNC_LIBRARY_PENDING_KEY]}
-                  />
+                  <TopLevelCollectionsList skipCollections />
                 </RemoteSyncSettingsSection>
               )}
 

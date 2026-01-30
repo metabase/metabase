@@ -1,10 +1,8 @@
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
-import { t } from "ttag";
 
-import CS from "metabase/css/core/bordered.module.css";
-import { Box, Flex, Icon, Loader, Switch, Text } from "metabase/ui";
+import { Box, Flex, Loader, Text } from "metabase/ui";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
@@ -13,6 +11,7 @@ import type {
 
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 import { CollectionSyncRow } from "../CollectionSyncRow";
+import { LibrarySyncRow } from "../LibrarySyncRow";
 import { TransformsSyncRow } from "../TransformsSyncRow";
 
 import S from "./CollectionSyncList.module.css";
@@ -27,14 +26,6 @@ interface CollectionSyncListProps {
    * When true and no library collection exists, show a placeholder row for library.
    */
   showLibraryPlaceholder?: boolean;
-  /**
-   * Callback when the library pending toggle changes (when library doesn't exist).
-   */
-  onLibraryPendingChange?: (checked: boolean) => void;
-  /**
-   * Current state of the library pending toggle.
-   */
-  isLibraryPendingChecked?: boolean;
 }
 
 export const CollectionSyncList = ({
@@ -44,8 +35,6 @@ export const CollectionSyncList = ({
   isLoading,
   showTransformsRow,
   showLibraryPlaceholder,
-  onLibraryPendingChange,
-  isLibraryPendingChecked,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
@@ -81,30 +70,10 @@ export const CollectionSyncList = ({
       />
     ));
 
-    if (showLibraryPlaceholder && onLibraryPendingChange) {
-      const libraryPlaceholderRow = (
-        <Box key="library-placeholder" p="md" className={CS.borderRowDivider}>
-          <Flex justify="space-between" align="center">
-            <Flex align="center" gap="sm">
-              <Icon name="repository" c="text-secondary" />
-              <Text fw="medium">{t`Library`}</Text>
-            </Flex>
-            <Flex align="center" gap="sm">
-              <Switch
-                size="sm"
-                checked={isLibraryPendingChecked ?? false}
-                onChange={(e) =>
-                  onLibraryPendingChange(e.currentTarget.checked)
-                }
-                disabled={isReadOnly}
-                aria-label={t`Sync Library`}
-              />
-              <Text>{t`Sync`}</Text>
-            </Flex>
-          </Flex>
-        </Box>
+    if (showLibraryPlaceholder) {
+      rowsItems.unshift(
+        <LibrarySyncRow key="library-placeholder" isReadOnly={isReadOnly} />,
       );
-      rowsItems.unshift(libraryPlaceholderRow);
     }
 
     if (showTransformsRow) {
@@ -134,8 +103,6 @@ export const CollectionSyncList = ({
     showTransformsRow,
     values,
     showLibraryPlaceholder,
-    onLibraryPendingChange,
-    isLibraryPendingChecked,
   ]);
 
   if (isLoading) {

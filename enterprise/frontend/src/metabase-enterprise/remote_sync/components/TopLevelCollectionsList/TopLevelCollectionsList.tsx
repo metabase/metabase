@@ -14,22 +14,10 @@ interface TopLevelCollectionsListProps {
    * Useful for modal variant where only these options should be shown.
    */
   skipCollections?: boolean;
-  /**
-   * Callback when the library pending toggle changes.
-   * Only used when library doesn't exist and skipCollections is true.
-   */
-  onLibraryPendingChange?: (checked: boolean) => void;
-  /**
-   * Current state of the library pending toggle.
-   * Only used when library doesn't exist and skipCollections is true.
-   */
-  isLibraryPendingChecked?: boolean;
 }
 
 export const TopLevelCollectionsList = ({
   skipCollections,
-  onLibraryPendingChange,
-  isLibraryPendingChecked,
 }: TopLevelCollectionsListProps = {}) => {
   const { data, isLoading, error } = useListCollectionItemsQuery(
     {
@@ -75,8 +63,6 @@ export const TopLevelCollectionsList = ({
       isLoading={isLoading || isLoadingLibrary}
       showTransformsRow={PLUGIN_TRANSFORMS.isEnabled}
       showLibraryPlaceholder={skipCollections && !libraryCollection}
-      onLibraryPendingChange={onLibraryPendingChange}
-      isLibraryPendingChecked={isLibraryPendingChecked}
     />
   );
 };
