@@ -10,7 +10,7 @@ const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
   return (
-    <Stack mx="auto" py="xl" gap="xl" maw={800}>
+    <Stack mx="auto" py="xl" gap="sm" maw={800}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
         <Group gap="xs">
           <Icon name="chevronleft" size={12} />
