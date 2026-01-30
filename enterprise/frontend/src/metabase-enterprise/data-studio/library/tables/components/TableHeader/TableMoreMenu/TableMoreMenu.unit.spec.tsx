@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { EnterpriseSettings, TokenFeatures } from "metabase-types/api";
@@ -36,7 +37,8 @@ const setup = ({ remoteSyncType }: SetupOpts = {}) => {
     settings,
   });
 
-  ["remote_sync"].forEach(setupEnterpriseOnlyPlugin);
+  const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
+  enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
 
   renderWithProviders(
     <Route path="/" component={() => <TableMoreMenu table={mockTable} />} />,

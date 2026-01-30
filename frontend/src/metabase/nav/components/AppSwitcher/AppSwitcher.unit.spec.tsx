@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";

@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -20,7 +21,7 @@ import { EditSnippetPage } from "../EditSnippetPage";
 type SetupOps = {
   snippet?: Partial<NativeQuerySnippet>;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   tokenFeatures?: Partial<TokenFeatures>;
 };
 
