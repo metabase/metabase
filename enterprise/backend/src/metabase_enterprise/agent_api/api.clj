@@ -16,7 +16,6 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.query-processor :as qp]
-
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]

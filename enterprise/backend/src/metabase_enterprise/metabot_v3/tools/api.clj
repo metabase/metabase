@@ -184,12 +184,11 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::count-aggregation
-  "Count aggregation. field_id is optional because count operates on rows, not a specific field.
+  "Count aggregation — counts rows, no field_id needed.
    Use sort_order to order results by this aggregation ('asc' or 'desc')."
   [:and
    [:map
     [:function [:= {:encode/tool-api-request keyword} "count"]]
-    [:field_id {:optional true} [:maybe :string]]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
