@@ -1407,6 +1407,206 @@ describe.each<Area>(areas)(
           );
         });
       });
+
+      describe("Behavior", () => {
+        describe("Visibility", () => {
+          it("should let you change field visibility to 'Everywhere'", () => {
+            cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
+              visibility_type: "sensitive",
+            });
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.TAX,
+            });
+
+            FieldSection.getVisibilityInput()
+              .should("have.value", "Do not include")
+              .click();
+            H.popover().findByText("Everywhere").click();
+            cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "visibility_change",
+              triggered_from: area === "admin" ? "admin" : "data_studio",
+            });
+            verifyAndCloseToast("Visibility of Tax updated");
+            FieldSection.getVisibilityInput().should(
+              "have.value",
+              "Everywhere",
+            );
+
+            cy.log("verify preview");
+            TableSection.clickField("Tax");
+            FieldSection.getPreviewButton().click();
+            verifyTablePreview({
+              column: "Tax",
+              values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
+            });
+            verifyObjectDetailPreview({
+              rowNumber: 4,
+              row: ["Tax", "2.07"],
+            });
+
+            cy.log("table viz");
+            H.openOrdersTable();
+            H.tableHeaderColumn("Total").should("be.visible");
+            H.tableHeaderColumn("Tax").should("be.visible");
+
+            cy.log("object detail viz");
+            cy.findByTestId("table-body")
+              .findAllByTestId("cell-data")
+              .eq(0)
+              .click();
+            H.modal().findByText("Tax").should("be.visible");
+            H.modal().findByText("2.07").should("be.visible");
+          });
+
+          it("should let you change field visibility to 'Do not include'", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.TAX,
+            });
+
+            FieldSection.getVisibilityInput()
+              .should("have.value", "Everywhere")
+              .click();
+            H.popover().findByText("Do not include").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Visibility of Tax updated");
+            FieldSection.getVisibilityInput().should(
+              "have.value",
+              "Do not include",
+            );
+
+            cy.log("verify preview");
+            TableSection.clickField("Tax");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.get()
+              .findByText("This field is hidden")
+              .should("exist");
+            cy.get("@dataset.all").should("have.length", 0);
+            PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+            cy.wait("@dataset");
+            PreviewSection.get().findByText("Tax").should("not.exist");
+
+            cy.log("table viz");
+            H.openOrdersTable();
+            H.tableHeaderColumn("Total").should("be.visible");
+            H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+              "not.exist",
+            );
+
+            cy.log("object detail viz");
+            cy.findByTestId("table-body")
+              .findAllByTestId("cell-data")
+              .eq(0)
+              .click();
+            H.modal().findByText("Tax").should("not.exist");
+            H.modal().findByText("2.07").should("not.exist");
+          });
+
+          it("should let you change field visibility to 'Do not include' even if Preview is opened (metabase#61806)", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.TAX,
+            });
+
+            TableSection.clickField("Tax");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.get().within(() => {
+              cy.findByText("Filtering").click();
+
+              cy.findByTestId("number-filter-picker").should("be.visible");
+            });
+
+            FieldSection.getVisibilityInput()
+              .should("have.value", "Everywhere")
+              .click();
+            H.popover().findByText("Do not include").click();
+            cy.wait("@updateField");
+
+            PreviewSection.get()
+              .findByText("This field is hidden")
+              .should("exist");
+          });
+
+          it("should let you change field visibility to 'Only in detail views'", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.TAX,
+            });
+
+            FieldSection.getVisibilityInput()
+              .should("have.value", "Everywhere")
+              .click();
+            H.popover().findByText("Only in detail views").click();
+            cy.wait("@updateField");
+            verifyAndCloseToast("Visibility of Tax updated");
+            FieldSection.getVisibilityInput().should(
+              "have.value",
+              "Only in detail views",
+            );
+
+            cy.log("verify preview");
+            TableSection.clickField("Tax");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.get()
+              .findByText("This field is hidden")
+              .should("exist");
+            cy.get("@dataset.all").should("have.length", 0);
+            verifyObjectDetailPreview({
+              rowNumber: 4,
+              row: ["Tax", "2.07"],
+            });
+
+            cy.log("table viz");
+            H.openOrdersTable();
+            H.tableHeaderColumn("Total").should("be.visible");
+            H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+              "not.exist",
+            );
+
+            cy.log("object detail viz");
+            cy.findByTestId("table-body")
+              .findAllByTestId("cell-data")
+              .eq(0)
+              .click();
+            H.modal().findByText("Tax").should("be.visible");
+            H.modal().findByText("2.07").should("be.visible");
+          });
+
+          it(
+            "should be able to select and update a field in a database without schemas",
+            { tags: ["@external"] },
+            () => {
+              H.restore("mysql-8");
+              context.visit({
+                databaseId: MYSQL_DB_ID,
+                schemaId: MYSQL_DB_SCHEMA_ID,
+                tableId: ORDERS_ID,
+              });
+
+              TableSection.clickField("Tax");
+              FieldSection.getVisibilityInput().click();
+              H.popover().findByText("Do not include").click();
+              cy.wait("@updateField");
+              verifyAndCloseToast("Visibility of Tax updated");
+              FieldSection.getVisibilityInput().should(
+                "have.value",
+                "Do not include",
+              );
+            },
+          );
+        });
+      });
     });
   },
 );
