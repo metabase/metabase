@@ -1,5 +1,5 @@
 (ns metabase.lib.query.util
-  (:refer-clojure :exclude [mapv name])
+  (:refer-clojure :exclude [mapv name empty?])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -26,7 +26,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv empty?]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
