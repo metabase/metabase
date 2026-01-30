@@ -2,7 +2,6 @@
   "Tests for WorkspaceTransform model behavior."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.query-test-util :as query-util]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -11,27 +10,22 @@
 
 (deftest workspace-transform-definition-stale-marking
   (testing "WorkspaceTransform definition_changed is marked based on source/target changes"
-    (let [query1 (query-util/make-query :source-table "ORDERS")
-          query2 (query-util/make-query :source-table "PRODUCTS")]
-      (mt/with-temp [:model/Workspace          {workspace-id :id} {:name "Test Workspace"}
-                     :model/WorkspaceTransform {ref-id :ref_id}   {:workspace_id workspace-id
-                                                                   :ref_id (str (random-uuid))
-                                                                   :name "Test Transform"
-                                                                   :source {:type "query" :query query1}
-                                                                   :target {:database (mt/id) :schema "public" :name "test_table"}
-                                                                   :definition_changed false}]
+    (ws.tu/with-resources! [{ws-id :workspace-id, :keys [workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}}}]
+      (let [t1-ref (workspace-map :x1)
+            ws+ref {:workspace_id ws-id, :ref_id t1-ref}
+            tx-url (ws.tu/ws-url ws-id "/transform/" t1-ref)
+            change!   (fn [updates]
+                        (t2/update! :model/WorkspaceTransform ws+ref {:definition_changed false})
+                        (mt/user-http-request :crowberto :put 200 tx-url updates))]
+        (testing "initially definition is stale - as we've never been run"
+          (is (= {t1-ref {:definition_changed true, :input_data_changed false}} (ws.tu/staleness-flags ws-id))))
         (testing "marks as stale when source changes"
-          (t2/update! :model/WorkspaceTransform ref-id {:source {:type "query" :query query2}})
-          (let [updated (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
-            (is (true? (:definition_changed updated)))))
-
+          (change! {:source {:type "query" :query (mt/native-query {:query "SELECT 2 as id"})}})
+          (is (= {t1-ref {:definition_changed true, :input_data_changed false}} (ws.tu/staleness-flags ws-id))))
         (testing "marks as stale when target changes"
-          (t2/update! :model/WorkspaceTransform ref-id {:target {:database (mt/id) :schema "public" :name "new_table"}})
-          (let [updated (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
-            (is (true? (:definition_changed updated)))))
-
+          (change! {:target {:type "table", :database (mt/id), :schema nil, :name "new_table"}})
+          (is (= {t1-ref {:definition_changed true, :input_data_changed false}} (ws.tu/staleness-flags ws-id))))
         (testing "preserves definition_changed when other fields change"
-          (t2/update! :model/WorkspaceTransform ref-id {:definition_changed false})
-          (t2/update! :model/WorkspaceTransform ref-id {:name "New Name"})
-          (let [updated (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
-            (is (false? (:definition_changed updated)))))))))
+          (change! {:name "New Name"})
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}} (ws.tu/staleness-flags ws-id))))))))

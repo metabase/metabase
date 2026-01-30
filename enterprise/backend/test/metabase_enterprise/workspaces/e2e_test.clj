@@ -53,7 +53,7 @@
 
               (testing "changing the query without granting access will fail"
                 (t2/update! :model/WorkspaceTransform
-                            {:ref_id (:ref_id isolated-transform)}
+                            {:workspace_id (:id workspace) :ref_id (:ref_id isolated-transform)}
                             {:source {:type  "query"
                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues {:limit 1})))}})
                 (let [ref-id    (:ref_id isolated-transform)

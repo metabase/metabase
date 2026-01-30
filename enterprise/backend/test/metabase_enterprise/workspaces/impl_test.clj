@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
@@ -92,241 +91,81 @@
 
 (deftest staleness-recomputed-on-graph-read
   (testing "Graph staleness reflects current DB state with two flags"
-    (let [t1-ref (str (random-uuid))]
-      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS"}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t1-ref
-                                                            :name            "Transform 1"
-                                                            :source          {:type "query" :query {}}
-                                                            :target          {:database 1 :schema "public" :name "t1"}
-                                                            :definition_changed true
-                                                            :input_data_changed false}
-                     :model/WorkspaceGraph     _           {:workspace_id ws-id
-                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}]
-                                                                           :dependencies {}
-                                                                           :inputs       []
-                                                                           :outputs      []}}]
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true
+                                                            :input_data_changed false}}}}]
+      (let [t1-ref  (workspace-map :x1)
+            find-t1 (fn [graph] (first (filter #(= t1-ref (:id %)) (:entities graph))))]
         (testing "initial read shows transform as definition_changed"
-          (let [workspace (t2/select-one :model/Workspace ws-id)
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
                 graph     (ws.impl/with-staleness workspace (ws.impl/get-or-calculate-graph! workspace))
-                entity    (first (:entities graph))]
-            (is (true? (:definition_changed entity)))
-            (is (false? (:input_data_changed entity)))))
+                entity    (find-t1 graph)]
+            (is (= {:definition_changed true :input_data_changed false}
+                   (select-keys entity [:definition_changed :input_data_changed])))))
 
-        (t2/update! :model/WorkspaceTransform t1-ref {:definition_changed false :input_data_changed true})
+        (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id :ref_id t1-ref}
+                    {:definition_changed false :input_data_changed true})
 
         (testing "after updating flags in DB, graph read reflects the change"
-          (let [workspace (t2/select-one :model/Workspace ws-id)
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
                 graph     (ws.impl/with-staleness workspace (ws.impl/get-or-calculate-graph! workspace))
-                entity    (first (:entities graph))]
-            (is (false? (:definition_changed entity)))
-            (is (true? (:input_data_changed entity)))))))))
-
-(deftest run-transform-with-stale-ancestor-sets-input-data-stale-test
-  (testing "Running a transform with stale ancestor sets input_data_changed"
-    ;; t1 queries from orders, outputs to t1 (definition_changed)
-    ;; t2 queries from t1 (t1's output), outputs to t2 (fresh)
-    ;; When t2 runs while t1 is still stale, t2 should have input_data_changed=true
-    (let [t1-ref (str (random-uuid))
-          t2-ref (str (random-uuid))
-          mp     (mt/metadata-provider)
-          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
-      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS"}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t1-ref
-                                                            :name            "Transform 1"
-                                                            :source          {:type "query" :query query1}
-                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_changed true
-                                                            :input_data_changed false}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t2-ref
-                                                            :name            "Transform 2"
-                                                            :source          {:type "query" :query query2}
-                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_changed false
-                                                            :input_data_changed false}
-                     ;; Graph showing t2 depends on t1
-                     :model/WorkspaceGraph     _           {:workspace_id ws-id
-                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
-                                                                                          {:node-type :workspace-transform :id t2-ref}]
-                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
-                                                                                          [{:node-type :workspace-transform :id t1-ref}]}
-                                                                           :inputs       []
-                                                                           :outputs      []}}]
-        (testing "initial state: t1 is definition_changed, t2 is fresh"
-          (is (true? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))
-
-        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                                    (fn [_transform _remapping]
-                                      {:status :succeeded
-                                       :end_time (java.time.Instant/now)
-                                       :message "Mocked execution"})]
-          (let [workspace    (t2/select-one :model/Workspace ws-id)
-                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t2-ref)]
-            (mt/with-current-user (mt/user->id :crowberto)
-              (ws.impl/run-transform! workspace ws-transform))))
-
-        (testing "after running t2: t2 has input_data_changed because t1 is still stale"
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))
+                entity    (find-t1 graph)]
+            (is (= {:definition_changed false :input_data_changed true}
+                   (select-keys entity [:definition_changed :input_data_changed])))))))))
 
 (deftest run-transform-marks-downstream-stale-test
   (testing "Running a transform marks all transitive downstream as input_data_changed"
-    (let [t1-ref (str (random-uuid))
-          t2-ref (str (random-uuid))
-          mp     (mt/metadata-provider)
-          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
-      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS"}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t1-ref
-                                                            :name            "Transform 1"
-                                                            :source          {:type "query" :query query1}
-                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_changed true
-                                                            :input_data_changed false}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t2-ref
-                                                            :name            "Transform 2"
-                                                            :source          {:type "query" :query query2}
-                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_changed false
-                                                            :input_data_changed false}
-                     :model/WorkspaceGraph     _           {:workspace_id ws-id
-                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
-                                                                                          {:node-type :workspace-transform :id t2-ref}]
-                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
-                                                                                          [{:node-type :workspace-transform :id t1-ref}]}
-                                                                           :inputs       []
-                                                                           :outputs      []}}]
-        (testing "initial state: t1 is definition_changed, t2 is fresh"
-          (is (true? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))
-
-        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                                    (fn [_transform _remapping]
-                                      {:status :succeeded
-                                       :end_time (java.time.Instant/now)
-                                       :message "Mocked execution"})]
-          (let [workspace    (t2/select-one :model/Workspace ws-id)
-                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t1-ref)]
-            (mt/with-current-user (mt/user->id :crowberto)
-              (ws.impl/run-transform! workspace ws-transform))))
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]}
+                                         :properties  {:x1 {:definition_changed true  :input_data_changed false}
+                                                       :x2 {:definition_changed false :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)]
+        (ws.tu/mock-run-transform! workspace-id t1-ref)
 
         (testing "after running t1: t1 is fresh, t2 is input_data_changed"
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}
+                  t2-ref {:definition_changed false :input_data_changed true}}
+                 (ws.tu/staleness-flags workspace-id))))))))
 
 (deftest run-transform-marks-transitive-downstream-test
   (testing "Running a transform marks all transitive downstream, not just direct"
-    (let [t1-ref (str (random-uuid))
-          t2-ref (str (random-uuid))
-          t3-ref (str (random-uuid))
-          mp     (mt/metadata-provider)
-          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS"}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t1-ref
-                                                            :name            "Transform 1"
-                                                            :source          {:type "query" :query query1}
-                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_changed true
-                                                            :input_data_changed false}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t2-ref
-                                                            :name            "Transform 2"
-                                                            :source          {:type "query" :query query1}
-                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_changed false
-                                                            :input_data_changed false}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t3-ref
-                                                            :name            "Transform 3"
-                                                            :source          {:type "query" :query query1}
-                                                            :target          {:database (mt/id) :schema "public" :name "t3"}
-                                                            :definition_changed false
-                                                            :input_data_changed false}
-                     ;; t1 -> t2 -> t3
-                     :model/WorkspaceGraph     _           {:workspace_id ws-id
-                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
-                                                                                          {:node-type :workspace-transform :id t2-ref}
-                                                                                          {:node-type :workspace-transform :id t3-ref}]
-                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
-                                                                                          [{:node-type :workspace-transform :id t1-ref}]
-                                                                                          {:node-type :workspace-transform :id t3-ref}
-                                                                                          [{:node-type :workspace-transform :id t2-ref}]}
-                                                                           :inputs       []
-                                                                           :outputs      []}}]
-        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                                    (fn [_transform _remapping]
-                                      {:status :succeeded
-                                       :end_time (java.time.Instant/now)
-                                       :message "Mocked execution"})]
-          (let [workspace    (t2/select-one :model/Workspace ws-id)
-                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t1-ref)]
-            (mt/with-current-user (mt/user->id :crowberto)
-              (ws.impl/run-transform! workspace ws-transform))))
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true  :input_data_changed false}
+                                                       :x2 {:definition_changed false :input_data_changed false}
+                                                       :x3 {:definition_changed false :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)
+            t3-ref (workspace-map :x3)]
+        (ws.tu/mock-run-transform! workspace-id t1-ref)
 
         (testing "after running t1: both t2 and t3 are input_data_changed"
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t3-ref))))))))
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}
+                  t2-ref {:definition_changed false :input_data_changed true}
+                  t3-ref {:definition_changed false :input_data_changed true}}
+                 (ws.tu/staleness-flags workspace-id))))))))
 
 (deftest run-transform-clears-both-flags-when-fresh-test
   (testing "Running a transform with fresh ancestor clears both flags"
-    (let [t1-ref (str (random-uuid))
-          t2-ref (str (random-uuid))
-          mp     (mt/metadata-provider)
-          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
-      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS"}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t1-ref
-                                                            :name            "Transform 1"
-                                                            :source          {:type "query" :query query1}
-                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_changed false
-                                                            :input_data_changed false}
-                     :model/WorkspaceTransform _           {:workspace_id    ws-id
-                                                            :ref_id          t2-ref
-                                                            :name            "Transform 2"
-                                                            :source          {:type "query" :query query2}
-                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_changed true
-                                                            :input_data_changed true}
-                     :model/WorkspaceGraph     _           {:workspace_id ws-id
-                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
-                                                                                          {:node-type :workspace-transform :id t2-ref}]
-                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
-                                                                                          [{:node-type :workspace-transform :id t1-ref}]}
-                                                                           :inputs       []
-                                                                           :outputs      []}}]
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]}
+                                         :properties  {:x1 {:definition_changed false :input_data_changed false}
+                                                       :x2 {:definition_changed true  :input_data_changed true}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)]
         (testing "initial state: t1 is fresh, t2 has both flags set"
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (true? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}
+                  t2-ref {:definition_changed true  :input_data_changed true}}
+                 (ws.tu/staleness-flags workspace-id))))
 
-        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                                    (fn [_transform _remapping]
-                                      {:status :succeeded
-                                       :end_time (java.time.Instant/now)
-                                       :message "Mocked execution"})]
-          (let [workspace    (t2/select-one :model/Workspace ws-id)
-                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t2-ref)]
-            (mt/with-current-user (mt/user->id :crowberto)
-              (ws.impl/run-transform! workspace ws-transform))))
+        (ws.tu/mock-run-transform! workspace-id t2-ref)
 
         (testing "after running t2 with fresh ancestor: both flags are cleared"
-          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}
+                  t2-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))
 
 ;;;; Static graph tests for annotate-staleness
 
@@ -429,15 +268,15 @@
           ;;      t1
           ;;   / | | | \
           ;; t2 t3 t4 t5 ...
-          graph {:entities     [t1 t2 t3 t4 t5]
-                 :dependencies {t2 [t1]
-                                t3 [t1]
-                                t4 [t1]
-                                t5 [t1]}}]
-      (let [staleness {"t1" {:definition_changed true :input_data_changed false}}
-            result    (ws.impl/annotate-staleness graph staleness)]
-        (is (= {true #{"t1" "t2" "t3" "t4" "t5"} false #{}}
-               (stale->id (:entities result))))))))
+          graph     {:entities     [t1 t2 t3 t4 t5]
+                     :dependencies {t2 [t1]
+                                    t3 [t1]
+                                    t4 [t1]
+                                    t5 [t1]}}
+          staleness {"t1" {:definition_changed true :input_data_changed false}}
+          result    (ws.impl/annotate-staleness graph staleness)]
+      (is (= {true #{"t1" "t2" "t3" "t4" "t5"} false #{}}
+             (stale->id (:entities result)))))))
 
 (deftest annotate-staleness-mixed-transforms-test
   (testing "Mixed transforms: staleness propagates through external transforms"

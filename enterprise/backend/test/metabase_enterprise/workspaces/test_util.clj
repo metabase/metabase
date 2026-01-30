@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase.app-db.core :as app-db]
@@ -20,6 +22,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn unique-name
   "Generate a unique name for test resources to avoid conflicts."
@@ -250,10 +254,65 @@
                                                                     {:global-tx global-tx
                                                                      :deps      deps
                                                                      :id-map    global-map
-                                                                     :schema    schema})])))]
+                                                                     :schema    schema})])))
+
+        ;; Apply per-transform properties (e.g., staleness flags)
+        _                (when-let [props (:properties workspace)]
+                           (doseq [[tx-sym updates] props]
+                             (when-let [ref-id (workspace-map tx-sym)]
+                               (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ref-id} updates))))]
     {:workspace-id  ws-id
      :global-map    global-map
      :workspace-map workspace-map}))
+
+(defmacro with-resources!
+  "Create test resources and bind the result map. Cleanup is handled by ws-fixtures!.
+
+   Usage: (with-resources! [res {:workspace {:definitions {:x2 [:x1]}
+                                             :properties  {:x1 {:definition_changed true}}}}]
+            (:workspace-id res))"
+  [[binding resource-spec] & body]
+  `(let [~binding (create-resources! ~resource-spec)]
+     ~@body))
+
+(defn- append-url-part [url part]
+  (case [(str/starts-with? part "/")
+         (str/ends-with? url "/")]
+    [false false] (str url \/ part)
+    ([true false]
+     [false true]) (str url part)
+    (str url (subs part 1))))
+
+(defn ws-url
+  "Build an API URL for a workspace resource, e.g. (ws-url 42 \"/transform/\" ref-id)."
+  [id & path]
+  (when (some nil? (cons id path))
+    (throw (ex-info "Cannot build workspace URL without key resources"
+                    {:id id, :path path})))
+  (reduce append-url-part (str "ee/workspace/" id) (map str path)))
+
+(defn staleness-flags
+  "Return a map of ref-id to staleness flags for all transforms in a workspace.
+   E.g. {\"ref-1\" {:definition_changed false :input_data_changed true}}"
+  [workspace-id]
+  (t2/select-fn->fn :ref_id #(select-keys % [:definition_changed :input_data_changed])
+                    [:model/WorkspaceTransform :ref_id :definition_changed :input_data_changed]
+                    :workspace_id workspace-id))
+
+(defn mock-run-transform!
+  "Mock-execute a workspace transform by ref-id.
+   Stubs the execution engine to return success, then calls ws.impl/run-transform!."
+  [workspace-id ref-id]
+  (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                              (fn [_transform _remapping]
+                                {:status   :succeeded
+                                 :end_time (java.time.Instant/now)
+                                 :message  "Mocked execution"})]
+    (let [workspace    (t2/select-one :model/Workspace workspace-id)
+          graph        (ws.impl/get-or-calculate-graph! workspace)
+          ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id workspace-id :ref_id ref-id)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (ws.impl/run-transform! workspace graph ws-transform)))))
 
 (defn ws-fixtures!
   "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
