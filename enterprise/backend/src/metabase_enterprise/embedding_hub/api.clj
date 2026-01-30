@@ -56,6 +56,15 @@
 (defn- has-user-created-tenants? []
   (t2/exists? :model/Tenant :is_active true))
 
+(defn- has-configured-data-segregation-strategy? []
+  ;; Check if any of the 3 data segregation strategies are enabled:
+  ;; 1. Row and Column Level Security (Sandboxing)
+  ;; 2. Connection Impersonation
+  ;; 3. Database Routing
+  (or (has-configured-sandboxes?)
+      (t2/exists? :model/ConnectionImpersonation)
+      (t2/exists? :model/DatabaseRouter)))
+
 (defn- embedding-hub-checklist []
   {"add-data"                       (has-user-added-database?)
    "create-dashboard"               (has-user-created-dashboard?)
@@ -66,7 +75,7 @@
    "secure-embeds"                  (has-configured-sso?)
    "enable-tenants"                 (perms/use-tenants)
    "create-tenants"                 (has-user-created-tenants?)
-   "setup-data-segregation-strategy" false})
+   "setup-data-segregation-strategy" (has-configured-data-segregation-strategy?)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
