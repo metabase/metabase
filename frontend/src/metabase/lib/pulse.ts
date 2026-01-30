@@ -216,8 +216,9 @@ export function getPulseParameters(pulse: Pulse | DashboardSubscription) {
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(
-  pulse: Pulse,
-  parameters: PulseParameter[],
+  pulse: Pulse | DashboardSubscription,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- getDefaultValuePopulatedParameters is untyped JS
+  parameters: any[],
 ) {
   const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
     map[parameter.id] = parameter.value;

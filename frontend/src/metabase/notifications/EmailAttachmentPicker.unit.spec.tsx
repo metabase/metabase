@@ -1,8 +1,12 @@
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import type {
+  DashboardSubscription,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 
-import EmailAttachmentPicker from "./EmailAttachmentPicker";
+import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
 
 function setup({
   pulse = createPulse(),
@@ -282,7 +286,7 @@ describe("EmailAttachmentPicker", () => {
   });
 });
 
-function createPulse() {
+function createPulse(): DashboardSubscription {
   return {
     name: "Parameters",
     cards: [
@@ -290,7 +294,7 @@ function createPulse() {
         id: 4,
         collection_id: null,
         description: null,
-        display: "map",
+        display: "map" as VisualizationDisplay,
         name: "card1",
         include_csv: false,
         include_xls: false,
@@ -302,7 +306,7 @@ function createPulse() {
         id: 6,
         collection_id: null,
         description: null,
-        display: "scalar",
+        display: "scalar" as VisualizationDisplay,
         name: "card2",
         include_csv: false,
         include_xls: false,
@@ -337,10 +341,20 @@ function createPulse() {
     collection_id: null,
     parameters: [],
     dashboard_id: 1,
+    archived: false,
+    can_write: true,
+    collection_position: null,
+    created_at: "2024-01-01T00:00:00Z",
+    creator: { id: 1, common_name: "Test", email: "test@test.com" } as any,
+    creator_id: 1,
+    disable_links: false,
+    entity_id: "test-entity-id" as any,
+    id: 1,
+    updated_at: "2024-01-01T00:00:00Z",
   };
 }
 
-function createPulseWithDuplicateCardId() {
+function createPulseWithDuplicateCardId(): DashboardSubscription {
   return {
     name: "Duplicate Card ID Pulse",
     cards: [
@@ -348,7 +362,7 @@ function createPulseWithDuplicateCardId() {
         id: 10,
         collection_id: null,
         description: null,
-        display: "table",
+        display: "table" as VisualizationDisplay,
         name: "Original Card",
         include_csv: false,
         include_xls: false,
@@ -360,7 +374,7 @@ function createPulseWithDuplicateCardId() {
         id: 10, // Same card ID as above
         collection_id: null,
         description: null,
-        display: "line",
+        display: "line" as VisualizationDisplay,
         name: "Visualizer Card",
         include_csv: false,
         include_xls: false,
@@ -382,5 +396,15 @@ function createPulseWithDuplicateCardId() {
     collection_id: null,
     parameters: [],
     dashboard_id: 2,
+    archived: false,
+    can_write: true,
+    collection_position: null,
+    created_at: "2024-01-01T00:00:00Z",
+    creator: { id: 1, common_name: "Test", email: "test@test.com" } as any,
+    creator_id: 1,
+    disable_links: false,
+    entity_id: "test-entity-id" as any,
+    id: 2,
+    updated_at: "2024-01-01T00:00:00Z",
   };
 }
