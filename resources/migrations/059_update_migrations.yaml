@@ -980,7 +980,7 @@ databaseChangeLog:
             indexName: idx_analysis_finding_stale
 
 - changeSet:
-      id: v59.2026-01-26T12:00:00
+      id: v59.2026-01-29T12:00:00
       author: galdre
       comment: Add write_database_id column to metabase_database for PRO-86 separate write connections
       changes:
@@ -999,7 +999,7 @@ databaseChangeLog:
             columnName: write_database_id
 
   - changeSet:
-      id: v59.2026-01-26T12:00:01
+      id: v59.2026-01-29T12:00:01
       author: galdre
       comment: Add index on metabase_database.write_database_id
       changes:
@@ -1015,7 +1015,7 @@ databaseChangeLog:
             indexName: idx_metabase_database_write_database_id
 
   - changeSet:
-      id: v59.2026-01-26T12:00:02
+      id: v59.2026-01-29T12:00:02
       author: galdre
       comment: Add foreign key from metabase_database.write_database_id to metabase_database.id
       changes:

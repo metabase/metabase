@@ -1667,6 +1667,7 @@
            upload
            util
            warehouse-schema
+           warehouses
            xrays}}
 
   warehouses
@@ -2370,7 +2371,8 @@
            sync
            task
            task-history
-           util}}
+           util
+           write-connection}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2389,6 +2391,7 @@
            query-processor
            settings
            util
+           write-connection
            enterprise/transforms}}
 
   enterprise/write-connection
