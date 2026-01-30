@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type { ColorName } from "metabase/lib/colors/types";
 import { type IconData, getIcon } from "metabase/lib/icon";
 import type {
@@ -210,7 +212,20 @@ const isValidModel = (
 
 export const getValidCollectionItemModels = (
   models: OmniPickerItem["model"][],
-): CollectionItemModel[] => models.filter(isValidModel).concat(["collection"]); // always show folder models, TODO: what about dashboards?
+): CollectionItemModel[] =>
+  _.uniq(models.filter(isValidModel).concat(["collection"]));
+
+// this ensures that we get cache hits by sending the same options for collection item requests
+export const getCollectionItemsOptions = ({
+  models,
+}: {
+  models: OmniPickerItem["model"][];
+}) => {
+  return {
+    models: getValidCollectionItemModels(models),
+    include_can_run_adhoc_query: models.includes("table"),
+  };
+};
 
 export const isCollection = (
   item: OmniPickerItem,

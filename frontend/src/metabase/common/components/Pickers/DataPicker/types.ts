@@ -1,4 +1,5 @@
 import type {
+  OmniPickerDatabaseItem,
   OmniPickerItem,
   OmniPickerQuestionItem,
   OmniPickerSchemaItem,
@@ -36,7 +37,9 @@ export const isDataPickerValue = (
   return isTableItem(item) || isQuestionItem(item);
 };
 
-export type DataPickerValue = Pick<
-  OmniPickerTableItem | OmniPickerQuestionItem,
-  "model" | "id" | "database_id"
->;
+export type DataPickerValue =
+  | Pick<
+      OmniPickerTableItem | OmniPickerQuestionItem,
+      "model" | "id" | "database_id"
+    >
+  | Pick<OmniPickerDatabaseItem, "model" | "id">;

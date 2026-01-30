@@ -30,7 +30,7 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import { validCollectionModels } from "../utils";
+import { getCollectionItemsOptions, validCollectionModels } from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
 const allCollectionModels = Array.from(validCollectionModels);
@@ -448,8 +448,7 @@ async function getCollectionPathFromValue({
       collectionApi.endpoints.listCollectionItems.initiate({
         id: collectionId,
         namespace: value.namespace ?? undefined,
-        models,
-        include_can_run_adhoc_query: models.includes("table"),
+        ...getCollectionItemsOptions({ models }),
       }),
     )
       .unwrap()

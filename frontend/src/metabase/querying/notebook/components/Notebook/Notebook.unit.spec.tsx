@@ -85,7 +85,7 @@ const TEST_RECENT_CARD = createMockRecentCollectionItem({
 });
 
 const dataPickerValueMap: Record<
-  DataPickerValue["model"],
+  Exclude<DataPickerValue["model"], "database">,
   {
     recentItem: RecentItem;
     itemPickerData: string[];
@@ -113,12 +113,12 @@ const dataPickerValueMap: Record<
   },
 };
 
-const TEST_ENTITY_TYPES: DataPickerValue["model"][] = [
+const TEST_ENTITY_TYPES: Exclude<DataPickerValue["model"], "database">[] = [
   "table",
   "metric",
   "card",
   "dataset",
-] as const;
+];
 
 function setup({
   question,
@@ -259,39 +259,40 @@ describe("Notebook", () => {
   });
 
   describe("when filtering with modelsFilterList", () => {
-    describe.each<DataPickerValue["model"]>(["metric", "card", "dataset"])(
-      "when filtering with %s",
-      (entityType) => {
-        it(`should show the entity picker when modelsFilterList=[${entityType}]`, async () => {
-          setup({
-            question: createSummarizedQuestion("question"),
-            modelsFilterList: [entityType],
-          });
-
-          const {
-            pickerColIdx = 1,
-            recentItem,
-            itemPickerData,
-          } = dataPickerValueMap[entityType];
-
-          await goToEntityModal();
-          await userEvent.click(await screen.findByText(/Our analytics/));
-
-          await assertDataInPickerColumn({
-            columnIndex: pickerColIdx,
-            data: itemPickerData,
-          });
-
-          await userEvent.click(await screen.findByText(/Recent items/));
-          await waitForLoaderToBeRemoved();
-
-          await assertDataInPickerColumn({
-            columnIndex: 1,
-            data: [recentItem.name],
-          });
+    describe.each<Exclude<DataPickerValue["model"], "database">>([
+      "metric",
+      "card",
+      "dataset",
+    ])("when filtering with %s", (entityType) => {
+      it(`should show the entity picker when modelsFilterList=[${entityType}]`, async () => {
+        setup({
+          question: createSummarizedQuestion("question"),
+          modelsFilterList: [entityType],
         });
-      },
-    );
+
+        const {
+          pickerColIdx = 1,
+          recentItem,
+          itemPickerData,
+        } = dataPickerValueMap[entityType];
+
+        await goToEntityModal();
+        await userEvent.click(await screen.findByText(/Our analytics/));
+
+        await assertDataInPickerColumn({
+          columnIndex: pickerColIdx,
+          data: itemPickerData,
+        });
+
+        await userEvent.click(await screen.findByText(/Recent items/));
+        await waitForLoaderToBeRemoved();
+
+        await assertDataInPickerColumn({
+          columnIndex: 1,
+          data: [recentItem.name],
+        });
+      });
+    });
   });
 });
 

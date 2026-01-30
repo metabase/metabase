@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import {
   DataPickerModal,
-  type DataPickerValue,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { Tables } from "metabase/entities/tables";
@@ -37,9 +36,7 @@ export function DataStep({
   const tableInfo =
     query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =
-    query && table
-      ? getDataPickerValue(query, stageIndex, table)
-      : { model: "table", id: null };
+    query && table ? getDataPickerValue(query, stageIndex, table) : undefined;
   const store = useStore();
   const dispatch = useDispatch();
 
@@ -92,7 +89,7 @@ export function DataStep({
         <DataPickerModal
           title={t`Select a table`}
           models={["table"]}
-          value={tableValue as DataPickerValue}
+          value={tableValue}
           onChange={handleChange}
           onClose={() => setIsOpened(false)}
           options={{

@@ -123,7 +123,7 @@ function getDefaultDatabase(dbId?: DatabaseId): DataPickerValue | undefined {
     return;
   }
   return {
-    model: "database" as "table", // 🤫 casting to get a starter value
+    model: "database",
     id: dbId,
   };
 }

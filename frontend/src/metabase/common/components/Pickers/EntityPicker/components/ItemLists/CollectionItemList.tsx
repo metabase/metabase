@@ -2,7 +2,7 @@ import { useListCollectionItemsQuery } from "metabase/api";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
-import { getValidCollectionItemModels } from "../../utils";
+import { getCollectionItemsOptions } from "../../utils";
 
 import { ItemList } from "./ItemList";
 
@@ -20,14 +20,12 @@ export const CollectionItemList = ({
     error,
     isLoading,
   } = useListCollectionItemsQuery({
-    // this request needs to sync with use-get-path-from-value.ts to make sure we get cache hits
     id: !parentItem.id ? "root" : parentItem.id,
-    models: getValidCollectionItemModels(models),
-    include_can_run_adhoc_query: models.includes("table"),
     namespace:
       "namespace" in parentItem && !!parentItem.namespace
         ? parentItem.namespace
         : undefined,
+    ...getCollectionItemsOptions({ models }),
   });
 
   return (

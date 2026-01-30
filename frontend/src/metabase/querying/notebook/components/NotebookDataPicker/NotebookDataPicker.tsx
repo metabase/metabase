@@ -5,7 +5,6 @@ import { t } from "ttag";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
-  type DataPickerValue,
   getDataPickerValue,
   shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
@@ -209,12 +208,13 @@ function ModernDataPicker({
 
   // when you can't change databases, let's default to
   // selecting that database in the picker
-  const defaultDbValue = canChangeDatabase
-    ? undefined
-    : ({
-        id: databaseId,
-        model: "database" as "table", // 🤫
-      } as DataPickerValue);
+  const defaultDbValue =
+    canChangeDatabase || !databaseId
+      ? undefined
+      : {
+          id: databaseId,
+          model: "database" as const,
+        };
 
   return (
     <>
@@ -222,7 +222,8 @@ function ModernDataPicker({
         value={tableValue}
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
-        models={modelList}
+        // minipicker doesn't support picking a database
+        models={modelList.filter((model) => model !== "database")}
         searchQuery={dataSourceSearchQuery}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
