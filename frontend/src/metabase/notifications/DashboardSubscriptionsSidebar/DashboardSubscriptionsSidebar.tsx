@@ -88,20 +88,8 @@ const cardsToPulseCards = (
   });
 };
 
-/**
- * The `pulse` reducer is registered outside the typed `State` interface.
- * This extended type gives `mapStateToProps` access to both the typed store
- * and the legacy `pulse` slice.
- */
-interface StoreState extends State {
-  pulse: {
-    editingPulse: DashboardSubscription;
-    formInput: ChannelApiResponse;
-  };
-}
-
 const getEditingPulseWithDefaults = (
-  state: StoreState,
+  state: State,
   props: { dashboard: Dashboard },
 ): DashboardSubscription => {
   const pulse: DashboardSubscription = getEditingPulse(state);
@@ -122,10 +110,7 @@ const getEditingPulseWithDefaults = (
   return pulse;
 };
 
-const mapStateToProps = (
-  state: StoreState,
-  props: { dashboard: Dashboard },
-) => ({
+const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
   formInput: getPulseFormInput(state),
