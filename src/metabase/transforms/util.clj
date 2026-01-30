@@ -16,7 +16,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
