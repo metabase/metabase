@@ -2123,6 +2123,185 @@ describe.each<Area>(areas)(
               .should("have.text", "2023-10-07T01:34:35.462-07:00");
           });
         });
+
+        describe("Unfold JSON", { tags: "@external" }, () => {
+          beforeEach(() => {
+            H.restore("postgres-writable");
+            H.resetTestTable({ type: "postgres", table: "many_data_types" });
+            cy.signInAsAdmin();
+            H.resyncDatabase({
+              dbId: WRITABLE_DB_ID,
+              tableName: "many_data_types",
+            });
+            cy.intercept(
+              "POST",
+              `/api/database/${WRITABLE_DB_ID}/sync_schema`,
+            ).as("sync_schema");
+          });
+
+          it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
+            context.visit({ databaseId: WRITABLE_DB_ID });
+            TablePicker.getTable("Many Data Types").click();
+
+            cy.log("json is unfolded initially and shows prefix");
+            TableSection.getField("Json → A")
+              .scrollIntoView()
+              .should("be.visible");
+            TableSection.getField("Json → A")
+              .findByTestId("name-prefix")
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.text", "Json:");
+
+            cy.log("shows prefix in field section");
+            TableSection.clickField("Json → A");
+            FieldSection.get()
+              .findByTestId("name-prefix")
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.text", "Json:");
+            FieldSection.getRawName()
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.text", "json.a");
+
+            cy.log("verify preview");
+            FieldSection.getPreviewButton().click();
+            verifyTablePreview({
+              column: "Json → A",
+              values: ["10", "10"],
+            });
+            verifyObjectDetailPreview({
+              rowNumber: 1,
+              row: ["Json → A", "10"],
+            });
+
+            cy.log("show prefix in table section when sorting");
+            TableSection.getSortButton().click();
+            TableSection.getField("Json → A")
+              .findByTestId("name-prefix")
+              .should("be.visible")
+              .and("have.text", "Json:");
+            TableSection.get().button("Done").click();
+            TableSection.clickField("Json");
+
+            FieldSection.getUnfoldJsonInput()
+              .should("have.value", "Yes")
+              .click();
+            H.popover().findByText("No").click();
+            cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "json_unfolding",
+              triggered_from: context.getTriggeredFrom(),
+            });
+            H.undoToast().should(
+              "contain.text",
+              "JSON unfolding disabled for Json",
+            );
+
+            // Check setting has persisted
+            cy.reload();
+            FieldSection.getUnfoldJsonInput().should("have.value", "No");
+
+            // Sync database
+            cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+            cy.button("Sync database schema").click();
+            cy.wait("@sync_schema");
+            cy.button(/Sync triggered!/).should("be.visible");
+
+            // Check json field is not unfolded
+            context.visit({ databaseId: WRITABLE_DB_ID });
+            TablePicker.getTable("Many Data Types").click();
+            TableSection.getField("Json → A").should("not.exist");
+          });
+
+          it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
+            context.visit({ databaseId: WRITABLE_DB_ID });
+            TablePicker.getTable("Many Data Types").click();
+            TableSection.clickField("Json → A");
+
+            TableSection.getFieldNameInput("Json → A").clear().type("A").blur();
+            FieldSection.getPreviewButton().click();
+
+            FieldSection.getNameInput().should("have.value", "A");
+            FieldSection.get()
+              .findByTestId("name-prefix")
+              .scrollIntoView()
+              .should("be.visible")
+              .and("have.text", "Json:");
+            verifyTablePreview({
+              column: "A",
+              values: ["10", "10"],
+            });
+          });
+
+          it("should smartly truncate prefix name", () => {
+            const shortPrefix = "Short prefix";
+            const longPrefix = "Legendarily long column prefix";
+            context.visit({ databaseId: WRITABLE_DB_ID });
+            TablePicker.getTable("Many Data Types").click();
+            TableSection.clickField("Json → A");
+
+            cy.log("should not truncante short prefixes");
+            TableSection.getFieldNameInput("Json")
+              .clear()
+              .type(shortPrefix)
+              .blur();
+
+            cy.log("in field section");
+            FieldSection.get()
+              .findByTestId("name-prefix")
+              .should("have.text", `${shortPrefix}:`)
+              .then((element) => {
+                H.assertIsNotEllipsified(element[0]);
+              });
+            FieldSection.get().findByTestId("name-prefix").realHover();
+            H.tooltip().should("not.exist");
+
+            cy.log("in table section");
+            TableSection.getField("Json → D")
+              .findByTestId("name-prefix")
+              .should("have.text", `${shortPrefix}:`)
+              .then((element) => {
+                H.assertIsNotEllipsified(element[0]);
+              });
+            TableSection.getField("Json → D")
+              .findByTestId("name-prefix")
+              .realHover();
+            H.tooltip().should("not.exist");
+
+            cy.log("should truncante long prefixes");
+            TableSection.getFieldNameInput(shortPrefix)
+              .clear()
+              .type(longPrefix)
+              .blur();
+
+            cy.log("in field section");
+            FieldSection.get()
+              .findByTestId("name-prefix")
+              .should("have.text", `${longPrefix}:`)
+              .then((element) => {
+                H.assertIsEllipsified(element[0]);
+              });
+            FieldSection.get()
+              .findByTestId("name-prefix")
+              .realHover({ scrollBehavior: "center" });
+            H.tooltip().should("be.visible").and("have.text", longPrefix);
+
+            // hide tooltip
+            FieldSection.getDescriptionInput().realHover();
+            H.tooltip().should("not.exist");
+
+            cy.log("in table section");
+            TableSection.getField("Json → D")
+              .scrollIntoView({ offset: { left: 0, top: -400 } })
+              .findByTestId("name-prefix")
+              .should("have.text", `${longPrefix}:`)
+              .realHover({ scrollBehavior: "center" });
+            H.tooltip().should("be.visible").and("have.text", longPrefix);
+          });
+        });
       });
     });
   },
