@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.impl]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.query-impl]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.write-connection.core :as write-connection]
@@ -159,7 +159,7 @@
                       transforms.instrumentation/with-timing           (fn [_ _ body-fn] (body-fn))
                       driver/connection-spec                           (constantly {})]
           (try
-            (transforms.i/execute!
+            (transforms.execute/execute!
              {:id     1
               :source {:type "query" :query {:database (:id parent-db)}}
               :target {:type "table" :schema "test_schema" :name "output"}}
@@ -174,7 +174,7 @@
                       transforms.instrumentation/with-timing           (fn [_ _ body-fn] (body-fn))
                       driver/connection-spec                           (constantly {})]
           (try
-            (transforms.i/execute!
+            (transforms.execute/execute!
              {:id     2
               :source {:type "python"}
               :target {:database (:id parent-db) :type "table" :schema "test_schema" :name "output"}}
