@@ -56,7 +56,7 @@ export function getAdminRoutes() {
   ];
 }
 
-function MetabotAdminPage() {
+export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
   const { data, isLoading, error } = useListMetabotsQuery();
 

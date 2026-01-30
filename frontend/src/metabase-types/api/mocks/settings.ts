@@ -228,6 +228,7 @@ export const createMockSettings = (
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
+  "llm-anthropic-model": "",
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
