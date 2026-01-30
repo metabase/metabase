@@ -24,7 +24,7 @@ The dependency graph tracks the relationships between:
 
 To open the full dependency graph:
 
-1. Go to **Settings** > **Data Studio**.
+1. Open [Data Studio](./overview.md).
 2. Click **Dependency graph** in the left sidebar.
 
 This opens a canvas view where you can search for and visualize the dependencies of any item across your entire Metabase instance.
