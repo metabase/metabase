@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Center, Stack, Text, Title } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
 import { InspectSummaryMock } from "./components/InspectSummaryMock";
+import { TransformInspectLens } from "./components/TransformInspectLens";
 import { fetchTransformInspect } from "./mock-api";
 import type { TransformInspectResponse } from "./mock-types";
 
@@ -58,7 +58,7 @@ export const TransformInspectPageMock = ({
   const isLoading = isLoadingTransform || isLoadingMock;
   const error = transformError ?? mockError;
 
-  if (isLoading || error || transform == null) {
+  if (isLoading || error || transform == null || !transformId) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -76,15 +76,13 @@ export const TransformInspectPageMock = ({
       <Stack gap="xl">
         <InspectSummaryMock sources={data.sources} target={data.target} />
 
-        <Stack gap="md">
-          <Title order={4}>{t`Available Lenses`}</Title>
-          {data["available-lenses"].map((lens) => (
-            <Stack key={lens.id} gap="xs">
-              <Text fw="bold">{lens["display-name"]}</Text>
-              <Text c="text-secondary">{lens.description}</Text>
-            </Stack>
-          ))}
-        </Stack>
+        {data["available-lenses"].map((lens) => (
+          <TransformInspectLens
+            key={lens.id}
+            transformId={transformId}
+            lensId={lens.id}
+          />
+        ))}
       </Stack>
     </PageContainer>
   );
