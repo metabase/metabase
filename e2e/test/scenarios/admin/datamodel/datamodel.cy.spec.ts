@@ -857,37 +857,6 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     describe("Field values", () => {
-      it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-          fieldId: PRODUCTS.CATEGORY,
-        });
-        FieldSection.getFieldValuesButton().click();
-
-        cy.log("re-scan field");
-        H.modal().within(() => {
-          cy.button("Re-scan field").click();
-          cy.button("Re-scan field").should("not.exist");
-          cy.button("Scan triggered!").should("be.visible");
-          cy.button("Scan triggered!").should("not.exist");
-          cy.button("Re-scan field").should("be.visible");
-        });
-
-        cy.log("discard cached field values");
-        H.modal().within(() => {
-          cy.button("Discard cached field values").click();
-          cy.button("Discard cached field values").should("not.exist");
-          cy.button("Discard triggered!").should("be.visible");
-          cy.button("Discard triggered!").should("not.exist");
-          cy.button("Discard cached field values").should("be.visible");
-        });
-
-        cy.realPress("Escape");
-        H.modal().should("not.exist");
-      });
-
       it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,

@@ -9,7 +9,7 @@ const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } =
   cy.H.DataModel;
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
@@ -923,6 +923,39 @@ describe.each<Area>(areas)(
           cy.log("verify viz");
           H.openOrdersTable({ limit: 5 });
           H.tableHeaderColumn("Remapped Product ID").should("be.visible");
+        });
+      });
+
+      describe("Field values", () => {
+        it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
+          context.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: PRODUCTS_ID,
+            fieldId: PRODUCTS.CATEGORY,
+          });
+          FieldSection.getFieldValuesButton().click();
+
+          cy.log("re-scan field");
+          H.modal().within(() => {
+            cy.button("Re-scan field").click();
+            cy.button("Re-scan field").should("not.exist");
+            cy.button("Scan triggered!").should("be.visible");
+            cy.button("Scan triggered!").should("not.exist");
+            cy.button("Re-scan field").should("be.visible");
+          });
+
+          cy.log("discard cached field values");
+          H.modal().within(() => {
+            cy.button("Discard cached field values").click();
+            cy.button("Discard cached field values").should("not.exist");
+            cy.button("Discard triggered!").should("be.visible");
+            cy.button("Discard triggered!").should("not.exist");
+            cy.button("Discard cached field values").should("be.visible");
+          });
+
+          cy.realPress("Escape");
+          H.modal().should("not.exist");
         });
       });
     });
