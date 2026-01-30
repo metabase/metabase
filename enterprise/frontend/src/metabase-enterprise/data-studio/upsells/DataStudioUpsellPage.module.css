@@ -1,15 +1,10 @@
-/* CSS variable for ImageCard background - matches the dotted pattern color */
-:global {
-  :root {
-    --mb-color-upsell-pattern-light: color-mix(
-      in srgb,
-      var(--mb-color-brand),
-      transparent 95%
-    );
-  }
-}
-
 .ImageCard {
+  --mb-color-upsell-pattern-light: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    transparent 95%
+  );
+
   display: flex;
   height: fit-content;
   background-color: var(--mb-color-upsell-pattern-light);
@@ -17,7 +12,6 @@
 
 .UpsellCta {
   /* Copied (and slightly adapted if needed) from metabase/css/components/buttons.module.css */
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -38,12 +32,11 @@
   text-decoration: none;
   line-height: 1.4;
   box-shadow: 0 2px 4px 0 rgba(13, 19, 35, 0.04);
-
-  /* Button hover and focus states */
 }
 
 .UpsellCta:hover,
 .UpsellCta:focus {
-  background: var(--mb-color-brand-alpha-88);
   color: var(--mb-color-text-primary-inverse);
+  border-color: color-mix(in srgb, var(--mb-color-brand), transparent 12%);
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 12%);
 }
