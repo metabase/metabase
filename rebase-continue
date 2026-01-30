@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "stack",
-        "restack"
-      ],
-      "branch": "emb-1258-create-onboarding-accordion-component-for-use-in-setup-guide"
-    }
-  ]
+  "continuations": null
 }
