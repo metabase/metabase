@@ -12,7 +12,8 @@ type CheckListApiStep =
   | "secure-embeds"
   | "enable-tenants"
   | "create-tenants"
-  | "setup-data-segregation-strategy";
+  | "setup-data-segregation-strategy"
+  | "data-permissions-and-enable-tenants";
 export type EmbeddingHubChecklist = Record<CheckListApiStep, boolean>;
 
 export const embeddingHubApi = Api.injectEndpoints({

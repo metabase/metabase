@@ -91,3 +91,14 @@
     (mt/with-premium-features #{:embedding}
       (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
         (is (false? (:setup-data-segregation-strategy response)))))))
+
+(deftest data-permissions-and-enable-tenants-test
+  (testing "data-permissions-and-enable-tenants returns true when all three conditions are met"
+    (mt/with-premium-features #{:embedding :sandboxes :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/Sandbox _ {:group_id group-id
+                                         :table_id (mt/id :venues)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (true? (:data-permissions-and-enable-tenants response)))))))))

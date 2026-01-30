@@ -66,16 +66,25 @@
       (t2/exists? :model/DatabaseRouter)))
 
 (defn- embedding-hub-checklist []
-  {"add-data"                       (has-user-added-database?)
-   "create-dashboard"               (has-user-created-dashboard?)
-   "create-models"                  (has-user-created-models?)
-   "configure-row-column-security"  (has-configured-sandboxes?)
-   "create-test-embed"              (embedding.settings/embedding-hub-test-embed-snippet-created)
-   "embed-production"               (embedding.settings/embedding-hub-production-embed-snippet-created)
-   "secure-embeds"                  (has-configured-sso?)
-   "enable-tenants"                 (perms/use-tenants)
-   "create-tenants"                 (has-user-created-tenants?)
-   "setup-data-segregation-strategy" (has-configured-data-segregation-strategy?)})
+  (let [enable-tenants?                 (perms/use-tenants)
+        create-tenants?                 (has-user-created-tenants?)
+        setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
+    ;; for the main embedding hub checklist
+    {"add-data"                          (has-user-added-database?)
+     "create-dashboard"                  (has-user-created-dashboard?)
+     "create-models"                     (has-user-created-models?)
+     "configure-row-column-security"     (has-configured-sandboxes?)
+     "create-test-embed"                 (embedding.settings/embedding-hub-test-embed-snippet-created)
+     "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
+     "secure-embeds"                     (has-configured-sso?)
+     "data-permissions-and-enable-tenants" (and enable-tenants?
+                                                create-tenants?
+                                                setup-data-segregation-strategy?)
+
+     ;; for the "configure data permissions and enable tenants" sub-checklist page
+     "enable-tenants"                    enable-tenants?
+     "create-tenants"                    create-tenants?
+     "setup-data-segregation-strategy"   setup-data-segregation-strategy?}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

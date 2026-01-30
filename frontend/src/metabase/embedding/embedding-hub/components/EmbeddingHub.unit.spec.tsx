@@ -166,7 +166,7 @@ describe("EmbeddingHub", () => {
         "configure-row-column-security": false,
         "embed-production": false,
         "secure-embeds": false,
-        "setup-tenants": false,
+        "data-permissions-and-enable-tenants": false,
       },
     });
 

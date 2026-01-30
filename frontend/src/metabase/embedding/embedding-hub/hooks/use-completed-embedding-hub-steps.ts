@@ -26,7 +26,10 @@ export const useCompletedEmbeddingHubSteps = (): {
         "secure-embeds": false,
         "embed-production": false,
         "create-models": false,
-        "setup-tenants": false,
+        "create-tenants": false,
+        "enable-tenants": false,
+        "setup-data-segregation-strategy": false,
+        "data-permissions-and-enable-tenants": false,
       };
     }
 
