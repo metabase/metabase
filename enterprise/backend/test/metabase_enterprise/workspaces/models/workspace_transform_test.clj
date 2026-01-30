@@ -12,12 +12,13 @@
   (testing "WorkspaceTransform definition_changed is marked based on source/target changes"
     (ws.tu/with-resources! [{ws-id :workspace-id, :keys [workspace-map]}
                             {:workspace {:definitions {:x1 [:t0]}}}]
-      (let [t1-ref (workspace-map :x1)
-            ws+ref {:workspace_id ws-id, :ref_id t1-ref}
-            tx-url (ws.tu/ws-url ws-id "/transform/" t1-ref)
+      (let [t1-ref    (workspace-map :x1)
+            ws+ref    {:workspace_id ws-id, :ref_id t1-ref}
+            unchanged {:definition_changed false, :input_data_changed false}
             change!   (fn [updates]
-                        (t2/update! :model/WorkspaceTransform ws+ref {:definition_changed false})
-                        (mt/user-http-request :crowberto :put 200 tx-url updates))]
+                        ;; First reset the stale tracking
+                        (t2/update! :model/WorkspaceTransform ws+ref unchanged)
+                        (t2/update! :model/WorkspaceTransform ws+ref updates))]
         (testing "initially definition is stale - as we've never been run"
           (is (= {t1-ref {:definition_changed true, :input_data_changed false}} (ws.tu/staleness-flags ws-id))))
         (testing "marks as stale when source changes"
