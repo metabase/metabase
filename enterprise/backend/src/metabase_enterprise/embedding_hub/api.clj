@@ -61,7 +61,8 @@
    "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
    "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
    "secure-embeds"                 (has-configured-sso?)
-   "setup-tenants"                 (perms/use-tenants)})
+   "setup-tenants"                 (perms/use-tenants)
+   "embed-metabot"                 false})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

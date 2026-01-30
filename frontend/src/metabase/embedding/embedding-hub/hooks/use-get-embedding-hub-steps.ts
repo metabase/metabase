@@ -135,7 +135,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    // Show Metabot step only on Cloud when Metabot is available or trial is offered
+    // Show Metabot step only on Cloud when Metabot is available
     const isMetabotFeatureAvailable = PLUGIN_METABOT.isEnabled();
     const shouldShowMetabotStep = isHosted && isMetabotFeatureAvailable;
 
