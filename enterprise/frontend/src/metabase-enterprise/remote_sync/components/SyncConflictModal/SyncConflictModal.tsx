@@ -3,11 +3,13 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import { useGetBranchesQuery } from "metabase-enterprise/api";
+import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
 
 import { BranchNameInput } from "./BranchNameInput";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
+import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
   useDiscardChangesAndImportAction,
   usePushChangesAction,
@@ -15,15 +17,15 @@ import {
 } from "./mutation-wrappers";
 import {
   type OptionValue,
-  type SyncConflictVariant,
   getContinueButtonText,
+  getModalTitle,
 } from "./utils";
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
   nextBranch?: string | null;
   onClose: VoidFunction;
-  variant: SyncConflictVariant;
+  variant: RemoteSyncConflictVariant;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
@@ -74,22 +76,13 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     <Modal
       onClose={onClose}
       opened
-      title={
-        variant === "push" ? (
-          <>
-            {t`Your branch is behind the remote branch.`}{" "}
-            {t`What do you want to do?`}
-          </>
-        ) : (
-          t`You have unsynced changes. What do you want to do?`
-        )
-      }
       padding="xl"
       styles={{ title: { lineHeight: "2rem" } }}
+      title={getModalTitle(variant)}
       withCloseButton={false}
     >
       <Box pt="md">
-        <ChangesLists />
+        {variant === "setup" ? <SetupConflictInfo /> : <ChangesLists />}
 
         <OutOfSyncOptions
           currentBranch={currentBranch}

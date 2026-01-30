@@ -9,6 +9,7 @@ import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
 } from "metabase-enterprise/api";
+import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
@@ -16,10 +17,7 @@ import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import { type SyncError, parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
-import {
-  SyncConflictModal,
-  type SyncConflictVariant,
-} from "../SyncConflictModal";
+import { SyncConflictModal } from "../SyncConflictModal";
 
 import { BranchDropdown } from "./BranchDropdown";
 import S from "./GitSyncControls.module.css";
@@ -33,7 +31,7 @@ export const GitSyncControls = () => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [syncConflictVariant, setSyncConflictVariant] =
-    useState<SyncConflictVariant>();
+    useState<RemoteSyncConflictVariant>();
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);

@@ -19,7 +19,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -36,6 +36,10 @@ import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
+import { SyncConflictModal } from "metabase-enterprise/remote_sync/components/SyncConflictModal";
+import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
+import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
+import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type {
   RemoteSyncConfigurationSettings,
   SettingDefinition,
@@ -85,6 +89,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
   const applicationName = useSelector(getApplicationName);
+  const dispatch = useDispatch();
+  const conflictVariant = useSelector(getSyncConflictVariant);
+  const { currentBranch } = useGitSyncVisible();
 
   // Fetch top-level collections to build initial sync state
   const { data: topLevelCollectionsData } = useListCollectionItemsQuery(
@@ -488,6 +495,16 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
       {changeBranchConfirmationModal}
       {disableConfirmationModal}
+
+      {!!conflictVariant && !!currentBranch && (
+        <SyncConflictModal
+          currentBranch={currentBranch}
+          onClose={() => {
+            dispatch(syncConflictVariantUpdated(null));
+          }}
+          variant={conflictVariant}
+        />
+      )}
     </>
   );
 };
