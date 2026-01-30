@@ -1668,6 +1668,10 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should not allow to checkout transform if checkout_disabled is received", () => {
+      cy.intercept("GET", "/api/ee/workspace/checkout*").as(
+        "checkoutWorkspace",
+      );
+
       H.createModelFromTableName({
         tableName: "Animals",
         modelName: "Animals",
@@ -1694,6 +1698,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify Edit transform button is disabled");
       cy.findByRole("button", { name: /Edit/ }).click();
+      cy.wait("@checkoutWorkspace");
       H.popover().contains("New workspace").should("be.disabled");
       H.popover().contains("New workspace").realHover();
       H.tooltip().should(
