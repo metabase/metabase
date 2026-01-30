@@ -84,15 +84,11 @@
   :export? false
   :doc false)
 
-(defn llm-enabled?
-  "Returns true if LLM SQL generation is enabled (i.e., an Anthropic API key is configured)."
-  []
-  (some? (llm-anthropic-api-key)))
-
 (defsetting llm-sql-generation-enabled
   (deferred-tru "Whether AI-assisted SQL generation is enabled.")
   :visibility :public
   :type       :boolean
   :setter     :none
   :export?    false
-  :getter     (fn [] (or (llm-enabled?) (premium-features/enable-metabot-v3?))))
+  :getter     (fn [] (or (some? (llm-anthropic-api-key))
+                         (premium-features/enable-metabot-v3?))))

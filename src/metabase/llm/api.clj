@@ -242,7 +242,7 @@
    Requires LLM to be configured (Anthropic API key set in admin settings)."
   [_route-params
    _query-params]
-  (when-not (llm.settings/llm-enabled?)
+  (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
   (llm.anthropic/list-models))
@@ -331,7 +331,7 @@
                            [:model :string]
                            [:id pos-int?]]]]]
    request]
-  (when-not (llm.settings/llm-enabled?)
+  (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
