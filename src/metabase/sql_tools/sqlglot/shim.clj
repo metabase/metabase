@@ -18,9 +18,15 @@
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [potemkin :as p])
   (:import
-   (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools)
+   (io.aleph.dirigiste
+    IPool$Controller
+    IPool$Generator
+    Pool
+    Pools)
    (java.io Closeable File)
    (java.nio.file Files Path)
    (java.util.concurrent TimeUnit)
@@ -420,16 +426,20 @@
 
 ;;;; Shim part
 
-(defn referenced-tables
+(mr/def ::Dialect
+  [:enum :postgres :mysql :snowflake :bigquery :redshift :duckdb])
+
+(mu/defn referenced-tables
   "WIP"
-  [dialect sql default-table-schema]
+  [dialect :- ::Dialect
+   sql
+   default-table-schema]
   (with-open [^Closeable ctx (if config/is-dev?
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
     (eval-python ctx "import sql_tools")
     (-> ^Value (eval-python ctx "sql_tools.referenced_tables")
-        (.execute ^Value (object-array [dialect sql
-                                        default-table-schema]))
+        (.execute ^Value (object-array [(name dialect) sql default-table-schema]))
         .asString
         json/decode
         vec)))
