@@ -23,7 +23,7 @@ export const ChunkyListItem = styled.button<{
     ${({ isSelected }) =>
       !isSelected &&
       css`
-        background-color: var(--mb-color-brand-lighter);
+        background-color: var(--mb-color-background-hover);
         color: var(--mb-color-text-primary);
       `}
   }
