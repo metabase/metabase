@@ -999,6 +999,21 @@ databaseChangeLog:
             tableName: notification_card
             columnName: disable_links
 
+  - changeSet:
+      id: v59.2026-01-30T12:00:00
+      author: edpaget
+      comment: Add conflicts column to remote_sync_task table
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: conflicts
+                  type: ${text.type}
+                  remarks: JSON serialized list of conflicts detected during import
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
