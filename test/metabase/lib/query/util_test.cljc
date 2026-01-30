@@ -177,7 +177,6 @@
                                       :strategy :left-join}]}]})]
       (is (=? [{:strategy :left-join}]
               (lib/joins query))))))
-              
 
 (deftest ^:parallel test-query-with-join-conditions-test
   (testing "test-query adds joins with explicit conditions"
@@ -381,8 +380,8 @@
                                                            :name "ID"}
                                                     :right {:type :column
                                                             :name "USER_ID"}}]}]}]})]
-      (is (= 1 (count (lib/joins query))))
-      (is (= :left-join (-> query (lib/joins) first :strategy))))))
+      (is (=? [{:strategy :left-join}]
+              (-> query lib/joins))))))
 
 (deftest ^:parallel test-query-with-join-conditions-with-bin-width-test
   (testing "test-query adds joins with bin-width binned conditions"
