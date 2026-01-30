@@ -2182,7 +2182,13 @@
               metabase-enterprise.metabot-v3.client
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
-              metabase-enterprise.metabot-v3.tools.api}
+              metabase-enterprise.metabot-v3.tools.api
+              metabase-enterprise.metabot-v3.tools.deftool
+              metabase-enterprise.metabot-v3.tools.entity-details
+              metabase-enterprise.metabot-v3.tools.field-stats
+              metabase-enterprise.metabot-v3.tools.filters
+              metabase-enterprise.metabot-v3.tools.search
+              metabase-enterprise.metabot-v3.util}
    :uses    #{activity-feed
               api
               app-db
