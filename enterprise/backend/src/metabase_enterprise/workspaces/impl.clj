@@ -335,6 +335,8 @@
 (defn increment-analysis-version!
   "Atomically increment analysis_version for a transform. Used to invalidate cached analysis."
   [workspace-id ref-id]
+  ;; definition_changed is also set by the WorkspaceTransform before-update hook when source/target changes,
+  ;; but we set it here as well since this function is also called for unarchive (where source/target don't change).
   (t2/update! :model/WorkspaceTransform
               {:workspace_id workspace-id, :ref_id ref-id}
               {:analysis_version [:+ :analysis_version 1]
