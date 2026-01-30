@@ -17,6 +17,22 @@
                              :prompt 1000
                              :completion 1000})))))
 
+(deftest ^:parallel estimate-raw-model-names-test
+  (testing "raw model names with date suffixes are normalized correctly"
+    (is (=? (=?/approx [0.030 0.0001])
+            (costs/estimate {:model "claude-opus-4-5-20251101"
+                             :prompt 1000
+                             :completion 1000})))
+    (is (=? (=?/approx [0.018 0.0001])
+            (costs/estimate {:model "claude-sonnet-4-5-20250929"
+                             :prompt 1000
+                             :completion 1000}))))
+  (testing "raw model names without date suffixes are normalized correctly"
+    (is (=? (=?/approx [0.018 0.0001])
+            (costs/estimate {:model "claude-sonnet-4"
+                             :prompt 1000
+                             :completion 1000})))))
+
 (deftest ^:parallel estimate-zero-tokens-test
   (testing "zero tokens returns zero cost"
     (is (= 0.0

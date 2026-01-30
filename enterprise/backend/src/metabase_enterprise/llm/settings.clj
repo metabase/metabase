@@ -21,7 +21,7 @@
 
 (defsetting ee-openai-api-key
   (deferred-tru "The OpenAI API Key used in Metabase Enterprise.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export? false
   :doc false)
