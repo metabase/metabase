@@ -1,8 +1,10 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
@@ -11,6 +13,24 @@ import S from "./SetupPermissionsAndTenantsPage.module.css";
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
+  const { data: checklist } = useGetEmbeddingHubChecklistQuery();
+  const [isDataSegregationSelected, _setIsDataSegregationSelected] =
+    useState(false);
+
+  const completedSteps = useMemo(() => {
+    const isDataSegregationComplete =
+      isDataSegregationSelected ||
+      checklist?.["setup-data-segregation-strategy"];
+
+    return {
+      "enable-tenants": checklist?.["enable-tenants"] ?? false,
+      "data-segregation": isDataSegregationComplete ?? false,
+      "select-data": isDataSegregationComplete ?? false,
+      "create-tenants": checklist?.["create-tenants"] ?? false,
+      summary: false,
+    };
+  }, [checklist, isDataSegregationSelected]);
+
   return (
     <Stack mx="auto" gap="sm" maw={800}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
@@ -24,8 +44,7 @@ export const SetupPermissionsAndTenantsPage = () => {
         {t`Configure data permissions and enable tenants`}
       </Title>
 
-      {/* TODO(EMB-1266): implement completed and locked steps logic */}
-      <OnboardingStepper completedSteps={{}} lockedSteps={{}}>
+      <OnboardingStepper completedSteps={completedSteps} lockedSteps={{}}>
         <OnboardingStepper.Step
           stepId="enable-tenants"
           title={t`Enable multi-tenant user strategy`}

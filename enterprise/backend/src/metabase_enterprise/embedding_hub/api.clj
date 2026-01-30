@@ -53,15 +53,20 @@
                                                               :where  [:= :is_sample true]}]]
                                     [:is :collection_id nil]]]}))
 
+(defn- has-user-created-tenants? []
+  (t2/exists? :model/Tenant :is_active true))
+
 (defn- embedding-hub-checklist []
-  {"add-data"                      (has-user-added-database?)
-   "create-dashboard"              (has-user-created-dashboard?)
-   "create-models"                 (has-user-created-models?)
-   "configure-row-column-security" (has-configured-sandboxes?)
-   "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
-   "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
-   "secure-embeds"                 (has-configured-sso?)
-   "setup-tenants"                 (perms/use-tenants)})
+  {"add-data"                       (has-user-added-database?)
+   "create-dashboard"               (has-user-created-dashboard?)
+   "create-models"                  (has-user-created-models?)
+   "configure-row-column-security"  (has-configured-sandboxes?)
+   "create-test-embed"              (embedding.settings/embedding-hub-test-embed-snippet-created)
+   "embed-production"               (embedding.settings/embedding-hub-production-embed-snippet-created)
+   "secure-embeds"                  (has-configured-sso?)
+   "enable-tenants"                 (perms/use-tenants)
+   "create-tenants"                 (has-user-created-tenants?)
+   "setup-data-segregation-strategy" false})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

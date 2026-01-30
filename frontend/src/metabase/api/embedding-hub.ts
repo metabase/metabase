@@ -10,7 +10,9 @@ type CheckListApiStep =
   | "create-test-embed"
   | "embed-production"
   | "secure-embeds"
-  | "setup-tenants";
+  | "enable-tenants"
+  | "create-tenants"
+  | "setup-data-segregation-strategy";
 export type EmbeddingHubChecklist = Record<CheckListApiStep, boolean>;
 
 export const embeddingHubApi = Api.injectEndpoints({

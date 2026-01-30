@@ -1,7 +1,8 @@
 (ns metabase-enterprise.embedding-hub.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest has-user-created-models-test
   (testing "has-user-created-models? correctly handles multiple sample collections (metabase#64627)"
@@ -40,3 +41,23 @@
             (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
               (is (false? (:create-models response))
                   "Should exclude models in both sample collections"))))))))
+
+(deftest has-user-created-tenants-test
+  (testing "create-tenants returns true when there is an active tenant"
+    (mt/with-premium-features #{:embedding}
+      (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:create-tenants response)))))))
+
+  (testing "create-tenants returns false when tenant is inactive"
+    (mt/with-premium-features #{:embedding}
+      (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Inactive Tenant" :slug "inactive-tenant"}]
+        ;; Deactivate the tenant
+        (t2/update! :model/Tenant tenant-id {:is_active false})
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (false? (:create-tenants response)))))))
+
+  (testing "create-tenants returns false when no tenants exist"
+    (mt/with-premium-features #{:embedding}
+      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (is (false? (:create-tenants response)))))))
