@@ -37,7 +37,7 @@ import type {
   NodeLink,
 } from "./types";
 import {
-  canHaveViewCount,
+  canNodeHaveViewCount,
   getCardType,
   getCardTypes,
   getDependencyErrorGroups,
@@ -511,7 +511,7 @@ describe("getNodeLastEditedBy", () => {
   });
 });
 
-describe("canHaveViewCount", () => {
+describe("canNodeHaveViewCount", () => {
   it.each<{ type: DependencyType; expected: boolean }>([
     { type: "card", expected: true },
     { type: "dashboard", expected: true },
@@ -523,7 +523,7 @@ describe("canHaveViewCount", () => {
     { type: "snippet", expected: false },
     { type: "sandbox", expected: false },
   ])("should return $expected for $type", ({ type, expected }) => {
-    expect(canHaveViewCount(type)).toBe(expected);
+    expect(canNodeHaveViewCount(type)).toBe(expected);
   });
 });
 

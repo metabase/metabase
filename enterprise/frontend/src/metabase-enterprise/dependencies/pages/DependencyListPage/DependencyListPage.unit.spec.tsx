@@ -3,7 +3,7 @@ import type { Location } from "history";
 import { Route } from "react-router";
 
 import {
-  setupListBrokenGraphNodesEndpoint,
+  setupListBreakingGraphNodesEndpoint,
   setupListUnreferencedGraphNodesEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -60,7 +60,7 @@ function setup({
   const path = getPageUrl(mode, {});
 
   if (mode === "broken") {
-    setupListBrokenGraphNodesEndpoint(
+    setupListBreakingGraphNodesEndpoint(
       createMockListBrokenGraphNodesResponse({
         data: nodes,
         total: total ?? nodes.length,

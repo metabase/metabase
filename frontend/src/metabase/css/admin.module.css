@@ -38,7 +38,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: var(--mb-color-brand-alpha-04);
+  background-color: var(--mb-color-background-hover);
 }
 
 .ContentTable tr:hover .TableActions {

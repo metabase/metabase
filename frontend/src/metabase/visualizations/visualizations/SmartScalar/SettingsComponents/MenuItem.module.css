@@ -1,4 +1,4 @@
 .isSelected {
   color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-lighter);
+  background-color: var(--mb-color-background-selected);
 }
