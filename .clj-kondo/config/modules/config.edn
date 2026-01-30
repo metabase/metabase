@@ -2394,12 +2394,6 @@
            write-connection
            enterprise/transforms}}
 
-  enterprise/write-connection
-  {:team "UX West"
-   :api  #{metabase-enterprise.write-connection.core}
-   :uses #{premium-features
-           warehouses}}
-
   enterprise/upload-management
   {:team "UX West"
    :api  #{metabase-enterprise.upload-management.api}
@@ -2407,7 +2401,13 @@
            models
            premium-features
            upload
-           util}}}
+           util}}
+
+  enterprise/write-connection
+  {:team "UX West"
+   :api #{}
+   :uses #{premium-features
+           warehouses}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
