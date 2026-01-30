@@ -1285,6 +1285,39 @@ describe.each<Area>(areas)(
             // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
             cy.findByText("Tax (CA$)").should("be.visible");
           });
+
+          it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
+            context.visit({
+              databaseId: SAMPLE_DB_ID,
+              schemaId: SAMPLE_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+              fieldId: ORDERS.PRODUCT_ID,
+            });
+            cy.wait(["@metadata", "@metadata"]);
+
+            FieldSection.getSemanticTypeFkTarget().focus().clear();
+            H.popover()
+              .should("contain.text", "Orders → ID")
+              .and("contain.text", "People → ID")
+              .and("contain.text", "Products → ID")
+              .and("contain.text", "Reviews → ID");
+
+            cy.log("should case-insensitive match field display name");
+            FieldSection.getSemanticTypeFkTarget().focus().type("id");
+            H.popover()
+              .should("contain.text", "Orders → ID")
+              .and("contain.text", "People → ID")
+              .and("contain.text", "Products → ID")
+              .and("contain.text", "Reviews → ID");
+
+            cy.log("should case-insensitive match field description");
+            FieldSection.getSemanticTypeFkTarget().focus().clear().type("EXT");
+            H.popover()
+              .should("not.contain.text", "Orders → ID")
+              .and("not.contain.text", "People → ID")
+              .and("contain.text", "Products → ID")
+              .and("contain.text", "Reviews → ID");
+          });
         });
       });
     });
