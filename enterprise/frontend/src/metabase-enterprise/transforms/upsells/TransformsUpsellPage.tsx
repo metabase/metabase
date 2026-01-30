@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import { DataStudioUpsellPage } from "metabase/data-studio/upsells";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 
-import { DataStudioUpsellPage } from "./DataStudioUpsellPage";
 import { TransformsPurchasePage } from "./TransformsPurchasePage";
 
 export function TransformsUpsellPage() {

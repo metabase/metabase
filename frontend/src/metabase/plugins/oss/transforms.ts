@@ -18,6 +18,7 @@ import type {
 
 export type TransformsPlugin = {
   isEnabled: boolean;
+  TransformsUpsellPage: ComponentType;
 };
 
 export type PythonTransformEditorProps = {
@@ -40,6 +41,11 @@ export type PythonTransformSourceValidationResult = {
   errorMessage?: string;
 };
 
+export type PythonTransformsUpsellModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+};
+
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
   getPythonLibraryRoutes: () => ReactNode;
@@ -52,6 +58,7 @@ export type PythonTransformsPlugin = {
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
   sharedLibImportPath: string;
+  PythonTransformsUpsellModal: ComponentType<PythonTransformsUpsellModalProps>;
 };
 
 type DependenciesPlugin = {
@@ -122,7 +129,8 @@ function useCheckDependencies<TChange>({
 }
 
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
-  isEnabled: true,
+  isEnabled: true, // transforms are enabled by default in OSS
+  TransformsUpsellPage: PluginPlaceholder,
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
@@ -137,6 +145,7 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
   sharedLibImportPath: "",
+  PythonTransformsUpsellModal: PluginPlaceholder,
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();

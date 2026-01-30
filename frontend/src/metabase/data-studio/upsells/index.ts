@@ -3,8 +3,3 @@ export type { DataStudioUpsellPageProps } from "./DataStudioUpsellPage";
 export { DependenciesUpsellPage } from "./DependenciesUpsellPage";
 export { GitSyncUpsellPage } from "./GitSyncUpsellPage";
 export { LibraryUpsellPage } from "./LibraryUpsellPage";
-export { PythonTransformsUpsellModal } from "./PythonTransformsUpsellModal";
-export { TransformsPurchasePage } from "./TransformsPurchasePage";
-export { TransformsSettingUpModal } from "./TransformsSettingUpModal";
-export { TransformsUpsellPage } from "./TransformsUpsellPage";
-export { useTransformsBilling } from "./useTransformsBilling";

@@ -3,7 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { getPlan } from "metabase/common/utils/plan";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getTokenFeature } from "metabase/setup";
+import { getIsHosted, getTokenFeature } from "metabase/setup";
 import type { State } from "metabase-types/store";
 
 export const canAccessTransforms = (state: State): boolean => {
@@ -24,4 +24,10 @@ export const getTransformsFeatureAvailable = createSelector(
 
     return feature;
   },
+);
+
+export const getShouldShowTransformsUpsell = createSelector(
+  getIsHosted,
+  (state: State) => getTokenFeature(state, "transforms"),
+  (isHosted, hasTransformsFeature) => isHosted && !hasTransformsFeature,
 );

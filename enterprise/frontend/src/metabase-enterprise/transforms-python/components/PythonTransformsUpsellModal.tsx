@@ -12,20 +12,16 @@ import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link
 import { UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import type { PythonTransformsUpsellModalProps } from "metabase/plugins/oss/transforms";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import { Button, Flex, Modal, Stack, Text, Title } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
-import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
+import { TransformsSettingUpModal } from "../../transforms/upsells/TransformsSettingUpModal";
 
 const CAMPAIGN = "data-studio-python-transforms";
 const LOCATION = "data-studio-transforms";
-
-type PythonTransformsUpsellModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
 
 export function PythonTransformsUpsellModal({
   isOpen,
