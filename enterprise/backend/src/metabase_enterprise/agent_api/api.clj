@@ -16,7 +16,7 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.schema :as qp.schema]
+
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
@@ -357,8 +357,28 @@
   [:map
    [:query ms/NonBlankString]])
 
+(mr/def ::column-metadata
+  "Metadata for a single result column."
+  [:map
+   [:name         :string]
+   [:base_type    :string]
+   [:display_name :string]])
+
+(mr/def ::execute-query-response
+  "Response from query execution. The HTTP status is always 202 because results are streamed —
+   check the `status` field to determine success or failure."
+  [:map
+   [:status       [:enum :completed :failed]]
+   [:data         {:optional true}
+    [:map
+     [:cols [:sequential ::column-metadata]]
+     [:rows [:sequential [:sequential :any]]]]]
+   [:row_count    {:optional true} :int]
+   [:running_time {:optional true} :int]
+   [:error        {:optional true} :string]])
+
 (api.macros/defendpoint :post "/v1/execute"
-  :- (streaming-response/streaming-response-schema ::qp.schema/query-result)
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
   "Execute an MBQL query and return results.
 
   Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,

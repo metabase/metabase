@@ -495,6 +495,12 @@ Order by a field (not an aggregation — use `sort_order` for that):
 
 Execute a query returned by /v1/construct-query.
 
+**Important: streaming response.** This endpoint streams results, so the HTTP
+status code (202) is sent before query execution completes. A 202 status does
+NOT guarantee the query succeeded — you must check the `status` field in the
+response body. If the query fails mid-execution, the response body will contain
+`"status": "failed"` with an error message, even though the HTTP status was 202.
+
 Request:
 
 ```json
@@ -502,6 +508,12 @@ Request:
 ```
 
 Response (HTTP 202):
+
+The response body may contain additional fields beyond those documented here.
+Ignore any fields not listed below — they are internal metadata and not part of
+the stable API contract.
+
+On success:
 
 ```json
 {
@@ -521,7 +533,19 @@ Response (HTTP 202):
 }
 ```
 
-On failure: `{"status": "failed", "error": "message"}`
+| Field        | Description                                              |
+|--------------|----------------------------------------------------------|
+| status       | `"completed"` on success, `"failed"` on error            |
+| data.cols    | Column metadata array (name, base_type, display_name)    |
+| data.rows    | Array of row arrays, in the same order as cols           |
+| row_count    | Number of rows returned                                  |
+| running_time | Query execution time in milliseconds                     |
+
+On failure:
+
+```json
+{"status": "failed", "error": "Query error message"}
+```
 
 Row limits are enforced automatically:
 - Simple queries (no aggregation): 2000 rows max
