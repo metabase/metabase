@@ -4,6 +4,7 @@
        [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query.util :as lib.query.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
@@ -46,7 +47,6 @@
                                      {:type :column
                                       :name "NAME"
                                       :source-name "VENUES"}]}]})]
-      (is (= 2 (count (:fields (first (:stages query))))))
       (is (=? [[:field {} (meta/id :venues :id)]
                [:field {} (meta/id :venues :name)]]
               (:fields (first (:stages query))))))))
@@ -64,10 +64,9 @@
                                                                :name "PRICE"}
                                                               {:type  :literal
                                                                :value 2}]}}]}]})
-           exprs (lib/expressions query 0)]
+          exprs (lib/expressions query 0)]
       (is (= 1 (count exprs)))
       (is (= "double-price" (-> exprs first lib.options/options :lib/expression-name))))))
-      
 
 (deftest ^:parallel test-query-with-filters-test
   (testing "test-query adds filters to the query"
@@ -93,9 +92,8 @@
                             :aggregations [{:type     :operator
                                             :operator :count
                                             :args     []}]}]})]
-      (is (= 1 (count (lib/aggregations query))))
-      (is (=? [:count {}]
-              (first (lib/aggregations query)))))))
+      (is (=? [[:count {}]]
+              (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-with-breakouts-test
   (testing "test-query adds breakouts to the query"
@@ -105,9 +103,8 @@
                                         :id   (meta/id :venues)}
                             :breakouts [{:type :column
                                          :name "CATEGORY_ID"}]}]})]
-      (is (= 1 (count (lib/breakouts query))))
-      (is (=? [:field {} (meta/id :venues :category-id)]
-              (first (lib/breakouts query)))))))
+      (is (=? [[:field {} (meta/id :venues :category-id)]]
+              (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-temporal-bucket-breakout-test
   (testing "test-query adds breakouts with temporal bucketing"
@@ -118,11 +115,10 @@
                             :breakouts [{:type :column
                                          :name "DATE"
                                          :unit :month}]}]})]
-      (is (= 1 (count (lib/breakouts query))))
-      (is (=? [:field
-               {:temporal-unit :month}
-               (meta/id :checkins :date)]
-              (first (lib/breakouts query)))))))
+      (is (=? [[:field
+                {:temporal-unit :month}
+                (meta/id :checkins :date)]]
+              (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-bin-count-breakout-test
   (testing "test-query adds breakouts with bin count binning"
@@ -136,7 +132,6 @@
       (is (= 1 (count (lib/breakouts query))))
       (is (=? {:strategy :num-bins :num-bins 10}
               (-> query lib/breakouts first lib/binning))))))
-              
 
 (deftest ^:parallel test-query-with-bin-width-breakout-test
   (testing "test-query adds breakouts with bin width binning"
@@ -159,9 +154,8 @@
                             :order-bys [{:type      :column
                                          :name      "PRICE"
                                          :direction :asc}]}]})]
-      (is (= 1 (count (lib/order-bys query))))
-      (is (=? [:asc {} [:field {} (meta/id :venues :price)]]
-              (first (lib/order-bys query)))))))
+      (is (=? [[:asc {} [:field {} (meta/id :venues :price)]]]
+              (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-with-limit-test
   (testing "test-query adds a limit to the query"
@@ -218,12 +212,11 @@
                                                                :name "DATE"
                                                                :unit :month}}]}]}]})]
       (is (= 1 (count (lib/joins query))))
-      (let [condition (first (:conditions (first (lib/joins query))))]
-        (is (=? [:=
-                 {}
-                 [:field {:temporal-unit :month} (meta/id :checkins :date)]
-                 [:field {:temporal-unit :month} (meta/id :checkins :date)]]
-                condition))))))
+      (is (=? [[:=
+                {}
+                [:field {:temporal-unit :month} (meta/id :checkins :date)]
+                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
+              (-> query lib/joins first :conditions))))))
 
 (deftest ^:parallel test-query-multi-stage-test
   (testing "test-query handles multiple stages"
