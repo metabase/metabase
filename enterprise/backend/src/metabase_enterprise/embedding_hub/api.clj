@@ -86,11 +86,22 @@
      "create-tenants"                    create-tenants?
      "setup-data-segregation-strategy"   setup-data-segregation-strategy?}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/checklist"
+(def ^:private EmbeddingHubChecklist
+  "Schema for the embedding hub checklist response."
+  [:map {:closed true}
+   ["add-data"                             :boolean]
+   ["create-dashboard"                     :boolean]
+   ["create-models"                        :boolean]
+   ["configure-row-column-security"        :boolean]
+   ["create-test-embed"                    :boolean]
+   ["embed-production"                     :boolean]
+   ["secure-embeds"                        :boolean]
+   ["data-permissions-and-enable-tenants"  :boolean]
+   ["enable-tenants"                       :boolean]
+   ["create-tenants"                       :boolean]
+   ["setup-data-segregation-strategy"      :boolean]])
+
+(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklist
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []
   (embedding-hub-checklist))
