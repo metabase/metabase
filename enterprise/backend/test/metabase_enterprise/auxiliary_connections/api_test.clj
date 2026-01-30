@@ -10,7 +10,7 @@
 
 (deftest post-update-event-has-correct-previous-object-test
   (testing "POST update publishes event with previous-object reflecting pre-update state (R2 bug fix)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-model-cleanup [:model/Database]
         (mt/with-temp [:model/Database parent-db {}]
           (let [create-resp (mt/user-http-request :crowberto :post 200
@@ -37,14 +37,14 @@
 
 (deftest get-returns-not-configured-test
   (testing "GET returns {:configured false} when no auxiliary connection exists"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (is (= {:configured false}
                (mt/user-http-request :crowberto :get 200 (aux-url db-id))))))))
 
 (deftest post-creates-auxiliary-connection-test
   (testing "POST creates an auxiliary DB, links it to parent, returns :status :created"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-model-cleanup [:model/Database]
         (mt/with-temp [:model/Database {db-id :id} {}]
           (let [resp (mt/user-http-request :crowberto :post 200 (aux-url db-id)
@@ -65,7 +65,7 @@
 
 (deftest get-returns-configured-test
   (testing "GET returns {:configured true} with aux DB info, password stripped from details"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-model-cleanup [:model/Database]
         (mt/with-temp [:model/Database {db-id :id} {}]
           (mt/user-http-request :crowberto :post 200 (aux-url db-id)
@@ -80,7 +80,7 @@
 
 (deftest post-updates-existing-auxiliary-connection-test
   (testing "POST on a DB that already has an auxiliary connection updates it"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-model-cleanup [:model/Database]
         (mt/with-temp [:model/Database {db-id :id} {}]
           (let [create-resp (mt/user-http-request :crowberto :post 200 (aux-url db-id)
@@ -99,7 +99,7 @@
 
 (deftest delete-removes-auxiliary-connection-test
   (testing "DELETE removes the link and deletes the auxiliary DB"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-model-cleanup [:model/Database]
         (mt/with-temp [:model/Database {db-id :id} {}]
           (let [create-resp (mt/user-http-request :crowberto :post 200 (aux-url db-id)
@@ -115,13 +115,13 @@
 
 (deftest delete-no-connection-returns-400-test
   (testing "DELETE returns 400 when no auxiliary connection is configured"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (mt/user-http-request :crowberto :delete 400 (aux-url db-id))))))
 
 (deftest post-blocks-router-database-test
   (testing "POST returns 400 for a router database (has destinations pointing to it)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp [:model/Database {router-db-id :id} {}
                      :model/Database _destination {:router_database_id router-db-id}]
         (is (= "Cannot configure auxiliary connection for a router database"
@@ -131,7 +131,7 @@
 
 (deftest post-blocks-destination-database-test
   (testing "POST returns 400 for a destination database"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp [:model/Database {router-db-id :id} {}
                      :model/Database {dest-db-id :id} {:router_database_id router-db-id}]
         (is (= "Cannot configure auxiliary connection for a destination database"
@@ -141,7 +141,7 @@
 
 (deftest endpoints-require-superuser-test
   (testing "All auxiliary connection endpoints require superuser"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (testing "GET"
           (mt/user-http-request :rasta :get 403 (aux-url db-id)))
@@ -154,7 +154,7 @@
 
 (deftest invalid-type-returns-400-test
   (testing "Endpoints return 400 for an invalid connection type"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (mt/user-http-request :crowberto :get 400
                               (format "ee/auxiliary-connections/%d/bogus-type" db-id))))))

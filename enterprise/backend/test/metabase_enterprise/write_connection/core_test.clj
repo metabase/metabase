@@ -22,40 +22,44 @@
 
 (deftest get-write-database-id-no-write-connection-test
   (testing "get-write-database-id returns nil when no write connection configured"
-    (mt/with-temp [:model/Database db {}]
-      (is (nil? (write-connection/get-write-database-id (:id db)))
-          "Should return nil when write_database_id is NULL")
-      (is (nil? (write-connection/get-write-database-id db))
-          "Should return nil when passed database map"))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database db {}]
+        (is (nil? (write-connection/get-write-database-id (:id db)))
+            "Should return nil when write_database_id is NULL")
+        (is (nil? (write-connection/get-write-database-id db))
+            "Should return nil when passed database map")))))
 
 (deftest get-write-database-id-with-write-connection-test
   (testing "get-write-database-id returns write database ID when configured"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      ;; Link the write database to the parent
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
-      (is (= (:id write-db) (write-connection/get-write-database-id (:id parent-db)))
-          "Should return write database ID")
-      (is (= (:id write-db) (write-connection/get-write-database-id parent-db))
-          "Should work with database map too"))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        ;; Link the write database to the parent
+        (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+        (is (= (:id write-db) (write-connection/get-write-database-id (:id parent-db)))
+            "Should return write database ID")
+        (is (= (:id write-db) (write-connection/get-write-database-id parent-db))
+            "Should work with database map too")))))
 
 (deftest get-effective-database-id-no-write-connection-test
   (testing "get-effective-database-id returns original ID when no write connection"
-    (mt/with-temp [:model/Database db {}]
-      (is (= (:id db) (write-connection/get-effective-database-id (:id db)))
-          "Should return original ID when no write connection")
-      (is (= (:id db) (write-connection/get-effective-database-id db))
-          "Should work with database map"))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database db {}]
+        (is (= (:id db) (write-connection/get-effective-database-id (:id db)))
+            "Should return original ID when no write connection")
+        (is (= (:id db) (write-connection/get-effective-database-id db))
+            "Should work with database map")))))
 
 (deftest get-effective-database-id-with-write-connection-test
   (testing "get-effective-database-id returns write database ID when configured"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
-      (is (= (:id write-db) (write-connection/get-effective-database-id (:id parent-db)))
-          "Should return write database ID when configured")
-      (is (= (:id write-db) (write-connection/get-effective-database-id parent-db))
-          "Should work with database map"))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+        (is (= (:id write-db) (write-connection/get-effective-database-id (:id parent-db)))
+            "Should return write database ID when configured")
+        (is (= (:id write-db) (write-connection/get-effective-database-id parent-db))
+            "Should work with database map")))))
 
 (deftest is-write-database?-test
   (testing "is-write-database? correctly identifies write databases"
@@ -73,17 +77,18 @@
 
 (deftest write-database-lookup-with-map-and-id-test
   (testing "Functions handle both database maps and IDs consistently"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
-      (testing "get-write-database-id"
-        (is (= (write-connection/get-write-database-id (:id parent-db))
-               (write-connection/get-write-database-id parent-db))
-            "Should return same result for ID and map"))
-      (testing "get-effective-database-id"
-        (is (= (write-connection/get-effective-database-id (:id parent-db))
-               (write-connection/get-effective-database-id parent-db))
-            "Should return same result for ID and map")))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+        (testing "get-write-database-id"
+          (is (= (write-connection/get-write-database-id (:id parent-db))
+                 (write-connection/get-write-database-id parent-db))
+              "Should return same result for ID and map"))
+        (testing "get-effective-database-id"
+          (is (= (write-connection/get-effective-database-id (:id parent-db))
+                 (write-connection/get-effective-database-id parent-db))
+              "Should return same result for ID and map"))))))
 
 (deftest cascade-delete-parent-deletes-write-db-test
   (testing "Deleting a parent database also deletes its write database"
@@ -111,81 +116,85 @@
 
 (deftest get-effective-database-tags-write-connection-test
   (testing "get-effective-database tags the write DB with :connection/type :write and :connection/parent-id"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
-      (let [effective (write-connection/get-effective-database (:id parent-db))]
-        (is (= (:id write-db) (:id effective)))
-        (is (= :write (:connection/type effective)))
-        (is (= (:id parent-db) (:connection/parent-id effective)))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+        (let [effective (write-connection/get-effective-database (:id parent-db))]
+          (is (= (:id write-db) (:id effective)))
+          (is (= :write (:connection/type effective)))
+          (is (= (:id parent-db) (:connection/parent-id effective))))))))
 
 (deftest get-effective-database-tags-primary-when-no-write-connection-test
   (testing "get-effective-database tags with :connection/type :primary when no write connection"
-    (mt/with-temp [:model/Database db {}]
-      (let [effective (write-connection/get-effective-database (:id db))]
-        (is (= (:id db) (:id effective)))
-        (is (= :primary (:connection/type effective)))
-        (is (nil? (:connection/parent-id effective)))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database db {}]
+        (let [effective (write-connection/get-effective-database (:id db))]
+          (is (= (:id db) (:id effective)))
+          (is (= :primary (:connection/type effective)))
+          (is (nil? (:connection/parent-id effective))))))))
 
 (deftest using-write-connection?-test
   (testing "using-write-connection? checks :connection/type on the db map"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
-      (let [write-effective   (write-connection/get-effective-database (:id parent-db))
-            primary-effective (write-connection/get-effective-database (:id write-db))]
-        (is (true? (write-connection.oss/using-write-connection? write-effective)))
-        (is (false? (write-connection.oss/using-write-connection? primary-effective)))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+        (let [write-effective   (write-connection/get-effective-database (:id parent-db))
+              primary-effective (write-connection/get-effective-database (:id write-db))]
+          (is (true? (write-connection.oss/using-write-connection? write-effective)))
+          (is (false? (write-connection.oss/using-write-connection? primary-effective))))))))
 
 (deftest transform-details-db-id-uses-parent-id-test
   (testing "Both MBQL and Python transforms use parent DB ID in :db-id of transform-details"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
-      (let [captured-db-ids (atom {})
-            sentinel        (ex-info "test-sentinel" {:type ::sentinel})
-            capture-and-throw
-            (fn [_run-id _driver transform-details & _]
-              (swap! captured-db-ids assoc
-                     (if (contains? transform-details :query) :mbql :python)
-                     (:db-id transform-details))
-              (throw sentinel))]
-        (with-redefs [transforms.util/run-cancelable-transform!        capture-and-throw
-                      transforms.util/compile-source                   (constantly {:query "SELECT 1" :params []})
-                      transforms.util/qualified-table-name             (constantly :test/output)
-                      transforms.util/required-database-features       (constantly #{})
-                      transforms.util/db-routing-enabled?              (constantly false)
-                      transforms.util/try-start-unless-already-running (constantly {:id 1})
-                      transforms.instrumentation/with-timing           (fn [_ _ body-fn] (body-fn))
-                      driver/connection-spec                           (constantly {})]
-          (try
-            (transforms.execute/execute!
-             {:id     1
-              :source {:type "query" :query {:database (:id parent-db)}}
-              :target {:type "table" :schema "test_schema" :name "output"}}
-             nil)
-            (catch Exception e
-              (when-not (= ::sentinel (:type (ex-data e)))
-                (throw e)))))
-        (with-redefs [transforms.util/run-cancelable-transform!        capture-and-throw
-                      transforms.util/python-transform?                (constantly true)
-                      transforms.util/qualified-table-name             (constantly :test/output)
-                      transforms.util/try-start-unless-already-running (constantly {:id 2})
-                      transforms.instrumentation/with-timing           (fn [_ _ body-fn] (body-fn))
-                      driver/connection-spec                           (constantly {})]
-          (try
-            (transforms.execute/execute!
-             {:id     2
-              :source {:type "python"}
-              :target {:database (:id parent-db) :type "table" :schema "test_schema" :name "output"}}
-             {})
-            (catch Exception e
-              (when-not (= ::sentinel (:type (ex-data e)))
-                (throw e)))))
-        (is (= (:id parent-db) (:mbql @captured-db-ids))
-            "MBQL transform uses parent DB ID")
-        (is (= (:id parent-db) (:python @captured-db-ids))
-            "Python transform uses parent DB ID")))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (t2/update! :model/Database (:id parent-db) {:write_database_id (:id write-db)})
+        (let [captured-db-ids (atom {})
+              sentinel        (ex-info "test-sentinel" {:type ::sentinel})
+              capture-and-throw
+              (fn [_run-id _driver transform-details & _]
+                (swap! captured-db-ids assoc
+                       (if (contains? transform-details :query) :mbql :python)
+                       (:db-id transform-details))
+                (throw sentinel))]
+          (with-redefs [transforms.util/run-cancelable-transform!        capture-and-throw
+                        transforms.util/compile-source                   (constantly {:query "SELECT 1" :params []})
+                        transforms.util/qualified-table-name             (constantly :test/output)
+                        transforms.util/required-database-features       (constantly #{})
+                        transforms.util/db-routing-enabled?              (constantly false)
+                        transforms.util/try-start-unless-already-running (constantly {:id 1})
+                        transforms.instrumentation/with-timing           (fn [_ _ body-fn] (body-fn))
+                        driver/connection-spec                           (constantly {})]
+            (try
+              (transforms.execute/execute!
+               {:id     1
+                :source {:type "query" :query {:database (:id parent-db)}}
+                :target {:type "table" :schema "test_schema" :name "output"}}
+               nil)
+              (catch Exception e
+                (when-not (= ::sentinel (:type (ex-data e)))
+                  (throw e)))))
+          (with-redefs [transforms.util/run-cancelable-transform!        capture-and-throw
+                        transforms.util/python-transform?                (constantly true)
+                        transforms.util/qualified-table-name             (constantly :test/output)
+                        transforms.util/try-start-unless-already-running (constantly {:id 2})
+                        transforms.instrumentation/with-timing           (fn [_ _ body-fn] (body-fn))
+                        driver/connection-spec                           (constantly {})]
+            (try
+              (transforms.execute/execute!
+               {:id     2
+                :source {:type "python"}
+                :target {:database (:id parent-db) :type "table" :schema "test_schema" :name "output"}}
+               {})
+              (catch Exception e
+                (when-not (= ::sentinel (:type (ex-data e)))
+                  (throw e)))))
+          (is (= (:id parent-db) (:mbql @captured-db-ids))
+              "MBQL transform uses parent DB ID")
+          (is (= (:id parent-db) (:python @captured-db-ids))
+              "Python transform uses parent DB ID"))))))
 
 (deftest write-db-permissions-fail-closed-test
   (testing "Write databases deny mi/can-read? and mi/can-write? for all users"
@@ -282,18 +291,19 @@
 
 (deftest get-write-database-id-cache-test
   (testing "get-write-database-id cache is updated correctly through the link-unlink lifecycle"
-    (mt/with-temp [:model/Database parent-db {}
-                   :model/Database write-db {}]
-      (let [parent-id   (:id parent-db)
-            write-db-id (:id write-db)]
-        (testing "before linking, returns nil (and caches nil)"
-          (is (nil? (write-connection/get-write-database-id parent-id))))
-        (testing "after linking, returns write DB ID (cache invalidated)"
-          (database/link-write-database! parent-id write-db-id)
-          (is (= write-db-id (write-connection/get-write-database-id parent-id))))
-        (testing "after unlinking, returns nil again (cache invalidated)"
-          (database/unlink-write-database! parent-id write-db-id)
-          (is (nil? (write-connection/get-write-database-id parent-id))))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (let [parent-id   (:id parent-db)
+              write-db-id (:id write-db)]
+          (testing "before linking, returns nil (and caches nil)"
+            (is (nil? (write-connection/get-write-database-id parent-id))))
+          (testing "after linking, returns write DB ID (cache invalidated)"
+            (database/link-write-database! parent-id write-db-id)
+            (is (= write-db-id (write-connection/get-write-database-id parent-id))))
+          (testing "after unlinking, returns nil again (cache invalidated)"
+            (database/unlink-write-database! parent-id write-db-id)
+            (is (nil? (write-connection/get-write-database-id parent-id)))))))))
 
 (deftest feature-flag-gating-test
   (testing "EE write connection functions require :advanced-permissions feature"
