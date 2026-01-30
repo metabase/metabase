@@ -1,12 +1,11 @@
-import type { ReactNode } from "react";
-import { useState } from "react";
+import { useCallback } from "react";
 
 import { useSetting } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
+import { setOpenModal } from "metabase/redux/ui";
 
 import { UPGRADE_URL } from "../../constants";
 import { useUpsellLink } from "../use-upsell-link";
-
-import { UpgradeModal } from "./UpgradeModal";
 
 interface UseUpgradeActionProps {
   url: string;
@@ -17,7 +16,6 @@ interface UseUpgradeActionProps {
 interface UseUpgradeActionResult {
   onClick: (() => void) | undefined;
   url: string | undefined;
-  modal: ReactNode;
 }
 
 export function useUpgradeAction({
@@ -25,30 +23,25 @@ export function useUpgradeAction({
   campaign,
   location,
 }: UseUpgradeActionProps): UseUpgradeActionResult {
+  const dispatch = useDispatch();
   const isHosted = useSetting("is-hosted?");
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const urlWithParams = useUpsellLink({ url, campaign, location });
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const openModal = useCallback(() => {
+    dispatch(setOpenModal("upgrade"));
+  }, [dispatch]);
 
   const shouldUseModal = isHosted && url === UPGRADE_URL;
-
-  const modal = shouldUseModal ? (
-    <UpgradeModal opened={isModalOpen} onClose={closeModal} />
-  ) : null;
 
   if (shouldUseModal) {
     return {
       onClick: openModal,
       url: undefined,
-      modal,
     };
   }
 
   return {
     onClick: undefined,
     url: urlWithParams,
-    modal,
   };
 }
