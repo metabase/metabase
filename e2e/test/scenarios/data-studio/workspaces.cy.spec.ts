@@ -1566,7 +1566,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("transform -> workspace", () => {
+  describe("transform -> workspace > ", () => {
     it("should check out transform into a new workspace from the transform page", () => {
       cy.log("Create 2 workspaces, add transform to the second one");
       createTransforms();
@@ -1684,6 +1684,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       H.DataStudio.Transforms.saveChangesButton().click();
+
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Model Reference Transform");
         cy.findByLabelText("Table name").clear().type("model_ref_transform");

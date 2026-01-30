@@ -2320,7 +2320,7 @@ LIMIT
       "should be able to run a transform with default import common even without custom library code",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
 
         visitTransformListPage();
         cy.button("Create a transform").click();
