@@ -40,6 +40,7 @@ export function FilterOptionsPicker({
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
         <Indicator
+          size={8}
           offset={isCompact ? 6 : 12}
           disabled={hasDefaultFilterOptions}
         >
