@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals */
+/* eslint-disable metabase/no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 
 /**

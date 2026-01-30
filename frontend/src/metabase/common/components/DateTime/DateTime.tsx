@@ -26,18 +26,14 @@ export const getFormattedTime = (
  * note: this component intentionally doesn't let you pick a custom date format
  * because that is an instance setting and should be respected globally
  */
-const DateTime = forwardRef<HTMLSpanElement, DateTimeProps>(function DateTime(
-  { value, unit = "default", ...props }: DateTimeProps,
-  ref,
-) {
-  const formattedTime = getFormattedTime(value, unit);
+export const DateTime = forwardRef<HTMLSpanElement, DateTimeProps>(
+  function DateTime({ value, unit = "default", ...props }: DateTimeProps, ref) {
+    const formattedTime = getFormattedTime(value, unit);
 
-  return (
-    <span ref={ref} {...props}>
-      {formattedTime}
-    </span>
-  );
-});
-
-// eslint-disable-next-line import/no-default-export -- legacy usage
-export default DateTime;
+    return (
+      <span ref={ref} {...props}>
+        {formattedTime}
+      </span>
+    );
+  },
+);

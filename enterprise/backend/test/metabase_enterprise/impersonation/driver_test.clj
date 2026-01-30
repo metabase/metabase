@@ -718,11 +718,13 @@
            driver db-id options
            (fn [^Connection conn]
              (.countDown ^CountDownLatch start-latch)
-             (.await ^CountDownLatch start-latch)
+             (when-not (.await ^CountDownLatch start-latch 30 java.util.concurrent.TimeUnit/SECONDS)
+               (throw (ex-info "Timeout waiting for all connections to be acquired" {})))
              (f conn)))
           (finally
             (.countDown ^CountDownLatch finish-latch)))))
-    (.await ^CountDownLatch finish-latch)))
+    (when-not (.await ^CountDownLatch finish-latch 60 java.util.concurrent.TimeUnit/SECONDS)
+      (throw (ex-info "Timeout waiting for all futures to complete" {})))))
 
 (deftest nested-do-with-connection-with-options-test
   (testing "nested calls to `do-with-connection-with-options` have the correct connection options set"
@@ -745,6 +747,8 @@
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                 (sync/sync-database! database {:scan :schema})
+                ;; Give the connection pool time to release any connections held by sync
+                (Thread/sleep 1000)
                 (do-on-all-connection-in-pool driver/*driver* (mt/id) {}
                                               (fn [^Connection conn]
                                                 (driver/set-role! driver/*driver* conn role-a)))
@@ -832,3 +836,37 @@
                          java.lang.Exception
                          (mt/run-mbql-query checkins
                            {:aggregation [[:count]]}))))))))))))
+
+;; TODO(rileythomp, 2026-01-28): Verify this test can be removed after upgrading ClickHouse JDBC driver past 0.8.4
+(deftest clickhouse-double-hyphen-role-doesnt-break-all-queries-test
+  (testing "using an unknown role on clickhouse won't break queries for other users (68674)"
+    (mt/test-driver :clickhouse
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a "role--with--double--hyphens"]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                (sync/sync-database! database {:scan :schema})
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" role-a}}
+                  (testing "using double hyphen role causes an error"
+                    (is (thrown?
+                         java.lang.Exception
+                         (mt/run-mbql-query venues
+                           {:aggregation [[:count]]}))))
+                  (testing "admin should still be able to query"
+                    (request/as-admin
+                      (is (= [100]
+                             (map
+                              long
+                              (mt/first-row
+                               (mt/run-mbql-query venues
+                                 {:aggregation [[:count]]}))))))))))))))))

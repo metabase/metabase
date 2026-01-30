@@ -8,7 +8,7 @@ import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
 } from "metabase/api";
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";

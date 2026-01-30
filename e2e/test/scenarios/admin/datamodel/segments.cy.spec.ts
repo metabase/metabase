@@ -1,7 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > segments", () => {
   beforeEach(() => {
@@ -272,7 +272,7 @@ describe("scenarios > admin > datamodel > segments", () => {
           .first()
           .should("contain", "You edited the description")
           .and("contain", "Foo");
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.get("@revisions")
           .last()
           .should("contain", `You created "${SEGMENT_NAME}"`)
@@ -336,6 +336,103 @@ describe("scenarios > admin > datamodel > segments", () => {
         event_detail: "compare",
         triggered_from: "suggestion_sidebar",
       });
+    });
+  });
+
+  describe("read-only remote sync", () => {
+    const SEGMENT_IN_ORDERS = "Segment in Orders table (published)";
+    const SEGMENT_IN_PEOPLE = "Segment in People table (Unpublished)";
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      cy.log("set up remote sync");
+      H.setupGitSync();
+      H.configureGit("read-only");
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      // Let's leave PEOPLE_ID unpublished
+
+      cy.log("create segments");
+      H.createSegment({
+        name: SEGMENT_IN_ORDERS,
+        description: "Hey oh",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
+        },
+      });
+
+      H.createSegment({
+        name: SEGMENT_IN_PEOPLE,
+        description: "This is a segment in the PEOPLE table",
+        table_id: PEOPLE_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": PEOPLE_ID,
+            filter: [">", ["field", 10, null], 100],
+          },
+        },
+      });
+    });
+
+    it("can't edit published segment from segment list", () => {
+      cy.visit("/admin/datamodel/segments");
+      const getEllipsisIcon = (segmentName: string) => {
+        return cy
+          .findByTestId("segment-list-app")
+          .contains(segmentName)
+          .parent()
+          .parent()
+          .findByRole("img", { name: "ellipsis icon" });
+      };
+
+      cy.log("don't show edit or retire menu options");
+      getEllipsisIcon(SEGMENT_IN_ORDERS).click();
+      H.popover().contains("Edit Segment").should("not.exist");
+      H.popover().contains("Retire Segment").should("not.exist");
+      getEllipsisIcon(SEGMENT_IN_ORDERS).click(); // Exit menu dropdown
+
+      getEllipsisIcon(SEGMENT_IN_PEOPLE).click();
+      // For unpublished segments, the edit menu options are visible
+      H.popover().contains("Edit Segment").should("be.visible");
+      H.popover().contains("Retire Segment").should("be.visible");
+    });
+
+    it("can't edit published segment from segment detail page", () => {
+      cy.visit("/admin/datamodel/segment/1");
+
+      cy.findByRole("alert", {
+        name: /This segment can't be edited/,
+      }).should("be.visible");
+      cy.findByLabelText("Name Your Segment").should("have.attr", "readonly");
+      cy.findByLabelText("Describe Your Segment").should(
+        "have.attr",
+        "readonly",
+      );
+      cy.findByRole("button", { name: /Save changes/ }).should("not.exist");
+
+      cy.log("can still edit a segment if table is not published");
+      cy.visit("/admin/datamodel/segment/2");
+
+      cy.findByRole("alert", {
+        name: /This segment can't be edited/,
+      }).should("not.exist");
+      cy.findByLabelText("Name Your Segment").should(
+        "not.have.attr",
+        "readonly",
+      );
+      cy.findByLabelText("Describe Your Segment").should(
+        "not.have.attr",
+        "readonly",
+      );
+      cy.findByRole("button", { name: /Save changes/ }).should("be.visible");
     });
   });
 });

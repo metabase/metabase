@@ -30,7 +30,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ObjectDetail from "./ObjectDetail";
+import { ObjectDetail } from "./ObjectDetail";
 
 registerVisualizations();
 

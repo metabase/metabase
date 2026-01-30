@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
-import EditableText from "metabase/common/components/EditableText";
-import Markdown from "metabase/common/components/Markdown";
+import { EditableText } from "metabase/common/components/EditableText";
+import { Markdown } from "metabase/common/components/Markdown";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box } from "metabase/ui";
 import type { Card, CardType } from "metabase-types/api";

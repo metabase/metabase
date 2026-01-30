@@ -1,7 +1,7 @@
 import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import { getIcon } from "metabase/lib/icon";
 import { useSelector } from "metabase/lib/redux";

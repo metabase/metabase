@@ -5,11 +5,12 @@ import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
-import SchedulePicker, {
+import {
   type ScheduleChangeProp,
+  SchedulePicker,
 } from "metabase/common/components/SchedulePicker";
-import SendTestPulse from "metabase/common/components/SendTestPulse";
-import Toggle from "metabase/common/components/Toggle";
+import { SendTestPulse } from "metabase/common/components/SendTestPulse";
+import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";

@@ -26,6 +26,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "fetchRequestToken",
     "useExistingUserSession",
     "isGuest",
+    "jwtProviderUri",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -41,6 +42,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "isSaveEnabled",
     "withTitle",
     "withDownloads",
+    "withAlerts",
     "initialSqlParameters",
     "hiddenParameters",
     "drills",

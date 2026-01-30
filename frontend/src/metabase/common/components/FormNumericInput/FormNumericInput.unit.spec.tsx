@@ -4,7 +4,7 @@ import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
-import FormNumericInput from "./FormNumericInput";
+import { FormNumericInput } from "./FormNumericInput";
 
 const TEST_SCHEMA = Yup.object({
   value: Yup.number().required("error"),

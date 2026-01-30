@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { getCollectionName } from "metabase/collections/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import EntityItem from "metabase/common/components/EntityItem";
+import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ItemNameCell,
@@ -219,7 +219,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon size={16} {...icon} c="icon-primary" style={{ flexShrink: 0 }} />
+        <Icon size={16} {...icon} c="icon-brand" style={{ flexShrink: 0 }} />
         {
           <EntityItem.Name
             name={model?.name || ""}

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
@@ -58,6 +59,8 @@ export const ItemList = <
   navLinkProps,
   containerProps = { pb: "xs" },
 }: ItemListProps<Id, Model, Item>) => {
+  const tc = useTranslateContent();
+
   const isTenantUser = useSelector(getIsTenantUser);
   const filteredItems =
     items && shouldShowItem ? items.filter(shouldShowItem) : items;
@@ -118,7 +121,7 @@ export const ItemList = <
               mb={0}
               label={
                 <Flex align="center">
-                  {item.name}{" "}
+                  {tc(item.name)}{" "}
                   <PLUGIN_MODERATION.ModerationStatusIcon
                     status={item.moderated_status}
                     filled

@@ -81,7 +81,7 @@ export function MetabotAdminPage() {
               id="configure-metabot"
               title={c("{0} is the name of an AI assistant")
                 .t`Configure ${metabot.name}`}
-              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
                 .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
             />
             {isEmbedMetabot && (

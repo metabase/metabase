@@ -3,8 +3,8 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/common/components/EmptyState";
-import ErrorDetails from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/types";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";

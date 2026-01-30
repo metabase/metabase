@@ -34,7 +34,7 @@ export const DatabaseNameField = ({
         config.name?.isSlug || false,
       )}
       rightSection={
-        // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings
         <Tooltip label={t`Choose what this data will be called in Metabase.`}>
           <Icon name="info" />
         </Tooltip>

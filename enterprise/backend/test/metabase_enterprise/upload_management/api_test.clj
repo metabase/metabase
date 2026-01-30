@@ -36,6 +36,27 @@
                           (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
                           set))))))))))
 
+(deftest list-uploaded-tables-no-duplicates-test
+  (testing "GET ee/upload-management/tables should not return duplicates for tables in attached DWH"
+    (testing "Tables with is_upload=true in attached DWH should only appear once (not duplicated)"
+      (mt/with-premium-features #{:upload-management :attached-dwh}
+        (mt/with-temp [:model/Database {dwh-db-id :id} {:is_attached_dwh true}
+                       ;; Table in attached DWH with is_upload=true - should appear once, not twice
+                       :model/Table {upload-table-id :id} {:db_id dwh-db-id :is_upload true :active true :name "uploaded_table"}
+                       ;; Table in attached DWH without is_upload - should also appear
+                       :model/Table {non-upload-table-id :id} {:db_id dwh-db-id :is_upload false :active true :name "non_upload_table"}]
+          (let [result (mt/user-http-request :crowberto :get 200 list-url)
+                dwh-table-ids (->> result
+                                   (filter #(= (:db_id %) dwh-db-id))
+                                   (map :id))]
+            (testing "Both tables should be in the result"
+              (is (contains? (set dwh-table-ids) upload-table-id))
+              (is (contains? (set dwh-table-ids) non-upload-table-id)))
+            (testing "Upload table should appear exactly once (no duplicates)"
+              (is (= 1 (count (filter #(= % upload-table-id) dwh-table-ids)))))
+            (testing "Non-upload table should appear exactly once"
+              (is (= 1 (count (filter #(= % non-upload-table-id) dwh-table-ids)))))))))))
+
 (defn- delete-url [table-id]
   (str "ee/upload-management/tables/" table-id))
 

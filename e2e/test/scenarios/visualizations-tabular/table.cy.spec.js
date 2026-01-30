@@ -23,7 +23,7 @@ describe("scenarios > visualizations > table", () => {
   }
 
   function selectFromDropdown(option, clickOpts) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(option).click(clickOpts);
   }
 
@@ -249,7 +249,7 @@ describe("scenarios > visualizations > table", () => {
       cy.icon("gear").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
     cy.findByLabelText("Link text").type("{{C");
@@ -269,7 +269,7 @@ describe("scenarios > visualizations > table", () => {
       })
       .blur();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Wood River 1 fixed text").should(
       "have.attr",
       "href",
@@ -1213,7 +1213,7 @@ function assertCanViewOrdersTableDashcard() {
   H.tableInteractiveScrollContainer().scrollTo("bottomLeft");
 
   // Ensure it renders correct data
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.tableInteractiveBody()
     .findAllByRole("row")
     .last()
@@ -1223,7 +1223,7 @@ function assertCanViewOrdersTableDashcard() {
 
   H.tableInteractiveScrollContainer().scrollTo("bottomRight");
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.tableInteractiveBody()
     .findAllByRole("row")
     .last()
