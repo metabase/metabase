@@ -30,7 +30,7 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
       <ItemContext.Provider value={{ value, label, icon }}>
         <Box
           component="section"
-          ref={ref as Ref<HTMLDivElement>}
+          ref={ref}
           className={S.ActiveStepRoot}
           role="listitem"
           aria-label={title}
@@ -49,6 +49,7 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
               <span className={S.ActiveStepNumberText}>{label}</span>
             )}
           </div>
+
           <div
             className={cx(
               S.ActiveStepTitle,
@@ -57,6 +58,7 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
           >
             {title}
           </div>
+
           <div className={S.ActiveStepContent}>{children}</div>
         </Box>
       </ItemContext.Provider>
@@ -86,6 +88,7 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
             <span className={S.InactiveStepNumberText}>{label}</span>
           )}
         </div>
+
         <div
           className={cx(
             S.InactiveStepTitle,
