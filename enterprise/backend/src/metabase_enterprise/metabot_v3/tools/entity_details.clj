@@ -176,9 +176,10 @@
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
-           db-engine (:engine (if metadata-provider
-                                (lib.metadata/database metadata-provider)
-                                (metabot-v3.tools.u/get-database db-id :engine)))
+           db-engine (some-> (if metadata-provider
+                               (lib.metadata/database metadata-provider)
+                               (metabot-v3.tools.u/get-database db-id :engine))
+                             :engine name)
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
@@ -268,7 +269,7 @@
                             :as   options}]
    (let [id (:id base)
          database-id (:database_id base)
-         database-engine (:engine (lib.metadata/database metadata-provider))
+         database-engine (some-> (lib.metadata/database metadata-provider) :engine name)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)

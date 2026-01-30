@@ -80,6 +80,14 @@
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]])
 
+(mr/def ::measure
+  "A reusable aggregation expression associated with a table. Reference via measure_id in the aggregations array."
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]])
+
 (mr/def ::related-table
   "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
   [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -88,7 +96,7 @@
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
-   [:database_engine {:optional true} [:maybe :keyword]]
+   [:database_engine {:optional true} [:maybe :string]]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields {:optional true} [:maybe [:sequential ::field]]]
@@ -102,12 +110,13 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
-   [:database_engine :keyword]
+   [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields [:sequential ::field]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
    [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
+   [:measures {:optional true} [:maybe [:sequential ::measure]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
 (mr/def ::metric
