@@ -13,14 +13,12 @@ import type { SelectChangeEvent } from "metabase/common/components/Select";
 import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
@@ -579,13 +577,6 @@ const mapDispatchToProps = {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Tables.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
-      card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
