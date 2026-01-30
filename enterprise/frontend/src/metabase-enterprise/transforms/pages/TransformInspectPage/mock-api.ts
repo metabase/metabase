@@ -165,6 +165,38 @@ export const fetchTransformInspect = (
   });
 };
 
+const mockDatasetQuery = {
+  "lib/type": "mbql/query",
+  "lib/metadata": null,
+  stages: [
+    {
+      "lib/type": "mbql.stage/mbql",
+      source_table: 2,
+      aggregation: [
+        [
+          "count",
+          {
+            "lib/uuid": "37c58b18-3f19-448d-86c5-0f40ac07e845",
+          },
+        ],
+      ],
+      breakout: [
+        [
+          "field",
+          {
+            "lib/uuid": "777a6b62-4a4f-4836-9f33-e94ac04cd27a",
+            effective_type: "type/DateTime",
+            base_type: "type/DateTime",
+            temporal_unit: "day",
+          },
+          13,
+        ],
+      ],
+    },
+  ],
+  database: 1,
+};
+
 export const fetchTransformLens = (
   transformId: number,
   lensId: string,
@@ -177,6 +209,15 @@ export const fetchTransformLens = (
     transformId,
     lensId,
   );
+
+  // Sample DB IDs - these match e2e/support/cypress_sample_database.json
+  const SAMPLE_DB_ID = 1;
+  const ORDERS_ID = 1;
+  const ORDERS = { CREATED_AT: 8, TOTAL: 6, QUANTITY: 9, PRODUCT_ID: 3 };
+  const PRODUCTS_ID = 7;
+  const PRODUCTS = { CATEGORY: 51, PRICE: 53, CREATED_AT: 55 };
+  const PEOPLE_ID = 2;
+  const PEOPLE = { SOURCE: 18, CREATED_AT: 22 };
 
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -198,19 +239,11 @@ export const fetchTransformLens = (
           sections: [{ id: "overview", title: "Overview" }],
           cards: [
             {
-              id: "row-count-card",
+              id: "orders-over-time",
               "section-id": "overview",
-              title: "Row Count Over Time",
+              title: "Orders Over Time",
               display: "line",
-              dataset_query: {
-                database: 1,
-                type: "query",
-                query: {
-                  "source-table": 456,
-                  aggregation: [["count"]],
-                  breakout: [["field", 103, { "temporal-unit": "month" }]],
-                },
-              },
+              dataset_query: mockDatasetQuery,
               interestingness: 0.8,
             },
           ],
@@ -241,33 +274,41 @@ export const fetchTransformLens = (
           ],
           cards: [
             {
-              id: "match-rate-card",
+              id: "orders-by-product-category",
               "section-id": "join-metrics",
-              title: "Match Rate by Source",
+              title: "Orders by Product Category",
               display: "bar",
               dataset_query: {
-                database: 1,
+                database: SAMPLE_DB_ID,
                 type: "query",
                 query: {
-                  "source-table": 456,
+                  "source-table": ORDERS_ID,
                   aggregation: [["count"]],
-                  breakout: [["field", 101, null]],
+                  breakout: [
+                    [
+                      "field",
+                      PRODUCTS.CATEGORY,
+                      { "source-field": ORDERS.PRODUCT_ID },
+                    ],
+                  ],
                 },
               },
               interestingness: 0.9,
             },
             {
-              id: "orphan-trend",
+              id: "orders-trend-weekly",
               "section-id": "join-metrics",
-              title: "Orphaned Records Trend",
+              title: "Orders Trend (Weekly)",
               display: "line",
               dataset_query: {
-                database: 1,
+                database: SAMPLE_DB_ID,
                 type: "query",
                 query: {
-                  "source-table": 123,
+                  "source-table": ORDERS_ID,
                   aggregation: [["count"]],
-                  breakout: [["field", 2, { "temporal-unit": "week" }]],
+                  breakout: [
+                    ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+                  ],
                 },
               },
               interestingness: 0.7,
@@ -293,20 +334,20 @@ export const fetchTransformLens = (
           ],
           cards: [
             {
-              id: "amount-dist-source",
+              id: "order-total-distribution",
               "section-id": "numeric",
-              title: "Total Amount (Source)",
+              title: "Order Total Distribution",
               display: "bar",
               dataset_query: {
-                database: 1,
+                database: SAMPLE_DB_ID,
                 type: "query",
                 query: {
-                  "source-table": 123,
+                  "source-table": ORDERS_ID,
                   aggregation: [["count"]],
                   breakout: [
                     [
                       "field",
-                      3,
+                      ORDERS.TOTAL,
                       { binning: { strategy: "num-bins", "num-bins": 10 } },
                     ],
                   ],
@@ -315,26 +356,58 @@ export const fetchTransformLens = (
               interestingness: 0.6,
             },
             {
-              id: "amount-dist-output",
+              id: "product-price-distribution",
               "section-id": "numeric",
-              title: "Total Amount (Output)",
+              title: "Product Price Distribution",
               display: "bar",
               dataset_query: {
-                database: 1,
+                database: SAMPLE_DB_ID,
                 type: "query",
                 query: {
-                  "source-table": 456,
+                  "source-table": PRODUCTS_ID,
                   aggregation: [["count"]],
                   breakout: [
                     [
                       "field",
-                      104,
+                      PRODUCTS.PRICE,
                       { binning: { strategy: "num-bins", "num-bins": 10 } },
                     ],
                   ],
                 },
               },
               interestingness: 0.6,
+            },
+            {
+              id: "products-by-category",
+              "section-id": "categorical",
+              title: "Products by Category",
+              display: "bar",
+              dataset_query: {
+                database: SAMPLE_DB_ID,
+                type: "query",
+                query: {
+                  "source-table": PRODUCTS_ID,
+                  aggregation: [["count"]],
+                  breakout: [["field", PRODUCTS.CATEGORY, null]],
+                },
+              },
+              interestingness: 0.7,
+            },
+            {
+              id: "people-by-source",
+              "section-id": "categorical",
+              title: "People by Source",
+              display: "bar",
+              dataset_query: {
+                database: SAMPLE_DB_ID,
+                type: "query",
+                query: {
+                  "source-table": PEOPLE_ID,
+                  aggregation: [["count"]],
+                  breakout: [["field", PEOPLE.SOURCE, null]],
+                },
+              },
+              interestingness: 0.5,
             },
           ],
         },
