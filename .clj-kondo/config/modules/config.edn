@@ -782,6 +782,7 @@
            metabase.llm.init}
    :uses #{analytics
            api
+           driver
            lib
            lib-be
            models

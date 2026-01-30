@@ -12,6 +12,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.costs :as llm.costs]
@@ -30,8 +31,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- Rate Limiting -----------------------------------------------
-
 (def ^:private sql-gen-throttlers
   "Throttlers for SQL generation endpoints.
    - :user-id limits requests per user (default 20/minute)
@@ -43,116 +42,21 @@
                                         :attempts-threshold (llm.settings/llm-rate-limit-per-ip)
                                         :attempt-ttl-ms 60000)})
 
-;;; ------------------------------------------------ Logging ------------------------------------------------
-
-(defn- debug-logging-enabled?
-  "Check if debug file logging is enabled via MB_OSS_SQLBOT_DEBUG_LOGGING env var.
-   Disabled by default."
-  []
-  (= "true" (System/getenv "MB_OSS_SQLBOT_DEBUG_LOGGING")))
-
-(def ^:private log-dir "logs/oss-sqlgen")
-
-(def ^:private timestamp-formatter
-  (DateTimeFormatter/ofPattern "yyyyMMdd_HHmmss_SSS"))
-
-(defn- current-timestamp
-  "Generate a timestamp string for log filenames."
-  []
-  (.format (LocalDateTime/now) timestamp-formatter))
-
-(defn- ensure-log-dir!
-  "Ensure the log directory exists."
-  []
-  (.mkdirs (io/file log-dir)))
-
-(defn- log-to-file!
-  "Write content to a log file. Returns the filename written."
-  [filename content]
-  (ensure-log-dir!)
-  (let [filepath (str log-dir "/" filename)]
-    (spit filepath content)
-    filepath))
-
-;;; -------------------------------------------- Database Dialect --------------------------------------------
-
-(def ^:private engine->dialect
-  "Map of database engine keywords to human-readable dialect names."
-  {:postgres   "PostgreSQL"
-   :mysql      "MySQL"
-   :h2         "H2"
-   :sqlserver  "SQL Server"
-   :oracle     "Oracle"
-   :bigquery   "BigQuery"
-   :snowflake  "Snowflake"
-   :redshift   "Amazon Redshift"
-   :sqlite     "SQLite"
-   :presto     "Presto"
-   :sparksql   "Spark SQL"
-   :clickhouse "ClickHouse"
-   :vertica    "Vertica"
-   :mongo      "MongoDB"})
-
-(def ^:private engine->dialect-file
-  "Map of database engine keywords to dialect instruction file names (without extension).
-   Multiple engine keywords may map to the same dialect file when they share SQL syntax."
-  {;; PostgreSQL family
-   :postgres      "postgresql"
-   :postgresql    "postgresql"
-   ;; MySQL family
-   :mysql         "mysql"
-   :mariadb       "mysql"
-   ;; Cloud warehouses
-   :bigquery-cloud-sdk "bigquery"
-   :bigquery      "bigquery"
-   :snowflake     "snowflake"
-   :redshift      "redshift"
-   ;; Presto/Trino family
-   :athena        "athena"
-   :presto        "athena"
-   :presto-jdbc   "athena"
-   :trino         "athena"
-   :starburst     "athena"
-   ;; Analytics engines
-   :clickhouse    "clickhouse"
-   :druid         "druid"
-   :druid-jdbc    "druid"
-   :vertica       "vertica"
-   ;; Spark family
-   :databricks    "databricks"
-   :sparksql      "databricks"
-   :spark         "databricks"
-   ;; Enterprise databases
-   :oracle        "oracle"
-   :sqlserver     "sqlserver"
-   ;; Embedded/lightweight
-   :h2            "h2"
-   :sqlite        "sqlite"})
-
 (defn- database-engine
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
     (t2/select-one-fn :engine :model/Database :id database-id)))
 
-(defn- database-dialect
-  "Get the SQL dialect name for a database."
-  [database-id]
-  (let [engine (database-engine database-id)]
-    (or (get engine->dialect engine)
-        (some-> engine name str/capitalize)
-        "SQL")))
-
-(defn- load-dialect-instructions
+(def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.
-   Returns nil if no instructions file exists for the given engine."
-  [engine]
-  (when-let [dialect-file (get engine->dialect-file engine)]
-    (let [resource-path (str "llm/prompts/dialects/" dialect-file ".md")]
-      (when-let [resource (io/resource resource-path)]
-        (slurp resource)))))
-
-;;; -------------------------------------------- System Prompt --------------------------------------------
+   Returns nil if no instructions file exists for the given engine.
+   Memoized since dialect files are static resources."
+  (memoize
+   (fn [engine]
+     (when-let [resource-path (driver/llm-sql-dialect-resource engine)]
+       (when-let [resource (io/resource resource-path)]
+         (slurp resource))))))
 
 (def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
 
@@ -175,11 +79,8 @@
                                 :dialect_instructions dialect-instructions}
                          source-sql (assoc :source_sql source-sql))))
 
-;;; ------------------------------------------ Response Formatting ------------------------------------------
-
 (defn- parse-sql-response
-  "Parse the structured JSON response and extract the SQL.
-   Handles both map (from non-streaming) and string (from streaming accumulator) responses."
+  "Parse the structured JSON response and extract the SQL."
   [response]
   (cond
     (map? response)    (:sql response)
@@ -188,8 +89,6 @@
                          (catch Exception _
                            response))
     :else              response))
-
-;;; ------------------------------------------ Token Usage Tracking ------------------------------------------
 
 (defn- track-token-usage!
   "Track token usage for LLM API calls via Snowplow."
@@ -231,8 +130,6 @@
                           :result       result}
                          api/*current-user-id*))
 
-;;; ------------------------------------------ List Models Endpoint ------------------------------------------
-
 (api.macros/defendpoint :get "/list-models"
   :- [:map [:models [:sequential [:map
                                   [:id :string]
@@ -246,8 +143,6 @@
     (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
   (llm.anthropic/list-models))
-
-;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-tables."
@@ -287,8 +182,6 @@
         table-ids (llm.context/extract-tables-from-sql database_id sql)
         tables    (llm.context/get-tables-with-columns database_id table-ids)]
     {:tables (or tables [])}))
-
-;;; ------------------------------------------ Generate SQL Endpoint ------------------------------------------
 
 (api.macros/defendpoint :post "/generate-sql"
   :- [:map
@@ -357,22 +250,17 @@
           (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                           {:status-code 400})))
         (let [engine               (database-engine database_id)
-              dialect              (database-dialect database_id)
+              dialect              (if engine (driver/display-name engine) "SQL")
               dialect-instructions (load-dialect-instructions engine)
               system-prompt        (build-system-prompt {:dialect              dialect
                                                          :schema-ddl           ddl
                                                          :dialect-instructions dialect-instructions
                                                          :source-sql           source_sql})
-              timestamp            (current-timestamp)
               start-timer          (u/start-timer)]
-          (when (debug-logging-enabled?)
-            (log-to-file! (str timestamp "_prompt.txt") system-prompt))
           (try
             (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
                                                       {:system   system-prompt
                                                        :messages [{:role "user" :content prompt}]})]
-              (when (debug-logging-enabled?)
-                (log-to-file! (str timestamp "_response.txt") (pr-str result)))
               (track-token-usage! (assoc usage
                                          :duration-ms duration-ms
                                          :user-id api/*current-user-id*

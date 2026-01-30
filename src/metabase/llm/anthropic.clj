@@ -95,8 +95,8 @@
   (try
     (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
           response (http/get url
-                             {:headers            {"x-api-key"         (get-api-key-or-throw)
-                                                   "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
+                             {:headers {"x-api-key"         (get-api-key-or-throw)
+                                        "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
           body (json/decode+kw (:body response))
           models (reverse (sort-by :created_at (:data body)))]
       {:models (map #(select-keys % [:id :display_name]) models)})
@@ -121,14 +121,14 @@
                     :messages messages}
         start-time (u/start-timer)]
     (try
-      (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/messages")
-            response    (http/post url
-                                   {:headers            (build-request-headers (get-api-key-or-throw))
-                                    :body               (json/encode (build-request-body request))
-                                    :as                 :json
-                                    :content-type       :json
-                                    :socket-timeout     (llm.settings/llm-request-timeout-ms)
-                                    :connection-timeout (llm.settings/llm-connection-timeout-ms)})
+      (let [url      (str (llm.settings/llm-anthropic-api-url) "/v1/messages")
+            response (http/post url
+                                {:headers            (build-request-headers (get-api-key-or-throw))
+                                 :body               (json/encode (build-request-body request))
+                                 :as                 :json
+                                 :content-type       :json
+                                 :socket-timeout     (llm.settings/llm-request-timeout-ms)
+                                 :connection-timeout (llm.settings/llm-connection-timeout-ms)})
             duration-ms (u/since-ms start-time)
             body        (:body response)
             usage       (:usage body)]
