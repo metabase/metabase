@@ -19,6 +19,7 @@ export const useCompletedEmbeddingHubSteps = (): {
   const data = useMemo(() => {
     if (isLoading || !embeddingHubChecklist) {
       return {
+        // main checklist
         "create-test-embed": false,
         "add-data": false,
         "create-dashboard": false,
@@ -26,10 +27,12 @@ export const useCompletedEmbeddingHubSteps = (): {
         "secure-embeds": false,
         "embed-production": false,
         "create-models": false,
+        "data-permissions-and-enable-tenants": false,
+
+        // "configure data permissions and enable tenants" sub-checklist
         "create-tenants": false,
         "enable-tenants": false,
         "setup-data-segregation-strategy": false,
-        "data-permissions-and-enable-tenants": false,
       };
     }
 
