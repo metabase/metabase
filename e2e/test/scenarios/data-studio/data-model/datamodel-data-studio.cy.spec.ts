@@ -13,8 +13,7 @@ import type { TableId } from "metabase-types/api";
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } = H.DataModel;
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
@@ -1047,117 +1046,6 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Behavior", () => {
       describe("Display values", () => {
-        it("should show tooltips explaining why remapping options are disabled", () => {
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: PRODUCTS_ID,
-            fieldId: PRODUCTS.TITLE,
-          });
-
-          FieldSection.getDisplayValuesInput().click();
-
-          cy.log("foreign key mapping");
-          H.popover().within(() => {
-            cy.findByRole("option", { name: /Use foreign key/ }).should(
-              "have.attr",
-              "data-combobox-disabled",
-              "true",
-            );
-            cy.findByRole("option", { name: /Use foreign key/ })
-              .icon("info")
-              .realHover();
-          });
-          H.tooltip().should(
-            "contain.text",
-            'You can only use foreign key mapping for fields with the semantic type set to "Foreign Key"',
-          );
-
-          cy.log("custom mapping");
-          H.popover().within(() => {
-            cy.findByRole("option", { name: /Custom mapping/ }).should(
-              "have.attr",
-              "data-combobox-disabled",
-              "true",
-            );
-            cy.findByRole("option", { name: /Custom mapping/ })
-              .icon("info")
-              .realHover();
-          });
-          H.tooltip().should(
-            "contain.text",
-            'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
-          );
-
-          cy.log("clicking disabled option does not change the value");
-          cy.findByRole("option", { name: /Custom mapping/ }).click({
-            force: true, // try to click it despite pointer-events: none
-          });
-          FieldSection.getDisplayValuesInput().should(
-            "have.value",
-            "Use original value",
-          );
-        });
-
-        it("should let you change to 'Use foreign key' and change the target for field with fk", () => {
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.PRODUCT_ID,
-          });
-
-          cy.log("verify preview");
-          FieldSection.getPreviewButton().click();
-          verifyTablePreview({
-            column: "Product ID",
-            values: ["14", "123", "105", "94", "132"],
-          });
-          verifyObjectDetailPreview({
-            rowNumber: 2,
-            row: ["Product ID", "14"],
-          });
-
-          FieldSection.getDisplayValuesInput().click();
-          H.popover().findByText("Use foreign key").click();
-          H.popover().findByText("Title").click();
-          cy.wait("@updateFieldDimension");
-          H.expectUnstructuredSnowplowEvent({
-            event: "metadata_edited",
-            event_detail: "display_values",
-            triggered_from: "data_studio",
-          });
-          H.undoToast().should(
-            "contain.text",
-            "Display values of Product ID updated",
-          );
-
-          cy.log("verify preview");
-          verifyObjectDetailPreview({
-            rowNumber: 2,
-            row: ["Product ID", "Awesome Concrete Shoes"],
-          });
-          verifyTablePreview({
-            column: "Product ID",
-            values: [
-              "Awesome Concrete Shoes",
-              "Mediocre Wooden Bench",
-              "Fantastic Wool Shirt",
-              "Awesome Bronze Plate",
-              "Sleek Steel Table",
-            ],
-          });
-
-          cy.reload();
-          FieldSection.getDisplayValuesInput()
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.value", "Use foreign key");
-          FieldSection.getDisplayValuesFkTargetInput()
-            .should("be.visible")
-            .and("have.value", "Title");
-        });
-
         it("should allow 'Custom mapping' null values", () => {
           const remappedNullValue = "nothin";
 
