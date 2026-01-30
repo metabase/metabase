@@ -55,7 +55,7 @@ export function DependencyList({
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useListGraphNodesQuery =
-    mode === "breaking"
+    mode === "broken"
       ? useListBreakingGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
 

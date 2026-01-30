@@ -1,4 +1,4 @@
-export type DependencyListMode = "breaking" | "unreferenced";
+export type DependencyListMode = "broken" | "unreferenced";
 
 export type DependencyListParamsOptions = {
   withSetLastUsedParams?: boolean;
