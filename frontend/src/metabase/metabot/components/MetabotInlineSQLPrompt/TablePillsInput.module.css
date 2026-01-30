@@ -9,7 +9,7 @@
   padding: 0.25rem 0.5rem;
 
   &:hover {
-    background-color: var(--mb-color-background-hover-light);
+    background: var(--mb-color-background-brand);
     color: var(--mb-color-text-primary);
   }
 
