@@ -1,7 +1,4 @@
-import {
-  modal,
-  popover,
-} from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import { pickEntity } from "./e2e-collection-helpers";
 
