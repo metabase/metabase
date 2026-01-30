@@ -47,7 +47,8 @@
    [toucan2.model :as t2.model]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.transformed :as t2.transformed]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [toucan2.util :as t2.u])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -390,6 +391,29 @@
                 :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
        :target {:type "table"
                 :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))}}))})
+
+;; WorkspaceTransform use composite primary keys are currently t2/insert-returning-instance!
+;; does not return the instance for model with composite keys on h2 and mysql
+;; so we have to define a custom with-temp here
+(methodical/defmethod t2.with-temp/do-with-temp* :model/WorkspaceTransform
+  [model explicit-attributes f]
+  (assert (some? model) (format "%s model cannot be nil." `with-temp))
+  (when (some? explicit-attributes)
+    (assert (map? explicit-attributes) (format "attributes passed to %s must be a map." `with-temp)))
+  (let [defaults          (t2.with-temp/with-temp-defaults model)
+        merged-attributes (merge {} defaults explicit-attributes)]
+    (t2.u/try-with-error-context ["with temp" {::model               model
+                                               ::explicit-attributes explicit-attributes
+                                               ::default-attributes  defaults
+                                               ::merged-attributes   merged-attributes}]
+      (let [temp-object (or (t2/insert-returning-instance! model merged-attributes)
+                            (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id merged-attributes)
+                                           :workspace_id (:workspace_id merged-attributes)))]
+        (try
+          (testing (format "\nwith temporary %s\n" (pr-str model))
+            (f temp-object))
+          (finally
+            (t2/delete! model :toucan/pk ((t2/select-pks-fn model) temp-object))))))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
