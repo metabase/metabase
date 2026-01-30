@@ -176,7 +176,7 @@
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
                           (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
-                  (log/info "Done processing notification")))
+                  (log/info "Sent successfully")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
