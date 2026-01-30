@@ -3,6 +3,7 @@ import type {
   OmniPickerItem,
   OmniPickerQuestionItem,
   OmniPickerTableItem,
+  OmniPickerValue,
 } from "metabase/common/components/Pickers";
 import type { TransformPickerItem } from "metabase/plugins";
 import type {
@@ -15,8 +16,6 @@ import type {
 
 import { getDependencyType } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
-
-import type { EntryPickerItem } from "./types";
 
 export function getTablePickerItem(
   node: DependencyNode,
@@ -44,6 +43,7 @@ export function getTransformPickerItem(
     id: node.id,
     name: node.data.name,
     model: "transform",
+    namespace: "transforms",
   };
 }
 
@@ -102,7 +102,7 @@ export function getDashboardPickerItem(
 
 export function getEntryPickerItem(
   node: DependencyNode,
-): EntryPickerItem | undefined {
+): OmniPickerValue | undefined {
   return (
     getTablePickerItem(node) ??
     getTransformPickerItem(node) ??

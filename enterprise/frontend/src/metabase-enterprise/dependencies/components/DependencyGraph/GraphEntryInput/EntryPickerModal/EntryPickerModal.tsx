@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   EntityPickerModal,
   type OmniPickerItem,
-  type OmniPickerValue,
 } from "metabase/common/components/Pickers";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
@@ -40,7 +39,7 @@ export function EntryPickerModal({
     <EntityPickerModal
       title={t`Pick an item to see its dependencies`}
       models={ENTRY_PICKER_MODELS}
-      value={selectedItem as OmniPickerValue | undefined}
+      value={selectedItem}
       options={ENTITY_PICKER_OPTIONS}
       recentsContext={RECENTS_CONTEXT}
       onChange={handleItemSelect}

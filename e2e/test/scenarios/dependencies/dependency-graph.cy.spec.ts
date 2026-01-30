@@ -198,7 +198,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemIcon: "metric",
       });
       testEntityPicker({
-        path: ["Transforms", TABLE_BASED_TRANSFORM_NAME],
+        path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
       });
     });

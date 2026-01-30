@@ -13,7 +13,7 @@ import {
 } from "metabase/api";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type {
   Collection,
   CollectionNamespace,
@@ -310,6 +310,31 @@ const isCollection = (
   );
 };
 
+const getNamespace = (
+  item: Awaited<ReturnType<typeof getItemByModel>>,
+): CollectionNamespace | undefined => {
+  if (!item || typeof item !== "object") {
+    return undefined;
+  }
+
+  if ("namespace" in item) {
+    return item.namespace as CollectionNamespace;
+  }
+  if (
+    "collection" in item &&
+    typeof item.collection === "object" &&
+    !!item.collection &&
+    "namespace" in item.collection
+  ) {
+    return item.collection?.namespace as CollectionNamespace;
+  }
+
+  if ("collection_namespace" in item) {
+    return item.collection_namespace as CollectionNamespace;
+  }
+  return undefined;
+};
+
 async function getCollectionPathFromValue({
   value,
   dispatch,
@@ -340,7 +365,8 @@ async function getCollectionPathFromValue({
   const isCollectionValue = isCollection(item, value);
   const parentCollectionId = isCollectionValue ? item.id : item?.collection_id;
 
-  const itemNamespace = isCollectionValue ? item.namespace : undefined;
+  const itemNamespace =
+    value.namespace !== undefined ? value.namespace : getNamespace(item);
 
   const rootCollectionItem = await getRootCollectionItem({
     namespace: itemNamespace ?? value.namespace ?? null,
@@ -447,7 +473,7 @@ async function getCollectionPathFromValue({
     const collectionItems = await dispatch(
       collectionApi.endpoints.listCollectionItems.initiate({
         id: collectionId,
-        namespace: value.namespace ?? undefined,
+        namespace: itemNamespace,
         ...getCollectionItemsOptions({ models }),
       }),
     )
@@ -485,7 +511,6 @@ async function getCollectionPathFromValue({
       ...("can_write" in item ? { can_write: item.can_write } : {}),
     });
   }
-
   return locationPath;
 }
 
@@ -519,6 +544,13 @@ function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {
     case "snippet":
       return dispatch(
         snippetApi.endpoints.getSnippet.initiate(Number(value.id)),
+      ).unwrap();
+    case "transform":
+      return dispatch(
+        // @ts-expect-error - FIXME: this is a nightmare to type, and it's moving to OSS anyway
+        PLUGIN_TRANSFORMS.transformApi.endpoints.getTransform.initiate(
+          Number(value.id),
+        ),
       ).unwrap();
     default:
       return Promise.resolve(null);

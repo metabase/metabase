@@ -1,6 +1,6 @@
 import { PLUGIN_ENTITIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { useGetTransformQuery } from "metabase-enterprise/api";
+import { transformApi, useGetTransformQuery } from "metabase-enterprise/api";
 import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
@@ -35,5 +35,7 @@ export function initializePlugin() {
       getDataStudioTransformRoutes;
     PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
     PLUGIN_TRANSFORMS.getRootCollectionItem = getRootCollectionItem;
+    // @ts-expect-error - FIXME: this is a nightmare to type, and it's moving to OSS anyway
+    PLUGIN_TRANSFORMS.transformApi = transformApi;
   }
 }
