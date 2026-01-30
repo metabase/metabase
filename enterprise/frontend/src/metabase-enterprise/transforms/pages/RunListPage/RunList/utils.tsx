@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Text, Tooltip } from "metabase/ui";
+import { Group, SortableHeaderPill, Text, Tooltip } from "metabase/ui";
 import type {
   TransformRun,
   TransformTag,
@@ -17,6 +17,7 @@ import {
 } from "../../../utils";
 
 import { TagList } from "./TagList";
+import { TimezoneIndicator } from "./TimezoneIndicator";
 
 function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
@@ -59,7 +60,12 @@ function getStartedAtColumn(
 ): TreeTableColumnDef<TransformRun> {
   return {
     id: "started-at",
-    header: t`Started at`,
+    header: () => (
+      <Group gap="xs" wrap="nowrap">
+        <SortableHeaderPill name={t`Started at`} />
+        <TimezoneIndicator />
+      </Group>
+    ),
     width: "auto",
     enableSorting: false,
     accessorFn: (run) => {
@@ -79,7 +85,12 @@ function getEndedAtColumn(
 ): TreeTableColumnDef<TransformRun> {
   return {
     id: "ended-at",
-    header: t`Ended at`,
+    header: () => (
+      <Group gap="xs" wrap="nowrap">
+        <SortableHeaderPill name={t`Ended at`} />
+        <TimezoneIndicator />
+      </Group>
+    ),
     width: "auto",
     enableSorting: false,
     accessorFn: (run) => {

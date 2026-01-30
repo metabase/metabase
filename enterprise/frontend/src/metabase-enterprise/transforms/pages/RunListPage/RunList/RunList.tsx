@@ -74,6 +74,7 @@ export function RunList({ runs, totalCount, params, tags }: RunListProps) {
         <TreeTable
           instance={treeTableInstance}
           emptyState={<ListEmptyState label={notFoundLabel} />}
+          ariaLabel={t`Transform runs`}
           onRowClick={handleRowActivate}
         />
       </Card>

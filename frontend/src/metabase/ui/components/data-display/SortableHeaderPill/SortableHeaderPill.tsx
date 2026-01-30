@@ -1,9 +1,5 @@
 import cx from "classnames";
-import {
-  type ComponentPropsWithoutRef,
-  type ReactNode,
-  forwardRef,
-} from "react";
+import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Icon } from "metabase/ui";
@@ -14,7 +10,6 @@ interface SortableHeaderPillProps extends ComponentPropsWithoutRef<"div"> {
   name: string;
   sort?: "asc" | "desc";
   align?: "left" | "right";
-  rightSection?: ReactNode;
 }
 
 export const SortableHeaderPill = forwardRef<
@@ -39,7 +34,6 @@ export const SortableHeaderPill = forwardRef<
           data-testid="header-sort-indicator"
         />
       )}
-      {rightSection}
     </div>
   );
 });
