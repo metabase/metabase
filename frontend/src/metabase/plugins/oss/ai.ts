@@ -66,7 +66,7 @@ type PluginMetabotType = {
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
-  getAdminRoutes: () => JSX.Element[];
+  getAdminRoutes: (() => JSX.Element[]) | null;
   getMetabotRoutes: () => React.ReactElement | null;
   getMetabotQueryBuilderRoute: () => React.ReactElement | null;
   getNewMenuItemAIExploration: (
@@ -145,13 +145,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
         children,
       );
   },
-  getAdminRoutes: () => {
-    /* eslint-disable @typescript-eslint/no-var-requires */
-    const {
-      getAdminRoutes,
-    } = require("metabase/metabot/components/MetabotAdmin/MetabotAdminPage");
-    return getAdminRoutes();
-  },
+  getAdminRoutes: null,
   getMetabotRoutes: () => null,
   getMetabotQueryBuilderRoute: () => null,
   getNewMenuItemAIExploration: () => undefined,

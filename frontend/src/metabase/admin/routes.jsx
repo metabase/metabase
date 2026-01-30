@@ -37,6 +37,7 @@ import {
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
@@ -44,7 +45,6 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
-  PLUGIN_METABOT,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -265,7 +265,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
 
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-          {PLUGIN_METABOT.getAdminRoutes()}
+          {getMetabotAdminRoutes()}
         </Route>
 
         <Route path="tools" component={createAdminRouteGuard("tools")}>

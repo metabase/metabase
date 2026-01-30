@@ -7,15 +7,20 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
 
 export function getAdminRoutes() {
-  return [
-    <IndexRoute key="index" component={MetabotAdminPage} />,
-    <Redirect key="redirect" from="*" to="/admin/metabot" />,
-  ];
+  // NOTE: weird cypress bundle error happens if this `getAdminRoutes` fn
+  // is imported into our ai plugin file as the default OSS implementation.
+  return (
+    PLUGIN_METABOT.getAdminRoutes?.() ?? [
+      <IndexRoute key="index" component={MetabotAdminPage} />,
+      <Redirect key="redirect" from="*" to="/admin/metabot" />,
+    ]
+  );
 }
 
 function MetabotAdminPage() {
