@@ -1,10 +1,10 @@
 (ns metabase.llm.anthropic-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
