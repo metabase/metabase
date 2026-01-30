@@ -5,6 +5,7 @@ import { NativeEditor } from "e2e/support/helpers";
 import type {
   DatabaseId,
   PythonTransformTableAliases,
+  TransformId,
   TransformTagId,
   WorkspaceRunResponse,
 } from "metabase-types/api";
@@ -1711,6 +1712,33 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify Edit transform button is now enabled");
       cy.findByRole("button", { name: /Edit/ }).should("be.enabled");
+    });
+
+    // unskip once GDGT-1564 is unblocked
+    it.skip("should not allow workspace checkout when workspaces are disabled on DB (blocked by backend)", () => {
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: false,
+      });
+
+      cy.log("Disable workspaces on the database");
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
+        settings: { "database-enable-workspaces": false },
+      });
+
+      cy.get<TransformId>("@transformId").then((transformId) => {
+        H.visitTransform(transformId);
+      });
+
+      H.DataStudio.Transforms.editDefinitionButton().click();
+
+      cy.log("Verify workspace checkout is disabled");
+      // The backend should return checkout_disabled with a reason like "database-workspaces-disabled"
+      // Frontend maps this to a user-friendly message via getCheckoutDisabledMessage()
+      H.popover().contains("New workspace").should("be.disabled");
+      H.popover().contains("New workspace").realHover();
+      // TODO: update tooltip text once backend is done
+      H.tooltip().should("contain.text", "cannot be edited in a workspace");
     });
   });
 
