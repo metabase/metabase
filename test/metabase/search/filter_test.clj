@@ -8,8 +8,7 @@
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.transforms.feature-gating :as transforms.gating]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -27,7 +26,7 @@
 (defn- with-all-models [search-ctx]
   (assoc search-ctx
          :models search.config/all-models
-         :enabled-transform-source-types (transforms.gating/enabled-source-types)))
+         :enabled-transform-source-types #{"mbql"}))
 
 (defn- with-all-models-and-regular-user [search-ctx]
   (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false)))
@@ -86,21 +85,22 @@
                (search.filter/search-context->applicable-models search-ctx)))))))
 
 (def kitchen-sink-filter-context
-  {:archived?                    true
-   :collection                   5
-   :created-at                   "2024-10-01"
-   :created-by                   [123]
-   :include-dashboard-questions? true
-   :table-db-id                  231
-   :last-edited-by               [321]
-   :last-edited-at               "2024-10-02"
-   :search-native-query          true
-   :verified                     true
-   :ids                          [1 2 3 4]
-   :non-temporal-dim-ids         "[1]"
-   :has-temporal-dim             true
-   :display-type                 ["line"]
-   :models                       (disj search.config/all-models "dataset")})
+  {:archived?                      true
+   :collection                     5
+   :created-at                     "2024-10-01"
+   :created-by                     [123]
+   :include-dashboard-questions?   true
+   :table-db-id                    231
+   :last-edited-by                 [321]
+   :last-edited-at                 "2024-10-02"
+   :search-native-query            true
+   :verified                       true
+   :ids                            [1 2 3 4]
+   :non-temporal-dim-ids           "[1]"
+   :has-temporal-dim               true
+   :display-type                   ["line"]
+   :models                         (disj search.config/all-models "dataset")
+   :enabled-transform-source-types #{"mbql"}})
 
 (deftest with-filters-test
   (testing "The kitchen sink context is complete"

@@ -76,25 +76,26 @@
                       :model_updated_at now})
                     ingested-transform))))))
 
-    (testing "A simple Python transform gets properly ingested & indexed for search"
-      (let [now (t/truncate-to (t/offset-date-time) :millis)]
-        (mt/with-temp [:model/Transform {transform-id :id} {:name        "Test Python transform"
-                                                            :description "A Python test transform"
-                                                            :source      {:type "python"
-                                                                          :source-database (mt/id)
-                                                                          :body "import pandas as pd\n"}
-                                                            :target      {:database (mt/id)}
-                                                            :created_at  now
-                                                            :updated_at  now}]
-          (let [ingested-transform (ingest-then-fetch! "transform" "Test Python transform")]
-            (is (=? (index-entity
-                     {:model            "transform"
-                      :model_id         (str transform-id)
-                      :name             "Test Python transform"
-                      :database_id      (mt/id)
-                      :model_created_at now
-                      :model_updated_at now})
-                    ingested-transform))))))
+    (mt/when-ee-evailable
+     (testing "A simple Python transform gets properly ingested & indexed for search"
+       (let [now (t/truncate-to (t/offset-date-time) :millis)]
+         (mt/with-temp [:model/Transform {transform-id :id} {:name        "Test Python transform"
+                                                             :description "A Python test transform"
+                                                             :source      {:type "python"
+                                                                           :source-database (mt/id)
+                                                                           :body "import pandas as pd\n"}
+                                                             :target      {:database (mt/id)}
+                                                             :created_at  now
+                                                             :updated_at  now}]
+           (let [ingested-transform (ingest-then-fetch! "transform" "Test Python transform")]
+             (is (=? (index-entity
+                      {:model            "transform"
+                       :model_id         (str transform-id)
+                       :name             "Test Python transform"
+                       :database_id      (mt/id)
+                       :model_created_at now
+                       :model_updated_at now})
+                     ingested-transform)))))))
 
     (testing "A simple MBQL transform gets properly ingested & indexed for search"
       (let [now (t/truncate-to (t/offset-date-time) :millis)]
@@ -130,16 +131,17 @@
           (is (re-find #"select" vector-value))
           (is (re-find #"sql" vector-value))))
 
-      (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
-                                         :source {:type "python"
-                                                  :source-database (mt/id)
-                                                  :body "import pandas as pd\n"}
-                                         :name "Test python transform"}]
-        (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
-              vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
-          (is (string? vector-value))
-          (is (re-find #"import" vector-value))
-          (is (re-find #"panda" vector-value))))
+      (mt/when-ee-evailable
+       (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
+                                          :source {:type "python"
+                                                   :source-database (mt/id)
+                                                   :body "import pandas as pd\n"}
+                                          :name "Test python transform"}]
+         (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
+               vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+           (is (string? vector-value))
+           (is (re-find #"import" vector-value))
+           (is (re-find #"panda" vector-value)))))
 
       (testing "MBQL queries are not indexed in with_native_query_vector"
         (mt/with-temp [:model/Transform _ {:target {:database (mt/id)

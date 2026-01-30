@@ -620,4 +620,5 @@
    "pulse-card"        {:db-model :model/PulseCard          :alias :pulse-card}
    "pulse-channel"     {:db-model :model/PulseChannel       :alias :pulse-channel}
    "timeline"          {:db-model :model/Timeline           :alias :timeline}
+   "transform"         {:db-model :model/Transform          :alias :transform}
    "user"              {:db-model :model/User               :alias :user}})
