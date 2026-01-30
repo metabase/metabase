@@ -4,11 +4,11 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
-   ;; To register implementation of referenced columns
+    ;; To register implementation of referenced columns
    [metabase.sql-tools.sqlglot.experimental]
-   [metabase.sql-tools.sqlglot.shim :as sqlglot.shim]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -46,7 +46,7 @@
         db-transforms (lib.metadata/transforms query)
         sql (lib/raw-native-query query)
         default-schema (driver.sql/default-schema driver)
-        query-tables (sqlglot.shim/referenced-tables sql (driver->dialect driver))]
+        query-tables (sql-parsing/referenced-tables sql (driver->dialect driver))]
     (into #{}
           (keep (fn [[table-schema table]]
                   (sql-tools.common/find-table-or-transform
@@ -94,7 +94,7 @@
   (let [sql (lib/raw-native-query query)
         default-table-schema* (driver.sql/default-schema driver)
         sqlglot-schema* (sqlglot-schema driver query)
-        validation-result (sqlglot.shim/validate-query
+        validation-result (sql-parsing/validate-query
                            (driver->dialect driver) sql default-table-schema* sqlglot-schema*)]
     (if (= :ok (:status validation-result))
       #{}

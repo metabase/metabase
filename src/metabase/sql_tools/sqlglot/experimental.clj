@@ -1,4 +1,4 @@
-(ns metabase.sql-tools.sqlglot.expermimental
+(ns metabase.sql-tools.sqlglot.experimental
   "Do not use code from this ns. It uses lienage features and `sqlglot-schema`."
   (:require
    [metabase.driver.sql :as driver.sql]

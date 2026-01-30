@@ -441,6 +441,10 @@
          json/decode
          vec))))
 
+(comment
+  (referenced-tables "select * from transactions")
+  )
+
 (defn returned-columns-lineage
   "WIP"
   [dialect sql default-table-schema sqlglot-schema]
