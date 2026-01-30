@@ -27,6 +27,7 @@ export const useCompletedEmbeddingHubSteps = (): {
         "embed-production": false,
         "create-models": false,
         "setup-tenants": false,
+        "embed-metabot": false,
       };
     }
 

@@ -1,17 +1,20 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  PLUGIN_METABOT,
   PLUGIN_TENANTS,
   type SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
+import { getIsHosted } from "metabase/setup/selectors";
 
 import type { EmbeddingHubStep } from "../types";
 
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
+  const isHosted = useSelector(getIsHosted);
 
   const openEmbedModal = useCallback(
     (props: Pick<SdkIframeEmbedSetupModalProps, "initialState">) => {
@@ -132,6 +135,24 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
+    // Show Metabot step only on Cloud when Metabot is available or trial is offered
+    const isMetabotFeatureAvailable = PLUGIN_METABOT.isEnabled();
+    const shouldShowMetabotStep = isHosted && isMetabotFeatureAvailable;
+
+    const EMBED_METABOT: EmbeddingHubStep = {
+      id: "embed-metabot",
+      title: t`Set up AI`,
+      actions: [
+        {
+          title: t`Embed natural language querying`,
+          description: t`Enable users to do data analysis asking questions in plain text. Requires Metabot add-on.`,
+          to: "/admin/metabot",
+          variant: "outline",
+          optional: true,
+        },
+      ],
+    };
+
     return [
       ADD_DATA,
       CREATE_DASHBOARD,
@@ -139,6 +160,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ...(isTenantsFeatureAvailable ? [SETUP_TENANTS] : []),
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
+      ...(shouldShowMetabotStep ? [EMBED_METABOT] : []),
     ];
-  }, [openEmbedModal]);
+  }, [openEmbedModal, isHosted]);
 };

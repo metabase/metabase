@@ -8,7 +8,8 @@ export type EmbeddingHubStepId =
   | "secure-embeds"
   | "embed-production"
   | "create-models"
-  | "setup-tenants";
+  | "setup-tenants"
+  | "embed-metabot";
 
 export interface EmbeddingHubStep {
   id: EmbeddingHubStepId;

@@ -85,6 +85,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
     >
       {steps.map((step) => {
         const isDone = step.cards.every((card) => card.done || card.optional);
+        const hasOnlyOptionalCards = step.cards.every((card) => card.optional);
 
         return (
           <Stepper.Step
@@ -103,9 +104,12 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
 
                     const isNextCard = nextCard && nextCard.id === card.id;
 
+                    const getColSpan = () =>
+                      !card.optional || hasOnlyOptionalCards ? 8 : 4;
+
                     return (
                       <Grid.Col
-                        span={{ xs: 12, md: card.optional ? 4 : 8 }}
+                        span={{ xs: 12, md: getColSpan() }}
                         key={card.id}
                       >
                         <CardAction card={card}>
