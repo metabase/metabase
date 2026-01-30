@@ -97,3 +97,5 @@
    rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
     (execute* compiled-query rff)))
+
+;; Test change for cloud driver trigger
