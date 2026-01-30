@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1258-create-onboarding-accordion-component-for-use-in-setup-guide",
-    "hash": "40e1895beaf9bf12a7574607fd25826e785dc86e"
+    "hash": "af50b81ce881e6987209388c14619e180a046d31"
   },
   "upstream": {
     "branch": "emb-1265-add-configure-data-permissions-and-enable-tenants-skeleton"
