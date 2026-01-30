@@ -21,21 +21,24 @@ export const DataStudio = {
       cy.get(
         '[data-testid="edit-definition-button"], [data-testid="transform-edit-menu-button"]',
       ),
-    editDefinition: () => {
+    getEditDefinitionLink: () => {
       // When workspaces are available, "Edit definition" is inside the "Edit" menu
       // When workspaces are not available, "Edit definition" is a direct link
-      DataStudio.Transforms.editDefinitionButton()
+      return DataStudio.Transforms.editDefinitionButton()
         .first()
         .then(($el) => {
           if ($el.attr("data-testid") === "edit-definition-button") {
-            cy.wrap($el).click();
+            return cy.wrap($el);
           } else {
             cy.wrap($el).click();
-            popover()
-              .findByRole("menuitem", { name: /Edit definition/ })
-              .click();
+            return popover().findByRole("menuitem", {
+              name: /Edit definition/,
+            });
           }
         });
+    },
+    clickEditDefinition: () => {
+      DataStudio.Transforms.getEditDefinitionLink().click();
     },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),

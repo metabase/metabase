@@ -1383,7 +1383,7 @@ describe("scenarios > data studio > workspaces", () => {
       },
     );
 
-    it.skip("should show ad-hoc error for SQL transform", () => {
+    it("should show ad-hoc error for SQL transform", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1407,7 +1407,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.skip(
+    it(
       "should show ad-hoc error for Python transform",
       { tags: ["@python"] },
       () => {
@@ -1431,9 +1431,11 @@ describe("scenarios > data studio > workspaces", () => {
             "Graph",
             "Python transform",
             "Preview (Python transform)",
+            "Results",
+            "Output",
           ]);
           cy.findByText("Preview (Python transform)").click();
-          cy.findByText(/Python execution failure /i).should("be.visible");
+          cy.findByText(/Transform preview failed/i).should("be.visible");
         });
       },
     );
@@ -1503,7 +1505,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.tooltip().should("not.exist");
     });
 
-    it.skip("should run all stale transforms", { tags: ["@python"] }, () => {
+    it("should run all stale transforms", { tags: ["@python"] }, () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1664,7 +1666,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.skip("should not allow to checkout transform if checkout_disabled is received", () => {
+    it("should not allow to checkout transform if checkout_disabled is received", () => {
       H.createModelFromTableName({
         tableName: "Animals",
         modelName: "Animals",
@@ -1700,7 +1702,7 @@ describe("scenarios > data studio > workspaces", () => {
       cy.get("body").click();
 
       cy.log("Edit transform to remove model reference");
-      Transforms.editDefinition();
+      Transforms.clickEditDefinition();
       H.NativeEditor.type(
         '{selectall}SELECT * FROM "Schema A"."Animals" as t;',
       );
@@ -2225,11 +2227,16 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("repros", () => {
+  describe("repros > ", () => {
     it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
       Workspaces.visitTransformListPage();
       cy.findByLabelText("Create a transform").click();
       H.popover().findByText("SQL query").click();
+      // to avoid flakiness on editor's focus
+      cy.findByTestId("native-query-top-bar").should(
+        "contain.text",
+        "Writable Postgres12",
+      );
       NativeEditor.type("select 1");
       cy.button("Save").click();
       cy.findByPlaceholderText("My Great Transform").type("My transform");
