@@ -226,7 +226,7 @@
 (defmulti llm-sql-dialect-resource
   "Returns the resource path for dialect-specific LLM prompt instructions,
    or nil if no dialect-specific instructions exist for this driver."
-  {:arglists '([driver])}
+  {:added "0.59.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
