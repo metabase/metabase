@@ -5,10 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import Card from "metabase/common/components/Card";
-import EmptyState from "metabase/common/components/EmptyState";
-import Label from "metabase/common/components/type/Label";
-import Text from "metabase/common/components/type/Text";
+import { Card } from "metabase/common/components/Card";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Label } from "metabase/common/components/type/Label";
+import { Text } from "metabase/common/components/type/Text";
 import CS from "metabase/css/core/index.css";
 
 import {

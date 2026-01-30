@@ -1,4 +1,7 @@
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import {
+  CollectionBrowser,
+  InteractiveQuestion,
+} from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, popover } from "e2e/support/helpers";
@@ -286,6 +289,84 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       getSdkRoot().within(() => {
         cy.findByText("Produkt ID").should("be.visible");
         cy.findByText("Adresse").should("be.visible");
+      });
+    });
+  });
+
+  describe("collection browser", () => {
+    it("should translate collection names, item names, and descriptions", () => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      cy.request("POST", "/api/collection", {
+        name: "Test Collection",
+        parent_id: null,
+      }).then(({ body: collection }) => {
+        cy.wrap(collection.id).as("collectionId");
+
+        cy.request("POST", "/api/dashboard", {
+          name: "Test Dashboard",
+          description: "Dashboard description text",
+          collection_id: collection.id,
+        });
+
+        createQuestion({
+          name: "Test Question",
+          description: "Question description text",
+          collection_id: collection.id,
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 1,
+          },
+        });
+      });
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "de", msgid: "Test Collection", msgstr: "Test Sammlung" },
+        {
+          locale: "de",
+          msgid: "Test Dashboard",
+          msgstr: "Test Armaturenbrett",
+        },
+        {
+          locale: "de",
+          msgid: "Dashboard description text",
+          msgstr: "Armaturenbrett Beschreibungstext",
+        },
+        { locale: "de", msgid: "Test Question", msgstr: "Testfrage" },
+        {
+          locale: "de",
+          msgid: "Question description text",
+          msgstr: "Frage Beschreibungstext",
+        },
+      ]);
+
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      cy.get("@collectionId").then((collectionId) => {
+        mountSdkContent(
+          <Flex p="xl">
+            <CollectionBrowser
+              collectionId={collectionId as unknown as number}
+              visibleColumns={["type", "name", "description"]}
+            />
+          </Flex>,
+          {
+            sdkProviderProps: {
+              locale: "de",
+            },
+          },
+        );
+
+        getSdkRoot().within(() => {
+          cy.findByText("Test Sammlung").should("be.visible");
+          cy.findByText("Test Armaturenbrett").should("be.visible");
+          cy.findByText("Testfrage").should("be.visible");
+          cy.findByText("Armaturenbrett Beschreibungstext").should(
+            "be.visible",
+          );
+          cy.findByText("Frage Beschreibungstext").should("be.visible");
+        });
       });
     });
   });

@@ -1,9 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { mainAppLinkText } from "e2e/support/helpers";
 
 describe("issue 26470", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres_12");
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
     cy.request("POST", "/api/persist/enable");
   });
@@ -60,8 +61,7 @@ describe("issue 21532", () => {
   it("should allow navigating back from admin settings (metabase#21532)", () => {
     cy.visit("/");
 
-    cy.icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
     cy.findByTestId("admin-layout-content");
 
     cy.go("back");
@@ -94,15 +94,6 @@ describe("issue 41765", { tags: "@external" }, () => {
     });
   });
 
-  function enterAdmin() {
-    H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
-  }
-
-  function exitAdmin() {
-    H.appBar().findByText("Exit admin").click();
-  }
-
   function openWritableDatabaseQuestion() {
     // start new question without navigating
     H.appBar().findByText("New").click();
@@ -123,7 +114,7 @@ describe("issue 41765", { tags: "@external" }, () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
-    enterAdmin();
+    H.goToAdmin();
 
     H.appBar().findByText("Databases").click();
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
@@ -140,7 +131,7 @@ describe("issue 41765", { tags: "@external" }, () => {
       tableName: TEST_TABLE,
     });
 
-    exitAdmin();
+    H.goToMainApp();
     openWritableDatabaseQuestion();
 
     H.getNotebookStep("data").button("Pick columns").click();
@@ -160,7 +151,7 @@ describe("(metabase#45042)", () => {
     //Ensure tabs are present in normal view
     cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("link", { name: "Settings" }).should("exist");
-      cy.findByRole("link", { name: "Exit admin" }).should("exist");
+      H.getProfileLink().should("exist");
     });
 
     //Shrink viewport
@@ -173,7 +164,6 @@ describe("(metabase#45042)", () => {
         .click();
       cy.findByRole("list", { name: "Navigation links" }).should("exist");
       cy.findByRole("link", { name: "Settings" }).should("exist");
-      cy.findByRole("link", { name: "Exit admin" }).should("exist");
     });
 
     // dismiss nav list
@@ -181,6 +171,10 @@ describe("(metabase#45042)", () => {
       .should("be.visible")
       .click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");
+
+    //ensure that app switcher is visible and functional
+    H.getProfileLink().click();
+    H.popover().findByText(mainAppLinkText).should("exist");
   });
 });
 
@@ -242,7 +236,7 @@ describe("(metabase#46714)", () => {
     cy.findByLabelText("Filter operator")
       .should("have.text", "Between")
       .click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");
     H.popover().findByPlaceholderText("Enter a number").clear().type("1000");

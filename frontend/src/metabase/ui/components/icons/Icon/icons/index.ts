@@ -70,6 +70,8 @@ import bookmark_filled_component from "./bookmark_filled.svg?component";
 import bookmark_filled_source from "./bookmark_filled.svg?source";
 import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
+import broken_link_component from "./broken_link.svg?component";
+import broken_link_source from "./broken_link.svg?source";
 import bubble_component from "./bubble.svg?component";
 import bubble_source from "./bubble.svg?source";
 import bug_component from "./bug.svg?component";
@@ -306,6 +308,8 @@ import metabot_sad_component from "./metabot_sad.svg?component";
 import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
+import mode_component from "./mode.svg?component";
+import mode_source from "./mode.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -400,6 +404,8 @@ import schema_component from "./schema.svg?component";
 import schema_source from "./schema.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
+import search_check_component from "./search_check.svg?component";
+import search_check_source from "./search_check.svg?source";
 import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
@@ -510,6 +516,8 @@ import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
 import unpublish_component from "./unpublish.svg?component";
 import unpublish_source from "./unpublish.svg?source";
+import unreferenced_component from "./unreferenced.svg?component";
+import unreferenced_source from "./unreferenced.svg?source";
 import unsubscribe_component from "./unsubscribe.svg?component";
 import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
@@ -678,6 +686,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     breakout: {
       component: breakout_component,
       source: breakout_source,
+    },
+    broken_link: {
+      component: broken_link_component,
+      source: broken_link_source,
     },
     bubble: {
       component: bubble_component,
@@ -1135,6 +1147,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: metric_component,
       source: metric_source,
     },
+    mode: {
+      component: mode_component,
+      source: mode_source,
+    },
     model: {
       component: model_component,
       source: model_source,
@@ -1371,6 +1387,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: search_component,
       source: search_source,
     },
+    search_check: {
+      component: search_check_component,
+      source: search_check_source,
+    },
     section: {
       component: section_component,
       source: section_source,
@@ -1537,6 +1557,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: unpublish_component,
       source: unpublish_source,
     },
+    unreferenced: {
+      component: unreferenced_component,
+      source: unreferenced_source,
+    },
     unsubscribe: {
       component: unsubscribe_component,
       source: unsubscribe_source,
@@ -1676,6 +1700,7 @@ export type IconName =
   | "bolt_filled"
   | "breakout"
   | "bubble"
+  | "broken_link"
   | "burger"
   | "calendar"
   | "camera"
@@ -1793,6 +1818,7 @@ export type IconName =
   | "metabot"
   | "metabot_sad"
   | "metric"
+  | "mode"
   | "model"
   | "model_with_badge"
   | "moon"
@@ -1853,6 +1879,7 @@ export type IconName =
   | "ruler"
   | "schema"
   | "search"
+  | "search_check"
   | "section"
   | "segment"
   | "segment2"
@@ -1891,6 +1918,7 @@ export type IconName =
   | "unknown"
   | "unpin"
   | "unpublish"
+  | "unreferenced"
   | "unsubscribe"
   | "upload"
   | "variable"

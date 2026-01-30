@@ -55,16 +55,24 @@
           (t2/reducible-select :model/TransformRun (latest-runs-query transform-ids)))))
 
 (defn start-run!
-  "Start a run"
+  "Start a run. If `user_id` is provided in properties, it will be stored with the run
+   and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
+   Also captures `transform_name` and `transform_entity_id` for historical reference."
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [run (t2/insert-returning-instance! :model/TransformRun
+   (let [transform (t2/select-one [:model/Transform :name :entity_id] :id transform-id)
+         run (t2/insert-returning-instance! :model/TransformRun
                                             (assoc properties
                                                    :transform_id transform-id
+                                                   :transform_name (:name transform)
+                                                   :transform_entity_id (:entity_id transform)
                                                    :status :started
                                                    :is_active true))]
-     (events/publish-event! :event/transform-run-start {:object run})
+     ;; Pass user_id to the event so audit log properly attributes the run
+     (events/publish-event! :event/transform-run-start
+                            (cond-> {:object run}
+                              (:user_id run) (assoc :user-id (:user_id run))))
      run)))
 
 (defn succeed-started-run!

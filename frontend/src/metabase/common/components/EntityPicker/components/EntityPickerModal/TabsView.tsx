@@ -50,7 +50,7 @@ export const TabsView = <
         <Tabs.List
           h="2.5rem"
           style={{
-            // eslint-disable-next-line no-color-literals
+            // eslint-disable-next-line metabase/no-color-literals
             "--tab-border-color": "rgba(0, 0, 0, 0)",
           }}
         >

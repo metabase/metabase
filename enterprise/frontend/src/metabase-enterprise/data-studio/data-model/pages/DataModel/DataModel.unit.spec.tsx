@@ -350,6 +350,13 @@ describe("DataModel", () => {
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
       await userEvent.type(getTableSearchInput(), searchValue);
 
+      await waitFor(() => {
+        const path = "path:/api/table?term*";
+        expect(
+          fetchMock.callHistory.called(path, { method: "GET" }),
+        ).toBeTruthy();
+      });
+
       expect(
         await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();

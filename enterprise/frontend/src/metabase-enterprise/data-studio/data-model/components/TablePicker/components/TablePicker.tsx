@@ -1,8 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Badge,
   Box,
@@ -44,8 +46,8 @@ export function TablePicker({
 }: TablePickerProps) {
   const { resetSelection } = useSelection();
   const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
-  const previousDeferredQuery = usePrevious(deferredQuery);
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
+  const previousDebouncedQuery = usePrevious(debouncedQuery);
   const [filters, setFilters] = useState<FilterState>({
     dataLayer: null,
     dataSource: null,
@@ -58,12 +60,12 @@ export function TablePicker({
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
-      (previousDeferredQuery === "" && deferredQuery !== "") ||
-      (previousDeferredQuery !== "" && deferredQuery === "");
+      (previousDebouncedQuery === "" && debouncedQuery !== "") ||
+      (previousDebouncedQuery !== "" && debouncedQuery === "");
     if (togglingBetweenSearchAndTree) {
       resetSelection();
     }
-  }, [deferredQuery, previousDeferredQuery, resetSelection]);
+  }, [debouncedQuery, previousDebouncedQuery, resetSelection]);
 
   return (
     <Stack
@@ -139,7 +141,7 @@ export function TablePicker({
 
       <Box mih={0} flex="0 1 auto" display="flex" className={S.treeContainer}>
         <Card withBorder p={0} flex={1} mih={0} display="flex">
-          {deferredQuery === "" && filtersCount === 0 ? (
+          {debouncedQuery === "" && filtersCount === 0 ? (
             <Tree
               path={path}
               onChange={onChange}
@@ -147,7 +149,7 @@ export function TablePicker({
             />
           ) : (
             <SearchNew
-              query={deferredQuery}
+              query={debouncedQuery}
               params={params}
               filters={filters}
               onChange={onChange}

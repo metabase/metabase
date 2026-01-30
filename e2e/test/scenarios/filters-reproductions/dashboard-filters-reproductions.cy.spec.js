@@ -406,7 +406,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.button("Add filter").click();
 
     cy.location("search").should("eq", "?category=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ergonomic Silk Coat");
   });
 
@@ -463,10 +463,10 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
       H.filterWidget().contains("Category").click();
       // It will fail at this point until the issue is fixed because popover never appears
       H.popover().contains("Gadget").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
       cy.url().should("contain", "?category=Gadget");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Ergonomic Silk Coat");
     },
   );
@@ -557,7 +557,7 @@ describe("issues 15119 and 16112", () => {
       },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(reviewerFilter.name).click();
     H.popover().contains("adam").click();
     cy.button("Add filter").click();
@@ -565,7 +565,7 @@ describe("issues 15119 and 16112", () => {
     cy.findByTestId("dashcard-container").should("contain", "adam");
     cy.location("search").should("eq", "?rating=&reviewer=adam");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
 
     H.popover().contains("5").click();
@@ -711,10 +711,10 @@ describe("issue 17211", () => {
     H.filterWidget().click();
 
     cy.findByPlaceholderText("Search the list").type("abb");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Abbeville").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("No matching City found").should("not.exist");
   });
 });
@@ -783,9 +783,9 @@ describe("issue 17551", () => {
 
     cy.url().should("include", "?date_filter=next30days~");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("tomorrow");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("today");
   });
 });
@@ -840,7 +840,7 @@ describe("issue 17775", () => {
     // Make sure filter can be connected to the custom column using UI, rather than using API.
     H.filterWidget({ isEditing: true }).click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .parent()
@@ -886,7 +886,7 @@ describe("issue 19494", () => {
       .filter(`:contains("${filterName}")`)
       .click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByText("Select…").eq(cardPosition).click();
 
     H.popover().contains("Category").click();
@@ -1041,7 +1041,7 @@ describe("issue 20656", () => {
 
     // Make sure the filter widget is there
     H.filterWidget();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
 
     // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
@@ -1160,8 +1160,7 @@ describe("issue 21528", () => {
 
     cy.log("The following scenario breaks on 46");
     // Navigating to another page via JavaScript is faster than using `cy.visit("/admin/datamodel")` to load the whole page again.
-    H.appBar().findByRole("button", { name: "Settings" }).click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
     H.appBar().findByText("Table Metadata").click();
     cy.findByRole("main")
       .findByText("Start by selecting data to model")
@@ -1170,7 +1169,7 @@ describe("issue 21528", () => {
       "eq",
       `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
     );
-    cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+    H.goToMainApp();
 
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Our analytics").click();
@@ -1196,21 +1195,21 @@ describe("issue 22482", () => {
     H.editDashboard();
     H.setFilter("Date picker", "All Options");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("Created At").eq(0).click();
 
     H.saveDashboard();
 
     H.filterWidget().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Relative date range…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
     cy.findByLabelText("Interval").clear().type(15);
     cy.findByRole("textbox", { name: "Unit" }).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("months").click();
 
     const expectedRange = getFormattedRange(
@@ -1218,7 +1217,7 @@ describe("issue 22482", () => {
       dayjs().add(-1, "month").endOf("month"),
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedRange);
   });
 });
@@ -1606,7 +1605,7 @@ describe("issue 25322", () => {
       throttleFieldValuesRequest(dashboard_id);
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
     H.popover().findByTestId("loading-indicator").should("exist");
   });
@@ -1687,14 +1686,14 @@ describe("issue 25248", () => {
     createDashboard();
     H.editDashboard();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
     cy.findAllByText("Select…").first().click();
     H.popover().findAllByText("Created At").first().click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders.Created At").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").should("be.visible");
   });
 });
@@ -1956,13 +1955,13 @@ describe("issue 25908", () => {
   });
 
   it("`contains` dashboard filter should respect case insensitivity on a title-drill-through (metabase#25908)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).click();
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Title contains Li");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Showing ${CASE_INSENSITIVE_ROWS} rows`);
   });
 });
@@ -2097,21 +2096,21 @@ describe("issue 27356", () => {
 
   it("should seamlessly move between dashboards with or without filters without triggering an error (metabase#27356)", () => {
     H.openNavigationSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(paramDashboard.name).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
 
     H.openNavigationSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(regularDashboard.name).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
 
     H.openNavigationSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(paramDashboard.name).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
   });
 });
@@ -3621,9 +3620,9 @@ describe("issue 34955", () => {
 
       H.saveDashboard();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("columnheader").eq(-2).should("have.text", "Created At");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("columnheader").eq(-1).should("have.text", ccName);
       H.tableInteractiveBody()
         .findAllByRole("gridcell")

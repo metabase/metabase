@@ -4,8 +4,10 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Flex } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type { Database, DatabaseId, TransformId } from "metabase-types/api";
@@ -15,6 +17,7 @@ import S from "./PythonTransformTopBar.module.css";
 type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transformId?: TransformId;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
 };
@@ -22,10 +25,13 @@ type PythonTransformTopBarProps = {
 export function PythonTransformTopBar({
   databaseId,
   isEditMode,
+  readOnly,
   transformId,
   onDatabaseChange,
 }: PythonTransformTopBarProps) {
-  const showEditDefinitionButton = !isEditMode && transformId;
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditDefinitionButton =
+    !isEditMode && transformId && !isRemoteSyncReadOnly && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,

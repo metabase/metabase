@@ -145,11 +145,11 @@
               errors (dependencies/errors-from-proposed-edits {:card [card']}
                                                               :base-provider provider
                                                               :graph graph)]
-          (is (=? {:card {downstream-card-id  #{{:type              :validate/missing-column
+          (is (=? {:card {downstream-card-id  #{{:type              :missing-column
                                                  :name              "Tax Rate"
                                                  :source-entity-type :card
                                                  :source-entity-id  101}}
-                          transformed-card-id #{{:type              :validate/missing-column
+                          transformed-card-id #{{:type              :missing-column
                                                  :name              "Tax Rate"
                                                  :source-entity-type :table
                                                  :source-entity-id  1234567}}}}
@@ -182,7 +182,7 @@
           ;; queries that consume the transform's table.
           (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
                                transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
-                               transformed-mbql-card-id #{{:type              :validate/missing-column
+                               transformed-mbql-card-id #{{:type              :missing-column
                                                            :name              "RATING"
                                                            :source-entity-type :table
                                                            :source-entity-id  1234568}}}

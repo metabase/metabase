@@ -44,10 +44,9 @@ export function getDataStudioTableRoutes() {
         </Route>
       )}
       <Route path=":tableId/measures" component={TableMeasuresPage} />
-      <Route
-        path=":tableId/measures/new"
-        component={PublishedTableNewMeasurePage}
-      />
+      <Route path=":tableId/measures/new" component={IsAdmin}>
+        <IndexRoute component={PublishedTableNewMeasurePage} />
+      </Route>
       <Route
         path=":tableId/measures/:measureId"
         component={PublishedTableMeasureDetailPage}

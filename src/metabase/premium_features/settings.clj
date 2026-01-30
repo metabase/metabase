@@ -146,6 +146,10 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-slack?
+  "Should we enable Slack Connect (OIDC) authentication?"
+  :sso-slack)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -163,6 +167,7 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
+      (enable-sso-slack?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -365,6 +370,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_slack                      (enable-sso-slack?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)

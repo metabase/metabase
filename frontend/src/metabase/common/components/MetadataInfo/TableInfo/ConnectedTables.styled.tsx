@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 
-import TableLabel from "../TableLabel/TableLabel";
+import { TableLabel } from "../TableLabel/TableLabel";
 
 export const InteractiveTableLabel = styled(TableLabel)`
   color: var(--mb-color-text-tertiary);

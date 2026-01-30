@@ -28,7 +28,7 @@ export async function loadLocalization(locale) {
             "plural-forms": "nplurals=2; plural=(n != 1);",
           },
           translations: {
-            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
             "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
           },
         };

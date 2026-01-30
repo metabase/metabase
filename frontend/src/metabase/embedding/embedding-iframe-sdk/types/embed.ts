@@ -181,6 +181,7 @@ export type SdkIframeEmbedBaseSettings = {
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
+  jwtProviderUri?: string;
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
@@ -213,7 +214,9 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
   (
     | DashboardEmbedOptions
     | QuestionEmbedOptions
-    | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
+    | (Omit<ExplorationEmbedOptions, "questionId"> & {
+        questionId: "new" | "new-native";
+      })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
   );

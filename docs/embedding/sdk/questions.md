@@ -162,10 +162,20 @@ To prevent people from saving changes to an interactive question, or from saving
 
 ![Query builder](../images/query-builder.png)
 
+### Embed the visual query builder
+
 You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
+```
+
+### Embed the SQL editor
+
+You can also embed the SQL editor to enable people to build questions with SQL by passing `questionId="new-native"` to the `InteractiveQuestion` component:
+
+```tsx
+{% include_file "{{ dirname }}/snippets/questions/new-native-question.tsx" %}
 ```
 
 To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).

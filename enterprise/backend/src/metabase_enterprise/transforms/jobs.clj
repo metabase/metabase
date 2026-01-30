@@ -71,7 +71,7 @@
         {:order (map transforms-by-id complete)
          :deps global-ordering}))))
 
-(defn- run-transform! [run-id run-method {transform-id :id :as transform}]
+(defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (if-not (transforms.util/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
     (do
@@ -82,7 +82,8 @@
           (when (transform-run/running-run-for-transform-id transform-id)
             (recur))))
       (log/info "Executing job transform" (pr-str transform-id))
-      (transforms.execute/execute! transform {:run-method run-method})
+      (transforms.execute/execute! transform {:run-method run-method
+                                              :user-id user-id})
       (transforms.job-run/add-run-activity! run-id))))
 
 (defn run-transforms!
@@ -90,7 +91,7 @@
 
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
-  [run-id transform-ids-to-run {:keys [run-method start-promise]}]
+  [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
         successful (volatile! #{})
         failures (volatile! [])]
@@ -100,7 +101,7 @@
     (doseq [transform plan]
       (if (every? @successful (get deps (:id transform)))
         (try
-          (run-transform! run-id run-method transform)
+          (run-transform! run-id run-method user-id transform)
           (vswap! successful conj (:id transform))
           (catch Exception e
             (vswap! failures conj {::transform transform
@@ -239,7 +240,9 @@
               (try
                 (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
                 (when (= :cron run-method)
-                  (notify-job-failure job-id (.getMessage t)))
+                  (if (::transform-failure (ex-data t))
+                    (notify-transform-failures job-id (::failures (ex-data t)))
+                    (notify-job-failure job-id (.getMessage t))))
                 (catch Exception e
                   (log/error e "Error when failing a transform job run.")))
               (throw t))))

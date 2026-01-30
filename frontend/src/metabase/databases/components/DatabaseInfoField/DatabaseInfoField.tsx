@@ -1,4 +1,4 @@
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Flex } from "metabase/ui";
 
 export interface DatabaseInfoFieldProps {

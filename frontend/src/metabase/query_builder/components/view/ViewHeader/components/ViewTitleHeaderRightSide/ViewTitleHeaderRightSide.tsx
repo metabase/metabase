@@ -9,7 +9,7 @@ import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";

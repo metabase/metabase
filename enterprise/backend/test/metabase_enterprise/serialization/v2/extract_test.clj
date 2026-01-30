@@ -1553,7 +1553,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag" "TransformJob"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "PythonLibrary" "Setting" "TransformTag" "TransformJob"}
                (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
@@ -2291,6 +2291,11 @@
                            {_field-id :id}
                            {:name "Some Field" :table_id table-id}
 
+                           :model/Collection
+                           {coll-id :id coll-eid :entity_id}
+                           {:name "Transform Collection"
+                            :namespace :transforms}
+
                            ;; Create tags for associations
                            :model/TransformTag
                            {hourly-tag-id :id
@@ -2314,6 +2319,7 @@
                            {:name "Test Transform"
                             :description "A test transform for serialization"
                             :entity_id "2HzIFwJ6720JAx07UMavl"
+                            :collection_id coll-id
                             :source {:query {:database db-id
                                              :type     "query"
                                              :query    {:source-table table-id}}
@@ -2364,8 +2370,9 @@
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
 
-            (testing "dependencies include source table and tags"
+            (testing "dependencies include collection, source table, and tags"
               (let [deps (set (serdes/dependencies ser))]
+                (is (contains? deps [{:model "Collection" :id coll-eid}]))
                 (is (contains? deps [{:model "Database" :id "My Database"}
                                      {:model "Table" :id "Schemaless Table"}]))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
@@ -2559,3 +2566,23 @@
             (is (contains? segment-ids segment-id)))
           (testing "fields from non-published table are NOT exported"
             (is (= 2 (count field-ids)))))))))
+
+(deftest python-library-test
+  (mt/with-empty-h2-app-db!
+    ;; Delete any pre-existing python_library entries from migrations
+    (t2/delete! :model/PythonLibrary)
+    (ts/with-temp-dpc [:model/PythonLibrary {lib-id :id lib-entity-id :entity_id} {:path   "common"
+                                                                                   :source "def helper():\n    return 42"}]
+      (testing "python library extraction"
+        (let [ser (serdes/extract-one "PythonLibrary" {} (t2/select-one :model/PythonLibrary :id lib-id))]
+          (is (=? {:serdes/meta [{:model "PythonLibrary"
+                                  :id    lib-entity-id}]
+                   :path        "common.py"
+                   :source      "def helper():\n    return 42"
+                   :entity_id   lib-entity-id
+                   :created_at  string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))

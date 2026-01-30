@@ -4,7 +4,7 @@ import { createRef } from "react";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import LeafletMap from "./LeafletMap";
+import { LeafletMap } from "./LeafletMap";
 
 describe("LeafletMap", () => {
   const createProps = (overrides = {}) => ({

@@ -13,7 +13,7 @@ import { c, t } from "ttag";
 
 import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import CollectionName from "metabase/common/components/CollectionName";
+import { CollectionName } from "metabase/common/components/CollectionName";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,

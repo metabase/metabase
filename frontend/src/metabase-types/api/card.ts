@@ -32,7 +32,9 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question" | "metric";
+export const CARD_TYPES = ["model", "question", "metric"] as const;
+export type CardType = (typeof CARD_TYPES)[number];
+
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -268,6 +270,7 @@ export type VisualizationSettings = {
     | "rotate-90";
 
   // Y-axis
+  "graph.y_axis.auto_range"?: boolean;
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
   "graph.y_axis.axis_enabled"?: boolean;

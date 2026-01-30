@@ -1,16 +1,18 @@
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 type SnippetDescriptionSectionProps = {
   snippet: NativeQuerySnippet;
+  isDisabled?: boolean;
 };
 
 export function SnippetDescriptionSection({
   snippet,
+  isDisabled,
 }: SnippetDescriptionSectionProps) {
   const [updateSnippet] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
@@ -40,6 +42,8 @@ export function SnippetDescriptionSection({
       placeholder={t`No description`}
       isMarkdown
       onChange={handleChange}
+      isDisabled={isDisabled}
+      isOptional
     />
   );
 }

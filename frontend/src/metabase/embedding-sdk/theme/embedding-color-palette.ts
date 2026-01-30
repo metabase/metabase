@@ -3,10 +3,9 @@ import type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colorConfig, colors } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors";
+import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
-
-import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -28,8 +27,8 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   ColorName[]
 > = {
   brand: ["brand"],
-  "brand-hover": ["brand-light"],
-  "brand-hover-light": ["brand-lighter"],
+  "brand-hover": ["background-hover"],
+  "brand-hover-light": ["background-hover"],
   border: ["border"],
   filter: ["filter"],
   summarize: ["summarize"],
@@ -38,7 +37,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-tertiary": ["text-tertiary"],
   background: ["background-primary"],
   "background-secondary": ["background-secondary", "background-tertiary"],
-  "background-hover": ["background-secondary"],
+  "background-hover": [],
   "background-disabled": ["background-disabled"],
   "background-light": ["background-secondary"],
   shadow: ["shadow"],
@@ -102,7 +101,7 @@ export function getEmbeddingColorPalette(
   );
 
   const chartColors =
-    sdkColors.charts && getEmbeddingChartColors(sdkColors.charts);
+    sdkColors.charts && mapChartColorsToAccents(sdkColors.charts);
 
   return {
     ...originalColors,
@@ -126,12 +125,6 @@ export function setGlobalEmbeddingColors(
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
-  });
-
-  // Also set overrides on the color config, this way when we
-  // set up the mantine theme colors, we will grab appropriate app palette colors as well 🥺
-  Object.entries(combinedThemeColors).forEach(([key, value]) => {
-    colorConfig[key as ColorName] = { light: value, dark: value };
   });
 
   /**

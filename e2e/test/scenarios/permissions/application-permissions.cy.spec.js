@@ -4,6 +4,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { adminAppLinkText } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -17,7 +18,8 @@ describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
+    // H.activateToken("pro-self-hosted");
+    H.activateToken("bleeding-edge");
   });
 
   it("shows permissions help", () => {
@@ -123,9 +125,7 @@ describe("scenarios > admin > permissions > application", () => {
 
       it("allows accessing tools for non-admins", () => {
         cy.visit("/");
-        cy.icon("gear").click();
-
-        H.popover().findByText("Admin settings").click();
+        H.goToAdmin();
 
         cy.log("Tools smoke test");
         cy.location("pathname").should("eq", "/admin/tools/help");
@@ -147,9 +147,9 @@ describe("scenarios > admin > permissions > application", () => {
       it("does not allow accessing admin tools for non-admins", () => {
         cy.signInAsNormalUser();
         cy.visit("/");
-        cy.icon("gear").click();
+        H.getProfileLink().click();
 
-        H.popover().findByText("Admin settings").should("not.exist");
+        H.popover().findByText(adminAppLinkText).should("not.exist");
 
         cy.visit("/admin/tools/errors");
         H.main().findByText("Sorry, you don’t have permission to see that.");

@@ -1,5 +1,62 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:23
+      author: nvoxland
+      comment: Add source_database_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_database_id
+                  type: int
+                  remarks: The database containing the source data for this transform
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:24
+      author: nvoxland
+      comment: Add index for transform.source_database_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_source_database_id
+            columns:
+              - column:
+                  name: source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:25
+      author: nvoxland
+      comment: Add foreign key on transform(source_database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:26
+      author: nvoxland
+      comment: Transfer data from transform.source to transform.source_database_id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.SetTransformSourceDatabaseId"
+      rollback: # No need to roll back
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:27
+      author: nvoxland
+      comment: Make transform.source_database_id not nullable
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
   - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
@@ -150,6 +207,111 @@ databaseChangeLog:
             constraintName: fk_measure_ref_creator_id
 
   - changeSet:
+      id: v59.2026-01-06T10:00:00
+      author: gantoreno
+      comment: Add owner_user_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: owner_user_id
+                  type: int
+                  remarks: The user ID of the owner of this transform (can be different from creator)
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:01
+      author: gantoreno
+      comment: Add owner_email column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: owner_email
+                  type: ${text.type}
+                  remarks: An optional email address of the owner of this transform (for external owners), exclusive with owner_user_id
+
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:02
+      author: gantoreno
+      comment: Add index on transform.owner_user_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_owner_user_id
+            columns:
+              - column:
+                  name: owner_user_id
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:03
+      author: gantoreno
+      comment: Add foreign key constraint for transform.owner_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: owner_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_owner_user_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:04
+      author: gantoreno
+      comment: Backfill owner_user_id from creator_id for existing transforms
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform SET owner_user_id = creator_id WHERE owner_user_id IS NULL AND creator_id IS NOT NULL AND creator_id != 13371338
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform SET owner_user_id = NULL
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:05
+      author: gantoreno
+      comment: Add user_id column to transform_run table for tracking who triggered the run
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user ID who triggered this run (owner for scheduled runs, current user for manual runs)
+
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:06
+      author: gantoreno
+      comment: Add index on transform_run.user_id
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:07
+      author: gantoreno
+      comment: Add foreign key constraint for transform_run.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_run_user_id
+            onDelete: SET NULL
+
+
+  - changeSet:
       id: v59.2026-01-07T00:00:01
       author: bshepherdson
       comment: Create analysis finding table
@@ -239,56 +401,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: result
-  - changeSet:
-      id: v59.2026-01-12T22:43:43
-      author: galdre
-      comment: "Clear source_card_id for native queries to prevent cascade deletion (#68080)"
-      changes:
-        - update:
-            tableName: report_card
-            columns:
-              - column:
-                  name: source_card_id
-                  value: null
-            where: query_type = 'native' AND source_card_id IS NOT NULL
-      rollback:
-      # No rollback - we can't know what the original source_card_id values were
-
-  - changeSet:
-      id: v59.2026-01-13T12:00:00
-      author: galdre
-      comment: "Drop source_card_id FK in preparation for changing to SET NULL (#68080)"
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: source_card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-            nullable: true
-            deleteCascade: true
-
-  - changeSet:
-      id: v59.2026-01-13T12:00:01
-      author: galdre
-      comment: "Add source_card_id FK with ON DELETE SET NULL (#68080)"
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: source_card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-            nullable: true
-            onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
 
   - changeSet:
       id: v59.2026-01-16T00:00:00
@@ -621,6 +733,251 @@ databaseChangeLog:
         - dropColumn:
             tableName: task_run
             columnName: updated_at
+
+  - changeSet:
+      id: v59.2026-01-16T11:00:00
+      author: bronsa
+      comment: Usage analytics; Create v_task_runs view for task run analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/task_runs/v1/postgres-task_runs.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/task_runs/v1/mysql-task_runs.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/task_runs/v1/h2-task_runs.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_task_runs;
+
+  - changeSet:
+      id: v59.2026-01-16T11:00:01
+      author: bronsa
+      comment: Usage analytics; Update v_tasks view to include run_id and logs columns
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v4/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v4/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v4/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v2/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v3/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v2/h2-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v59.2026-01-23T12:00:00
+      author: bronsa
+      comment: Insert default common.py entry in python_library if not exists
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM python_library WHERE path = 'common.py'
+      changes:
+        - sql:
+            sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
+      rollback:
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:00
+      author: nvoxland
+      comment: Add transform_name for preserving history when transform is deleted
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: transform_name
+                  type: varchar(254)
+                  remarks: Name of transform at time of run, stored for historical purposes
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:01
+      author: nvoxland
+      comment: Add transform_entity_id column for potential reconnection when transform is recreated
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: transform_entity_id
+                  type: char(21)
+                  remarks: Original transform entity_id, stored for historical purposes
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:02
+      author: nvoxland
+      comment: Backfill transform_name and transform_entity_id for existing runs
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform_run
+              SET transform_name = (SELECT name FROM transform WHERE transform.id = transform_run.transform_id),
+                  transform_entity_id = (SELECT entity_id FROM transform WHERE transform.id = transform_run.transform_id)
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform_run SET transform_name = NULL, transform_entity_id = NULL
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:03
+      author: nvoxland
+      comment: Drop existing FK constraint on transform_run.transform_id to change to SET NULL behavior
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:04
+      author: nvoxland
+      comment: Make transform_id nullable to support orphaned runs when transform is deleted
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform_run
+            columnName: transform_id
+            columnDataType: int
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:05
+      author: nvoxland
+      comment: Re-add FK constraint with ON DELETE SET NULL behavior to preserve runs when transform is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: SET NULL
+
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:00
+      author: epaget
+      comment: Add entity_id column to python_library table
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: python_library
+            columnName: entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:01
+      author: epaget
+      comment: Backfill entity_id for existing common.py python_library row
+      changes:
+        - sql:
+            sql: UPDATE python_library SET entity_id = 'cWWH9qJPvHNB3rP2vLZrK' WHERE path = 'common.py' AND entity_id IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE python_library SET entity_id = NULL WHERE path = 'common.py'
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:02
+      author: epaget
+      comment: Add index on entity_id column in python_library table
+      changes:
+        - createIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+            columns:
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:03
+      author: epaget
+      comment: Add unique constraint on entity_id column in python_library table
+      changes:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: entity_id
+            constraintName: unique_python_library_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: python_library
+            constraintName: unique_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:00
+      author: metamben
+      comment: Add stale column to analysis_finding for asynchronous dependent updates
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs re-analysis due to upstream changes
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: stale
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:01
+      author: metamben
+      comment: Add partial index on analysis_finding.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_finding_stale
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

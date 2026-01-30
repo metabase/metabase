@@ -51,7 +51,7 @@
   to the remote sync source."
   []
   (api/check-superuser)
-  {:is_dirty (remote-sync.object/dirty-global?)})
+  {:is_dirty (remote-sync.object/dirty?)})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
   "Check if there are new changes on the remote branch that can be pulled.
@@ -80,7 +80,7 @@
   (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
-                (remote-sync.object/dirty-for-global))})
+                (remote-sync.object/dirty-objects))})
 
 (api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
   "Export the current state of the Remote Sync collection to a Source.
@@ -138,9 +138,11 @@
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]
+       [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
+       [:remote-sync-transforms {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
-  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
+  (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   ;; Check if trying to change collections while in read-only mode
   (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
@@ -162,11 +164,10 @@
   (events/publish-event! :event/remote-sync-settings-update
                          {:details {:remote-sync-type remote-sync-type}
                           :user-id api/*current-user-id*})
-  (let [task-id (impl/finish-remote-config!)]
-    (if task-id
-      {:success true
-       :task_id task-id}
-      {:success true})))
+  (if-let [task-id (impl/finish-remote-config!)]
+    {:success true
+     :task_id task-id}
+    {:success true}))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured source.

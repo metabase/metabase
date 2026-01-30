@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";

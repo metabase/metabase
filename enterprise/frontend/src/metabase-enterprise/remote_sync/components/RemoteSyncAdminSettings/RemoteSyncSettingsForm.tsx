@@ -7,7 +7,7 @@ import {
   useGetSettingsQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
@@ -268,7 +268,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     tenantCollectionsData,
   ]);
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
     "installation-and-operation/remote-sync",
     {
@@ -411,25 +411,26 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               )}
 
               {/* Section 4: Collections to sync */}
-              {isRemoteSyncEnabled && (
-                <RemoteSyncSettingsSection
-                  description={t`Choose which collections to sync with git.`}
-                  title={t`Collections to sync`}
-                  variant={variant}
-                >
-                  <Stack gap="lg">
-                    <TopLevelCollectionsList />
-                    {useTenants && (
-                      <>
-                        <Text fw={700} size="md" lh="1rem">
-                          {t`Shared collections`}
-                        </Text>
-                        <SharedTenantCollectionsList />
-                      </>
-                    )}
-                  </Stack>
-                </RemoteSyncSettingsSection>
-              )}
+              {(isRemoteSyncEnabled || values?.[TYPE_KEY] === "read-write") &&
+                !isModalVariant && (
+                  <RemoteSyncSettingsSection
+                    description={t`Choose which collections to sync with git.`}
+                    title={t`Collections to sync`}
+                    variant={variant}
+                  >
+                    <Stack gap="lg">
+                      <TopLevelCollectionsList />
+                      {useTenants && (
+                        <>
+                          <Text fw={700} size="md" lh="1rem">
+                            {t`Shared collections`}
+                          </Text>
+                          <SharedTenantCollectionsList />
+                        </>
+                      )}
+                    </Stack>
+                  </RemoteSyncSettingsSection>
+                )}
 
               {/* Read-write mode info */}
               {isModalVariant && values?.[TYPE_KEY] === "read-write" && (

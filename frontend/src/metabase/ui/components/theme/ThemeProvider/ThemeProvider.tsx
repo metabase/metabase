@@ -56,12 +56,17 @@ interface ThemeProviderProps {
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
   const { resolvedColorScheme } = useColorScheme();
-  const [themeCacheBuster, setThemeCacheBuster] = useState(1);
+
+  // We cannot use `useSetting` here due to circular dependencies,
+  // and `useSelector` throws as the redux provider is not always wrapped
+  const [whitelabelColors, setWhitelabelColors] = useState(
+    MetabaseSettings.applicationColors(),
+  );
 
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
     const theme = merge(
-      getThemeOverrides(resolvedColorScheme),
+      getThemeOverrides(resolvedColorScheme, whitelabelColors),
       props.theme,
     ) as MantineTheme;
 
@@ -69,9 +74,9 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
       ...theme,
       other: {
         ...theme.other,
-        updateColorSettings: (newValue) => {
-          mutateColors(newValue);
-          setThemeCacheBuster(themeCacheBuster + 1);
+        updateColorSettings: (nextWhitelabeledColors) => {
+          mutateColors(nextWhitelabeledColors);
+          setWhitelabelColors(nextWhitelabeledColors);
         },
       },
       fn: {
@@ -84,7 +89,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme, resolvedColorScheme, themeCacheBuster]);
+  }, [props.theme, resolvedColorScheme, whitelabelColors]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);

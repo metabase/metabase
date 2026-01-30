@@ -6,6 +6,7 @@ import {
   type DatabaseEntityId,
   type EntityId,
   type PermissionSubject,
+  type SpecialGroupType,
 } from "metabase/admin/permissions/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -134,8 +135,7 @@ const getDefaultFeatureLevelPermissions = () => ({
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,
-    _isAdmin: boolean,
-    _isExternal: boolean,
+    _groupType: SpecialGroupType,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,
@@ -144,8 +144,11 @@ const getDefaultFeatureLevelPermissions = () => ({
   ) => {
     return [] as any;
   },
-  getDataColumns: (_subject: PermissionSubject, _isExternal?: boolean) =>
-    [] as any,
+  getDataColumns: (
+    _subject: PermissionSubject,
+    _groupType?: SpecialGroupType,
+    _isExternal?: boolean,
+  ) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
