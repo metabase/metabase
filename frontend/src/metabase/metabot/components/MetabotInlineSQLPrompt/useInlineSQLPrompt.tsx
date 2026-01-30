@@ -70,6 +70,8 @@ export function useInlineSQLPrompt(
 
   const databaseId = question.databaseId();
 
+  const [hasEverBeenOpened, setHasEverBeenOpened] = useState(false);
+
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
@@ -81,8 +83,9 @@ export function useInlineSQLPrompt(
   });
 
   const debouncedEditorSql = useDebouncedValue(editorSql.trim(), 1000);
+  const tableExtractionEnabled = hasEverBeenOpened && isTableBarEnabled;
   const { data: extractedTablesData } = useExtractTablesQuery(
-    databaseId && debouncedEditorSql && isTableBarEnabled
+    databaseId && debouncedEditorSql && tableExtractionEnabled
       ? { database_id: databaseId, sql: debouncedEditorSql }
       : skipToken,
   );
@@ -231,6 +234,7 @@ export function useInlineSQLPrompt(
                   if (generatedSqlRef.current) {
                     resetInputRef.current();
                   }
+                  setHasEverBeenOpened(true);
                   view.dispatch({ effects: toggleEffect.of({ view }) });
                   return true;
                 },
