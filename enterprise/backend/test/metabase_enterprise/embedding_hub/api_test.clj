@@ -61,3 +61,33 @@
     (mt/with-premium-features #{:embedding}
       (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
         (is (false? (:create-tenants response)))))))
+
+(deftest has-configured-data-segregation-strategy-test
+  (testing "setup-data-segregation-strategy returns true when row-level security is configured"
+    (mt/with-premium-features #{:embedding :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Sandbox _ {:group_id group-id
+                                       :table_id (mt/id :venues)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:setup-data-segregation-strategy response)))))))
+
+  (testing "setup-data-segregation-strategy returns true when connection impersonation is configured"
+    (mt/with-premium-features #{:embedding}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/ConnectionImpersonation _ {:db_id (mt/id)
+                                                       :group_id group-id
+                                                       :attribute "test-attr"}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:setup-data-segregation-strategy response)))))))
+
+  (testing "setup-data-segregation-strategy returns true when database routing is configured"
+    (mt/with-premium-features #{:embedding :database-routing}
+      (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id)
+                                              :user_attribute "test-attr"}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:setup-data-segregation-strategy response)))))))
+
+  (testing "setup-data-segregation-strategy returns false when none are configured"
+    (mt/with-premium-features #{:embedding}
+      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (is (false? (:setup-data-segregation-strategy response)))))))
