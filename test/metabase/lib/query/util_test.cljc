@@ -11,6 +11,8 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(def missing-value (symbol "nil #_\"key is not present.\""))
+
 (deftest ^:parallel test-query-basic-table-source-test
   (testing "test-query creates a basic query from a table source"
     (let [query (lib.query.util/test-query
@@ -409,10 +411,11 @@
       (is (=? [{:lib/type   :mbql/join
                 :strategy   :left-join
                 :conditions [[:= {}
-                              [:field {:binning {:bin-width 20.0
-                                                 :strategy  :bin-width}}
+                              [:field {:join-alias missing-value
+                                       :binning    {:bin-width 20.0
+                                                    :strategy  :bin-width}}
                                (meta/id :venues :latitude)]
-                              [:field {:join-alias "Venues"
+                              [:field {:join-alias "Venues - Latitude"
                                        :binning    {:bin-width 20.0
                                                     :strategy  :bin-width}}
                                (meta/id :venues :longitude)]]]}]
