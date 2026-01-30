@@ -1212,6 +1212,61 @@
                     :not_run   []}
                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run"))))))))))
 
+(deftest execute-workspace-stale-only-test
+  (testing "POST /api/ee/workspace/:id/run?stale_only=true respects staleness with enclosed transforms"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map global-map]}
+                            ;; (x1) -> x2 -> (x3)
+                            {:global    {:x1 [:t0], :x2 [:x1], :x3 [:x2]}
+                             :workspace {:checkouts [:x1 :x3]}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [ref-x1    (workspace-map :x1)
+            ref-x3    (workspace-map :x3)
+            global-x2 (str "global-id:" (global-map :x2))
+            ->source  (t2/select-fn->fn :ref_id :source [:model/WorkspaceTransform :ref_id :source]
+                                        :workspace_id workspace-id)
+            counter   (atom 1)
+            run!      #(ws.tu/with-mocked-execution
+                         (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/run") {:stale_only 1}))
+            inc-limit #(str (str/replace % #" LIMIT \d+" "") " LIMIT " (swap! counter inc))
+            edit!     (fn [ref-id]
+                        (let [current (->source ref-id)
+                              tweaked (update-in current [:query :stages 0 :native] inc-limit)]
+                          (mt/user-http-request :crowberto :put 200
+                                                (ws-url workspace-id "/transform/" ref-id)
+                                                {:source tweaked})))]
+        (testing "initial run executes all stale transforms"
+          (is (= {:succeeded [ref-x1 global-x2 ref-x3]
+                  :failed    []
+                  :not_run   []}
+                 (run!))))
+        (testing "second run with nothing stale executes nothing"
+          (is (= {:succeeded []
+                  :failed    []
+                  :not_run   []}
+                 (run!))))
+        (edit! ref-x3)
+        (testing "after editing x3, only x3 runs"
+          (is (= {:succeeded [ref-x3]
+                  :failed    []
+                  :not_run   []}
+                 (run!))))
+        (testing "after running x3, nothing stale"
+          (is (= {:succeeded []
+                  :failed    []
+                  :not_run   []}
+                 (run!))))
+        (edit! ref-x1)
+        (testing "after editing x1, staleness propagates through enclosed x2 to x3"
+          (is (= {:succeeded [ref-x1 global-x2 ref-x3]
+                  :failed    []
+                  :not_run   []}
+                 (run!))))
+        (testing "after running all, nothing stale"
+          (is (= {:succeeded []
+                  :failed    []
+                  :not_run   []}
+                 (run!))))))))
+
 (deftest dry-run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run returns 404 if transform not in workspace"
     (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}

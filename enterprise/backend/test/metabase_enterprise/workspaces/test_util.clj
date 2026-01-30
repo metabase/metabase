@@ -21,7 +21,9 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -299,15 +301,22 @@
                     [:model/WorkspaceTransform :ref_id :definition_changed :input_data_changed]
                     :workspace_id workspace-id))
 
+(defmacro with-mocked-execution
+  "Execute body with ws.execute/run-transform-with-remapping stubbed to return success.
+   Useful for testing workspace execution logic without running real transforms."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                               (fn [_transform# _remapping#]
+                                 {:status   :succeeded
+                                  :end_time (Instant/now)
+                                  :message  "Mocked execution"})]
+     ~@body))
+
 (defn mock-run-transform!
   "Mock-execute a workspace transform by ref-id.
    Stubs the execution engine to return success, then calls ws.impl/run-transform!."
   [workspace-id ref-id]
-  (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                              (fn [_transform _remapping]
-                                {:status   :succeeded
-                                 :end_time (java.time.Instant/now)
-                                 :message  "Mocked execution"})]
+  (with-mocked-execution
     (let [workspace    (t2/select-one :model/Workspace workspace-id)
           graph        (ws.impl/get-or-calculate-graph! workspace)
           ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id workspace-id :ref_id ref-id)]
