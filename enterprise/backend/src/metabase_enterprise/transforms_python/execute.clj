@@ -17,6 +17,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.write-connection.core :as write-connection]
    [toucan2.core :as t2])
   (:import
    (java.io Closeable)
@@ -355,7 +356,8 @@
   (try
     (let [message-log (empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          {driver :engine :as db} (t2/select-one :model/Database (:database target))
+          target-db-id                                               (:database target)
+          {driver :engine :as db}                                    (write-connection/get-effective-database target-db-id)
           ;; For manual runs, use the triggering user; for cron, use owner/creator
           run-user-id (if (and (= run-method :manual) user-id)
                         user-id
@@ -363,9 +365,11 @@
           {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
-      (log/info "Executing Python transform" transform-id "with target" (pr-str target))
+      (log/info "Executing Python transform" transform-id "with target" (pr-str target)
+                (when (write-connection/using-write-connection? db)
+                  (str " using write connection (db " (:id db) ")")))
       (let [start-ms          (u/start-timer)
-            transform-details {:db-id          (:id db)
+            transform-details {:db-id          target-db-id
                                :transform-type (keyword (:type target))
                                :conn-spec      (driver/connection-spec driver db)
                                :output-schema  (:schema target)

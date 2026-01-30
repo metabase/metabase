@@ -282,7 +282,11 @@
                       [:= :is_audit false])
                     (if filter-on-router-database-id
                       [:= :router_database_id router-database-id]
-                      [:= :router_database_id nil])]
+                      [:= :router_database_id nil])
+                    ;; TODO(Timothy, 2026-01-29): Always?
+                    [:not [:in :id {:select [:write_database_id]
+                                    :from [:metabase_database]
+                                    :where [:not= :write_database_id nil]}]]]
         where-clause (if filter-by-data-access?
                        [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))

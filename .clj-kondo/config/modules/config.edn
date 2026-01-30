@@ -1715,6 +1715,11 @@
            warehouses
            enterprise/advanced-permissions}}
 
+  write-connection
+  {:team "UX West"
+   :api  #{metabase.write-connection.core}
+   :uses #{premium-features}}
+
   xrays
   {:team "Querying"
    :api  #{metabase.xrays.api
@@ -1869,6 +1874,15 @@
    :api  #{}
    :uses #{premium-features
            util}}
+
+  enterprise/auxiliary-connections
+  {:team "UX West"
+   :api  #{metabase-enterprise.auxiliary-connections.api}
+   :uses #{api
+           events
+           util
+           warehouses
+           warehouses-rest}}
 
   enterprise/billing
   {:team "UX West"
@@ -2356,6 +2370,12 @@
            settings
            util
            enterprise/transforms}}
+
+  enterprise/write-connection
+  {:team "UX West"
+   :api  #{metabase-enterprise.write-connection.core}
+   :uses #{premium-features
+           warehouses}}
 
   enterprise/upload-management
   {:team "UX West"

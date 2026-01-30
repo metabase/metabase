@@ -10,7 +10,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.write-connection.core :as write-connection]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,9 +44,10 @@
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
    (try
-     (let [db (get-in source [:query :database])
-           {driver :engine :as database} (t2/select-one :model/Database db)
-           transform-details {:db-id db
+     (let [original-db-id    (get-in source [:query :database])
+           {driver :engine,
+            :as    database} (write-connection/get-effective-database original-db-id)
+           transform-details {:db-id          original-db-id
                               :database database
                               :transform-id   id
                               :transform-type (keyword (:type target))
@@ -71,7 +72,9 @@
        (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
          (when start-promise
            (deliver start-promise [:started run-id]))
-         (log/info "Executing transform" id "with target" (pr-str target))
+         (log/info "Executing transform" id "with target" (pr-str target)
+                   (when (write-connection/using-write-connection? database)
+                     (str " using write connection (db " (:id database) ")")))
          (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
            (transforms.util/run-cancelable-transform!
             run-id driver transform-details
