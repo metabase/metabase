@@ -5,7 +5,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
