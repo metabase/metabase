@@ -44,6 +44,10 @@ class DataModelContext {
   checkLocation(path: string) {
     cy.location("pathname").should("eq", `${this.basePath}${path}`);
   }
+
+  getTriggeredFrom() {
+    return this.area === "admin" ? "admin" : "data_studio";
+  }
 }
 
 const areas: Array<"admin" | "data studio"> = ["admin", "data studio"];
@@ -998,7 +1002,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "type_casting",
-              triggered_from: area === "admin" ? "admin" : "data_studio",
+              triggered_from: context.getTriggeredFrom(),
             });
             verifyAndCloseToast("Casting enabled for Rating");
 
@@ -1116,7 +1120,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "semantic_type_change",
-              triggered_from: area === "admin" ? "admin" : "data_studio",
+              triggered_from: context.getTriggeredFrom(),
             });
             H.undoToast().should(
               "contain.text",
@@ -1429,7 +1433,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "visibility_change",
-              triggered_from: area === "admin" ? "admin" : "data_studio",
+              triggered_from: context.getTriggeredFrom(),
             });
             verifyAndCloseToast("Visibility of Tax updated");
             FieldSection.getVisibilityInput().should(
@@ -1624,7 +1628,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "filtering_change",
-              triggered_from: area === "admin" ? "admin" : "data_studio",
+              triggered_from: context.getTriggeredFrom(),
             });
             verifyAndCloseToast("Filtering of Quantity updated");
 
@@ -1796,7 +1800,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "display_values",
-              triggered_from: area === "admin" ? "admin" : "data_studio",
+              triggered_from: context.getTriggeredFrom(),
             });
             H.undoToast().should(
               "contain.text",
