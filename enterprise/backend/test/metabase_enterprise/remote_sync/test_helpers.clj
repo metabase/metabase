@@ -8,15 +8,8 @@
    [toucan2.core :as t2]))
 
 (defn generate-collection-yaml
-  "Generates YAML content for a collection.
-
-  Args:
-    entity-id: The unique identifier for the collection.
-    name: The name of the collection.
-    parent-id: Optional parent collection ID.
-
-  Returns:
-    A string containing the YAML representation of the collection."
+  "Generate YAML content for a collection with the given `entity-id` and `name`.
+  Optionally accepts `:parent-id` for nested collections."
   [entity-id name & {:keys [parent-id]}]
   (format "name: %s
 description: null
@@ -41,20 +34,10 @@ is_sample: false
           (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
 (defn generate-v57-collection-yaml
-  "Generates YAML content for a collection in v57 format.
-
-  In v57, remote-synced collections used `type: remote-synced` instead of
-  `is_remote_synced: true`. This helper is used to test backward compatibility
-  when importing exports from v57 Metabase instances.
-
-  Args:
-    entity-id: The unique identifier for the collection.
-    name: The name of the collection.
-    parent-id: Optional parent collection ID.
-    type: Optional type value (e.g., \"remote-synced\" for v57 remote-synced collections).
-
-  Returns:
-    A string containing the v57-format YAML representation of the collection."
+  "Generate YAML content for a collection in v57 format. In v57, remote-synced collections
+  used `type: remote-synced` instead of `is_remote_synced: true`. Used to test backward
+  compatibility when importing exports from v57 Metabase instances. Optionally accepts
+  `:parent-id` and `:type` (e.g., `\"remote-synced\"`)."
   [entity-id name & {:keys [parent-id type]}]
   (format "name: %s
 description: null
@@ -79,15 +62,8 @@ is_sample: false
           (or type "null") (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
 (defn generate-card-yaml
-  "Generates YAML content for a card.
-
-  Args:
-    entity-id: The unique identifier for the card.
-    name: The name of the card.
-    collection-id: The ID of the collection containing this card.
-
-  Returns:
-    A string containing the YAML representation of the card."
+  "Generate YAML content for a card with the given `entity-id`, `name`, and `collection-id`.
+  Optionally accepts a `type` (defaults to `\"question\"`)."
   [entity-id name collection-id & [type]]
   (format "name: %s
 description: null
@@ -127,16 +103,8 @@ document_id: null
           name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") (or type "question")))
 
 (defn generate-dashboard-yaml
-  "Generates YAML content for a dashboard.
-
-  Args:
-    entity-id: The unique identifier for the dashboard.
-    name: The name of the dashboard.
-    collection-id: The ID of the collection containing this dashboard.
-    dashcards: Optional collection of dashboard cards to include.
-
-  Returns:
-    A string containing the YAML representation of the dashboard."
+  "Generate YAML content for a dashboard with the given `entity-id`, `name`, and `collection-id`.
+  Optionally accepts `:dashcards` to include dashboard cards."
   [entity-id name collection-id & {:keys [dashcards]}]
   (let [dashcards-yaml (if dashcards
                          (str/join "\n" (map (fn [dc]
@@ -261,7 +229,7 @@ width: fixed
     (->MockSourceSnapshot source-id base-url branch fail-mode files-atom)))
 
 (defn create-mock-source
-  "Create a mock Source for testing"
+  "Create a mock Source for testing. Optionally accepts `:branch`, `:fail-mode`, and `:initial-files`."
   [& {:keys [branch fail-mode initial-files]
       :or {branch "main"
            fail-mode nil
@@ -287,7 +255,8 @@ width: fixed
     (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom)))
 
 (defn clean-object
-  "Reset the object table before running tests to prevent existing extries from affecting dirty state checks"
+  "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing
+  entries from affecting dirty state checks."
   [f]
   (let [old-models (t2/select :model/RemoteSyncObject)]
     (try
@@ -299,12 +268,12 @@ width: fixed
           (t2/insert! :model/RemoteSyncObject old-models))))))
 
 (defmacro with-clean-object
-  "Macro to wrap a body to execute in a clean change log table"
+  "Execute `body` with a clean RemoteSyncObject table."
   [& body]
   `(clean-object (fn [] ~@body)))
 
 (defn clean-task-table
-  "Reset the task table to an empty state before running tests."
+  "Test fixture that resets the RemoteSyncTask table to an empty state before running tests."
   [f]
   (let [old-models (t2/select :model/RemoteSyncTask)]
     (try
@@ -316,18 +285,12 @@ width: fixed
           (t2/insert! :model/RemoteSyncTask old-models))))))
 
 (def clean-remote-sync-state
-  "Fixture to make sure sync state is clean"
+  "Composed test fixture that ensures both RemoteSyncObject and RemoteSyncTask tables are clean."
   (t/compose-fixtures clean-object clean-task-table))
 
 (defn generate-table-yaml
-  "Generates YAML content for a table.
-
-  Args:
-    table-name: The name of the table (used as entity_id).
-    db-name: The name of the database containing this table.
-
-  Returns:
-    A string containing the YAML representation of the table."
+  "Generate YAML content for a table with the given `table-name` and `db-name`.
+  Optionally accepts `:schema`, `:is-published` (defaults to true), and `:description`."
   [table-name db-name & {:keys [schema is-published description]
                          :or {is-published true
                               description nil}}]
@@ -375,15 +338,8 @@ serdes/meta:
           table-name))
 
 (defn generate-field-yaml
-  "Generates YAML content for a field.
-
-  Args:
-    field-name: The name of the field (used as entity_id).
-    table-name: The name of the table containing this field.
-    db-name: The name of the database containing this field.
-
-  Returns:
-    A string containing the YAML representation of the field."
+  "Generate YAML content for a field with the given `field-name`, `table-name`, and `db-name`.
+  Optionally accepts `:schema`, `:base-type`, `:description`, and `:database-type`."
   [field-name table-name db-name & {:keys [schema base-type description database-type]
                                     :or {base-type "type/Text"
                                          database-type "VARCHAR"
@@ -446,16 +402,8 @@ database_partitioned: null
           field-name))
 
 (defn generate-segment-yaml
-  "Generates YAML content for a segment.
-
-  Args:
-    segment-name: The name of the segment (used as entity_id).
-    table-name: The name of the table containing this segment.
-    db-name: The name of the database containing this segment.
-    filter-field-name: The name of the field to use in the filter clause.
-
-  Returns:
-    A string containing the YAML representation of the segment."
+  "Generate YAML content for a segment with the given `segment-name`, `table-name`, and `db-name`.
+  Optionally accepts `:schema`, `:description`, `:entity-id`, and `:filter-field-name`."
   [segment-name table-name db-name & {:keys [schema description entity-id filter-field-name]
                                       :or {description "Test segment"
                                            filter-field-name "Some Field"}}]
@@ -513,15 +461,8 @@ serdes/meta:
             (str/replace (u/lower-case-en segment-name) #"\s+" "_"))))
 
 (defn generate-action-yaml
-  "Generates YAML content for an action.
-
-  Args:
-    entity-id: The unique identifier for the action.
-    name: The name of the action.
-    model-id: The entity ID of the model (Card) this action belongs to.
-
-  Returns:
-    A string containing the YAML representation of the action."
+  "Generate YAML content for an action with the given `entity-id`, `name`, and `model-id`.
+  Optionally accepts `:type` (defaults to `\"implicit\"`) and `:kind` (defaults to `\"row/create\"`)."
   [entity-id name model-id & {:keys [type kind]
                               :or {type "implicit"
                                    kind "row/create"}}]
@@ -555,10 +496,41 @@ serdes/meta:
           entity-id
           (str/replace (u/lower-case-en name) #"\s+" "_")))
 
+(defn generate-transform-yaml
+  "Generate YAML content for a transform with the given `entity-id` and `name`.
+  Optionally accepts `:collection-id` for transforms inside a collection."
+  [entity-id name & {:keys [collection-id]}]
+  (format "name: %s
+description: null
+entity_id: %s
+collection_id: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+source_database_id: test-data (h2)
+source:
+  type: query
+  query:
+    database: test-data (h2)
+    type: query
+    query:
+      source-table:
+      - test-data (h2)
+      - PUBLIC
+      - VENUES
+target:
+  type: table
+  name: test_output
+  schema: PUBLIC
+serdes/meta:
+- id: %s
+  label: %s
+  model: Transform
+"
+          name entity-id (or collection-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
 (defn generate-measure-yaml
-  "Generates YAML content for a measure with the given `measure-name`, `table-name`, and `db-name`.
-  Optional keyword args include `:schema`, `:description`, `:entity-id`, and `:agg-field-name`
-  for the aggregation field. Returns a string containing the YAML representation of the measure."
+  "Generate YAML content for a measure with the given `measure-name`, `table-name`, and `db-name`.
+  Optionally accepts `:schema`, `:description`, `:entity-id`, and `:agg-field-name`."
   [measure-name table-name db-name & {:keys [schema description entity-id agg-field-name]
                                       :or {description "Test measure"
                                            agg-field-name "Some Field"}}]

@@ -762,9 +762,12 @@ describe(suiteTitle, () => {
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
     cy.log("dark mode colors should be derived");
-    codeBlock().should("contain", '"background-hover": "rgb(27, 27, 27)"');
     codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
     codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
+
+    // Should no longer derive background-hover as it is color-mix'd
+    // in the colors configuration
+    codeBlock().should("not.contain", '"background-hover"');
   });
 
   it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
