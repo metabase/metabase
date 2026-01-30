@@ -1,4 +1,4 @@
-import { forwardRef, useEffect } from "react";
+import { forwardRef, useLayoutEffect } from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { isNumber } from "metabase/lib/types";
@@ -24,7 +24,7 @@ const _ResponsiveEChartsRenderer = forwardRef<
   }: ResponsiveEChartsRendererProps,
   ref,
 ) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isNumber(width) && isNumber(height)) {
       onResize?.(width, height);
     }
