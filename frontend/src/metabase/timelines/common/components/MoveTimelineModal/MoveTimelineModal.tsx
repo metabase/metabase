@@ -42,6 +42,7 @@ const MoveTimelineModal = ({
         confirmButtonText: t`Move`,
         hasPersonalCollections: true,
         hasRootCollection: true,
+        hasLibrary: false,
       }}
     />
   );
