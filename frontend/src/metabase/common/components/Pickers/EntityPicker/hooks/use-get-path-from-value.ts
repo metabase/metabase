@@ -368,7 +368,7 @@ async function getCollectionPathFromValue({
   const itemNamespace = value.namespace ?? getNamespace(item);
 
   const rootCollectionItem = await getRootCollectionItem({
-    namespace: itemNamespace,
+    namespace: itemNamespace ?? null,
     dispatch,
   });
 
