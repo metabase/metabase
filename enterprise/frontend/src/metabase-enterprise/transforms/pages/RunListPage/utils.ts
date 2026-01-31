@@ -14,41 +14,42 @@ export function getParsedParams(
   const {
     page,
     statuses,
-    transform_ids,
-    transform_tag_ids,
-    start_time,
-    end_time,
-    run_methods,
-    sort_column,
-    sort_direction,
+    "transform-ids": transformIds,
+    "transform-tag-ids": transformTagIds,
+    "start-time": startTime,
+    "end-time": endTime,
+    "run-methods": runMethods,
+    "sort-column": sortColumn,
+    "sort-direction": sortDirection,
   } = location.query;
+
   return {
     page: Urls.parseNumberParam(page),
     statuses: Urls.parseListParam(statuses, (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_STATUSES),
     ),
-    transform_ids: Urls.parseListParam(transform_ids, Urls.parseNumberParam),
-    transform_tag_ids: Urls.parseListParam(
-      transform_tag_ids,
+    transformIds: Urls.parseListParam(transformIds, Urls.parseNumberParam),
+    transformTagIds: Urls.parseListParam(
+      transformTagIds,
       Urls.parseNumberParam,
     ),
-    start_time: Urls.parseStringParam(start_time),
-    end_time: Urls.parseStringParam(end_time),
-    run_methods: Urls.parseListParam(run_methods, (v) =>
+    startTime: Urls.parseStringParam(startTime),
+    endTime: Urls.parseStringParam(endTime),
+    runMethods: Urls.parseListParam(runMethods, (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
     ),
-    sort_column: Urls.parseEnumParam(sort_column, TRANSFORM_RUN_SORT_COLUMNS),
-    sort_direction: Urls.parseEnumParam(sort_direction, SORT_DIRECTIONS),
+    sortColumn: Urls.parseEnumParam(sortColumn, TRANSFORM_RUN_SORT_COLUMNS),
+    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
   };
 }
 
 export function hasFilterParams(params: Urls.TransformRunListParams) {
   return (
     params.statuses != null ||
-    params.transform_ids != null ||
-    params.transform_tag_ids != null ||
-    params.start_time != null ||
-    params.end_time != null ||
-    params.run_methods != null
+    params.transformIds != null ||
+    params.transformTagIds != null ||
+    params.startTime != null ||
+    params.endTime != null ||
+    params.runMethods != null
   );
 }

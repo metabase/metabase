@@ -21,7 +21,7 @@ import { TimezoneIndicator } from "./TimezoneIndicator";
 
 function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
-    id: "transform",
+    id: "transform-name",
     header: t`Transform`,
     width: "auto",
     maxAutoWidth: 520,
@@ -60,7 +60,7 @@ function getStartedAtColumn(
   systemTimezone: string | undefined,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "started-at",
+    id: "start-time",
     header: () => (
       <Group gap="xs" wrap="nowrap">
         <SortableHeaderPill name={t`Started at`} />
@@ -85,7 +85,7 @@ function getEndedAtColumn(
   systemTimezone: string | undefined,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "ended-at",
+    id: "end-time",
     header: () => (
       <Group gap="xs" wrap="nowrap">
         <SortableHeaderPill name={t`Ended at`} />
@@ -136,9 +136,9 @@ function getStatusColumn(
   };
 }
 
-function getTriggerColumn(): TreeTableColumnDef<TransformRun> {
+function getRunMethodColumn(): TreeTableColumnDef<TransformRun> {
   return {
-    id: "trigger",
+    id: "run-method",
     header: t`Trigger`,
     width: "auto",
     enableSorting: false,
@@ -167,11 +167,11 @@ function getTagsLabel(tags: TransformTag[]) {
   return tags.map((tag) => tag.name).join(", ");
 }
 
-function getTagsColumn(
+function getTransformTagsColumn(
   tagsById: Record<TransformTagId, TransformTag>,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "tags",
+    id: "transform-tags",
     header: t`Tags`,
     width: "auto",
     enableSorting: false,
@@ -196,7 +196,7 @@ export function getColumns(
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
     getStatusColumn(systemTimezone),
-    getTriggerColumn(),
-    getTagsColumn(tagsById),
+    getRunMethodColumn(),
+    getTransformTagsColumn(tagsById),
   ];
 }

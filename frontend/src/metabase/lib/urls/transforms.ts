@@ -75,53 +75,53 @@ export function transformJob(id: TransformJobId) {
 export type TransformRunListParams = {
   page?: number;
   statuses?: TransformRunStatus[];
-  transform_ids?: TransformId[];
-  transform_tag_ids?: TransformTagId[];
-  start_time?: string;
-  end_time?: string;
-  run_methods?: TransformRunMethod[];
-  sort_column?: TransformRunSortColumn;
-  sort_direction?: SortDirection;
+  transformIds?: TransformId[];
+  transformTagIds?: TransformTagId[];
+  startTime?: string;
+  endTime?: string;
+  runMethods?: TransformRunMethod[];
+  sortColumn?: TransformRunSortColumn;
+  sortDirection?: SortDirection;
 };
 
 export function transformRunList({
   page,
-  transform_ids,
+  transformIds,
   statuses,
-  transform_tag_ids,
-  start_time,
-  end_time,
-  run_methods,
-  sort_column,
-  sort_direction,
+  transformTagIds,
+  startTime,
+  endTime,
+  runMethods,
+  sortColumn,
+  sortDirection,
 }: TransformRunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
     searchParams.set("page", String(page));
   }
-  transform_ids?.forEach((transformId) => {
-    searchParams.append("transform_ids", String(transformId));
+  transformIds?.forEach((transformId) => {
+    searchParams.append("transform-ids", String(transformId));
   });
   statuses?.forEach((status) => {
     searchParams.append("statuses", String(status));
   });
-  transform_tag_ids?.forEach((tagId) => {
-    searchParams.append("transform_tag_ids", String(tagId));
+  transformTagIds?.forEach((tagId) => {
+    searchParams.append("transform-tag-ids", String(tagId));
   });
-  if (start_time != null) {
-    searchParams.set("start_time", start_time);
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
   }
-  if (end_time != null) {
-    searchParams.set("end_time", end_time);
+  if (endTime != null) {
+    searchParams.set("end-time", endTime);
   }
-  run_methods?.forEach((runMethod) => {
-    searchParams.append("run_methods", runMethod);
+  runMethods?.forEach((runMethod) => {
+    searchParams.append("run-methods", runMethod);
   });
-  if (sort_column != null) {
-    searchParams.set("sort_column", sort_column);
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
   }
-  if (sort_direction != null) {
-    searchParams.set("sort_direction", sort_direction);
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();
