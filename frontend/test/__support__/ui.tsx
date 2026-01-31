@@ -392,7 +392,8 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 };
 
 /**
- * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
+ * with virtualization to work in tests, like the entity picker
  */
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest

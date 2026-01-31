@@ -268,14 +268,12 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
-            handleUpdateCollectionId(
-              item as unknown as Pick<MetabotInfo, "id" | "name">,
-            )
+            handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}
           options={{
-            showRootCollection: true,
-            showPersonalCollections: false,
+            hasRootCollection: true,
+            hasPersonalCollections: false,
           }}
         />
       )}
