@@ -54,7 +54,7 @@
    :description  "Overview of input and output tables"})
 
 (defmethod lens.core/make-lens :generic-summary
-  [_ ctx]
+  [_ ctx _params]
   (let [{:keys [sources target]} ctx]
     {:id           "generic-summary"
      :display-name "Data Summary"

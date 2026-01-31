@@ -48,8 +48,10 @@
 
 (mu/defn get-lens :- ::schema/lens
   "Phase 2: Get full lens contents for a transform.
-   Returns sections, cards, and trigger definitions."
+   Returns sections, cards, and trigger definitions.
+   Optional params can filter/customize drill lens output."
   [transform :- :map
-   lens-id :- :string]
+   lens-id :- :string
+   params :- [:maybe :map]]
   (let [ctx (context/build-context transform)]
-    (lens.core/get-lens ctx lens-id)))
+    (lens.core/get-lens ctx lens-id params)))

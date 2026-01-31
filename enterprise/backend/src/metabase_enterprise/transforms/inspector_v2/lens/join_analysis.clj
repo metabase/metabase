@@ -267,16 +267,17 @@
         :message    (str "Join '" alias "' has >20% unmatched rows")})
 
      :drill-lens-triggers
-     (for [{:keys [step]} outer-joins]
+     (for [{:keys [step alias]} outer-joins]
        {:lens-id   "unmatched-rows"
         :condition {:card-id    (str "join-step-" step)
                     :field      :null-rate
                     :comparator :>
                     :threshold  0.05}
-        :reason    "Significant unmatched rows detected"})}))
+        :params    {:join-step step}
+        :reason    (str "Unmatched rows in " alias)})}))
 
 (defmethod lens.core/make-lens :join-analysis
-  [_ ctx]
+  [_ ctx _params]
   (let [{:keys [join-structure]} ctx
         join-count (count join-structure)
         strategies (distinct (map :strategy join-structure))

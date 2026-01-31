@@ -194,10 +194,12 @@
 
 (mr/def ::drill-lens-trigger
   "Definition for conditional drill lens availability.
-   FE evaluates condition and shows drill lens option if triggered."
+   FE evaluates condition and shows drill lens option if triggered.
+   :params is passed to the drill lens when triggered."
   [:map
    [:lens-id :string]
    [:condition ::trigger-condition]
+   [:params {:optional true} [:map-of :keyword :any]]
    [:reason {:optional true} :string]])
 
 ;;; -------------------------------------------------- Drill Lenses --------------------------------------------------

@@ -572,13 +572,16 @@
 (api.macros/defendpoint :get "/:id/inspect-v2/:lens-id"
   :- ::inspector-v2.schema/lens
   "Phase 2: Get full lens contents for a transform (v2).
-   Returns sections, cards with dataset_query, and trigger definitions."
-  [{:keys [id lens-id]} :- [:map
-                            [:id ms/PositiveInt]
-                            [:lens-id ms/NonBlankString]]]
-  (let [transform (api/read-check :model/Transform id)]
+   Returns sections, cards with dataset_query, and trigger definitions.
+   Accepts optional params for drill lenses as query params."
+  [{:keys [id lens-id] :as all-params} :- [:map
+                                            [:id ms/PositiveInt]
+                                            [:lens-id ms/NonBlankString]]]
+  (let [transform (api/read-check :model/Transform id)
+        ;; Extract lens params (everything except path params)
+        params (dissoc all-params :id :lens-id)]
     (check-feature-enabled! transform)
-    (inspector-v2/get-lens transform lens-id)))
+    (inspector-v2/get-lens transform lens-id params)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

@@ -51,6 +51,11 @@
 (defmulti make-lens
   "Generate full lens contents (Phase 2).
 
+   Arguments:
+   - lens-type: keyword like :generic-summary, :join-analysis
+   - ctx: context map with sources, target, joins, etc.
+   - params: optional map with drill lens parameters (e.g., {:join-step 1})
+
    Returns a complete lens map with sections, cards, triggers, etc.
 
    Returns:
@@ -62,10 +67,10 @@
     :drill-lenses [{:id :display-name :description} ...]
     :alert-triggers [...]
     :drill-lens-triggers [...]}"
-  (fn [lens-type _ctx] lens-type))
+  (fn [lens-type _ctx _params] lens-type))
 
 (defmethod make-lens :default
-  [lens-type _ctx]
+  [lens-type _ctx _params]
   (log/warnf "No lens implementation for type: %s" lens-type)
   {:id           (name lens-type)
    :display-name (str lens-type)
@@ -121,11 +126,14 @@
 
 (defn get-lens
   "Generate a lens by ID (Phase 2).
-   Returns the full lens with sections, cards, and triggers."
-  [ctx lens-id]
-  (let [lens-type (lens-id->type lens-id)]
-    (if (lens-applicable? lens-type ctx)
-      (make-lens lens-type ctx)
-      (throw (ex-info (str "Lens not applicable: " lens-id)
-                      {:lens-id   lens-id
-                       :lens-type lens-type})))))
+   Returns the full lens with sections, cards, and triggers.
+   Optional params can filter/customize drill lens output."
+  ([ctx lens-id]
+   (get-lens ctx lens-id nil))
+  ([ctx lens-id params]
+   (let [lens-type (lens-id->type lens-id)]
+     (if (lens-applicable? lens-type ctx)
+       (make-lens lens-type ctx params)
+       (throw (ex-info (str "Lens not applicable: " lens-id)
+                       {:lens-id   lens-id
+                        :lens-type lens-type}))))))

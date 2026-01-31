@@ -99,7 +99,7 @@
    :description  "Compare input/output column distributions"})
 
 (defmethod lens.core/make-lens :column-comparison
-  [_ ctx]
+  [_ ctx _params]
   (let [{:keys [column-matches target]} ctx
         match-count (count column-matches)]
     {:id           "column-comparison"
