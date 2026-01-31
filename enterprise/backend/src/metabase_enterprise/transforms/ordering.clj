@@ -92,7 +92,8 @@
                                              {:output-tables (output-table-map mp db-transforms)
                                               :dependencies  (dependency-map db-transforms)})))
                                     (apply merge-with merge))]
-    ;; Transforms with nil target_db_id get empty dependency sets
+    ;; Transforms without a target database are invalid and shouldn't form part of the dependency graph.
+    ;; Give them empty dependency sets so they don't interfere with ordering.
     (into (zipmap (map :id transforms) (repeat #{}))
           (update-vals dependencies #(into #{}
                                            (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs)))

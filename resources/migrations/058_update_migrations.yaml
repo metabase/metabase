@@ -5239,6 +5239,7 @@ databaseChangeLog:
       id: v58.2026-01-31T10:00:02
       author: christruter
       comment: Add foreign key constraint from transform.target_db_id to metabase_database
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -5252,6 +5253,7 @@ databaseChangeLog:
             referencedTableName: metabase_database
             referencedColumnNames: id
             constraintName: fk_transform_target_db_id
+            onDelete: SET NULL
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: transform
