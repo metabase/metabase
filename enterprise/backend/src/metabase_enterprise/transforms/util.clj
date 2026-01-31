@@ -25,6 +25,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
@@ -278,7 +279,7 @@
 (defn massage-sql-query
   "Adjusts mbql query for use in a transform."
   [query]
-  (assoc-in query [:middleware :disable-remaps?] true))
+  (remap/disable-remaps query))
 
 (defn- checkpoint-incremental?
   "Returns true if `source` uses checkpoint-based incremental strategy."

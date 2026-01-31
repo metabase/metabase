@@ -31,6 +31,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.middleware.limit :as limit]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
@@ -280,6 +281,7 @@
              (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
              (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
             limit/disable-max-results
+            remap/disable-remaps
             qp.compile/compile))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
