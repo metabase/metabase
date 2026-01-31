@@ -1,18 +1,25 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Button, Center, Divider, Stack, Text } from "metabase/ui";
+import { Button, Center, Divider, Stack, Tabs, Text } from "metabase/ui";
 import {
   useGetInspectorV2DiscoveryQuery,
+  useGetTransformInspectQuery,
   useGetTransformQuery,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { InspectorV2DiscoveryResponse, TransformId } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
+import {
+  InspectColumnComparisons,
+  InspectJoins,
+  InspectSummary,
+} from "../TransformInspectPage/components";
 
 import { LensContent } from "./components/LensContent";
 
@@ -28,6 +35,7 @@ export const TransformInspectV2Page = ({
   params,
 }: TransformInspectV2PageProps) => {
   const transformId = Urls.extractEntityId(params.transformId);
+  const [activeTab, setActiveTab] = useState<string | null>("v2");
 
   const {
     data: transform,
@@ -40,6 +48,12 @@ export const TransformInspectV2Page = ({
     isLoading: isLoadingDiscovery,
     error: discoveryError,
   } = useGetInspectorV2DiscoveryQuery(transformId ?? skipToken);
+
+  const {
+    data: inspectDataV1,
+    isLoading: isLoadingInspectV1,
+    error: inspectErrorV1,
+  } = useGetTransformInspectQuery(transformId ?? skipToken);
 
   const isLoading = isLoadingTransform || isLoadingDiscovery;
   const error = transformError ?? discoveryError;
@@ -73,10 +87,52 @@ export const TransformInspectV2Page = ({
   return (
     <PageContainer data-testid="transform-inspect-v2-content">
       <TransformHeader transform={transform} />
-      <AllLensesContent
-        transformId={transformId!}
-        discovery={discovery}
-      />
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="v2">{t`Inspector V2`}</Tabs.Tab>
+          <Tabs.Tab value="v1">{t`Inspector V1`}</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="v2" pt="md">
+          <AllLensesContent transformId={transformId!} discovery={discovery} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="v1" pt="md">
+          {isLoadingInspectV1 || inspectErrorV1 ? (
+            <Center h={200}>
+              <LoadingAndErrorWrapper
+                loading={isLoadingInspectV1}
+                error={inspectErrorV1}
+              />
+            </Center>
+          ) : inspectDataV1 ? (
+            <Stack gap="xl">
+              {inspectDataV1.summary && (
+                <InspectSummary
+                  summary={inspectDataV1.summary}
+                  joins={inspectDataV1.joins}
+                  sources={inspectDataV1.sources}
+                />
+              )}
+              {inspectDataV1.joins && inspectDataV1.joins.length > 0 && (
+                <InspectJoins
+                  joins={inspectDataV1.joins}
+                  sources={inspectDataV1.sources ?? undefined}
+                />
+              )}
+              {inspectDataV1.column_comparisons &&
+                inspectDataV1.column_comparisons.length > 0 && (
+                  <InspectColumnComparisons
+                    comparisons={inspectDataV1.column_comparisons}
+                    sources={inspectDataV1.sources}
+                    target={inspectDataV1.target}
+                    visitedFields={inspectDataV1.visited_fields}
+                  />
+                )}
+            </Stack>
+          ) : null}
+        </Tabs.Panel>
+      </Tabs>
     </PageContainer>
   );
 };

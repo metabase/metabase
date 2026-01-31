@@ -46,12 +46,11 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
-        <Route path=":transformId/inspect" component={TransformInspectPage} />
-        <Route path=":transformId/inspect-v2" component={TransformInspectV2Page} />
-        <Route
+        <Route path=":transformId/inspect" component={TransformInspectV2Page} />
+        {/* <Route
           path=":transformId/inspect-mock"
           component={TransformInspectPageMock}
-        />
+        /> */}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"
