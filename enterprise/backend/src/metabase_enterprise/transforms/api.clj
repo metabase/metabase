@@ -574,12 +574,11 @@
   "Phase 2: Get full lens contents for a transform (v2).
    Returns sections, cards with dataset_query, and trigger definitions.
    Accepts optional params for drill lenses as query params."
-  [{:keys [id lens-id] :as all-params} :- [:map
-                                            [:id ms/PositiveInt]
-                                            [:lens-id ms/NonBlankString]]]
-  (let [transform (api/read-check :model/Transform id)
-        ;; Extract lens params (everything except path params)
-        params (dissoc all-params :id :lens-id)]
+  [{:keys [id lens-id]} :- [:map
+                            [:id ms/PositiveInt]
+                            [:lens-id ms/NonBlankString]]
+   params :- [:map-of :keyword :any]]
+  (let [transform (api/read-check :model/Transform id)]
     (check-feature-enabled! transform)
     (inspector-v2/get-lens transform lens-id params)))
 
