@@ -1687,8 +1687,8 @@
 (deftest get-runs-sort-by-transform-name-test
   (testing "GET /api/ee/transform/run - sort by transform-name"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform    {transform-b-id :id} {:name "B"}
-                     :model/Transform    {transform-a-id :id} {:name "A"}
+      (mt/with-temp [:model/Transform    {transform-b-id :id} {:name "Transform B"}
+                     :model/Transform    {transform-a-id :id} {:name "Transform A"}
                      :model/TransformRun {run-b-id :id}       {:transform_id transform-b-id}
                      :model/TransformRun {run-a-id :id}       {:transform_id transform-a-id}]
         (doseq [sort-direction [:asc :desc]]
@@ -1769,5 +1769,29 @@
                                                :transform_ids [transform-id])]
             (is (= (cond-> [canceled-run-id canceling-run-id failed-run-id
                             in-progress-run-id success-run-id timeout-run-id]
+                     (= sort-direction :desc) reverse)
+                   (->> response :data (map :id))))))))))
+
+(deftest get-runs-sort-by-transform-tags-test
+  (testing "GET /api/ee/transform/run - sort by transform-tags (first tag name)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/TransformTag          {tag-a-id :id}       {:name "Tag A"}
+                     :model/TransformTag          {tag-b-id :id}       {:name "Tag B"}
+                     :model/TransformTag          {tag-ignored-id :id} {:name "Tag Ignored"}
+                     ;; Transform with tags "Tag A" (pos 0) and "Tag Ignored" (pos 1) — sorted by first tag "Tag A"
+                     :model/Transform             {transform-a-id :id} {:name "Transform A"}
+                     :model/TransformTransformTag _                    {:transform_id transform-a-id :tag_id tag-a-id       :position 0}
+                     :model/TransformTransformTag _                    {:transform_id transform-a-id :tag_id tag-ignored-id :position 1}
+                     ;; Transform with tag "Tag B" (pos 0) — sorted by first tag "Tag B"
+                     :model/Transform             {transform-b-id :id} {:name "Transform B"}
+                     :model/TransformTransformTag _                    {:transform_id transform-b-id :tag_id tag-b-id :position 0}
+                     :model/TransformRun          {run-a-id :id}       {:transform_id transform-a-id}
+                     :model/TransformRun          {run-b-id :id}       {:transform_id transform-b-id}]
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :sort_column "transform-tags"
+                                               :sort_direction sort-direction
+                                               :transform_ids [transform-a-id transform-b-id])]
+            (is (= (cond-> [run-a-id run-b-id]
                      (= sort-direction :desc) reverse)
                    (->> response :data (map :id))))))))))
