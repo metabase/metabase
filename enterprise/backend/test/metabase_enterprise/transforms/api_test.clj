@@ -1699,3 +1699,75 @@
             (is (= (cond-> [run-a-id run-b-id]
                      (= sort-direction :desc) reverse)
                    (->> response :data (map :id))))))))))
+
+(deftest get-runs-sort-by-start-time-test
+  (testing "GET /api/ee/transform/run - sort by start-time"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id} {}
+                     :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
+                                                               :start_time   (parse-instant "2025-01-01T00:00:00")}
+                     :model/TransformRun {later-run-id :id}   {:transform_id transform-id
+                                                               :start_time   (parse-instant "2025-01-02T00:00:00")}]
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :sort_column "start-time"
+                                               :sort_direction sort-direction
+                                               :transform_ids [transform-id])]
+            (is (= (cond-> [earlier-run-id later-run-id]
+                     (= sort-direction :desc) reverse)
+                   (->> response :data (map :id))))))))))
+
+(deftest get-runs-sort-by-end-time-test
+  (testing "GET /api/ee/transform/run - sort by end-time"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id} {}
+                     :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
+                                                               :end_time     (parse-instant "2025-01-01T00:00:00")}
+                     :model/TransformRun {later-run-id :id}   {:transform_id transform-id
+                                                               :end_time     (parse-instant "2025-01-02T00:00:00")}]
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :sort_column "end-time"
+                                               :sort_direction sort-direction
+                                               :transform_ids [transform-id])]
+            (is (= (cond-> [earlier-run-id later-run-id]
+                     (= sort-direction :desc) reverse)
+                   (->> response :data (map :id))))))))))
+
+(deftest get-runs-sort-by-run-method-test
+  (testing "GET /api/ee/transform/run - sort by run-method (translated names)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id}   {}
+                     ;; "Manual" < "Schedule"
+                     :model/TransformRun {manual-run-id :id}   {:transform_id transform-id :run_method "manual"}
+                     :model/TransformRun {schedule-run-id :id} {:transform_id transform-id :run_method "cron"}]
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :sort_column "run-method"
+                                               :sort_direction sort-direction
+                                               :transform_ids [transform-id])]
+            (is (= (cond-> [manual-run-id schedule-run-id]
+                     (= sort-direction :desc) reverse)
+                   (->> response :data (map :id))))))))))
+
+(deftest get-runs-sort-by-status-test
+  (testing "GET /api/ee/transform/run - sort by status (translated names)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id}        {}
+                     ;; Sorted by translated name: "Canceled" < "Canceling" < "Failed" < "In progress" < "Success" < "Timeout"
+                     :model/TransformRun {canceled-run-id :id}     {:transform_id transform-id :status "canceled"}
+                     :model/TransformRun {canceling-run-id :id}    {:transform_id transform-id :status "canceling"}
+                     :model/TransformRun {failed-run-id :id}       {:transform_id transform-id :status "failed"}
+                     :model/TransformRun {in-progress-run-id :id}  {:transform_id transform-id :status "started"
+                                                                    :is_active    true}
+                     :model/TransformRun {success-run-id :id}      {:transform_id transform-id :status "succeeded"}
+                     :model/TransformRun {timeout-run-id :id}      {:transform_id transform-id :status "timeout"}]
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :sort_column "status"
+                                               :sort_direction sort-direction
+                                               :transform_ids [transform-id])]
+            (is (= (cond-> [canceled-run-id canceling-run-id failed-run-id
+                            in-progress-run-id success-run-id timeout-run-id]
+                     (= sort-direction :desc) reverse)
+                   (->> response :data (map :id))))))))))
