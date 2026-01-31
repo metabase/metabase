@@ -1,7 +1,8 @@
 (ns metabase.lib.transforms.inspector-v2
   "Simple utilities for Transform Inspector v2 trigger evaluation."
   (:require
-   [clojure.set :as set]))
+   [clojure.set :as set]
+   [metabase.lib.transforms.inspector.interestingness :as interestingness]))
 
 (defn- compare-values
   [comparator actual threshold]
@@ -56,3 +57,22 @@
                     (update :drill-lens-triggers #(mapv (fn [t] (update t :condition (fn [c] (update c :comparator keyword)))) %)))
            card-results (js->clj card-results-js :keywordize-keys true)]
        (clj->js (evaluate-triggers lens card-results)))))
+
+#?(:cljs
+   (defn ^:export interestingFields
+     "Filter and sort fields by interestingness.
+      Returns fields with score above threshold, sorted by score descending.
+      Options: threshold (default 0.3), limit (default nil = all)."
+     [fields-js & {:keys [threshold limit]}]
+     (let [fields (-> (js->clj fields-js :keywordize-keys true)
+                      ;; Convert snake_case keys to kebab-case
+                      (->> (mapv (fn [f]
+                                   (-> f
+                                       (set/rename-keys {:base_type     :base-type
+                                                         :semantic_type :semantic-type
+                                                         :display_name  :display-name})
+                                       (update :stats #(set/rename-keys % {:distinct_count :distinct-count
+                                                                            :nil_percent    :nil-percent})))))))]
+       (clj->js (interestingness/interesting-fields fields
+                                                     :threshold (or threshold 0.3)
+                                                     :limit limit)))))
