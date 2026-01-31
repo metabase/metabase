@@ -283,7 +283,7 @@
        :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
        [[:start_time sort-direction]
         [:end_time   sort-direction nulls-sort]])
-     [:id sort-direction])))
+     [:transform_run.id sort-direction])))
 
 (defn paged-runs
   "Return a page of the list of the runs.
