@@ -11,7 +11,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, Collection, DatabaseId } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
@@ -46,7 +45,7 @@ const SavedEntityList = ({
           id: collection.id,
           models: [CARD_INFO[type].model],
           sort_column: "name",
-          sort_direction: SortDirection.Asc,
+          sort_direction: "asc",
         }
       : skipToken,
   );

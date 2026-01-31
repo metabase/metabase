@@ -12,7 +12,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
 import type {
@@ -57,7 +57,7 @@ const _CleanupCollectionModal = ({
     SortingOptions<ListStaleCollectionItemsSortColumn>
   >({
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   });
 
   const handleSortingChange = (

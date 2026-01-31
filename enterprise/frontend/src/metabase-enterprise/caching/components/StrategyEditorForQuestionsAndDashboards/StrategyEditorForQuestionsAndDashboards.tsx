@@ -15,7 +15,7 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { Center, Flex, Repeat, Skeleton, Stack } from "metabase/ui";
 import type { CacheSortColumn, CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api/sorting";
 
 import type { CacheableItem, UpdateTarget } from "../types";
 
@@ -39,16 +39,14 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
   const { page, setPage, resetPage } = usePagination();
 
   const [sortColumn, setSortColumn] = useState<CacheSortColumn>("name");
-  const [sortDirection, setSortDirection] = useState<SortDirection>(
-    SortDirection.Asc,
-  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const { configs, total, error, isLoading } = useCacheConfigs({
     model: ["dashboard", "question"],
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
     sort_column: sortColumn,
-    sort_direction: sortDirection === SortDirection.Asc ? "asc" : "desc",
+    sort_direction: sortDirection === "asc" ? "asc" : "desc",
   });
 
   // Handle sort column click
