@@ -1794,4 +1794,63 @@
                                                :transform_ids [transform-a-id transform-b-id])]
             (is (= (cond-> [run-a-id run-b-id]
                      (= sort-direction :desc) reverse)
-                   (->> response :data (map :id))))))))))
+                   (->> response :data (map :id)))
+                (str "sort-direction: " sort-direction))))))))
+
+(deftest get-runs-sort-by-built-in-transform-tags-test
+  (testing "GET /api/ee/transform/run - sort by built-in transform-tags (translated names)"
+    (mt/with-premium-features #{:transforms}
+      ;; Translated names alphabetically: "daily" < "hourly" < "monthly" < "weekly"
+      (mt/with-temp [:model/TransformTag {tag-daily-id :id}
+                     {:name "daily" :built_in_type "daily"}
+
+                     :model/TransformTag {tag-hourly-id :id}
+                     {:name "hourly" :built_in_type "hourly"}
+
+                     :model/TransformTag {tag-monthly-id :id}
+                     {:name "monthly" :built_in_type "monthly"}
+
+                     :model/TransformTag {tag-weekly-id :id}
+                     {:name "weekly" :built_in_type "weekly"}
+
+                     :model/Transform {transform-daily-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-daily-id
+                                                     :tag_id       tag-daily-id
+                                                     :position     0}
+
+                     :model/Transform {transform-hourly-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-hourly-id
+                                                     :tag_id       tag-hourly-id
+                                                     :position     0}
+
+                     :model/Transform {transform-monthly-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-monthly-id
+                                                     :tag_id       tag-monthly-id
+                                                     :position     0}
+
+                     :model/Transform {transform-weekly-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-weekly-id
+                                                     :tag_id       tag-weekly-id
+                                                     :position     0}
+
+                     :model/TransformRun {daily-run-id :id}
+                     {:transform_id transform-daily-id}
+
+                     :model/TransformRun {hourly-run-id :id}
+                     {:transform_id transform-hourly-id}
+
+                     :model/TransformRun {monthly-run-id :id}
+                     {:transform_id transform-monthly-id}
+
+                     :model/TransformRun {weekly-run-id :id}
+                     {:transform_id transform-weekly-id}]
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                               :sort_column "transform-tags"
+                                               :sort_direction sort-direction
+                                               :transform_ids [transform-daily-id transform-hourly-id
+                                                               transform-monthly-id transform-weekly-id])]
+            (is (= (cond-> [daily-run-id hourly-run-id monthly-run-id weekly-run-id]
+                     (= sort-direction :desc) reverse)
+                   (->> response :data (map :id)))
+                (str "sort-direction: " sort-direction))))))))
