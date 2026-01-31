@@ -25,6 +25,7 @@ import type {
 
 import { ColumnComparisonSection } from "./ColumnComparisonSection";
 import { ComparisonSection } from "./ComparisonSection";
+import { FieldInfoSection } from "./FieldInfoSection";
 import { FlatSection } from "./FlatSection";
 import { JoinAnalysisSection } from "./JoinAnalysisSection";
 import { LensSummary } from "./LensSummary";
@@ -381,6 +382,10 @@ const SectionRenderer = ({
           sources={discovery.sources}
           target={discovery.target}
           asTable
+        />
+        <FieldInfoSection
+          sources={discovery.sources}
+          target={discovery.target}
         />
       </Stack>
     );

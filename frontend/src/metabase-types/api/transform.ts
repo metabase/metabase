@@ -287,8 +287,8 @@ export type QueryComplexity = {
 export type TransformInspectFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
-  min?: number;
-  max?: number;
+  min?: number | string;
+  max?: number | string;
   avg?: number;
 };
 
