@@ -18,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(lens.core/register-lens! :unmatched-rows 100)
+(lens.core/register-lens! :unmatched-rows 100 true)
 
 ;;; -------------------------------------------------- Query Building --------------------------------------------------
 

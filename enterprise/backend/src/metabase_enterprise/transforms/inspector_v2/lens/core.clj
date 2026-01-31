@@ -75,28 +75,33 @@
 
 ;;; -------------------------------------------------- Lens Registry --------------------------------------------------
 
-(defonce ^:private registry
-  "Atom containing registered lens types.
-   Each entry is {:lens-type keyword :priority number}.
-   Lower priority = shown first in discovery."
+(defonce ^:private ^{:doc "Atom containing registered lens types.
+   Each entry is {:lens-type keyword :priority number :drill? boolean}.
+   Lower priority = shown first in discovery."} registry
   (atom []))
 
 (defn register-lens!
   "Register a lens type. Call this at namespace load time.
-   Priority controls ordering - lower numbers appear first."
-  [lens-type priority]
-  (swap! registry (fn [lenses]
-                    (-> (remove #(= (:lens-type %) lens-type) lenses)
-                        (concat [{:lens-type lens-type :priority priority}])
-                        vec)))
-  nil)
+   Priority controls ordering - lower numbers appear first.
+   Set drill? true for lenses only available via triggers."
+  ([lens-type priority]
+   (register-lens! lens-type priority false))
+  ([lens-type priority drill?]
+   (swap! registry (fn [lenses]
+                     (-> (remove #(= (:lens-type %) lens-type) lenses)
+                         (concat [{:lens-type lens-type :priority priority :drill? drill?}])
+                         vec)))
+   nil))
 
 (defn- registered-lens-types
-  "Return all registered lens types in priority order."
-  []
-  (->> @registry
-       (sort-by :priority)
-       (mapv :lens-type)))
+  "Return registered lens types in priority order, optionally filtering drill lenses."
+  ([]
+   (registered-lens-types false))
+  ([include-drill?]
+   (->> @registry
+        (filter #(or include-drill? (not (:drill? %))))
+        (sort-by :priority)
+        (mapv :lens-type))))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
 

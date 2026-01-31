@@ -179,7 +179,7 @@
    Evaluated by lib against card results."
   [:map
    [:card-id :string]
-   [:field {:optional true} [:or :string :int]]
+   [:field {:optional true} [:or :string :int :keyword]]
    [:comparator ::comparator]
    [:threshold :any]])
 
