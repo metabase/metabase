@@ -40,7 +40,9 @@ export function RunFilterList({
 
   const handleTransformsChange = (transformIds: TransformId[]) => {
     dispatch(
-      replace(Urls.transformRunList({ ...params, transformIds: transformIds })),
+      replace(
+        Urls.transformRunList({ ...params, transform_ids: transformIds }),
+      ),
     );
   };
 
@@ -50,38 +52,42 @@ export function RunFilterList({
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
     dispatch(
-      replace(Urls.transformRunList({ ...params, transformTagIds: tagIds })),
+      replace(Urls.transformRunList({ ...params, transform_tag_ids: tagIds })),
     );
   };
 
   const handleStartTimeChange = (startTime: string | undefined) => {
-    dispatch(replace(Urls.transformRunList({ ...params, startTime })));
+    dispatch(
+      replace(Urls.transformRunList({ ...params, start_time: startTime })),
+    );
   };
 
   const handleEndTimeChange = (endTime: string | undefined) => {
-    dispatch(replace(Urls.transformRunList({ ...params, endTime })));
+    dispatch(replace(Urls.transformRunList({ ...params, end_time: endTime })));
   };
 
   const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
-    dispatch(replace(Urls.transformRunList({ ...params, runMethods })));
+    dispatch(
+      replace(Urls.transformRunList({ ...params, run_methods: runMethods })),
+    );
   };
 
   return (
     <Group>
       <TransformFilterWidget
-        transformIds={params.transformIds ?? []}
+        transformIds={params.transform_ids ?? []}
         transforms={transforms}
         onChange={handleTransformsChange}
       />
       <TimeFilterWidget
         label={t`Started at`}
-        value={params.startTime}
+        value={params.start_time}
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleStartTimeChange}
       />
       <TimeFilterWidget
         label={t`Ended at`}
-        value={params.endTime}
+        value={params.end_time}
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleEndTimeChange}
       />
@@ -91,12 +97,12 @@ export function RunFilterList({
         onChange={handleStatusesChange}
       />
       <RunMethodFilterWidget
-        runMethods={params.runMethods ?? []}
+        runMethods={params.run_methods ?? []}
         onChange={handleRunMethodsChange}
       />
       <TagFilterWidget
         label={t`Tags`}
-        tagIds={params.transformTagIds ?? []}
+        tagIds={params.transform_tag_ids ?? []}
         tags={tags}
         onChange={handleTagsChange}
       />

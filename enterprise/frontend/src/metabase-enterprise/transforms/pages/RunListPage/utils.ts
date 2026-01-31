@@ -16,30 +16,30 @@ export function getParsedParams(
   const {
     page,
     statuses,
-    transformIds,
-    transformTagIds,
-    startTime,
-    endTime,
-    runMethods,
+    transform_ids,
+    transform_tag_ids,
+    start_time,
+    end_time,
+    run_methods,
   } = location.query;
   return {
     page: parseInteger(page),
     statuses: parseList(statuses, parseRunStatus),
-    transformIds: parseList(transformIds, parseInteger),
-    transformTagIds: parseList(transformTagIds, parseInteger),
-    startTime: parseString(startTime),
-    endTime: parseString(endTime),
-    runMethods: parseList(runMethods, parseRunMethod),
+    transform_ids: parseList(transform_ids, parseInteger),
+    transform_tag_ids: parseList(transform_tag_ids, parseInteger),
+    start_time: parseString(start_time),
+    end_time: parseString(end_time),
+    run_methods: parseList(run_methods, parseRunMethod),
   };
 }
 
 export function hasFilterParams(params: Urls.TransformRunListParams) {
   return (
     params.statuses != null ||
-    params.transformIds != null ||
-    params.transformTagIds != null ||
-    params.startTime != null ||
-    params.endTime != null ||
-    params.runMethods != null
+    params.transform_ids != null ||
+    params.transform_tag_ids != null ||
+    params.start_time != null ||
+    params.end_time != null ||
+    params.run_methods != null
   );
 }

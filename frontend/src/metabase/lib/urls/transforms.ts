@@ -73,43 +73,43 @@ export function transformJob(id: TransformJobId) {
 export type TransformRunListParams = {
   page?: number;
   statuses?: TransformRunStatus[];
-  transformIds?: TransformId[];
-  transformTagIds?: TransformTagId[];
-  startTime?: string;
-  endTime?: string;
-  runMethods?: TransformRunMethod[];
+  transform_ids?: TransformId[];
+  transform_tag_ids?: TransformTagId[];
+  start_time?: string;
+  end_time?: string;
+  run_methods?: TransformRunMethod[];
 };
 
 export function transformRunList({
   page,
-  transformIds,
+  transform_ids,
   statuses,
-  transformTagIds,
-  startTime,
-  endTime,
-  runMethods,
+  transform_tag_ids,
+  start_time,
+  end_time,
+  run_methods,
 }: TransformRunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
     searchParams.set("page", String(page));
   }
-  transformIds?.forEach((transformId) => {
-    searchParams.append("transformIds", String(transformId));
+  transform_ids?.forEach((transformId) => {
+    searchParams.append("transform_ids", String(transformId));
   });
   statuses?.forEach((status) => {
     searchParams.append("statuses", String(status));
   });
-  transformTagIds?.forEach((tagId) => {
-    searchParams.append("transformTagIds", String(tagId));
+  transform_tag_ids?.forEach((tagId) => {
+    searchParams.append("transform_tag_ids", String(tagId));
   });
-  if (startTime != null) {
-    searchParams.set("startTime", startTime);
+  if (start_time != null) {
+    searchParams.set("start_time", start_time);
   }
-  if (endTime != null) {
-    searchParams.set("endTime", endTime);
+  if (end_time != null) {
+    searchParams.set("end_time", end_time);
   }
-  runMethods?.forEach((runMethod) => {
-    searchParams.append("runMethods", runMethod);
+  run_methods?.forEach((runMethod) => {
+    searchParams.append("run_methods", runMethod);
   });
 
   const queryString = searchParams.toString();

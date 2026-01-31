@@ -1,6 +1,10 @@
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
-import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type {
+  PaginationRequest,
+  PaginationResponse,
+  SortDirection,
+} from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
@@ -227,6 +231,9 @@ export type ListTransformJobsRequest = {
   tag_ids?: TransformTagId[];
 };
 
+export const TransformRunSortColumns = ["start_time", "end_time"] as const;
+export type TransformRunSortColumn = (typeof TransformRunSortColumns)[number];
+
 export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
   transform_ids?: TransformId[];
@@ -234,6 +241,8 @@ export type ListTransformRunsRequest = {
   start_time?: string;
   end_time?: string;
   run_methods?: TransformRunMethod[];
+  sort_column?: TransformRunSortColumn;
+  sort_direction?: SortDirection;
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {

@@ -2,7 +2,7 @@ import type {
   DependencyEntry,
   DependencyGroupType,
   DependencySortColumn,
-  DependencySortDirection,
+  SortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -37,7 +37,7 @@ export type DependencyListParams = {
   group_types?: DependencyGroupType[];
   include_personal_collections?: boolean;
   sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
+  sort_direction?: SortDirection;
 };
 
 function dependencyListQueryString({
