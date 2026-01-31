@@ -365,11 +365,10 @@ async function getCollectionPathFromValue({
   const isCollectionValue = isCollection(item, value);
   const parentCollectionId = isCollectionValue ? item.id : item?.collection_id;
 
-  const itemNamespace =
-    value.namespace !== undefined ? value.namespace : getNamespace(item);
+  const itemNamespace = value.namespace ?? getNamespace(item);
 
   const rootCollectionItem = await getRootCollectionItem({
-    namespace: itemNamespace ?? value.namespace ?? null,
+    namespace: itemNamespace,
     dispatch,
   });
 
@@ -473,7 +472,7 @@ async function getCollectionPathFromValue({
     const collectionItems = await dispatch(
       collectionApi.endpoints.listCollectionItems.initiate({
         id: collectionId,
-        namespace: itemNamespace,
+        namespace: itemNamespace ?? undefined,
         ...getCollectionItemsOptions({ models }),
       }),
     )
