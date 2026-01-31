@@ -1,7 +1,19 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Button, Center, Flex, Stack, Text, Title } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Divider,
+  Flex,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import { useGetInspectorV2LensQuery } from "metabase-enterprise/api";
 import type {
   InspectorV2Card,
@@ -19,11 +31,14 @@ import { LensSummary } from "./LensSummary";
 
 // Map lens IDs to friendly display names
 const DRILL_LENS_NAMES: Record<string, string> = {
-  "unmatched-rows": "View Unmatched Rows",
+  "unmatched-rows": "Unmatched Rows",
 };
 
 function formatDrillLensName(lensId: string): string {
-  return DRILL_LENS_NAMES[lensId] ?? lensId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  return (
+    DRILL_LENS_NAMES[lensId] ??
+    lensId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
 // Context for collecting card results to evaluate triggers
@@ -39,38 +54,52 @@ const CardResultsContext = createContext<CardResultsContextType>({
 
 export const useCardResultsContext = () => useContext(CardResultsContext);
 
-// Active drill lens state includes both ID and optional params
-type ActiveDrillLens = {
+// Drill lens info for tracking open drill lenses
+type DrillLensInfo = {
+  key: string;
   lensId: string;
   params?: Record<string, unknown>;
   displayName: string;
-} | null;
+};
 
 type LensContentProps = {
   transformId: TransformId;
   lensId: string;
   discovery: InspectorV2DiscoveryResponse;
   params?: Record<string, unknown>;
+  onClose?: () => void;
 };
 
-export const LensContent = ({ transformId, lensId, discovery, params }: LensContentProps) => {
+export const LensContent = ({
+  transformId,
+  lensId,
+  discovery,
+  params,
+  onClose,
+}: LensContentProps) => {
   const { data: lens, isLoading, error } = useGetInspectorV2LensQuery({
     transformId,
     lensId,
     params,
   });
-  const [activeDrillLens, setActiveDrillLens] = useState<ActiveDrillLens>(null);
-  const [cardResults, setCardResults] = useState<Record<string, Record<string, unknown>>>({});
+  // Track multiple open drill lenses
+  const [openDrillLenses, setOpenDrillLenses] = useState<DrillLensInfo[]>([]);
+  const [cardResults, setCardResults] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
 
-  const setCardResult = useCallback((cardId: string, result: Record<string, unknown>) => {
-    setCardResults(prev => ({ ...prev, [cardId]: result }));
-  }, []);
+  const setCardResult = useCallback(
+    (cardId: string, result: Record<string, unknown>) => {
+      setCardResults((prev) => ({ ...prev, [cardId]: result }));
+    },
+    [],
+  );
 
   // Evaluate drill lens triggers
   const activatedDrillLenses = useMemo(() => {
     if (!lens?.drill_lens_triggers) return [];
 
-    return lens.drill_lens_triggers.filter(trigger => {
+    return lens.drill_lens_triggers.filter((trigger) => {
       const result = cardResults[trigger.condition.card_id];
       if (!result) return false;
 
@@ -81,13 +110,20 @@ export const LensContent = ({ transformId, lensId, discovery, params }: LensCont
       if (value == null || threshold == null) return false;
 
       switch (trigger.condition.comparator) {
-        case ">": return (value as number) > (threshold as number);
-        case ">=": return (value as number) >= (threshold as number);
-        case "<": return (value as number) < (threshold as number);
-        case "<=": return (value as number) <= (threshold as number);
-        case "=": return value === threshold;
-        case "!=": return value !== threshold;
-        default: return false;
+        case ">":
+          return (value as number) > (threshold as number);
+        case ">=":
+          return (value as number) >= (threshold as number);
+        case "<":
+          return (value as number) < (threshold as number);
+        case "<=":
+          return (value as number) <= (threshold as number);
+        case "=":
+          return value === threshold;
+        case "!=":
+          return value !== threshold;
+        default:
+          return false;
       }
     });
   }, [lens?.drill_lens_triggers, cardResults]);
@@ -104,25 +140,8 @@ export const LensContent = ({ transformId, lensId, discovery, params }: LensCont
     return null;
   }
 
-  // If a drill lens is active, show it instead
-  if (activeDrillLens) {
-    return (
-      <Stack gap="md">
-        <Button variant="subtle" onClick={() => setActiveDrillLens(null)}>
-          &larr; Back to {lens.display_name}
-        </Button>
-        <LensContent
-          transformId={transformId}
-          lensId={activeDrillLens.lensId}
-          discovery={discovery}
-          params={activeDrillLens.params}
-        />
-      </Stack>
-    );
-  }
-
   // Build drill lens buttons from static drill_lenses and triggered ones
-  const drillLensButtons: DrillLensButton[] = [];
+  const drillLensButtons: DrillLensInfo[] = [];
 
   // Static drill lenses (always shown if defined)
   for (const dl of lens.drill_lenses ?? []) {
@@ -130,13 +149,12 @@ export const LensContent = ({ transformId, lensId, discovery, params }: LensCont
       key: dl.id,
       lensId: dl.id,
       displayName: dl.display_name,
-      description: dl.description,
     });
   }
 
   // Triggered drill lenses (with params for filtering)
   for (const trigger of activatedDrillLenses) {
-    // Use reason as suffix if provided, otherwise format params
+    // Use reason as suffix if provided
     const baseName = formatDrillLensName(trigger.lens_id);
     const suffix = trigger.reason ? `: ${trigger.reason}` : "";
     const displayName = baseName + suffix;
@@ -148,51 +166,107 @@ export const LensContent = ({ transformId, lensId, discovery, params }: LensCont
       key: `${trigger.lens_id}-${paramsKey}`,
       lensId: trigger.lens_id,
       displayName,
-      description: trigger.reason,
       params: trigger.params,
     });
   }
 
-  const handleDrillLensSelect = (button: DrillLensButton) => {
-    setActiveDrillLens({
-      lensId: button.lensId,
-      params: button.params,
-      displayName: button.displayName,
-    });
+  // Filter out already-open drill lenses from buttons
+  const availableDrillButtons = drillLensButtons.filter(
+    (btn) => !openDrillLenses.some((open) => open.key === btn.key),
+  );
+
+  const handleDrillLensOpen = (drillLens: DrillLensInfo) => {
+    setOpenDrillLenses((prev) => [...prev, drillLens]);
+  };
+
+  const handleDrillLensClose = (key: string) => {
+    setOpenDrillLenses((prev) => prev.filter((dl) => dl.key !== key));
   };
 
   return (
     <CardResultsContext.Provider value={{ cardResults, setCardResult }}>
-      <Stack gap="xl">
-        <Title order={2}>{lens.display_name}</Title>
-        {lens.summary && <LensSummary summary={lens.summary} />}
-        <SectionsRenderer
-          lens={lens}
-          lensId={lensId}
-          discovery={discovery}
-        />
-        {drillLensButtons.length > 0 && (
-          <DrillLensButtons
-            buttons={drillLensButtons}
-            onSelect={handleDrillLensSelect}
-          />
-        )}
-      </Stack>
+      <Box
+        style={{
+          border: onClose ? "1px solid var(--mb-color-border)" : undefined,
+          borderRadius: onClose ? "8px" : undefined,
+          padding: onClose ? "16px" : undefined,
+        }}
+      >
+        <Stack gap="xl">
+          {/* Lens header with optional close button */}
+          <Group justify="space-between" align="flex-start">
+            <Title order={onClose ? 3 : 2}>{lens.display_name}</Title>
+            {onClose && (
+              <ActionIcon
+                variant="subtle"
+                onClick={onClose}
+                aria-label={t`Close`}
+              >
+                <Text size="lg">&times;</Text>
+              </ActionIcon>
+            )}
+          </Group>
+
+          {lens.summary && <LensSummary summary={lens.summary} />}
+
+          <SectionsRenderer lens={lens} lensId={lensId} discovery={discovery} />
+
+          {/* Drill lens buttons */}
+          {availableDrillButtons.length > 0 && (
+            <DrillLensButtons
+              buttons={availableDrillButtons}
+              onSelect={handleDrillLensOpen}
+            />
+          )}
+
+          {/* Open drill lenses rendered below */}
+          {openDrillLenses.length > 0 && (
+            <Stack gap="lg">
+              <Divider />
+              {openDrillLenses.map((drillLens) => (
+                <DrillLensPanel
+                  key={drillLens.key}
+                  transformId={transformId}
+                  drillLens={drillLens}
+                  discovery={discovery}
+                  onClose={() => handleDrillLensClose(drillLens.key)}
+                />
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </Box>
     </CardResultsContext.Provider>
   );
 };
 
-type DrillLensButton = {
-  key: string;
-  lensId: string;
-  displayName: string;
-  description?: string | null;
-  params?: Record<string, unknown>;
+type DrillLensPanelProps = {
+  transformId: TransformId;
+  drillLens: DrillLensInfo;
+  discovery: InspectorV2DiscoveryResponse;
+  onClose: () => void;
+};
+
+const DrillLensPanel = ({
+  transformId,
+  drillLens,
+  discovery,
+  onClose,
+}: DrillLensPanelProps) => {
+  return (
+    <LensContent
+      transformId={transformId}
+      lensId={drillLens.lensId}
+      discovery={discovery}
+      params={drillLens.params}
+      onClose={onClose}
+    />
+  );
 };
 
 type DrillLensButtonsProps = {
-  buttons: DrillLensButton[];
-  onSelect: (button: DrillLensButton) => void;
+  buttons: DrillLensInfo[];
+  onSelect: (button: DrillLensInfo) => void;
 };
 
 const DrillLensButtons = ({ buttons, onSelect }: DrillLensButtonsProps) => (
@@ -216,7 +290,11 @@ type SectionsRendererProps = {
   discovery: InspectorV2DiscoveryResponse;
 };
 
-const SectionsRenderer = ({ lens, lensId, discovery }: SectionsRendererProps) => {
+const SectionsRenderer = ({
+  lens,
+  lensId,
+  discovery,
+}: SectionsRendererProps) => {
   const cardsBySection = useMemo(() => {
     const map = new Map<string, InspectorV2Card[]>();
     for (const card of lens.cards) {
@@ -249,7 +327,12 @@ type SectionRendererProps = {
   discovery: InspectorV2DiscoveryResponse;
 };
 
-const SectionRenderer = ({ section, cards, lensId, discovery }: SectionRendererProps) => {
+const SectionRenderer = ({
+  section,
+  cards,
+  lensId,
+  discovery,
+}: SectionRendererProps) => {
   if (cards.length === 0) {
     return null;
   }

@@ -17,6 +17,7 @@ type InspectorCardProps = {
   card: InspectorV2Card;
   height?: number;
   showTitle?: boolean;
+  titleOverride?: string;
 };
 
 const DEFAULT_HEIGHT = 235;
@@ -25,6 +26,7 @@ export const InspectorCard = ({
   card,
   height = DEFAULT_HEIGHT,
   showTitle = true,
+  titleOverride,
 }: InspectorCardProps) => {
   const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
     card.dataset_query,
@@ -81,7 +83,7 @@ export const InspectorCard = ({
       <Stack gap="sm">
         {showTitle && (
           <Title order={5} lineClamp={1}>
-            {card.title}
+            {titleOverride ?? card.title}
           </Title>
         )}
         {isLoading || !rawSeries ? (

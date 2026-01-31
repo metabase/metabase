@@ -24,12 +24,44 @@ type ComparisonGroup = {
   outputCards: InspectorV2Card[];
 };
 
+// Parse title like "field_name (table_name)" to extract parts
+function parseTitleParts(title: string): { field: string; table?: string } {
+  const match = title.match(/^(.+?)\s*\(([^)]+)\)$/);
+  if (match) {
+    return { field: match[1], table: match[2] };
+  }
+  return { field: title };
+}
+
+// Format title for display based on role
+function formatCardTitle(card: InspectorV2Card, isOutput: boolean): string {
+  const { field, table } = parseTitleParts(card.title);
+  if (isOutput) {
+    // Output: just the field name
+    return field;
+  }
+  // Input: "table → field"
+  if (table) {
+    return `${table} → ${field}`;
+  }
+  return field;
+}
+
 export const ColumnComparisonSection = ({
   cards,
   sources,
   target,
   visitedFields,
 }: ColumnComparisonSectionProps) => {
+  // Build source order map (first source in list = FROM table)
+  const sourceOrderMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (let i = 0; i < sources.length; i++) {
+      map.set(sources[i].table_id, i);
+    }
+    return map;
+  }, [sources]);
+
   // Group cards by group_id (output column name)
   const groups = useMemo(() => {
     const groupMap = new Map<string, ComparisonGroup>();
@@ -55,13 +87,22 @@ export const ColumnComparisonSection = ({
       }
     }
 
-    // Sort cards within groups by group_order
+    // Sort cards within groups
     for (const group of groupMap.values()) {
-      group.inputCards.sort(
-        (a, b) =>
+      // Sort input cards by source order (FROM table first), then by group_order
+      group.inputCards.sort((a, b) => {
+        const tableIdA = a.metadata?.table_id as number | undefined;
+        const tableIdB = b.metadata?.table_id as number | undefined;
+        const orderA = sourceOrderMap.get(tableIdA ?? -1) ?? 999;
+        const orderB = sourceOrderMap.get(tableIdB ?? -1) ?? 999;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return (
           ((a.metadata?.group_order as number) ?? 0) -
-          ((b.metadata?.group_order as number) ?? 0),
-      );
+          ((b.metadata?.group_order as number) ?? 0)
+        );
+      });
       group.outputCards.sort(
         (a, b) =>
           ((a.metadata?.group_order as number) ?? 0) -
@@ -70,7 +111,7 @@ export const ColumnComparisonSection = ({
     }
 
     return Array.from(groupMap.values());
-  }, [cards]);
+  }, [cards, sourceOrderMap]);
 
   // Get available column options for filter
   const columnOptions = useMemo(
@@ -166,12 +207,22 @@ export const ColumnComparisonSection = ({
                 <SimpleGrid cols={2} spacing="md">
                   <Box>
                     {group.inputCards.map((card) => (
-                      <InspectorCard key={card.id} card={card} showTitle />
+                      <InspectorCard
+                        key={card.id}
+                        card={card}
+                        showTitle
+                        titleOverride={formatCardTitle(card, false)}
+                      />
                     ))}
                   </Box>
                   <Box>
                     {group.outputCards.map((card) => (
-                      <InspectorCard key={card.id} card={card} showTitle />
+                      <InspectorCard
+                        key={card.id}
+                        card={card}
+                        showTitle
+                        titleOverride={formatCardTitle(card, true)}
+                      />
                     ))}
                   </Box>
                 </SimpleGrid>

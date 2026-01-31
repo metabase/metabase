@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Button, Center, Divider, Stack, Tabs, Text } from "metabase/ui";
+import { Button, Center, Divider, Flex, Stack, Tabs, Text } from "metabase/ui";
 import {
   useGetInspectorV2DiscoveryQuery,
   useGetTransformInspectQuery,
@@ -145,15 +145,56 @@ type AllLensesContentProps = {
 const AllLensesContent = ({ transformId, discovery }: AllLensesContentProps) => {
   const availableLenses = discovery.available_lenses;
 
+  // Track which lenses are open (all open by default)
+  const [openLensIds, setOpenLensIds] = useState<Set<string>>(
+    () => new Set(availableLenses.map((l) => l.id)),
+  );
+
+  const closedLenses = useMemo(
+    () => availableLenses.filter((l) => !openLensIds.has(l.id)),
+    [availableLenses, openLensIds],
+  );
+
+  const handleCloseLens = (lensId: string) => {
+    setOpenLensIds((prev) => {
+      const next = new Set(prev);
+      next.delete(lensId);
+      return next;
+    });
+  };
+
+  const handleOpenLens = (lensId: string) => {
+    setOpenLensIds((prev) => new Set([...prev, lensId]));
+  };
+
+  const visibleLenses = availableLenses.filter((l) => openLensIds.has(l.id));
+
   return (
     <Stack gap="xl">
-      {availableLenses.map((lens, index) => (
+      {/* Buttons to reopen closed lenses */}
+      {closedLenses.length > 0 && (
+        <Flex gap="sm" wrap="wrap">
+          {closedLenses.map((lens) => (
+            <Button
+              key={lens.id}
+              variant="light"
+              size="xs"
+              onClick={() => handleOpenLens(lens.id)}
+            >
+              {t`Show`} {lens.display_name}
+            </Button>
+          ))}
+        </Flex>
+      )}
+
+      {visibleLenses.map((lens, index) => (
         <Stack key={lens.id} gap="lg">
           {index > 0 && <Divider />}
           <LensContent
             transformId={transformId}
             lensId={lens.id}
             discovery={discovery}
+            onClose={() => handleCloseLens(lens.id)}
           />
         </Stack>
       ))}
