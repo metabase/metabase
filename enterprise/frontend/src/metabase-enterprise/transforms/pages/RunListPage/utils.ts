@@ -1,14 +1,10 @@
 import type { Location } from "history";
 
-import type * as Urls from "metabase/lib/urls";
-
+import * as Urls from "metabase/lib/urls";
 import {
-  parseInteger,
-  parseList,
-  parseRunMethod,
-  parseRunStatus,
-  parseString,
-} from "../../utils";
+  TRANSFORM_RUN_METHODS,
+  TRANSFORM_RUN_STATUSES,
+} from "metabase-types/api";
 
 export function getParsedParams(
   location: Location,
@@ -23,13 +19,20 @@ export function getParsedParams(
     run_methods,
   } = location.query;
   return {
-    page: parseInteger(page),
-    statuses: parseList(statuses, parseRunStatus),
-    transform_ids: parseList(transform_ids, parseInteger),
-    transform_tag_ids: parseList(transform_tag_ids, parseInteger),
-    start_time: parseString(start_time),
-    end_time: parseString(end_time),
-    run_methods: parseList(run_methods, parseRunMethod),
+    page: Urls.parseNumberParam(page),
+    statuses: Urls.parseListParam(statuses, (v) =>
+      Urls.parseEnumParam(v, TRANSFORM_RUN_STATUSES),
+    ),
+    transform_ids: Urls.parseListParam(transform_ids, Urls.parseNumberParam),
+    transform_tag_ids: Urls.parseListParam(
+      transform_tag_ids,
+      Urls.parseNumberParam,
+    ),
+    start_time: Urls.parseStringParam(start_time),
+    end_time: Urls.parseStringParam(end_time),
+    run_methods: Urls.parseListParam(run_methods, (v) =>
+      Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
+    ),
   };
 }
 

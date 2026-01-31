@@ -7,13 +7,6 @@ import {
 } from "metabase-types/api";
 
 import type { DependencyListMode } from "../../components/DependencyList/types";
-import {
-  parseBoolean,
-  parseEnum,
-  parseList,
-  parseNumber,
-  parseString,
-} from "../../utils";
 
 import type { DependencyListQueryParams } from "./types";
 
@@ -30,16 +23,19 @@ export function parseUrlParams(
   params: DependencyListQueryParams,
 ): Urls.DependencyListParams {
   return {
-    page: parseNumber(params.page),
-    query: parseString(params.query),
-    group_types: parseList(params.group_types, (item) =>
-      parseEnum(item, DEPENDENCY_GROUP_TYPES),
+    page: Urls.parseNumberParam(params.page),
+    query: Urls.parseStringParam(params.query),
+    group_types: Urls.parseListParam(params.group_types, (item) =>
+      Urls.parseEnumParam(item, DEPENDENCY_GROUP_TYPES),
     ),
-    include_personal_collections: parseBoolean(
+    include_personal_collections: Urls.parseBooleanParam(
       params.include_personal_collections,
     ),
-    sort_column: parseEnum(params.sort_column, DEPENDENCY_SORT_COLUMNS),
-    sort_direction: parseEnum(params.sort_direction, SORT_DIRECTIONS),
+    sort_column: Urls.parseEnumParam(
+      params.sort_column,
+      DEPENDENCY_SORT_COLUMNS,
+    ),
+    sort_direction: Urls.parseEnumParam(params.sort_direction, SORT_DIRECTIONS),
   };
 }
 

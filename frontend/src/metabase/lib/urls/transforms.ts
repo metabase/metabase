@@ -1,10 +1,12 @@
 import type {
   CardId,
   DatabaseId,
+  SortDirection,
   TableId,
   TransformId,
   TransformJobId,
   TransformRunMethod,
+  TransformRunSortColumn,
   TransformRunStatus,
   TransformTagId,
 } from "metabase-types/api";
@@ -78,6 +80,8 @@ export type TransformRunListParams = {
   start_time?: string;
   end_time?: string;
   run_methods?: TransformRunMethod[];
+  sort_column?: TransformRunSortColumn;
+  sort_direction?: SortDirection;
 };
 
 export function transformRunList({
@@ -88,6 +92,8 @@ export function transformRunList({
   start_time,
   end_time,
   run_methods,
+  sort_column,
+  sort_direction,
 }: TransformRunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
@@ -111,6 +117,12 @@ export function transformRunList({
   run_methods?.forEach((runMethod) => {
     searchParams.append("run_methods", runMethod);
   });
+  if (sort_column != null) {
+    searchParams.set("sort_column", sort_column);
+  }
+  if (sort_direction != null) {
+    searchParams.set("sort_direction", sort_direction);
+  }
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {

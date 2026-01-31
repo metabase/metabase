@@ -131,15 +131,18 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus =
-  | "started"
-  | "succeeded"
-  | "failed"
-  | "timeout"
-  | "canceling"
-  | "canceled";
+export const TRANSFORM_RUN_STATUSES = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
+  "canceling",
+  "canceled",
+] as const;
+export type TransformRunStatus = (typeof TRANSFORM_RUN_STATUSES)[number];
 
-export type TransformRunMethod = "manual" | "cron";
+export const TRANSFORM_RUN_METHODS = ["manual", "cron"] as const;
+export type TransformRunMethod = (typeof TRANSFORM_RUN_METHODS)[number];
 
 export type TransformTag = {
   id: TransformTagId;
