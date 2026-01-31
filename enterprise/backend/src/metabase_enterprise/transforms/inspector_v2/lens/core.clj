@@ -1,0 +1,126 @@
+(ns metabase-enterprise.transforms.inspector-v2.lens.core
+  "Lens orchestration for Transform Inspector v2.
+
+   A lens is a 'view' into the transform data with:
+   - Metadata (id, display-name, description)
+   - Sections grouping cards
+   - Summary with highlights
+   - Cards (generated queries)
+   - Alert and drill-lens triggers
+
+   Each lens type is implemented via multimethods. Adding a new lens
+   requires implementing: lens-applicable?, lens-metadata, make-lens."
+  (:require
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
+
+;;; -------------------------------------------------- Multimethods --------------------------------------------------
+
+(defmulti lens-applicable?
+  "Check if a lens applies to the given context.
+   Should be a cheap check - no query execution.
+
+   Arguments:
+   - lens-type: keyword like :generic-summary, :join-analysis
+   - ctx: context map with :has-joins?, :column-matches, etc.
+
+   Returns true if the lens can be generated for this transform."
+  (fn [lens-type _ctx] lens-type))
+
+(defmethod lens-applicable? :default
+  [_lens-type _ctx]
+  false)
+
+(defmulti lens-metadata
+  "Return lens metadata for discovery (Phase 1).
+   This is the minimal info shown in the lens selector.
+
+   Returns:
+   {:id \"lens-id\"
+    :display-name \"Human Name\"
+    :description \"Optional description\"}"
+  (fn [lens-type _ctx] lens-type))
+
+(defmethod lens-metadata :default
+  [lens-type _ctx]
+  {:id           (name lens-type)
+   :display-name (str lens-type)
+   :description  nil})
+
+(defmulti make-lens
+  "Generate full lens contents (Phase 2).
+
+   Returns a complete lens map with sections, cards, triggers, etc.
+
+   Returns:
+   {:id \"lens-id\"
+    :display-name \"Human Name\"
+    :summary {:text \"...\" :highlights [...] :alerts []}
+    :sections [{:id :title :description :layout} ...]
+    :cards [{:id :title :display :dataset-query :metadata {...}} ...]
+    :drill-lenses [{:id :display-name :description} ...]
+    :alert-triggers [...]
+    :drill-lens-triggers [...]}"
+  (fn [lens-type _ctx] lens-type))
+
+(defmethod make-lens :default
+  [lens-type _ctx]
+  (log/warnf "No lens implementation for type: %s" lens-type)
+  {:id           (name lens-type)
+   :display-name (str lens-type)
+   :summary      {:text nil :highlights [] :alerts []}
+   :sections     []
+   :cards        []})
+
+;;; -------------------------------------------------- Lens Registry --------------------------------------------------
+
+(defonce ^:private registry
+  "Atom containing registered lens types.
+   Each entry is {:lens-type keyword :priority number}.
+   Lower priority = shown first in discovery."
+  (atom []))
+
+(defn register-lens!
+  "Register a lens type. Call this at namespace load time.
+   Priority controls ordering - lower numbers appear first."
+  [lens-type priority]
+  (swap! registry (fn [lenses]
+                    (-> (remove #(= (:lens-type %) lens-type) lenses)
+                        (concat [{:lens-type lens-type :priority priority}])
+                        vec)))
+  nil)
+
+(defn- registered-lens-types
+  "Return all registered lens types in priority order."
+  []
+  (->> @registry
+       (sort-by :priority)
+       (mapv :lens-type)))
+
+;;; -------------------------------------------------- Public API --------------------------------------------------
+
+(defn available-lenses
+  "Return metadata for applicable lenses (Phase 1).
+   Filters to only lenses that apply to the given context.
+   Order is by priority - first lens is the default."
+  [ctx]
+  (->> (registered-lens-types)
+       (filter #(lens-applicable? % ctx))
+       (mapv #(lens-metadata % ctx))))
+
+(defn lens-id->type
+  "Map lens ID string to lens type keyword."
+  [lens-id]
+  (keyword lens-id))
+
+(defn get-lens
+  "Generate a lens by ID (Phase 2).
+   Returns the full lens with sections, cards, and triggers."
+  [ctx lens-id]
+  (let [lens-type (lens-id->type lens-id)]
+    (if (lens-applicable? lens-type ctx)
+      (make-lens lens-type ctx)
+      (throw (ex-info (str "Lens not applicable: " lens-id)
+                      {:lens-id   lens-id
+                       :lens-type lens-type})))))
