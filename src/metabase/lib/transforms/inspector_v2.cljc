@@ -18,11 +18,12 @@
 
 (defn evaluate-condition
   "Evaluate a trigger condition against card results.
-   card-results: map of card-id -> result map
-   condition: {:card-id \"x\" :field :some-field :comparator :> :threshold 0.5}"
+   card-results: map of card-id (string) -> result map (string keys)
+   condition: {:card-id \"x\" :field \"some-field\" :comparator :> :threshold 0.5}"
   [card-results {:keys [card-id field comparator threshold]}]
   (when-let [result (get card-results card-id)]
-    (let [value (if field (get result field) result)]
+    (let [field-key (if (keyword? field) (name field) field)
+          value (if field-key (get result field-key) result)]
       (compare-values comparator value threshold))))
 
 (defn triggered-alerts
@@ -31,13 +32,9 @@
   (filterv #(evaluate-condition card-results (:condition %)) alert-triggers))
 
 (defn triggered-drill-lenses
-  "Return drill lens IDs whose conditions are met."
+  "Return full drill lens trigger objects whose conditions are met."
   [card-results drill-lens-triggers]
-  (->> drill-lens-triggers
-       (filter #(evaluate-condition card-results (:condition %)))
-       (mapv :lens-id)
-       distinct
-       vec))
+  (filterv #(evaluate-condition card-results (:condition %)) drill-lens-triggers))
 
 (defn evaluate-triggers
   "Evaluate all triggers for a lens against card results.
@@ -50,13 +47,30 @@
    (defn ^:export evaluateTriggers
      "Evaluate all triggers. Returns {alerts: [...], drillLenses: [...]}."
      [lens-js card-results-js]
-     (let [lens (-> (js->clj lens-js :keywordize-keys true)
-                    (set/rename-keys {:alertTriggers :alert-triggers
-                                      :drillLensTriggers :drill-lens-triggers})
-                    (update :alert-triggers #(mapv (fn [t] (update t :condition (fn [c] (update c :comparator keyword)))) %))
-                    (update :drill-lens-triggers #(mapv (fn [t] (update t :condition (fn [c] (update c :comparator keyword)))) %)))
-           card-results (js->clj card-results-js :keywordize-keys true)]
-       (clj->js (evaluate-triggers lens card-results)))))
+     (let [lens-raw (js->clj lens-js :keywordize-keys true)
+           lens (-> lens-raw
+                    (set/rename-keys {:alert_triggers :alert-triggers
+                                      :drill_lens_triggers :drill-lens-triggers})
+                    (update :alert-triggers #(mapv (fn [t]
+                                                     (-> t
+                                                         (update :condition (fn [c]
+                                                                              (-> c
+                                                                                  (set/rename-keys {:card_id :card-id})
+                                                                                  (update :comparator keyword))))))
+                                                   %))
+                    (update :drill-lens-triggers #(mapv (fn [t]
+                                                          (-> t
+                                                              (set/rename-keys {:lens_id :lens-id})
+                                                              (update :condition (fn [c]
+                                                                                   (-> c
+                                                                                       (set/rename-keys {:card_id :card-id})
+                                                                                       (update :comparator keyword))))))
+                                                        %)))
+           card-results (js->clj card-results-js)
+           result (evaluate-triggers lens card-results)
+           drill-lenses-out (mapv #(set/rename-keys % {:lens-id :lens_id}) (:drill-lenses result))]
+       (clj->js {:alerts (:alerts result)
+                 :drillLenses drill-lenses-out}))))
 
 #?(:cljs
    (defn ^:export interestingFields

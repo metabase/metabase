@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   ActionIcon,
+  Alert,
   Box,
   Button,
   Center,
@@ -14,8 +15,10 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { evaluateTriggers } from "metabase-enterprise/transforms/lib/inspector";
 import { useGetInspectorV2LensQuery } from "metabase-enterprise/api";
 import type {
+  InspectorV2AlertTrigger,
   InspectorV2Card,
   InspectorV2DiscoveryResponse,
   InspectorV2Lens,
@@ -96,38 +99,17 @@ export const LensContent = ({
     [],
   );
 
-  // Evaluate drill lens triggers
-  const activatedDrillLenses = useMemo(() => {
-    if (!lens?.drill_lens_triggers) return [];
-
-    return lens.drill_lens_triggers.filter((trigger) => {
-      const result = cardResults[trigger.condition.card_id];
-      if (!result) return false;
-
-      const field = trigger.condition.field;
-      const value = field ? result[String(field)] : result;
-      const threshold = trigger.condition.threshold;
-
-      if (value == null || threshold == null) return false;
-
-      switch (trigger.condition.comparator) {
-        case ">":
-          return (value as number) > (threshold as number);
-        case ">=":
-          return (value as number) >= (threshold as number);
-        case "<":
-          return (value as number) < (threshold as number);
-        case "<=":
-          return (value as number) <= (threshold as number);
-        case "=":
-          return value === threshold;
-        case "!=":
-          return value !== threshold;
-        default:
-          return false;
-      }
-    });
-  }, [lens?.drill_lens_triggers, cardResults]);
+  // Evaluate triggers using cljs - returns full trigger objects
+  const { activatedAlerts, activatedDrillLenses } = useMemo(() => {
+    if (!lens) {
+      return { activatedAlerts: [], activatedDrillLenses: [] };
+    }
+    const result = evaluateTriggers(lens, cardResults);
+    return {
+      activatedAlerts: result.alerts,
+      activatedDrillLenses: result.drillLenses,
+    };
+  }, [lens, cardResults]);
 
   if (isLoading || error) {
     return (
@@ -209,6 +191,27 @@ export const LensContent = ({
           </Group>
 
           {lens.summary && <LensSummary summary={lens.summary} />}
+
+          {/* Triggered alerts */}
+          {activatedAlerts.length > 0 && (
+            <Stack gap="sm">
+              {activatedAlerts.map((alert) => (
+                <Alert
+                  key={alert.id}
+                  color={
+                    alert.severity === "error"
+                      ? "error"
+                      : alert.severity === "warning"
+                        ? "warning"
+                        : "brand"
+                  }
+                  variant="light"
+                >
+                  {alert.message}
+                </Alert>
+              ))}
+            </Stack>
+          )}
 
           <SectionsRenderer lens={lens} lensId={lensId} discovery={discovery} />
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, MultiSelect, SimpleGrid, Stack, Title } from "metabase/ui";
+import { interestingFields } from "metabase-enterprise/transforms/lib/inspector";
 import type {
   InspectorV2Card,
   TransformInspectSource,
@@ -125,7 +126,7 @@ export const ColumnComparisonSection = ({
     [groups],
   );
 
-  // Calculate initial selection based on visited fields
+  // Calculate initial selection based on visited fields, falling back to top 5 by interestingness
   const initialSelection = useMemo(() => {
     if (columnOptions.length === 1) {
       return [columnOptions[0].value];
@@ -163,10 +164,31 @@ export const ColumnComparisonSection = ({
         )
         .map((g) => g.groupId);
 
-      return preselected.length > 0 ? preselected : [];
+      if (preselected.length > 0) {
+        return preselected;
+      }
     }
 
-    return [];
+    // Fallback: select top 5 groups by interestingness of their fields
+    // Collect all fields from sources and score them
+    const allFields = sources.flatMap((s) => s.fields ?? []);
+    const scoredFields = interestingFields(allFields, { limit: 20 });
+    const topFieldNames = new Set(scoredFields.map((f) => f.name));
+
+    // Find groups that reference these interesting fields
+    const groupsWithInterestingFields = groups.filter((g) =>
+      g.inputCards.some((card) => {
+        const { field } = parseTitleParts(card.title);
+        return topFieldNames.has(field);
+      }),
+    );
+
+    if (groupsWithInterestingFields.length > 0) {
+      return groupsWithInterestingFields.slice(0, 5).map((g) => g.groupId);
+    }
+
+    // Ultimate fallback: just take first 5
+    return groups.slice(0, 5).map((g) => g.groupId);
   }, [columnOptions, groups, sources, visitedFields]);
 
   const [selectedColumns, setSelectedColumns] =

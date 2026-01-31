@@ -80,6 +80,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.transforms.inspector-v2 :as lib.transforms.inspector-v2]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -91,6 +92,8 @@
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
+;;; This ensures the inspector-v2 exports are available to the FE via CLJS imports.
+(comment lib.transforms.inspector-v2/keep-me)
 
 (defn ^:export suggestedName
   "Return a nice description of a query.
