@@ -182,35 +182,15 @@
            (when end
              [:< field-name end])])))
 
-(defn- build-order-by-clause
-  [{:keys [sort_column sort_direction]}]
-  (let [sort-column      (or (keyword sort_column) :start-time)
-        sort-direction   (or (keyword sort_direction) :desc)
-        nulls-sort       (if (= sort-direction :asc)
-                           :nulls-last
-                           :nulls-first)
-        run-method-expr  [:case
-                          [:= :run_method "manual"] (tru "Manual")
-                          [:= :run_method "cron"] (tru "Schedule")
-                          :run_method]
-        status-expr      [:case
-                          [:= :status "started"]   (tru "In progress")
-                          [:= :status "succeeded"] (tru "Success")
-                          [:= :status "failed"]    (tru "Failed")
-                          [:= :status "timeout"]   (tru "Timeout")
-                          [:= :status "canceling"] (tru "Canceling")
-                          [:= :status "canceled"]  (tru "Canceled")
-                          :status]]
-    (case sort-column
-      :transform-name  [[:transform.name sort-direction]]
-      :start-time      [[:start_time sort-direction]]
-      :end-time        [[:end_time sort-direction nulls-sort]]
-      :status          [[status-expr sort-direction]]
-      :run-method      [[run-method-expr sort-direction]]
-      [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+(defn- paged-runs-join-clause
+  "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
+  [{:keys [sort_column]}]
+  (case (keyword sort_column)
+    :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
+    nil))
 
-(defn- build-where-clause
+(defn- paged-runs-where-clause
+  "Builds a `:where` clause for transform runs from the given filter parameters."
   [{:keys [start_time end_time run_methods transform_ids transform_tag_ids statuses]}]
   (let [where-cond (cond-> []
                      (some? start_time)
@@ -240,11 +220,70 @@
     (when (seq where-cond)
       (into [:and] where-cond))))
 
-(defn- build-join-clause
-  [{:keys [sort_column]}]
-  (case (keyword sort_column)
-    :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
-    nil))
+(defn- translate-run-method-clause
+  "Returns a HoneySQL `:case` expression that translates run method values to display names."
+  []
+  [:case
+   [:= :run_method "manual"] (tru "Manual")
+   [:= :run_method "cron"] (tru "Schedule")
+   :run_method])
+
+(defn- translate-status-clause
+  "Returns a HoneySQL `:case` expression that translates run status values to display names."
+  []
+  [:case
+   [:= :status "started"]   (tru "In progress")
+   [:= :status "succeeded"] (tru "Success")
+   [:= :status "failed"]    (tru "Failed")
+   [:= :status "timeout"]   (tru "Timeout")
+   [:= :status "canceling"] (tru "Canceling")
+   [:= :status "canceled"]  (tru "Canceled")
+   :status])
+
+(defn- translate-tag-name-clause
+  "Returns a HoneySQL `:case` expression that translates built-in tag names.
+   `name-field` is the keyword for the name column (e.g. `:transform_tag.name`),
+   `built-in-type-field` is the keyword for the built_in_type column (e.g. `:transform_tag.built_in_type`)."
+  [name-field built-in-type-field]
+  [:case
+   [:= built-in-type-field "hourly"]  (tru "hourly")
+   [:= built-in-type-field "daily"]   (tru "daily")
+   [:= built-in-type-field "weekly"]  (tru "weekly")
+   [:= built-in-type-field "monthly"] (tru "monthly")
+   :else name-field])
+
+(defn- first-tag-name-subquery
+  "Returns a correlated subquery that selects the translated name of the first tag
+   (by minimum position) assigned to a transform."
+  []
+  {:select [[(translate-tag-name-clause :tt.name :tt.built_in_type) :tag_name]]
+   :from   [[:transform_transform_tag :ttt]]
+   :join   [[:transform_tag :tt] [:= :ttt.tag_id :tt.id]]
+   :where  [:and
+            [:= :ttt.transform_id :transform_run.transform_id]
+            [:= :ttt.position {:select [[[:min :ttt2.position]]]
+                               :from   [[:transform_transform_tag :ttt2]]
+                               :where  [:= :ttt2.transform_id :transform_run.transform_id]}]]})
+
+(defn- paged-runs-order-by-clause
+  "Builds a HoneySQL `:order-by` clause for transform runs, translating display values for sortable columns."
+  [{:keys [sort_column sort_direction]}]
+  (let [sort-column    (or (keyword sort_column) :start-time)
+        sort-direction (or (keyword sort_direction) :desc)
+        nulls-sort     (if (= sort-direction :asc)
+                         :nulls-last
+                         :nulls-first)]
+    (conj
+     (case sort-column
+       :transform-name  [[:transform.name sort-direction]]
+       :start-time      [[:start_time sort-direction]]
+       :end-time        [[:end_time sort-direction nulls-sort]]
+       :status          [[(translate-status-clause) sort-direction]]
+       :run-method      [[(translate-run-method-clause) sort-direction]]
+       :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
+       [[:start_time sort-direction]
+        [:end_time   sort-direction nulls-sort]])
+     [:id sort-direction])))
 
 (defn paged-runs
   "Return a page of the list of the runs.
@@ -253,9 +292,9 @@
   [{:keys [offset limit] :as params}]
   (let [offset        (or offset 0)
         limit         (or limit 20)
-        order-by      (build-order-by-clause params)
-        where-clause  (build-where-clause params)
-        join-clause   (build-join-clause params)
+        order-by      (paged-runs-order-by-clause params)
+        where-clause  (paged-runs-where-clause params)
+        join-clause   (paged-runs-join-clause params)
         count-options (m/assoc-some {} :where where-clause)
         query-options (m/assoc-some {:order-by order-by :offset offset :limit limit}
                                     :where where-clause

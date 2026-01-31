@@ -150,6 +150,7 @@ export const TRANSFORM_RUN_SORT_COLUMNS = [
   "end-time",
   "status",
   "run-method",
+  "transform-tags",
 ] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];

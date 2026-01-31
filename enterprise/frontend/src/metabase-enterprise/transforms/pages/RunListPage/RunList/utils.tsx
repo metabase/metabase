@@ -181,10 +181,10 @@ function getTransformTagsColumn(
   tagsById: Record<TransformTagId, TransformTag>,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "transform-tags",
+    id: "transform-tags" satisfies TransformRunSortColumn,
     header: t`Tags`,
     width: "auto",
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (row) =>
       getTagsLabel(getTagList(row.transform?.tag_ids ?? [], tagsById)),
     cell: ({ row }) => {
