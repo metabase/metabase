@@ -13,7 +13,7 @@ import {
 
 import type { DependencyListMode } from "../types";
 
-import { ListSidebar } from "./ListSidebar";
+import { DependencySidebar } from "./DependencySidebar";
 
 type SetupOpts = {
   node?: DependencyNode;
@@ -33,7 +33,7 @@ function setup({
     <Route
       path="/"
       component={() => (
-        <ListSidebar
+        <DependencySidebar
           node={node}
           mode={mode}
           containerWidth={1000}
@@ -49,7 +49,7 @@ function setup({
   return { onResizeStart, onResizeStop, onClose };
 }
 
-describe("ListSidebar", () => {
+describe("DependencySidebar", () => {
   it("should render the sidebar container", () => {
     setup();
     expect(screen.getByTestId("dependency-list-sidebar")).toBeInTheDocument();

@@ -18,12 +18,12 @@ import type {
 } from "../../types";
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
+import { DependencyFilterBar } from "./DependencyFilterBar";
+import { DependencyHeader } from "./DependencyHeader";
 import S from "./DependencyList.module.css";
-import { ListBody } from "./ListBody";
-import { ListHeader } from "./ListHeader";
-import { ListPaginationControls } from "./ListPaginationControls";
-import { ListSearchBar } from "./ListSearchBar";
-import { ListSidebar } from "./ListSidebar";
+import { DependencyPagination } from "./DependencyPagination";
+import { DependencySidebar } from "./DependencySidebar";
+import { DependencyTable } from "./DependencyTable";
 import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode, DependencyListParamsOptions } from "./types";
 import {
@@ -157,8 +157,8 @@ export function DependencyList({
       wrap="nowrap"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
-        <ListHeader />
-        <ListSearchBar
+        <DependencyHeader />
+        <DependencyFilterBar
           mode={mode}
           query={query}
           filterOptions={getFilterOptions(mode, params)}
@@ -172,7 +172,7 @@ export function DependencyList({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <ListBody
+          <DependencyTable
             nodes={nodes}
             mode={mode}
             sortOptions={getSortOptions(params)}
@@ -182,7 +182,7 @@ export function DependencyList({
           />
         )}
         {!isLoading && error == null && (
-          <ListPaginationControls
+          <DependencyPagination
             page={page}
             pageNodesCount={nodes.length}
             totalNodesCount={totalNodesCount}
@@ -191,7 +191,7 @@ export function DependencyList({
         )}
       </Stack>
       {selectedNode != null && (
-        <ListSidebar
+        <DependencySidebar
           node={selectedNode}
           mode={mode}
           containerWidth={containerWidth}

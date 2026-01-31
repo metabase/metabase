@@ -6,15 +6,15 @@ import type { DependencyNode } from "metabase-types/api";
 import type { DependencyListMode } from "../types";
 
 import { BrokenDependentsSection } from "./BrokenDependentsSection";
+import S from "./DependencySidebar.module.css";
 import { ErrorsSection } from "./ErrorsSection";
 import { FieldsSection } from "./FieldsSection";
 import { InfoSection } from "./InfoSection";
-import S from "./ListSidebar.module.css";
 import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarResizableBox } from "./SidebarResizableBox";
 
-type ListSidebarProps = {
+type DependencySidebarProps = {
   node: DependencyNode;
   mode: DependencyListMode;
   containerWidth: number;
@@ -23,14 +23,14 @@ type ListSidebarProps = {
   onClose: () => void;
 };
 
-export const ListSidebar = memo(function ListSidebar({
+export const DependencySidebar = memo(function DependencySidebar({
   node,
   mode,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
-}: ListSidebarProps) {
+}: DependencySidebarProps) {
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}

@@ -11,7 +11,7 @@ import type { DependencyNode } from "metabase-types/api";
 
 import type { DependencySortOptions } from "../../../types";
 import { getNodeId } from "../../../utils";
-import { ListEmptyState } from "../ListEmptyState";
+import { DependencyEmptyState } from "../DependencyEmptyState";
 import type { DependencyListMode } from "../types";
 
 import {
@@ -22,7 +22,7 @@ import {
   getSortingState,
 } from "./utils";
 
-type ListBodyProps = {
+type DependencyTableProps = {
   nodes: DependencyNode[];
   mode: DependencyListMode;
   sortOptions: DependencySortOptions | undefined;
@@ -31,14 +31,14 @@ type ListBodyProps = {
   onSortOptionsChange: (sortOptions: DependencySortOptions | undefined) => void;
 };
 
-export const ListBody = function ListBody({
+export const DependencyTable = function DependencyTable({
   nodes,
   mode,
   sortOptions,
   isLoading = false,
   onSelect,
   onSortOptionsChange,
-}: ListBodyProps) {
+}: DependencyTableProps) {
   const columns = useMemo(() => getColumns(mode), [mode]);
   const sortingState = useMemo(
     () => getSortingState(sortOptions),
@@ -82,7 +82,7 @@ export const ListBody = function ListBody({
       ) : (
         <TreeTable
           instance={treeTableInstance}
-          emptyState={<ListEmptyState label={getNotFoundMessage(mode)} />}
+          emptyState={<DependencyEmptyState label={getNotFoundMessage(mode)} />}
           onRowClick={handleRowActivate}
         />
       )}
