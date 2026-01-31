@@ -48,11 +48,13 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   const {
     page = 0,
     statuses,
-    transformIds,
-    transformTagIds,
-    startTime,
-    endTime,
-    runMethods,
+    transform_ids,
+    transform_tag_ids,
+    start_time,
+    end_time,
+    run_methods,
+    sort_column,
+    sort_direction,
   } = params;
 
   const [isPolling, setIsPolling] = useState(false);
@@ -66,11 +68,13 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
       offset: page * PAGE_SIZE,
       limit: PAGE_SIZE,
       statuses,
-      transform_ids: transformIds,
-      transform_tag_ids: transformTagIds,
-      start_time: startTime,
-      end_time: endTime,
-      run_methods: runMethods,
+      transform_ids,
+      transform_tag_ids,
+      start_time,
+      end_time,
+      run_methods,
+      sort_column,
+      sort_direction,
     },
     {
       pollingInterval: isPolling ? POLLING_INTERVAL : undefined,

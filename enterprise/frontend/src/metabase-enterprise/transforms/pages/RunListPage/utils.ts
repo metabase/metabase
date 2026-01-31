@@ -2,7 +2,9 @@ import type { Location } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import {
+  SORT_DIRECTIONS,
   TRANSFORM_RUN_METHODS,
+  TRANSFORM_RUN_SORT_COLUMNS,
   TRANSFORM_RUN_STATUSES,
 } from "metabase-types/api";
 
@@ -17,6 +19,8 @@ export function getParsedParams(
     start_time,
     end_time,
     run_methods,
+    sort_column,
+    sort_direction,
   } = location.query;
   return {
     page: Urls.parseNumberParam(page),
@@ -33,6 +37,8 @@ export function getParsedParams(
     run_methods: Urls.parseListParam(run_methods, (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
     ),
+    sort_column: Urls.parseEnumParam(sort_column, TRANSFORM_RUN_SORT_COLUMNS),
+    sort_direction: Urls.parseEnumParam(sort_direction, SORT_DIRECTIONS),
   };
 }
 
