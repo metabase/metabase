@@ -10,6 +10,7 @@
    [metabase-enterprise.transforms.inspector-v2.lens.core :as lens.core]
    [metabase-enterprise.transforms.inspector-v2.lens.generic]
    [metabase-enterprise.transforms.inspector-v2.lens.join-analysis]
+   [metabase-enterprise.transforms.inspector-v2.lens.unmatched-rows]
    [metabase-enterprise.transforms.inspector-v2.schema :as schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -18,7 +19,8 @@
 (comment
   metabase-enterprise.transforms.inspector-v2.lens.generic/keep-me
   metabase-enterprise.transforms.inspector-v2.lens.column-comparison/keep-me
-  metabase-enterprise.transforms.inspector-v2.lens.join-analysis/keep-me)
+  metabase-enterprise.transforms.inspector-v2.lens.join-analysis/keep-me
+  metabase-enterprise.transforms.inspector-v2.lens.unmatched-rows/keep-me)
 
 (set! *warn-on-reflection* true)
 

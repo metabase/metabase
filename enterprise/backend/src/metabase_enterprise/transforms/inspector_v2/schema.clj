@@ -168,6 +168,38 @@
    [:highlights {:optional true} [:sequential ::summary-highlight]]
    [:alerts {:optional true} [:sequential :map]]])
 
+;;; -------------------------------------------------- Triggers --------------------------------------------------
+
+(mr/def ::comparator
+  "Comparison operators for trigger conditions."
+  [:enum :> :>= :< :<= := :!=])
+
+(mr/def ::trigger-condition
+  "A condition that triggers an alert or drill lens.
+   Evaluated by lib against card results."
+  [:map
+   [:card-id :string]
+   [:field {:optional true} [:or :string :int]]
+   [:comparator ::comparator]
+   [:threshold :any]])
+
+(mr/def ::alert-trigger
+  "Definition for conditional alerts.
+   FE evaluates condition against card results and shows alert if triggered."
+  [:map
+   [:id :string]
+   [:condition ::trigger-condition]
+   [:severity [:enum :info :warning :error]]
+   [:message :string]])
+
+(mr/def ::drill-lens-trigger
+  "Definition for conditional drill lens availability.
+   FE evaluates condition and shows drill lens option if triggered."
+  [:map
+   [:lens-id :string]
+   [:condition ::trigger-condition]
+   [:reason {:optional true} :string]])
+
 ;;; -------------------------------------------------- Drill Lenses --------------------------------------------------
 
 (mr/def ::drill-lens
@@ -188,9 +220,9 @@
    [:sections [:sequential ::section]]
    [:cards [:sequential ::card]]
    [:drill-lenses {:optional true} [:sequential ::drill-lens]]
-   ;; Trigger definitions for heuristics evaluation
-   [:alert-triggers {:optional true} [:sequential :map]]
-   [:drill-lens-triggers {:optional true} [:sequential :map]]])
+   ;; Trigger definitions - FE evaluates conditions against card results
+   [:alert-triggers {:optional true} [:sequential ::alert-trigger]]
+   [:drill-lens-triggers {:optional true} [:sequential ::drill-lens-trigger]]])
 
 ;;; -------------------------------------------------- Discovery Response --------------------------------------------------
 

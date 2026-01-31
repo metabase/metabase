@@ -250,16 +250,44 @@
    :display-name "Join Analysis"
    :description  "Analyze join quality and match rates"})
 
+(defn- make-triggers
+  "Generate alert and drill-lens triggers for join steps."
+  [join-structure]
+  (let [outer-joins (filter #(contains? #{:left-join :right-join :full-join}
+                                        (:strategy %))
+                            (map-indexed #(assoc %2 :step (inc %1)) join-structure))]
+    {:alert-triggers
+     (for [{:keys [step alias]} outer-joins]
+       {:id         (str "high-null-rate-" step)
+        :condition  {:card-id    (str "join-step-" step)
+                     :field      :null-rate  ; FE computes from count(*) - count(rhs)
+                     :comparator :>
+                     :threshold  0.2}
+        :severity   :warning
+        :message    (str "Join '" alias "' has >20% unmatched rows")})
+
+     :drill-lens-triggers
+     (for [{:keys [step]} outer-joins]
+       {:lens-id   "unmatched-rows"
+        :condition {:card-id    (str "join-step-" step)
+                    :field      :null-rate
+                    :comparator :>
+                    :threshold  0.05}
+        :reason    "Significant unmatched rows detected"})}))
+
 (defmethod lens.core/make-lens :join-analysis
   [_ ctx]
   (let [{:keys [join-structure]} ctx
         join-count (count join-structure)
-        strategies (distinct (map :strategy join-structure))]
-    {:id           "join-analysis"
-     :display-name "Join Analysis"
-     :summary      {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
-                    :highlights [{:label "Joins" :value join-count}]}
-     :sections     [{:id     "join-stats"
-                     :title  "Join Statistics"
-                     :layout :flat}]
-     :cards        (all-cards ctx)}))
+        strategies (distinct (map :strategy join-structure))
+        triggers (make-triggers join-structure)]
+    {:id                   "join-analysis"
+     :display-name         "Join Analysis"
+     :summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
+                            :highlights [{:label "Joins" :value join-count}]}
+     :sections             [{:id     "join-stats"
+                             :title  "Join Statistics"
+                             :layout :flat}]
+     :cards                (all-cards ctx)
+     :alert-triggers       (vec (:alert-triggers triggers))
+     :drill-lens-triggers  (vec (:drill-lens-triggers triggers))}))
