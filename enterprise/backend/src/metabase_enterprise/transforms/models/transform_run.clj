@@ -243,7 +243,7 @@
 (defn- build-join-clause
   [{:keys [sort_column]}]
   (case (keyword sort_column)
-    :transform-name [[:transform [:= :transform_run.transform_id :transform.id]]]
+    :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
     nil))
 
 (defn paged-runs
