@@ -37,27 +37,27 @@ export function RunFilterList({
   onParamsChange,
 }: RunFilterListProps) {
   const handleTransformsChange = (transformIds: TransformId[]) => {
-    onParamsChange({ ...params, transform_ids: transformIds });
+    onParamsChange({ ...params, transform_ids: transformIds, page: undefined });
   };
 
   const handleStatusesChange = (statuses: TransformRunStatus[]) => {
-    onParamsChange({ ...params, statuses });
+    onParamsChange({ ...params, statuses, page: undefined });
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    onParamsChange({ ...params, transform_tag_ids: tagIds });
+    onParamsChange({ ...params, transform_tag_ids: tagIds, page: undefined });
   };
 
   const handleStartTimeChange = (startTime: string | undefined) => {
-    onParamsChange({ ...params, start_time: startTime });
+    onParamsChange({ ...params, start_time: startTime, page: undefined });
   };
 
   const handleEndTimeChange = (endTime: string | undefined) => {
-    onParamsChange({ ...params, end_time: endTime });
+    onParamsChange({ ...params, end_time: endTime, page: undefined });
   };
 
   const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
-    onParamsChange({ ...params, run_methods: runMethods });
+    onParamsChange({ ...params, run_methods: runMethods, page: undefined });
   };
 
   return (
