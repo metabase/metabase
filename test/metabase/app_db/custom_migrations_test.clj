@@ -2726,3 +2726,46 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest backfill-transform-target-db-id-test
+  (testing "v58.2026-01-31T10:00:00 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v58.2026-01-31T10:00:00"] [migrate!]
+      (let [db-id       (:id (new-instance-with-default :metabase_database))
+            ;; Transform with database in target JSON — should be backfilled from target
+            with-target-db (t2/insert-returning-instance!
+                            :transform
+                            {:name        "target-db"
+                             :source      (json/encode {:type "query" :query {:database db-id}})
+                             :target      (json/encode {:database db-id :schema "public" :table "out" :type "append"})
+                             :source_type "mbql"
+                             :created_at  :%now
+                             :updated_at  :%now})
+            ;; Query transform with database only in source.query — should be backfilled from source fallback
+            with-source-db (t2/insert-returning-instance!
+                            :transform
+                            {:name        "source-db"
+                             :source      (json/encode {:type "query" :query {:database db-id}})
+                             :target      (json/encode {:schema "public" :table "out2" :type "append"})
+                             :source_type "mbql"
+                             :created_at  :%now
+                             :updated_at  :%now})
+            ;; Transform with no database anywhere — should stay NULL
+            without-db (t2/insert-returning-instance!
+                        :transform
+                        {:name        "no-db"
+                         :source      (json/encode {:type "python" :script "x = 1"})
+                         :target      (json/encode {:schema "public" :table "out3" :type "append"})
+                         :source_type "python"
+                         :created_at  :%now
+                         :updated_at  :%now})]
+        (testing "before migration, target_db_id is nil for all"
+          (is (nil? (:target_db_id with-target-db)))
+          (is (nil? (:target_db_id with-source-db)))
+          (is (nil? (:target_db_id without-db))))
+        (migrate!)
+        (testing "after migration, target_db_id is backfilled from target.database"
+          (is (= db-id (:target_db_id (t2/select-one :transform :id (:id with-target-db))))))
+        (testing "after migration, target_db_id is backfilled from source.query.database as fallback"
+          (is (= db-id (:target_db_id (t2/select-one :transform :id (:id with-source-db))))))
+        (testing "after migration, target_db_id stays nil when no database anywhere"
+          (is (nil? (:target_db_id (t2/select-one :transform :id (:id without-db))))))))))

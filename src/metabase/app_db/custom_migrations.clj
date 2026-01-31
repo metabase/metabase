@@ -1821,5 +1821,18 @@
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
 
+(define-migration BackfillTransformTargetDbId
+  (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
+                                                :from   [:transform]
+                                                :where  [:= :target_db_id nil]})]
+    (let [source-map (json/decode source)
+          target-map (json/decode target)
+          ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
+          ;; for python transforms, target.database is the only option.
+          db-id      (or (get-in source-map ["query" "database"])
+                         (get target-map "database"))]
+      (when db-id
+        (t2/update! :transform id {:target_db_id db-id})))))
+
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
