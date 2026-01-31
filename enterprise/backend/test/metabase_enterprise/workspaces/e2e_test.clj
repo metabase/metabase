@@ -11,6 +11,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(ws.tu/ws-fixtures!)
+
 (deftest isolation-e2e-test
   (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
     (transforms.tu/with-transform-cleanup! [output-table-name (str "test_table_1_" (mt/random-name))]
