@@ -860,6 +860,31 @@ describe("Remote Sync", () => {
       });
     });
   });
+
+  describe("initial pull conflict handling", () => {
+    it("shows conflict modal with available options when remote would override local", () => {
+      // Add collection to remote repository
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
+
+      // Set up in read-write mode without marking anything as synced and pull changes
+      H.configureGitAndPullChanges("read-write");
+
+      // Ensure conflict modal is shown
+      H.modal().within(() => {
+        cy.findByRole("heading", {
+          name: /Your local data will be overwritten by the remote branch/,
+        }).should("be.visible");
+      });
+      cy.findAllByRole("switch").should("have.length", 2);
+      cy.findByRole("switch", {
+        name: /Create a new branch and push changes there/,
+      }).should("be.visible");
+      cy.findByRole("switch", { name: /Delete unsynced changes/ }).should(
+        "be.visible",
+      );
+    });
+  });
 });
 
 const ensureSyncedCollectionIsVisible = () => {

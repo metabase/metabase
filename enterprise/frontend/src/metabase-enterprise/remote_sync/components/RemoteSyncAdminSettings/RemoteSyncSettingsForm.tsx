@@ -31,13 +31,13 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
 import { SyncConflictModal } from "metabase-enterprise/remote_sync/components/SyncConflictModal";
 import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
+import { useLibraryCollection } from "metabase-enterprise/remote_sync/hooks/use-library-collection";
 import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
 import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type {
@@ -100,16 +100,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     { skip: !isRemoteSyncEnabled },
   );
 
-  // Fetch library collection to build initial sync state
-  const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip: !isRemoteSyncEnabled },
-  );
-  // Library collection endpoint returns { data: null } when not found
-  const libraryCollection =
-    libraryCollectionData && "name" in libraryCollectionData
-      ? libraryCollectionData
-      : undefined;
+  const libraryCollection = useLibraryCollection();
 
   // Fetch tenant collections to build initial sync state
   const { data: tenantCollectionsData } = useListCollectionItemsQuery(

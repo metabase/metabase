@@ -1,0 +1,26 @@
+collection_id: null
+created_at: '2026-01-30T15:33:24.179945Z'
+creator_id: 1
+description: null
+entity_id: BssO7GsawP2WszjcnIjMw
+name: Simple SQL transform
+owner_email: null
+owner_user_id: anderson@metabase.com
+source:
+  query:
+    database: Test MySQL
+    native:
+      query: select 1;
+    type: native
+  type: query
+source_database_id: Test MySQL
+tags: []
+target:
+  database: Test MySQL
+  name: simple_sql_transform
+  schema: null
+  type: table
+serdes/meta:
+  - id: BssO7GsawP2WszjcnIjMw
+    label: simple_sql_transform
+    model: Transform

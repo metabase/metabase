@@ -49,6 +49,10 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
         return [newBranchOption, forcePushOption];
       case "switch-branch":
         return [pushOption, newBranchOption, discardOption];
+      case "setup":
+        return isRemoteSyncReadOnly
+          ? [discardOption]
+          : [newBranchOption, discardOption];
       default: // pull
         return isRemoteSyncReadOnly
           ? [discardOption]

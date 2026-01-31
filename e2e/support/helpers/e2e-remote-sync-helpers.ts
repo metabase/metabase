@@ -11,6 +11,8 @@ import {
   popover,
 } from "./e2e-ui-elements-helpers";
 
+import Chainable = Cypress.Chainable;
+
 export const LOCAL_GIT_PATH =
   Cypress.config("projectRoot") + "/e2e/tmp/test-repo";
 export const SYNCED_COLLECTION_FIXTURE_PATH =
@@ -249,7 +251,7 @@ export const interceptTask = () =>
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
-) => {
+): Chainable => {
   if (retries > 3) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
@@ -268,7 +270,7 @@ export const waitForTask = (
 export const pollForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
-) => {
+): Chainable => {
   if (retries > 30) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
