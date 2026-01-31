@@ -32,7 +32,7 @@ export function RunListPagination({
   }
 
   return (
-    <Group mt="lg" justify="end">
+    <Group justify="end">
       <PaginationControls
         page={page}
         pageSize={PAGE_SIZE}
