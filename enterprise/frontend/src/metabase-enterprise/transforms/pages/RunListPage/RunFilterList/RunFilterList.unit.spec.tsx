@@ -1,28 +1,33 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type * as Urls from "metabase/lib/urls";
 import type { Transform, TransformTag } from "metabase-types/api";
+
+import type { TransformRunFilterOptions } from "../types";
 
 import { RunFilterList } from "./RunFilterList";
 
 type SetupOpts = {
-  params?: Urls.TransformRunListParams;
+  filterOptions?: TransformRunFilterOptions;
   transforms?: Transform[];
   tags?: TransformTag[];
 };
 
-function setup({ params = {}, transforms = [], tags = [] }: SetupOpts = {}) {
-  const onParamsChange = jest.fn();
+function setup({
+  filterOptions = {},
+  transforms = [],
+  tags = [],
+}: SetupOpts = {}) {
+  const onFilterOptionsChange = jest.fn();
   renderWithProviders(
     <RunFilterList
-      params={params}
+      filterOptions={filterOptions}
       transforms={transforms}
       tags={tags}
-      onParamsChange={onParamsChange}
+      onFilterOptionsChange={onFilterOptionsChange}
     />,
   );
-  return { onParamsChange };
+  return { onFilterOptionsChange };
 }
 
 describe("RunFilterList", () => {

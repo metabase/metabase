@@ -19,6 +19,7 @@ type SetupOpts = {
 };
 
 function setup({ runs = [] }: SetupOpts = {}) {
+  const onSortOptionsChange = jest.fn();
   mockGetBoundingClientRect({ width: 800, height: 600 });
 
   return renderWithProviders(
@@ -26,7 +27,13 @@ function setup({ runs = [] }: SetupOpts = {}) {
       <Route
         path="/data-studio/transforms/runs"
         component={() => (
-          <RunList params={{}} runs={runs} tags={[]} totalCount={runs.length} />
+          <RunList
+            runs={runs}
+            tags={[]}
+            hasFilters={false}
+            sortOptions={undefined}
+            onSortOptionsChange={onSortOptionsChange}
+          />
         )}
       />
       <Route

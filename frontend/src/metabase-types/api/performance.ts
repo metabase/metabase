@@ -1,4 +1,5 @@
 import type { CollectionType } from "./collection";
+import type { SortDirection } from "./pagination";
 
 /** 'Model' as in 'type of object' */
 export type CacheableModel = "root" | "database" | "dashboard" | "question";
@@ -67,7 +68,6 @@ export interface CacheConfig {
 }
 
 export type CacheSortColumn = "name" | "collection" | "policy";
-export type SortDirection = "asc" | "desc";
 
 export interface ListCacheConfigsRequest {
   model?: CacheableModel[];
