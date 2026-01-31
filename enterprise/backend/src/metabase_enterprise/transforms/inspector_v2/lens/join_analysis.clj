@@ -107,13 +107,42 @@
   [driver-kw {:keys [schema table column]}]
   (str/join "." (map (partial sql-quote driver-kw) (remove nil? [schema table column]))))
 
+(defn- sql-literal
+  "Convert a macaw literal to SQL."
+  [{:keys [value]}]
+  (cond
+    (string? value) (str "'" (str/replace value "'" "''") "'")
+    (nil? value) "NULL"
+    :else (str value)))
+
+(defn- sql-expr
+  "Convert a macaw AST expression to SQL."
+  [driver-kw node]
+  (case (:type node)
+    :macaw.ast/column (sql-column-ref driver-kw node)
+    :macaw.ast/literal (sql-literal node)
+    nil))
+
 (defn- sql-condition
+  "Convert a macaw AST condition to SQL. Handles AND/OR compound conditions recursively."
   [driver-kw condition]
   (when (= (:type condition) :macaw.ast/binary-expression)
-    (let [{:keys [operator left right]} condition]
-      (when (and (= (:type left) :macaw.ast/column)
-                 (= (:type right) :macaw.ast/column))
-        (str (sql-column-ref driver-kw left) " " operator " " (sql-column-ref driver-kw right))))))
+    (let [{:keys [operator left right]} condition
+          op-upper (str/upper-case (str operator))]
+      (cond
+        ;; Compound condition (AND/OR) - recurse into both sides
+        (contains? #{"AND" "OR"} op-upper)
+        (let [left-sql (sql-condition driver-kw left)
+              right-sql (sql-condition driver-kw right)]
+          (when (and left-sql right-sql)
+            (str "(" left-sql " " op-upper " " right-sql ")")))
+
+        ;; Binary comparison - handle columns, literals, etc.
+        :else
+        (let [left-sql (sql-expr driver-kw left)
+              right-sql (sql-expr driver-kw right)]
+          (when (and left-sql right-sql)
+            (str left-sql " " operator " " right-sql)))))))
 
 (def ^:private strategy->sql
   {:left-join  "LEFT JOIN"
@@ -125,19 +154,32 @@
 (defn- sql-join-clause
   [driver-kw {:keys [strategy ast-node]}]
   (let [table (sql-table-ref driver-kw (:source ast-node))
-        conditions (keep (partial sql-condition driver-kw) (:condition ast-node))
-        on-clause (when (seq conditions) (str/join " AND " conditions))]
+        ;; :condition may be a single node or a list - normalize to list
+        conditions-raw (:condition ast-node)
+        conditions-list (if (sequential? conditions-raw) conditions-raw [conditions-raw])
+        ;; Each condition may be compound (with AND) - sql-condition handles that
+        on-parts (keep (partial sql-condition driver-kw) conditions-list)
+        on-clause (when (seq on-parts) (str/join " AND " on-parts))]
     (if on-clause
       (str (strategy->sql strategy) " " table " ON " on-clause)
       (str (strategy->sql strategy) " " table))))
 
 (defn- rhs-column-from-ast
+  "Extract the first RHS column from join conditions (for COUNT(rhs_field) in outer joins).
+   Handles compound AND conditions by recursively searching."
   [conditions]
-  (when-let [cond (first conditions)]
-    (when (= (:type cond) :macaw.ast/binary-expression)
-      (let [right (:right cond)]
-        (when (= (:type right) :macaw.ast/column)
-          right)))))
+  (let [conditions-list (if (sequential? conditions) conditions [conditions])]
+    (some (fn find-rhs [cond]
+            (when (= (:type cond) :macaw.ast/binary-expression)
+              (let [{:keys [operator left right]} cond
+                    op-upper (str/upper-case (str operator))]
+                (if (contains? #{"AND" "OR"} op-upper)
+                  ;; Compound - recurse into left side first
+                  (or (find-rhs left) (find-rhs right))
+                  ;; Simple comparison - check if right is a column
+                  (when (= (:type right) :macaw.ast/column)
+                    right)))))
+          conditions-list)))
 
 (defn- build-native-join-step-sql
   "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins."

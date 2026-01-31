@@ -126,9 +126,11 @@
      :group-by-columns (mapcat extract-columns-from-ast-node (:group-by ast))
      :order-by-columns (mapcat extract-columns-from-ast-node (:order-by ast))
      :join-columns     (mapcat (fn [join]
-                                 (mapcat extract-columns-from-ast-node
-                                         (:condition join)))
-                               (:join ast))}))
+                                 ;; :condition may be single node or list
+                                 (let [conds (:condition join)
+                                       cond-list (if (sequential? conds) conds [conds])]
+                                   (mapcat extract-columns-from-ast-node cond-list)))
+                               #p (:join ast))}))
 
 (defn- resolve-column-to-field-id
   "Map a column name to a Metabase field ID using sources info."
