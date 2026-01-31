@@ -46,7 +46,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
     sort_column: sortColumn,
-    sort_direction: sortDirection === "asc" ? "asc" : "desc",
+    sort_direction: sortDirection,
   });
 
   // Handle sort column click
