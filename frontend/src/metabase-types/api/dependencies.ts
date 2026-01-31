@@ -7,13 +7,10 @@ import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
-import type {
-  PaginationRequest,
-  PaginationResponse,
-  SortDirection,
-} from "./pagination";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
+import type { SortDirection } from "./sorting";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
