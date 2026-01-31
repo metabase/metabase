@@ -18,6 +18,7 @@ import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformInspectPage } from "./pages/TransformInspectPage";
 import { TransformInspectPageMock } from "./pages/TransformInspectPage/TransformInspectPageMock";
+import { TransformInspectV2Page } from "./pages/TransformInspectV2Page";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
@@ -46,6 +47,7 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
         <Route path=":transformId/inspect" component={TransformInspectPage} />
+        <Route path=":transformId/inspect-v2" component={TransformInspectV2Page} />
         <Route
           path=":transformId/inspect-mock"
           component={TransformInspectPageMock}

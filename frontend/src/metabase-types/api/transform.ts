@@ -386,3 +386,102 @@ export type TransformInspectResponse = {
   column_comparisons?: TransformInspectColumnComparison[];
   visited_fields?: TransformInspectVisitedFields;
 };
+
+// Inspector V2 Types
+
+export type InspectorV2LensMetadata = {
+  id: string;
+  display_name: string;
+  description?: string;
+};
+
+export type InspectorV2DiscoveryResponse = {
+  name: string;
+  description?: string;
+  status: TransformInspectStatus;
+  sources: TransformInspectSource[];
+  target?: TransformInspectTarget;
+  visited_fields?: TransformInspectVisitedFields;
+  available_lenses: InspectorV2LensMetadata[];
+};
+
+export type InspectorV2LayoutType = "flat" | "comparison";
+
+export type InspectorV2Section = {
+  id: string;
+  title: string;
+  description?: string;
+  layout?: InspectorV2LayoutType;
+};
+
+export type InspectorV2CardDisplayType =
+  | "bar"
+  | "row"
+  | "line"
+  | "area"
+  | "pie"
+  | "scalar"
+  | "gauge"
+  | "progress"
+  | "table"
+  | "hidden";
+
+export type InspectorV2Card = {
+  id: string;
+  section_id?: string;
+  title: string;
+  display: InspectorV2CardDisplayType;
+  dataset_query: DatasetQuery;
+  interestingness?: number;
+  summary?: boolean;
+  visualization_settings?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+};
+
+export type InspectorV2SummaryHighlight = {
+  label: string;
+  value?: unknown;
+  card_id?: string;
+};
+
+export type InspectorV2LensSummary = {
+  text?: string;
+  highlights?: InspectorV2SummaryHighlight[];
+  alerts?: unknown[];
+};
+
+export type InspectorV2TriggerCondition = {
+  card_id: string;
+  field?: string | number | symbol;
+  comparator: ">" | ">=" | "<" | "<=" | "=" | "!=";
+  threshold: unknown;
+};
+
+export type InspectorV2AlertTrigger = {
+  id: string;
+  condition: InspectorV2TriggerCondition;
+  severity: "info" | "warning" | "error";
+  message: string;
+};
+
+export type InspectorV2DrillLensTrigger = {
+  lens_id: string;
+  condition: InspectorV2TriggerCondition;
+  reason?: string;
+};
+
+export type InspectorV2Lens = {
+  id: string;
+  display_name: string;
+  summary?: InspectorV2LensSummary;
+  sections: InspectorV2Section[];
+  cards: InspectorV2Card[];
+  drill_lenses?: InspectorV2LensMetadata[];
+  alert_triggers?: InspectorV2AlertTrigger[];
+  drill_lens_triggers?: InspectorV2DrillLensTrigger[];
+};
+
+export type GetInspectorV2LensRequest = {
+  transformId: TransformId;
+  lensId: string;
+};

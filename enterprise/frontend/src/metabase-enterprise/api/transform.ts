@@ -4,6 +4,9 @@ import type {
   CreateTransformRequest,
   ExtractColumnsFromQueryRequest,
   ExtractColumnsFromQueryResponse,
+  GetInspectorV2LensRequest,
+  InspectorV2DiscoveryResponse,
+  InspectorV2Lens,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -257,6 +260,33 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
+    // Inspector V2 endpoints
+    getInspectorV2Discovery: builder.query<
+      InspectorV2DiscoveryResponse,
+      TransformId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/transform/${id}/inspect-v2`,
+      }),
+      transformResponse: (response: unknown) =>
+        transformKeys(response) as InspectorV2DiscoveryResponse,
+      providesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("transform", id)]),
+    }),
+    getInspectorV2Lens: builder.query<
+      InspectorV2Lens,
+      GetInspectorV2LensRequest
+    >({
+      query: ({ transformId, lensId }) => ({
+        method: "GET",
+        url: `/api/ee/transform/${transformId}/inspect-v2/${lensId}`,
+      }),
+      transformResponse: (response: unknown) =>
+        transformKeys(response) as InspectorV2Lens,
+      providesTags: (_, error, { transformId }) =>
+        invalidateTags(error, [idTag("transform", transformId)]),
+    }),
   }),
 });
 
@@ -267,6 +297,9 @@ export const {
   useGetTransformQuery,
   useLazyGetTransformQuery,
   useGetTransformInspectQuery,
+  useGetInspectorV2DiscoveryQuery,
+  useGetInspectorV2LensQuery,
+  useLazyGetInspectorV2LensQuery,
   useRunTransformMutation,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,
