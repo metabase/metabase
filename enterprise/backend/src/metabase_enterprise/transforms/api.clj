@@ -5,6 +5,8 @@
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.inspector :as transforms.inspector]
+   [metabase-enterprise.transforms.inspector-v2 :as inspector-v2]
+   [metabase-enterprise.transforms.inspector-v2.schema :as inspector-v2.schema]
    [metabase-enterprise.transforms.inspector.schema :as inspector.schema]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
@@ -555,6 +557,28 @@
   (let [transform (api/read-check :model/Transform id)]
     (check-feature-enabled! transform)
     (transforms.inspector/get-lens transform lens-id)))
+
+;;; -------------------------------------------------- Inspector V2 API --------------------------------------------------
+
+(api.macros/defendpoint :get "/:id/inspect-v2"
+  :- ::inspector-v2.schema/discovery-response
+  "Phase 1: Discover available lenses for a transform (v2).
+   Returns structural metadata and available lens types."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (check-feature-enabled! transform)
+    (inspector-v2/discover-lenses transform)))
+
+(api.macros/defendpoint :get "/:id/inspect-v2/:lens-id"
+  :- ::inspector-v2.schema/lens
+  "Phase 2: Get full lens contents for a transform (v2).
+   Returns sections, cards with dataset_query, and trigger definitions."
+  [{:keys [id lens-id]} :- [:map
+                            [:id ms/PositiveInt]
+                            [:lens-id ms/NonBlankString]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (check-feature-enabled! transform)
+    (inspector-v2/get-lens transform lens-id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
