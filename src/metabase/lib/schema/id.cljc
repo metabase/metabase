@@ -9,6 +9,9 @@
   "Valid Database ID"
   pos-int?)
 
+;;; TODO (Cam 2026-01-27) we should mark this deprecated and gradually remove usages of it... it was mostly needed
+;;; when we returned fake "virtual Table" metadata for Cards, but as of #68586 this is deprecated and being phased
+;;; out... once it's removed completely we shouldn't need to handle this any more
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
 

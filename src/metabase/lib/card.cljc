@@ -18,7 +18,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -31,7 +30,7 @@
 (defmethod lib.metadata.calculation/metadata-method :metadata/card
   [_query _stage-number {card-name :name, :keys [display-name], :as card-metadata}]
   (cond-> card-metadata
-    (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
+    (not display-name) (assoc :display-name card-name)))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/card
   [query stage-number card-metadata]

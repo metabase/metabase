@@ -6,8 +6,9 @@ import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import Table from "metabase-lib/v1/metadata/Table";
 import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
@@ -15,6 +16,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
+import type { TableId } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -22,6 +24,8 @@ import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
 import S from "./QuestionDataSource.module.css";
 
 export type DataSourcePart = ReactElement | DataSourceBadgePart;
+
+// TODO (AlexP, 2026-01-30): All of this should be rewritten to use MBQL lib and not use Metadata directly.
 
 type DataSourceBadgePart = {
   name?: string;
@@ -67,42 +71,49 @@ export function getDataSourceParts({
     });
   }
 
-  const table = !isNative
-    ? metadata.table(Lib.sourceTableOrCardId(query))
+  const tableOrQuestion = !isNative
+    ? getTableOrQuestion(metadata, Lib.sourceTableOrCardId(query))
     : (question.legacyNativeQuery() as NativeQuery).table();
-  if (table && table.hasSchema()) {
-    const isBasedOnSavedQuestion = isVirtualCardId(table.id);
+  if (
+    tableOrQuestion &&
+    tableOrQuestion instanceof Table &&
+    tableOrQuestion.hasSchema()
+  ) {
+    const isBasedOnSavedQuestion = isVirtualCardId(tableOrQuestion.id);
     if (database != null && !isBasedOnSavedQuestion) {
       parts.push({
         model: "schema",
-        name: table.schema_name,
-        href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
+        name: tableOrQuestion.schema_name,
+        href: database.id >= 0 ? Urls.browseSchema(tableOrQuestion) : undefined,
       });
     }
   }
 
-  if (table) {
+  if (tableOrQuestion) {
     const hasTableLink = subHead || isObjectDetail;
     if (isNative) {
       return [
         {
-          name: table.displayName(),
-          href: hasTableLink ? getTableURL(table) : "",
+          name: tableOrQuestion.displayName() ?? "",
+          href: hasTableLink ? getTableOrQuestionUrl(tableOrQuestion) : "",
         },
       ];
     }
 
-    const allTables = [
-      table,
+    const allTablesOrQuestions = [
+      tableOrQuestion,
       ...Lib.joins(query, -1)
         .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
         .map((pickerInfo) => {
           if (pickerInfo?.tableId != null) {
-            return metadata.table(pickerInfo.tableId);
+            return getTableOrQuestion(metadata, pickerInfo.tableId);
           }
 
           if (pickerInfo?.cardId != null) {
-            return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
+            return getTableOrQuestion(
+              metadata,
+              getQuestionVirtualTableId(pickerInfo.cardId),
+            );
           }
 
           return undefined;
@@ -111,16 +122,17 @@ export function getDataSourceParts({
 
     const part: DataSourcePart = formatTableAsComponent ? (
       <QuestionTableBadges
-        tables={allTables}
+        tablesOrQuestions={allTablesOrQuestions}
         subHead={subHead}
         hasLink={hasTableLink}
         isLast={!isObjectDetail}
       />
     ) : (
       {
-        name: table.displayName(),
-        href: hasTableLink ? getTableURL(table) : "",
-        model: table.type ?? "table",
+        name: tableOrQuestion.displayName() ?? "",
+        href: hasTableLink ? getTableOrQuestionUrl(tableOrQuestion) : "",
+        model:
+          tableOrQuestion instanceof Table ? "table" : tableOrQuestion.type(),
       }
     );
 
@@ -136,14 +148,14 @@ export function getDataSourceParts({
 }
 
 type QuestionTableBadgesProps = {
-  tables: Table[];
+  tablesOrQuestions: (Table | Question)[];
   subHead?: boolean;
   hasLink?: boolean;
   isLast?: boolean;
 };
 
 function QuestionTableBadges({
-  tables,
+  tablesOrQuestions,
   subHead,
   hasLink,
   isLast,
@@ -151,28 +163,35 @@ function QuestionTableBadges({
   const badgeInactiveColor =
     isLast && !subHead ? "text-primary" : "text-tertiary";
 
-  const parts = tables.map((table) => (
-    <HeadBreadcrumbs.Badge
-      key={table.id}
-      to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
-    >
-      <span>
-        {table.displayName()}
-        {!subHead && (
-          <span className={S.IconWrapper}>
-            <TableInfoIcon
-              table={table}
-              icon="info"
-              size={16}
-              position="bottom"
-              className={HeaderS.HeaderBadgeIcon}
-            />
-          </span>
-        )}
-      </span>
-    </HeadBreadcrumbs.Badge>
-  ));
+  const parts = tablesOrQuestions.map((tableOrQuestion) => {
+    const tableOrCard =
+      tableOrQuestion instanceof Question
+        ? tableOrQuestion.card()
+        : tableOrQuestion;
+
+    return (
+      <HeadBreadcrumbs.Badge
+        key={tableOrCard.id}
+        to={hasLink ? getTableOrQuestionUrl(tableOrQuestion) : ""}
+        inactiveColor={badgeInactiveColor}
+      >
+        <span>
+          {tableOrQuestion.displayName()}
+          {!subHead && (
+            <span className={S.IconWrapper}>
+              <TableInfoIcon
+                table={tableOrCard}
+                icon="info"
+                size={16}
+                position="bottom"
+                className={HeaderS.HeaderBadgeIcon}
+              />
+            </span>
+          )}
+        </span>
+      </HeadBreadcrumbs.Badge>
+    );
+  });
 
   return (
     <HeadBreadcrumbs
@@ -184,14 +203,23 @@ function QuestionTableBadges({
   );
 }
 
-function getTableURL(table: Table) {
-  if (isVirtualCardId(table.id)) {
-    const cardId = getQuestionIdFromVirtualTableId(table.id);
+function getTableOrQuestion(metadata: Metadata, id: TableId | null) {
+  return (
+    metadata.table(id) ?? metadata.question(getQuestionIdFromVirtualTableId(id))
+  );
+}
+
+function getTableOrQuestionUrl(tableOrQuestion: Table | Question) {
+  if (tableOrQuestion instanceof Question) {
+    return Urls.question(tableOrQuestion.card());
+  }
+  if (isVirtualCardId(tableOrQuestion.id)) {
+    const cardId = getQuestionIdFromVirtualTableId(tableOrQuestion.id);
     if (cardId != null) {
-      return Urls.question({ id: cardId, name: table.displayName() });
+      return Urls.question({ id: cardId, name: tableOrQuestion.displayName() });
     }
   }
-  return ML_Urls.getUrl(table.newQuestion());
+  return ML_Urls.getUrl(tableOrQuestion.newQuestion());
 }
 
 export function getQuestionIcon(question: Question): IconName {

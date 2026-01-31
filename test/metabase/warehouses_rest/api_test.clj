@@ -128,7 +128,9 @@
                    :type     :query
                    :query    inner-query-clauses}})
 
-(defn- virtual-table-for-card [card & {:as kvs}]
+(defn- virtual-table-for-card
+  {:deprecated "0.59.0"}
+  [card & {:as kvs}]
   (merge
    {:id               (format "card__%d" (u/the-id card))
     :db_id            (:database_id card)
@@ -1081,7 +1083,7 @@
           (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
             (is (malli= SavedQuestionsDB
                         response))
-            (check-tables-included response (virtual-table-for-card card))))))))
+            (check-tables-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card card))))))))
 
 (deftest databases-list-include-saved-questions-tables-test-2
   (testing "GET /api/database?saved=true&include=tables"
@@ -1112,8 +1114,8 @@
                       response))
           (check-tables-included
            response
-           (virtual-table-for-card coin-card :schema "Coins")
-           (virtual-table-for-card stamp-card :schema "Stamps")))))))
+           #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card coin-card :schema "Coins")
+           #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card stamp-card :schema "Stamps")))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-tables-test-4
   (testing "GET /api/database?saved=true&include=tables"
@@ -1130,8 +1132,8 @@
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
-          (check-tables-included response (virtual-table-for-card ok-card))
-          (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
+          (check-tables-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card ok-card))
+          (check-tables-not-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card cambiguous-card)))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-tables-test-5
   (testing "GET /api/database?saved=true&include=tables"
@@ -1152,8 +1154,8 @@
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
-          (check-tables-included response (virtual-table-for-card ok-card))
-          (check-tables-not-included response (virtual-table-for-card bad-card)))))))
+          (check-tables-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card ok-card))
+          (check-tables-not-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card bad-card)))))))
 
 (deftest databases-list-include-saved-questions-tables-test-6
   (testing "GET /api/database?saved=true&include=tables"
@@ -1177,8 +1179,8 @@
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
-          (check-tables-included response (virtual-table-for-card ok-card))
-          (check-tables-not-included response (virtual-table-for-card bad-card)))))))
+          (check-tables-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card ok-card))
+          (check-tables-not-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card bad-card)))))))
 
 (deftest ^:parallel db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
@@ -1192,19 +1194,12 @@
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
                     response))
-        (check-tables-included
-         response
-         (assoc (virtual-table-for-card card)
-                :fields [{:name                     "age_in_bird_years"
-                          :display_name             "Age in Bird Years"
-                          :table_id                 (str "card__" (u/the-id card))
-                          :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
-                          :semantic_type            nil
-                          :base_type                "type/Integer"}]))))))
+        (check-tables-included response #_{:clj-kondo/ignore [:deprecated-var]} (virtual-table-for-card card))))))
 
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (with-redefs [api.database/cards-virtual-tables (constantly [])]
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id

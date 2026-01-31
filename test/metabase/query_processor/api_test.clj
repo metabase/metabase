@@ -1021,8 +1021,10 @@
 (deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+      [:model/Card {card-id-1 :id} {:name          "Card 1"
+                                    :dataset_query (mt/mbql-query products)}
+       :model/Card {card-id-2 :id} {:name          "Card 2"
+                                    :dataset_query {:database (mt/id)
                                                     :type     :query
                                                     :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
@@ -1035,24 +1037,32 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (=?
-                   {:fields    empty?
-                    :tables    [{:id (str "card__" card-id)}]
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id)))))
+            (doseq [[message source-card-id] {"Query with source Card 1 => source Table PRODUCTS" card-id-1
+                                              "Query with source Card 2 => source Card 1"         card-id-2}]
+              (testing message
+                (is (=? {:fields    empty?
+                         :tables    (condp = source-card-id
+                                      card-id-1 [{:id (mt/id :products), :name "PRODUCTS"}]
+                                      card-id-2 [])
+                         :databases [{:id (mt/id) :engine string?}]
+                         :cards     (condp = source-card-id
+                                      card-id-1 [{:id card-id-1, :name "Card 1"}]
+                                      card-id-2 [{:id card-id-2, :name "Card 2"}])}
+                        (query-metadata 200 source-card-id))))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so querying it as a source returns empty tables
             (is (=?
                  {:fields    empty?
                   :tables    empty?
-                  :databases [{:id (mt/id) :engine string?}]}
+                  :databases [{:id (mt/id) :engine string?}]
+                  :cards     empty?}
                  (query-metadata 200 card-id-1)))
             ;; card-id-2 still exists, so querying it as a source still works
             (is (=?
                  {:fields    empty?
-                  :tables    [{:id (str "card__" card-id-2)}]
-                  :databases [{:id (mt/id) :engine string?}]}
+                  :tables    empty?
+                  :databases [{:id (mt/id) :engine string?}]
+                  :cards     [{:id card-id-2, :name "Card 2"}]}
                  (query-metadata 200 card-id-2)))))))))
 
 (deftest published-table-does-not-grant-database-access-oss-test

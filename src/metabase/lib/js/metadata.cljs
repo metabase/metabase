@@ -279,6 +279,16 @@
          :internal
          {:lib/type :metadata.column.remapping/internal})))))
 
+(defn- parse-remap-info [remap-info]
+  (obj->clj
+   (map (fn [[k v]]
+          (let [k (keyword (u/->kebab-case-en k))
+                v (case k
+                    :lib/type (keyword v)
+                    v)]
+            [k v])))
+   remap-info))
+
 (defmethod parse-field-fn :field
   [_object-type]
   (fn [k v]
@@ -323,6 +333,8 @@
       :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
+      :lib/external-remap               (parse-remap-info v)
+      :lib/internal-remap               (parse-remap-info v)
       v)))
 
 (defmethod parse-object-fn* :field
