@@ -287,9 +287,16 @@ export type QueryComplexity = {
 export type TransformInspectFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
-  min?: number | string;
-  max?: number | string;
+  // Numeric stats
+  min?: number;
+  max?: number;
   avg?: number;
+  q1?: number;
+  q3?: number;
+  sd?: number;
+  // Temporal stats
+  earliest?: string;
+  latest?: string;
 };
 
 export type TransformInspectField = {

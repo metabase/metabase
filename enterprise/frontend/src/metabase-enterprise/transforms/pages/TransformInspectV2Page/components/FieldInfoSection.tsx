@@ -34,173 +34,152 @@ const TEMPORAL_BASE_TYPES = new Set([
   "type/TimeWithTZ",
 ]);
 
+const NUMERIC_BASE_TYPES = new Set([
+  "type/Integer",
+  "type/BigInteger",
+  "type/Float",
+  "type/Decimal",
+  "type/Number",
+]);
+
 function isTemporalField(field: TransformInspectField): boolean {
   return TEMPORAL_BASE_TYPES.has(field.base_type ?? "");
 }
 
-function formatFieldType(field: TransformInspectField): string {
-  const baseType = field.base_type?.replace("type/", "") ?? "Unknown";
-  const semanticType = field.semantic_type?.replace("type/", "");
-  if (semanticType && semanticType !== baseType) {
-    return `${baseType} (${semanticType})`;
-  }
-  return baseType;
+function isNumericField(field: TransformInspectField): boolean {
+  return NUMERIC_BASE_TYPES.has(field.base_type ?? "");
+}
+
+function formatType(field: TransformInspectField): string {
+  return field.base_type?.replace("type/", "") ?? "Unknown";
 }
 
 function formatNumber(value: number | undefined): string {
-  if (value === undefined) {
-    return "-";
-  }
-  if (Number.isInteger(value)) {
-    return value.toLocaleString();
-  }
+  if (value === undefined) return "-";
+  if (Number.isInteger(value)) return value.toLocaleString();
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 function formatPercent(value: number | undefined): string {
-  if (value === undefined) {
-    return "-";
-  }
+  if (value === undefined) return "-";
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function formatMinMax(
-  value: number | string | undefined,
-  isTemporal: boolean,
-): string {
-  if (value === undefined) {
-    return "-";
+function formatDate(value: string | undefined): string {
+  if (!value) return "-";
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return value;
   }
-  if (isTemporal && typeof value === "string") {
-    // Format ISO date string for display
-    try {
-      const date = new Date(value);
-      return date.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return String(value);
-    }
-  }
-  if (typeof value === "number") {
-    return formatNumber(value);
-  }
-  return String(value);
 }
 
-type FieldTableProps = {
+function getFieldStats(field: TransformInspectField): string | null {
+  const stats = field.stats;
+  if (!stats) return null;
+
+  const parts: string[] = [];
+
+  if (stats.distinct_count !== undefined) {
+    parts.push(`${formatNumber(stats.distinct_count)} distinct`);
+  }
+  if (stats.nil_percent !== undefined && stats.nil_percent > 0) {
+    parts.push(`${formatPercent(stats.nil_percent)} null`);
+  }
+
+  if (isNumericField(field)) {
+    if (stats.min !== undefined && stats.max !== undefined) {
+      let range = `${formatNumber(stats.min)}–${formatNumber(stats.max)}`;
+      if (stats.avg !== undefined) {
+        range += ` (avg ${formatNumber(stats.avg)})`;
+      }
+      parts.push(range);
+    }
+  } else if (isTemporalField(field)) {
+    if (stats.earliest && stats.latest) {
+      parts.push(`${formatDate(stats.earliest)} → ${formatDate(stats.latest)}`);
+    }
+  }
+
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+type FieldRowProps = {
+  field: TransformInspectField;
+};
+
+const FieldRow = ({ field }: FieldRowProps) => {
+  const stats = getFieldStats(field);
+
+  return (
+    <Flex
+      py={6}
+      style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+    >
+      <Text size="sm" fw={500} style={{ flex: "1 1 0", minWidth: 0 }}>
+        {field.display_name ?? field.name}
+      </Text>
+      <Text size="xs" c="text-tertiary" style={{ width: 80, textAlign: "right", flexShrink: 0 }}>
+        {formatType(field)}
+      </Text>
+      <Text size="xs" c="text-tertiary" style={{ width: 200, textAlign: "right", flexShrink: 0 }}>
+        {stats ?? ""}
+      </Text>
+    </Flex>
+  );
+};
+
+type FieldListProps = {
   fields: TransformInspectField[];
   tableName: string;
   defaultOpen?: boolean;
 };
 
-const FieldTable = ({
+const FieldList = ({
   fields,
   tableName,
   defaultOpen = true,
-}: FieldTableProps) => {
+}: FieldListProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
-  const hasStats = fields.some((f) => f.stats);
-  const hasTemporalFields = fields.some(
-    (f) => f.stats && isTemporalField(f),
-  );
-  const hasNumericFields = fields.some(
-    (f) => f.stats?.avg !== undefined,
-  );
-
-  // Choose header labels based on field types present
-  const minLabel = hasTemporalFields ? t`Earliest` : t`Min`;
-  const maxLabel = hasTemporalFields ? t`Latest` : t`Max`;
-
   return (
-    <Card p="md" shadow="none" withBorder>
-      <Stack gap="xs">
-        <UnstyledButton onClick={() => setIsOpen(!isOpen)} w="100%">
-          <Flex gap="sm" align="center">
-            <Text size="sm" fw={600}>
-              {isOpen ? "▼" : "▶"}
+    <Card p="sm" shadow="none" withBorder>
+      <UnstyledButton onClick={() => setIsOpen(!isOpen)} w="100%">
+        <Flex gap="sm" align="center">
+          <Text size="sm" fw={600}>
+            {isOpen ? "▼" : "▶"}
+          </Text>
+          <Text size="sm" fw={600}>{tableName}</Text>
+          <Text size="xs" c="text-tertiary">
+            ({fields.length})
+          </Text>
+        </Flex>
+      </UnstyledButton>
+
+      <Collapse in={isOpen}>
+        <Box mt="xs">
+          {/* Header */}
+          <Flex pb={4} style={{ borderBottom: "1px solid var(--mb-color-border)" }}>
+            <Text size="xs" c="text-tertiary" fw={600} style={{ flex: "1 1 0" }}>
+              {t`Field`}
             </Text>
-            <Text fw={600}>{tableName}</Text>
-            <Text size="sm" c="text-tertiary">
-              ({fields.length} {t`fields`})
+            <Text size="xs" c="text-tertiary" fw={600} style={{ width: 80, textAlign: "right" }}>
+              {t`Type`}
+            </Text>
+            <Text size="xs" c="text-tertiary" fw={600} style={{ width: 200, textAlign: "right" }}>
+              {t`Stats`}
             </Text>
           </Flex>
-        </UnstyledButton>
-
-        <Collapse in={isOpen}>
-          <Stack gap="xs" mt="xs">
-            {/* Header row */}
-            <Flex
-              gap="md"
-              fw={600}
-              pb="xs"
-              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-            >
-              <Text style={{ flex: 2 }}>{t`Field`}</Text>
-              <Text style={{ flex: 2 }}>{t`Type`}</Text>
-              {hasStats && (
-                <>
-                  <Text style={{ flex: 1 }} ta="right">{t`Distinct`}</Text>
-                  <Text style={{ flex: 1 }} ta="right">{t`Null %`}</Text>
-                  <Text style={{ flex: 1 }} ta="right">{minLabel}</Text>
-                  <Text style={{ flex: 1 }} ta="right">{maxLabel}</Text>
-                  {hasNumericFields && (
-                    <Text style={{ flex: 1 }} ta="right">{t`Avg`}</Text>
-                  )}
-                </>
-              )}
-            </Flex>
-
-            {/* Data rows */}
-            {fields.map((field) => {
-              const isTemporal = isTemporalField(field);
-              return (
-                <Flex key={field.name} gap="md" py="xs">
-                  <Box style={{ flex: 2 }}>
-                    <Text size="sm" fw={500}>
-                      {field.display_name ?? field.name}
-                    </Text>
-                    {field.display_name && field.display_name !== field.name && (
-                      <Text size="xs" c="text-tertiary">
-                        {field.name}
-                      </Text>
-                    )}
-                  </Box>
-                  <Text style={{ flex: 2 }} size="sm">
-                    {formatFieldType(field)}
-                  </Text>
-                  {hasStats && (
-                    <>
-                      <Text style={{ flex: 1 }} ta="right" size="sm">
-                        {formatNumber(field.stats?.distinct_count)}
-                      </Text>
-                      <Text style={{ flex: 1 }} ta="right" size="sm">
-                        {formatPercent(field.stats?.nil_percent)}
-                      </Text>
-                      <Text style={{ flex: 1 }} ta="right" size="sm">
-                        {formatMinMax(field.stats?.min, isTemporal)}
-                      </Text>
-                      <Text style={{ flex: 1 }} ta="right" size="sm">
-                        {formatMinMax(field.stats?.max, isTemporal)}
-                      </Text>
-                      {hasNumericFields && (
-                        <Text style={{ flex: 1 }} ta="right" size="sm">
-                          {isTemporal ? "-" : formatNumber(field.stats?.avg)}
-                        </Text>
-                      )}
-                    </>
-                  )}
-                </Flex>
-              );
-            })}
-          </Stack>
-        </Collapse>
-      </Stack>
+          {/* Rows */}
+          {fields.map((field) => (
+            <FieldRow key={field.name} field={field} />
+          ))}
+        </Box>
+      </Collapse>
     </Card>
   );
 };
@@ -217,20 +196,16 @@ export const FieldInfoSection = ({
         <Flex gap="sm" align="center">
           <Text fw={600}>{isExpanded ? "▼" : "▶"}</Text>
           <Text fw={600}>{t`Field Information`}</Text>
-          <Text size="sm" c="text-tertiary">
-            ({t`types and fingerprints`})
-          </Text>
         </Flex>
       </UnstyledButton>
 
       <Collapse in={isExpanded}>
         <Box mt="md">
           <SimpleGrid cols={2} spacing="lg">
-            {/* Left side: Input tables */}
-            <Stack gap="md">
+            <Stack gap="sm">
               <Title order={5}>{t`Input`}</Title>
               {sources.map((source) => (
-                <FieldTable
+                <FieldList
                   key={source.table_id ?? source.table_name}
                   fields={source.fields}
                   tableName={source.table_name}
@@ -238,16 +213,15 @@ export const FieldInfoSection = ({
               ))}
             </Stack>
 
-            {/* Right side: Output table */}
-            <Stack gap="md">
+            <Stack gap="sm">
               <Title order={5}>{t`Output`}</Title>
               {target ? (
-                <FieldTable
+                <FieldList
                   fields={target.fields}
                   tableName={target.table_name}
                 />
               ) : (
-                <Text c="text-tertiary">{t`No output table available`}</Text>
+                <Text c="text-tertiary">{t`No output table`}</Text>
               )}
             </Stack>
           </SimpleGrid>
