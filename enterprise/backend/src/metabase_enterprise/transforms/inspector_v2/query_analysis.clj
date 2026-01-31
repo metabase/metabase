@@ -130,7 +130,7 @@
                                  (let [conds (:condition join)
                                        cond-list (if (sequential? conds) conds [conds])]
                                    (mapcat extract-columns-from-ast-node cond-list)))
-                               #p (:join ast))}))
+                               (:join ast))}))
 
 (defn- resolve-column-to-field-id
   "Map a column name to a Metabase field ID using sources info."
