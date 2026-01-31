@@ -148,10 +148,10 @@ function getStatusColumn(
 
 function getRunMethodColumn(): TreeTableColumnDef<TransformRun> {
   return {
-    id: "run-method",
+    id: "run-method" satisfies TransformRunSortColumn,
     header: t`Trigger`,
     width: "auto",
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (row) => formatRunMethod(row.run_method),
     cell: ({ getValue }) => {
       const value = String(getValue());

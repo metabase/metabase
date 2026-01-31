@@ -198,13 +198,19 @@
            statuses]}]
   (let [offset           (or offset 0)
         limit            (or limit 20)
+        sort-column      (or (keyword sort_column) :start-time)
         sort-direction   (or (keyword sort_direction) :desc)
         nulls-sort       (if (= sort-direction :asc)
                            :nulls-last
                            :nulls-first)
-        order-by         (case sort_column
-                           :start-time [[:start_time sort-direction]]
-                           :end-time   [[:end_time sort-direction nulls-sort]]
+        run-method-expr  [:case
+                          [:= :run_method "manual"] (tru "Manual")
+                          [:= :run_method "cron"] (tru "Schedule")
+                          :run_method]
+        order-by         (case sort-column
+                           :start-time  [[:start_time sort-direction]]
+                           :end-time    [[:end_time sort-direction nulls-sort]]
+                           :run-method  [[:run_method sort-direction]]
                            [[:start_time sort-direction]
                             [:end_time   sort-direction nulls-sort]])
         where-cond       (cond-> []
