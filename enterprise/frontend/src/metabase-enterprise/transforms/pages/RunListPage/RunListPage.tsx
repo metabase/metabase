@@ -116,7 +116,12 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
         tags={tags}
         onParamsChange={handleParamsChange}
       />
-      <RunList runs={data.data} params={params} tags={tags} />
+      <RunList
+        runs={data.data}
+        params={params}
+        tags={tags}
+        onParamsChange={handleParamsChange}
+      />
       <RunListPagination
         params={params}
         page={page}

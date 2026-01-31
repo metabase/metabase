@@ -1,4 +1,4 @@
-import type { Row } from "@tanstack/react-table";
+import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -13,21 +13,27 @@ import type { TransformRun, TransformTag } from "metabase-types/api";
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { hasFilterParams } from "../utils";
 
-import { getColumns } from "./utils";
+import { getColumns, getSortingOptions, getSortingState } from "./utils";
 
 type RunListProps = {
   runs: TransformRun[];
   params: Urls.TransformRunListParams;
   tags: TransformTag[];
+  onParamsChange: (params: Urls.TransformRunListParams) => void;
 };
 
-export function RunList({ runs, params, tags }: RunListProps) {
+export function RunList({ runs, params, tags, onParamsChange }: RunListProps) {
   const dispatch = useDispatch();
   const systemTimezone = useSetting("system-timezone");
 
   const columns = useMemo(
     () => getColumns(tags, systemTimezone),
     [tags, systemTimezone],
+  );
+
+  const sortingState = useMemo(
+    () => getSortingState(params.sortColumn, params.sortDirection),
+    [params.sortColumn, params.sortDirection],
   );
 
   const notFoundLabel = hasFilterParams(params)
@@ -44,11 +50,29 @@ export function RunList({ runs, params, tags }: RunListProps) {
     [dispatch],
   );
 
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const newSortingState =
+        typeof updater === "function" ? updater(sortingState) : updater;
+      const newSortingOptions = getSortingOptions(newSortingState);
+      onParamsChange({
+        ...params,
+        sortColumn: newSortingOptions?.column,
+        sortDirection: newSortingOptions?.direction,
+        page: undefined,
+      });
+    },
+    [sortingState, params, onParamsChange],
+  );
+
   const treeTableInstance = useTreeTableInstance<TransformRun>({
     data: runs,
     columns,
+    sorting: sortingState,
+    manualSorting: true,
     getNodeId: (run) => String(run.id),
     onRowActivate: handleRowActivate,
+    onSortingChange: handleSortingChange,
   });
 
   return (

@@ -202,10 +202,9 @@
         nulls-sort       (if (= sort-direction :asc)
                            :nulls-last
                            :nulls-first)
-        sort-column      (keyword sort_column)
-        order-by         (case sort-column
-                           :started_at [[sort-column sort-direction]]
-                           :ended_at   [[sort-column sort-direction nulls-sort]]
+        order-by         (case sort_column
+                           :start-time [[:start_time sort-direction]]
+                           :end-time   [[:end_time sort-direction nulls-sort]]
                            [[:start_time sort-direction]
                             [:end_time   sort-direction nulls-sort]])
         where-cond       (cond-> []

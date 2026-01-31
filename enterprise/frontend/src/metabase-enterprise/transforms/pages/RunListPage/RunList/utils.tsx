@@ -1,12 +1,16 @@
+import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Group, SortableHeaderPill, Text, Tooltip } from "metabase/ui";
-import type {
-  TransformRun,
-  TransformTag,
-  TransformTagId,
+import {
+  type SortDirection,
+  TRANSFORM_RUN_SORT_COLUMNS,
+  type TransformRun,
+  type TransformRunSortColumn,
+  type TransformTag,
+  type TransformTagId,
 } from "metabase-types/api";
 
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
@@ -60,7 +64,7 @@ function getStartedAtColumn(
   systemTimezone: string | undefined,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "start-time",
+    id: "start-time" satisfies TransformRunSortColumn,
     header: () => (
       <Group gap="xs" wrap="nowrap">
         <SortableHeaderPill name={t`Started at`} />
@@ -68,7 +72,7 @@ function getStartedAtColumn(
       </Group>
     ),
     width: "auto",
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (run) => {
       return parseTimestampWithTimezone(run.start_time, systemTimezone).format(
         "lll",
@@ -85,7 +89,7 @@ function getEndedAtColumn(
   systemTimezone: string | undefined,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "end-time",
+    id: "end-time" satisfies TransformRunSortColumn,
     header: () => (
       <Group gap="xs" wrap="nowrap">
         <SortableHeaderPill name={t`Ended at`} />
@@ -93,7 +97,7 @@ function getEndedAtColumn(
       </Group>
     ),
     width: "auto",
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (run) => {
       return run.end_time != null
         ? parseTimestampWithTimezone(run.end_time, systemTimezone).format("lll")
@@ -199,4 +203,34 @@ export function getColumns(
     getRunMethodColumn(),
     getTransformTagsColumn(tagsById),
   ];
+}
+
+export function getSortingState(
+  sortColumn: TransformRunSortColumn | undefined,
+  sortDirection: SortDirection | undefined,
+): SortingState {
+  return sortColumn != null && sortDirection != null
+    ? [{ id: sortColumn, desc: sortDirection === "desc" }]
+    : [];
+}
+
+type SortingOptions = {
+  column: TransformRunSortColumn;
+  direction: SortDirection;
+};
+
+export function getSortingOptions(
+  sortingState: SortingState,
+): SortingOptions | undefined {
+  if (sortingState.length === 0) {
+    return undefined;
+  }
+
+  const { id, desc } = sortingState[0];
+  const column = TRANSFORM_RUN_SORT_COLUMNS.find((column) => column === id);
+  if (column == null) {
+    return undefined;
+  }
+
+  return { column, direction: desc ? "desc" : "asc" };
 }

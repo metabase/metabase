@@ -144,7 +144,7 @@ export type TransformRunStatus = (typeof TRANSFORM_RUN_STATUSES)[number];
 export const TRANSFORM_RUN_METHODS = ["manual", "cron"] as const;
 export type TransformRunMethod = (typeof TRANSFORM_RUN_METHODS)[number];
 
-export const TRANSFORM_RUN_SORT_COLUMNS = ["start_time", "end_time"] as const;
+export const TRANSFORM_RUN_SORT_COLUMNS = ["start-time", "end-time"] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
 
