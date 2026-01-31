@@ -62,10 +62,10 @@ export function DependencyList({
   const {
     page = 0,
     query,
-    group_types = getAvailableGroupTypes(mode),
-    include_personal_collections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-    sort_column,
-    sort_direction,
+    groupTypes = getAvailableGroupTypes(mode),
+    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    sortColumn,
+    sortDirection,
   } = params;
 
   const {
@@ -75,12 +75,12 @@ export function DependencyList({
     error,
   } = useListGraphNodesQuery(
     {
-      types: getDependencyTypes(group_types),
-      card_types: getCardTypes(group_types),
+      types: getDependencyTypes(groupTypes),
+      card_types: getCardTypes(groupTypes),
       query,
-      include_personal_collections,
-      sort_column,
-      sort_direction,
+      include_personal_collections: includePersonalCollections,
+      sort_column: sortColumn,
+      sort_direction: sortDirection,
       offset: page * PAGE_SIZE,
       limit: PAGE_SIZE,
     },
@@ -111,14 +111,14 @@ export function DependencyList({
   };
 
   const handleFilterOptionsChange = ({
-    groupTypes,
-    includePersonalCollections,
+    groupTypes: newGroupTypes,
+    includePersonalCollections: newIncludePersonalCollections,
   }: DependencyFilterOptions) => {
     handleParamsChange(
       {
         ...params,
-        group_types: groupTypes,
-        include_personal_collections: includePersonalCollections,
+        groupTypes: newGroupTypes,
+        includePersonalCollections: newIncludePersonalCollections,
         page: undefined,
       },
       { withSetLastUsedParams: true },
@@ -131,8 +131,8 @@ export function DependencyList({
     handleParamsChange(
       {
         ...params,
-        sort_column: sortOptions?.column,
-        sort_direction: sortOptions?.direction,
+        sortColumn: sortOptions?.column,
+        sortDirection: sortOptions?.direction,
         page: undefined,
       },
       { withSetLastUsedParams: true },
