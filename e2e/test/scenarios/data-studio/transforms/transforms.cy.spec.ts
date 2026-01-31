@@ -3596,6 +3596,85 @@ describe("scenarios > admin > transforms > runs", () => {
     testStartAtFilter();
     testEndAtFilter();
   });
+
+  it("should be able to sort runs", () => {
+    function createInitialData() {
+      H.createTransformTag({ name: "Alpha tag" }).then(({ body: tag1 }) => {
+        H.createTransformTag({ name: "Beta tag" }).then(({ body: tag2 }) => {
+          createMbqlTransform({
+            targetTable: TARGET_TABLE,
+            tagIds: [tag1.id],
+            visitTransform: true,
+          });
+          H.DataStudio.Transforms.runTab().click();
+          runTransformAndWaitForSuccess();
+          createSqlTransform({
+            sourceQuery: "SELECT * FROM abc",
+            targetTable: TARGET_TABLE_2,
+            tagIds: [tag2.id],
+            visitTransform: true,
+          });
+          H.DataStudio.Transforms.runTab().click();
+          runTransformAndWaitForFailure();
+        });
+      });
+    }
+
+    function testSorting({
+      columnName,
+      transformNames,
+    }: {
+      columnName: string;
+      transformNames: string[];
+    }) {
+      cy.log(`sort by ${columnName} ascending`);
+      getRunsTable().findByText(columnName).click();
+      checkSortingOrder(transformNames);
+
+      cy.log(`sort by ${columnName} descending`);
+      getRunsTable().findByText(columnName).click();
+      checkSortingOrder([...transformNames].reverse());
+    }
+
+    createInitialData();
+    getRunsNavLink().click();
+
+    // ascending: "MBQL transform" < "SQL transform"
+    testSorting({
+      columnName: "Transform",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: MBQL started earlier
+    testSorting({
+      columnName: "Started at",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: MBQL ended earlier
+    testSorting({
+      columnName: "Ended at",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: "Failed" < "Success"
+    testSorting({
+      columnName: "Status",
+      transformNames: ["SQL transform", "MBQL transform"],
+    });
+
+    // ascending: both "Manual", stable sort by id — MBQL created first
+    testSorting({
+      columnName: "Trigger",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: "Alpha tag" < "Beta tag"
+    testSorting({
+      columnName: "Tags",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+  });
 });
 
 describe(
@@ -4102,3 +4181,13 @@ describe("scenarios > data studio > transforms > permissions", () => {
       .should("be.visible");
   });
 });
+
+function checkSortingOrder(transformNames: string[]) {
+  getRunsTable().within(() => {
+    transformNames.forEach((name, index) => {
+      cy.findByText(name)
+        .parents("[data-index]")
+        .should("have.attr", "data-index", index.toString());
+    });
+  });
+}
