@@ -24,19 +24,19 @@ const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "current",
 ];
 
-type RunFilterListProps = {
+type RunFilterBarProps = {
   filterOptions: TransformRunFilterOptions;
   transforms: Transform[];
   tags: TransformTag[];
   onFilterOptionsChange: (filterOptions: TransformRunFilterOptions) => void;
 };
 
-export function RunFilterList({
+export function RunFilterBar({
   filterOptions,
   transforms,
   tags,
   onFilterOptionsChange,
-}: RunFilterListProps) {
+}: RunFilterBarProps) {
   const handleTransformsChange = (transformIds: TransformId[]) => {
     onFilterOptionsChange({ ...filterOptions, transformIds });
   };

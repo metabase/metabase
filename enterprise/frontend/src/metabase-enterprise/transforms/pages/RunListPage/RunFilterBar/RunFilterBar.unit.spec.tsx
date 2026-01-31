@@ -5,7 +5,7 @@ import type { Transform, TransformTag } from "metabase-types/api";
 
 import type { TransformRunFilterOptions } from "../types";
 
-import { RunFilterList } from "./RunFilterList";
+import { RunFilterBar } from "./RunFilterBar";
 
 type SetupOpts = {
   filterOptions?: TransformRunFilterOptions;
@@ -20,7 +20,7 @@ function setup({
 }: SetupOpts = {}) {
   const onFilterOptionsChange = jest.fn();
   renderWithProviders(
-    <RunFilterList
+    <RunFilterBar
       filterOptions={filterOptions}
       transforms={transforms}
       tags={tags}
@@ -30,7 +30,7 @@ function setup({
   return { onFilterOptionsChange };
 }
 
-describe("RunFilterList", () => {
+describe("RunFilterBar", () => {
   it.each(["Started at", "Ended at"])(
     "should allow only past or current date options for start and end date filters",
     async (label) => {

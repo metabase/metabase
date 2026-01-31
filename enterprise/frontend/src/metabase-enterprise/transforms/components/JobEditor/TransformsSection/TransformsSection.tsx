@@ -16,11 +16,11 @@ import { TitleSection } from "../../TitleSection";
 
 import { getColumns } from "./utils";
 
-type DependenciesSectionProps = {
+type TransformsSectionProps = {
   jobId: TransformJobId;
 };
 
-export function DependenciesSection({ jobId }: DependenciesSectionProps) {
+export function TransformsSection({ jobId }: TransformsSectionProps) {
   const {
     data: transforms = [],
     error,

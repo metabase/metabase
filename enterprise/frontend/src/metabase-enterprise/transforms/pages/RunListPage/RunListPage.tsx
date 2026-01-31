@@ -18,9 +18,9 @@ import { PaneHeader } from "metabase-enterprise/data-studio/common/components/Pa
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
 
-import { RunFilterList } from "./RunFilterList";
-import { RunList } from "./RunList";
-import { RunListPagination } from "./RunListPagination";
+import { RunFilterBar } from "./RunFilterBar";
+import { RunPagination } from "./RunPagination";
+import { RunTable } from "./RunTable";
 import { PAGE_SIZE } from "./constants";
 import type {
   TransformRunFilterOptions,
@@ -145,20 +145,20 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
 
   return (
     <Stack flex="0 1 auto" mih={0} gap="lg">
-      <RunFilterList
+      <RunFilterBar
         filterOptions={getFilterOptions(params)}
         transforms={transforms}
         tags={tags}
         onFilterOptionsChange={handleFilterOptionsChange}
       />
-      <RunList
+      <RunTable
         runs={data.data}
         tags={tags}
         hasFilters={hasFilterOptions(getFilterOptions(params))}
         sortOptions={getSortOptions(params)}
         onSortOptionsChange={handleSortOptionsChange}
       />
-      <RunListPagination
+      <RunPagination
         page={page}
         itemsLength={data.data.length}
         totalCount={data.total}

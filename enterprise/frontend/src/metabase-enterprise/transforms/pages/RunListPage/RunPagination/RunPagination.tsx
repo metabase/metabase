@@ -3,19 +3,19 @@ import { Group } from "metabase/ui";
 
 import { PAGE_SIZE } from "../constants";
 
-type RunListPaginationProps = {
+type RunPaginationProps = {
   page: number;
   itemsLength: number;
   totalCount: number;
   onPageChange: (page: number) => void;
 };
 
-export function RunListPagination({
+export function RunPagination({
   page,
   itemsLength,
   totalCount,
   onPageChange,
-}: RunListPaginationProps) {
+}: RunPaginationProps) {
   const handlePreviousPage = () => {
     onPageChange(page - 1);
   };

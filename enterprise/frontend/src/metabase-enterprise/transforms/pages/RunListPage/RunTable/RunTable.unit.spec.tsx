@@ -12,7 +12,7 @@ import {
   createMockTransformRun,
 } from "metabase-types/api/mocks";
 
-import { RunList } from "./RunList";
+import { RunTable } from "./RunTable";
 
 type SetupOpts = {
   runs?: TransformRun[];
@@ -27,7 +27,7 @@ function setup({ runs = [] }: SetupOpts = {}) {
       <Route
         path="/data-studio/transforms/runs"
         component={() => (
-          <RunList
+          <RunTable
             runs={runs}
             tags={[]}
             hasFilters={false}
@@ -48,7 +48,7 @@ function setup({ runs = [] }: SetupOpts = {}) {
   );
 }
 
-describe("RunList", () => {
+describe("RunTable", () => {
   it("should render transform name", async () => {
     const transform = createMockTransform({ name: "My Transform" });
     const run = createMockTransformRun({ transform });

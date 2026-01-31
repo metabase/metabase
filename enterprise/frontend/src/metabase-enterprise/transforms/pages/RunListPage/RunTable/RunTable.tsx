@@ -15,7 +15,7 @@ import type { TransformRunSortOptions } from "../types";
 
 import { getColumns, getSortingOptions, getSortingState } from "./utils";
 
-type RunListProps = {
+type RunTableProps = {
   runs: TransformRun[];
   tags: TransformTag[];
   hasFilters: boolean;
@@ -25,13 +25,13 @@ type RunListProps = {
   ) => void;
 };
 
-export function RunList({
+export function RunTable({
   runs,
   tags,
   hasFilters,
   sortOptions,
   onSortOptionsChange,
-}: RunListProps) {
+}: RunTableProps) {
   const dispatch = useDispatch();
   const systemTimezone = useSetting("system-timezone");
 
