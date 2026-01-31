@@ -84,7 +84,9 @@ const SavedEntityList = ({
                     size: 16,
                   }}
                   onSelect={() => onSelect(virtualTableId)}
-                  rightIcon={PLUGIN_MODERATION.getStatusIcon(moderated_status)}
+                  rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                    moderated_status ?? undefined,
+                  )}
                 />
               );
             })}

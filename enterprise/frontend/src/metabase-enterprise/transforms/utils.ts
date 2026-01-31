@@ -2,10 +2,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
+import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  CollectionNamespace,
   Database,
   DatabaseId,
   DraftTransformSource,
@@ -181,4 +183,23 @@ export const isMbqlQuery = (
     return false;
   }
   return !Lib.queryDisplayInfo(query).isNative;
+};
+
+export const getRootCollectionItem = ({
+  namespace,
+}: {
+  namespace: CollectionNamespace;
+}): OmniPickerCollectionItem | null => {
+  if (namespace === "transforms") {
+    return {
+      model: "collection",
+      id: "root",
+      namespace: "transforms",
+      location: "/",
+      name: t`Transforms`,
+      here: ["collection"],
+      below: ["table", "metric"],
+    };
+  }
+  return null;
 };

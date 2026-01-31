@@ -505,10 +505,6 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            options={{
-              showPersonalCollections: true,
-              showRootCollection: true,
-            }}
             entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
