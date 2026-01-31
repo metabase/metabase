@@ -65,9 +65,12 @@ function getStartedAtColumn(
 ): TreeTableColumnDef<TransformRun> {
   return {
     id: "start-time" satisfies TransformRunSortColumn,
-    header: () => (
+    header: ({ header }) => (
       <Group gap="xs" wrap="nowrap">
-        <SortableHeaderPill name={t`Started at`} />
+        <SortableHeaderPill
+          name={t`Started at`}
+          sort={header.column.getIsSorted() || undefined}
+        />
         <TimezoneIndicator />
       </Group>
     ),
@@ -90,9 +93,12 @@ function getEndedAtColumn(
 ): TreeTableColumnDef<TransformRun> {
   return {
     id: "end-time" satisfies TransformRunSortColumn,
-    header: () => (
+    header: ({ header }) => (
       <Group gap="xs" wrap="nowrap">
-        <SortableHeaderPill name={t`Ended at`} />
+        <SortableHeaderPill
+          name={t`Ended at`}
+          sort={header.column.getIsSorted() || undefined}
+        />
         <TimezoneIndicator />
       </Group>
     ),
