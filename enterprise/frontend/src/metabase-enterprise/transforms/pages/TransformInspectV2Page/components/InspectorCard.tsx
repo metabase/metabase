@@ -44,15 +44,15 @@ export const InspectorCard = ({
     try {
       const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
       const { display, settings = {} } = defaultDisplay(query);
-      return {
-        displayType: card.display !== "hidden" ? card.display : display,
-        displaySettings: settings,
-      };
+      // Use QB heuristics, but fall back to BE hint if QB suggests table/bar
+      const finalDisplay =
+        display === "table" || display === "bar" ? card.display : display;
+      return { displayType: finalDisplay, displaySettings: settings };
     } catch (e) {
       console.error("Failed to determine display type:", e);
       return { displayType: card.display, displaySettings: {} };
     }
-  }, [card, metadata, isMetadataLoading]);
+  }, [metadata, card, isMetadataLoading]);
 
   const rawSeries: RawSeries | undefined = useMemo(() => {
     if (!dataset) {
