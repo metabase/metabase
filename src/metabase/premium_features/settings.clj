@@ -268,14 +268,6 @@
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
 
-(define-premium-feature ^{:added "0.55.0"} offer-metabase-ai-trial?
-  "Should we offer a trial of the Metabase AI add-on?"
-  :offer-metabase-ai)
-
-(define-premium-feature ^{:added "0.56.0"} offer-metabase-ai-paid?
-  "Should we offer the paid Metabase AI add-on?"
-  :offer-metabase-ai-tiered)
-
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
   :cloud-custom-smtp)
@@ -355,8 +347,6 @@
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
-   :offer_metabase_ai              (offer-metabase-ai-trial?)
-   :offer_metabase_ai_tiered       (offer-metabase-ai-paid?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)

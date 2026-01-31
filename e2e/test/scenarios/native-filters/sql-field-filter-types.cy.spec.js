@@ -289,7 +289,6 @@ describe(
         field: "Boolean",
       });
       H.saveQuestion("SQL", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 

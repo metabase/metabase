@@ -23,6 +23,7 @@ export * from "./entity-id";
 export * from "./field";
 export * from "./geojson";
 export * from "./group";
+export * from "./llm";
 export * from "./logger";
 export * from "./measure";
 export * from "./metabot";

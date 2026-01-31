@@ -1,0 +1,42 @@
+.widget {
+  padding: 4px 0;
+}
+
+.container {
+  max-width: 55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  margin-bottom: 0.125rem;
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tableBar {
+  border-bottom: 1px dashed var(--mb-color-border);
+  margin: 0 -0.75rem;
+  padding: 0 0.75rem 0.5rem;
+}
+
+.inputContainer {
+  min-height: 1.5rem;
+}
+
+.inputContainer :global(.ProseMirror) {
+  font-family: var(--mb-default-font-family), sans-serif;
+  font-size: 0.75rem;
+  min-height: 1.25rem;
+  padding: 0.25rem 0.125rem;
+}
+
+.submitButton:disabled {
+  background-color: var(--mb-color-background);
+  color: var(--mb-color-text-primary);
+}
+
+.cancelButton {
+  order: -1;
+}
