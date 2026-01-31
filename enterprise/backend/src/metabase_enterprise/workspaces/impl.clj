@@ -66,7 +66,7 @@
   [{workspace-id :id :as workspace}]
   (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
     (if-not (:database_details workspace)
-      ;; TODO (chris 2025/12/15) we will want to make this strict before merging to master
+      ;; TODO (chris 2025/12/15) this should throw, but we're cautious about racing with initialization
       #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
       (log/warn "No database details, unable to grant read only access to the service account.")
       (when (seq ungranted-inputs)
@@ -171,10 +171,10 @@
         databases        (when (seq db-ids)
                            (t2/select [:model/Database :id :engine :details] :id [:in db-ids]))
         db-id->default   (u/index-by :id
-                           (fn [{:keys [engine details]}]
-                             (or (driver.sql/default-schema engine)
-                                 ((some-fn :dbname :db) details)))
-                           databases)
+                                     (fn [{:keys [engine details]}]
+                                       (or (driver.sql/default-schema engine)
+                                           ((some-fn :dbname :db) details)))
+                                     databases)
         db-id->quoted    (u/index-by :id quote-default-schema databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
