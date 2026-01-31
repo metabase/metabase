@@ -305,7 +305,7 @@
   [_route-params
    query-params :-
    [:map
-    [:sort_column    {:optional true} [:enum "start-time" "end-time" "run-method"]]
+    [:sort_column    {:optional true} [:enum "start-time" "end-time" "run-method" "status"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
     [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]

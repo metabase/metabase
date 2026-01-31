@@ -182,23 +182,9 @@
            (when end
              [:< field-name end])])))
 
-(defn paged-runs
-  "Return a page of the list of the runs.
-
-  Follows the conventions used by the FE."
-  [{:keys [offset
-           limit
-           start_time
-           end_time
-           run_methods
-           sort_column
-           sort_direction
-           transform_ids
-           transform_tag_ids
-           statuses]}]
-  (let [offset           (or offset 0)
-        limit            (or limit 20)
-        sort-column      (or (keyword sort_column) :start-time)
+(defn- build-order-by-clause
+  [{:keys [sort_column sort_direction]}]
+  (let [sort-column      (or (keyword sort_column) :start-time)
         sort-direction   (or (keyword sort_direction) :desc)
         nulls-sort       (if (= sort-direction :asc)
                            :nulls-last
@@ -207,43 +193,65 @@
                           [:= :run_method "manual"] (tru "Manual")
                           [:= :run_method "cron"] (tru "Schedule")
                           :run_method]
-        order-by         (case sort-column
-                           :start-time  [[:start_time sort-direction]]
-                           :end-time    [[:end_time sort-direction nulls-sort]]
-                           :run-method  [[:run_method sort-direction]]
-                           [[:start_time sort-direction]
-                            [:end_time   sort-direction nulls-sort]])
-        where-cond       (cond-> []
-                           (some? start_time)
-                           (conj (timestamp-constraint :start_time start_time))
+        status-expr      [:case
+                          [:= :status "started"]   (tru "In progress")
+                          [:= :status "succeeded"] (tru "Success")
+                          [:= :status "failed"]    (tru "Failed")
+                          [:= :status "timeout"]   (tru "Timeout")
+                          [:= :status "canceling"] (tru "Canceling")
+                          [:= :status "canceled"]  (tru "Canceled")
+                          :status]]
+    (case sort-column
+      :start-time  [[:start_time sort-direction]]
+      :end-time    [[:end_time sort-direction nulls-sort]]
+      :run-method  [[run-method-expr sort-direction]]
+      :status      [[status-expr sort-direction]]
+      [[:start_time sort-direction]
+       [:end_time   sort-direction nulls-sort]])))
 
-                           (some? end_time)
-                           (conj (timestamp-constraint :end_time end_time))
+(defn- build-where-clause
+  [{:keys [start_time end_time run_methods transform_ids transform_tag_ids statuses]}]
+  (let [where-cond (cond-> []
+                     (some? start_time)
+                     (conj (timestamp-constraint :start_time start_time))
 
-                           (seq run_methods)
-                           (conj [:in :run_method (set run_methods)])
+                     (some? end_time)
+                     (conj (timestamp-constraint :end_time end_time))
 
-                           (seq transform_ids)
-                           (conj [:in :transform_id transform_ids])
+                     (seq run_methods)
+                     (conj [:in :run_method (set run_methods)])
 
-                           (seq transform_tag_ids)
-                           (conj [:in :transform_id {:select [:transform_id]
-                                                     :from   [:transform_transform_tag]
-                                                     :where  [:in :tag_id transform_tag_ids]}])
+                     (seq transform_ids)
+                     (conj [:in :transform_id transform_ids])
 
-                           (seq statuses)
-                           (conj [:in :status (set statuses)])
+                     (seq transform_tag_ids)
+                     (conj [:in :transform_id {:select [:transform_id]
+                                               :from   [:transform_transform_tag]
+                                               :where  [:in :tag_id transform_tag_ids]}])
 
-                           ;; optimization: is_active condition for started status
-                           (and (= (first statuses) "started")
-                                (nil? (next statuses)))
-                           (conj [:= :is_active true]))
-        where-clause     (when (seq where-cond)
-                           (into [:and] where-cond))
-        count-options    (m/assoc-some {} :where where-clause)
-        query-options    (merge {:order-by order-by :offset offset :limit limit}
-                                count-options)
-        runs             (t2/select :model/TransformRun query-options)]
+                     (seq statuses)
+                     (conj [:in :status (set statuses)])
+
+                     ;; optimization: is_active condition for started status
+                     (and (= (first statuses) "started")
+                          (nil? (next statuses)))
+                     (conj [:= :is_active true]))]
+    (when (seq where-cond)
+      (into [:and] where-cond))))
+
+(defn paged-runs
+  "Return a page of the list of the runs.
+
+  Follows the conventions used by the FE."
+  [{:keys [offset limit] :as params}]
+  (let [offset        (or offset 0)
+        limit         (or limit 20)
+        order-by      (build-order-by-clause params)
+        where-clause  (build-where-clause params)
+        count-options (m/assoc-some {} :where where-clause)
+        query-options (merge {:order-by order-by :offset offset :limit limit}
+                             count-options)
+        runs          (t2/select :model/TransformRun query-options)]
     {:data   (t2/hydrate runs [:transform :transform_tag_ids])
      :limit  limit
      :offset offset

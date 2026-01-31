@@ -120,10 +120,10 @@ function getStatusColumn(
   systemTimezone: string | undefined,
 ): TreeTableColumnDef<TransformRun> {
   return {
-    id: "status",
+    id: "status" satisfies TransformRunSortColumn,
     header: t`Status`,
     width: 100,
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (row) => formatStatus(row.status),
     cell: ({ row }) => {
       const run = row.original;
