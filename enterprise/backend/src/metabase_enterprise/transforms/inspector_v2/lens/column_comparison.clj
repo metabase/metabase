@@ -104,7 +104,7 @@
         match-count (count column-matches)]
     {:id           "column-comparison"
      :display-name "Column Distributions"
-     :summary      {:text       (str match-count " matched column(s)")
+     :summary      {:text       "Compare value distributions for columns that match between input and output"
                     :highlights [{:label "Matched Columns" :value match-count}]}
      :sections     [{:id     "comparisons"
                      :title  "Column Comparisons"

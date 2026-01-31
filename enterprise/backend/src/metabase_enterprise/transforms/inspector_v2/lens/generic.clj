@@ -58,7 +58,7 @@
   (let [{:keys [sources target]} ctx]
     {:id           "generic-summary"
      :display-name "Data Summary"
-     :summary      {:text       (str "Transform with " (count sources) " input table(s)")
+     :summary      {:text       "Compare row counts before and after transformation"
                     :highlights (cond-> [{:label "Input Tables" :value (count sources)}]
                                   target
                                   (conj {:label "Output Columns" :value (:column-count target)}))}
