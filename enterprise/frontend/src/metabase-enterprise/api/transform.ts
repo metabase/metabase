@@ -33,6 +33,16 @@ function kebabToSnakeCase(str: string): string {
   return str.replace(/-/g, "_");
 }
 
+function snakeToKebabCase(str: string): string {
+  return str.replace(/_/g, "-");
+}
+
+function snakeTokebabParams(params: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [snakeToKebabCase(key), value])
+  );
+}
+
 function transformKeys(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(transformKeys);
@@ -278,9 +288,10 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       InspectorV2Lens,
       GetInspectorV2LensRequest
     >({
-      query: ({ transformId, lensId }) => ({
+      query: ({ transformId, lensId, params }) => ({
         method: "GET",
         url: `/api/ee/transform/${transformId}/inspect-v2/${lensId}`,
+        params: params ? snakeTokebabParams(params) : undefined,
       }),
       transformResponse: (response: unknown) =>
         transformKeys(response) as InspectorV2Lens,

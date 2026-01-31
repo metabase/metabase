@@ -467,6 +467,7 @@ export type InspectorV2AlertTrigger = {
 export type InspectorV2DrillLensTrigger = {
   lens_id: string;
   condition: InspectorV2TriggerCondition;
+  params?: Record<string, unknown>;
   reason?: string;
 };
 
@@ -484,4 +485,5 @@ export type InspectorV2Lens = {
 export type GetInspectorV2LensRequest = {
   transformId: TransformId;
   lensId: string;
+  params?: Record<string, unknown>;
 };

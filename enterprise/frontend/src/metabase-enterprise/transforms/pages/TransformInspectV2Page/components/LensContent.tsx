@@ -6,7 +6,6 @@ import { useGetInspectorV2LensQuery } from "metabase-enterprise/api";
 import type {
   InspectorV2Card,
   InspectorV2DiscoveryResponse,
-  InspectorV2DrillLensTrigger,
   InspectorV2Lens,
   InspectorV2Section,
   TransformId,
@@ -40,18 +39,27 @@ const CardResultsContext = createContext<CardResultsContextType>({
 
 export const useCardResultsContext = () => useContext(CardResultsContext);
 
+// Active drill lens state includes both ID and optional params
+type ActiveDrillLens = {
+  lensId: string;
+  params?: Record<string, unknown>;
+  displayName: string;
+} | null;
+
 type LensContentProps = {
   transformId: TransformId;
   lensId: string;
   discovery: InspectorV2DiscoveryResponse;
+  params?: Record<string, unknown>;
 };
 
-export const LensContent = ({ transformId, lensId, discovery }: LensContentProps) => {
+export const LensContent = ({ transformId, lensId, discovery, params }: LensContentProps) => {
   const { data: lens, isLoading, error } = useGetInspectorV2LensQuery({
     transformId,
     lensId,
+    params,
   });
-  const [activeDrillLens, setActiveDrillLens] = useState<string | null>(null);
+  const [activeDrillLens, setActiveDrillLens] = useState<ActiveDrillLens>(null);
   const [cardResults, setCardResults] = useState<Record<string, Record<string, unknown>>>({});
 
   const setCardResult = useCallback((cardId: string, result: Record<string, unknown>) => {
@@ -101,31 +109,57 @@ export const LensContent = ({ transformId, lensId, discovery }: LensContentProps
     return (
       <Stack gap="md">
         <Button variant="subtle" onClick={() => setActiveDrillLens(null)}>
-          ← Back to {lens.display_name}
+          &larr; Back to {lens.display_name}
         </Button>
         <LensContent
           transformId={transformId}
-          lensId={activeDrillLens}
+          lensId={activeDrillLens.lensId}
           discovery={discovery}
+          params={activeDrillLens.params}
         />
       </Stack>
     );
   }
 
-  // Combine static drill lenses with triggered ones
-  const allDrillLenses = [
-    ...(lens.drill_lenses ?? []),
-    ...activatedDrillLenses.map(t => ({
-      id: t.lens_id,
-      display_name: formatDrillLensName(t.lens_id),
-      description: t.reason,
-    })),
-  ];
+  // Build drill lens buttons from static drill_lenses and triggered ones
+  const drillLensButtons: DrillLensButton[] = [];
 
-  // Dedupe by id
-  const uniqueDrillLenses = allDrillLenses.filter(
-    (dl, idx, arr) => arr.findIndex(d => d.id === dl.id) === idx
-  );
+  // Static drill lenses (always shown if defined)
+  for (const dl of lens.drill_lenses ?? []) {
+    drillLensButtons.push({
+      key: dl.id,
+      lensId: dl.id,
+      displayName: dl.display_name,
+      description: dl.description,
+    });
+  }
+
+  // Triggered drill lenses (with params for filtering)
+  for (const trigger of activatedDrillLenses) {
+    // Use reason as suffix if provided, otherwise format params
+    const baseName = formatDrillLensName(trigger.lens_id);
+    const suffix = trigger.reason ? `: ${trigger.reason}` : "";
+    const displayName = baseName + suffix;
+
+    // Create unique key from lens_id and params
+    const paramsKey = trigger.params ? JSON.stringify(trigger.params) : "none";
+
+    drillLensButtons.push({
+      key: `${trigger.lens_id}-${paramsKey}`,
+      lensId: trigger.lens_id,
+      displayName,
+      description: trigger.reason,
+      params: trigger.params,
+    });
+  }
+
+  const handleDrillLensSelect = (button: DrillLensButton) => {
+    setActiveDrillLens({
+      lensId: button.lensId,
+      params: button.params,
+      displayName: button.displayName,
+    });
+  };
 
   return (
     <CardResultsContext.Provider value={{ cardResults, setCardResult }}>
@@ -137,10 +171,10 @@ export const LensContent = ({ transformId, lensId, discovery }: LensContentProps
           lensId={lensId}
           discovery={discovery}
         />
-        {uniqueDrillLenses.length > 0 && (
+        {drillLensButtons.length > 0 && (
           <DrillLensButtons
-            drillLenses={uniqueDrillLenses}
-            onSelect={setActiveDrillLens}
+            buttons={drillLensButtons}
+            onSelect={handleDrillLensSelect}
           />
         )}
       </Stack>
@@ -148,21 +182,29 @@ export const LensContent = ({ transformId, lensId, discovery }: LensContentProps
   );
 };
 
-type DrillLensButtonsProps = {
-  drillLenses: { id: string; display_name: string; description?: string }[];
-  onSelect: (lensId: string) => void;
+type DrillLensButton = {
+  key: string;
+  lensId: string;
+  displayName: string;
+  description?: string | null;
+  params?: Record<string, unknown>;
 };
 
-const DrillLensButtons = ({ drillLenses, onSelect }: DrillLensButtonsProps) => (
+type DrillLensButtonsProps = {
+  buttons: DrillLensButton[];
+  onSelect: (button: DrillLensButton) => void;
+};
+
+const DrillLensButtons = ({ buttons, onSelect }: DrillLensButtonsProps) => (
   <Flex gap="sm" wrap="wrap">
-    {drillLenses.map((dl) => (
+    {buttons.map((button) => (
       <Button
-        key={dl.id}
+        key={button.key}
         variant="outline"
         size="sm"
-        onClick={() => onSelect(dl.id)}
+        onClick={() => onSelect(button)}
       >
-        {dl.display_name}
+        {button.displayName}
       </Button>
     ))}
   </Flex>
