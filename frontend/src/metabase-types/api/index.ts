@@ -49,6 +49,7 @@ export * from "./settings";
 export * from "./setup";
 export * from "./slack";
 export * from "./snippets";
+export * from "./sorting";
 export * from "./store";
 export * from "./subscription";
 export * from "./support-access-grants";

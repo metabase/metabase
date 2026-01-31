@@ -22,8 +22,8 @@ import type {
   Collection,
   CollectionItem,
   ListCollectionItemsSortColumn,
+  SortingOptions,
 } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
   ColumnHeader,
@@ -57,17 +57,14 @@ export const SortableColumnHeader = <SortColumn extends string>({
   const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
     ? sortingOptions?.sort_direction
-    : SortDirection.Desc;
+    : "desc";
 
   const onSortingControlClick = useMemo(() => {
     if (!isSortable) {
       return undefined;
     }
     const handler = () => {
-      const nextDirection =
-        direction === SortDirection.Asc
-          ? SortDirection.Desc
-          : SortDirection.Asc;
+      const nextDirection = direction === "asc" ? "desc" : "asc";
       const newSortingOptions = {
         sort_column: name,
         sort_direction: nextDirection,
@@ -93,7 +90,7 @@ export const SortableColumnHeader = <SortColumn extends string>({
         {children}
         {isSortable && (
           <SortingIcon
-            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
+            name={direction === "asc" ? "chevronup" : "chevrondown"}
           />
         )}
       </SortingControlContainer>

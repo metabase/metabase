@@ -1,12 +1,9 @@
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
-import type {
-  PaginationRequest,
-  PaginationResponse,
-  SortDirection,
-} from "./pagination";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
+import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
 

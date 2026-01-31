@@ -1,5 +1,5 @@
 import type { CollectionType } from "./collection";
-import type { SortDirection } from "./pagination";
+import type { SortDirection } from "./sorting";
 
 /** 'Model' as in 'type of object' */
 export type CacheableModel = "root" | "database" | "dashboard" | "question";
