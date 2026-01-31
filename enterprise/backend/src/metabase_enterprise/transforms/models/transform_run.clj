@@ -254,7 +254,7 @@
 
 (defn- first-tag-name-subquery
   "Returns a correlated subquery that selects the translated name of the first tag
-   (by minimum position) assigned to a transform."
+   (by minimum position) assigned to the transform for a transform run."
   []
   {:select [[(translate-tag-name-clause :tt.name :tt.built_in_type) :tag_name]]
    :from   [[:transform_transform_tag :ttt]]
