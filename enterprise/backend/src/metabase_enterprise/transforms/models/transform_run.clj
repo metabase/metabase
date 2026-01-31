@@ -202,10 +202,11 @@
                           [:= :status "canceled"]  (tru "Canceled")
                           :status]]
     (case sort-column
-      :start-time  [[:start_time sort-direction]]
-      :end-time    [[:end_time sort-direction nulls-sort]]
-      :run-method  [[run-method-expr sort-direction]]
-      :status      [[status-expr sort-direction]]
+      :transform-name  [[:transform.name sort-direction]]
+      :start-time      [[:start_time sort-direction]]
+      :end-time        [[:end_time sort-direction nulls-sort]]
+      :status          [[status-expr sort-direction]]
+      :run-method      [[run-method-expr sort-direction]]
       [[:start_time sort-direction]
        [:end_time   sort-direction nulls-sort]])))
 
@@ -239,6 +240,12 @@
     (when (seq where-cond)
       (into [:and] where-cond))))
 
+(defn- build-join-clause
+  [{:keys [sort_column]}]
+  (case (keyword sort_column)
+    :transform-name [[:transform [:= :transform_run.transform_id :transform.id]]]
+    nil))
+
 (defn paged-runs
   "Return a page of the list of the runs.
 
@@ -248,9 +255,11 @@
         limit         (or limit 20)
         order-by      (build-order-by-clause params)
         where-clause  (build-where-clause params)
+        join-clause   (build-join-clause params)
         count-options (m/assoc-some {} :where where-clause)
-        query-options (merge {:order-by order-by :offset offset :limit limit}
-                             count-options)
+        query-options (m/assoc-some {:order-by order-by :offset offset :limit limit}
+                                    :where where-clause
+                                    :left-join join-clause)
         runs          (t2/select :model/TransformRun query-options)]
     {:data   (t2/hydrate runs [:transform :transform_tag_ids])
      :limit  limit

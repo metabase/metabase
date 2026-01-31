@@ -145,10 +145,11 @@ export const TRANSFORM_RUN_METHODS = ["manual", "cron"] as const;
 export type TransformRunMethod = (typeof TRANSFORM_RUN_METHODS)[number];
 
 export const TRANSFORM_RUN_SORT_COLUMNS = [
+  "transform-name",
   "start-time",
   "end-time",
-  "run-method",
   "status",
+  "run-method",
 ] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];

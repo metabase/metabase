@@ -25,11 +25,11 @@ import { TimezoneIndicator } from "./TimezoneIndicator";
 
 function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
-    id: "transform-name",
+    id: "transform-name" satisfies TransformRunSortColumn,
     header: t`Transform`,
     width: "auto",
     maxAutoWidth: 520,
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (run) => {
       return run.transform?.name || t`Unnamed transform`;
     },
