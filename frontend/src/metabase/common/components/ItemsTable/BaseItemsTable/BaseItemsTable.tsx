@@ -22,6 +22,7 @@ import type {
   Collection,
   CollectionItem,
   ListCollectionItemsSortColumn,
+  SortDirection,
   SortingOptions,
 } from "metabase-types/api";
 
@@ -64,7 +65,7 @@ export const SortableColumnHeader = <SortColumn extends string>({
       return undefined;
     }
     const handler = () => {
-      const nextDirection = direction === "asc" ? "desc" : "asc";
+      const nextDirection: SortDirection = direction === "asc" ? "desc" : "asc";
       const newSortingOptions = {
         sort_column: name,
         sort_direction: nextDirection,
