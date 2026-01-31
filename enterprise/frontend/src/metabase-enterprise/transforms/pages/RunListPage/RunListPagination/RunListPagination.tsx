@@ -1,30 +1,27 @@
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import type * as Urls from "metabase/lib/urls";
 import { Group } from "metabase/ui";
 
 import { PAGE_SIZE } from "../constants";
 
 type RunListPaginationProps = {
-  params: Urls.TransformRunListParams;
   page: number;
   itemsLength: number;
   totalCount: number;
-  onParamsChange: (params: Urls.TransformRunListParams) => void;
+  onPageChange: (page: number) => void;
 };
 
 export function RunListPagination({
-  params,
   page,
   itemsLength,
   totalCount,
-  onParamsChange,
+  onPageChange,
 }: RunListPaginationProps) {
   const handlePreviousPage = () => {
-    onParamsChange({ ...params, page: page - 1 });
+    onPageChange(page - 1);
   };
 
   const handleNextPage = () => {
-    onParamsChange({ ...params, page: page + 1 });
+    onPageChange(page + 1);
   };
 
   if (totalCount < PAGE_SIZE) {

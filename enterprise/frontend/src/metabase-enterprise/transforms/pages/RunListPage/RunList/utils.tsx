@@ -5,7 +5,6 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Group, SortableHeaderPill, Text, Tooltip } from "metabase/ui";
 import {
-  type SortDirection,
   TRANSFORM_RUN_SORT_COLUMNS,
   type TransformRun,
   type TransformRunSortColumn,
@@ -19,6 +18,7 @@ import {
   formatStatus,
   parseTimestampWithTimezone,
 } from "../../../utils";
+import type { TransformRunSortOptions } from "../types";
 
 import { TagList } from "./TagList";
 import { TimezoneIndicator } from "./TimezoneIndicator";
@@ -206,22 +206,16 @@ export function getColumns(
 }
 
 export function getSortingState(
-  sortColumn: TransformRunSortColumn | undefined,
-  sortDirection: SortDirection | undefined,
+  sortOptions: TransformRunSortOptions | undefined,
 ): SortingState {
-  return sortColumn != null && sortDirection != null
-    ? [{ id: sortColumn, desc: sortDirection === "desc" }]
+  return sortOptions != null
+    ? [{ id: sortOptions.column, desc: sortOptions.direction === "desc" }]
     : [];
 }
 
-type SortingOptions = {
-  column: TransformRunSortColumn;
-  direction: SortDirection;
-};
-
 export function getSortingOptions(
   sortingState: SortingState,
-): SortingOptions | undefined {
+): TransformRunSortOptions | undefined {
   if (sortingState.length === 0) {
     return undefined;
   }

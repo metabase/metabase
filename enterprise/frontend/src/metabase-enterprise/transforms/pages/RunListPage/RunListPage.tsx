@@ -22,7 +22,16 @@ import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
 import { RunListPagination } from "./RunListPagination";
 import { PAGE_SIZE } from "./constants";
-import { getParsedParams } from "./utils";
+import type {
+  TransformRunFilterOptions,
+  TransformRunSortOptions,
+} from "./types";
+import {
+  getFilterOptions,
+  getParsedParams,
+  getSortOptions,
+  hasFilterOptions,
+} from "./utils";
 
 type RunListPageProps = {
   location: Location;
@@ -100,6 +109,32 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     [dispatch],
   );
 
+  const handleFilterOptionsChange = useCallback(
+    (filterOptions: TransformRunFilterOptions) => {
+      handleParamsChange({ ...params, ...filterOptions, page: undefined });
+    },
+    [params, handleParamsChange],
+  );
+
+  const handleSortOptionsChange = useCallback(
+    (sortOptions: TransformRunSortOptions | undefined) => {
+      handleParamsChange({
+        ...params,
+        sortColumn: sortOptions?.column,
+        sortDirection: sortOptions?.direction,
+        page: undefined,
+      });
+    },
+    [params, handleParamsChange],
+  );
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      handleParamsChange({ ...params, page });
+    },
+    [params, handleParamsChange],
+  );
+
   if (!data || isLoading || error != null) {
     return (
       <Center h="100%">
@@ -111,23 +146,23 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   return (
     <Stack flex="0 1 auto" mih={0} gap="lg">
       <RunFilterList
-        params={params}
+        filterOptions={getFilterOptions(params)}
         transforms={transforms}
         tags={tags}
-        onParamsChange={handleParamsChange}
+        onFilterOptionsChange={handleFilterOptionsChange}
       />
       <RunList
         runs={data.data}
-        params={params}
         tags={tags}
-        onParamsChange={handleParamsChange}
+        hasFilters={hasFilterOptions(getFilterOptions(params))}
+        sortOptions={getSortOptions(params)}
+        onSortOptionsChange={handleSortOptionsChange}
       />
       <RunListPagination
-        params={params}
         page={page}
         itemsLength={data.data.length}
         totalCount={data.total}
-        onParamsChange={handleParamsChange}
+        onPageChange={handlePageChange}
       />
     </Stack>
   );

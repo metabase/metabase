@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type * as Urls from "metabase/lib/urls";
 import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import type {
@@ -11,6 +10,8 @@ import type {
   TransformTag,
   TransformTagId,
 } from "metabase-types/api";
+
+import type { TransformRunFilterOptions } from "../types";
 
 import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { StatusFilterWidget } from "./StatusFilterWidget";
@@ -24,73 +25,73 @@ const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
 ];
 
 type RunFilterListProps = {
-  params: Urls.TransformRunListParams;
+  filterOptions: TransformRunFilterOptions;
   transforms: Transform[];
   tags: TransformTag[];
-  onParamsChange: (params: Urls.TransformRunListParams) => void;
+  onFilterOptionsChange: (filterOptions: TransformRunFilterOptions) => void;
 };
 
 export function RunFilterList({
-  params,
+  filterOptions,
   transforms,
   tags,
-  onParamsChange,
+  onFilterOptionsChange,
 }: RunFilterListProps) {
   const handleTransformsChange = (transformIds: TransformId[]) => {
-    onParamsChange({ ...params, transformIds, page: undefined });
+    onFilterOptionsChange({ ...filterOptions, transformIds });
   };
 
   const handleStatusesChange = (statuses: TransformRunStatus[]) => {
-    onParamsChange({ ...params, statuses, page: undefined });
+    onFilterOptionsChange({ ...filterOptions, statuses });
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    onParamsChange({ ...params, transformTagIds: tagIds, page: undefined });
+    onFilterOptionsChange({ ...filterOptions, transformTagIds: tagIds });
   };
 
   const handleStartTimeChange = (startTime: string | undefined) => {
-    onParamsChange({ ...params, startTime, page: undefined });
+    onFilterOptionsChange({ ...filterOptions, startTime });
   };
 
   const handleEndTimeChange = (endTime: string | undefined) => {
-    onParamsChange({ ...params, endTime, page: undefined });
+    onFilterOptionsChange({ ...filterOptions, endTime });
   };
 
   const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
-    onParamsChange({ ...params, runMethods, page: undefined });
+    onFilterOptionsChange({ ...filterOptions, runMethods });
   };
 
   return (
     <Group>
       <TransformFilterWidget
-        transformIds={params.transformIds ?? []}
+        transformIds={filterOptions.transformIds ?? []}
         transforms={transforms}
         onChange={handleTransformsChange}
       />
       <TimeFilterWidget
         label={t`Started at`}
-        value={params.startTime}
+        value={filterOptions.startTime}
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleStartTimeChange}
       />
       <TimeFilterWidget
         label={t`Ended at`}
-        value={params.endTime}
+        value={filterOptions.endTime}
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleEndTimeChange}
       />
       <StatusFilterWidget
         label={t`Status`}
-        statuses={params.statuses ?? []}
+        statuses={filterOptions.statuses ?? []}
         onChange={handleStatusesChange}
       />
       <RunMethodFilterWidget
-        runMethods={params.runMethods ?? []}
+        runMethods={filterOptions.runMethods ?? []}
         onChange={handleRunMethodsChange}
       />
       <TagFilterWidget
         label={t`Tags`}
-        tagIds={params.transformTagIds ?? []}
+        tagIds={filterOptions.transformTagIds ?? []}
         tags={tags}
         onChange={handleTagsChange}
       />

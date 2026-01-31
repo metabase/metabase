@@ -11,18 +11,27 @@ import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { hasFilterParams } from "../utils";
+import type { TransformRunSortOptions } from "../types";
 
 import { getColumns, getSortingOptions, getSortingState } from "./utils";
 
 type RunListProps = {
   runs: TransformRun[];
-  params: Urls.TransformRunListParams;
   tags: TransformTag[];
-  onParamsChange: (params: Urls.TransformRunListParams) => void;
+  hasFilters: boolean;
+  sortOptions: TransformRunSortOptions | undefined;
+  onSortOptionsChange: (
+    sortOptions: TransformRunSortOptions | undefined,
+  ) => void;
 };
 
-export function RunList({ runs, params, tags, onParamsChange }: RunListProps) {
+export function RunList({
+  runs,
+  tags,
+  hasFilters,
+  sortOptions,
+  onSortOptionsChange,
+}: RunListProps) {
   const dispatch = useDispatch();
   const systemTimezone = useSetting("system-timezone");
 
@@ -32,13 +41,11 @@ export function RunList({ runs, params, tags, onParamsChange }: RunListProps) {
   );
 
   const sortingState = useMemo(
-    () => getSortingState(params.sortColumn, params.sortDirection),
-    [params.sortColumn, params.sortDirection],
+    () => getSortingState(sortOptions),
+    [sortOptions],
   );
 
-  const notFoundLabel = hasFilterParams(params)
-    ? t`No runs found`
-    : t`No runs yet`;
+  const notFoundLabel = hasFilters ? t`No runs found` : t`No runs yet`;
 
   const handleRowActivate = useCallback(
     (row: Row<TransformRun>) => {
@@ -54,15 +61,9 @@ export function RunList({ runs, params, tags, onParamsChange }: RunListProps) {
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      const newSortingOptions = getSortingOptions(newSortingState);
-      onParamsChange({
-        ...params,
-        sortColumn: newSortingOptions?.column,
-        sortDirection: newSortingOptions?.direction,
-        page: undefined,
-      });
+      onSortOptionsChange(getSortingOptions(newSortingState));
     },
-    [sortingState, params, onParamsChange],
+    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<TransformRun>({
