@@ -1,8 +1,6 @@
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import type * as Urls from "metabase/lib/urls";
 import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import type {
@@ -29,47 +27,37 @@ type RunFilterListProps = {
   params: Urls.TransformRunListParams;
   transforms: Transform[];
   tags: TransformTag[];
+  onParamsChange: (params: Urls.TransformRunListParams) => void;
 };
 
 export function RunFilterList({
   params,
   transforms,
   tags,
+  onParamsChange,
 }: RunFilterListProps) {
-  const dispatch = useDispatch();
-
   const handleTransformsChange = (transformIds: TransformId[]) => {
-    dispatch(
-      replace(
-        Urls.transformRunList({ ...params, transform_ids: transformIds }),
-      ),
-    );
+    onParamsChange({ ...params, transform_ids: transformIds });
   };
 
   const handleStatusesChange = (statuses: TransformRunStatus[]) => {
-    dispatch(replace(Urls.transformRunList({ ...params, statuses })));
+    onParamsChange({ ...params, statuses });
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    dispatch(
-      replace(Urls.transformRunList({ ...params, transform_tag_ids: tagIds })),
-    );
+    onParamsChange({ ...params, transform_tag_ids: tagIds });
   };
 
   const handleStartTimeChange = (startTime: string | undefined) => {
-    dispatch(
-      replace(Urls.transformRunList({ ...params, start_time: startTime })),
-    );
+    onParamsChange({ ...params, start_time: startTime });
   };
 
   const handleEndTimeChange = (endTime: string | undefined) => {
-    dispatch(replace(Urls.transformRunList({ ...params, end_time: endTime })));
+    onParamsChange({ ...params, end_time: endTime });
   };
 
   const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
-    dispatch(
-      replace(Urls.transformRunList({ ...params, run_methods: runMethods })),
-    );
+    onParamsChange({ ...params, run_methods: runMethods });
   };
 
   return (

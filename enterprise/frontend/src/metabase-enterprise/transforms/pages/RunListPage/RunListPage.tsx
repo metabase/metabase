@@ -1,9 +1,11 @@
 import type { Location } from "history";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
@@ -18,6 +20,7 @@ import type { TransformRun } from "metabase-types/api";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
+import { RunListPagination } from "./RunListPagination";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
 
@@ -58,6 +61,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   } = params;
 
   const [isPolling, setIsPolling] = useState(false);
+  const dispatch = useDispatch();
 
   const {
     data,
@@ -80,22 +84,32 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
       pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
     },
   );
+
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
     error: transformsError,
   } = useListTransformsQuery({});
+
   const {
     data: tags = [],
     isLoading: isLoadingTags,
     error: tagsError,
   } = useListTransformTagsQuery();
+
   const isLoading = isLoadingRuns || isLoadingTransforms || isLoadingTags;
   const error = runsError ?? transformsError ?? tagsError;
 
   if (isPolling !== isPollingNeeded(data?.data)) {
     setIsPolling(isPollingNeeded(data?.data));
   }
+
+  const handleParamsChange = useCallback(
+    (newParams: Urls.TransformRunListParams) => {
+      dispatch(replace(Urls.transformRunList(newParams)));
+    },
+    [dispatch],
+  );
 
   if (!data || isLoading || error != null) {
     return (
@@ -106,13 +120,20 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   return (
-    <Stack flex="0 1 auto" mih={0}>
-      <RunFilterList params={params} transforms={transforms} tags={tags} />
-      <RunList
-        runs={data.data}
-        totalCount={data.total}
+    <Stack flex="0 1 auto" mih={0} gap="lg">
+      <RunFilterList
         params={params}
+        transforms={transforms}
         tags={tags}
+        onParamsChange={handleParamsChange}
+      />
+      <RunList runs={data.data} params={params} tags={tags} />
+      <RunListPagination
+        params={params}
+        page={page}
+        itemsLength={data.data.length}
+        totalCount={data.total}
+        onParamsChange={handleParamsChange}
       />
     </Stack>
   );

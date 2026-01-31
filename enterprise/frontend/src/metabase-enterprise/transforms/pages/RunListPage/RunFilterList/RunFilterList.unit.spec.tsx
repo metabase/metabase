@@ -13,9 +13,16 @@ type SetupOpts = {
 };
 
 function setup({ params = {}, transforms = [], tags = [] }: SetupOpts = {}) {
+  const onParamsChange = jest.fn();
   renderWithProviders(
-    <RunFilterList params={params} transforms={transforms} tags={tags} />,
+    <RunFilterList
+      params={params}
+      transforms={transforms}
+      tags={tags}
+      onParamsChange={onParamsChange}
+    />,
   );
+  return { onParamsChange };
 }
 
 describe("RunFilterList", () => {

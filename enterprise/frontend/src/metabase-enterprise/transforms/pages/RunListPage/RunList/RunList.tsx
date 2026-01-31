@@ -3,35 +3,25 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  Card,
-  Group,
-  Stack,
-  TreeTable,
-  useTreeTableInstance,
-} from "metabase/ui";
+import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { PAGE_SIZE } from "../constants";
 import { hasFilterParams } from "../utils";
 
 import { getColumns } from "./utils";
 
 type RunListProps = {
   runs: TransformRun[];
-  totalCount: number;
   params: Urls.TransformRunListParams;
   tags: TransformTag[];
 };
 
-export function RunList({ runs, totalCount, params, tags }: RunListProps) {
-  const { page = 0 } = params;
+export function RunList({ runs, params, tags }: RunListProps) {
   const dispatch = useDispatch();
   const systemTimezone = useSetting("system-timezone");
 
@@ -61,42 +51,21 @@ export function RunList({ runs, totalCount, params, tags }: RunListProps) {
     onRowActivate: handleRowActivate,
   });
 
-  const handlePreviousPage = () => {
-    dispatch(push(Urls.transformRunList({ ...params, page: page - 1 })));
-  };
-
-  const handleNextPage = () => {
-    dispatch(push(Urls.transformRunList({ ...params, page: page + 1 })));
-  };
-
   return (
-    <Stack gap="lg" flex="0 1 auto" mih={0}>
-      <Card
-        className={CS.overflowHidden}
-        p={0}
-        flex="0 1 auto"
-        mih={0}
-        shadow="none"
-        withBorder
-      >
-        <TreeTable
-          instance={treeTableInstance}
-          emptyState={<ListEmptyState label={notFoundLabel} />}
-          ariaLabel={t`Transform runs`}
-          onRowClick={handleRowActivate}
-        />
-      </Card>
-      <Group justify="end">
-        <PaginationControls
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={runs.length}
-          total={totalCount}
-          showTotal
-          onPreviousPage={handlePreviousPage}
-          onNextPage={handleNextPage}
-        />
-      </Group>
-    </Stack>
+    <Card
+      className={CS.overflowHidden}
+      p={0}
+      flex="0 1 auto"
+      mih={0}
+      shadow="none"
+      withBorder
+    >
+      <TreeTable
+        instance={treeTableInstance}
+        emptyState={<ListEmptyState label={notFoundLabel} />}
+        ariaLabel={t`Transform runs`}
+        onRowClick={handleRowActivate}
+      />
+    </Card>
   );
 }
