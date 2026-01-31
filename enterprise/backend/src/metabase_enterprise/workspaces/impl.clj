@@ -66,7 +66,7 @@
   [{workspace-id :id :as workspace}]
   (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
     (if-not (:database_details workspace)
-      ;; TODO (chris 2025/12/15) we will want to make this strict before merging to master
+      ;; TODO (chris 2025/12/15) this should throw, but we're cautious about racing with initialization
       #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
       (log/warn "No database details, unable to grant read only access to the service account.")
       (when (seq ungranted-inputs)
@@ -170,7 +170,12 @@
         db-ids           (into #{} (map :db_id) (concat all-outputs all-inputs))
         databases        (when (seq db-ids)
                            (t2/select [:model/Database :id :engine :details] :id [:in db-ids]))
-        db-id->default   (u/index-by :id quote-default-schema databases)
+        db-id->default   (u/index-by :id
+                                     (fn [{:keys [engine details]}]
+                                       (or (driver.sql/default-schema engine)
+                                           ((some-fn :dbname :db) details)))
+                                     databases)
+        db-id->quoted    (u/index-by :id quote-default-schema databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
                           (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
@@ -178,19 +183,18 @@
         output-map       (reduce
                           (fn [m {:keys [db_id global_schema global_table global_table_id
                                          isolated_schema isolated_table isolated_table_id]}]
-                            (let [default-schema (db-id->default db_id)]
-                              (add-table-mapping-entries m
-                                                         {:db-id              db_id
-                                                          :schema             global_schema
-                                                          :table              global_table
-                                                          :table-id           (or global_table_id
-                                                                                  (fallback-map [db_id global_schema global_table]))
-                                                          :replacement        {:db-id  db_id
-                                                                               :schema isolated_schema
-                                                                               :table  isolated_table
-                                                                               :id     (or isolated_table_id
-                                                                                           (fallback-map [db_id isolated_schema isolated_table]))}
-                                                          :in-default-schema? (= global_schema default-schema)})))
+                            (add-table-mapping-entries m
+                                                       {:db-id              db_id
+                                                        :schema             global_schema
+                                                        :table              global_table
+                                                        :table-id           (or global_table_id
+                                                                                (fallback-map [db_id global_schema global_table]))
+                                                        :replacement        {:db-id  db_id
+                                                                             :schema isolated_schema
+                                                                             :table  isolated_table
+                                                                             :id     (or isolated_table_id
+                                                                                         (fallback-map [db_id isolated_schema isolated_table]))}
+                                                        :in-default-schema? (= global_schema (db-id->default db_id))}))
                           {}
                           all-outputs)
         ;; Build input mappings (qualify unqualified references to external tables).
@@ -198,13 +202,13 @@
         ;; When the table already has an explicit schema, Macaw will preserve it as-is.
         input-map        (reduce
                           (fn [m {:keys [db_id schema table table_id]}]
-                            (let [default-schema (db-id->default db_id)]
+                            (let [quoted-schema (db-id->quoted db_id)]
                               ;; Only add a mapping for unqualified references (nil schema).
                               ;; When the table already has an explicit schema, Macaw preserves it.
                               (cond-> m
-                                (and (nil? schema) (some? default-schema))
+                                (and (nil? schema) (some? quoted-schema))
                                 (assoc [db_id nil table] {:db-id  db_id
-                                                          :schema default-schema
+                                                          :schema quoted-schema
                                                           :table  table
                                                           :id     table_id}))))
                           {}
@@ -776,4 +780,4 @@
      {:succeeded []
       :failed    []
       :not_run   []}
-     (transforms-to-execute workspace graph {:stale-only stale-only?}))))
+     (transforms-to-execute workspace graph {:stale-only? stale-only?}))))

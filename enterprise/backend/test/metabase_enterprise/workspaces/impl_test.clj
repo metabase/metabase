@@ -5,6 +5,7 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -86,6 +87,33 @@
           (testing "still has exactly one of each after multiple syncs"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))))))))
+
+;;;; build-remapping tests
+
+(deftest build-remapping-creates-nil-schema-entries-for-default-schema-outputs-test
+  (testing "build-remapping creates [db_id nil table] entries for outputs in the default schema"
+    (ws.tu/with-resources! [{:keys [workspace-id]} {:workspace {:definitions {:x1 [:t0]}}}]
+      (let [db              (t2/select-one [:model/Database :id :engine :details] (mt/id))
+            default-schema  (or (driver.sql/default-schema (:engine db))
+                                ((some-fn :dbname :db) (:details db)))
+            ws-transform    (t2/select-one :model/WorkspaceTransform :workspace_id workspace-id)]
+        ;; Update the transform's target schema to the default schema before analysis,
+        ;; so analysis naturally produces an output in the default schema.
+        (t2/update! :model/WorkspaceTransform
+                    {:workspace_id workspace-id, :ref_id (:ref_id ws-transform)}
+                    {:target (assoc (:target ws-transform) :schema default-schema)})
+        (let [workspace    (t2/select-one :model/Workspace workspace-id)
+              target-table (-> ws-transform :target :name)
+              graph        (ws.impl/get-or-calculate-graph! workspace)
+              result       (#'ws.impl/build-remapping workspace graph)
+              ws-output    (t2/select-one :model/WorkspaceOutput
+                                          :workspace_id workspace-id
+                                          :global_table target-table)
+              isolated     ((juxt :isolated_schema :isolated_table) ws-output)]
+          (doseq [[desc lookup-key] [["qualified [db_id schema table]" [(mt/id) default-schema target-table]]
+                                     ["unqualified [db_id nil table]"  [(mt/id) nil target-table]]]]
+            (testing (str desc " maps to the isolated table")
+              (is (= isolated ((juxt :schema :table) (get (:tables result) lookup-key)))))))))))
 
 ;;;; Two-flag staleness tests
 

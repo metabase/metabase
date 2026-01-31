@@ -517,7 +517,7 @@
         _         (api/check-404 workspace)
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/execute-workspace! workspace graph {:stale-only stale_only})))
+    (ws.impl/execute-workspace! workspace graph {:stale-only? (boolean (#{1 true} stale_only))})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
