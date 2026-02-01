@@ -17,7 +17,11 @@ import {
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
 // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
-const getPadding = (intervalsCount: number) => {
+const getPadding = (intervalsCount: number, removePadding: boolean) => {
+  if (removePadding) {
+    return 0;
+  }
+
   if (intervalsCount <= 1) {
     return 5 / 6;
   }
@@ -28,6 +32,7 @@ const getPadding = (intervalsCount: number) => {
 export const getTicksOptions = (
   xAxisModel: TimeSeriesXAxisModel,
   chartWidth: number,
+  removePadding = false,
 ) => {
   const { range, toEChartsAxisValue, interval, intervalsCount } = xAxisModel;
 
@@ -44,7 +49,7 @@ export const getTicksOptions = (
   }) as ContinuousDomain;
 
   const isSingleItem = xDomain[0] === xDomain[1];
-  const padding = getPadding(intervalsCount);
+  const padding = getPadding(intervalsCount, removePadding);
   const xDomainPadded = [
     xDomain[0] - getTimeSeriesIntervalDuration(interval) * padding,
     xDomain[1] + getTimeSeriesIntervalDuration(interval) * padding,

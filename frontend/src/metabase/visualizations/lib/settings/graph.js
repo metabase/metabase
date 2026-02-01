@@ -898,6 +898,21 @@ export const GRAPH_AXIS_SETTINGS = {
       placeholder: getDefaultDimensionLabel(series),
     }),
   },
+  "graph.x_axis.remove_padding": {
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`X-axis`;
+    },
+    get title() {
+      return t`Remove axis padding`;
+    },
+    widget: "toggle",
+    index: 4,
+    inline: true,
+    default: false,
+  },
   "graph.y_axis.labels_enabled": {
     get section() {
       return t`Axes`;
