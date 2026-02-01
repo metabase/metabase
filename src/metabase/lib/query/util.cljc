@@ -297,13 +297,13 @@
    {:keys [fields expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
     (> stage-number 0) (lib.stage/append-stage)
-    fields             (append-fields stage-number fields)
-    expressions        (append-expressions stage-number expressions)
     joins              (append-joins stage-number joins)
-    filters            (append-filters stage-number filters)
-    aggregations       (append-aggregations stage-number aggregations)
+    expressions        (append-expressions stage-number expressions)
     breakouts          (append-breakouts stage-number breakouts)
+    aggregations       (append-aggregations stage-number aggregations)
     order-bys          (append-order-bys stage-number order-bys)
+    filters            (append-filters stage-number filters)
+    fields             (append-fields stage-number fields)
     limit              (lib.limit/limit stage-number limit)))
 
 (mu/defn test-query :- ::lib.schema/query
