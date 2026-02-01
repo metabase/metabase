@@ -56,9 +56,9 @@ describe("SdkDashboard", () => {
       await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Back to Test dashboard")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Back to Test dashboard"));
+    await userEvent.click(screen.getByText("Back to Test dashboard"));
 
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 
@@ -77,9 +77,9 @@ describe("SdkDashboard", () => {
       await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Back to Test dashboard")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Back to previous results"));
+    await userEvent.click(screen.getByText("Back to Test dashboard"));
 
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 

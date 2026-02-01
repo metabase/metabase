@@ -292,6 +292,16 @@ const SdkDashboardInner = ({
 
   const sdkNavigation = useSdkInternalNavigationOptional();
 
+  // Initialize navigation stack with dashboard entry when we have the name
+  useEffect(() => {
+    if (dashboard && sdkNavigation) {
+      sdkNavigation.initWithDashboard({
+        id: dashboard.id,
+        name: dashboard.name,
+      });
+    }
+  }, [dashboard, sdkNavigation]);
+
   // Wrap the navigation handler to push a placeholder for back button support
   const onNavigateToNewCardFromDashboard = useCallback(
     (opts: Parameters<typeof baseOnNavigateToNewCardFromDashboard>[0]) => {
