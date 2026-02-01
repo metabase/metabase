@@ -15,8 +15,6 @@ export const SdkInternalNavigationBackButton = ({
 }) => {
   const navigation = useSdkInternalNavigationOptional();
 
-  console.log("DEBUG navigation", navigation);
-
   if (!navigation?.canGoBack) {
     return null;
   }
