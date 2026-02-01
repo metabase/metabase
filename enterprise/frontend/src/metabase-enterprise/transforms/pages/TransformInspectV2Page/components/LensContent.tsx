@@ -47,11 +47,13 @@ function formatDrillLensName(lensId: string): string {
 
 // Context for collecting card results to evaluate triggers
 type CardResultsContextType = {
+  lensId: string;
   cardResults: Record<string, Record<string, unknown>>;
   setCardResult: (cardId: string, result: Record<string, unknown>) => void;
 };
 
 const CardResultsContext = createContext<CardResultsContextType>({
+  lensId: "",
   cardResults: {},
   setCardResult: () => {},
 });
@@ -167,7 +169,7 @@ export const LensContent = ({
   };
 
   return (
-    <CardResultsContext.Provider value={{ cardResults, setCardResult }}>
+    <CardResultsContext.Provider value={{ lensId, cardResults, setCardResult }}>
       <Box
         style={{
           border: onClose ? "1px solid var(--mb-color-border)" : undefined,

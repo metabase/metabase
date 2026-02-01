@@ -13,6 +13,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { computeCardResult } from "metabase-enterprise/transforms/lib/inspector";
 import type { InspectorV2Card } from "metabase-types/api";
 
 import { useCardResultsContext } from "./LensContent";
@@ -120,7 +121,7 @@ type JoinStepRowProps = {
 };
 
 const JoinStepRow = ({ stepCard, tableCard }: JoinStepRowProps) => {
-  const { setCardResult } = useCardResultsContext();
+  const { lensId, setCardResult } = useCardResultsContext();
   const { data: stepData, isLoading: isStepLoading } = useGetAdhocQueryQuery(
     stepCard.dataset_query,
   );
@@ -132,36 +133,30 @@ const JoinStepRow = ({ stepCard, tableCard }: JoinStepRowProps) => {
   const alias = (stepCard.metadata?.join_alias as string) ?? "Unknown";
   const strategy = (stepCard.metadata?.join_strategy as string) ?? "left-join";
 
-  // Extract counts from result: [COUNT(*), COUNT(rhs_field)]
-  const rows = stepData?.data?.rows?.[0];
-  const outputCount = rows?.[0] as number | undefined;
-  const matchedCount = rows?.[1] as number | undefined;
+  const rows = stepData?.data?.rows;
   const tableCount = tableData?.data?.rows?.[0]?.[0] as number | undefined;
 
   const isLoading = isStepLoading || (tableCard && isTableLoading);
 
-  // Calculate null rate if we have matched count
-  const nullCount =
-    outputCount != null && matchedCount != null
-      ? outputCount - matchedCount
-      : null;
-  const nullRate =
-    nullCount != null && outputCount != null && outputCount > 0
-      ? nullCount / outputCount
-      : null;
+  // Compute derived fields using lens-specific logic from cljc
+  const cardResult = useMemo(() => {
+    if (!rows) {
+      return null;
+    }
+    return computeCardResult(lensId, stepCard, rows);
+  }, [lensId, stepCard, rows]);
+
+  const outputCount = cardResult?.["output-count"] as number | undefined;
+  const matchedCount = cardResult?.["matched-count"] as number | undefined;
+  const nullCount = cardResult?.["null-count"] as number | null;
+  const nullRate = cardResult?.["null-rate"] as number | null;
 
   // Report results to context for trigger evaluation
-  // Use kebab-case keys to match BE trigger field names
   useEffect(() => {
-    if (!isLoading && outputCount != null) {
-      setCardResult(stepCard.id, {
-        "output-count": outputCount,
-        "matched-count": matchedCount,
-        "null-count": nullCount,
-        "null-rate": nullRate,
-      });
+    if (!isLoading && cardResult) {
+      setCardResult(stepCard.id, cardResult);
     }
-  }, [isLoading, outputCount, matchedCount, nullCount, nullRate, stepCard.id, setCardResult]);
+  }, [isLoading, cardResult, stepCard.id, setCardResult]);
 
   return (
     <Card p="sm" shadow="none" withBorder>
