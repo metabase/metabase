@@ -76,19 +76,19 @@ describe("LocalizationSettingsPage", () => {
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));
-    blur();
+    await blur();
 
     const startOfWeekInput = await screen.findByLabelText(
       "First day of the week",
     );
     await userEvent.click(startOfWeekInput);
     await userEvent.click(await screen.findByText("Tuesday"));
-    blur();
+    await blur();
 
     const currencyInput = await screen.findByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
-    blur();
+    await blur();
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");

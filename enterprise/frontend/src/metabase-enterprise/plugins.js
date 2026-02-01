@@ -1,12 +1,9 @@
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
-// SETTINGS OVERRIDES:
-PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
-
 import "./shared";
 
 // PLUGINS THAT DON'T USE hasPremiumFeature (imported immediately):
-import "./license";
+import { initializePlugin as initializeLicense } from "./license";
 
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
@@ -55,6 +52,10 @@ import { initializePlugin as initializeWhitelabel } from "./whitelabel";
  * Must be called after token features are available.
  */
 export function initializePlugins() {
+  // SETTINGS OVERRIDES:
+  PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
+
+  initializeLicense();
   initializeTools();
   initializeSandboxes();
   initializeAuth();
