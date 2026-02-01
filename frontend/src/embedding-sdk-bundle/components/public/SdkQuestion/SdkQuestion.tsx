@@ -57,6 +57,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
+    | "withAlerts"
     | "targetCollection"
     | "onRun"
   >;

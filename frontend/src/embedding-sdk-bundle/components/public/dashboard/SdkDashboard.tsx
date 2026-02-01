@@ -569,7 +569,6 @@ function DashboardQueryBuilder({
         name: dashboard.name,
       }}
       entityTypes={dataPickerProps?.entityTypes}
-      withResetButton
       withChartTypeSelector
       // The default value is 600px and it cuts off the "Visualize" button.
       height="700px"

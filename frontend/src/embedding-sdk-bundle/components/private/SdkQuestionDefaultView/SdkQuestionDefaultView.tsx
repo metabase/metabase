@@ -53,7 +53,6 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
-import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
@@ -183,8 +182,6 @@ export const SdkQuestionDefaultView = ({
       originalQuestion,
       canWriteToTargetCollection,
     }) && isSaveEnabled;
-
-  console.log("DEBUG IS THIS IT", showSaveButton);
 
   return (
     <FlexibleSizeComponent
