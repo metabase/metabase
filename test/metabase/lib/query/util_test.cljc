@@ -247,7 +247,11 @@
       (is (= 2 (count (:stages query))))
       (is (= 1 (count (lib/aggregations query 0))))
       (is (= 1 (count (lib/breakouts query 0))))
-      (is (= 1 (count (lib/filters query 1)))))))
+      (is (= 1 (count (lib/filters query 1))))
+      (is (empty? (lib/filters query 0)))
+      (is (empty? (lib/aggregations query 1)))
+      (is (empty? (lib/breakouts query 1))))))
+      
 
 (deftest ^:parallel test-query-complex-expression-test
   (testing "test-query handles complex nested expressions"
