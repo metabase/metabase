@@ -713,7 +713,7 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 const DashboardGrid = forwardRef<
   HTMLDivElement,
   DashboardGridForwardedRefProps
->(function _DashboardGrid({ width = 0, ...restProps }, ref) {
+>(function DashboardGridBase({ width = 0, ...restProps }, ref) {
   const {
     dashboard,
     selectedTabId,
