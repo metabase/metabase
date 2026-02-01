@@ -449,6 +449,23 @@ export function getComputedAdditionalColumnsValue(
   return filteredStoredColumns;
 }
 
+export function getComputedDisplayColumnsValue(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const availableAdditionalColumnKeys = new Set(
+    getAvailableAdditionalColumns(rawSeries, settings).map((column) =>
+      getColumnKey(column),
+    ),
+  );
+
+  const filteredStoredColumns = (
+    settings["graph.display_columns"] ?? []
+  ).filter((columnKey: string) => availableAdditionalColumnKeys.has(columnKey));
+
+  return filteredStoredColumns;
+}
+
 export function getSeriesModelsForSettings(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,

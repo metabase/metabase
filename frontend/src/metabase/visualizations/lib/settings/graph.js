@@ -21,6 +21,7 @@ import {
   getAvailableAdditionalColumns,
   getAvailableXAxisScales,
   getComputedAdditionalColumnsValue,
+  getComputedDisplayColumnsValue,
   getDefaultColumns,
   getDefaultDataLabelsFrequency,
   getDefaultDimensionFilter,
@@ -382,6 +383,46 @@ export const TOOLTIP_SETTINGS = {
       };
     },
     readDependencies: ["graph.metrics", "graph.dimensions"],
+  },
+  "graph.display_columns": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Additional data label columns`;
+    },
+    get placeholder() {
+      return t`Select columns to display on chart`;
+    },
+    widget: "multiselect",
+    useRawSeries: true,
+    getValue: getComputedDisplayColumnsValue,
+    getHidden: (rawSeries, vizSettings) => {
+      if (!vizSettings["graph.show_values"]) {
+        return true;
+      }
+      return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
+    },
+    getProps: (rawSeries, vizSettings) => {
+      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
+      const options = getAvailableAdditionalColumns(
+        rawSeries,
+        vizSettings,
+        isAggregatedChart,
+      ).map((col) => ({
+        label: col.display_name,
+        value: getColumnKey(col),
+      }));
+
+      return {
+        options,
+      };
+    },
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "graph.show_values",
+    ],
   },
 };
 

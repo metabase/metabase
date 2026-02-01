@@ -8,6 +8,7 @@ import type {
 import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/lib/colors/palette";
+import { formatValue } from "metabase/lib/formatting";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -41,7 +42,12 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue, SeriesSettings, XAxisScale } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  SeriesSettings,
+  XAxisScale,
+} from "metabase-types/api";
 
 import type {
   ChartMeasurements,
@@ -161,6 +167,10 @@ export function getDataLabelFormatter(
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   accessor?: (datum: Datum) => RowValue,
+  additionalColumnsConfig?: {
+    columnKeys: string[];
+    columnByDataKey: Record<DataKey, DatasetColumn>;
+  },
 ) {
   const getShowLabel = getShowLabelFn(
     chartWidth,
@@ -177,8 +187,74 @@ export function getDataLabelFormatter(
       return "";
     }
 
-    return formatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
+    const primaryLabel = formatter(
+      yAxisScaleTransforms.fromEChartsAxisValue(value),
+    );
+
+    if (
+      additionalColumnsConfig &&
+      additionalColumnsConfig.columnKeys.length > 0 &&
+      settings
+    ) {
+      const additionalLabels = formatAdditionalDisplayColumns(
+        datum,
+        additionalColumnsConfig.columnKeys,
+        additionalColumnsConfig.columnByDataKey,
+        settings,
+      );
+
+      if (additionalLabels.length > 0) {
+        return `${additionalLabels.join("\n")}\n${primaryLabel}`;
+      }
+    }
+
+    return primaryLabel;
   };
+}
+
+function formatAdditionalDisplayColumns(
+  datum: Datum,
+  columnKeys: string[],
+  columnByDataKey: Record<DataKey, DatasetColumn>,
+  settings: ComputedVisualizationSettings,
+): string[] {
+  const labels: string[] = [];
+
+  for (const columnKey of columnKeys) {
+    // Find the column by matching the column key with data keys
+    const matchingDataKey = Object.keys(columnByDataKey).find((dataKey) => {
+      const column = columnByDataKey[dataKey];
+      // The columnKey is in the format returned by getColumnKey, which is typically
+      // a JSON stringified array like '["name","column_name"]'
+      try {
+        const parsedKey = JSON.parse(columnKey);
+        if (Array.isArray(parsedKey) && parsedKey.length === 2) {
+          return column.name === parsedKey[1];
+        }
+      } catch {
+        // If parsing fails, try direct name match
+        return column.name === columnKey;
+      }
+      return false;
+    });
+
+    if (matchingDataKey) {
+      const column = columnByDataKey[matchingDataKey];
+      const value = datum[matchingDataKey];
+
+      if (value != null) {
+        const columnSettings = settings.column?.(column) ?? { column };
+        const formattedValue = formatValue(value, {
+          ...columnSettings,
+          compact: true,
+          jsx: false,
+        });
+        labels.push(String(formattedValue));
+      }
+    }
+  }
+
+  return labels;
 }
 
 function getShowLabelFn(
@@ -289,8 +365,23 @@ export const buildEChartsLabelOptions = (
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   position?: LabelOption["position"],
+  columnByDataKey?: Record<DataKey, DatasetColumn>,
 ): SeriesLabelOption => {
   const { fontSize } = renderingContext.theme.cartesian.label;
+
+  const displayColumns = settings?.["graph.display_columns"] ?? [];
+  const additionalColumnsConfig =
+    displayColumns.length > 0 && columnByDataKey
+      ? {
+          columnKeys: displayColumns,
+          columnByDataKey,
+        }
+      : undefined;
+
+  // Add extra line height when showing additional columns for better readability
+  const hasAdditionalColumns =
+    additionalColumnsConfig && additionalColumnsConfig.columnKeys.length > 0;
+  const lineHeight = hasAdditionalColumns ? fontSize * 1.4 : undefined;
 
   return {
     show: !!formatter,
@@ -300,6 +391,8 @@ export const buildEChartsLabelOptions = (
     fontFamily: renderingContext.fontFamily,
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize,
+    lineHeight,
+    overflow: hasAdditionalColumns ? "none" : undefined,
     color: renderingContext.getColor("text-primary"),
     textBorderColor: renderingContext.getColor("background-primary"),
     textBorderWidth: 3,
@@ -312,6 +405,8 @@ export const buildEChartsLabelOptions = (
         chartWidth,
         settings,
         chartDataDensity,
+        undefined,
+        additionalColumnsConfig,
       ),
   };
 };
@@ -479,6 +574,7 @@ const buildEChartsBarSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  columnByDataKey?: Record<DataKey, DatasetColumn>,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
@@ -564,6 +660,15 @@ const buildEChartsBarSeries = (
   const labelOptions: BarSeriesOption[] = ["+" as const, "-" as const].map(
     (sign) => {
       const labelDataKey = getBarSeriesDataLabelKey(seriesModel.dataKey, sign);
+      const displayColumns = settings["graph.display_columns"] ?? [];
+      const additionalColumnsConfig =
+        displayColumns.length > 0 && columnByDataKey
+          ? {
+              columnKeys: displayColumns,
+              columnByDataKey,
+            }
+          : undefined;
+
       return {
         ...getDataLabelSeriesOption(
           getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
@@ -581,6 +686,7 @@ const buildEChartsBarSeries = (
               const isZero = value === null && datum[labelDataKey] != null;
               return isZero ? 0 : value;
             },
+            additionalColumnsConfig,
           ),
           ["50%", 0],
           renderingContext,
@@ -618,6 +724,7 @@ const buildEChartsLineAreaSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  columnByDataKey?: Record<DataKey, DatasetColumn>,
 ): LineSeriesOption => {
   const isSymbolVisible = getShowSymbol(
     chartDataDensity,
@@ -687,6 +794,7 @@ const buildEChartsLineAreaSeries = (
       settings,
       chartDataDensity,
       "top",
+      columnByDataKey,
     ),
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -960,6 +1068,7 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            chartModel.columnByDataKey,
           );
         case "bar":
           return buildEChartsBarSeries(
@@ -978,6 +1087,7 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            chartModel.columnByDataKey,
           );
       }
     })

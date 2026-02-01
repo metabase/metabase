@@ -238,6 +238,17 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (_rawSeries, settings) => getDefaultShowLabels(settings),
       inline: true,
     },
+    "pie.show_data_values": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Show data values`;
+      },
+      widget: "toggle",
+      getDefault: () => false,
+      inline: true,
+    },
     "pie.percent_visibility": {
       get section() {
         return t`Display`;

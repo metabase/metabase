@@ -497,12 +497,16 @@ export const getChartPadding = (
 
   // 1. Top Padding
 
-  // Prevent data labels from being rendered outside the chart
   if (
     settings["graph.show_values"] ||
     (settings["graph.show_goal"] && settings["graph.goal_label"])
   ) {
     padding.top += seriesLabelFontSize + CHART_STYLE.seriesLabels.offset;
+
+    const displayColumns = settings["graph.display_columns"] ?? [];
+    if (displayColumns.length > 0) {
+      padding.top += seriesLabelFontSize * displayColumns.length * 1.2;
+    }
   }
 
   // 2. Bottom Padding

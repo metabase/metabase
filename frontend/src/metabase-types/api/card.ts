@@ -318,6 +318,9 @@ export type VisualizationSettings = {
   "scalar.compact_primary_number"?: boolean;
   "scalar.segments"?: ScalarSegment[];
 
+  // Data labels
+  "graph.display_columns"?: string[];
+
   // Pie Settings
   "pie.dimension"?: string | string[];
   "pie.middle_dimension"?: string;
@@ -328,6 +331,7 @@ export type VisualizationSettings = {
   "pie.show_legend"?: boolean;
   "pie.show_total"?: boolean;
   "pie.show_labels"?: boolean;
+  "pie.show_data_values"?: boolean;
   "pie.percent_visibility"?: "off" | "legend" | "inside" | "both";
   "pie.decimal_places"?: number;
   "pie.slice_threshold"?: number;

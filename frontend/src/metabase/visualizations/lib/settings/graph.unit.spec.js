@@ -648,3 +648,173 @@ describe("graph.tooltip_columns", () => {
     });
   });
 });
+
+describe("graph.display_columns", () => {
+  const displayColumnsSetting = TOOLTIP_SETTINGS["graph.display_columns"];
+
+  describe("getHidden", () => {
+    it("should be hidden when graph.show_values is false", () => {
+      const mockSeries = [
+        createMockSingleSeries(
+          createMockCard(),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({ name: "metric1", base_type: "type/Number" }),
+                createMockColumn({ name: "metric2", base_type: "type/Number" }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      const isHidden = displayColumnsSetting.getHidden(mockSeries, {
+        "graph.show_values": false,
+        "graph.dimensions": ["dim"],
+        "graph.metrics": ["metric1"],
+      });
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden when there are no available additional columns", () => {
+      const mockSeries = [
+        createMockSingleSeries(
+          createMockCard(),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({ name: "metric", base_type: "type/Number" }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      const isHidden = displayColumnsSetting.getHidden(mockSeries, {
+        "graph.show_values": true,
+        "graph.dimensions": ["dim"],
+        "graph.metrics": ["metric"],
+      });
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should not be hidden when graph.show_values is true and there are available columns", () => {
+      const mockSeries = [
+        createMockSingleSeries(
+          createMockCard(),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({ name: "metric1", base_type: "type/Number" }),
+                createMockColumn({ name: "metric2", base_type: "type/Number" }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      const isHidden = displayColumnsSetting.getHidden(mockSeries, {
+        "graph.show_values": true,
+        "graph.dimensions": ["dim"],
+        "graph.metrics": ["metric1"],
+      });
+
+      expect(isHidden).toBe(false);
+    });
+  });
+
+  describe("getValue", () => {
+    it("should return empty array by default", () => {
+      const mockSeries = [
+        createMockSingleSeries(
+          createMockCard({ display: "bar" }),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({ name: "metric1", base_type: "type/Number" }),
+                createMockColumn({ name: "metric2", base_type: "type/Number" }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      const value = displayColumnsSetting.getValue(mockSeries, {
+        "graph.dimensions": ["dim"],
+        "graph.metrics": ["metric1"],
+      });
+
+      expect(value).toHaveLength(0);
+    });
+
+    it("should filter out invalid column keys", () => {
+      const mockSeries = [
+        createMockSingleSeries(
+          createMockCard({ display: "bar" }),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({ name: "metric1", base_type: "type/Number" }),
+                createMockColumn({ name: "metric2", base_type: "type/Number" }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      const value = displayColumnsSetting.getValue(mockSeries, {
+        "graph.dimensions": ["dim"],
+        "graph.metrics": ["metric1"],
+        "graph.display_columns": [
+          '["name","metric2"]',
+          '["name","invalid_column"]',
+        ],
+      });
+
+      expect(value).toStrictEqual(['["name","metric2"]']);
+    });
+  });
+
+  describe("getProps", () => {
+    it("should return options for available additional columns", () => {
+      const mockSeries = [
+        createMockSingleSeries(
+          createMockCard(),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({
+                  name: "metric1",
+                  display_name: "Metric 1",
+                  base_type: "type/Number",
+                }),
+                createMockColumn({
+                  name: "metric2",
+                  display_name: "Metric 2",
+                  base_type: "type/Number",
+                }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      const props = displayColumnsSetting.getProps(mockSeries, {
+        "graph.dimensions": ["dim"],
+        "graph.metrics": ["metric1"],
+      });
+
+      expect(props.options).toEqual([
+        { label: "Metric 2", value: '["name","metric2"]' },
+      ]);
+    });
+  });
+});

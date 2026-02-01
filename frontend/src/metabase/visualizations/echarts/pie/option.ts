@@ -165,23 +165,42 @@ function getSliceLabel(
   settings: ComputedVisualizationSettings,
   formatters: PieChartFormatters,
 ) {
-  const name = settings["pie.show_labels"] ? slice.name : undefined;
-  const percent =
-    settings["pie.percent_visibility"] === "inside" ||
-    settings["pie.percent_visibility"] === "both"
-      ? formatters.formatPercent(slice.normalizedPercentage, "chart")
-      : undefined;
+  const parts: string[] = [];
 
-  if (name != null && percent != null) {
-    return `${name}: ${percent}`;
+  // Add slice name if enabled
+  if (settings["pie.show_labels"]) {
+    parts.push(slice.name);
   }
-  if (name != null) {
-    return name;
+
+  // Add metric value if enabled
+  if (settings["pie.show_data_values"]) {
+    parts.push(formatters.formatMetric(slice.rawValue));
   }
-  if (percent != null) {
-    return percent;
+
+  // Add percentage if enabled
+  const showPercent =
+    settings["pie.percent_visibility"] === "inside" ||
+    settings["pie.percent_visibility"] === "both";
+  if (showPercent) {
+    parts.push(formatters.formatPercent(slice.normalizedPercentage, "chart"));
   }
-  return " ";
+
+  if (parts.length === 0) {
+    return " ";
+  }
+
+  // Join parts with appropriate separators
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  // If we have name and other values, use colon separator
+  if (settings["pie.show_labels"] && parts.length > 1) {
+    const [name, ...rest] = parts;
+    return `${name}: ${rest.join(" ")}`;
+  }
+
+  return parts.join(" ");
 }
 
 function getSeriesDataFromSlices(
