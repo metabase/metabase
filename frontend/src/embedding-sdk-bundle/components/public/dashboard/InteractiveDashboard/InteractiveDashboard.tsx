@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
@@ -8,7 +8,6 @@ import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -35,22 +34,7 @@ export const InteractiveDashboardContent = (
   props: InteractiveDashboardProps,
 ) => {
   const globalPlugins = useSdkSelector(getPlugins);
-  const { push: pushNavigation, initWithDashboard } =
-    useSdkInternalNavigation();
-  const dashboard = useSdkSelector(getDashboardComplete);
-
-  // Initialize the navigation stack with the dashboard when it loads
-  useEffect(() => {
-    if (dashboard?.id != null && dashboard?.name) {
-      initWithDashboard({
-        id:
-          typeof dashboard.id === "number"
-            ? dashboard.id
-            : parseInt(String(dashboard.id), 10),
-        name: dashboard.name,
-      });
-    }
-  }, [dashboard?.id, dashboard?.name, initWithDashboard]);
+  const { push: pushNavigation } = useSdkInternalNavigation();
 
   const plugins: MetabasePluginsConfig = useMemo(() => {
     return { ...globalPlugins, ...props.plugins };

@@ -1,12 +1,10 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { createEmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
@@ -30,25 +28,8 @@ export type EditableDashboardProps = SdkDashboardProps &
 
 // Inner component that uses the navigation context
 const EditableDashboardContent = (props: EditableDashboardProps) => {
-  const {
-    push: pushNavigation,
-    initWithDashboard,
-    navigateToNewCardFromDashboard,
-  } = useSdkInternalNavigation();
-  const dashboard = useSdkSelector(getDashboardComplete);
-
-  // Initialize the navigation stack with the dashboard when it loads
-  useEffect(() => {
-    if (dashboard?.id != null && dashboard?.name) {
-      initWithDashboard({
-        id:
-          typeof dashboard.id === "number"
-            ? dashboard.id
-            : parseInt(String(dashboard.id), 10),
-        name: dashboard.name,
-      });
-    }
-  }, [dashboard?.id, dashboard?.name, initWithDashboard]);
+  const { push: pushNavigation, navigateToNewCardFromDashboard } =
+    useSdkInternalNavigation();
 
   const dashboardActions: SdkDashboardInnerProps["dashboardActions"] = ({
     isEditing,

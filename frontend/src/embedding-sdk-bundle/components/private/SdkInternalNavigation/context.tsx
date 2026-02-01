@@ -1,6 +1,5 @@
 import { createContext, useContext } from "react";
 
-import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type {
   NavigateToNewCardParams,
@@ -8,8 +7,6 @@ import type {
 } from "embedding-sdk-bundle/types/question";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-
-import type { SdkQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
 
 export type SdkInternalNavigationEntry =
   | {
@@ -43,7 +40,7 @@ export type SdkInternalNavigationContextValue = {
   navigateToNewCardFromDashboard: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  initWithDashboard: (dashboard: { id: number; name: string }) => void;
+  initWithDashboard: (dashboard: { id: SdkDashboardId; name: string }) => void;
 };
 
 export const SdkInternalNavigationContext =

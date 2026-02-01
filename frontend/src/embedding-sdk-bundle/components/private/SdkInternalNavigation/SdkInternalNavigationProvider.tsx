@@ -81,7 +81,7 @@ const SdkInternalNavigationProviderInner = ({
 
   // Initialize the stack with a dashboard entry (called by dashboard components)
   const initWithDashboard = useCallback(
-    (dashboard: { id: number; name: string }) => {
+    (dashboard: { id: SdkDashboardId; name: string }) => {
       if (stack.length === 0) {
         setStack([
           { type: "dashboard", id: dashboard.id, name: dashboard.name },
