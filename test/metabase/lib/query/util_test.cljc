@@ -251,7 +251,6 @@
       (is (empty? (lib/filters query 0)))
       (is (empty? (lib/aggregations query 1)))
       (is (empty? (lib/breakouts query 1))))))
-      
 
 (deftest ^:parallel test-query-complex-expression-test
   (testing "test-query handles complex nested expressions"
@@ -441,7 +440,7 @@
               (first (lib/order-bys query)))))))
 
 (deftest ^:parallel test-query-expression-with-aggregation-test
-  (testing "test-query handles expressions that reference aggregations in later stages"
+  (testing "test-query handles expressions that reference aggregations from earlier stages"
     (let [query (lib.query.util/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
