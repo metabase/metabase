@@ -278,9 +278,11 @@ export const DocumentPage = ({
       trackDocumentBookmark();
     }
 
-    isBookmarked
-      ? deleteBookmark({ type: "document", id: documentId })
-      : createBookmark({ type: "document", id: documentId });
+    if (isBookmarked) {
+      deleteBookmark({ type: "document", id: documentId });
+    } else {
+      createBookmark({ type: "document", id: documentId });
+    }
   }, [isBookmarked, deleteBookmark, createBookmark, documentId]);
 
   const handleShowHistory = useCallback(() => {
@@ -400,7 +402,11 @@ export const DocumentPage = ({
           return;
         }
 
-        isNewDocument ? setCollectionPickerMode("save") : handleSave();
+        if (isNewDocument) {
+          setCollectionPickerMode("save");
+        } else {
+          handleSave();
+        }
       }
     };
 

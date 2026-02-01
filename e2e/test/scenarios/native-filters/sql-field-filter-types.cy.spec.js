@@ -243,9 +243,11 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
       ([subType, { searchTerm, value, representativeResult }], index) => {
         FieldFilter.setWidgetType(subType);
 
-        searchTerm
-          ? FieldFilter.pickDefaultValue(searchTerm, value, "Update filter")
-          : FieldFilter.addDefaultStringFilter(value);
+        if (searchTerm) {
+          FieldFilter.pickDefaultValue(searchTerm, value, "Update filter");
+        } else {
+          FieldFilter.addDefaultStringFilter(value);
+        }
 
         SQLFilter.runQuery();
 
