@@ -18,6 +18,7 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
@@ -73,10 +74,6 @@ import {
 } from "./SdkDashboardStyleWrapper";
 import { SdkDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
-import {
-  useSdkInternalNavigation,
-  useSdkInternalNavigationOptional,
-} from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 
 /**
  * @interface
@@ -166,6 +163,7 @@ const SdkDashboardInner = ({
   withDownloads = false,
   withSubscriptions = false,
   hiddenParameters = [],
+  enableEntityNavigation = false, // SDK defaults to false (core app defaults to true)
   drillThroughQuestionHeight,
   plugins,
   onLoad,
@@ -235,8 +233,6 @@ const SdkDashboardInner = ({
     ? "question"
     : renderModeState;
 
-  console.log("DEBUG finalRenderMode", { renderModeState, finalRenderMode });
-
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
   const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
 
@@ -297,7 +293,11 @@ const SdkDashboardInner = ({
         onPop: () => onNavigateBackToDashboard(),
       });
     },
-    [baseOnNavigateToNewCardFromDashboard, sdkNavigation, onNavigateBackToDashboard],
+    [
+      baseOnNavigateToNewCardFromDashboard,
+      sdkNavigation,
+      onNavigateBackToDashboard,
+    ],
   );
 
   if (isLocaleLoading) {
@@ -411,6 +411,7 @@ const SdkDashboardInner = ({
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
         autoScrollToDashcardId={autoScrollToDashcardId}
+        enableEntityNavigation={enableEntityNavigation}
       >
         {match({ finalRenderMode, isGuestEmbed })
           .with({ finalRenderMode: "question" }, () => (
