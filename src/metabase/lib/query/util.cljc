@@ -160,20 +160,23 @@
                :args (mapv (partial expression-spec->expression-parts query stage-number available-columns)
                            (:args expression-spec))}))
 
+(mu/defn- named-expression-spec? :- :boolean
+  [expression-spec :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
+  (and
+   (contains? expression-spec :name)
+   (contains? expression-spec :value)
+   (not (contains? expression-spec :type))))
+
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
   [query                                    :- ::lib.schema/query
    stage-number                             :- :int
    available-columns                        :- [:sequential ::lib.schema.metadata/column]
    {:keys [name value] :as expression-spec} :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
-  (if value
+  (if (named-expression-spec? expression-spec)
     (-> (expression-spec->expression-clause query stage-number available-columns value)
         (lib.expression/with-expression-name name))
-    (lib.fe-util/expression-clause
-     (expression-spec->expression-parts query
-                                        stage-number
-                                        available-columns
-
-                                        expression-spec))))
+    (-> (expression-spec->expression-parts query stage-number available-columns expression-spec)
+        lib.fe-util/expression-clause)))
 
 (mu/defn- append-expression :- ::lib.schema/query
   [query                :- ::lib.schema/query
