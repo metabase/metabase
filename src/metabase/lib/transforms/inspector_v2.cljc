@@ -37,37 +37,38 @@
 
 ;;; -------------------------------------------------- Trigger Evaluation --------------------------------------------------
 
-(defn- compare-values
-  [comparator actual threshold]
-  (when (some? actual)
-    (case comparator
-      :>  (> actual threshold)
-      :>= (>= actual threshold)
-      :<  (< actual threshold)
-      :<= (<= actual threshold)
-      :=  (= actual threshold)
-      :!= (not= actual threshold)
-      false)))
+(defmulti evaluate-condition
+  "Evaluate a named condition against card results.
+   Dispatches on condition name. Returns truthy if condition is met.
 
-(defn evaluate-condition
-  "Evaluate a trigger condition against card results.
-   card-results: map of card-id (string) -> result map (string keys)
-   condition: {:card-id \"x\" :field \"some-field\" :comparator :> :threshold 0.5}"
-  [card-results {:keys [card-id field comparator threshold]}]
-  (when-let [result (get card-results card-id)]
-    (let [field-key (if (keyword? field) (name field) field)
-          value (if field-key (get result field-key) result)]
-      (compare-values comparator value threshold))))
+   Arguments:
+   - condition: map with :name and any other keys the condition needs
+   - card-results: map of card-id (string) -> result map (string keys)"
+  (fn [condition _card-results] (:name condition)))
+
+(defmethod evaluate-condition :default
+  [_ _]
+  false)
+
+(defmethod evaluate-condition :high-null-rate
+  [{:keys [card_id]} card-results]
+  (when-let [result (get card-results card_id)]
+    (> (get result "null-rate" 0) 0.2)))
+
+(defmethod evaluate-condition :has-unmatched-rows
+  [{:keys [card_id]} card-results]
+  (when-let [result (get card-results card_id)]
+    (> (get result "null-rate" 0) 0.05)))
 
 (defn triggered-alerts
   "Return alerts whose conditions are met."
   [card-results alert-triggers]
-  (filterv #(evaluate-condition card-results (:condition %)) alert-triggers))
+  (filterv #(evaluate-condition (:condition %) card-results) alert-triggers))
 
 (defn triggered-drill-lenses
   "Return full drill lens trigger objects whose conditions are met."
   [card-results drill-lens-triggers]
-  (filterv #(evaluate-condition card-results (:condition %)) drill-lens-triggers))
+  (filterv #(evaluate-condition (:condition %) card-results) drill-lens-triggers))
 
 (defn evaluate-triggers
   "Evaluate all triggers for a lens against card results.
@@ -81,23 +82,16 @@
      "Evaluate all triggers. Returns {alerts: [...], drillLenses: [...]}."
      [lens-js card-results-js]
      (let [lens-raw (js->clj lens-js :keywordize-keys true)
+           ;; Convert condition name to keyword, leave rest as-is
+           convert-condition (fn [c] (update c :name keyword))
            lens (-> lens-raw
                     (set/rename-keys {:alert_triggers :alert-triggers
                                       :drill_lens_triggers :drill-lens-triggers})
-                    (update :alert-triggers #(mapv (fn [t]
-                                                     (-> t
-                                                         (update :condition (fn [c]
-                                                                              (-> c
-                                                                                  (set/rename-keys {:card_id :card-id})
-                                                                                  (update :comparator keyword))))))
-                                                   %))
+                    (update :alert-triggers #(mapv (fn [t] (update t :condition convert-condition)) %))
                     (update :drill-lens-triggers #(mapv (fn [t]
                                                           (-> t
                                                               (set/rename-keys {:lens_id :lens-id})
-                                                              (update :condition (fn [c]
-                                                                                   (-> c
-                                                                                       (set/rename-keys {:card_id :card-id})
-                                                                                       (update :comparator keyword))))))
+                                                              (update :condition convert-condition)))
                                                         %)))
            card-results (js->clj card-results-js)
            result (evaluate-triggers lens card-results)

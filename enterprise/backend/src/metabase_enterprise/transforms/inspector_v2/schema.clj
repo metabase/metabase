@@ -170,18 +170,12 @@
 
 ;;; -------------------------------------------------- Triggers --------------------------------------------------
 
-(mr/def ::comparator
-  "Comparison operators for trigger conditions."
-  [:enum :> :>= :< :<= := :!=])
-
 (mr/def ::trigger-condition
-  "A condition that triggers an alert or drill lens.
-   Evaluated by lib against card results."
-  [:map
-   [:card-id :string]
-   [:field {:optional true} [:or :string :int :keyword]]
-   [:comparator ::comparator]
-   [:threshold :any]])
+  "A named condition that triggers an alert or drill lens.
+   Evaluated by multimethod in lib against card results.
+   Only :name is required; other keys are condition-specific."
+  [:map {:closed false}
+   [:name :keyword]])
 
 (mr/def ::alert-trigger
   "Definition for conditional alerts.

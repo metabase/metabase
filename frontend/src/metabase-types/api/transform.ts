@@ -458,10 +458,8 @@ export type InspectorV2LensSummary = {
 };
 
 export type InspectorV2TriggerCondition = {
-  card_id: string;
-  field?: string | number | symbol;
-  comparator: ">" | ">=" | "<" | "<=" | "=" | "!=";
-  threshold: unknown;
+  name: string;
+  [key: string]: unknown;
 };
 
 export type InspectorV2AlertTrigger = {

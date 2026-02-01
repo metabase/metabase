@@ -301,20 +301,16 @@
     {:alert-triggers
      (for [{:keys [step alias]} outer-joins]
        {:id         (str "high-null-rate-" step)
-        :condition  {:card-id    (str "join-step-" step)
-                     :field      :null-rate  ; FE computes from count(*) - count(rhs)
-                     :comparator :>
-                     :threshold  0.2}
+        :condition  {:name    :high-null-rate
+                     :card-id (str "join-step-" step)}
         :severity   :warning
         :message    (str "Join '" alias "' has >20% unmatched rows")})
 
      :drill-lens-triggers
      (for [{:keys [step alias]} outer-joins]
        {:lens-id   "unmatched-rows"
-        :condition {:card-id    (str "join-step-" step)
-                    :field      :null-rate
-                    :comparator :>
-                    :threshold  0.05}
+        :condition {:name    :has-unmatched-rows
+                    :card-id (str "join-step-" step)}
         :params    {:join-step step}
         :reason    (str "Unmatched rows in " alias)})}))
 
