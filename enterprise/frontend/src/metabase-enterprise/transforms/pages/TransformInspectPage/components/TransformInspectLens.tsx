@@ -16,7 +16,7 @@ import {
 import { fetchTransformLens } from "../mock-api";
 import type { LensCard, TransformLensResponse } from "../mock-types";
 
-import { ComparisonCard } from "./InspectColumnComparisons/ComparisonCard";
+import { ComparisonCard } from "./LensCards";
 
 type TransformInspectLensProps = {
   transformId: number;

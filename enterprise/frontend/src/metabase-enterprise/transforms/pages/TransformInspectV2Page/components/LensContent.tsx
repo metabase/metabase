@@ -1,4 +1,10 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -15,14 +21,13 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { evaluateTriggers } from "metabase-enterprise/transforms/lib/inspector";
-import { useGetInspectorV2LensQuery } from "metabase-enterprise/api";
+import { useGetInspectorLensQuery } from "metabase-enterprise/api";
+import { evaluateTriggers } from "metabase-lib/transforms-inspector";
 import type {
-  InspectorV2AlertTrigger,
-  InspectorV2Card,
-  InspectorV2DiscoveryResponse,
-  InspectorV2Lens,
-  InspectorV2Section,
+  InspectorCard,
+  InspectorDiscoveryResponse,
+  InspectorLens,
+  InspectorSection,
   TransformId,
 } from "metabase-types/api";
 
@@ -71,7 +76,7 @@ type DrillLensInfo = {
 type LensContentProps = {
   transformId: TransformId;
   lensId: string;
-  discovery: InspectorV2DiscoveryResponse;
+  discovery: InspectorDiscoveryResponse;
   params?: Record<string, unknown>;
   onClose?: () => void;
 };
@@ -83,7 +88,11 @@ export const LensContent = ({
   params,
   onClose,
 }: LensContentProps) => {
-  const { data: lens, isLoading, error } = useGetInspectorV2LensQuery({
+  const {
+    data: lens,
+    isLoading,
+    error,
+  } = useGetInspectorLensQuery({
     transformId,
     lensId,
     params,
@@ -249,7 +258,7 @@ export const LensContent = ({
 type DrillLensPanelProps = {
   transformId: TransformId;
   drillLens: DrillLensInfo;
-  discovery: InspectorV2DiscoveryResponse;
+  discovery: InspectorDiscoveryResponse;
   onClose: () => void;
 };
 
@@ -291,9 +300,9 @@ const DrillLensButtons = ({ buttons, onSelect }: DrillLensButtonsProps) => (
 );
 
 type SectionsRendererProps = {
-  lens: InspectorV2Lens;
+  lens: InspectorLens;
   lensId: string;
-  discovery: InspectorV2DiscoveryResponse;
+  discovery: InspectorDiscoveryResponse;
 };
 
 const SectionsRenderer = ({
@@ -302,7 +311,7 @@ const SectionsRenderer = ({
   discovery,
 }: SectionsRendererProps) => {
   const cardsBySection = useMemo(() => {
-    const map = new Map<string, InspectorV2Card[]>();
+    const map = new Map<string, InspectorCard[]>();
     for (const card of lens.cards) {
       const sectionId = card.section_id ?? "default";
       const existing = map.get(sectionId) ?? [];
@@ -327,10 +336,10 @@ const SectionsRenderer = ({
 };
 
 type SectionRendererProps = {
-  section: InspectorV2Section;
-  cards: InspectorV2Card[];
+  section: InspectorSection;
+  cards: InspectorCard[];
   lensId: string;
-  discovery: InspectorV2DiscoveryResponse;
+  discovery: InspectorDiscoveryResponse;
 };
 
 const SectionRenderer = ({
@@ -367,7 +376,6 @@ const SectionRenderer = ({
         <ColumnComparisonSection
           cards={cards}
           sources={discovery.sources}
-          target={discovery.target}
           visitedFields={discovery.visited_fields}
         />
       </Stack>

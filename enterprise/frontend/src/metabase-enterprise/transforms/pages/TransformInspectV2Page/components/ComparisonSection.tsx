@@ -2,9 +2,18 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { Box, Card, Flex, Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Flex,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import type {
-  InspectorV2Card,
+  InspectorCard as InspectorCardType,
   TransformInspectSource,
   TransformInspectTarget,
 } from "metabase-types/api";
@@ -12,7 +21,7 @@ import type {
 import { InspectorCard, ScalarCard } from "./InspectorCard";
 
 type ComparisonSectionProps = {
-  cards: InspectorV2Card[];
+  cards: InspectorCardType[];
   sources?: TransformInspectSource[];
   target?: TransformInspectTarget;
   asTable?: boolean;
@@ -20,8 +29,8 @@ type ComparisonSectionProps = {
 
 type CardGroup = {
   groupId: string;
-  inputCards: InspectorV2Card[];
-  outputCards: InspectorV2Card[];
+  inputCards: InspectorCardType[];
+  outputCards: InspectorCardType[];
 };
 
 export const ComparisonSection = ({
@@ -96,8 +105,8 @@ export const ComparisonSection = ({
 };
 
 type RowCountTablesProps = {
-  inputCards: InspectorV2Card[];
-  outputCards: InspectorV2Card[];
+  inputCards: InspectorCardType[];
+  outputCards: InspectorCardType[];
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
 };
@@ -114,7 +123,12 @@ const RowCountTables = ({
         <Title order={4}>{t`Input Tables`}</Title>
         <Card p="md" shadow="none" withBorder>
           <Stack gap="xs">
-            <Flex gap="md" fw={600} pb="xs" style={{ borderBottom: "1px solid var(--mb-color-border)" }}>
+            <Flex
+              gap="md"
+              fw={600}
+              pb="xs"
+              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+            >
               <Text style={{ flex: 2 }}>{t`Table`}</Text>
               <Text style={{ flex: 1 }} ta="right">{t`Rows`}</Text>
               <Text style={{ flex: 1 }} ta="right">{t`Columns`}</Text>
@@ -138,7 +152,12 @@ const RowCountTables = ({
         <Title order={4}>{t`Output Table`}</Title>
         <Card p="md" shadow="none" withBorder>
           <Stack gap="xs">
-            <Flex gap="md" fw={600} pb="xs" style={{ borderBottom: "1px solid var(--mb-color-border)" }}>
+            <Flex
+              gap="md"
+              fw={600}
+              pb="xs"
+              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+            >
               <Text style={{ flex: 2 }}>{t`Table`}</Text>
               <Text style={{ flex: 1 }} ta="right">{t`Rows`}</Text>
               <Text style={{ flex: 1 }} ta="right">{t`Columns`}</Text>
@@ -158,7 +177,7 @@ const RowCountTables = ({
 };
 
 type RowCountTableRowProps = {
-  card: InspectorV2Card;
+  card: InspectorCardType;
   columnCount?: number;
 };
 

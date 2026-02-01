@@ -18,7 +18,8 @@ import type {
   TransformInspectVisitedFields,
 } from "metabase-types/api";
 
-import { ComparisonCard } from "./ComparisonCard";
+import { ComparisonCard } from "../LensCards";
+
 import { FieldsStatsTable } from "./FieldsStatsTable";
 
 type InspectColumnComparisonsProps = {

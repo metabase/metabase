@@ -394,34 +394,32 @@ export type TransformInspectResponse = {
   visited_fields?: TransformInspectVisitedFields;
 };
 
-// Inspector V2 Types
-
-export type InspectorV2LensMetadata = {
+export type InspectorLensMetadata = {
   id: string;
   display_name: string;
   description?: string;
 };
 
-export type InspectorV2DiscoveryResponse = {
+export type InspectorDiscoveryResponse = {
   name: string;
   description?: string;
   status: TransformInspectStatus;
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
   visited_fields?: TransformInspectVisitedFields;
-  available_lenses: InspectorV2LensMetadata[];
+  available_lenses: InspectorLensMetadata[];
 };
 
-export type InspectorV2LayoutType = "flat" | "comparison";
+export type InspectorLayoutType = "flat" | "comparison" | "join-analysis";
 
-export type InspectorV2Section = {
+export type InspectorSection = {
   id: string;
   title: string;
   description?: string;
-  layout?: InspectorV2LayoutType;
+  layout?: InspectorLayoutType;
 };
 
-export type InspectorV2CardDisplayType =
+export type InspectorCardDisplayType =
   | "bar"
   | "row"
   | "line"
@@ -433,11 +431,11 @@ export type InspectorV2CardDisplayType =
   | "table"
   | "hidden";
 
-export type InspectorV2Card = {
+export type InspectorCard = {
   id: string;
   section_id?: string;
   title: string;
-  display: InspectorV2CardDisplayType;
+  display: InspectorCardDisplayType;
   dataset_query: DatasetQuery;
   interestingness?: number;
   summary?: boolean;
@@ -445,49 +443,49 @@ export type InspectorV2Card = {
   metadata?: Record<string, unknown>;
 };
 
-export type InspectorV2SummaryHighlight = {
+export type InspectorSummaryHighlight = {
   label: string;
   value?: unknown;
   card_id?: string;
 };
 
-export type InspectorV2LensSummary = {
+export type InspectorLensSummary = {
   text?: string;
-  highlights?: InspectorV2SummaryHighlight[];
+  highlights?: InspectorSummaryHighlight[];
   alerts?: unknown[];
 };
 
-export type InspectorV2TriggerCondition = {
+export type InspectorTriggerCondition = {
   name: string;
   [key: string]: unknown;
 };
 
-export type InspectorV2AlertTrigger = {
+export type InspectorAlertTrigger = {
   id: string;
-  condition: InspectorV2TriggerCondition;
+  condition: InspectorTriggerCondition;
   severity: "info" | "warning" | "error";
   message: string;
 };
 
-export type InspectorV2DrillLensTrigger = {
+export type InspectorDrillLensTrigger = {
   lens_id: string;
-  condition: InspectorV2TriggerCondition;
+  condition: InspectorTriggerCondition;
   params?: Record<string, unknown>;
   reason?: string;
 };
 
-export type InspectorV2Lens = {
+export type InspectorLens = {
   id: string;
   display_name: string;
-  summary?: InspectorV2LensSummary;
-  sections: InspectorV2Section[];
-  cards: InspectorV2Card[];
-  drill_lenses?: InspectorV2LensMetadata[];
-  alert_triggers?: InspectorV2AlertTrigger[];
-  drill_lens_triggers?: InspectorV2DrillLensTrigger[];
+  summary?: InspectorLensSummary;
+  sections: InspectorSection[];
+  cards: InspectorCard[];
+  drill_lenses?: InspectorLensMetadata[];
+  alert_triggers?: InspectorAlertTrigger[];
+  drill_lens_triggers?: InspectorDrillLensTrigger[];
 };
 
-export type GetInspectorV2LensRequest = {
+export type GetInspectorLensRequest = {
   transformId: TransformId;
   lensId: string;
   params?: Record<string, unknown>;

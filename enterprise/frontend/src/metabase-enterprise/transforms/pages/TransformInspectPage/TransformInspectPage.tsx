@@ -1,23 +1,23 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Button, Center, Stack, Text } from "metabase/ui";
+import { Box, Button, Center, Flex, Stack, Text } from "metabase/ui";
 import {
-  useGetTransformInspectQuery,
+  useGetInspectorDiscoveryQuery,
   useGetTransformQuery,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { convertLensToRef } from "metabase-enterprise/transforms/pages/TransformInspectPage/utils";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
-import {
-  InspectColumnComparisons,
-  InspectJoins,
-  InspectSummary,
-} from "./components";
+import { LensContent, LensNavigation } from "./components";
+import { useLensNavigation } from "./hooks";
+import type { LensRef } from "./types";
 
 type TransformInspectPageParams = {
   transformId: string;
@@ -37,13 +37,41 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
   } = useGetTransformQuery(transformId ?? skipToken);
 
   const {
-    data: inspectData,
-    isLoading: isLoadingInspect,
-    error: inspectError,
-  } = useGetTransformInspectQuery(transformId ?? skipToken);
+    data: discovery,
+    isLoading: isLoadingDiscovery,
+    error: discoveryError,
+  } = useGetInspectorDiscoveryQuery(transformId ?? skipToken);
 
-  const isLoading = isLoadingTransform || isLoadingInspect;
-  const error = transformError ?? inspectError;
+  const availableLenses = useMemo(
+    () => discovery?.available_lenses ?? [],
+    [discovery],
+  );
+
+  const rootSiblings: LensRef[] = useMemo(
+    () => availableLenses.map(convertLensToRef),
+    [availableLenses],
+  );
+
+  const initialLensRef = useMemo(() => {
+    const initialLens = availableLenses[0];
+    return initialLens ? convertLensToRef(initialLens) : undefined;
+  }, [availableLenses]);
+
+  const {
+    currentLensRef,
+    parentSiblings,
+    currentSiblings,
+    drillLenses,
+    setDrillLenses,
+    drill,
+    zoomOut,
+    setCurrentLens,
+    selectParentLens,
+    canZoomOut,
+  } = useLensNavigation(initialLensRef, rootSiblings);
+
+  const isLoading = isLoadingTransform || isLoadingDiscovery;
+  const error = transformError ?? discoveryError;
 
   if (isLoading || error || transform == null) {
     return (
@@ -53,7 +81,7 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
     );
   }
 
-  if (inspectData == null || inspectData.status === "not-run") {
+  if (discovery == null || discovery.status === "not-run") {
     return (
       <PageContainer data-testid="transform-inspect-content">
         <TransformHeader transform={transform} />
@@ -70,33 +98,36 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
       </PageContainer>
     );
   }
+
+  if (!currentLensRef) {
+    return null;
+  }
+
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} />
-      <Stack gap="xl">
-        {inspectData.summary && (
-          <InspectSummary
-            summary={inspectData.summary}
-            joins={inspectData.joins}
-            sources={inspectData.sources}
+      <Flex gap="xl" style={{ flex: 1 }}>
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <LensContent
+            transformId={transform.id}
+            currentLensRef={currentLensRef}
+            discovery={discovery}
+            onDrill={drill}
+            onDrillLensesChange={setDrillLenses}
           />
-        )}
-        {inspectData.joins && inspectData.joins.length > 0 && (
-          <InspectJoins
-            joins={inspectData.joins}
-            sources={inspectData.sources ?? undefined}
-          />
-        )}
-        {inspectData.column_comparisons &&
-          inspectData.column_comparisons.length > 0 && (
-            <InspectColumnComparisons
-              comparisons={inspectData.column_comparisons}
-              sources={inspectData.sources}
-              target={inspectData.target}
-              visitedFields={inspectData.visited_fields}
-            />
-          )}
-      </Stack>
+        </Box>
+        <LensNavigation
+          currentLensRef={currentLensRef}
+          parentLenses={parentSiblings}
+          siblingLenses={currentSiblings}
+          drillLenses={drillLenses}
+          canZoomOut={canZoomOut}
+          onZoomOut={zoomOut}
+          onSelectLens={setCurrentLens}
+          onSelectParentLens={selectParentLens}
+          onDrill={drill}
+        />
+      </Flex>
     </PageContainer>
   );
 };

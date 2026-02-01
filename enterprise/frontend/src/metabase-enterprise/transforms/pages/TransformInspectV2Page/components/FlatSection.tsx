@@ -1,10 +1,10 @@
 import { SimpleGrid } from "metabase/ui";
-import type { InspectorV2Card } from "metabase-types/api";
+import type { InspectorCard as InspectorCardType } from "metabase-types/api";
 
 import { InspectorCard, ScalarCard } from "./InspectorCard";
 
 type FlatSectionProps = {
-  cards: InspectorV2Card[];
+  cards: InspectorCardType[];
 };
 
 export const FlatSection = ({ cards }: FlatSectionProps) => {

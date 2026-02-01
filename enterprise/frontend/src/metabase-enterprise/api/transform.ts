@@ -4,9 +4,9 @@ import type {
   CreateTransformRequest,
   ExtractColumnsFromQueryRequest,
   ExtractColumnsFromQueryResponse,
-  GetInspectorV2LensRequest,
-  InspectorV2DiscoveryResponse,
-  InspectorV2Lens,
+  GetInspectorLensRequest,
+  InspectorDiscoveryResponse,
+  InspectorLens,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -37,9 +37,14 @@ function snakeToKebabCase(str: string): string {
   return str.replace(/_/g, "-");
 }
 
-function snakeTokebabParams(params: Record<string, unknown>): Record<string, unknown> {
+function snakeTokebabParams(
+  params: Record<string, unknown>,
+): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(params).map(([key, value]) => [snakeToKebabCase(key), value])
+    Object.entries(params).map(([key, value]) => [
+      snakeToKebabCase(key),
+      value,
+    ]),
   );
 }
 
@@ -270,9 +275,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
-    // Inspector V2 endpoints
-    getInspectorV2Discovery: builder.query<
-      InspectorV2DiscoveryResponse,
+    getInspectorDiscovery: builder.query<
+      InspectorDiscoveryResponse,
       TransformId
     >({
       query: (id) => ({
@@ -280,21 +284,18 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}/inspect-v2`,
       }),
       transformResponse: (response: unknown) =>
-        transformKeys(response) as InspectorV2DiscoveryResponse,
+        transformKeys(response) as InspectorDiscoveryResponse,
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
-    getInspectorV2Lens: builder.query<
-      InspectorV2Lens,
-      GetInspectorV2LensRequest
-    >({
+    getInspectorLens: builder.query<InspectorLens, GetInspectorLensRequest>({
       query: ({ transformId, lensId, params }) => ({
         method: "GET",
         url: `/api/ee/transform/${transformId}/inspect-v2/${lensId}`,
         params: params ? snakeTokebabParams(params) : undefined,
       }),
       transformResponse: (response: unknown) =>
-        transformKeys(response) as InspectorV2Lens,
+        transformKeys(response) as InspectorLens,
       providesTags: (_, error, { transformId }) =>
         invalidateTags(error, [idTag("transform", transformId)]),
     }),
@@ -308,9 +309,9 @@ export const {
   useGetTransformQuery,
   useLazyGetTransformQuery,
   useGetTransformInspectQuery,
-  useGetInspectorV2DiscoveryQuery,
-  useGetInspectorV2LensQuery,
-  useLazyGetInspectorV2LensQuery,
+  useGetInspectorDiscoveryQuery,
+  useGetInspectorLensQuery,
+  useLazyGetInspectorLensQuery,
   useRunTransformMutation,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,

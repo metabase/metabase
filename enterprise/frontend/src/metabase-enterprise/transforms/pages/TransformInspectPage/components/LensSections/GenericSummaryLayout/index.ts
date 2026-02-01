@@ -1,0 +1,1 @@
+export { GenericSummaryLayout } from "./GenericSummaryLayout";

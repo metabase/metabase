@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, MultiSelect, SimpleGrid, Stack, Title } from "metabase/ui";
-import { interestingFields } from "metabase-enterprise/transforms/lib/inspector";
+import { interestingFields } from "metabase-lib/transforms-inspector";
 import type {
-  InspectorV2Card,
+  InspectorCard as InspectorCardType,
   TransformInspectSource,
   TransformInspectTarget,
   TransformInspectVisitedFields,
@@ -13,7 +13,7 @@ import type {
 import { InspectorCard } from "./InspectorCard";
 
 type ColumnComparisonSectionProps = {
-  cards: InspectorV2Card[];
+  cards: InspectorCardType[];
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
   visitedFields?: TransformInspectVisitedFields;
@@ -21,8 +21,8 @@ type ColumnComparisonSectionProps = {
 
 type ComparisonGroup = {
   groupId: string;
-  inputCards: InspectorV2Card[];
-  outputCards: InspectorV2Card[];
+  inputCards: InspectorCardType[];
+  outputCards: InspectorCardType[];
 };
 
 // Parse title like "field_name (table_name)" to extract parts
@@ -35,7 +35,7 @@ function parseTitleParts(title: string): { field: string; table?: string } {
 }
 
 // Format title for display based on role
-function formatCardTitle(card: InspectorV2Card, isOutput: boolean): string {
+function formatCardTitle(card: InspectorCardType, isOutput: boolean): string {
   const { field, table } = parseTitleParts(card.title);
   if (isOutput) {
     // Output: just the field name
@@ -51,7 +51,6 @@ function formatCardTitle(card: InspectorV2Card, isOutput: boolean): string {
 export const ColumnComparisonSection = ({
   cards,
   sources,
-  target,
   visitedFields,
 }: ColumnComparisonSectionProps) => {
   // Build source order map (first source in list = FROM table)

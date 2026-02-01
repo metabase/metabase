@@ -14,12 +14,12 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { computeCardResult } from "metabase-enterprise/transforms/lib/inspector";
-import type { InspectorV2Card } from "metabase-types/api";
+import type { InspectorCard } from "metabase-types/api";
 
 import { useCardResultsContext } from "./LensContent";
 
 type JoinAnalysisSectionProps = {
-  cards: InspectorV2Card[];
+  cards: InspectorCard[];
 };
 
 const JOIN_ICONS: Record<string, IconName> = {
@@ -46,8 +46,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
       c.metadata?.card_type === "join-step" || c.id.startsWith("join-step-"),
   );
   const tableCountCards = cards.filter(
-    (c) =>
-      c.metadata?.card_type === "table-count" || c.id.startsWith("table-"),
+    (c) => c.metadata?.card_type === "table-count" || c.id.startsWith("table-"),
   );
 
   return (
@@ -63,7 +62,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
   );
 };
 
-const BaseCountDisplay = ({ card }: { card: InspectorV2Card }) => {
+const BaseCountDisplay = ({ card }: { card: InspectorCard }) => {
   const { data, isLoading } = useGetAdhocQueryQuery(card.dataset_query);
   const value = data?.data?.rows?.[0]?.[0];
 
@@ -82,8 +81,8 @@ const BaseCountDisplay = ({ card }: { card: InspectorV2Card }) => {
 };
 
 type JoinStepsTableProps = {
-  joinStepCards: InspectorV2Card[];
-  tableCountCards: InspectorV2Card[];
+  joinStepCards: InspectorCard[];
+  tableCountCards: InspectorCard[];
 };
 
 const JoinStepsTable = ({
@@ -116,8 +115,8 @@ const JoinStepsTable = ({
 };
 
 type JoinStepRowProps = {
-  stepCard: InspectorV2Card;
-  tableCard?: InspectorV2Card;
+  stepCard: InspectorCard;
+  tableCard?: InspectorCard;
 };
 
 const JoinStepRow = ({ stepCard, tableCard }: JoinStepRowProps) => {
@@ -156,7 +155,12 @@ const JoinStepRow = ({ stepCard, tableCard }: JoinStepRowProps) => {
     if (!isLoading && cardResult) {
       setCardResult(stepCard.id, cardResult);
     }
-  }, [isLoading, cardResult, stepCard.id, setCardResult]);
+  }, [
+    isLoading,
+    cardResult,
+    stepCard.id,
+    setCardResult,
+  ]);
 
   return (
     <Card p="sm" shadow="none" withBorder>

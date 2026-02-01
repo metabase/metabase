@@ -7,12 +7,15 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { Button, Center, Divider, Flex, Stack, Tabs, Text } from "metabase/ui";
 import {
-  useGetInspectorV2DiscoveryQuery,
+  useGetInspectorDiscoveryQuery,
   useGetTransformInspectQuery,
   useGetTransformQuery,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import type { InspectorV2DiscoveryResponse, TransformId } from "metabase-types/api";
+import type {
+  InspectorDiscoveryResponse,
+  TransformId,
+} from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 import {
@@ -47,7 +50,7 @@ export const TransformInspectV2Page = ({
     data: discovery,
     isLoading: isLoadingDiscovery,
     error: discoveryError,
-  } = useGetInspectorV2DiscoveryQuery(transformId ?? skipToken);
+  } = useGetInspectorDiscoveryQuery(transformId ?? skipToken);
 
   const {
     data: inspectDataV1,
@@ -139,10 +142,13 @@ export const TransformInspectV2Page = ({
 
 type AllLensesContentProps = {
   transformId: TransformId;
-  discovery: InspectorV2DiscoveryResponse;
+  discovery: InspectorDiscoveryResponse;
 };
 
-const AllLensesContent = ({ transformId, discovery }: AllLensesContentProps) => {
+const AllLensesContent = ({
+  transformId,
+  discovery,
+}: AllLensesContentProps) => {
   const availableLenses = discovery.available_lenses;
 
   // Track which lenses are open (all open by default)
