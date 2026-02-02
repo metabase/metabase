@@ -1185,6 +1185,141 @@
                 (fetch-and-hydrate-nodes nodes-by-type))
           (sort-dependents sort_column sort_direction)))))
 
+;;; -------------------------------------------------- ERD Endpoint --------------------------------------------------
+
+(mr/def ::erd-field
+  [:map
+   [:id :int]
+   [:name :string]
+   [:display_name :string]
+   [:database_type :string]
+   [:semantic_type {:optional true} [:maybe :string]]
+   [:fk_target_field_id {:optional true} [:maybe :int]]])
+
+(mr/def ::erd-node
+  [:map
+   [:table_id :int]
+   [:name :string]
+   [:display_name :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:db_id :int]
+   [:is_focal :boolean]
+   [:fields [:sequential ::erd-field]]])
+
+(mr/def ::erd-edge
+  [:map
+   [:source_table_id :int]
+   [:source_field_id :int]
+   [:target_table_id :int]
+   [:target_field_id :int]
+   [:relationship :string]])
+
+(mr/def ::erd-response
+  [:map
+   [:nodes [:sequential ::erd-node]]
+   [:edges [:sequential ::erd-edge]]])
+
+(defn- active-fields-for-table
+  "Return active (non-retired) fields for a table."
+  [table-id]
+  (t2/select :model/Field
+             :table_id table-id
+             :active true
+             :visibility_type [:not= "retired"]))
+
+(defn- build-erd-field
+  "Convert a field to the ERD field shape."
+  [field]
+  {:id              (:id field)
+   :name            (:name field)
+   :display_name    (:display_name field)
+   :database_type   (:database_type field)
+   :semantic_type   (some-> (:semantic_type field) name)
+   :fk_target_field_id (:fk_target_field_id field)})
+
+(defn- build-erd-node
+  "Build an ERD node for a table with its fields."
+  [table fields is-focal]
+  {:table_id     (:id table)
+   :name         (:name table)
+   :display_name (:display_name table)
+   :schema       (:schema table)
+   :db_id        (:db_id table)
+   :is_focal     is-focal
+   :fields       (mapv build-erd-field fields)})
+
+(api.macros/defendpoint :get "/erd" :- ::erd-response
+  "Return an Entity Relationship Diagram (ERD) for a focal table and its directly related tables.
+  Returns nodes (tables with columns) and edges (FK relationships)."
+  [_route-params
+   {:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  (let [focal-table    (api/read-check :model/Table table-id)
+        focal-fields   (active-fields-for-table table-id)
+        ;; outgoing FKs: focal table fields that have fk_target_field_id set
+        outgoing-fks   (filter :fk_target_field_id focal-fields)
+        outgoing-target-field-ids (map :fk_target_field_id outgoing-fks)
+        outgoing-target-fields (when (seq outgoing-target-field-ids)
+                                 (t2/select :model/Field :id [:in outgoing-target-field-ids]))
+        outgoing-table-ids (set (map :table_id outgoing-target-fields))
+        ;; incoming FKs: other tables' fields pointing to focal table fields
+        focal-field-ids (set (map :id focal-fields))
+        incoming-fk-fields (when (seq focal-field-ids)
+                             (t2/select :model/Field
+                                        :fk_target_field_id [:in focal-field-ids]
+                                        :active true
+                                        :visibility_type [:not= "retired"]))
+        incoming-table-ids (set (map :table_id incoming-fk-fields))
+        ;; all related table IDs (excluding focal)
+        all-related-ids (disj (set/union outgoing-table-ids incoming-table-ids) table-id)
+        ;; fetch related tables and filter by read permission
+        related-tables  (when (seq all-related-ids)
+                          (->> (t2/select :model/Table :id [:in all-related-ids])
+                               (filter mi/can-read?)))
+        related-table-ids (set (map :id related-tables))
+        ;; fetch fields for all related tables
+        all-related-fields (when (seq related-table-ids)
+                             (t2/select :model/Field
+                                        :table_id [:in related-table-ids]
+                                        :active true
+                                        :visibility_type [:not= "retired"]))
+        related-fields-by-table (group-by :table_id all-related-fields)
+        ;; build nodes
+        focal-node   (build-erd-node focal-table focal-fields true)
+        related-nodes (mapv (fn [t]
+                              (build-erd-node t (get related-fields-by-table (:id t) []) false))
+                            related-tables)
+        all-nodes    (into [focal-node] related-nodes)
+        ;; collect self-referencing FKs from related tables
+        related-self-ref-fks (when (seq all-related-fields)
+                               (->> all-related-fields
+                                    (filter (fn [field]
+                                              (and (:fk_target_field_id field)
+                                                   (some #(and (= (:id %) (:fk_target_field_id field))
+                                                               (= (:table_id %) (:table_id field)))
+                                                         all-related-fields))))))
+        ;; build edges - only include edges where both tables are in our set
+        visible-table-ids (conj related-table-ids table-id)
+        all-fk-fields (concat outgoing-fks incoming-fk-fields related-self-ref-fks)
+        edges (->> all-fk-fields
+                   (map (fn [field]
+                          (let [target-field (some #(when (= (:id %) (:fk_target_field_id field)) %)
+                                                   (concat focal-fields (or all-related-fields [])))]
+                            (when target-field
+                              {:source_table_id (:table_id field)
+                               :source_field_id (:id field)
+                               :target_table_id (:table_id target-field)
+                               :target_field_id (:id target-field)
+                               :relationship    "many-to-one"}))))
+                   (filter some?)
+                   (filter (fn [edge]
+                             (and (contains? visible-table-ids (:source_table_id edge))
+                                  (contains? visible-table-ids (:target_table_id edge)))))
+                   ;; deduplicate edges
+                   (distinct)
+                   vec)]
+    {:nodes all-nodes
+     :edges edges}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
   (handlers/routes
