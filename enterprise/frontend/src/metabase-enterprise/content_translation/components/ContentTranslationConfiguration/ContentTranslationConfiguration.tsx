@@ -106,10 +106,14 @@ export const ContentTranslationConfiguration = () => {
         timeout = setTimeout(() => setShowDownloadingIndicator(true), DELAY);
       } else {
         setShowDownloadingIndicator(false);
-        timeout && clearTimeout(timeout);
+        if (timeout) {
+          clearTimeout(timeout);
+        }
       }
       return () => {
-        timeout && clearTimeout(timeout);
+        if (timeout) {
+          clearTimeout(timeout);
+        }
       };
     },
     [isDownloadInProgress],

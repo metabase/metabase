@@ -188,6 +188,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.getNotebookStep("data").button("Join data").click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders Model").click();
       });
       H.getNotebookStep("join").button("Summarize").click();

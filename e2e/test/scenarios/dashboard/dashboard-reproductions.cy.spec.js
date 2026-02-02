@@ -96,8 +96,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     H.getDashboardCards().should("have.length", 1);
@@ -133,8 +133,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     cy.findByTestId("edit-bar")

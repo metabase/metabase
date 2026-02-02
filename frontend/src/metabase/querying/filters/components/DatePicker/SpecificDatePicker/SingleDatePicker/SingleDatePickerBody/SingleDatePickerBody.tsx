@@ -21,11 +21,15 @@ export function SingleDatePickerBody({
   const [date, setDate] = useState<Date>(value);
 
   const handleDateChange = (newDate: DateStringValue | null) => {
-    newDate && onChange(setDatePart(value, dayjs(newDate).toDate()));
+    if (newDate) {
+      onChange(setDatePart(value, dayjs(newDate).toDate()));
+    }
   };
 
   const handleTimeChange = (newTime: Date | null) => {
-    newTime && onChange(setTimePart(value, newTime));
+    if (newTime) {
+      onChange(setTimePart(value, newTime));
+    }
   };
 
   return (

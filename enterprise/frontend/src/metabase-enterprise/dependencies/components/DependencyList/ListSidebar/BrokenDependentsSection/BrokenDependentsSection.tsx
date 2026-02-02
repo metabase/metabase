@@ -84,7 +84,7 @@ export function BrokenDependentsSection({
     <Stack role="region" aria-label={getDependentErrorNodesLabel()}>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          <Badge c="text-selected" bg="error">
+          <Badge variant="filled" bg="error">
             {count}
           </Badge>
           <Title order={5}>
