@@ -114,11 +114,11 @@ Once you've added content, you'll see a yellow dot on the synced collections ind
 
 2. Enter a commit message describing your changes (e.g., "Added dashboard on mammoth populations").
 
-3. Click "Continue" to commit and push your changes to your repository.
+3. Click "Push changes" to commit and push your changes to your repository.
 
-Check your repository — you should see the collection.
+Check your repository; you should see the collection.
 
-**About branches:** By default, you're pushing to your repository's main branch. However, you can choose which branch to push your development work to, allowing you to open pull requests for review before merging to the branch that your production Metabase pulls from. See [Branch management](#branch-management) for details on creating and switching branches.
+By default, you're pushing to your repository's main branch. However, you can choose (or create) a different branch so you can open pull requests for review. See [Branch management](#branch-management) for details on creating and switching branches.
 
 ### 6. Create a personal access token for production
 
@@ -163,7 +163,7 @@ At this point, you should be all set up. Exit Admin settings, then reload your b
 
 ### 8. Configure Transforms syncing (optional)
 
-You can sync your Transforms to version control your data transformation logic. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync certain transform folders.
+To version control your data transformation logic, you can sync your [Transforms](../data-modeling/transforms.md) including all your job tags. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync certain transform folders.
 
 ## An example dev-to-production workflow
 

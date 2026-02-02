@@ -163,6 +163,10 @@ To create a new tag, just type the new tag's name in "Tags" field (either when v
 
 Depended transforms will be scheduled and run intelligently: if Transform B depends on the output of Transform A, then a job will run Transform A before Transform B. A job will run all dependent transforms even if the dependencies aren't tagged. You will see the order of transform execution on the job's page.
 
+## Versioning transforms.
+
+See [Remote sync](../installation-and-operation/remote-sync.md).
+
 ## Transforms vs models
 
 Transforms are similar to models with model persistence turned on, but there are a few crucial differences:
