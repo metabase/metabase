@@ -15,7 +15,7 @@
    [net.cgrand.macrovich :as macros])
   (:import
    (clojure.lang ExceptionInfo)
-   (org.apache.logging.log4j ThreadContext)))
+   (org.apache.logging.log4j Level ThreadContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -160,6 +160,31 @@
         :clj  (tools-logf *ns*       level x args))))
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
+(def ^:private keyword->level
+  "Keyword log level to Log4j Level. Used by [[enabled?]]."
+  {:off   Level/OFF
+   :fatal Level/FATAL
+   :error Level/ERROR
+   :warn  Level/WARN
+   :info  Level/INFO
+   :debug Level/DEBUG
+   :trace Level/TRACE})
+
+(defn- ->level
+  "Convert keyword or Level to org.apache.logging.log4j.Level. Throws for invalid input."
+  ^Level [k]
+  (or (when (instance? Level k) k)
+      (get keyword->level (keyword k))
+      (throw (ex-info "Invalid log level" {:level k}))))
+
+(defn enabled?
+  "Returns true if logging at `level` is enabled for the current namespace. `level` may be a
+  keyword (e.g. `:debug`) or an org.apache.logging.log4j.Level."
+  [level]
+  (let [logger (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* *ns*)
+        lvl    (->level level)]
+    (.isEnabled logger lvl)))
+
 (defmacro trace
   "Log one or more args at the `:trace` level."
   {:arglists '([& args] [e & args])}
