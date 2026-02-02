@@ -15,6 +15,8 @@
 ;; IMPORTANT: ref_id is NOT unique across workspaces - it corresponds to a Representation id and
 ;; the same transform can be checked out into multiple workspaces. Always use BOTH workspace_id
 ;; AND ref_id to identify a specific WorkspaceTransform record.
+;; Ordering matches the composite PK index in the database (workspace_id, ref_id),
+;; with workspace_id first to support looking up all transforms for a given workspace.
 (methodical/defmethod t2/primary-keys :model/WorkspaceTransform [_model] [:workspace_id :ref_id])
 
 (doto :model/WorkspaceTransform
