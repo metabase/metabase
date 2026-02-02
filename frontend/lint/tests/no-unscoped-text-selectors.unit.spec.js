@@ -2,7 +2,7 @@ import { RuleTester } from "eslint";
 
 import rule from "../eslint-rules/no-unscoped-text-selectors";
 
-const ruleTester = new RuleTester({ parserOptions: { ecmaVersion: 2015 } });
+const ruleTester = new RuleTester({ languageOptions: { ecmaVersion: 2015 } });
 
 const scopeError = { message: /should be scoped/i };
 

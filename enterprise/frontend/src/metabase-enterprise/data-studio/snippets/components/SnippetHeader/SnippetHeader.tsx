@@ -33,7 +33,7 @@ export function SnippetHeader({
   snippet,
   actions,
   ...rest
-}: SnippetHeaderProps & PaneHeaderProps) {
+}: SnippetHeaderProps & Omit<PaneHeaderProps, "breadcrumbs">) {
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const { path, isLoadingPath } = useCollectionPath({

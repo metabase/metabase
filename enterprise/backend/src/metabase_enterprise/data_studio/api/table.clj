@@ -254,12 +254,12 @@
                :set    {:collection_id (:id target-collection)
                         :is_published  true}
                :where  update-where})
-    ;; Publish update events for remote sync tracking
+    ;; Publish events for audit log and remote sync tracking
     (when (seq table-ids-to-update)
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
         (doseq [table updated-tables]
-          (events/publish-event! :event/table-update {:object  table
-                                                      :user-id api/*current-user-id*}))))
+          (events/publish-event! :event/table-publish {:object  table
+                                                       :user-id api/*current-user-id*}))))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -279,12 +279,12 @@
                :set    {:collection_id nil
                         :is_published  false}
                :where  update-where})
-    ;; Publish update events for remote sync tracking
+    ;; Publish events for audit log and remote sync tracking
     (when (seq table-ids-to-update)
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
         (doseq [table updated-tables]
-          (events/publish-event! :event/table-update {:object  table
-                                                      :user-id api/*current-user-id*}))))
+          (events/publish-event! :event/table-unpublish {:object  table
+                                                         :user-id api/*current-user-id*}))))
     nil))
 
 (defn- sync-schema-async!

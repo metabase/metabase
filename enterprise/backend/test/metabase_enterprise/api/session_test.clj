@@ -34,8 +34,6 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
-                              :offer-metabase-ai
-                              :offer-metabase-ai-tiered
                               :official-collections
                               :query-reference-validation
                               :remote-sync
@@ -83,8 +81,6 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
-            :offer_metabase_ai              true
-            :offer_metabase_ai_tiered       true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true

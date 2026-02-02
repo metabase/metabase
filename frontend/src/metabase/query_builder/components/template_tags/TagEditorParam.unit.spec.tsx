@@ -312,7 +312,7 @@ describe("TagEditorParam", () => {
     );
 
     it.each<TemplateTagType>(["text", "number", "date"])(
-      "should not show the field alias input for % variables",
+      "should not show the field alias input for %% variables",
       (type) => {
         const tag = createMockTemplateTag({ type });
         setup({ tag });

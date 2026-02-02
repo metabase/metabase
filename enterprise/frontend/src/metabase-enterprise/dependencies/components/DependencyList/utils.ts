@@ -20,7 +20,16 @@ export function getFilterOptions(
     includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
   }: Urls.DependencyListParams,
 ): DependencyFilterOptions {
-  return { groupTypes, includePersonalCollections };
+  return {
+    groupTypes,
+    includePersonalCollections,
+  };
+}
+
+export function getDefaultFilterOptions(
+  mode: DependencyListMode,
+): DependencyFilterOptions {
+  return getFilterOptions(mode, {});
 }
 
 export function getSortOptions({
@@ -30,4 +39,27 @@ export function getSortOptions({
   return sortColumn != null && sortDirection != null
     ? { column: sortColumn, direction: sortDirection }
     : undefined;
+}
+
+export function getParamsWithoutDefaults(
+  mode: DependencyListMode,
+  {
+    page,
+    groupTypes,
+    includePersonalCollections,
+    ...params
+  }: Urls.DependencyListParams,
+): Urls.DependencyListParams {
+  const defaultGroupTypes = getAvailableGroupTypes(mode);
+
+  return {
+    ...params,
+    page: page === 0 ? undefined : page,
+    groupTypes:
+      groupTypes?.length === defaultGroupTypes.length ? undefined : groupTypes,
+    includePersonalCollections:
+      includePersonalCollections === DEFAULT_INCLUDE_PERSONAL_COLLECTIONS
+        ? undefined
+        : includePersonalCollections,
+  };
 }

@@ -12,6 +12,10 @@ inputs:
   logs-artifact-suffix:
     required: false
     description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
+  edition:
+    required: false
+    default: 'ee'
+    description: Edition to test (oss or ee)
 
 runs:
   using: "composite"
@@ -28,7 +32,7 @@ runs:
       env:
         MB_EDITION: ee
     - name: Test database driver
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      run: clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
       id: run-test
       # Trunk Quarantine controls the final state of the run in the CI!

@@ -5,8 +5,8 @@ import {
   PaginationControls,
   type PaginationControlsProps,
 } from "metabase/common/components/PaginationControls";
-import { Box, Flex, type FlexProps, Icon } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
+import { Box, Flex, type FlexProps, Icon, Stack } from "metabase/ui";
+import type { SortDirection } from "metabase-types/api";
 
 import CS from "./Table.module.css";
 import type { ColumnItem } from "./types";
@@ -22,7 +22,7 @@ export type TableProps<Row extends BaseRow> = {
   onSort?: (columnName: string, direction: SortDirection) => void;
   paginationProps?: Pick<
     PaginationControlsProps,
-    "page" | "pageSize" | "total"
+    "page" | "pageSize" | "total" | "showTotal"
   > & { onPageChange: (page: number) => void };
   emptyBody?: React.ReactNode;
   cols?: React.ReactNode;
@@ -57,7 +57,7 @@ export function Table<Row extends BaseRow>({
   ...rest
 }: TableProps<Row>) {
   return (
-    <>
+    <Stack gap="sm">
       <table className={cx(CS.Table, className)} {...rest}>
         {cols && <colgroup>{cols}</colgroup>}
         <thead>
@@ -104,6 +104,7 @@ export function Table<Row extends BaseRow>({
             page={paginationProps.page}
             pageSize={paginationProps.pageSize}
             total={paginationProps.total}
+            showTotal={paginationProps.showTotal}
             itemsLength={rows.length}
             onNextPage={() =>
               paginationProps.onPageChange(paginationProps.page + 1)
@@ -114,7 +115,7 @@ export function Table<Row extends BaseRow>({
           />
         </Flex>
       )}
-    </>
+    </Stack>
   );
 }
 
@@ -138,9 +139,7 @@ function ColumnHeader({
       onClick={() =>
         onSort(
           String(column.key),
-          sortColumn === column.key && sortDirection === SortDirection.Asc
-            ? SortDirection.Desc
-            : SortDirection.Asc,
+          sortColumn === column.key && sortDirection === "asc" ? "desc" : "asc",
         )
       }
       {...rest}
@@ -149,9 +148,7 @@ function ColumnHeader({
       {
         column.name && column.key === sortColumn ? (
           <Icon
-            name={
-              sortDirection === SortDirection.Asc ? "chevronup" : "chevrondown"
-            }
+            name={sortDirection === "asc" ? "chevronup" : "chevrondown"}
             c="text-secondary"
             style={{ flexShrink: 0 }}
             size={8}

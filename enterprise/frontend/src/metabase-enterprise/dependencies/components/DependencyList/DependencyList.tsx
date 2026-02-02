@@ -6,7 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import type * as Urls from "metabase/lib/urls";
 import { Center, Flex, Stack } from "metabase/ui";
 import {
-  useListBrokenGraphNodesQuery,
+  useListBreakingGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
@@ -18,36 +18,45 @@ import type {
 } from "../../types";
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
+import { DependencyFilterBar } from "./DependencyFilterBar";
+import { DependencyHeader } from "./DependencyHeader";
 import S from "./DependencyList.module.css";
-import { ListBody } from "./ListBody";
-import { ListHeader } from "./ListHeader";
-import { ListPaginationControls } from "./ListPaginationControls";
-import { ListSearchBar } from "./ListSearchBar";
-import { ListSidebar } from "./ListSidebar";
+import { DependencyPagination } from "./DependencyPagination";
+import { DependencySidebar } from "./DependencySidebar";
+import { DependencyTable } from "./DependencyTable";
 import { PAGE_SIZE } from "./constants";
-import type { DependencyListMode } from "./types";
+import type { DependencyListMode, DependencyListParamsOptions } from "./types";
 import {
   getAvailableGroupTypes,
   getFilterOptions,
+  getParamsWithoutDefaults,
   getSortOptions,
 } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
   params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  isLoadingParams: boolean;
+  onParamsChange: (
+    params: Urls.DependencyListParams,
+    options?: DependencyListParamsOptions,
+  ) => void;
 };
 
 export function DependencyList({
   mode,
   params,
+  isLoadingParams,
   onParamsChange,
 }: DependencyListProps) {
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useListGraphNodesQuery =
     mode === "broken"
-      ? useListBrokenGraphNodesQuery
+      ? useListBreakingGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
 
   const {
@@ -59,58 +68,79 @@ export function DependencyList({
     sortDirection,
   } = params;
 
-  const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    types: getDependencyTypes(groupTypes),
-    card_types: getCardTypes(groupTypes),
-    query: query,
-    include_personal_collections: includePersonalCollections,
-    sort_column: sortColumn,
-    sort_direction: sortDirection,
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-  });
-
-  const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [isResizing, { open: startResizing, close: stopResizing }] =
-    useDisclosure();
+  const {
+    data,
+    isFetching: isFetchingNodes,
+    isLoading: isLoadingNodes,
+    error,
+  } = useListGraphNodesQuery(
+    {
+      types: getDependencyTypes(groupTypes),
+      card_types: getCardTypes(groupTypes),
+      query,
+      include_personal_collections: includePersonalCollections,
+      sort_column: sortColumn,
+      sort_direction: sortDirection,
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    },
+    {
+      skip: isLoadingParams,
+    },
+  );
 
   const nodes = data?.data ?? [];
   const totalNodesCount = data?.total ?? 0;
+  const isFetching = isFetchingNodes || isLoadingParams;
+  const isLoading = isLoadingNodes || isLoadingParams;
 
   const selectedNode =
     selectedEntry != null
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
 
+  const handleParamsChange = (
+    params: Urls.DependencyListParams,
+    options?: DependencyListParamsOptions,
+  ) => {
+    onParamsChange(getParamsWithoutDefaults(mode, params), options);
+  };
+
   const handleQueryChange = (query: string | undefined) => {
-    onParamsChange({ ...params, query, page: undefined });
+    handleParamsChange({ ...params, query, page: undefined });
   };
 
   const handleFilterOptionsChange = ({
-    groupTypes,
-    includePersonalCollections,
+    groupTypes: newGroupTypes,
+    includePersonalCollections: newIncludePersonalCollections,
   }: DependencyFilterOptions) => {
-    onParamsChange({
-      ...params,
-      groupTypes,
-      includePersonalCollections,
-      page: undefined,
-    });
+    handleParamsChange(
+      {
+        ...params,
+        groupTypes: newGroupTypes,
+        includePersonalCollections: newIncludePersonalCollections,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
   };
 
   const handleSortOptionsChange = (
     sortOptions: DependencySortOptions | undefined,
   ) => {
-    onParamsChange({
-      ...params,
-      sortColumn: sortOptions?.column,
-      sortDirection: sortOptions?.direction,
-      page: undefined,
-    });
+    handleParamsChange(
+      {
+        ...params,
+        sortColumn: sortOptions?.column,
+        sortDirection: sortOptions?.direction,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
   };
 
   const handlePageChange = (page: number) => {
-    onParamsChange({ ...params, page });
+    handleParamsChange({ ...params, page });
   };
 
   useLayoutEffect(() => {
@@ -127,12 +157,13 @@ export function DependencyList({
       wrap="nowrap"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
-        <ListHeader />
-        <ListSearchBar
+        <DependencyHeader />
+        <DependencyFilterBar
           mode={mode}
           query={query}
           filterOptions={getFilterOptions(mode, params)}
-          hasLoader={isFetching && !isLoading}
+          isFetching={isFetching}
+          isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
         />
@@ -141,7 +172,7 @@ export function DependencyList({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <ListBody
+          <DependencyTable
             nodes={nodes}
             mode={mode}
             sortOptions={getSortOptions(params)}
@@ -151,7 +182,7 @@ export function DependencyList({
           />
         )}
         {!isLoading && error == null && (
-          <ListPaginationControls
+          <DependencyPagination
             page={page}
             pageNodesCount={nodes.length}
             totalNodesCount={totalNodesCount}
@@ -160,8 +191,9 @@ export function DependencyList({
         )}
       </Stack>
       {selectedNode != null && (
-        <ListSidebar
+        <DependencySidebar
           node={selectedNode}
+          mode={mode}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}

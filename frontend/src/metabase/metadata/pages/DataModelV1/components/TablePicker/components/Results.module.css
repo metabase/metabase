@@ -19,12 +19,12 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
   }
 
   &.active {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-text-brand);
+    background-color: var(--mb-color-background-selected);
 
     .icon {
       opacity: 1;

@@ -2,7 +2,7 @@ import type {
   DependencyEntry,
   DependencyGroupType,
   DependencySortColumn,
-  DependencySortDirection,
+  SortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -37,7 +37,7 @@ export type DependencyListParams = {
   groupTypes?: DependencyGroupType[];
   includePersonalCollections?: boolean;
   sortColumn?: DependencySortColumn;
-  sortDirection?: DependencySortDirection;
+  sortDirection?: SortDirection;
 };
 
 function dependencyListQueryString({
@@ -58,20 +58,20 @@ function dependencyListQueryString({
   }
   if (groupTypes != null) {
     groupTypes.forEach((groupType) => {
-      searchParams.append("group_types", groupType);
+      searchParams.append("group-types", groupType);
     });
   }
   if (includePersonalCollections != null) {
     searchParams.set(
-      "include_personal_collections",
+      "include-personal-collections",
       String(includePersonalCollections),
     );
   }
   if (sortColumn != null) {
-    searchParams.set("sort_column", sortColumn);
+    searchParams.set("sort-column", sortColumn);
   }
   if (sortDirection != null) {
-    searchParams.set("sort_direction", sortDirection);
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();

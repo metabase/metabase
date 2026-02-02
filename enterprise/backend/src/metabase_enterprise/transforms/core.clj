@@ -17,7 +17,8 @@
   python-transform?
   query-transform?
   transform-source-database
-  transform-type]
+  transform-type
+  has-db-transforms-permission?]
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!])
 

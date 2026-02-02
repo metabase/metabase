@@ -46,7 +46,9 @@ export const MobileHide = styled.div`
 
 export const AdminMobileNavbar = styled.div`
   ${breakpointMaxMedium} {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   display: none;
