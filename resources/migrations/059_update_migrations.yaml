@@ -1627,9 +1627,8 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
-                tableName: workspace_input
-                constraintName: uq_workspace_input_versioned
+            - indexExists:
+                indexName: uq_workspace_input_versioned
       changes:
         - addUniqueConstraint:
             tableName: workspace_input
@@ -1818,9 +1817,8 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
-                tableName: workspace_output
-                constraintName: uq_workspace_output_versioned
+            - indexExists:
+                indexName: uq_workspace_output_versioned
       changes:
         - addUniqueConstraint:
             tableName: workspace_output
@@ -2357,9 +2355,8 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
-                tableName: workspace_output_external
-                constraintName: uq_workspace_output_external_versioned
+            - indexExists:
+                indexName: uq_workspace_output_external_versioned
       changes:
         - addUniqueConstraint:
             tableName: workspace_output_external
@@ -2494,9 +2491,8 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
-                tableName: workspace_input_external
-                constraintName: uq_workspace_input_external_versioned
+            - indexExists:
+                indexName: uq_workspace_input_external_versioned
       changes:
         - addUniqueConstraint:
             tableName: workspace_input_external
