@@ -1,4 +1,9 @@
-import type { ErdEdge, ErdNode, ErdResponse } from "metabase-types/api";
+import type {
+  ErdEdge,
+  ErdNode,
+  ErdResponse,
+  TableId,
+} from "metabase-types/api";
 
 import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "./constants";
 import type { ErdFlowEdge, ErdFlowNode } from "./types";
@@ -54,7 +59,7 @@ export function toFlowGraph(data: ErdResponse): {
   edges: ErdFlowEdge[];
 } {
   // Build a map of table_id -> set of field IDs that have edges
-  const connectedByTable = new Map<number, Set<number>>();
+  const connectedByTable = new Map<TableId, Set<number>>();
   for (const edge of data.edges) {
     if (!connectedByTable.has(edge.source_table_id)) {
       connectedByTable.set(edge.source_table_id, new Set());
@@ -68,7 +73,7 @@ export function toFlowGraph(data: ErdResponse): {
 
   const emptySet = new Set<number>();
   return {
-    nodes: data.nodes.map(node =>
+    nodes: data.nodes.map((node) =>
       toFlowNode(node, connectedByTable.get(node.table_id) ?? emptySet),
     ),
     edges: data.edges.map(toFlowEdge),

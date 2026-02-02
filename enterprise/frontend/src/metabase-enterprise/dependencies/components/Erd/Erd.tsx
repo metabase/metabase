@@ -11,7 +11,16 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
-import { ActionIcon, Box, Icon, Loader, Stack, Text, Tooltip, useColorScheme } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Tooltip,
+  useColorScheme,
+} from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type { TableId } from "metabase-types/api";
 
@@ -41,11 +50,9 @@ interface ErdProps {
 
 export function Erd({ tableId }: ErdProps) {
   const dispatch = useDispatch();
-  const {
-    data,
-    isFetching,
-    error,
-  } = useGetErdQuery(tableId != null ? { "table-id": tableId } : skipToken);
+  const { data, isFetching, error } = useGetErdQuery(
+    tableId != null ? { "table-id": tableId } : skipToken,
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ErdFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ErdFlowEdge>([]);
@@ -100,7 +107,7 @@ export function Erd({ tableId }: ErdProps) {
           aria-label={t`Back`}
           onClick={() => dispatch(goBack())}
         >
-          <Icon c="text-dark" name="arrow_left" />
+          <Icon c="text-primary" name="arrow_left" />
         </ActionIcon>
       </Tooltip>
       <ReactFlow

@@ -51,7 +51,7 @@ describe("scenarios > dependencies > ERD", () => {
 
       cy.visit(`${ERD_URL}?table-id=${ORDERS_ID}`);
       cy.wait("@erdError");
-      cy.findByText("Failed to load ERD").should("be.visible");
+      cy.get("main").findByText("Failed to load ERD").should("be.visible");
     });
 
     it("should not render ERD canvas when no table-id is provided", () => {
@@ -292,9 +292,7 @@ describe("scenarios > dependencies > ERD", () => {
       visitErd(ORDERS_ID);
       cy.wait("@erdRequest").then((interception) => {
         const { nodes } = interception.response!.body;
-        const focalNode = nodes.find(
-          (n: { is_focal: boolean }) => n.is_focal,
-        );
+        const focalNode = nodes.find((n: { is_focal: boolean }) => n.is_focal);
 
         expect(focalNode.fields).to.be.an("array");
         expect(focalNode.fields.length).to.be.gt(0);
@@ -372,7 +370,6 @@ describe("scenarios > dependencies > ERD", () => {
       visitErd(ORDERS_ID);
 
       // Wait for dagre layout to complete
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
       cy.wait(500);
 
       cy.get(".react-flow__node").then(($nodes) => {

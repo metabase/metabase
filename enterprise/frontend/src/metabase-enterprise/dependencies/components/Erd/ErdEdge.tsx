@@ -16,14 +16,14 @@ const MARKER_START = {
   color: "var(--mb-color-border)",
   width: 16,
   height: 16,
-};
+} as unknown as string;
 
 const MARKER_END = {
   type: MarkerType.ArrowClosed,
   color: "var(--mb-color-border)",
   width: 16,
   height: 16,
-};
+} as unknown as string;
 
 export function ErdEdge(props: EdgeProps) {
   const isInitialized = useNodesInitialized();

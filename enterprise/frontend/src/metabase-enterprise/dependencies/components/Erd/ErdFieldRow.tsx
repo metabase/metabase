@@ -3,8 +3,8 @@ import { Handle, Position } from "@xyflow/react";
 import { Box, Group } from "metabase/ui";
 import type { ErdField } from "metabase-types/api";
 
-import { ROW_HEIGHT } from "./constants";
 import S from "./ErdFieldRow.module.css";
+import { ROW_HEIGHT } from "./constants";
 import { getFieldTypeBadge } from "./utils";
 
 interface ErdFieldRowProps {
@@ -18,18 +18,15 @@ export function ErdFieldRow({
   isConnected,
   hasSelfRefTarget,
 }: ErdFieldRowProps) {
-  const isPK = field.semantic_type === "type/PK" || field.semantic_type === "PK";
-  const isFK = field.semantic_type === "type/FK" || field.semantic_type === "FK";
+  const isPK =
+    field.semantic_type === "type/PK" || field.semantic_type === "PK";
+  const isFK =
+    field.semantic_type === "type/FK" || field.semantic_type === "FK";
   const badge = getFieldTypeBadge(field.database_type, field.semantic_type);
 
   return (
     <Group className={S.row} gap="xs" wrap="nowrap" h={ROW_HEIGHT} px="lg">
-      <Box
-        className={S.badge}
-        fz="xs"
-        fw="bold"
-        style={{ color: badge.color }}
-      >
+      <Box className={S.badge} fz="xs" fw="bold" style={{ color: badge.color }}>
         {badge.label}
       </Box>
       <Box
