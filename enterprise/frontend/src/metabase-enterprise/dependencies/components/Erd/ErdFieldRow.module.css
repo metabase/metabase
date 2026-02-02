@@ -1,0 +1,27 @@
+.row {
+  position: relative;
+  border-bottom: 1px solid var(--mb-color-border);
+  white-space: nowrap;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.badge {
+  min-width: 28px;
+  text-align: center;
+  user-select: none;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.handle {
+  width: 8px;
+  height: 8px;
+  background: var(--mb-color-brand);
+  border: 2px solid var(--mb-color-white);
+}

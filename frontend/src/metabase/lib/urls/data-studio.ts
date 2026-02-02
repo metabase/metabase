@@ -29,6 +29,7 @@ export const DATA_STUDIO_TABLE_METADATA_TABS = [
   "field",
   "segments",
   "measures",
+  "erd",
 ] as const;
 export type DataStudioTableMetadataTab =
   (typeof DATA_STUDIO_TABLE_METADATA_TABS)[number];
@@ -283,6 +284,10 @@ export function dataStudioMetricDependencies(cardId: CardId) {
 
 export function dataStudioMetricCaching(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/caching`;
+}
+
+export function dataStudioErd(tableId: TableId) {
+  return `${ROOT_URL}/erd?table-id=${tableId}`;
 }
 
 export function dataStudioGlossary() {

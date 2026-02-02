@@ -1,0 +1,25 @@
+.card {
+  min-width: 15rem;
+  max-width: 30rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mb-color-white);
+  box-shadow: var(--mantine-shadow-sm);
+  overflow: hidden;
+}
+
+.card.focal {
+  border-color: var(--mb-color-brand);
+}
+
+.header {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.focal .header {
+  border-bottom-color: var(--mb-color-brand);
+}
+
+.fields {
+  overflow: visible;
+}
