@@ -95,6 +95,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         // Table translations
         { locale: "de", msgid: "Orders", msgstr: "DE-Orders" },
         { locale: "de", msgid: "Products", msgstr: "DE-Products" },
+        { locale: "de", msgid: "Product", msgstr: "DE-Product" },
         { locale: "de", msgid: "People", msgstr: "DE-People" },
         { locale: "de", msgid: "Reviews", msgstr: "DE-Reviews" },
         // Column translations
@@ -339,7 +340,11 @@ describe("scenarios > embedding-sdk > content-translations", () => {
           cy.findByText("DE-Latitude").click();
         });
 
-        cy.findByText("Eindeutige Werte von DE-Latitude").should("be.visible");
+        cy.findByTestId("step-summarize-0-0").within(() => {
+          cy.findByText("Eindeutige Werte von DE-Latitude").should(
+            "be.visible",
+          );
+        });
 
         cy.findByText("Wähle eine Spalte für die Gruppierung").click();
 
@@ -374,6 +379,97 @@ describe("scenarios > embedding-sdk > content-translations", () => {
 
         cy.findByTestId("table-header").within(() => {
           cy.findByText("DE-Latitude: 10°").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate aggregation-related columns for joined tables", () => {
+      setupEditor();
+      mountEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
+        // "Join data" in German locale
+        cy.button("Daten verknüpfen").click();
+
+        popover().within(() => {
+          cy.findByText("DE-People").click();
+        });
+
+        cy.findByText("DE-User ID").click();
+
+        popover().within(() => {
+          cy.findByText("DE-Product ID").click();
+        });
+
+        cy.findByText("DE-ID").click();
+
+        popover().within(() => {
+          cy.findByText("DE-ID").click();
+        });
+
+        cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+        popover().within(() => {
+          cy.findByText("Anzahl eindeutiger Werte von...").click();
+          cy.findByText("DE-People").click();
+
+          cy.findByText("DE-Created At").click();
+        });
+
+        cy.findByTestId("step-summarize-0-0").within(() => {
+          cy.findByText(
+            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat",
+          ).should("be.visible");
+        });
+
+        cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+        popover().within(() => {
+          cy.findByText("DE-People").click();
+          cy.findByText("DE-Created At").click();
+        });
+
+        cy.findByText("DE-People - DE-Product → DE-Created At: Monat").should(
+          "be.visible",
+        );
+
+        // "Visualize" in German locale
+        cy.button("Darstellen").click();
+
+        cy.findByTestId("interactive-question-top-toolbar").within(() => {
+          cy.findByText(
+            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat von DE-People - DE-Product → DE-Created At: Monat",
+          ).should("be.visible");
+        });
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 grouping" in German locale
+          cy.findByText("1 Gruppierung").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("DE-People - DE-Product → DE-Created At").should(
+            "be.visible",
+          );
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          cy.findByText("Tabelle").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("DE-People - DE-Product → DE-Created At: Monat").should(
+            "be.visible",
+          );
+          cy.findByText(
+            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat",
+          ).should("be.visible");
         });
       });
     });

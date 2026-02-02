@@ -576,7 +576,6 @@ describe("translateColumnDisplayName", () => {
     );
 
     it("should handle combined aggregation and temporal bucket patterns", () => {
-      // Sum of Total: Month -> Sum of Gesamtsumme: Month
       const result = translateColumnDisplayName(
         "Sum of Total: Month",
         tcWithColumnTranslations,
@@ -623,6 +622,129 @@ describe("translateColumnDisplayName", () => {
         tcWithColumnTranslations,
       );
       expect(result).toBe("Gesamtsumme: Monat");
+    });
+  });
+
+  describe("joined table patterns", () => {
+    const tcWithJoinTranslations: ContentTranslationFunction = (str) => {
+      const translations: Record<string, string> = {
+        Total: "Gesamtsumme",
+        Price: "Preis",
+        Quantity: "Menge",
+        Products: "Produkte",
+        Orders: "Bestellungen",
+        "Created At": "Erstellt am",
+      };
+
+      return typeof str === "string" ? (translations[str] ?? str) : str;
+    };
+
+    it.each([
+      ["Products → Total", "Produkte → Gesamtsumme"],
+      ["Products → Created At", "Produkte → Erstellt am"],
+      ["Orders → Products → Total", "Bestellungen → Produkte → Gesamtsumme"],
+    ])(
+      "should translate joined table column names: %s -> %s",
+      (input, expected) => {
+        const result = translateColumnDisplayName(
+          input,
+          tcWithJoinTranslations,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+
+    it("should translate joined table with temporal bucket", () => {
+      const result = translateColumnDisplayName(
+        "Products → Created At: Month",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Produkte → Erstellt am: Month");
+    });
+
+    it("should translate joined table with aggregation pattern", () => {
+      const result = translateColumnDisplayName(
+        "Distinct values of Products → Total",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Distinct values of Produkte → Gesamtsumme");
+    });
+
+    it("should translate complex nested pattern with join, aggregation, and temporal bucket", () => {
+      const result = translateColumnDisplayName(
+        "Distinct values of Products → Created At: Month",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Distinct values of Produkte → Erstellt am: Month");
+    });
+
+    it("should handle nested joins with temporal bucket", () => {
+      const result = translateColumnDisplayName(
+        "Orders → Products → Created At: Month",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Bestellungen → Produkte → Erstellt am: Month");
+    });
+
+    describe("implicit join patterns (dash separator)", () => {
+      // Add translations for implicit join patterns
+      const tcWithImplicitJoinTranslations: ContentTranslationFunction = (
+        str,
+      ) => {
+        const translations: Record<string, string> = {
+          Total: "Gesamtsumme",
+          Products: "Produkte",
+          Product: "Produkt", // Singular form used in FK names
+          Orders: "Bestellungen",
+          People: "Personen",
+          "Created At": "Erstellt am",
+        };
+
+        return typeof str === "string" ? (translations[str] ?? str) : str;
+      };
+
+      it("should translate implicit join alias with dash separator", () => {
+        // "People - Product → Created At" has implicit join alias "People - Product"
+        const result = translateColumnDisplayName(
+          "People - Product → Created At",
+          tcWithImplicitJoinTranslations,
+        );
+        expect(result).toBe("Personen - Produkt → Erstellt am");
+      });
+
+      it("should translate implicit join with temporal bucket", () => {
+        const result = translateColumnDisplayName(
+          "People - Product → Created At: Month",
+          tcWithImplicitJoinTranslations,
+        );
+        expect(result).toBe("Personen - Produkt → Erstellt am: Month");
+      });
+
+      it("should translate aggregation with implicit join and temporal bucket", () => {
+        const result = translateColumnDisplayName(
+          "Distinct values of People - Product → Created At: Month",
+          tcWithImplicitJoinTranslations,
+        );
+        expect(result).toBe(
+          "Distinct values of Personen - Produkt → Erstellt am: Month",
+        );
+      });
+
+      it("should NOT split on dash when there is no arrow separator", () => {
+        // "My Question - Part 2" should be translated as a whole, not split on dash
+        const tcWithQuestionName: ContentTranslationFunction = (str) => {
+          const translations: Record<string, string> = {
+            "My Question - Part 2": "Meine Frage - Teil 2",
+          };
+          return typeof str === "string" ? (translations[str] ?? str) : str;
+        };
+
+        const result = translateColumnDisplayName(
+          "My Question - Part 2",
+          tcWithQuestionName,
+        );
+        expect(result).toBe("Meine Frage - Teil 2");
+      });
     });
   });
 });

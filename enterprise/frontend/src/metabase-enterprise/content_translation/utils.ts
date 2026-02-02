@@ -128,6 +128,14 @@ const VALUE_MARKER = "\u0000";
 // Separator used for binning and temporal bucket suffixes (e.g., "Total: Day", "Total: 10 bins")
 const COLON_SEPARATOR = ": ";
 
+// Separator used for joined table column names (e.g., "Products → Created At")
+// See: src/metabase/lib/field.cljc - field-display-name-add-fk-or-join-display-name
+const JOIN_SEPARATOR = " → ";
+
+// Separator used for implicit join aliases (e.g., "People - Product")
+// See: src/metabase/lib/join.cljc - standard-join-name
+const IMPLICIT_JOIN_SEPARATOR = " - ";
+
 /**
  * Regex patterns that match known binning suffixes that are NOT covered by
  * the explicit COLUMN_DISPLAY_NAME_PATTERNS (which handle locale-translated strings).
@@ -219,6 +227,47 @@ export const translateColumnDisplayName = (
     if (translatedColumn !== columnPart) {
       return translatedColumn + COLON_SEPARATOR + suffixPart;
     }
+  }
+
+  // Fallback: handle joined table column names like "Products → Created At"
+  // or nested joins like "Orders → Products → Created At: Monat"
+  // We split on the FIRST arrow to preserve nested patterns in the column part.
+  const arrowIndex = displayName.indexOf(JOIN_SEPARATOR);
+  if (arrowIndex > 0) {
+    const joinAliasPart = displayName.substring(0, arrowIndex);
+    const columnPart = displayName.substring(
+      arrowIndex + JOIN_SEPARATOR.length,
+    );
+
+    // The join alias may contain an implicit join separator " - " (e.g., "People - Product")
+    // which combines the joined table name and the FK field name.
+    // We only split on " - " here (within the arrow context) to avoid incorrectly
+    // splitting question names or other strings that contain dashes.
+    const dashIndex = joinAliasPart.indexOf(IMPLICIT_JOIN_SEPARATOR);
+    let translatedJoinAlias: string;
+    if (dashIndex > 0) {
+      const tablePart = joinAliasPart.substring(0, dashIndex);
+      const fkPart = joinAliasPart.substring(
+        dashIndex + IMPLICIT_JOIN_SEPARATOR.length,
+      );
+      translatedJoinAlias =
+        translateColumnDisplayName(tablePart, tc, patterns) +
+        IMPLICIT_JOIN_SEPARATOR +
+        translateColumnDisplayName(fkPart, tc, patterns);
+    } else {
+      translatedJoinAlias = translateColumnDisplayName(
+        joinAliasPart,
+        tc,
+        patterns,
+      );
+    }
+
+    // columnPart may have more patterns (arrows, colons, aggregations)
+    return (
+      translatedJoinAlias +
+      JOIN_SEPARATOR +
+      translateColumnDisplayName(columnPart, tc, patterns)
+    );
   }
 
   return tc(displayName);
