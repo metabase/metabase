@@ -702,9 +702,9 @@ describe.each<Area>(areas)(
           );
 
           cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("be.visible");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("New description").should("be.visible");
         });
 
@@ -721,9 +721,9 @@ describe.each<Area>(areas)(
           TableSection.getDescriptionInput().should("have.value", "");
 
           cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("be.visible");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("No description yet").should("be.visible");
         });
       });
@@ -788,9 +788,9 @@ describe.each<Area>(areas)(
           cy.visit(
             `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
           );
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Total").should("be.visible");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("New description").should("be.visible");
         });
 
@@ -822,9 +822,9 @@ describe.each<Area>(areas)(
           cy.visit(
             `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
           );
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Total").should("be.visible");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("No description yet").should("be.visible");
         });
       });
@@ -902,9 +902,9 @@ describe.each<Area>(areas)(
           cy.visit(
             `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
           );
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Total").should("be.visible");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("New description").should("be.visible");
         });
 
@@ -1295,7 +1295,7 @@ describe.each<Area>(areas)(
 
             cy.log("verify viz");
             H.openOrdersTable();
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+            // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
             cy.findByText("Tax (CA$)").should("be.visible");
           });
 
