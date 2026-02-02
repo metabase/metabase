@@ -437,24 +437,69 @@
 (defmacro match-lite
   "Pattern matching macro, simplified version of [[clojure.core.match]].
 
-  TODO (Cam 9/16/25) -- what exactly is the difference between this and [[match]]? It doesn't recurse? Someone please
-  write an explanation here.
+  TODO (Sashko 2026-02-01): this macro should eventually supersede all cases of `match`.
 
-  Usage:
+  Return a single thing that matches one of the match `clauses` inside `value`. If none of the clauses matched, return
+  `nil`. Recurses through maps and sequences. A clause is a pair of a match pattern and a return expression. Usage:
+
   (match-lite value
     pattern1 result1
     pattern2 result2
     ...)
 
-  Patterns can be:
+  A pattern can be one of several things:
+
   - symbol - binds the entire value
-  - keyword or string - must match exactly
+  - keyword, string, number, boolean, `nil` - must match exactly
   - set - must be one of the set items
-  - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a function, keyword, set, or an invocation snippet (but not a lambda). Can optionally check for collection length.
+  - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a
+                                  function, keyword, set, or an invocation snippet (but not a lambda). Can optionally
+                                  check for collection length.
   - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
   - map - binds associative values inside a map against other patterns.
-  - (:or clause1 clause2 ...) - special syntax for grouping several alternative conditions that share the same returned value."
-  {:style/indent :defn}
+  - (:or clause1 clause2 ...) - special syntax for grouping several alternative conditions that share the same
+                                return expression.
+  - `_` - matches anything. One usecase for this is to curtail recursive search, thus making the match non-recursive
+          (because `_` will always match and its return expression will be returned).
+
+  Examples:
+
+    ;; keyword pattern
+    (match-lite {:fields [[:field 10 nil]]} :field) ; -> [:field 10 nil]
+
+    ;; set of keywords
+    (match-lite some-query #{:field :expression}) ; -> [:field 10 nil] or [:expression \"wow\"]
+
+    ;; match any `:field` clause with two args (which should be all of them)
+    (match-lite some-query [:field _ _])
+
+    ;; match-lite any `:field` clause with integer ID > 100
+    (match-lite some-query [:field (num :guard (and (integer? num) (> num 100)))]) ; -> [:field 200 nil]
+
+    ;; symbol naming a predicate function
+    ;; match anything that satisfies that predicate
+    (match-lite some-query integer?)
+
+    ;; match anything with `_`
+    (match-lite 100 `_` :anything) ; -> :anything
+
+  The return expresion can use any of the bindings established in the pattern to compute what should be returned.
+  `nil` is a legal return value and prevents other clauses from being checked and matched. The following special forms
+  can be used within return expression:
+
+  - `&match` - is bound to the current value being matched.
+  - `(&recur <other-value>)` - can be used to re-run just the matching macro on an arbitrarily computed value.
+
+  Examples:
+
+    ;; find vector with exactly 3 items and multiply them
+    (match-lite [[[[[10 20 30]]]]] [_ _ _] (reduce * &match)) ; -> 6000
+
+    ;; find innermost :div
+    (match-lite [:div [:div [:div \"hello\"]]]
+      [:div (nested :guard vector?)] (&recur nested)
+      [:div & _]                     &match)
+    ; -> [:div \"hello\"]"
   [value & clauses]
   (match-lite* value clauses))
 
@@ -491,9 +536,22 @@
        (perf/not-empty @acc#))))
 
 (defmacro match-many
-  "Like `match-lite`, but returns multiple matches.
+  "Pattern matching macro, returns multiple things that match one of the `clauses` inside `value. See `match-lite` for
+  pattern and return expression syntax.
 
-  TODO: proper docs."
+  There are several important characteristics that make `match-many` behavior semantically different from `match-lite`:
+
+  1. If one or more clauses matched, return a vector of the matched return values. If none of the clauses were
+  matched, `nil` is returned instead of `[]`.
+
+  2. If a return expression returns `nil`, it will not appear in the return list. This can be used to filter results:
+
+    (match some-query [:field (id :guard integer?) _]
+      (when (even? id)
+        id))
+    ;; -> [2 4 6 8]
+
+    Note that returning `nil` still prevents other clauses from being checked, and causes recursion to stop."
   {:style/indent :defn}
   [value & clauses]
   (match-many* value clauses))

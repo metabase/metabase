@@ -140,7 +140,7 @@
                             {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
 
-              {:native identity}
+              {:native (_ :guard identity)}
               (when-not parent-source-card-id
                 {:native? true})
 
