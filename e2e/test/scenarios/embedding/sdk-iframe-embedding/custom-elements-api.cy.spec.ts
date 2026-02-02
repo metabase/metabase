@@ -297,13 +297,16 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
-      `);
+    `);
 
+      // Wait for table to be stable, then re-query before clicking (prevents flaky click during re-render)
       H.getSimpleEmbedIframeContent()
         .findAllByText("37.65")
         .first()
-        .should("be.visible")
-        .click();
+        .should("be.visible");
+
+      H.getSimpleEmbedIframeContent().findAllByText("37.65").first().click();
+
       H.getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
