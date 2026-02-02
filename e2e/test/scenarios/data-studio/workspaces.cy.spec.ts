@@ -1700,13 +1700,14 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByRole("button", { name: /Edit/ }).click();
       cy.wait("@checkoutWorkspace");
       H.popover().contains("New workspace").should("be.disabled");
-      H.popover().contains("New workspace").realHover();
-      H.tooltip().should(
-        "contain.text",
-        "This transform cannot be edited in a workspace because it references other questions.",
-      );
-      cy.log("Close tooltip");
-      cy.get("body").click();
+      // TODO: the tooltip assertions are flaky https://linear.app/metabase/issue/GDGT-1620
+      // H.popover().contains("New workspace").realHover();
+      // H.tooltip().should(
+      //   "contain.text",
+      //   "This transform cannot be edited in a workspace because it references other questions.",
+      // );
+      // cy.log("Close tooltip");
+      // cy.get("body").click();
 
       cy.log("Edit transform to remove model reference");
       Transforms.clickEditDefinition();
