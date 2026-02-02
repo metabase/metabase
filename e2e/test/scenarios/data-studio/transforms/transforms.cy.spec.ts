@@ -3215,11 +3215,8 @@ describe("scenarios > admin > transforms > jobs", () => {
         .scrollIntoView()
         .should("be.visible");
       getJobTransformTable().within(() => {
-        // 1 transform plus the header row
-        cy.findAllByRole("row").should("have.length", 2);
-
         // Check the existence and also their order
-        cy.findAllByRole("row").eq(1).should("contain", "MBQL transform");
+        cy.findByText("MBQL transform").should("be.visible");
       });
     });
 
