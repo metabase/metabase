@@ -232,8 +232,10 @@
                                                                :unit :month}}]}]}]})]
       (is (=? [{:strategy :left-join
                 :conditions [[:= {}
-                              [:field {:temporal-unit :month} (meta/id :users :last-login)]
-                              [:field {:temporal-unit :month} (meta/id :checkins :date)]]]}]
+                              [:field {:temporal-unit :month :join-alias missing-value}
+                               (meta/id :users :last-login)]
+                              [:field {:temporal-unit :month :join-alias "Checkins - Last Login"}
+                               (meta/id :checkins :date)]]]}]
               (lib/joins query))))))
 
 (deftest ^:parallel test-query-multi-stage-test
