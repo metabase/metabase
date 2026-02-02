@@ -79,9 +79,6 @@ databaseChangeLog:
                   remarks: Version number for dependency analysis to track when dependencies need recalculation
                   constraints:
                     nullable: false
-      rollback:
-        - dropTable:
-            tableName: measure
 
   - changeSet:
       id: v59.2025-12-04T12:00:01
@@ -1649,7 +1646,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-01-31T12:00:48
-      author: sansolo
+      author: crisptrutski
       comment: Create workspace_output table for tables produced by workspace transforms
       preConditions:
         - onFail: MARK_RAN
@@ -1747,7 +1744,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-01-31T12:00:49
-      author: sansolo
+      author: crisptrutski
       comment: Add index on workspace_output.workspace_id
       preConditions:
         - onFail: MARK_RAN
@@ -1766,7 +1763,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-01-31T12:00:50
-      author: sansolo
+      author: crisptrutski
       comment: Add index on workspace_output.ref_id
       preConditions:
         - onFail: MARK_RAN
@@ -1785,7 +1782,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-01-31T12:00:51
-      author: sansolo
+      author: crisptrutski
       comment: Add FK from workspace_output.workspace_id to workspace with CASCADE
       preConditions:
         - onFail: MARK_RAN
@@ -1803,7 +1800,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-01-31T12:00:52
-      author: sansolo
+      author: crisptrutski
       comment: Add FK from workspace_output.ref_id to workspace_transform with CASCADE
       preConditions:
         - onFail: MARK_RAN
@@ -1821,7 +1818,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-01-31T12:00:53
-      author: sansolo
+      author: crisptrutski
       comment: Add unique constraint on workspace_output (workspace_id, ref_id, transform_version)
       preConditions:
         - onFail: MARK_RAN
