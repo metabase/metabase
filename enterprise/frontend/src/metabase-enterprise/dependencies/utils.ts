@@ -444,7 +444,6 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
       return node.data.fields ?? [];
     case "transform":
     case "sandbox":
-      return node.data.table?.fields ?? [];
     case "snippet":
     case "dashboard":
     case "document":
@@ -834,51 +833,6 @@ export function getDependentErrorNodesCount(
     );
   });
   return nodeIds.size;
-}
-
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function parseNumber(value: unknown): number | undefined {
-  if (typeof value === "string" && value.trim() !== "") {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : undefined;
-  }
-}
-
-export function parseBoolean(value: unknown): boolean | undefined {
-  switch (value) {
-    case "true":
-      return true;
-    case "false":
-      return false;
-    default:
-      return undefined;
-  }
-}
-
-export function parseEnum<T extends string>(
-  value: unknown,
-  items: readonly T[],
-): T | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const item = items.find((item) => item === value);
-  return item != null ? item : undefined;
-}
-
-export function parseList<T>(
-  value: unknown,
-  parseItem: (item: unknown) => T | undefined,
-): T[] | undefined {
-  if (value != null) {
-    const array = Array.isArray(value) ? value : [value];
-    return array.map(parseItem).filter((item) => item != null);
-  } else {
-    return undefined;
-  }
 }
 
 export function getSearchQuery(searchValue: string): string | undefined {

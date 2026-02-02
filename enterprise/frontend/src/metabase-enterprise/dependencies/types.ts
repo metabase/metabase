@@ -4,7 +4,7 @@ import type {
   AnalysisFindingErrorType,
   DependencyGroupType,
   DependencySortColumn,
-  DependencySortDirection,
+  SortDirection,
 } from "metabase-types/api";
 
 export type NodeId = string;
@@ -51,5 +51,5 @@ export type DependencyFilterOptions = {
 
 export type DependencySortOptions = {
   column: DependencySortColumn;
-  direction: DependencySortDirection;
+  direction: SortDirection;
 };
