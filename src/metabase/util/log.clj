@@ -131,9 +131,7 @@
   `metabase.server.middleware.log` which logs requests."
     [logger-ns]
     (let [team (attribution logger-ns)]
-      (when (and (config/config-bool :mb-log-team-attribution)
-                 team
-                 (not (identical? team ::skip)))
+      (when (and team (not (identical? team ::skip)))
         team))))
 
 (defn- tools-logp
