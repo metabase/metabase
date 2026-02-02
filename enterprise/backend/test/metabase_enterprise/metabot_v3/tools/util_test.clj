@@ -284,21 +284,21 @@
     (let [columns [{:name "ID" :table-id 1 :type :number}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"invalid field_id format"
+           #"Invalid field_id format"
            (metabot-v3.tools.util/resolve-column {:field-id nil} "t1-" columns)))))
 
   (testing "throws informative error for empty field-id"
     (let [columns [{:name "ID" :table-id 1 :type :number}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"invalid field_id format"
+           #"Invalid field_id format"
            (metabot-v3.tools.util/resolve-column {:field-id ""} "t1-" columns)))))
 
   (testing "throws informative error for numeric field-id"
     (let [columns [{:name "ID" :table-id 1 :type :number}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"invalid field_id format"
+           #"Invalid field_id format"
            (metabot-v3.tools.util/resolve-column {:field-id 123} "t1-" columns)))))
 
   (testing "error data contains agent-error? flag for user-friendly handling"
