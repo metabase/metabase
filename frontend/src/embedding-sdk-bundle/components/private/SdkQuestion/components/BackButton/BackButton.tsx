@@ -24,7 +24,6 @@ export type BackButtonProps = Omit<
  * @param props
  */
 export const BackButton = ({ ...actionIconProps }: BackButtonProps) => {
-  console.error("should not be used?");
   const { onNavigateBack, backToDashboard } = useSdkQuestionContext();
   const { isBreadcrumbEnabled } = useSdkBreadcrumbs();
 

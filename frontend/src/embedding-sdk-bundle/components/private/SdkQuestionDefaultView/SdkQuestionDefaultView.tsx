@@ -195,17 +195,15 @@ export const SdkQuestionDefaultView = ({
         className={InteractiveQuestionS.TopBar}
         gap="sm"
         p="md"
-        // data-hide-empty
+        data-hide-empty
       >
         <Group
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
-          // data-hide-empty
+          data-hide-empty
         >
-          <Group
-            gap="xs" // data-hide-empty
-          >
+          <Group gap="xs" data-hide-empty>
             <DefaultViewTitle title={title} />
           </Group>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}

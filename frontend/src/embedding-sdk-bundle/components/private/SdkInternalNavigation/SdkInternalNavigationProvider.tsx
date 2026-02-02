@@ -4,7 +4,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { match } from "ts-pattern";
@@ -62,7 +61,6 @@ const SdkInternalNavigationProviderInner = ({
   drillThroughQuestionProps,
 }: Props) => {
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
-  const isNavigatingRef = useRef(false);
   const store = useSdkStore();
 
   const push = useCallback((entry: SdkInternalNavigationEntry) => {
@@ -94,44 +92,29 @@ const SdkInternalNavigationProviderInner = ({
   // Navigate to a new card (used for drilling from questions)
   const navigateToNewCard = useCallback(
     async (params: NavigateToNewCardParams) => {
-      // Prevent race conditions from rapid clicks
-      if (isNavigatingRef.current) {
-        console.warn(
-          "[SDK Navigation] Navigation already in progress, ignoring",
-        );
-        return;
-      }
-      isNavigatingRef.current = true;
+      const { nextCard } = params;
+      // Generate URL for the ad-hoc question
+      const url = Urls.question(null, { hash: nextCard });
+      const currentEntry = stack.at(-1);
 
-      try {
-        const { nextCard } = params;
-        // Generate URL for the ad-hoc question
-        const url = Urls.question(null, { hash: nextCard });
-        const currentEntry = stack.at(-1);
-
-        // If we're already on an adhoc question, just update its path instead of pushing
-        // otherwise we'll have an entry for each filter change done from drills
-        if (currentEntry?.type === "adhoc-question") {
-          setStack((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = {
-              type: "adhoc-question",
-              questionPath: url,
-              name: nextCard.name || t`Question`,
-            };
-            return updated;
-          });
-        } else {
-          push({
+      // If we're already on an adhoc question, just update its path instead of pushing
+      // otherwise we'll have an entry for each filter change done from drills
+      if (currentEntry?.type === "adhoc-question") {
+        setStack((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
             type: "adhoc-question",
             questionPath: url,
             name: nextCard.name || t`Question`,
-          });
-        }
-      } catch (error) {
-        console.warn("[SDK Navigation] Failed to navigate to new card:", error);
-      } finally {
-        isNavigatingRef.current = false;
+          };
+          return updated;
+        });
+      } else {
+        push({
+          type: "adhoc-question",
+          questionPath: url,
+          name: nextCard.name || t`Question`,
+        });
       }
     },
     [push, stack],
