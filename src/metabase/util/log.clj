@@ -105,7 +105,7 @@
   `(with-thread-context-fn ~context-map
      (fn [] ~@body)))
 
-(let [config (-> (if config/is-dev?
+(let [config (-> (if (config/jar?)
                    (io/file ".clj-kondo/config/modules/config.edn")
                    (io/resource "metabase/config/modules.edn"))
                  slurp edn/read-string :metabase/modules)

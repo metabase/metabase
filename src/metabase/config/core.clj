@@ -106,6 +106,18 @@
 ;; This allows us to run Cypress E2E tests with the production-like behavior.
 (def ^Boolean is-e2e?  "Are we running Cypress E2E tests against the production-ready code?"    (= :e2e run-mode))
 
+(defn jar?
+  "Returns true iff we are running from a jar.
+
+  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
+
+  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
+  []
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
+
 ;;; Version stuff
 
 (defn- version-info-from-properties-file []
