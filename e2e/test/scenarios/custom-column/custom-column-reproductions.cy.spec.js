@@ -1049,11 +1049,10 @@ describe("issue 49882", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
-
     H.openOrdersTable({ mode: "notebook" });
-    cy.wait("@metadata");
-    H.getNotebookStep("data").should("contain.text", "Orders");
+    cy.findByTestId("head-crumbs-container")
+      .should("contain", "Sample Database")
+      .and("contain", "Orders");
     H.addCustomColumn();
   });
 
