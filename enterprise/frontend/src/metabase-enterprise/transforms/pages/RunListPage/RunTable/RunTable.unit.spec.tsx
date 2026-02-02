@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   mockGetBoundingClientRect,
@@ -20,32 +19,21 @@ type SetupOpts = {
 
 function setup({ runs = [] }: SetupOpts = {}) {
   const onSortOptionsChange = jest.fn();
+  const onSelect = jest.fn();
   mockGetBoundingClientRect({ width: 800, height: 600 });
 
-  return renderWithProviders(
-    <>
-      <Route
-        path="/data-studio/transforms/runs"
-        component={() => (
-          <RunTable
-            runs={runs}
-            tags={[]}
-            hasFilters={false}
-            sortOptions={undefined}
-            onSortOptionsChange={onSortOptionsChange}
-          />
-        )}
-      />
-      <Route
-        path="/data-studio/transforms/:id"
-        component={() => <div data-testid="transform-detail" />}
-      />
-    </>,
-    {
-      initialRoute: "/data-studio/transforms/runs",
-      withRouter: true,
-    },
+  renderWithProviders(
+    <RunTable
+      runs={runs}
+      tags={[]}
+      hasFilters={false}
+      sortOptions={undefined}
+      onSortOptionsChange={onSortOptionsChange}
+      onSelect={onSelect}
+    />,
   );
+
+  return { onSelect };
 }
 
 describe("RunTable", () => {
@@ -57,18 +45,15 @@ describe("RunTable", () => {
     expect(await screen.findByText("My Transform")).toBeInTheDocument();
   });
 
-  it("should navigate to transform detail when clicking a row", async () => {
+  it("should call onSelect when clicking a row", async () => {
     const transform = createMockTransform({ id: 123, name: "Test Transform" });
-    const run = createMockTransformRun({ transform });
-    const { history } = setup({ runs: [run] });
+    const run = createMockTransformRun({ id: 456, transform });
+    const { onSelect } = setup({ runs: [run] });
 
     const row = await screen.findByRole("row", { name: /Test Transform/ });
     await userEvent.click(row);
 
-    expect(history?.getCurrentLocation()?.pathname).toBe(
-      "/data-studio/transforms/123",
-    );
-    expect(screen.getByTestId("transform-detail")).toBeInTheDocument();
+    expect(onSelect).toHaveBeenCalledWith(456);
   });
 
   describe("deleted transforms", () => {
@@ -83,24 +68,21 @@ describe("RunTable", () => {
       expect(await screen.findByText("Deleted Transform")).toBeInTheDocument();
     });
 
-    it("should not navigate when clicking a row with deleted transform", async () => {
+    it("should call onSelect when clicking a row with deleted transform", async () => {
       const transform = createMockTransform({
         id: 456,
         name: "Deleted Transform",
         deleted: true,
       });
-      const run = createMockTransformRun({ transform });
-      const { history } = setup({ runs: [run] });
+      const run = createMockTransformRun({ id: 789, transform });
+      const { onSelect } = setup({ runs: [run] });
 
       const row = await screen.findByRole("row", {
         name: /Deleted Transform/,
       });
       await userEvent.click(row);
 
-      expect(history?.getCurrentLocation()?.pathname).toBe(
-        "/data-studio/transforms/runs",
-      );
-      expect(screen.queryByTestId("transform-detail")).not.toBeInTheDocument();
+      expect(onSelect).toHaveBeenCalledWith(789);
     });
   });
 });

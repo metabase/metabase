@@ -1,7 +1,7 @@
 import { Box, Group } from "metabase/ui";
 import type { Transform, TransformRunStatus } from "metabase-types/api";
 
-import { formatStatus } from "../../utils";
+import { formatStatus, isErrorStatus } from "../../utils";
 import { RunCancelButton } from "../RunCancelButton/RunCancelButton";
 import { RunInfo } from "../RunInfo";
 
@@ -20,7 +20,7 @@ export function RunStatusInfo({
   message,
   endTime,
 }: RunStatusInfoProps) {
-  const isError = status === "failed" || status === "timeout";
+  const isError = isErrorStatus(status);
 
   return (
     <Group gap="xs" className={S.runStatusInfo} wrap="nowrap">

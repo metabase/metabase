@@ -16,6 +16,7 @@ import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import {
   formatRunMethod,
   formatStatus,
+  getTransformRunName,
   parseTimestampWithTimezone,
 } from "../../../utils";
 import type { TransformRunSortOptions } from "../types";
@@ -31,7 +32,7 @@ function getTransformColumn(): TreeTableColumnDef<TransformRun> {
     maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (run) => {
-      return run.transform?.name || t`Unnamed transform`;
+      return getTransformRunName(run);
     },
     cell: ({ row, getValue }) => {
       const run = row.original;

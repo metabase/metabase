@@ -12,6 +12,7 @@ import type {
   DatabaseId,
   DraftTransformSource,
   Transform,
+  TransformRun,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
@@ -84,6 +85,14 @@ export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
   }
 
   return null;
+}
+
+export function getTransformRunName(run: TransformRun): string {
+  return run.transform?.name ?? t`Unknown transform`;
+}
+
+export function isErrorStatus(status: TransformRunStatus) {
+  return status === "failed" || status === "timeout";
 }
 
 export function isTransformRunning(transform: Transform) {

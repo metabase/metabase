@@ -1,25 +1,28 @@
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
 import type { Location } from "history";
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Center, Stack } from "metabase/ui";
+import { Center, Flex, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
-import type { TransformRun } from "metabase-types/api";
+import type { TransformRun, TransformRunId } from "metabase-types/api";
 
 import { RunFilterBar } from "./RunFilterBar";
+import S from "./RunListPage.module.css";
 import { RunPagination } from "./RunPagination";
+import { RunSidebar } from "./RunSidebar/RunSidebar";
 import { RunTable } from "./RunTable";
 import { PAGE_SIZE } from "./constants";
 import type {
@@ -39,25 +42,13 @@ type RunListPageProps = {
 
 export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
-
-  return (
-    <PageContainer data-testid="transforms-run-list" gap={0}>
-      <PaneHeader
-        breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-        py={0}
-        showMetabotButton
-      />
-      <RunListPageBody params={params} />
-    </PageContainer>
-  );
-}
-
-type RunListPageBodyProps = {
-  params: Urls.TransformRunListParams;
-};
-
-function RunListPageBody({ params }: RunListPageBodyProps) {
   const { page = 0 } = params;
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+  const [selectedRunId, setSelectedRunId] = useState<
+    TransformRunId | undefined
+  >();
   const [isPolling, setIsPolling] = useState(false);
   const dispatch = useDispatch();
 
@@ -102,6 +93,19 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     setIsPolling(isPollingNeeded(data?.data));
   }
 
+  const runs = data?.data ?? [];
+
+  const selectedRun =
+    selectedRunId != null
+      ? runs.find((run) => run.id === selectedRunId)
+      : undefined;
+
+  useLayoutEffect(() => {
+    if (selectedRunId != null && selectedRun == null) {
+      setSelectedRunId(undefined);
+    }
+  }, [selectedRunId, selectedRun]);
+
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformRunListParams) => {
       dispatch(replace(Urls.transformRunList(newParams)));
@@ -135,36 +139,63 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     [params, handleParamsChange],
   );
 
-  if (!data || isLoading || error != null) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Center>
-    );
-  }
+  const handleSelect = useCallback((runId: TransformRunId) => {
+    setSelectedRunId(runId);
+  }, []);
 
   return (
-    <Stack flex="0 1 auto" mih={0} gap="lg">
-      <RunFilterBar
-        filterOptions={getFilterOptions(params)}
-        transforms={transforms}
-        tags={tags}
-        onFilterOptionsChange={handleFilterOptionsChange}
-      />
-      <RunTable
-        runs={data.data}
-        tags={tags}
-        hasFilters={hasFilterOptions(getFilterOptions(params))}
-        sortOptions={getSortOptions(params)}
-        onSortOptionsChange={handleSortOptionsChange}
-      />
-      <RunPagination
-        page={page}
-        itemsLength={data.data.length}
-        totalCount={data.total}
-        onPageChange={handlePageChange}
-      />
-    </Stack>
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={containerRef}
+      h="100%"
+      wrap="nowrap"
+      data-testid="transforms-run-list"
+    >
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
+        <PaneHeader
+          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+          py={0}
+          showMetabotButton
+        />
+        {!data || isLoading || error != null ? (
+          <Center h="100%">
+            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Center>
+        ) : (
+          <Stack flex="0 1 auto" mih={0} gap="lg">
+            <RunFilterBar
+              filterOptions={getFilterOptions(params)}
+              transforms={transforms}
+              tags={tags}
+              onFilterOptionsChange={handleFilterOptionsChange}
+            />
+            <RunTable
+              runs={runs}
+              tags={tags}
+              hasFilters={hasFilterOptions(getFilterOptions(params))}
+              sortOptions={getSortOptions(params)}
+              onSortOptionsChange={handleSortOptionsChange}
+              onSelect={handleSelect}
+            />
+            <RunPagination
+              page={page}
+              itemsLength={runs.length}
+              totalCount={data.total}
+              onPageChange={handlePageChange}
+            />
+          </Stack>
+        )}
+      </Stack>
+      {selectedRun != null && (
+        <RunSidebar
+          run={selectedRun}
+          containerWidth={containerWidth}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
+          onClose={() => setSelectedRunId(undefined)}
+        />
+      )}
+    </Flex>
   );
 }
 

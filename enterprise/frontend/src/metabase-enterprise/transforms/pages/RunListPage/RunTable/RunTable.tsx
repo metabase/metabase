@@ -1,14 +1,15 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
-import type { TransformRun, TransformTag } from "metabase-types/api";
+import type {
+  TransformRun,
+  TransformRunId,
+  TransformTag,
+} from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import type { TransformRunSortOptions } from "../types";
@@ -23,6 +24,7 @@ type RunTableProps = {
   onSortOptionsChange: (
     sortOptions: TransformRunSortOptions | undefined,
   ) => void;
+  onSelect: (runId: TransformRunId) => void;
 };
 
 export function RunTable({
@@ -31,8 +33,8 @@ export function RunTable({
   hasFilters,
   sortOptions,
   onSortOptionsChange,
+  onSelect,
 }: RunTableProps) {
-  const dispatch = useDispatch();
   const systemTimezone = useSetting("system-timezone");
 
   const columns = useMemo(
@@ -47,14 +49,11 @@ export function RunTable({
 
   const notFoundLabel = hasFilters ? t`No runs found` : t`No runs yet`;
 
-  const handleRowActivate = useCallback(
+  const handleRowClick = useCallback(
     (row: Row<TransformRun>) => {
-      const run = row.original;
-      if (run.transform && !run.transform.deleted) {
-        dispatch(push(Urls.transform(run.transform.id)));
-      }
+      onSelect(row.original.id);
     },
-    [dispatch],
+    [onSelect],
   );
 
   const handleSortingChange = useCallback(
@@ -72,7 +71,6 @@ export function RunTable({
     sorting: sortingState,
     manualSorting: true,
     getNodeId: (run) => String(run.id),
-    onRowActivate: handleRowActivate,
     onSortingChange: handleSortingChange,
   });
 
@@ -89,7 +87,7 @@ export function RunTable({
         instance={treeTableInstance}
         emptyState={<ListEmptyState label={notFoundLabel} />}
         ariaLabel={t`Transform runs`}
-        onRowClick={handleRowActivate}
+        onRowClick={handleRowClick}
       />
     </Card>
   );
