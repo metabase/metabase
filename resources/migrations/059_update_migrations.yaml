@@ -843,6 +843,9 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: Timestamp when the workspace was last updated
                   defaultValueComputed: current_timestamp
+      rollback:
+        - dropTable:
+            tableName: workspace
 
   - changeSet:
       id: v59.2026-01-31T12:00:01
@@ -860,6 +863,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: collection_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:02
@@ -877,6 +881,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:03
@@ -894,6 +899,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: api_key_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:04
@@ -911,6 +917,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: execution_user
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:05
@@ -926,6 +933,7 @@ databaseChangeLog:
             tableName: workspace
             columnNames: name
             constraintName: idx_workspace_name_unique
+      rollback:
 
   # ---------- Group 2: collection.workspace_id ----------
 
@@ -949,6 +957,7 @@ databaseChangeLog:
                   remarks: Workspace containing this collection
                   constraints:
                     nullable: true
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:07
@@ -966,6 +975,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:08
@@ -984,6 +994,10 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
 
   # ---------- Group 3: workspace_mapping_table ----------
 
@@ -1019,6 +1033,9 @@ databaseChangeLog:
                   remarks: ID of the workspace containing the mapping
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_mapping_table
 
   - changeSet:
       id: v59.2026-01-31T12:00:10
@@ -1033,6 +1050,10 @@ databaseChangeLog:
         - addPrimaryKey:
             tableName: workspace_mapping_table
             columnNames: upstream_id, downstream_id
+            constraintName: pk_workspace_mapping_table
+      rollback:
+        - dropPrimaryKey:
+            tableName: workspace_mapping_table
             constraintName: pk_workspace_mapping_table
 
   - changeSet:
@@ -1051,6 +1072,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: upstream_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:12
@@ -1068,6 +1090,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: downstream_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:13
@@ -1085,6 +1108,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:14
@@ -1103,6 +1127,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:15
@@ -1121,6 +1146,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:16
@@ -1139,6 +1165,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:17
@@ -1155,6 +1182,7 @@ databaseChangeLog:
             tableName: workspace_mapping_table
             columnNames: downstream_id
             constraintName: uq_workspace_mapping_table_downstream_id
+      rollback:
 
   # ---------- Group 4: workspace_mapping_transform ----------
 
@@ -1190,6 +1218,9 @@ databaseChangeLog:
                   remarks: ID of the workspace containing the mapping
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_mapping_transform
 
   - changeSet:
       id: v59.2026-01-31T12:00:19
@@ -1204,6 +1235,10 @@ databaseChangeLog:
         - addPrimaryKey:
             tableName: workspace_mapping_transform
             columnNames: upstream_id, downstream_id
+            constraintName: pk_workspace_mapping_transform
+      rollback:
+        - dropPrimaryKey:
+            tableName: workspace_mapping_transform
             constraintName: pk_workspace_mapping_transform
 
   - changeSet:
@@ -1222,6 +1257,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: upstream_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:21
@@ -1239,6 +1275,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: downstream_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:22
@@ -1256,6 +1293,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:23
@@ -1274,6 +1312,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:24
@@ -1292,6 +1331,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:25
@@ -1310,6 +1350,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:26
@@ -1326,6 +1367,7 @@ databaseChangeLog:
             tableName: workspace_mapping_transform
             columnNames: downstream_id
             constraintName: uq_workspace_mapping_transform_downstream_id
+      rollback:
 
   # ---------- Group 5: workspace_log ----------
 
@@ -1392,6 +1434,9 @@ databaseChangeLog:
                   name: message
                   type: ${text.type}
                   remarks: Details on the task result if any
+      rollback:
+        - dropTable:
+            tableName: workspace_log
 
   - changeSet:
       id: v59.2026-01-31T12:00:28
@@ -1409,6 +1454,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:29
@@ -1427,6 +1473,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   # ---------- Group 6: workspace_transform ----------
 
@@ -1568,6 +1615,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_transform
 
   - changeSet:
       id: v59.2026-01-31T12:00:31
@@ -1585,6 +1635,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:32
@@ -1602,6 +1653,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: global_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:33
@@ -1619,6 +1671,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: collection_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:34
@@ -1636,6 +1689,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:35
@@ -1654,6 +1708,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:36
@@ -1672,6 +1727,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:37
@@ -1690,6 +1746,7 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:38
@@ -1708,6 +1765,7 @@ databaseChangeLog:
             referencedTableName: core_user
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:39
@@ -1816,6 +1874,9 @@ databaseChangeLog:
                   remarks: Timestamp when the input was last updated
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_input
 
   - changeSet:
       id: v59.2026-01-31T12:00:41
@@ -1833,6 +1894,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:42
@@ -1850,6 +1912,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:43
@@ -1869,6 +1932,7 @@ databaseChangeLog:
                   name: workspace_id
               - column:
                   name: ref_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:44
@@ -1887,6 +1951,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:45
@@ -1905,6 +1970,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:46
@@ -1921,6 +1987,7 @@ databaseChangeLog:
             tableName: workspace_input
             columnNames: workspace_id, ref_id, db_id, schema, table, transform_version
             constraintName: uq_workspace_input_versioned
+      rollback:
 
   # ---------- Group 8: workspace_output ----------
 
@@ -2018,6 +2085,9 @@ databaseChangeLog:
                   remarks: Timestamp when the output was last updated
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_output
 
   - changeSet:
       id: v59.2026-01-31T12:00:48
@@ -2035,6 +2105,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:49
@@ -2052,6 +2123,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ref_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:50
@@ -2070,6 +2142,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:51
@@ -2083,11 +2156,12 @@ databaseChangeLog:
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output
-            baseColumnNames: ref_id
+            baseColumnNames: workspace_id, ref_id
             constraintName: fk_workspace_output_ref_id
             referencedTableName: workspace_transform
-            referencedColumnNames: ref_id
+            referencedColumnNames: workspace_id, ref_id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:52
@@ -2104,6 +2178,7 @@ databaseChangeLog:
             tableName: workspace_output
             columnNames: workspace_id, ref_id, transform_version
             constraintName: uq_workspace_output_versioned
+      rollback:
 
   # ---------- Group 9: workspace_merge ----------
 
@@ -2159,6 +2234,9 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_merge
 
   - changeSet:
       id: v59.2026-01-31T12:00:54
@@ -2177,6 +2255,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:55
@@ -2194,6 +2273,7 @@ databaseChangeLog:
             constraintName: fk_workspace_merge_creator_id
             referencedTableName: core_user
             referencedColumnNames: id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:56
@@ -2211,6 +2291,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:00:57
@@ -2228,6 +2309,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+      rollback:
 
   # ---------- Group 10: workspace_merge_transform ----------
 
@@ -2295,6 +2377,9 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_merge_transform
 
   - changeSet:
       id: v59.2026-01-31T12:00:59
@@ -2313,6 +2398,7 @@ databaseChangeLog:
             referencedTableName: workspace_merge
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:00
@@ -2331,6 +2417,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:01
@@ -2349,6 +2436,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:02
@@ -2366,6 +2454,7 @@ databaseChangeLog:
             constraintName: fk_workspace_merge_transform_merging_user_id
             referencedTableName: core_user
             referencedColumnNames: id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:03
@@ -2383,6 +2472,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_merge_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:04
@@ -2400,6 +2490,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:05
@@ -2417,6 +2508,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: transform_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:06
@@ -2434,6 +2526,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: merging_user_id
+      rollback:
 
   # ---------- Group 11: workspace_output_external ----------
 
@@ -2531,6 +2624,9 @@ databaseChangeLog:
                   remarks: Timestamp when the output was last updated
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_output_external
 
   - changeSet:
       id: v59.2026-01-31T12:01:08
@@ -2548,6 +2644,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:09
@@ -2565,6 +2662,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: transform_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:10
@@ -2583,6 +2681,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:11
@@ -2601,6 +2700,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:12
@@ -2617,6 +2717,7 @@ databaseChangeLog:
             tableName: workspace_output_external
             columnNames: workspace_id, transform_id, graph_version
             constraintName: uq_workspace_output_external_versioned
+      rollback:
 
   # ---------- Group 12: workspace_input_external ----------
 
@@ -2697,6 +2798,9 @@ databaseChangeLog:
                   remarks: Timestamp when the input was last updated
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_input_external
 
   - changeSet:
       id: v59.2026-01-31T12:01:14
@@ -2714,6 +2818,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:15
@@ -2732,6 +2837,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:16
@@ -2748,6 +2854,7 @@ databaseChangeLog:
             tableName: workspace_input_external
             columnNames: workspace_id, db_id, schema, table, graph_version
             constraintName: uq_workspace_input_external_versioned
+      rollback:
 
   # ---------- Group 13: workspace_graph ----------
 
@@ -2805,6 +2912,9 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_graph
 
   - changeSet:
       id: v59.2026-01-31T12:01:18
@@ -2825,6 +2935,7 @@ databaseChangeLog:
                   name: workspace_id
               - column:
                   name: graph_version
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:19
@@ -2843,6 +2954,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+      rollback:
 
   # ---------- Group 14: Existing table changes ----------
 
@@ -2866,6 +2978,7 @@ databaseChangeLog:
                   remarks: Target database ID for the transform output
                   constraints:
                     nullable: true
+      rollback:
 
   - changeSet:
       id: v59.2026-01-31T12:01:21
@@ -2887,6 +3000,7 @@ databaseChangeLog:
                   remarks: Status of workspace isolation permission check (JSON)
                   constraints:
                     nullable: true
+      rollback:
 
 
   - changeSet:
