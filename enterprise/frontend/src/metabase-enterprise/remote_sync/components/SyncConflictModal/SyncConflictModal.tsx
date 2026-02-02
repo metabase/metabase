@@ -6,6 +6,7 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import {
@@ -23,6 +24,7 @@ import {
   URL_KEY,
 } from "metabase-enterprise/remote_sync/constants";
 import { useLibraryCollection } from "metabase-enterprise/remote_sync/hooks/use-library-collection";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncConflictVariant,
@@ -56,6 +58,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const libraryCollection = useLibraryCollection();
@@ -161,6 +164,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         <OutOfSyncOptions
           currentBranch={currentBranch}
           handleOptionChange={setOptionValue}
+          isRemoteSyncReadOnly={isRemoteSyncReadOnly}
           optionValue={optionValue}
           variant={variant}
         />

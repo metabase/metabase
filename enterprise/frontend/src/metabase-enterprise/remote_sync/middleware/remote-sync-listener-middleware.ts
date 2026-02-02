@@ -119,8 +119,8 @@ remoteSyncListenerMiddleware.startListening({
       dispatch(taskUpdated(task));
 
       if (task.status === "conflict") {
-        dispatch(syncConflictVariantUpdated("setup"));
         dispatch(modalDismissed());
+        dispatch(syncConflictVariantUpdated("setup"));
         return;
       }
 

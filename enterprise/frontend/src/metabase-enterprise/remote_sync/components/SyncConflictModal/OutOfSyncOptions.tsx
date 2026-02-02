@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import { Box, Radio, Stack, Text } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
 import type { OptionValue } from "./utils";
@@ -11,6 +9,7 @@ import type { OptionValue } from "./utils";
 interface BranchSwitchOptionsProps {
   currentBranch: string;
   handleOptionChange: (value: OptionValue) => void;
+  isRemoteSyncReadOnly: boolean;
   optionValue?: OptionValue;
   variant: RemoteSyncConflictVariant;
 }
@@ -21,8 +20,13 @@ interface OutOfSyncOption {
 }
 
 export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
-  const { currentBranch, handleOptionChange, optionValue, variant } = props;
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const {
+    currentBranch,
+    handleOptionChange,
+    isRemoteSyncReadOnly,
+    optionValue,
+    variant,
+  } = props;
 
   const options = useMemo<OutOfSyncOption[]>(() => {
     const newBranchOption: OutOfSyncOption = {

@@ -53,7 +53,7 @@ export function addPostgresDatabase(
 export function addMySQLDatabase({
   displayName = "QA MySQL8",
   writable = false,
-} = {}) {
+}) {
   // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
   return addQADatabase({
     engine: "mysql",
