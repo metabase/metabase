@@ -1,7 +1,7 @@
+import { EventEmitter } from "events";
 import fs from "fs/promises";
 
 import { input, number, password, select } from "@inquirer/prompts";
-import { EventEmitter } from "events";
 import fileSelector from "inquirer-file-selector";
 import toggle from "inquirer-toggle";
 import { match } from "ts-pattern";

@@ -139,7 +139,11 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
           setTargetModel(newTargetModel);
           setIsStrategyFormDirty(false);
         };
-        isFormDirty ? askBeforeDiscardingChanges(update) : update();
+        if (isFormDirty) {
+          askBeforeDiscardingChanges(update);
+        } else {
+          update();
+        }
       }
     },
     [

@@ -370,5 +370,5 @@ function friendlySchedule(channel: Channel): string {
   return scheduleString;
 }
 
-// eslint-disable-next-line import/no-default-export -- legacy
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PulsesListSidebar;

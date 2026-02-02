@@ -165,7 +165,7 @@ describe("user > settings", () => {
     // should be redirected to new question page
     cy.wait("@getUser");
     H.miniPicker().findByText("Parcourir tout").click();
-    H.entityPickerModal().findByText("Orders Model").click();
+    H.pickEntity({ path: ["Nos analyses", "Orders Model"] });
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
       .should("not.exist");

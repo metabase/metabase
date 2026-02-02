@@ -1,5 +1,6 @@
-import { getIn } from "icepick";
 import querystring from "querystring";
+
+import { getIn } from "icepick";
 import _ from "underscore";
 
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
