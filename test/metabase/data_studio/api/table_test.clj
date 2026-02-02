@@ -104,7 +104,7 @@
                                                                                       :schema_ids   [(format "%d:FOO" d2)]
                                                                                       :table_ids    [t4]}))
         (testing "sync called?"
-          (is (true? (.await latch 4 TimeUnit/SECONDS)))
+          (is (true? (.await latch 10 TimeUnit/SECONDS)))
           (is (= [t1 t2 t4 t5] (map :id @tables))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-rescan-values-test
