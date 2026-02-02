@@ -92,11 +92,9 @@ export const JoinStepRow = ({
     onStatsReady,
   ]);
 
-  const cardAlerts = alerts.filter(
-    (a) => a.condition["card-id"] === stepCard.id,
-  );
+  const cardAlerts = alerts.filter((a) => a.condition.card_id === stepCard.id);
   const cardDrills = drillTriggers.filter(
-    (d) => d.condition["card-id"] === stepCard.id,
+    (d) => d.condition.card_id === stepCard.id,
   );
 
   return (

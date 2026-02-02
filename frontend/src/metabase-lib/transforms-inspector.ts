@@ -16,10 +16,9 @@ export type CardStats = {
 };
 
 export type TriggeredCondition = {
-  "card-id": string;
-  field?: string | number | symbol;
-  comparator: string;
-  threshold: unknown;
+  name: string;
+  card_id?: string;
+  [key: string]: unknown;
 };
 
 export type TriggeredAlert = {

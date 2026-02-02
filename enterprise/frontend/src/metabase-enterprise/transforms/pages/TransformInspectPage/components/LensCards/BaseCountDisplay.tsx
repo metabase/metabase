@@ -40,9 +40,9 @@ export const BaseCountDisplay = ({
     }
   }, [isLoading, value, card.id, onStatsReady]);
 
-  const cardAlerts = alerts.filter((a) => a.condition["card-id"] === card.id);
+  const cardAlerts = alerts.filter((a) => a.condition.card_id === card.id);
   const cardDrills = drillTriggers.filter(
-    (d) => d.condition["card-id"] === card.id,
+    (d) => d.condition.card_id === card.id,
   );
 
   return (

@@ -96,7 +96,7 @@ export const LensContent = ({
   }
 
   const lensAlerts = alerts.filter(
-    (a) => !a.condition["card-id"] || a.condition["card-id"] === "",
+    (a) => !a.condition.card_id || a.condition.card_id === "",
   );
 
   return (
