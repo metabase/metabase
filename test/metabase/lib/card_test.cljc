@@ -647,3 +647,14 @@
                         :result-metadata (lib/returned-columns question-query)}]})
           adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
       (is (some? (lib/returned-columns adhoc-query))))))
+
+(deftest ^:parallel saved-question-metadata-test
+  (let [card (:venues (lib.tu/mock-cards))
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [card]})]
+    (testing "returns same results as card-returned-columns"
+      (is (= (lib.card/card-returned-columns mp card)
+             (lib.card/saved-question-metadata mp (:id card)))))
+    (testing "returns nil for a nonexistent card"
+      (is (nil? (lib.card/saved-question-metadata mp 99999))))))
