@@ -21,6 +21,8 @@ inputs:
   variant:
     required: false
     default: ""
+  previous-step-outcome:
+    required: true
 
 runs:
   using: "composite"
@@ -57,3 +59,4 @@ runs:
         dry-run: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }} # quarantine, but do not upload results
         token: ${{ inputs.trunk-api-token }}
         use-cache: true
+        previous-step-outcome: ${{ inputs.previous-step-outome }}
