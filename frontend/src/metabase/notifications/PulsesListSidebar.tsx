@@ -43,9 +43,7 @@ type PulsesListSidebarStateProps = {
 type PulsesListSidebarProps = PulsesListSidebarOwnProps &
   PulsesListSidebarStateProps;
 
-const mapStateToProps = (
-  state: State,
-): PulsesListSidebarStateProps => {
+const mapStateToProps = (state: State): PulsesListSidebarStateProps => {
   return {
     parameters: getParameters(state),
   };
