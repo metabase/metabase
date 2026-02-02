@@ -48,7 +48,7 @@ function snakeTokebabParams(
   );
 }
 
-function transformKeys(obj: unknown): unknown {
+export function transformKeys(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(transformKeys);
   }
@@ -283,6 +283,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/transform/${id}/inspect`,
       }),
+      // FIXME(egorgrushin): THIS IS TEMPORAL
       transformResponse: (response: unknown) =>
         transformKeys(response) as InspectorDiscoveryResponse,
       providesTags: (_, error, id) =>
@@ -294,6 +295,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${transformId}/inspect/${lensId}`,
         params: params ? snakeTokebabParams(params) : undefined,
       }),
+      // FIXME(egorgrushin): THIS IS TEMPORAL
       transformResponse: (response: unknown) =>
         transformKeys(response) as InspectorLens,
       providesTags: (_, error, { transformId }) =>

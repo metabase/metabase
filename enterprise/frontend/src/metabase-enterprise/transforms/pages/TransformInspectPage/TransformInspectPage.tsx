@@ -11,13 +11,12 @@ import {
   useGetTransformQuery,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { convertLensToRef } from "metabase-enterprise/transforms/pages/TransformInspectPage/utils";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
 import { LensContent, LensNavigation } from "./components";
 import { useLensNavigation } from "./hooks";
-import type { LensRef } from "./types";
+import { convertLensToRef } from "./utils";
 
 type TransformInspectPageParams = {
   transformId: string;
@@ -47,7 +46,7 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
     [discovery],
   );
 
-  const rootSiblings: LensRef[] = useMemo(
+  const rootSiblings = useMemo(
     () => availableLenses.map(convertLensToRef),
     [availableLenses],
   );
@@ -81,7 +80,7 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
     );
   }
 
-  if (discovery == null || discovery.status === "not-run") {
+  if (!discovery || discovery.status === "not-run") {
     return (
       <PageContainer data-testid="transform-inspect-content">
         <TransformHeader transform={transform} />
@@ -106,7 +105,7 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} />
-      <Flex gap="xl" style={{ flex: 1 }}>
+      <Flex gap="xl">
         <Box style={{ flex: 1, minWidth: 0 }}>
           <LensContent
             transformId={transform.id}

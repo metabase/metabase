@@ -1,9 +1,13 @@
 import * as INSPECTOR from "cljs/metabase.transforms.inspector.js";
-import type { InspectorLens, TransformInspectField } from "metabase-types/api";
+import type {
+  InspectorCard,
+  InspectorLens,
+  TransformInspectField,
+} from "metabase-types/api";
 
 export type TriggeredCondition = {
   name: string;
-  card_id?: string;
+  card_id: string;
   [key: string]: unknown;
 };
 
@@ -26,20 +30,52 @@ type TriggerResult = {
   drillLenses: TriggeredDrillLens[];
 };
 
-export const interestingFields = (
-  fields: TransformInspectField[],
-  options?: { threshold?: number; limit?: number },
-): Array<TransformInspectField & { interestingness: { score: number } }> => {
-  return INSPECTOR.interestingFields(
-    fields,
-    options?.threshold,
-    options?.limit,
+export type CardStats = Record<string, unknown>;
+
+const kebabToSnakeCase = (str: string): string => str.replace(/-/g, "_");
+const snakeToKebabCase = (str: string): string => str.replace(/_/g, "-");
+
+const convertKeysToSnakeCase = (obj: CardStats | null): CardStats | null => {
+  if (obj === null) {
+    return null;
+  }
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [kebabToSnakeCase(key), value]),
   );
 };
 
+const convertKeysToKebabCase = (obj: CardStats): CardStats => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [snakeToKebabCase(key), value]),
+  );
+};
+
+const convertCardsStatsToKebabCase = (
+  cardsStats: Record<string, CardStats>,
+): Record<string, CardStats> => {
+  return Object.fromEntries(
+    Object.entries(cardsStats).map(([cardId, stats]) => [
+      cardId,
+      convertKeysToKebabCase(stats),
+    ]),
+  );
+};
+
+export const interestingFields = (
+  fields: TransformInspectField[],
+  options?: { threshold?: number; limit?: number },
+): TransformInspectField & { interestingness: { score: number } }[] =>
+  INSPECTOR.interestingFields(fields, options?.threshold, options?.limit);
+
 export const evaluateTriggers = (
   lens: InspectorLens,
-  cardResults: Record<string, Record<string, unknown>>,
-): TriggerResult => {
-  return INSPECTOR.evaluateTriggers(lens, cardResults);
-};
+  cardsStats: Record<string, CardStats>,
+): TriggerResult =>
+  INSPECTOR.evaluateTriggers(lens, convertCardsStatsToKebabCase(cardsStats));
+
+export const computeCardStats = (
+  lensId: string,
+  card: InspectorCard,
+  rows: unknown[][] | undefined,
+): CardStats | null =>
+  convertKeysToSnakeCase(INSPECTOR.computeCardResult(lensId, card, rows ?? []));

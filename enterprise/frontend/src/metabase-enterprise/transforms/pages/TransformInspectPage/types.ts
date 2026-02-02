@@ -2,7 +2,7 @@ export type { CardStats } from "metabase-lib/transforms-inspector";
 
 export type LensRef = {
   id: string;
-  title?: string;
+  title: string;
   params?: Record<string, unknown>;
 };
 

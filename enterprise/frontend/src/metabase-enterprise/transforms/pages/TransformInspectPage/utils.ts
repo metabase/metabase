@@ -1,6 +1,4 @@
-import { match } from "ts-pattern";
-
-import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
+import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
 import type { LensRef } from "./types";
@@ -10,10 +8,14 @@ export const convertLensToRef = (lens: InspectorLensMetadata): LensRef => ({
   title: lens.display_name,
 });
 
-export const getAlertColor = (
-  severity: TriggeredAlert["severity"],
-): "error" | "warning" | "brand" =>
-  match(severity)
-    .with("error", () => "error" as const)
-    .with("warning", () => "warning" as const)
-    .otherwise(() => "brand" as const);
+export const convertDrillLensToRef = (
+  drillLens: TriggeredDrillLens,
+  metadataMap: Map<string, InspectorLensMetadata>,
+): LensRef => ({
+  id: drillLens.lens_id,
+  params: drillLens.params,
+  title:
+    drillLens.reason ??
+    metadataMap.get(drillLens.lens_id)?.display_name ??
+    drillLens.lens_id,
+});

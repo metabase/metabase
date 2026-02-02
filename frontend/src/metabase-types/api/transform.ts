@@ -410,7 +410,7 @@ export type InspectorDiscoveryResponse = {
   available_lenses: InspectorLensMetadata[];
 };
 
-export type InspectorLayoutType = "flat" | "comparison" | "join-analysis";
+export type InspectorLayoutType = "flat" | "comparison";
 
 export type InspectorSection = {
   id: string;

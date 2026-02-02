@@ -1,58 +1,34 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import type { DatasetQuery, InspectorCard } from "metabase-types/api";
+import {
+  type CardStats,
+  computeCardStats,
+} from "metabase-lib/transforms-inspector";
+import type { InspectorCard } from "metabase-types/api";
 
-import type { CardStats } from "../types";
-
-type UseLensCardLoaderResult = {
-  isLoading: boolean;
-  stats: CardStats | null;
-  isDegenerate: boolean;
-  degenerateReason: string | null;
-  data: unknown;
+type UseLensCardLoaderOptions = {
+  lensId: string;
+  card: InspectorCard;
+  onStatsReady: (cardId: string, stats: CardStats | null) => void;
 };
 
-const extractStats = (
-  data: { data?: { rows?: unknown[][] } } | undefined,
-): CardStats | null => {
-  if (!data?.data?.rows) {
-    return null;
-  }
-  const rows = data.data.rows;
-  return {
-    rowCount: rows.length,
-    firstRow: rows[0],
-  };
-};
-
-export const useLensCardLoader = (
-  card: InspectorCard,
-  cardSummaries: Record<string, CardStats>,
-  onStatsReady: (cardId: string, stats: CardStats) => void,
-): UseLensCardLoaderResult => {
-  const { data, isLoading } = useGetAdhocQueryQuery(
-    card.dataset_query as DatasetQuery,
-  );
-
-  const stats = useMemo(() => extractStats(data), [data]);
-
-  // TODO: implement degeneracy check
-  const { isDegenerate, degenerateReason } = useMemo(() => {
-    return { isDegenerate: false, degenerateReason: null };
-  }, []);
+export const useLensCardLoader = ({
+  lensId,
+  card,
+  onStatsReady,
+}: UseLensCardLoaderOptions) => {
+  const { data, isLoading } = useGetAdhocQueryQuery(card.dataset_query);
+  const [stats, setStats] = useState<CardStats | null>();
 
   useEffect(() => {
-    if (stats) {
-      onStatsReady(card.id, stats);
+    if (isLoading) {
+      return;
     }
-  }, [stats, card.id, onStatsReady]);
+    const stats = computeCardStats(lensId, card, data?.data?.rows);
+    setStats(stats);
+    onStatsReady(card.id, stats);
+  }, [card, lensId, data, isLoading, onStatsReady]);
 
-  return {
-    isLoading,
-    stats,
-    isDegenerate,
-    degenerateReason,
-    data,
-  };
+  return { data, isLoading, stats };
 };

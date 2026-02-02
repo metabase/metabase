@@ -1,66 +1,73 @@
-import { useEffect, useRef, useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   type TriggeredAlert,
   type TriggeredDrillLens,
   evaluateTriggers,
 } from "metabase-lib/transforms-inspector";
-import type { InspectorLens } from "metabase-types/api";
+import type { InspectorLens, InspectorLensMetadata } from "metabase-types/api";
 
-import type { CardStats } from "../types";
+import type { CardStats, LensRef } from "../types";
+import { convertDrillLensToRef } from "../utils";
 
 type TriggerEvaluationResult = {
+  alerts: TriggeredAlert[];
+  drillLenses: TriggeredDrillLens[];
+  drillLensesRefs: LensRef[];
+  pushNewStats: (cardId: string, stats: CardStats | null) => void;
+};
+
+type TriggerEvaluationState = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
 };
 
 export const useTriggerEvaluation = (
   lens: InspectorLens | undefined,
-  cardStats: Record<string, CardStats>,
+  availableLenses: InspectorLensMetadata[],
   debounceMs = 100,
 ): TriggerEvaluationResult => {
-  const [result, setResult] = useState<TriggerEvaluationResult>({
+  const [cardsStats, setCardsStats] = useState<Record<string, CardStats>>({});
+  const [state, setState] = useState<TriggerEvaluationState>({
     alerts: [],
     drillLenses: [],
   });
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [debouncedCardsStats] = useDebouncedValue(cardsStats, debounceMs);
+
+  const lensesMap = useMemo(
+    () => new Map(availableLenses.map((lens) => [lens.id, lens])),
+    [availableLenses],
+  );
+
+  const drillLensesRefs = useMemo(
+    () =>
+      state.drillLenses.map((lens) => convertDrillLensToRef(lens, lensesMap)),
+    [state.drillLenses, lensesMap],
+  );
+
+  const pushNewStats = useCallback(
+    (cardId: string, stats: CardStats | null) => {
+      if (!stats) {
+        return;
+      }
+      setCardsStats((prev) => ({ ...prev, [cardId]: stats }));
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!lens) {
       return;
     }
+    setState(evaluateTriggers(lens, debouncedCardsStats));
+  }, [lens, debouncedCardsStats]);
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    timeoutRef.current = setTimeout(() => {
-      const cardResults: Record<string, Record<string, unknown>> = {};
-      for (const [cardId, stats] of Object.entries(cardStats)) {
-        cardResults[cardId] = {
-          "row-count": stats.rowCount,
-          "first-row": stats.firstRow,
-          "null-rate": stats.nullRate,
-          "output-count": stats.outputCount,
-          "matched-count": stats.matchedCount,
-          "null-count": stats.nullCount,
-        };
-      }
-
-      const evalResult = evaluateTriggers(lens, cardResults);
-
-      setResult({
-        alerts: evalResult.alerts,
-        drillLenses: evalResult.drillLenses,
-      });
-    }, debounceMs);
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [lens, cardStats, debounceMs]);
-
-  return result;
+  return {
+    alerts: state.alerts,
+    drillLenses: state.drillLenses,
+    drillLensesRefs,
+    pushNewStats,
+  };
 };
