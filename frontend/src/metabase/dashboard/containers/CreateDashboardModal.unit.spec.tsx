@@ -235,8 +235,8 @@ describe("CreateDashboardModal", () => {
       await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       await userEvent.click(newCollBtn());
-      await screen.findByTestId("create-collection-on-the-go"),
-        await screen.findByText("Give it a name");
+      await screen.findByTestId("create-collection-on-the-go");
+      await screen.findByText("Give it a name");
     });
   });
 });

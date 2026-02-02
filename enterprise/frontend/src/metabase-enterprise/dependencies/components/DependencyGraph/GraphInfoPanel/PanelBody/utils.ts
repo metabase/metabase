@@ -1,11 +1,7 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import type {
-  DependencyEntry,
-  DependencyNode,
-  Field,
-} from "metabase-types/api";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import type { NodeTableInfo } from "./types";
 
@@ -53,6 +49,7 @@ export function getNodeTableInfo(
       : null,
   };
 }
+
 
 export function getNodeFields(node: DependencyNode): Field[] {
   switch (node.type) {

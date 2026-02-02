@@ -10,6 +10,8 @@ title: Driver interface changelog
   retrieves database type names from result set metadata. See the `:mysql` implementation for an example of remapping
   `TINYINT` to `BIT` based on precision.
 
+- Added `metabase.driver/llm-sql-dialect-resource` multimethod. Returns the resource path for dialect-specific LLM prompt instructions, or nil if no dialect-specific instructions exist for this driver.
+
 - Added workspace isolation multimethods for the enterprise workspaces feature:
   - `init-workspace-isolation!`    - Create an isolated schema or database with user credentials for workspace usage.
   - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation.

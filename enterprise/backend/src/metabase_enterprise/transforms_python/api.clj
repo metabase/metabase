@@ -8,15 +8,18 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
   [path]
-  (api/check-superuser)
   (-> (python-library/get-python-library-by-path path)
-      api/check-404
+      api/read-check
       (select-keys [:source :path :created_at :updated_at])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -39,7 +42,8 @@
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
-  (api/check-superuser)
+  ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
+  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
   (python-library/update-python-library-source! path (:source body)))
 
 (api.macros/defendpoint :post "/test-run"
@@ -60,11 +64,13 @@
     :or   {output_row_limit    100
            per_input_row_limit 100}}
    :- [:map
-       [:code                       :string]
-       [:source_tables              [:map-of :string :int]]
+       [:code                                 :string]
+       [:source_tables                        [:map-of {:min 1} :string :int]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
-  (api/check-superuser)
+  (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (vals source_tables)])]
+    (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
+    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
   ;; NOTE: we do not test database support, as there is no write target.
   (let [result (python-runner/execute-and-read-output!
                 {:code            code

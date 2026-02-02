@@ -1,6 +1,7 @@
 import { c, msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import type { NamedUser } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
@@ -12,9 +13,8 @@ import type {
   DependencyId,
   DependencyNode,
   DependencyType,
-  LastEditInfo,
+  Field,
   Transform,
-  UserInfo,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -22,6 +22,7 @@ import type {
   DependencyError,
   DependencyErrorGroup,
   DependencyErrorInfo,
+  DependencyFilterOptions,
   DependencyGroupTypeInfo,
   DependentGroup,
   NodeId,
@@ -167,18 +168,18 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     }
     case "dashboard":
       return {
-        label: `View this dashboard`,
+        label: t`View this dashboard`,
         url: Urls.dashboard({ id: node.id, name: node.data.name }),
       };
     case "document":
       return {
-        label: `View this document`,
+        label: t`View this document`,
         url: Urls.document({ id: node.id }),
       };
     case "sandbox":
       if (node.data.table != null) {
         return {
-          label: `View this permission`,
+          label: t`View this permission`,
           url: Urls.tableDataPermissions(
             node.data.table.db_id,
             node.data.table.schema,
@@ -350,6 +351,26 @@ export function getNodeLocationInfo(
   }
 }
 
+export function getNodeOwner(node: DependencyNode): NamedUser | null {
+  switch (node.type) {
+    case "table":
+    case "transform":
+      return node.data.owner ?? null;
+    default:
+      return null;
+  }
+}
+
+export function canNodeHaveOwner(type: DependencyType): boolean {
+  switch (type) {
+    case "table":
+    case "transform":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function getNodeCreatedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
@@ -367,7 +388,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
   }
 }
 
-export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
+export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
@@ -388,7 +409,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
     case "dashboard":
-      return node.data["last-edit-info"]?.timestamp || null;
+      return node.data["last-edit-info"]?.timestamp ?? null;
     case "segment":
     case "measure":
     case "table":
@@ -401,7 +422,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
   }
 }
 
-export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
+export function getNodeLastEditedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
@@ -418,7 +439,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
-export function canHaveViewCount(type: DependencyType): boolean {
+export function canNodeHaveViewCount(type: DependencyType): boolean {
   switch (type) {
     case "card":
     case "dashboard":
@@ -461,6 +482,36 @@ export function getNodeTransform(node: DependencyNode): Transform | null {
     return node.data.transform ?? null;
   }
   return null;
+}
+
+export function getNodeFields(node: DependencyNode): Field[] | null {
+  switch (node.type) {
+    case "card":
+      return node.data.result_metadata ?? [];
+    case "table":
+      return node.data.fields ?? [];
+    case "transform":
+    case "sandbox":
+      return node.data.table?.fields ?? [];
+    case "snippet":
+    case "dashboard":
+    case "document":
+    case "segment":
+    case "measure":
+      return null;
+  }
+}
+
+export function getNodeFieldsLabel(fieldCount = 0) {
+  return fieldCount === 1 ? t`Field` : t`Fields`;
+}
+
+export function getNodeFieldsLabelWithCount(fieldCount: number) {
+  return ngettext(
+    msgid`${fieldCount} field`,
+    `${fieldCount} fields`,
+    fieldCount,
+  );
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {
@@ -680,6 +731,28 @@ export function getDependentGroupLabel({
     default:
       return ngettext(msgid`${count} entity`, `${count} entities`, count);
   }
+}
+
+function areGroupTypesEqual(
+  groupTypes1: DependencyGroupType[],
+  groupTypes2: DependencyGroupType[],
+): boolean {
+  const groupTypes1Set = new Set(groupTypes1);
+  return (
+    groupTypes1Set.size === groupTypes2.length &&
+    groupTypes2.every((groupType) => groupTypes1Set.has(groupType))
+  );
+}
+
+export function areFilterOptionsEqual(
+  filterOptions1: DependencyFilterOptions,
+  filterOptions2: DependencyFilterOptions,
+): boolean {
+  return (
+    areGroupTypesEqual(filterOptions1.groupTypes, filterOptions2.groupTypes) &&
+    filterOptions1.includePersonalCollections ===
+      filterOptions2.includePersonalCollections
+  );
 }
 
 export function getErrorTypeLabel(

@@ -15,6 +15,7 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
+import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { LibrarySectionLayout } from "./app/pages/LibrarySectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
@@ -24,13 +25,15 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
+import { DependenciesUpsellPage } from "./upsells";
+import { DependencyDiagnosticsUpsellPage } from "./upsells/DependencyDiagnosticsUpsellPage";
 import { getDataStudioWorkspaceRoutes } from "./workspaces/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
-  CanAccessTransforms: ComponentType,
+  _CanAccessTransforms: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -45,13 +48,9 @@ export function getDataStudioRoutes(
             {getDataStudioMetadataRoutes()}
           </Route>
         </Route>
-        {PLUGIN_TRANSFORMS.isEnabled && (
-          <Route path="transforms" component={CanAccessTransforms}>
-            <Route component={TransformsSectionLayout}>
-              {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
-            </Route>
-          </Route>
-        )}
+        <Route path="transforms" component={TransformsSectionLayout}>
+          {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
+        </Route>
         {getDataStudioGlossaryRoutes()}
         <Route path="library">
           <IndexRoute component={LibrarySectionLayout} />
@@ -65,19 +64,27 @@ export function getDataStudioRoutes(
             {getDataStudioWorkspaceRoutes()}
           </Route>
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
+        ) : (
+          <Route path="dependencies" component={DependenciesUpsellPage} />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
             component={DependencyDiagnosticsSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
+        ) : (
+          <Route
+            path="dependency-diagnostics"
+            component={DependencyDiagnosticsUpsellPage}
+          />
         )}
+        <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>
     </Route>
   );

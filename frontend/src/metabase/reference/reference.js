@@ -193,6 +193,7 @@ const initialState = {
   isFormulaExpanded: false,
   isDashboardModalOpen: false,
 };
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default handleActions(
   {
     [SET_ERROR]: {

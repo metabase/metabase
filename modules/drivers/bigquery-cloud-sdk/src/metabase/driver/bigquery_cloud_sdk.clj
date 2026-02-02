@@ -804,6 +804,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
+                              :create-or-replace-table          true
                               :database-routing                 true
                               :datetime-diff                    true
                               :describe-fields                  true
@@ -1502,3 +1503,6 @@
       {:success true}
       (finally
         (.close iam-client)))))
+
+(defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
+  "llm/prompts/dialects/bigquery.md")

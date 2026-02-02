@@ -1330,3 +1330,6 @@
                             nil))
                         (ex-message e)))]
          result)))))
+
+(defmethod driver/llm-sql-dialect-resource :mysql [_]
+  "llm/prompts/dialects/mysql.md")

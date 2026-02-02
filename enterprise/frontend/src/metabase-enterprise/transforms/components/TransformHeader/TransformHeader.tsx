@@ -19,6 +19,7 @@ type TransformHeaderProps = {
   actions?: ReactNode;
   hasMenu?: boolean;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transform: Transform;
 } & Omit<StackProps, "title">;
 
@@ -27,6 +28,7 @@ export function TransformHeader({
   actions,
   hasMenu = true,
   isEditMode = false,
+  readOnly,
   ...restProps
 }: TransformHeaderProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -37,12 +39,12 @@ export function TransformHeader({
 
   return (
     <PaneHeader
-      title={<TransformNameInput transform={transform} />}
+      title={<TransformNameInput transform={transform} readOnly={readOnly} />}
       icon="transform"
       menu={
         hasMenu && (
           <TransformMoreMenu
-            readOnly={isRemoteSyncReadOnly}
+            readOnly={readOnly || isRemoteSyncReadOnly}
             transform={transform}
           />
         )

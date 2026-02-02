@@ -26,6 +26,8 @@ export function PythonTransformEditor({
   uiOptions,
   isEditMode,
   transform,
+  readOnly,
+  transformId,
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
@@ -126,6 +128,8 @@ export function PythonTransformEditor({
         databaseId={source["source-database"]}
         isEditMode={isEditMode}
         transform={transform}
+        readOnly={readOnly}
+        transformId={transformId}
         onDatabaseChange={handleDatabaseChange}
         canChangeDatabase={uiOptions?.canChangeDatabase}
       />

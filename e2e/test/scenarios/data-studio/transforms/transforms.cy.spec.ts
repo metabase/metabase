@@ -1,8 +1,14 @@
 import dedent from "ts-dedent";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
   CardType,
   CollectionId,
@@ -114,7 +120,7 @@ describe("scenarios > admin > transforms", () => {
         cy.findByText("Data").should("not.exist");
       });
 
-      cy.findByRole("link", { name: "Exit" }).click();
+      H.goToMainApp();
       H.modal().button("Discard changes").click();
       H.newButton("Question").click();
 
@@ -344,20 +350,14 @@ describe("scenarios > admin > transforms", () => {
     );
 
     it("should be able to create and run a transform from a question or a model", () => {
-      function testCardSource({
-        type,
-        label,
-      }: {
-        type: CardType;
-        label: string;
-      }) {
+      function testCardSource({ type }: { type: CardType }) {
         H.resetSnowplow();
 
         cy.log("create a query in the target database");
         H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
           (tableId) =>
             H.createQuestion({
-              name: "Test",
+              name: `Test ${type}`,
               type,
               database: WRITABLE_DB_ID,
               query: {
@@ -375,10 +375,8 @@ describe("scenarios > admin > transforms", () => {
           event_detail: "saved-question",
         });
 
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab(label);
-          cy.findByText("Test").click();
-        });
+        H.pickEntity({ path: ["Our analytics", `Test ${type}`], select: true });
+
         getQueryEditor().button("Save").click();
         H.modal().within(() => {
           cy.findByLabelText("Name").clear().type(`${type} transform`);
@@ -404,8 +402,8 @@ describe("scenarios > admin > transforms", () => {
         H.assertQueryBuilderRowCount(3);
       }
 
-      testCardSource({ type: "question", label: "Questions" });
-      testCardSource({ type: "model", label: "Models" });
+      testCardSource({ type: "question" });
+      testCardSource({ type: "model" });
     });
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
@@ -602,6 +600,7 @@ LIMIT
       H.miniPickerHeader().click(); // go back
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findAllByTestId("picker-item")
           .contains("Animal Metric")
           .should("have.attr", "data-disabled", "true");
@@ -658,16 +657,10 @@ LIMIT
     });
 
     it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
-      function testCardSource({
-        type,
-        label,
-      }: {
-        type: CardType;
-        label: string;
-      }) {
+      function testCardSource({ type }: { type: CardType }) {
         cy.log("create a query in the target database");
         H.createQuestion({
-          name: "Test",
+          name: `Test ${type}`,
           type,
           database: SAMPLE_DB_ID,
           query: {
@@ -680,15 +673,15 @@ LIMIT
         cy.button("Create a transform").click();
         H.popover().findByText("Copy of a saved question").click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab(label);
-          cy.findAllByTestId("picker-item")
-            .contains("Test")
+          cy.findByText("Our analytics").click();
+          cy.findByText(`Test ${type}`)
+            .closest("a")
             .should("have.attr", "data-disabled", "true");
         });
       }
 
-      testCardSource({ type: "question", label: "Questions" });
-      testCardSource({ type: "model", label: "Models" });
+      testCardSource({ type: "question" });
+      testCardSource({ type: "model" });
     });
 
     it("should not auto-pivot query results for MBQL transforms", () => {
@@ -1720,7 +1713,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("not.exist");
 
         cy.log("results panel should be hidden in read-only mode");
-        cy.findByTestId("python-results").should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
 
         cy.log("library buttons should be hidden in read-only mode");
         cy.findByLabelText("Import common library").should("not.exist");
@@ -1757,7 +1750,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("be.visible");
 
         cy.log("results panel should be visible in edit mode");
-        cy.findByTestId("python-results").should("be.visible");
+        H.DataStudio.Transforms.pythonResults().should("be.visible");
 
         cy.log("Edit definition button should be hidden in edit mode");
         H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
@@ -1800,7 +1793,7 @@ LIMIT
         cy.url().should("not.include", "/edit");
         H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
         cy.findByTestId("python-data-picker").should("not.exist");
-        cy.findByTestId("python-results").should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
       },
     );
 
@@ -2235,7 +2228,7 @@ LIMIT
           .click();
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
 
@@ -2348,7 +2341,7 @@ LIMIT
           .click();
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
 
@@ -2565,7 +2558,7 @@ LIMIT
       });
 
       cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
-        cy.findByRole("button", { name: /New collection/ }).click();
+        cy.findByRole("button", { name: /New folder/ }).click();
       });
 
       cy.findByRole("dialog", { name: "Create a new collection" }).within(
@@ -3660,6 +3653,42 @@ describe(
         firstRows: [["43"]],
       });
     });
+
+    it("should display preview notice message", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonTransform({
+            body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42}])
+            `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      H.DataStudio.Transforms.editDefinition().click();
+
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Done")
+        .should("not.exist");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Preview based on the first 100 rows from each table.")
+        .should("not.exist");
+
+      runPythonScriptAndWaitForSuccess();
+
+      cy.log("Preview disclaimer should appear");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Done")
+        .should("be.visible");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Preview based on the first 100 rows from each table.")
+        .should("be.visible");
+    });
   },
 );
 
@@ -3971,7 +4000,7 @@ function runPythonScriptAndWaitForSuccess() {
     .findByTestId("loading-indicator", { timeout: 60000 })
     .should("not.exist");
 
-  cy.findByTestId("python-results").should("be.visible");
+  H.DataStudio.Transforms.pythonResults().should("be.visible");
 }
 
 function getRowNames(): Cypress.Chainable<string[]> {
@@ -3979,3 +4008,55 @@ function getRowNames(): Cypress.Chainable<string[]> {
     .findAllByTestId("tree-node-name")
     .then(($rows) => $rows.get().map((row) => row.textContent.trim()));
 }
+
+describe("scenarios > data studio > transforms > permissions", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+  });
+
+  it("should allow non-admin users with data-studio permission to create transforms", () => {
+    cy.log("grant data-studio permission to All Users");
+    cy.visit("/admin/permissions/application");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.DATA_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          transforms: DataPermissionValue.YES,
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+    H.setUserAsAnalyst(NORMAL_USER_ID);
+
+    cy.log("sign in as normal user and create a transform");
+    cy.signInAsNormalUser();
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.miniPicker().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText(TARGET_SCHEMA).click();
+      cy.findByText(SOURCE_TABLE).click();
+    });
+    getQueryEditor().button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("Non-admin transform");
+      cy.findByLabelText("Table name").type(TARGET_TABLE);
+      cy.button("Save").click();
+      cy.wait("@createTransform");
+    });
+
+    cy.log("Verify transform was created");
+    getTransformsNavLink().click();
+    H.DataStudio.Transforms.list()
+      .findByText("Non-admin transform")
+      .should("be.visible");
+  });
+});

@@ -20,6 +20,8 @@ type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
   isEditMode?: boolean;
   transform?: Transform;
+  readOnly?: boolean;
+  transformId?: TransformId;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
   canChangeDatabase?: boolean;
 };
@@ -28,11 +30,13 @@ export function PythonTransformTopBar({
   databaseId,
   isEditMode,
   transform,
+  readOnly,
+  transformId,
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const showEditButton = !isEditMode && transform && !isRemoteSyncReadOnly;
+  const showEditButton = !isEditMode && transform && !isRemoteSyncReadOnly && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,

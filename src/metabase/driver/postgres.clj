@@ -1386,3 +1386,6 @@
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/llm-sql-dialect-resource :postgres [_]
+  "llm/prompts/dialects/postgresql.md")

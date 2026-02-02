@@ -13,10 +13,10 @@
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
    - Table (when published in a remote-synced collection)
    - Field, Segment (when belonging to a published table in a remote-synced collection)
-   - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)"
+   - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
+   - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
@@ -24,7 +24,41 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;; Helper functions for model change tracking
+(defn sync-snippet-tracking!
+  "Called when the Library collection's remote sync status changes.
+   When enabled: mark all existing snippets and snippets-namespace collections
+   as 'create' for initial sync.
+   When disabled: remove all snippet-related tracking entries."
+  [enabled?]
+  (let [timestamp (t/offset-date-time)]
+    (if enabled?
+      (do
+        ;; Mark all snippets-namespace collections for initial sync
+        (doseq [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+          (t2/insert! :model/RemoteSyncObject
+                      {:model_type        "Collection"
+                       :model_id          (:id coll)
+                       :model_name        (:name coll)
+                       :status            "create"
+                       :status_changed_at timestamp}))
+        ;; Mark all existing snippets for initial sync
+        (doseq [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
+          (t2/insert! :model/RemoteSyncObject
+                      {:model_type          "NativeQuerySnippet"
+                       :model_id            (:id snippet)
+                       :model_name          (:name snippet)
+                       :model_collection_id (:collection_id snippet)
+                       :status              "create"
+                       :status_changed_at   timestamp})))
+      (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets")]
+        (t2/delete! :model/RemoteSyncObject
+                    :model_type "NativeQuerySnippet")
+        (when (seq snippet-coll-ids)
+          (t2/delete! :model/RemoteSyncObject
+                      :model_type "Collection"
+                      :model_id [:in snippet-coll-ids]))))))
+
+;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -50,18 +84,12 @@
                      :model_table_name (:table_name model-details)
                      :status status
                      :status_changed_at (t/offset-date-time)}))
-
-      ;; If the entity was created and then removed/deleted before sync, just delete the entry from tracking
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
-
-      ;; Just update the status, object doesn't exist to update other info
       (= "delete" (:status existing))
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status
                    :status_changed_at (t/offset-date-time)})
-
-      ;; If the entry was created, the status should remain create until synced
       (not (= "create" (:status existing)))
       (let [model-details (hydrate-details-fn model-id)]
         (t2/update! :model/RemoteSyncObject (:id existing)
@@ -82,7 +110,6 @@
   (let [model-type (:model-type model-spec)
         existing   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
-      ;; No existing entry - create new one
       (not existing)
       (let [model-details (spec/hydrate-model-details model-spec model-id)
             fields        (spec/build-sync-object-fields model-spec model-details)]
@@ -92,18 +119,12 @@
                             :status            status
                             :status_changed_at (t/offset-date-time)}
                            fields)))
-
-      ;; Created then removed/deleted before sync - delete the entry
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
-
-      ;; Already deleted - just update status
       (= "delete" (:status existing))
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status            status
                    :status_changed_at (t/offset-date-time)})
-
-      ;; Status is not "create" - update with new details
       (not= "create" (:status existing))
       (let [model-details (spec/hydrate-model-details model-spec model-id)
             fields        (spec/build-sync-object-fields model-spec model-details)]
@@ -122,14 +143,11 @@
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
-      ;; Model is eligible for sync
       eligible?
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
                    model-type model-id status)
         (create-or-update-sync-object-from-spec! model-spec model-id status))
-
-      ;; Model was synced but no longer eligible - mark as removed
       (and existing-entry (not eligible?))
       (do
         (log/infof "%s %s moved out of sync scope, marking as removed" model-type model-id)
@@ -141,15 +159,9 @@
   [model-spec]
   (let [event-kws (spec/event-keywords model-spec)
         parent-kw (:parent event-kws)]
-    ;; Derive event hierarchy
     (derive parent-kw :metabase/event)
     (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
       (derive event-kw parent-kw))
-
-    ;; Register the handler using methodical's runtime API
-    ;; (defmethod requires compile-time dispatch values, so we use add-primary-method!)
-    ;; Note: We use #'events/publish-event! (the var) because add-primary-method! expects a var/atom
-    ;; The method signature matches defmethod: [topic event], not [next-method topic event]
     (methodical/add-primary-method!
      #'events/publish-event!
      parent-kw
@@ -157,8 +169,6 @@
        (handle-model-event-from-spec model-spec topic event)))))
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
-;; Register event handlers for models that use standard spec-based handling.
-;; Collection has special handling and is registered separately below.
 
 (doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection)]
   (register-events-for-spec! model-spec))
@@ -168,7 +178,6 @@
 ;; a collection becomes remote-synced). This handler is kept separate from the standard
 ;; spec-based registration.
 
-;; Collection create/update events - derive from common parent for shared handling
 (derive ::collection-change-event :metabase/event)
 (derive :event/collection-create ::collection-change-event)
 (derive :event/collection-update ::collection-change-event)
@@ -178,74 +187,40 @@
   [id]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))
 
-(defn- transforms-namespace-collection?
-  "Check if this is a transforms-namespace collection."
-  [collection]
-  (= (keyword (:namespace collection)) :transforms))
-
-(defn- should-sync-collection?
-  "Check if a collection should be synced - either remote-synced or transforms-namespace with setting enabled."
-  [collection]
-  (or (collections/remote-synced-collection? collection)
-      (and (settings/remote-sync-transforms)
-           (transforms-namespace-collection? collection))))
-
-(defn- hydrate-table-details
-  "Hydrates details for a Table. For tables, table_id and table_name refer to themselves."
-  [id]
-  (when-let [table (t2/select-one [:model/Table :name :collection_id] :id id)]
-    (assoc table :table_id id :table_name (:name table))))
-
-(defn- track-published-tables-in-collection!
-  "When a collection becomes remote-synced, find all published tables in it
-   and create 'create' entries for them in RemoteSyncObject (if not already tracked)."
-  [collection-id]
-  (let [published-tables (t2/select :model/Table
-                                    :collection_id collection-id
-                                    :is_published true)]
-    (doseq [table published-tables]
-      (let [existing (t2/select-one :model/RemoteSyncObject
-                                    :model_type "Table"
-                                    :model_id (:id table))]
-        ;; Only create entry if not already tracked or was marked as removed/synced
-        (when (or (nil? existing)
-                  (contains? #{"removed" "synced"} (:status existing)))
-          (log/infof "Creating remote sync object entry for published table %s in newly remote-synced collection %s"
-                     (:id table) collection-id)
-          (create-or-update-remote-sync-object-entry! "Table" (:id table) "create" hydrate-table-details))))))
+(defn- handle-library-sync-status-change!
+  "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
+   This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
+  [is-now-synced?]
+  (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject :model_type "NativeQuerySnippet")]
+    (cond
+      (and is-now-synced? (not snippets-already-tracked?))
+      (do
+        (log/info "Library collection became remote-synced, enabling snippet sync tracking")
+        (sync-snippet-tracking! true))
+      (and (not is-now-synced?) snippets-already-tracked?)
+      (do
+        (log/info "Library collection is no longer remote-synced, disabling snippet sync tracking")
+        (sync-snippet-tracking! false)))))
 
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object]} event
-        should-sync? (should-sync-collection? object)
+        should-sync? (spec/should-sync-collection? object)
         is-remote-synced? (collections/remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
-        was-synced? (and existing-entry
-                         (not (contains? #{"removed"} (:status existing-entry))))
         status (if (:archived object)
                  "delete"
                  (case topic
                    :event/collection-create "create"
                    :event/collection-update "update"))]
+    (when (and (= topic :event/collection-update)
+               (spec/library-collection? object))
+      (handle-library-sync-status-change! is-remote-synced?))
     (cond
-      ;; Collection should be synced (remote-synced or transforms-namespace with setting enabled)
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
-        ;; If collection just became remote-synced, track all published tables in it
-        ;; (only for actual remote-synced collections, not transforms-namespace)
-        (when (and is-remote-synced? (not was-synced?))
-          (track-published-tables-in-collection! (:id object)))
-        ;; When a transforms-namespace collection is archived, also mark child transforms for deletion
-        (when (and (:archived object) (transforms-namespace-collection? object))
-          (let [transform-ids (t2/select-pks-set :model/Transform :collection_id (:id object))]
-            (doseq [transform-id transform-ids]
-              (log/infof "Marking transform %s for deletion (parent collection archived)" transform-id)
-              (create-or-update-remote-sync-object-entry! "Transform" transform-id "delete"
-                                                          (fn [id] (t2/select-one [:model/Transform :name [:collection_id :model_collection_id]] :id id)))))))
-
-      ;; Collection was synced but no longer should be - mark as removed
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))

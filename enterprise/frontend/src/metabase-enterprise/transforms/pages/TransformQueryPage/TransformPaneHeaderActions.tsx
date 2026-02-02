@@ -20,6 +20,7 @@ type Props = {
   isDirty: boolean;
   isEditMode: boolean;
   isSaving: boolean;
+  readOnly?: boolean;
   source: DraftTransformSource;
   transform: Transform;
   transformId: TransformId;
@@ -34,6 +35,8 @@ export const TransformPaneHeaderActions = (props: Props) => {
     isSaving,
     isEditMode,
     transform,
+    readOnly,
+    transformId,
   } = props;
   const metadata = useSelector(getMetadata);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -56,8 +59,18 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isEditMode && !isPythonTransform && !isNative && !isRemoteSyncReadOnly) {
-    return <EditDefinitionButton transformId={transform.id} />;
+  if (
+    !readOnly &&
+    !isPythonTransform &&
+    !isNative &&
+    !isEditMode &&
+    !isRemoteSyncReadOnly
+  ) {
+    return <EditDefinitionButton transformId={transformId} />;
+  }
+
+  if (!isEditMode && isNative) {
+    return null;
   }
 
   return (

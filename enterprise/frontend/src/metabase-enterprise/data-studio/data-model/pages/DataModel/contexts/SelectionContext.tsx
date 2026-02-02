@@ -22,6 +22,7 @@ interface SelectionContextValue {
   selectedItemsCount: number;
   hasOnlyOneTableSelected: boolean;
   hasSelectedMoreThanOneTable: boolean;
+  filterSelectedTables: (tables: TableId[]) => void;
 }
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
@@ -39,6 +40,13 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     setSelectedTables(new Set());
     setSelectedSchemas(new Set());
     setSelectedDatabases(new Set());
+  }, []);
+
+  const filterSelectedTables = useCallback((tables: TableId[]) => {
+    setSelectedTables(
+      (oldTables) =>
+        new Set([...oldTables].filter((tableId) => tables.includes(tableId))),
+    );
   }, []);
 
   const hasSelectedItems =
@@ -71,6 +79,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         selectedItemsCount,
         hasOnlyOneTableSelected,
         hasSelectedMoreThanOneTable,
+        filterSelectedTables,
       }}
     >
       {children}

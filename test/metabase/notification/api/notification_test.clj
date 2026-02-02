@@ -435,7 +435,36 @@
                                                         :send_condition :has_result
                                                         :send_once false}
                                          :subscriptions [{:type          :notification-subscription/cron
-                                                          :cron_schedule "0 0 0 * * ?"}]}))))))))
+                                                          :cron_schedule "0 0 0 * * ?"}]}))))))
+
+    (testing "links disabled/enabled based on x-metabase-client header"
+      (let [notification-body {:handlers [{:channel_type :channel/email
+                                           :recipients   [{:type    :notification-recipient/user
+                                                           :user_id (mt/user->id :crowberto)}]}]
+                               :payload_type :notification/card
+                               :payload      {:card_id card-id
+                                              :send_condition :has_result
+                                              :send_once false}
+                               :subscriptions [{:type          :notification-subscription/cron
+                                                :cron_schedule "0 0 0 * * ?"}]}
+            has-link? (fn [client-header]
+                        (->> (notification.tu/with-captured-channel-send!
+                               (if client-header
+                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                                       {:request-options {:headers
+                                                                          {"x-metabase-client" client-header}}}
+                                                       notification-body)
+                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                                       notification-body)))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "x-metabase-client header is embedding-sdk-react (modular embedding SDK): result email has no links"
+          (is (false? (has-link? "embedding-sdk-react"))))
+        (testing "x-metabase-client header is embedding-simple (modular embedding): result email has no links"
+          (is (false? (has-link? "embedding-simple"))))
+        (testing "no x-metabase-client header: result email has links"
+          (is (true? (has-link? nil))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp

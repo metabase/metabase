@@ -497,8 +497,9 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("?");
     H.shortcutModal().should("not.exist");
 
-    H.appBar().findByRole("img", { name: /gear/ }).click();
-    H.popover().findByText("Keyboard shortcuts").click();
+    H.getProfileLink().click();
+    H.popover().findByText("Help").click();
+    H.getHelpSubmenu().findByText("Keyboard shortcuts").click();
     H.shortcutModal().should("exist");
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
@@ -607,14 +608,13 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("[");
     H.navigationSidebar().should("not.visible");
 
-    cy.findByLabelText("Settings menu").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("4");
+    cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("8");
+    cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

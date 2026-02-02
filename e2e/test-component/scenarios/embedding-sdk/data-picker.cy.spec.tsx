@@ -33,7 +33,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
         // Should be able to go back to the editor view
         // TODO: SDK: make this accessible
-        cy.findByRole("button", { name: "pencil_lines icon" }).click();
+        cy.findByRole("button", { name: "Edit question" }).click();
 
         // Should be able to visualize the question again
         cy.findByRole("button", { name: "Visualize" }).click();
@@ -79,7 +79,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
         // Should be able to go back to the editor view
         // TODO: SDK: make this accessible
-        cy.findByRole("button", { name: "pencil_lines icon" }).click();
+        cy.findByRole("button", { name: "Edit question" }).click();
 
         // Should be able to visualize the question again
         cy.findByRole("button", { name: "Visualize" }).click();

@@ -305,7 +305,6 @@ describe("scenarios > native > snippet tags", () => {
     );
     H.NativeEditor.clear().type("select 1");
     H.saveQuestion("SQL", undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.NativeEditor.clear().type("select {{snippet: snippet1}}");

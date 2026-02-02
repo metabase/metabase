@@ -10,6 +10,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.seed :as notification.seed]
@@ -340,3 +341,52 @@
                       (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                       (is (mt/received-email-body? :crowberto #"transform1"))
                       (is (mt/received-email-body? :crowberto #"transform2")))))))))))))
+
+(deftest run-mbql-transform-anonymous-user-routing-error-test
+  (mt/with-premium-features #{:database-routing :transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-model-cleanup [:model/Notification]
+          (mt/with-fake-inbox
+            (mt/with-model-cleanup [:model/Notification
+                                    :model/TransformJobRun]
+              (notification.seed/seed-notification!)
+              (let [mp (mt/metadata-provider)
+                    table (t2/select-one :model/Table (mt/id :transforms_products))
+                      ;; generate sql for different dbs
+                    sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                            (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
+                            (lib/limit 10)
+                            qp.compile/compile
+                            :query)]
+                (with-transform-cleanup! [target0 {:type "table"
+                                                   :schema (:schema table)
+                                                   :name "t0"}]
+                  (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                               :router_database_id (mt/id)
+                                                               :details {:destination_database true}}
+                                 :model/DatabaseRouter _ {:database_id (mt/id)
+                                                          :user_attribute "db_name"}
+                                 :model/TransformTag tag {:name "test-tag"}
+                                 :model/TransformJob job {:name "test-job"
+                                                          :schedule "0 0 * * * ? *"}
+                                 :model/TransformJobTransformTag _ {:job_id (:id job)
+                                                                    :tag_id (:id tag)
+                                                                    :position 0}
+                                   ;; independent transform
+                                 :model/Transform t0 {:name "transform0"
+                                                      :source {:type :query
+                                                               :query (lib/native-query mp sql)}
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :target target0}
+                                 :model/TransformTransformTag _tag0 {:transform_id (:id t0)
+                                                                     :tag_id (:id tag)
+                                                                     :position 0}]
+                      ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
+                      ;; without a user context (e.g., from a cron job or background task).
+                      ;; previously this could produce the wrong error message from the QP routing middleware.
+                    (try
+                      (jobs/run-job! (:id job) {:run-method :cron})
+                      (catch Exception _))
+                    (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
+                    (is (mt/received-email-body? :crowberto #"transform0"))))))))))))
