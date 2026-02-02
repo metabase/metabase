@@ -4196,7 +4196,6 @@ describe("scenarios > data studio > transforms > permissions > starter", () => {
       cy.log("Verify transforms page is accessible");
       H.DataStudio.nav().findByText("Transforms").click();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors
       cy.findByText("Tidy up your data right from Metabase").should(
         "be.visible",
       );
