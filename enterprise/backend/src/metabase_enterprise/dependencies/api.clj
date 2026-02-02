@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
@@ -149,13 +148,15 @@
     (broken-cards-response {})))
 
 (def ^:private entity-keys
-  {:table     [:name :description :display_name :db_id :db :schema :fields :transform]
+  {:table     [:name :description :display_name :db_id :db :schema :fields :transform
+               :owner :owner_user_id :owner_email]
    :card      [:name :type :display :database_id :view_count :query_type
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
                :collection :collection_id :dashboard :dashboard_id :document :document_id]
    :snippet   [:name :description :created_at :creator :creator_id :collection :collection_id]
-   :transform [:name :description :creator :table :last_run]
+   :transform [:name :description :creator :table :last_run
+               :owner :owner_user_id :owner_email]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
                :collection :collection_id
@@ -274,8 +275,8 @@
   [entity-type {:keys [id] :as entity} usages errors]
   (cond-> {:id id
            :type entity-type
-           :data (->> (select-keys entity (entity-keys entity-type))
-                      (m/map-vals format-subentity))
+           :data (-> (select-keys entity (entity-keys entity-type))
+                     (update-vals format-subentity))
            :dependents_count (usages [entity-type id])}
     errors (assoc :dependents_errors (get errors [entity-type id]))))
 
@@ -294,10 +295,12 @@
                :card_schema]
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
-   :table     [:id :name :description :display_name :db_id :schema]
+   :table     [:id :name :description :display_name :db_id :schema
+               :owner_user_id :owner_email]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
-               :source]
+               :source
+               :owner_user_id :owner_email]
    :snippet   [:id :name :description :created_at :creator_id :collection_id]
    :sandbox   [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]
@@ -486,15 +489,15 @@
                                 (second %))))
         card->type (when (seq all-cards)
                      (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
-    (m/map-vals (fn [children]
-                  (->> children
-                       (map (fn [[entity-type entity-id]]
-                              (let [dependency-type (if (= entity-type :card)
-                                                      (card->type entity-id)
-                                                      entity-type)]
-                                {dependency-type 1})))
-                       (apply merge-with +)))
-                children-map)))
+    (update-vals children-map
+                 (fn [children]
+                   (->> children
+                        (map (fn [[entity-type entity-id]]
+                               (let [dependency-type (if (= entity-type :card)
+                                                       (card->type entity-id)
+                                                       entity-type)]
+                                 {dependency-type 1})))
+                        (apply merge-with +))))))
 
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
@@ -547,9 +550,9 @@
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate entities :fields :db :transform)
+    :table (t2/hydrate entities :fields :db :transform :owner)
     :transform (-> entities
-                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection)
+                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
     :dashboard (-> entities
                    (t2/hydrate :creator [:collection :is_personal])
@@ -564,23 +567,33 @@
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
     (:segment :measure) (t2/hydrate entities :creator [:table :db])))
 
+(defn- fetch-and-hydrate-nodes
+  "Fetches and hydrates entities for the given nodes.
+   Returns a map from [entity-type entity-id] -> hydrated entity."
+  [nodes-by-type]
+  (into {}
+        (mapcat (fn [[entity-type entity-ids]]
+                  (when (seq entity-ids)
+                    (let [model (deps.dependency-types/dependency-type->model entity-type)
+                          fields (entity-select-fields entity-type)]
+                      (->> (t2/select (into [model] fields) :id [:in entity-ids])
+                           (hydrate-entities entity-type)
+                           (map (fn [entity]
+                                  [[entity-type (:id entity)] entity])))))))
+        nodes-by-type))
+
 (defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
   (let [usages (node-usages downstream-graph nodes)
-        nodes-by-type (->> (group-by first nodes)
-                           (m/map-vals #(map second %)))
+        nodes-by-type (-> (group-by first nodes)
+                          (update-vals #(map second %)))
         errors (when include-errors?
                  (node-errors nodes-by-type))
+        hydrated-entities (fetch-and-hydrate-nodes nodes-by-type)
         nodes-by-type-and-id
         (into {}
-              (mapcat (fn [[entity-type entity-ids]]
-                        (let [model (deps.dependency-types/dependency-type->model entity-type)
-                              fields (entity-select-fields entity-type)]
-                          (->> (t2/select (into [model] fields) :id [:in entity-ids])
-                               (hydrate-entities entity-type)
-                               (map (fn [entity]
-                                      [[entity-type (:id entity)]
-                                       (entity-value entity-type entity usages errors)]))))))
-              nodes-by-type)]
+              (map (fn [[node-key entity]]
+                     [node-key (entity-value (first node-key) entity usages errors)]))
+              hydrated-entities)]
     (keep nodes-by-type-and-id nodes)))
 
 (mr/def ::graph-response
@@ -1008,8 +1021,8 @@
      :offset offset
      :total  total}))
 
-(api.macros/defendpoint :get "/graph/broken" :- dependency-items-response
-  "Returns a list of entities that are causing errors in downstream dependents
+(api.macros/defendpoint :get "/graph/breaking" :- dependency-items-response
+  "Returns a list of entities that are breaking other entities (sources of errors).
    These are tables or cards that other entities depend on, where those dependents
    have validation errors traced back to this source entity.
 
@@ -1081,6 +1094,96 @@
      :offset offset
      :limit  limit
      :total  total}))
+
+(def ^:private broken-dependents-args
+  [:map
+   [:id                            ms/PositiveInt]
+   [:type                          ::deps.dependency-types/dependency-types]
+   [:dependent_types               {:optional true}
+    [:or
+     ::deps.dependency-types/dependency-types
+     [:sequential ::deps.dependency-types/dependency-types]]]
+   [:dependent_card_types          {:optional true}
+    [:or
+     (ms/enum-decode-keyword lib.schema.metadata/card-types)
+     [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
+   [:include_personal_collections  {:optional true} :boolean]
+   [:sort_column                   {:optional true} (ms/enum-decode-keyword dependents-sort-columns)]
+   [:sort_direction                {:optional true} (ms/enum-decode-keyword sort-directions)]])
+
+(mr/def ::broken-dependent-entity
+  "Entity returned by /graph/broken endpoint - includes errors but no dependents_count."
+  [:map
+   [:id   pos-int?]
+   [:type :keyword]
+   [:data [:map]]])
+
+(api.macros/defendpoint :get "/graph/broken" :- [:sequential ::broken-dependent-entity]
+  "Returns the broken dependents for a specific source entity.
+   These are entities that have validation errors traced back to the specified source.
+
+   Required parameters:
+   - `id`: The ID of the source entity
+   - `type`: The type of the source entity (card, table)
+
+   Optional parameters:
+   - `dependent_types`: Dependency types to filter by. Can be single value or array.
+   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.
+   - `include_personal_collections`: Include items in personal collections (default: false)
+   - `sort_column`: Column to sort by - name, location, or view-count (default: name)
+   - `sort_direction`: Sort direction - asc or desc (default: asc)"
+  [_route-params
+   {:keys [id dependent_types dependent_card_types include_personal_collections sort_column sort_direction]
+    entity-type :type
+    :or {include_personal_collections false
+         sort_column :name
+         sort_direction :asc}} :- broken-dependents-args]
+  (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
+  (lib-be/with-metadata-provider-cache
+    (let [normalize-types (fn normalize-types [types]
+                            (if (keyword? types)
+                              [(name types)]
+                              (not-empty (map name types))))
+          dep-types (normalize-types dependent_types)
+          card-types (normalize-types dependent_card_types)
+          where-clause (cond-> [:and
+                                [:= :afe.source_entity_type (name entity-type)]
+                                [:= :afe.source_entity_id id]
+                                [:= :af.result false]
+                                (visible-entities-filter-clause
+                                 :afe.analyzed_entity_type
+                                 :afe.analyzed_entity_id
+                                 {:include-archived-items :exclude})]
+                         dep-types  (conj [:in :afe.analyzed_entity_type dep-types])
+                         card-types (conj [:or
+                                           [:!= :afe.analyzed_entity_type [:inline "card"]]
+                                           [:in :rc.type card-types]]))
+          broken-entity-pairs
+          (t2/query (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
+                                               [:afe.analyzed_entity_id :entity_id]]
+                             :from [[:analysis_finding_error :afe]]
+                             :join [[:analysis_finding :af]
+                                    [:and
+                                     [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
+                                     [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
+                             :where where-clause}
+                      card-types (assoc :left-join [[:report_card :rc]
+                                                    [:and
+                                                     [:= :afe.analyzed_entity_type [:inline "card"]]
+                                                     [:= :rc.id :afe.analyzed_entity_id]]])))
+          nodes (map (fn [{:keys [entity_type entity_id]}]
+                       [(keyword entity_type) entity_id])
+                     broken-entity-pairs)
+          nodes-by-type (-> (group-by first nodes)
+                            (update-vals #(map second %)))]
+      (-> (into [] (cond-> (map (fn [[[entity-type entity-id] entity]]
+                                  {:id entity-id
+                                   :type entity-type
+                                   :data (-> (select-keys entity (entity-keys entity-type))
+                                             (update-vals format-subentity))}))
+                     (not include_personal_collections) (comp (remove in-personal-collection?)))
+                (fetch-and-hydrate-nodes nodes-by-type))
+          (sort-dependents sort_column sort_direction)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

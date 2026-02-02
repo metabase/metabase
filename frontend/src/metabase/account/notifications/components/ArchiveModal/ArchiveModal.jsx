@@ -126,4 +126,5 @@ const getRecipientsMessage = (item) => {
   return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ArchiveModal;

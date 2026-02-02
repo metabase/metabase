@@ -2,12 +2,11 @@ import cx from "classnames";
 import { forwardRef } from "react";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { Box, Icon, UnstyledButton } from "metabase/ui";
-
 import {
   MetabotPromptInput,
   type MetabotPromptInputProps,
-} from "../../MetabotPromptInput";
+} from "metabase/metabot/components/MetabotPromptInput";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChatEditor.module.css";
 

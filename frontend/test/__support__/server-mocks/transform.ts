@@ -1,11 +1,22 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  ListTransformRunsResponse,
   Transform,
   TransformJob,
   TransformJobId,
   TransformTag,
 } from "metabase-types/api";
+
+export function setupListTransformRunsEndpoint(
+  response: ListTransformRunsResponse,
+) {
+  fetchMock.get(`path:/api/ee/transform/run`, response);
+}
+
+export function setupListTransformsEndpoint(transforms: Transform[]) {
+  fetchMock.get(`path:/api/ee/transform`, transforms);
+}
 
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
   fetchMock.get(`path:/api/ee/transform-tag`, tags);

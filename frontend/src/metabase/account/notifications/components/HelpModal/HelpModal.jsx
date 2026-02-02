@@ -59,4 +59,5 @@ const getAdminMessage = (email, applicationName) => {
   return jt`${applicationName} doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HelpModal;

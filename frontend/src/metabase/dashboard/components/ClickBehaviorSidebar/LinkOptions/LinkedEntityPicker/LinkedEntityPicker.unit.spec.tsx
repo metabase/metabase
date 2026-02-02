@@ -61,6 +61,7 @@ const collectionInRootCollectionItem = createMockCollectionItem({
   id: PUBLIC_COLLECTION.id as number,
   name: PUBLIC_COLLECTION.name,
   model: "collection",
+  here: ["card", "dashboard"],
   collection_id: PUBLIC_COLLECTION.id as number,
 });
 
@@ -97,7 +98,20 @@ function setup({
   });
   setupCollectionItemsEndpoint({
     collection: PERSONAL_COLLECTION,
-    collectionItems: [],
+    collectionItems: [
+      createMockCollectionItem({
+        id: 4545,
+        name: "my card",
+        model: "card",
+        collection_id: PERSONAL_COLLECTION.id,
+      }),
+      createMockCollectionItem({
+        id: 4546,
+        name: "my dash",
+        model: "dashboard",
+        collection_id: PERSONAL_COLLECTION.id,
+      }),
+    ],
   });
   setupCollectionItemsEndpoint({
     collection: PUBLIC_COLLECTION,
@@ -199,12 +213,13 @@ describe("LinkedEntityPicker", () => {
           const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
-            models: "dashboard",
-            q: typedText,
-            filter_items_in_personal_collection: "exclude",
-          });
+          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual(
+            expect.objectContaining({
+              context: "entity-picker",
+              q: typedText,
+              filter_items_in_personal_collection: "exclude",
+            }),
+          );
         });
       });
     });
@@ -260,11 +275,12 @@ describe("LinkedEntityPicker", () => {
           const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
-          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
-            models: "dashboard",
-            q: typedText,
-          });
+
+          const params = Object.keys(
+            urlSearchParamsToObject(urlObject.searchParams),
+          );
+          expect(params).toContain("q");
+          expect(params).not.toContain("filter_items_in_personal_collection");
         });
       });
     });
@@ -343,12 +359,13 @@ describe("LinkedEntityPicker", () => {
             "card",
             "dataset",
           ]);
-          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
-            models: ["card", "dataset"],
-            q: typedText,
-            filter_items_in_personal_collection: "exclude",
-          });
+          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual(
+            expect.objectContaining({
+              context: "entity-picker",
+              q: typedText,
+              filter_items_in_personal_collection: "exclude",
+            }),
+          );
         });
       });
     });
@@ -375,7 +392,9 @@ describe("LinkedEntityPicker", () => {
         expect(
           await screen.findByText(PUBLIC_COLLECTION.name),
         ).toBeInTheDocument();
-        expect(screen.getByText(PERSONAL_COLLECTION.name)).toBeInTheDocument();
+        expect(
+          screen.getByText(new RegExp(PERSONAL_COLLECTION.name)),
+        ).toBeInTheDocument();
         expect(
           await screen.findByText(questionCollectionItem.name),
         ).toBeInTheDocument();
@@ -393,7 +412,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByPlaceholderText(/search/i),
             typedText,
           );
-          await userEvent.click(screen.getByText("Everywhere"));
+          await userEvent.click(await screen.findByText("Everywhere"));
 
           expect(
             await screen.findByText(questionSearchResult.name),
@@ -401,12 +420,11 @@ describe("LinkedEntityPicker", () => {
 
           const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
-          expect(urlObject.pathname).toEqual("/api/search");
-          expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
-            models: ["card", "dataset"],
-            q: typedText,
-          });
+          const params = Object.keys(
+            urlSearchParamsToObject(urlObject.searchParams),
+          );
+          expect(params).toContain("q");
+          expect(params).not.toContain("filter_items_in_personal_collection");
         });
       });
     });

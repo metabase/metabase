@@ -959,3 +959,6 @@
 (defmethod sql.qp/->honeysql [:snowflake :ends-with]
   [driver [_ field arg options]]
   (string-filter driver :endswith field arg options))
+
+(defmethod driver/llm-sql-dialect-resource :snowflake [_]
+  "llm/prompts/dialects/snowflake.md")
