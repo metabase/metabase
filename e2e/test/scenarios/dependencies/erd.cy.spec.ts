@@ -14,20 +14,89 @@ describe("scenarios > dependencies > ERD", () => {
     H.activateToken("bleeding-edge");
   });
 
-  describe("page loading and navigation", () => {
-    it("should load the ERD page with a valid table-id", () => {
+  describe("navigation", () => {
+    it("should show ERD link in data studio nav", () => {
+      cy.visit("/data-studio/library");
+      H.DataStudio.nav()
+        .findByRole("link", { name: "ERD" })
+        .should("be.visible");
+    });
+
+    it("should navigate to ERD page from data studio nav", () => {
+      cy.visit("/data-studio/library");
+      H.DataStudio.nav().findByRole("link", { name: "ERD" }).click();
+      cy.url().should("include", "/data-studio/erd");
+    });
+
+    it("should highlight ERD nav link when on ERD page", () => {
+      cy.visit(ERD_URL);
+      H.DataStudio.nav()
+        .findByRole("link", { name: "ERD" })
+        .should("have.attr", "aria-label", "ERD");
+    });
+  });
+
+  describe("search input", () => {
+    it("should show search input on empty ERD page", () => {
+      cy.visit(ERD_URL);
+      getEntrySearchInput().should("be.visible");
+    });
+
+    it("should show search input when ERD is loaded with a table", () => {
       visitErd(ORDERS_ID);
+      getEntrySearchInput().should("be.visible");
+    });
+
+    it("should search for a table and navigate to its ERD", () => {
+      cy.visit(ERD_URL);
+      getEntrySearchInput().type("Orders");
+      H.popover().findByText("Orders").click();
+      cy.url().should("include", "table-id=");
       getErdNode("ORDERS").should("be.visible");
     });
 
-    it("should show the back button and navigate back on click", () => {
-      cy.visit("/data-studio/data");
+    it("should search for a model and navigate to its ERD", () => {
+      H.createQuestion({
+        name: "Orders Model",
+        type: "model",
+        query: { "source-table": ORDERS_ID },
+      });
 
+      cy.intercept("GET", "/api/search*").as("searchRequest");
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(ERD_URL);
+      getEntrySearchInput().clear().type("Orders Model");
+      cy.wait("@searchRequest");
+      H.popover().findByText("Orders Model").click();
+      cy.url().should("include", "model-id=");
+      cy.wait("@erdRequest");
+      // model resolves to same underlying table
+      getErdNode("ORDERS").should("be.visible");
+    });
+
+    it("should open Browse all picker and select a table", () => {
+      cy.visit(ERD_URL);
+      getEntrySearchInput().click();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().should("be.visible");
+    });
+
+    it("should only show tables and models in Browse all picker", () => {
+      cy.visit(ERD_URL);
+      getEntrySearchInput().click();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        // should not show dashboard, question, or other model types
+        cy.findByText("Dashboards").should("not.exist");
+        cy.findByText("Questions").should("not.exist");
+      });
+    });
+  });
+
+  describe("page loading", () => {
+    it("should load the ERD page with a valid table-id", () => {
       visitErd(ORDERS_ID);
       getErdNode("ORDERS").should("be.visible");
-
-      cy.findByRole("button", { name: "Back" }).should("be.visible").click();
-      cy.url().should("include", "/data-studio/data");
     });
 
     it("should show loading state while fetching ERD data", () => {
@@ -54,9 +123,53 @@ describe("scenarios > dependencies > ERD", () => {
       cy.get("main").findByText("Failed to load ERD").should("be.visible");
     });
 
-    it("should not render ERD canvas when no table-id is provided", () => {
+    it("should show empty state when no table-id or model-id is provided", () => {
       cy.visit(ERD_URL);
-      getErdCanvas().should("not.exist");
+      cy.get("main")
+        .findByText("Search for a table or model to view its ERD")
+        .should("be.visible");
+    });
+  });
+
+  describe("model-id support", () => {
+    it("should load ERD via model-id query param", () => {
+      H.createQuestion({
+        name: "Orders Model",
+        type: "model",
+        query: { "source-table": ORDERS_ID },
+      }).then(({ body: card }) => {
+        cy.visit(`${ERD_URL}?model-id=${card.id}`);
+        getErdCanvas().should("be.visible");
+        // Should show the underlying table's ERD
+        getErdNode("ORDERS").should("be.visible");
+        getErdNode("PEOPLE").should("be.visible");
+        getErdNode("PRODUCTS").should("be.visible");
+      });
+    });
+
+    it("should send model-id param to API when model-id is in URL", () => {
+      H.createQuestion({
+        name: "Orders Model",
+        type: "model",
+        query: { "source-table": ORDERS_ID },
+      }).then(({ body: card }) => {
+        cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+        cy.visit(`${ERD_URL}?model-id=${card.id}`);
+        cy.wait("@erdRequest").then((interception) => {
+          expect(interception.request.url).to.include(`model-id=${card.id}`);
+          expect(interception.response!.statusCode).to.eq(200);
+        });
+      });
+    });
+
+    it("should return 400 when model-id points to a non-existent card", () => {
+      cy.request({
+        method: "GET",
+        url: "/api/ee/dependencies/erd?model-id=999999",
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.be.oneOf([404, 400]);
+      });
     });
   });
 
@@ -363,6 +476,16 @@ describe("scenarios > dependencies > ERD", () => {
         expect(response.status).to.be.oneOf([404, 400]);
       });
     });
+
+    it("should return 400 when neither table-id nor model-id is provided", () => {
+      cy.request({
+        method: "GET",
+        url: "/api/ee/dependencies/erd",
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(400);
+      });
+    });
   });
 
   describe("layout", () => {
@@ -397,6 +520,10 @@ function visitErd(tableId: number) {
 
 function getErdCanvas() {
   return cy.get(".react-flow");
+}
+
+function getEntrySearchInput() {
+  return cy.findByTestId("graph-entry-search-input");
 }
 
 function getErdNode(tableName: string) {
