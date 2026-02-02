@@ -97,23 +97,18 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     function testEntityPicker({
-      tabName,
-      itemName,
-      itemLevel,
+      path,
       itemIcon,
     }: {
-      tabName: string;
-      itemName: string;
-      itemLevel: number;
+      path: (string | RegExp)[];
       itemIcon: IconName;
     }) {
+      const itemName = path[path.length - 1];
+      const itemLevel = path.length - 1;
       cy.log(`verify that "${itemName}" can be selected in the picker`);
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tabName).click();
-        H.entityPickerModalItem(itemLevel, itemName).click();
-      });
+      H.pickEntity({ path });
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
 
@@ -133,9 +128,11 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tabName).click();
-        cy.findByPlaceholderText(/Search/).type(itemName);
-        cy.findByText(/result for/).should("exist");
+        cy.findByPlaceholderText(/Search/).type(itemName as string);
+        cy.findByText(/results for/).should("be.visible");
+        cy.findByTestId("search-scope-selector")
+          .findByText("Everywhere")
+          .click();
         cy.findByText(itemName).click();
       });
       H.DependencyGraph.entryButton().should("have.text", itemName);
@@ -185,33 +182,23 @@ describe("scenarios > dependencies > dependency graph", () => {
 
       visitGraph();
       testEntityPicker({
-        tabName: "Tables",
-        itemName: "Products",
-        itemLevel: 3,
+        path: ["Databases", /Sample Database/, "Products"],
         itemIcon: "table",
       });
       testEntityPicker({
-        tabName: "Questions",
-        itemName: "Orders, Count, Grouped by Created At (year)",
-        itemLevel: 1,
+        path: ["Our analytics", "Orders, Count, Grouped by Created At (year)"],
         itemIcon: "line",
       });
       testEntityPicker({
-        tabName: "Models",
-        itemName: "Orders Model",
-        itemLevel: 1,
+        path: ["Our analytics", "Orders Model"],
         itemIcon: "model",
       });
       testEntityPicker({
-        tabName: "Metrics",
-        itemName: TABLE_BASED_METRIC_NAME,
-        itemLevel: 1,
+        path: ["Our analytics", TABLE_BASED_METRIC_NAME],
         itemIcon: "metric",
       });
       testEntityPicker({
-        tabName: "Transforms",
-        itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemLevel: 0,
+        path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
       });
     });

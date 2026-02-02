@@ -196,7 +196,7 @@ export function isItemMetric(item: CollectionItem) {
   return item.model === "metric";
 }
 
-export function isItemCollection(item: CollectionItem) {
+export function isItemCollection(item: Pick<CollectionItem, "model">) {
   return item.model === "collection";
 }
 

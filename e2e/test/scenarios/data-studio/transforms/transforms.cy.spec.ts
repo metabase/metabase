@@ -348,20 +348,14 @@ describe("scenarios > admin > transforms", () => {
     );
 
     it("should be able to create and run a transform from a question or a model", () => {
-      function testCardSource({
-        type,
-        label,
-      }: {
-        type: CardType;
-        label: string;
-      }) {
+      function testCardSource({ type }: { type: CardType }) {
         H.resetSnowplow();
 
         cy.log("create a query in the target database");
         H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
           (tableId) =>
             H.createQuestion({
-              name: "Test",
+              name: `Test ${type}`,
               type,
               database: WRITABLE_DB_ID,
               query: {
@@ -379,10 +373,8 @@ describe("scenarios > admin > transforms", () => {
           event_detail: "saved-question",
         });
 
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab(label);
-          cy.findByText("Test").click();
-        });
+        H.pickEntity({ path: ["Our analytics", `Test ${type}`], select: true });
+
         getQueryEditor().button("Save").click();
         H.modal().within(() => {
           cy.findByLabelText("Name").clear().type(`${type} transform`);
@@ -408,8 +400,8 @@ describe("scenarios > admin > transforms", () => {
         H.assertQueryBuilderRowCount(3);
       }
 
-      testCardSource({ type: "question", label: "Questions" });
-      testCardSource({ type: "model", label: "Models" });
+      testCardSource({ type: "question" });
+      testCardSource({ type: "model" });
     });
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
@@ -606,6 +598,7 @@ LIMIT
       H.miniPickerHeader().click(); // go back
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findAllByTestId("picker-item")
           .contains("Animal Metric")
           .should("have.attr", "data-disabled", "true");
@@ -662,16 +655,10 @@ LIMIT
     });
 
     it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
-      function testCardSource({
-        type,
-        label,
-      }: {
-        type: CardType;
-        label: string;
-      }) {
+      function testCardSource({ type }: { type: CardType }) {
         cy.log("create a query in the target database");
         H.createQuestion({
-          name: "Test",
+          name: `Test ${type}`,
           type,
           database: SAMPLE_DB_ID,
           query: {
@@ -684,15 +671,15 @@ LIMIT
         cy.button("Create a transform").click();
         H.popover().findByText("Copy of a saved question").click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab(label);
-          cy.findAllByTestId("picker-item")
-            .contains("Test")
+          cy.findByText("Our analytics").click();
+          cy.findByText(`Test ${type}`)
+            .closest("a")
             .should("have.attr", "data-disabled", "true");
         });
       }
 
-      testCardSource({ type: "question", label: "Questions" });
-      testCardSource({ type: "model", label: "Models" });
+      testCardSource({ type: "question" });
+      testCardSource({ type: "model" });
     });
 
     it("should not auto-pivot query results for MBQL transforms", () => {
@@ -2242,7 +2229,7 @@ LIMIT
           .click();
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
 
@@ -2355,7 +2342,7 @@ LIMIT
           .click();
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
 
@@ -2572,7 +2559,7 @@ LIMIT
       });
 
       cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
-        cy.findByRole("button", { name: /New collection/ }).click();
+        cy.findByRole("button", { name: /New folder/ }).click();
       });
 
       cy.findByRole("dialog", { name: "Create a new collection" }).within(

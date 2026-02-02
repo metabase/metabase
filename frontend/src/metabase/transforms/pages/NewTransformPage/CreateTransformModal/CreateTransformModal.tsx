@@ -148,7 +148,7 @@ function CreateTransformForm({
         <FormCollectionPicker
           name="collection_id"
           title={t`Collection`}
-          type="transform-collections"
+          collectionPickerModalProps={{ namespaces: ["transforms"] }}
           style={{ marginBottom: 0 }}
         />
         <IncrementalTransformSettings

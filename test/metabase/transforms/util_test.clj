@@ -1,15 +1,15 @@
-(ns ^:mb/driver-tests metabase.transforms.util-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
   "Tests for transform utility functions."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.test.data.sql :as sql.tx]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,24 +57,16 @@
                   ;; Ignore cleanup errors
                   nil)))))))))
 
-(mt/deftest-oss is-temp-transform-tables-oss-test
+(deftest is-temp-transform-tables-test
   (testing "tables with shcema"
     (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
           table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
-      (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
-      (is (true? (transforms.util/is-temp-transform-table? table-without-schema))))))
-
-(deftest is-temp-transform-tables-ee-test
-  (mt/when-ee-evailable
-   (testing "tables with shcema"
-     (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
-           table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
-       (mt/with-premium-features #{}
-         (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
-         (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
-       (mt/with-premium-features #{:transforms}
-         (is (transforms.util/is-temp-transform-table? table-without-schema))
-         (is (transforms.util/is-temp-transform-table? table-with-schema))))))
+      (mt/with-premium-features #{}
+        (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
+        (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
+      (mt/with-premium-features #{:transforms}
+        (is (transforms.util/is-temp-transform-table? table-without-schema))
+        (is (transforms.util/is-temp-transform-table? table-with-schema)))))
 
   (testing "Ignores non-transform tables"
     (mt/with-premium-features #{:transforms}

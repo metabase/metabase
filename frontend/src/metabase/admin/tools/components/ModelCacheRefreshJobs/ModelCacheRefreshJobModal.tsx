@@ -37,7 +37,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function _ModelCacheRefreshJobModal({
+function ModelCacheRefreshJobModalInner({
   persistedModel,
   onClose,
   onRefresh,
@@ -90,4 +90,4 @@ export const ModelCacheRefreshJobModal = _.compose(
       props.params.jobId,
     loadingAndErrorWrapper: false,
   }),
-)(_ModelCacheRefreshJobModal);
+)(ModelCacheRefreshJobModalInner);

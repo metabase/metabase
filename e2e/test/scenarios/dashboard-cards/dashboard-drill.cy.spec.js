@@ -240,7 +240,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("Dashboard").click());
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Dashboards/ }).click();
       cy.findByText("end dash").click();
     });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

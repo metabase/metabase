@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo } from "react";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Menu } from "metabase/ui";
 
-import { useLogRecentItem } from "../../../../EntityPicker/hooks/use-log-recent-item";
 import type { DataPickerValue } from "../../../DataPicker";
+import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
 import { MiniPickerContext } from "../../context";
 import type { MiniPickerItem, MiniPickerPickableItem } from "../../types";
 import {

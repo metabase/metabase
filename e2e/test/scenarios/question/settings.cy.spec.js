@@ -545,12 +545,13 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByLabelText(/Where do you want to save this/).click();
       });
-      H.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
+      H.pickEntity({ path: ["Our analytics"], select: false });
       H.entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
       H.checkSavedToCollectionQuestionToast(true);
 
       H.entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders in a dashboard").click();
         cy.findByText("Cancel").click();
       });

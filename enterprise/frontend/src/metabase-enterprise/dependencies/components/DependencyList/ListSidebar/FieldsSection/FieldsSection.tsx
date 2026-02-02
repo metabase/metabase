@@ -32,7 +32,7 @@ export function FieldsSection({ node }: FieldsSectionProps) {
   return (
     <Stack role="region" aria-label={t`Fields`}>
       <Group gap="sm" wrap="nowrap">
-        <Badge c="text-selected" bg="brand">
+        <Badge variant="filled" bg="brand">
           {fields.length}
         </Badge>
         <Title order={5}>{getNodeFieldsLabel(fields.length)}</Title>

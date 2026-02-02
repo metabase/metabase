@@ -10,6 +10,7 @@ import type {
   CollectionType,
   DatabaseId,
   GetLibraryCollectionResponse,
+  LibraryCollection,
   SchemaId,
   TableId,
 } from "metabase-types/api";
@@ -43,16 +44,19 @@ type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: () => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
+    data: undefined | LibraryCollection;
     isLoading: boolean;
-    data: CollectionItem | undefined;
   };
-  useGetLibraryChildCollectionByType: (params: {
+  useGetLibraryChildCollectionByType: ({
+    skip,
+    type,
+  }: {
     skip?: boolean;
     type: CollectionType;
   }) => CollectionItem | undefined;
   useGetResolvedLibraryCollection: (params?: { skip?: boolean }) => {
+    data: undefined | LibraryCollection | CollectionItem;
     isLoading: boolean;
-    data: CollectionItem | undefined;
   };
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;

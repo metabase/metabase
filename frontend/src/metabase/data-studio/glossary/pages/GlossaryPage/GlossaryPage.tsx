@@ -38,7 +38,9 @@ export function GlossaryPage() {
             glossary={glossary}
             onCreate={async (term, definition) => {
               const { data } = await createGlossary({ term, definition });
-              data?.id && trackDataStudioGlossaryTermCreated(data.id);
+              if (data?.id) {
+                trackDataStudioGlossaryTermCreated(data.id);
+              }
             }}
             onEdit={async (id, term, definition) => {
               await updateGlossary({ id, term, definition });

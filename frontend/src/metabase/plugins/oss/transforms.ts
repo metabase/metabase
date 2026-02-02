@@ -1,6 +1,7 @@
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -15,6 +16,16 @@ import type {
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";
+
+// Types
+export type TransformPickerItem = OmniPickerItem & {
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
 
 export type TransformsPlugin = {
   isEnabled: boolean;

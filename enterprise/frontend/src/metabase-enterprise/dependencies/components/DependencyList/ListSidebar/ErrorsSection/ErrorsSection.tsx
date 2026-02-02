@@ -73,7 +73,7 @@ function ErrorList({ title, items, "aria-label": ariaLabel }: ErrorListProps) {
   return (
     <Stack role="region" aria-label={ariaLabel}>
       <Group gap="sm" wrap="nowrap">
-        <Badge c="text-selected" bg="error">
+        <Badge variant="filled" bg="error">
           {items.length}
         </Badge>
         <Title order={5}>{title}</Title>

@@ -3,22 +3,23 @@ import { c } from "ttag";
 
 import { useUpdateTransformMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import {
-  type CollectionPickerItem,
-  CollectionPickerModal,
-  type CollectionPickerOptions,
-} from "metabase/common/components/Pickers/CollectionPicker";
+import type {
+  EntityPickerOptions,
+  OmniPickerItem,
+  OmniPickerValue,
+} from "metabase/common/components/Pickers";
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Transform } from "metabase-types/api";
 
-const TRANSFORM_COLLECTION_PICKER_OPTIONS: CollectionPickerOptions = {
-  namespace: "transforms",
-  showPersonalCollections: false,
-  showRootCollection: true,
-  showSearch: false,
-  hasConfirmButtons: true,
-  allowCreateNew: true,
+const TRANSFORM_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
+  hasSearch: false,
   hasRecents: false,
-  showLibrary: false,
+  hasLibrary: false,
+  hasRootCollection: true,
+  hasPersonalCollections: false,
+
+  hasConfirmButtons: true,
+  canCreateCollections: true,
 };
 
 type MoveTransformModalProps = {
@@ -35,7 +36,7 @@ export function MoveTransformModal({
   const [updateTransform] = useUpdateTransformMutation();
 
   const handleChange = useCallback(
-    async ({ id }: CollectionPickerItem) => {
+    async ({ id }: OmniPickerItem) => {
       const collectionId = canonicalCollectionId(id);
       await updateTransform({
         id: transform.id,
@@ -46,10 +47,11 @@ export function MoveTransformModal({
     [transform.id, updateTransform, onMove],
   );
 
-  const pickerValue = useMemo(
+  const pickerValue: OmniPickerValue = useMemo(
     () => ({
       id: transform.collection_id ?? "root",
-      model: "collection" as const,
+      model: "collection",
+      namespace: "transforms",
     }),
     [transform.collection_id],
   );
@@ -59,6 +61,7 @@ export function MoveTransformModal({
       title={c("dialog title for moving a transform to another collection")
         .t`Move "${transform.name}"`}
       value={pickerValue}
+      namespaces={["transforms"]}
       onChange={handleChange}
       onClose={onClose}
       options={TRANSFORM_COLLECTION_PICKER_OPTIONS}

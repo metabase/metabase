@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
+  setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
@@ -175,6 +176,7 @@ export const setup = ({
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
+  setupLibraryEndpoints(false);
 
   const state = createStoreState({
     isAdmin,
