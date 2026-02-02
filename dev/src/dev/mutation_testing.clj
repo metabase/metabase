@@ -47,7 +47,7 @@
    Returns the parsed response body."
   [query variables]
   (let [response (http/post "https://api.linear.app/graphql"
-                            {:headers {"Authorization" (str "Bearer " (api-key))
+                            {:headers {"Authorization" (api-key)
                                        "Content-Type" "application/json"}
                              :body (json/generate-string {:query query
                                                           :variables variables})
@@ -330,17 +330,17 @@
 
 (defn project-description
   "Generate a Linear project description with business value and report statistics.
+   Must be ≤255 characters (Linear limit).
 
    `stats` is a map from `report-stats`."
   [target-ns stats]
-  (str "Improve test coverage in `" target-ns "` to catch regressions and reduce bugs in production.\n"
-       "\n"
-       "Mutation testing found that out of " (:total-fns stats) " functions:\n"
-       "- " (:uncovered stats) " are completely untested\n"
-       "- " (:partially-covered stats) " are partially covered (" (:total-surviving-mutations stats) " surviving mutations)\n"
-       "- " (:fully-covered stats) " are fully covered (" (:pct-fully-covered stats) "%)\n"
-       "\n"
-       "This project tracks the work to kill surviving mutations by writing targeted tests."))
+  (str "Mutation testing for " target-ns ". "
+       (:total-fns stats) " fns: "
+       (:uncovered stats) " untested, "
+       (:partially-covered stats) " partial ("
+       (:total-surviving-mutations stats) " surviving), "
+       (:fully-covered stats) " covered ("
+       (:pct-fully-covered stats) "%)"))
 
 (defn create-project-for-namespace!
   "Create a Linear project for mutation testing a specific namespace.
