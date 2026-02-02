@@ -1197,7 +1197,7 @@
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
-          timeout (* 10 60)]
+          timeout (* 10 1000)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1211,7 +1211,7 @@
   (testing "POST /api/table/:id/sync_schema"
     (testing "User with manage-table-metadata permission can sync table"
       (let [sync-called? (promise)
-            timeout (* 10 60)]
+            timeout (* 10 1000)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                          :model/Table    table       {:db_id db-id :schema "PUBLIC"}]

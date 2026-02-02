@@ -280,6 +280,11 @@
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x1)}
                                          (select-keys x1 [:name :description :source :target])))
+            ;; Anti-flake measure: wait a second to ensure x1 and x2 have distinct created_at times.
+            ;; This is the only way to have a predictable merge order in this test, as neither
+            ;; of the sort keys (created_at, ref_id) can be overridden through the API, and the ref_id
+            ;; is completely random.
+            _ (Thread/sleep 1000)
             {ws-x-2-id :ref_id}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x2)}

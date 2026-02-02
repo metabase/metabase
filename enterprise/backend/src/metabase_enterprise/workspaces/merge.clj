@@ -120,7 +120,9 @@
                             (update-in acc [:merged :transforms] conj result))))
                       {:merged {:transforms []}
                        :errors []}
-                      (t2/select :model/WorkspaceTransform :workspace_id (:id workspace) {:order-by [:created_at]}))]
+                      (t2/select :model/WorkspaceTransform :workspace_id (:id workspace)
+                                 ;; Deterministic ordering; ref_id breaks created_at ties
+                                 {:order-by [[:created_at :asc] [:ref_id :asc]]}))]
       (when (seq (:errors result))
         (.rollback ^Connection tx savepoint))
       result)))
