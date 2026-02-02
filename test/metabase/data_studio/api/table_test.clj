@@ -102,10 +102,10 @@
                                          nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/sync-schema" {:database_ids [d1],
                                                                                       :schema_ids   [(format "%d:FOO" d2)]
-                                                                                      :table_ids    [t4]}))
-        (testing "sync called?"
-          (is (true? (.await latch 10 TimeUnit/SECONDS)))
-          (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+                                                                                      :table_ids    [t4]})
+          (testing "sync called?"
+            (is (true? (.await latch 4 TimeUnit/SECONDS)))
+            (is (= [t1 t2 t4 t5] (map :id @tables)))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-rescan-values-test
   (testing "Non-admins should not be allowed to trigger rescan values"
@@ -130,10 +130,10 @@
                                                             nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
                                                                                         :schema_ids   [(format "%d:FOO" d2)]
-                                                                                        :table_ids    [t4]}))
-        (testing "rescanned?"
-          (is (true? (.await latch 4 TimeUnit/SECONDS)))
-          (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+                                                                                        :table_ids    [t4]})
+          (testing "rescanned?"
+            (is (true? (.await latch 4 TimeUnit/SECONDS)))
+            (is (= [t1 t2 t4 t5] (map :id @tables)))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
   (testing "Non-admins should not be allowed to trigger discard values"
