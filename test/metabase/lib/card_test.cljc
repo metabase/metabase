@@ -491,6 +491,42 @@
       (is (every? #(= "Custom" (:display-name %)) cols))
       (is (every? #(= "model desc" (:description %)) cols)))))
 
+(deftest ^:parallel card->underlying-query-attaches-result-metadata-test
+  (let [venues-query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        result-meta (lib/returned-columns venues-query)
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [{:id 1
+                      :name "My Card"
+                      :type :question
+                      :database-id (meta/id)
+                      :dataset-query venues-query
+                      :result-metadata result-meta}]})
+        card (lib.metadata/card mp 1)
+        underlying (lib.card/card->underlying-query mp card)
+        last-stage (last (:stages underlying))]
+    (testing "result-metadata is attached as :lib/stage-metadata on the last stage"
+      (is (some? (:lib/stage-metadata last-stage)))
+      (is (= (count result-meta)
+             (count (:columns (:lib/stage-metadata last-stage)))))))
+  (testing "multi-stage query: metadata attaches to the last stage, not the first"
+    (let [two-stage-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                              lib/append-stage)
+          result-meta (lib/returned-columns two-stage-query)
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1
+                        :name "Two Stage Card"
+                        :type :question
+                        :database-id (meta/id)
+                        :dataset-query two-stage-query
+                        :result-metadata result-meta}]})
+          card (lib.metadata/card mp 1)
+          underlying (lib.card/card->underlying-query mp card)
+          stages (:stages underlying)]
+      (is (nil? (:lib/stage-metadata (first stages))))
+      (is (some? (:lib/stage-metadata (last stages)))))))
+
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
     (binding [lib.metadata.calculation/*display-name-style* :long]
