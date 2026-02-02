@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -252,3 +253,112 @@
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
       (is (empty? (:charts (memory/get-state updated)))))))
+
+;;; ===================== Integration Tests =====================
+;;;
+;;; These tests exercise the full agent loop across multiple iterations
+;;; with tool calls, state management, and realistic scenarios.
+
+(defn scripted-claude
+  "Create a mock claude fn that returns responses in sequence.
+  Each response is a vector of parts (e.g., [{:type :text :text \"Hi\"}]).
+
+  Usage:
+    (with-redefs [self/claude (scripted-claude
+                                [[{:type :tool-input :function \"search\" ...}]
+                                 [{:type :text :text \"Found it\"}]])]
+      ...)"
+  [responses]
+  (let [idx (atom 0)]
+    (fn [_opts]
+      (let [i        @idx
+            response (get responses i)]
+        (swap! idx inc)
+        (if response
+          (mock-llm-response response)
+          ;; Fallback: return empty text to terminate loop
+          (mock-llm-response [{:type :text :text ""}]))))))
+
+(deftest integration-search-query-chart-flow-test
+  (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
+    ;; User asks: "Show me the first 10 orders"
+    ;; - Iteration 1: LLM calls search tool to find orders table
+    ;; - Iteration 2: LLM calls construct_notebook_query to create a raw query
+    ;; - Iteration 3: LLM returns text with chart link
+    ;;
+    ;; We use real tools with only the search backend and LLM mocked.
+    ;; The construct_notebook_query tool runs real query construction against test DB.
+    ;; We use a simple "raw" query type that doesn't require field IDs.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders-table-id (mt/id :orders)
+            ;; Track LLM calls
+            llm-call-count  (atom 0)
+            ;; Scripted LLM responses - uses real table ID from test DB
+            llm-responses
+            [ ;; Iteration 1: Search for orders table
+             [{:type      :tool-input
+               :id        "call-search-1"
+               :function  "search"
+               :arguments {:semantic_queries ["orders table"]
+                           :keyword_queries  ["orders"]
+                           :entity_types     ["table"]}}]
+             ;; Iteration 2: Construct a simple raw query (no fields/aggregations = select all)
+             [{:type      :tool-input
+               :id        "call-construct-1"
+               :function  "construct_notebook_query"
+               :arguments {:reasoning     "User wants to see orders"
+                           :query         {:query_type "raw"
+                                           :source     {:table_id orders-table-id}
+                                           :filters    []
+                                           :fields     []
+                                           :order_by   []
+                                           :limit      10}
+                           :visualization {:chart_type "table"}}}]
+             ;; Iteration 3: Final text response
+             [{:type :text
+               :text "Here are the first 10 orders from the orders table."}]]]
+        ;; Mock only self/claude (LLM) and metabot-search/search (search backend)
+        ;; Everything else runs real code
+        (with-redefs [self/claude           (fn [_opts]
+                                              (let [n (swap! llm-call-count inc)]
+                                                (mock-llm-response (get llm-responses (dec n) []))))
+                      metabot-search/search (fn [_args]
+                                              [{:id           orders-table-id
+                                                :type         "table"
+                                                :name         "orders"
+                                                :display_name "Orders"
+                                                :description  "This is a confirmed order for a product from a user."
+                                                :database_id  (mt/id)}])]
+          (testing "Should successfully go through 3 iterations"
+            (is (=? [{:type :start}
+                     {:type :tool-input :function "search"}
+                     {:type :usage}
+                     {:type     :tool-output
+                      :function "search"
+                      :result   {:structured-output {:total_count 1}}}
+                     {:type :start}
+                     {:type :tool-input :function "construct_notebook_query"}
+                     {:type :usage}
+                     ;; references real db id
+                     {:type     :tool-output
+                      :function "construct_notebook_query"
+                      :result   {:structured-output {:query {:database (mt/id)}}}}
+                     {:type :data :data-type "navigate_to"}
+                     {:type :start}
+                     ;; has final text part
+                     {:type :text}
+                     {:type :usage}
+                     {:type      :data
+                      :data-type "state"
+                      :data      {:queries map?
+                                  :charts  map?}}]
+                    (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
+                      (into [] (agent/run-agent-loop
+                                {:messages   [{:role    :user
+                                               :content "Show me the first 10 orders"}]
+                                 :state      {}
+                                 :profile-id :internal
+                                 :context    {}}))))))
+          (testing "should complete 3 LLM iterations"
+            (is (= 3 @llm-call-count)
+                "Should have exactly 3 LLM calls (search, construct, final text)")))))))
