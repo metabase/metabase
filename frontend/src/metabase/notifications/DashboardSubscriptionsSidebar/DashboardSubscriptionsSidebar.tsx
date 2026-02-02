@@ -37,6 +37,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   ChannelType,
   Dashboard,
   DashboardSubscription,
@@ -221,6 +222,7 @@ function DashboardSubscriptionsSidebarInner({
 
     async function fetchUsers() {
       if (isEmbeddingSdk()) {
+        // We don't need the the list of users in modular embedding/SDK context because we will hard code the recipient to the logged in user.
         setUsers([]);
       } else {
         setUsers((await UserApi.list()).data);
@@ -231,9 +233,21 @@ function DashboardSubscriptionsSidebarInner({
 
   // componentDidUpdate - SDK forwarding
   useEffect(() => {
+    /**
+     * (EMB-976): In modular embedding/modular embedding SDK context we need to avoid showing the NEW_PULSE view
+     * (the view that lets users select * between Email and Slack options) because we only allow email subscriptions there.
+     *
+     * And it's guaranteed that email would already be set up in modular embedding/SDK context.
+     * Otherwise, we won't show the subscription button to open this sidebar
+     * in the first place.
+     */
     if (
       isEmbeddingSdk() &&
       shouldDisplayNewPulse(editingMode, pulses) &&
+      /**
+       * Ensure we don't prematurely switch to ADD_EMAIL while the pulse list is loading.
+       * When loading completes, shouldDisplayNewPulse() will correctly return false if the list is empty.
+       */
       !isSubscriptionListLoading
     ) {
       setEditingMode(EDITING_MODES.ADD_EMAIL);
@@ -325,7 +339,7 @@ function DashboardSubscriptionsSidebarInner({
       return;
     }
 
-    const cleanedPulse = cleanPulse(pulse, formInput.channels);
+    const cleanedPulse = cleanPulse(pulse, formInput.channels as ChannelSpecs);
     cleanedPulse.name = dashboard.name;
 
     try {
@@ -377,6 +391,7 @@ function DashboardSubscriptionsSidebarInner({
   // onCancel from props and either call that or reset back a screen
   const handleCancel = useCallback(() => {
     if (returnMode.length) {
+      // set the current mode back to what it should be
       setEditingMode(returnMode[returnMode.length - 1]);
       setReturnMode(returnMode.slice(0, -1));
     } else {

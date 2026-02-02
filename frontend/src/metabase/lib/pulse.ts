@@ -15,7 +15,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
-  ChannelType,
+  ChannelSpecs,
   DashboardSubscription,
   Parameter,
   ScheduleSettings,
@@ -182,8 +182,6 @@ function cleanPulseParameters(parameters: Parameter[]) {
     };
   });
 }
-
-type ChannelSpecs = Record<ChannelType, ChannelSpec>;
 
 export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   // email is the first choice

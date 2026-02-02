@@ -26,6 +26,8 @@ export type ChannelSpec = {
   error?: any;
 };
 
+export type ChannelSpecs = Record<ChannelType, ChannelSpec>;
+
 export type ChannelDetails = {
   url: string;
   "auth-method": NotificationAuthMethods;

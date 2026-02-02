@@ -26,6 +26,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   Dashboard,
   DashboardSubscription,
   ScheduleSettings,
@@ -82,7 +83,10 @@ export const AddEditEmailSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditEmailSidebarProps) => {
-  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const isValid = dashboardPulseIsValid(
+    pulse,
+    formInput.channels as ChannelSpecs,
+  );
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
 

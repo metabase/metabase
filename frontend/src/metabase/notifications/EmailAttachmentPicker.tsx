@@ -112,6 +112,10 @@ export function EmailAttachmentPicker({
   }, [isAttachmentOnly]);
 
   const updatePulseCards = useCallback(
+    /*
+     * Reaches into the parent component (via setPulse) to update its pulsecard's include_{csv,xls} values
+     * based on this component's state.
+     */
     (attachmentType: AttachmentType, cardIds: Set<string>) => {
       const isXls = attachmentType === "xlsx";
       const isCsv = attachmentType === "csv";
@@ -174,6 +178,10 @@ export function EmailAttachmentPicker({
   }, [cards, pulse]);
 
   const canAttachFiles = !!allowDownload;
+  const canConfigurePivoting = cards.some((card) => card.display === "pivot");
+  const areAllSelected = cards.length === selectedCardIds.size;
+  const areOnlySomeSelected =
+    selectedCardIds.size > 0 && selectedCardIds.size < cards.length;
 
   const disabledReason = !canAttachFiles
     ? t`You don't have permission to download results and therefore cannot attach files to subscriptions.`
@@ -188,6 +196,9 @@ export function EmailAttachmentPicker({
   );
 
   const toggleAttach = useCallback(
+    /*
+     * Called when attachments are enabled/disabled at all
+     */
     (includeAttachment: boolean) => {
       if (!includeAttachment) {
         const emptySet = new Set<string>();
@@ -202,6 +213,9 @@ export function EmailAttachmentPicker({
   );
 
   const setAttachmentType = useCallback(
+    /*
+     * Called when the attachment type toggle (csv/xls) is clicked
+     */
     (format: ExportFormat) => {
       if (format === "csv" || format === "xlsx") {
         updatePulseCards(format, selectedCardIds);
@@ -232,6 +246,9 @@ export function EmailAttachmentPicker({
   );
 
   const onToggleAll = useCallback(() => {
+    /*
+     * Called when (de)select-all checkbox is clicked
+     */
     setSelectedCardIds((prev) => {
       const attachmentType =
         getAttachmentTypeFor(cardIdsToCards(prev)) || selectedAttachmentType;
@@ -275,11 +292,6 @@ export function EmailAttachmentPicker({
       return next;
     });
   }, [selectedAttachmentType, selectedCardIds, updatePulseCards]);
-
-  const canConfigurePivoting = cards.some((card) => card.display === "pivot");
-  const areAllSelected = cards.length === selectedCardIds.size;
-  const areOnlySomeSelected =
-    selectedCardIds.size > 0 && selectedCardIds.size < cards.length;
 
   return (
     <div>
