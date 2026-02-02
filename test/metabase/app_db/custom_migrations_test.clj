@@ -2726,3 +2726,49 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest backfill-transform-target-db-id-test
+  (testing "v58.2026-01-31T10:00:00 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v58.2026-01-31T10:00:00"] [migrate!]
+      (let [db-id         (:id (new-instance-with-default :metabase_database))
+            deleted-db-id (+ db-id 9999)
+            query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
+            python-source (json/encode {:type "python" :script "x = 1"})
+            target        (fn [& {:keys [database]}]
+                            (json/encode (cond-> {:schema "public" :table "out" :type "append"}
+                                           database (assoc :database database))))
+            insert!       (fn [source-type source target]
+                            (t2/insert-returning-pk!
+                             :transform
+                             {:name        "t"
+                              :source      source
+                              :target      target
+                              :source_type source-type
+                              :created_at  :%now
+                              :updated_at  :%now}))
+            ;; source.query.database takes precedence over target.database
+            both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
+            ;; source.query.database used when target has no database
+            source-id     (insert! "mbql" (query-source db-id) (target))
+            ;; target.database used as fallback for python transforms
+            target-id     (insert! "python" python-source (target :database db-id))
+            ;; no database anywhere — stays nil
+            none-id       (insert! "python" python-source (target))
+            ;; deleted database reference — stays nil
+            deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
+            id->target    #(t2/select-one-fn :target_db_id :transform :id %)]
+        (testing "Before backfill, the field is uniformly empty"
+          ;; Haven't turned this into a loop, as it would obscure which case failed.
+          (is (nil? (id->target both-id)))
+          (is (nil? (id->target source-id)))
+          (is (nil? (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))
+        (migrate!)
+        (testing "Valid database ids are backfilled"
+          ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
+          (is (= db-id (id->target both-id)))
+          (is (= db-id (id->target source-id)))
+          (is (= db-id (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))))))

@@ -207,11 +207,15 @@
   [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (transforms.i/target-db-id transform)
-          {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-transform-target! driver database target)
-      (log/info "Deactivating  target " (pr-str target) "for transform" id)
-      (deactivate-table! database target))))
+          database-id (transforms.i/target-db-id transform)]
+      (when database-id
+        (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
+          (do
+            (driver/drop-transform-target! driver database target)
+            (log/info "Deactivating  target " (pr-str target) "for transform" id)
+            (deactivate-table! database target))
+          (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
+                     (pr-str target) id database-id))))))
 
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."

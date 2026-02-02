@@ -1821,5 +1821,27 @@
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
 
+(define-migration BackfillTransformTargetDbId
+  ;; Backfills the target_db_id column for existing transform records.
+  ;;
+  ;; For query transforms, uses source.query.database as the source of truth.
+  ;; For python transforms, uses target.database. Records with no database
+  ;; information are left with nil target_db_id.
+  ;;
+  ;; Skips transforms whose referenced database no longer exists (leaves target_db_id NULL),
+  ;; since the subsequent FK constraint migration would fail if stale DB references were set.
+  (let [existing-db-ids (into #{} (map :id) (t2/query {:select [:id] :from [:metabase_database]}))]
+    (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
+                                                  :from   [:transform]
+                                                  :where  [:= :target_db_id nil]})]
+      (let [source-map (json-out source false)
+            target-map (json-out target false)
+            ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
+            ;; for python transforms, target.database is the only option.
+            db-id      (or (get-in source-map ["query" "database"])
+                           (get target-map "database"))]
+        (when (and db-id (existing-db-ids db-id))
+          (t2/update! :transform id {:target_db_id db-id}))))))
+
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))

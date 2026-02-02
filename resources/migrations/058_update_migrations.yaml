@@ -5205,6 +5205,60 @@ databaseChangeLog:
             tableName: workspace_transform
             columnName: input_data_changed
 
+  - changeSet:
+      id: v58.2026-01-31T10:00:00
+      author: christruter
+      comment: Backfill target_db_id for existing transforms
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillTransformTargetDbId"
+
+  - changeSet:
+      id: v58.2026-01-31T10:00:01
+      author: christruter
+      comment: Add index on transform.target_db_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform
+                indexName: idx_transform_target_db_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_target_db_id
+            columns:
+              - column:
+                  name: target_db_id
+      rollback:
+        - dropIndex:
+            tableName: transform
+            indexName: idx_transform_target_db_id
+
+  - changeSet:
+      id: v58.2026-01-31T10:00:02
+      author: christruter
+      comment: Add foreign key constraint from transform.target_db_id to metabase_database
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyTableName: transform
+                foreignKeyName: fk_transform_target_db_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: target_db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_transform_target_db_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_transform_target_db_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
