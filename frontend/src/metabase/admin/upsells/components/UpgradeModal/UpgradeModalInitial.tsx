@@ -16,7 +16,7 @@ import {
 
 import { UpsellGem } from "../UpsellGem";
 
-import { MOCK_DATA, type UpgradeFlow } from "./constants";
+import type { UpgradeFlow } from "./constants";
 
 // Strip cents from price strings like "$575.00" → "$575"
 function formatPriceNoCents(price: string): string {
@@ -52,6 +52,11 @@ export function UpgradeModalInitial({
     ? t`Start your 14-day trial of Pro`
     : t`Upgrade to Metabase Pro`;
   const buttonText = isTrial ? t`Start your free trial` : t`Upgrade to Pro`;
+  const proFeatures = [
+    t`Whitelabeling`,
+    t`Advanced Permissions`,
+    t`Usage Analytics, and more`,
+  ];
 
   return (
     <Stack gap="lg">
@@ -78,7 +83,7 @@ export function UpgradeModalInitial({
             icon={<Icon name="check" c="text-primary" size={16} />}
             pl={0}
           >
-            {MOCK_DATA.features.map((feature) => (
+            {proFeatures.map((feature) => (
               <List.Item key={feature}>
                 <Text c="text-secondary">{feature}</Text>
               </List.Item>
