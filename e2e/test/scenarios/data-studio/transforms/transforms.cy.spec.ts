@@ -4139,31 +4139,32 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
   });
 
   it("should have transforms available in self-hosted pro without upsell gem icon", () => {
-    cy.log("Visit data studio page");
-    cy.visit("/data-studio");
-    H.DataStudio.nav().should("be.visible");
+    H.activateToken("pro-self-hosted").then(() => {
+      cy.log("Visit data studio page");
+      cy.visit("/data-studio");
+      H.DataStudio.nav().should("be.visible");
 
-    cy.log("Verify Transforms menu item is visible");
-    H.DataStudio.nav().findByText("Transforms").should("be.visible");
+      cy.log("Verify Transforms menu item is visible");
+      H.DataStudio.nav().findByText("Transforms").should("be.visible");
 
-    cy.log("Verify no upsell gem icon is displayed in Transforms menu item");
-    H.DataStudio.nav()
-      .findByText("Transforms")
-      .closest("a")
-      .within(() => {
-        cy.findByTestId("upsell-gem").should("not.exist");
-      });
+      cy.log("Verify no upsell gem icon is displayed in Transforms menu item");
+      H.DataStudio.nav()
+        .findByText("Transforms")
+        .closest("a")
+        .within(() => {
+          cy.findByTestId("upsell-gem").should("not.exist");
+        });
 
-    cy.log("Verify transforms page is accessible");
-    H.DataStudio.nav().findByText("Transforms").click();
-    H.DataStudio.Transforms.list().should("be.visible");
+      cy.log("Verify transforms page is accessible");
+      H.DataStudio.nav().findByText("Transforms").click();
+      H.DataStudio.Transforms.list().should("be.visible");
 
-    cy.log("Verify can create transforms in pro-self-hosted");
-    cy.button("Create a transform").should("be.visible");
+      cy.log("Verify can create transforms in pro-self-hosted");
+      cy.button("Create a transform").should("be.visible");
+    });
   });
 });
 
@@ -4171,31 +4172,34 @@ describe("scenarios > data studio > transforms > permissions > starter", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("starter");
   });
 
   it("should have transforms upsell", () => {
-    cy.log("Visit data studio page");
-    cy.visit("/data-studio");
-    H.DataStudio.nav().should("be.visible");
+    H.activateToken("starter").then(() => {
+      cy.log("Visit data studio page");
+      cy.visit("/data-studio");
+      H.DataStudio.nav().should("be.visible");
 
-    cy.log("Verify Transforms menu item is visible");
-    H.DataStudio.nav().findByText("Transforms").should("be.visible");
+      cy.log("Verify Transforms menu item is visible");
+      H.DataStudio.nav().findByText("Transforms").should("be.visible");
 
-    cy.log(
-      "Verify there is an upsell gem icon is displayed in Transforms menu item",
-    );
-    H.DataStudio.nav()
-      .findByText("Transforms")
-      .closest("a")
-      .within(() => {
-        cy.findByTestId("upsell-gem").should("be.visible");
-      });
+      cy.log(
+        "Verify there is an upsell gem icon is displayed in Transforms menu item",
+      );
+      H.DataStudio.nav()
+        .findByText("Transforms")
+        .closest("a")
+        .within(() => {
+          cy.findByTestId("upsell-gem").should("be.visible");
+        });
 
-    cy.log("Verify transforms page is accessible");
-    H.DataStudio.nav().findByText("Transforms").click();
+      cy.log("Verify transforms page is accessible");
+      H.DataStudio.nav().findByText("Transforms").click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors
-    cy.findByText("Tidy up your data right from Metabase").should("be.visible");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors
+      cy.findByText("Tidy up your data right from Metabase").should(
+        "be.visible",
+      );
+    });
   });
 });
