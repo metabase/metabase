@@ -31,15 +31,30 @@ function createContext(place: string) {
   };
 }
 
+/**
+ * Context for data model tests that abstracts differences between admin and data studio areas.
+ * Provides unified methods for visiting pages, checking locations, and getting analytics metadata.
+ */
 class DataModelContext {
+  /**
+   * @param area - The area being tested, either "admin" or "data studio"
+   */
   constructor(public readonly area: string) {
     this.area = area;
   }
 
+  /**
+   * Returns the base path for the current area.
+   * @returns "/admin/datamodel" for admin area, "/data-studio/data" for data studio
+   */
   get basePath() {
     return this.area === "admin" ? "/admin/datamodel" : "/data-studio/data";
   }
 
+  /**
+   * Visits the data model page using the appropriate method for the current area.
+   * @param args - Arguments passed to either H.DataModel.visit or H.DataModel.visitDataStudio
+   */
   visit(
     ...args:
       | Parameters<typeof H.DataModel.visit>
@@ -52,10 +67,18 @@ class DataModelContext {
     }
   }
 
+  /**
+   * Asserts that the current URL pathname matches the expected path prefixed with basePath.
+   * @param path - The expected path suffix (e.g., "/database/1/schema/...")
+   */
   checkLocation(path: string) {
     cy.location("pathname").should("eq", `${this.basePath}${path}`);
   }
 
+  /**
+   * Returns the triggered_from value for Snowplow analytics events.
+   * @returns "admin" for admin area, "data_studio" for data studio
+   */
   getTriggeredFrom() {
     return this.area === "admin" ? "admin" : "data_studio";
   }
@@ -71,52 +94,33 @@ describe.each<Area>(areas)(
 
     beforeEach(() => {
       context = new DataModelContext(area);
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+      cy.intercept("GET", "/api/database/*/schema/*").as("schema");
+      cy.intercept("POST", "/api/dataset*").as("dataset");
+      cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+      cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
+        "updateField",
+      );
+      cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
+      cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+      cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+      cy.intercept("PUT", "/api/table").as("updateTables");
+      cy.intercept("PUT", "/api/table/*").as("updateTable");
 
       if (area === "admin") {
-        H.restore();
-        cy.signInAsAdmin();
-
         cy.intercept("GET", "/api/database?*").as("databases");
-        cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
-        cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-        cy.intercept("GET", "/api/database/*/schema/*").as("schema");
-        cy.intercept("POST", "/api/dataset*").as("dataset");
         cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-        cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
-          "updateField",
-        );
-        cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
-        cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
-        cy.intercept("POST", "/api/field/*/dimension").as(
-          "updateFieldDimension",
-        );
-        cy.intercept("PUT", "/api/table").as("updateTables");
         cy.intercept("PUT", "/api/table/*").as("updateTable");
       }
 
       if (area === "data studio") {
-        H.restore();
-        H.resetSnowplow();
-        cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
-
         cy.intercept("GET", "/api/database").as("databases");
-        cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
-        cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-        cy.intercept("GET", "/api/database/*/schema/*").as("schema");
-        cy.intercept("POST", "/api/dataset*").as("dataset");
-        cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-        cy.intercept("GET", "/api/table?*").as("listTables");
-        cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
-          "updateField",
-        );
-        cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
-        cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
-        cy.intercept("POST", "/api/field/*/dimension").as(
-          "updateFieldDimension",
-        );
-        cy.intercept("PUT", "/api/table").as("updateTables");
-        cy.intercept("PUT", "/api/table/*").as("updateTable");
       }
     });
 
