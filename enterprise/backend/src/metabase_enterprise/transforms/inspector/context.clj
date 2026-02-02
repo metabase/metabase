@@ -6,6 +6,9 @@
    [metabase-enterprise.transforms.inspector.query-analysis :as query-analysis]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -37,8 +40,8 @@
   (try
     (let [query (-> (:query source)
                     transforms.util/massage-sql-query
-                    metabase.query-processor.preprocess/preprocess)
-          table-ids (metabase.lib.core/all-source-table-ids query)]
+                    qp.preprocess/preprocess)
+          table-ids (lib/all-source-table-ids query)]
       (table-ids->source-info table-ids))
     (catch Exception e
       (log/warn e "Failed to extract sources from MBQL transform")
@@ -50,7 +53,7 @@
     (let [db-id (transforms.util/transform-source-database transform)
           database (t2/select-one :model/Database :id db-id)
           driver-kw (keyword (:engine database))
-          deps (metabase.driver/native-query-deps driver-kw (:query source))
+          deps (driver/native-query-deps driver-kw (:query source))
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
     (catch Exception e
