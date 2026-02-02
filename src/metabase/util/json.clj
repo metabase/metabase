@@ -105,7 +105,7 @@
     (cond
       (string? body)               (decode body true)
       (instance? InputStream body) (with-open [r (io/reader body :encoding encoding)]
-                                      (cheshire/parse-stream r true))
+                                     (cheshire/parse-stream r true))
       (instance? Reader body)      (cheshire/parse-stream body true)
       (nil? body)                  nil
       :else                        (decode body true))))
