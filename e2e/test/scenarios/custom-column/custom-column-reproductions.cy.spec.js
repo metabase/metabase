@@ -1052,7 +1052,8 @@ describe("issue 49882", () => {
     cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
 
     H.openOrdersTable({ mode: "notebook" });
-    cy.wait("@queryMetadata");
+    cy.wait(["@queryMetadata", "@queryMetadata"]);
+    H.getNotebookStep("data").should("contain.text", "Orders");
     cy.findByLabelText("Custom column").click();
   });
 
