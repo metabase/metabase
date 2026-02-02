@@ -161,23 +161,20 @@ export const getExtraTagsForVersion = ({
   version: string;
   latestMajorVersion?: string;
 }) => {
-  const ossVerion = getOSSVersion(version);
+  const ossVersion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
   const versionType = getVersionType(version);
 
-  // eg. v0.23.x / v1.23.x
-  const tags = [getDotXs(ossVerion, 1), getDotXs(eeVersion, 1)];
+  const baseTags = [getDotXs(ossVersion, 1), getDotXs(eeVersion, 1)];
+  const minorTags = versionType !== "major"
+    ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
+    : [];
 
-  if (versionType !== "major") {
-    // eg. v0.23.4.x / v1.23.4.x
-    tags.push(getDotXs(ossVerion, 2), getDotXs(eeVersion, 2));
-  }
-
-  if (shouldAddLatestTag({ version, latestMajorVersion })) {
-    tags.push("latest");
-  }
-
-  return tags;
+  return [
+    ...baseTags,
+    ...minorTags,
+    ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
+  ];
 };
 
 /**
