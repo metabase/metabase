@@ -429,9 +429,48 @@
                                          :name      "DATE"
                                          :unit      :month
                                          :direction :desc}]}]})]
-      (is (= 1 (count (lib/order-bys query))))
-      (is (=? [:desc {} [:field {:temporal-unit :month} (meta/id :checkins :date)]]
-              (first (lib/order-bys query)))))))
+      (is (=? [[:desc {}
+                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
+              (lib/order-bys query))))))
+
+(deftest ^:parallel test-query-order-by-with-temporal-bucket-test-with-duplicate-column
+  (testing "test-query adds order-by with temporal bucketing when selecting the first column"
+    (let [query (lib.query.util/test-query
+                 meta/metadata-provider
+                 {:stages [{:source    {:type :table
+                                        :id   (meta/id :checkins)}
+                            :breakouts [{:type :column
+                                         :name "DATE"
+                                         :unit :month}
+                                        {:type :column
+                                         :name "DATE"
+                                         :unit :year}]
+                            :order-bys [{:type         :column
+                                         :name         "DATE"
+                                         :display-name "Date: Month"
+                                         :direction    :desc}]}]})]
+      (is (=? [[:desc {}
+                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
+              (lib/order-bys query)))))
+
+  (testing "test-query adds order-by with temporal bucketing when selecting the second column"
+    (let [query (lib.query.util/test-query
+                 meta/metadata-provider
+                 {:stages [{:source    {:type :table
+                                        :id   (meta/id :checkins)}
+                            :breakouts [{:type :column
+                                         :name "DATE"
+                                         :unit :month}
+                                        {:type :column
+                                         :name "DATE"
+                                         :unit :year}]
+                            :order-bys [{:type         :column
+                                         :name         "DATE"
+                                         :display-name "Date: Year"
+                                         :direction     :desc}]}]})]
+      (is (=? [[:desc {}
+                [:field {:temporal-unit :year} (meta/id :checkins :date)]]]
+              (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-order-by-with-binning-test
   (testing "test-query adds order-by with binning"

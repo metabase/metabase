@@ -36,12 +36,13 @@
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
 (mu/defn- matches-column? :- :boolean
-  [query                      :- ::lib.schema/query
-   _stage-number              :- :int
-   {:keys [name source-name]} :- ::lib.schema.query/test-column-spec
+  [query                                   :- ::lib.schema/query
+   _stage-number                           :- :int
+   {:keys [name source-name display-name]} :- ::lib.schema.query/test-column-spec
    column                     :- ::lib.schema.metadata/column]
   (cond-> (= name (:name column))
-    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))))
+    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
+    (some? display-name) (and (= display-name (:display-name column)))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
   [query             :- ::lib.schema/query

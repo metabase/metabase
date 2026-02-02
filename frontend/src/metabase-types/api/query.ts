@@ -456,6 +456,7 @@ export type TestColumnSpec = {
   type: "column";
   name: string;
   sourceName?: string;
+  displayName?: string;
 };
 
 export type TestExpressionSpec =
