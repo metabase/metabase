@@ -45,7 +45,7 @@ module.exports = {
     const resolvedAllowedPaths = allowedPaths.map((allowedPath) =>
       path.resolve(cwd, allowedPath),
     );
-    const filename = context.getFilename();
+    const filename = context.filename;
 
     // Only lint files inside one of the allowed directories
     if (

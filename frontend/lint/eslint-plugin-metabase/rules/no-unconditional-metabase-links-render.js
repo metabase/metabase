@@ -48,7 +48,7 @@ module.exports = {
   },
 
   create(context) {
-    const sourceCode = context.sourceCode || context.getSourceCode();
+    const sourceCode = context.sourceCode;
     let isGetDocsUrlSelectorImported = false;
     let isGetLearnUrlSelectorImported = false;
     let isGetShowMetabaseLinksSelectorImported = false;

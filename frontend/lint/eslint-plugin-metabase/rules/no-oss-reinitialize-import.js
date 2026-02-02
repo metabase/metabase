@@ -24,7 +24,7 @@ module.exports = {
     },
   },
   create(context) {
-    const filename = context.getFilename();
+    const filename = context.filename;
 
     // Allow imports in the main plugins index file
     if (filename.endsWith("metabase/plugins/index.ts")) {

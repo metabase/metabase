@@ -14,6 +14,7 @@ const LINT_MESSAGE =
 
 module.exports = {
   meta: {
+    type: "problem",
     docs: {
       description: "disallow color literals",
       category: "Possible Errors",
