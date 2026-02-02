@@ -165,7 +165,9 @@ export const getExtraTagsForVersion = ({
   const eeVersion = getEnterpriseVersion(version);
   const versionType = getVersionType(version);
 
+  // eg. v0.23.x / v1.23.x
   const baseTags = [getDotXs(ossVersion, 1), getDotXs(eeVersion, 1)];
+  // eg. v0.23.4.x / v1.23.4.x
   const minorTags = versionType !== "major"
     ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
     : [];
