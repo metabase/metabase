@@ -49,4 +49,9 @@
                    false ; is-anonymous-user?
                    {"department" "__METABASE_ROUTER__"} ; user-attributes
                    false ; is-superuser?
-                   (:id router-db))))))))
+                   (:id router-db)))))
+
+      ;; Note: Guest embedding now works with database routing. Anonymous users (api/*current-user-id* = nil)
+      ;; are properly handled by binding api/*current-user-id* to nil in embedding-rest.api.common functions.
+      ;; This allows both cards and dashboards in guest embeds to use the router database by default.
+      ))))

@@ -330,12 +330,14 @@
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
-    (m/mapply api.public/process-query-for-card-with-id
-              card-id export-format parameters
-              :context     (get-embed-card-context export-format)
-              :constraints constraints
-              :qp          qp
-              options)))
+    ;; For guest embeds, ensure anonymous user context for proper database routing
+    (binding [api/*current-user-id* nil]
+      (m/mapply api.public/process-query-for-card-with-id
+                card-id export-format parameters
+                :context     (get-embed-card-context export-format)
+                :constraints constraints
+                :qp          qp
+                options))))
 
 (defn unsigned-token->card-id
   "Get the Card ID from an unsigned token."
@@ -409,16 +411,18 @@
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
-    (api.public/process-query-for-dashcard
-     :dashboard-id  dashboard-id
-     :card-id       card-id
-     :dashcard-id   dashcard-id
-     :export-format export-format
-     :parameters    parameters
-     :qp            qp
-     :context       (get-embed-dashboard-context export-format)
-     :constraints   constraints
-     :middleware    middleware)))
+    ;; For guest embeds, ensure anonymous user context for proper database routing
+    (binding [api/*current-user-id* nil]
+      (api.public/process-query-for-dashcard
+       :dashboard-id  dashboard-id
+       :card-id       card-id
+       :dashcard-id   dashcard-id
+       :export-format export-format
+       :parameters    parameters
+       :qp            qp
+       :context       (get-embed-dashboard-context export-format)
+       :constraints   constraints
+       :middleware    middleware))))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
