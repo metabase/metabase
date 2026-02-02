@@ -37,6 +37,29 @@ describe("scenarios > data studio > datamodel", () => {
   });
 
   describe("Table picker", () => {
+    describe("1 database, 1 schema", () => {
+      it("should allow to search for tables", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getSearchInput().type("or");
+        TablePicker.getTables().should("have.length", 1);
+        TablePicker.getTable("Orders").should("be.visible").click();
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+        );
+        TableSection.getNameInput().should("have.value", "Orders");
+
+        cy.log("no results");
+        TablePicker.getSearchInput().clear().type("xyz");
+        TablePicker.get().findByText("No tables found").should("be.visible");
+
+        cy.log("go back to browsing");
+        TablePicker.getSearchInput().clear();
+        TablePicker.getTables().should("have.length", 8);
+      });
+    });
+
     describe(
       "mutliple databases, with single and multiple schemas",
       { tags: "@external" },

@@ -68,6 +68,31 @@ describe("scenarios > admin > datamodel", () => {
 
   describe("Table picker", () => {
     describe("1 database, 1 schema", () => {
+      it("should allow to search for tables", () => {
+        H.DataModel.visit();
+
+        TablePicker.getSearchInput().type("or");
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getSchemas().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 2);
+        TablePicker.getTable("Orders").should("be.visible").click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+        );
+        TableSection.getNameInput().should("have.value", "Orders");
+
+        cy.log("no results");
+        TablePicker.getSearchInput().clear().type("xyz");
+        TablePicker.get().findByText("No results.").should("be.visible");
+
+        cy.log("go back to browsing");
+        TablePicker.getSearchInput().clear();
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getSchemas().should("have.length", 0);
+        TablePicker.getTables().should("have.length", 8);
+      });
+
       it("should restore previously selected table when expanding the tree (SEM-435)", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,

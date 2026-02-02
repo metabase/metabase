@@ -179,7 +179,7 @@ describe.each<Area>(areas)(
             `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
           );
 
-          if (area === "data-studio") {
+          if (area === "data studio") {
             H.DataModel.get().within(() => {
               cy.findByText("Field details").should("be.visible");
               cy.findByText("Not found.").should("be.visible");
@@ -251,7 +251,6 @@ describe.each<Area>(areas)(
       describe("1 database, no schemas", () => {
         it("should allow to navigate tables", { tags: ["@external"] }, () => {
           H.restore("mysql-8");
-          H.activateToken("bleeding-edge");
           cy.signInAsAdmin();
 
           context.visit();
@@ -358,30 +357,6 @@ describe.each<Area>(areas)(
             verifyFieldSectionEmptyState();
           }
         });
-
-        it("should allow to search for tables", () => {
-          context.visit();
-
-          TablePicker.getSearchInput().type("or");
-          TablePicker.getDatabases().should("have.length", 1);
-          TablePicker.getSchemas().should("have.length", 1);
-          TablePicker.getTables().should("have.length", 2);
-          TablePicker.getTable("Orders").should("be.visible").click();
-          context.checkLocation(
-            `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-          );
-          TableSection.getNameInput().should("have.value", "Orders");
-
-          cy.log("no results");
-          TablePicker.getSearchInput().clear().type("xyz");
-          TablePicker.get().findByText("No results.").should("be.visible");
-
-          cy.log("go back to browsing");
-          TablePicker.getSearchInput().clear();
-          TablePicker.getDatabases().should("have.length", 1);
-          TablePicker.getSchemas().should("have.length", 0);
-          TablePicker.getTables().should("have.length", 8);
-        });
       });
 
       describe(
@@ -391,7 +366,6 @@ describe.each<Area>(areas)(
           beforeEach(() => {
             H.restore("postgres-writable");
             H.activateToken("bleeding-edge");
-            cy.signInAsAdmin();
 
             H.resetTestTable({ type: "postgres", table: "multi_schema" });
             H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -2443,7 +2417,6 @@ describe.each<Area>(areas)(
     describe("Error handling", { tags: "@external" }, () => {
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "many_data_types" });
         cy.signInAsAdmin();
         H.resyncDatabase({
@@ -2607,7 +2580,6 @@ describe.each<Area>(areas)(
     describe("Undos", { tags: "@external" }, () => {
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "many_data_types" });
         cy.signInAsAdmin();
         H.resyncDatabase({
