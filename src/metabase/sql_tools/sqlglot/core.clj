@@ -88,19 +88,59 @@
 ;; This should be extended the same way (e.g. by adding the checks over lineage).
 ;; For now we return #{<err>}, single error to conform previous implementation.
 #_(defn validate-query
-  "Validate the native `query`."
-  [driver query]
-  (log/warn "I'm using sqlglot-schema, please fix me.")
-  (let [sql (lib/raw-native-query query)
-        default-table-schema* (driver.sql/default-schema driver)
-        sqlglot-schema* (sqlglot-schema driver query)
-        validation-result (sql-parsing/validate-query
-                           (driver->dialect driver) sql default-table-schema* sqlglot-schema*)]
-    (if (= :ok (:status validation-result))
-      #{}
-      (let [processed (process-error driver validation-result)]
-        #{processed}))))
+    "Validate the native `query`."
+    [driver query]
+    (log/warn "I'm using sqlglot-schema, please fix me.")
+    (let [sql (lib/raw-native-query query)
+          default-table-schema* (driver.sql/default-schema driver)
+          sqlglot-schema* (sqlglot-schema driver query)
+          validation-result (sql-parsing/validate-query
+                             (driver->dialect driver) sql default-table-schema* sqlglot-schema*)]
+      (if (= :ok (:status validation-result))
+        #{}
+        (let [processed (process-error driver validation-result)]
+          #{processed}))))
 
 #_(defmethod sql-tools/validate-query-impl :sqlglot
-  [_parser driver query]
-  (validate-query driver query))
+    [_parser driver query]
+    (validate-query driver query))
+
+;;;; referenced-fields
+
+(defn- namespaced-columns
+  [mp]
+  (reduce (fn [acc table]
+            ;; TODO: Multiple schemas.
+            #_(assoc-in acc [(:schema table) (:name table)]
+                        (u/for-map
+                         [field (lib.metadata/fields mp (:id table))]
+                         [(:name field) field]))
+            (assoc acc (:name table) (u/for-map
+                                      [field (lib.metadata/fields mp (:id table))]
+                                      [(:name field) field])))
+          {}
+          (lib.metadata/tables mp)))
+
+(defn- field->columns
+  [namespaced-columns* [table-name field-name :as _coords]]
+  (let [columns (or (if (= "*" field-name)
+                      (some-> (get namespaced-columns* table-name) vals)
+                      (some-> (get-in namespaced-columns* [table-name field-name]) vector))
+                    :missing)]
+    (if (= :missing columns)
+      (throw (ex-info "Referenced field not available."
+                      {:table-name table-name
+                       :field-name field-name}))
+      columns)))
+
+(defn referenced-columns
+  "Given a driver and a native query, return the set of :metadata/columns referenced in the query.
+
+  Throws if a referenced field in the query cannot be matched to an application database column."
+  [driver query]
+  (let [sql (lib/raw-native-query query)
+        fields (sql-parsing/referenced-fields (driver->dialect driver) sql)
+        namespaced-columns* (namespaced-columns query)]
+    (into #{}
+          (mapcat (partial field->columns namespaced-columns*))
+          fields)))

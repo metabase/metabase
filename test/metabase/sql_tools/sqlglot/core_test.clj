@@ -1,14 +1,13 @@
 (ns metabase.sql-tools.sqlglot.core-test
   (:require
    #_[metabase-enterprise.dependencies.test-util :as deps.tu]
-   #_[metabase.driver :as driver]
    #_[metabase.driver.sql :as driver.sql]
-   #_[metabase.lib.core :as lib]
-   #_[metabase.sql-tools.sqlglot.core :as sql-tools.sqlglot]
-   #_[metabase.test :as mt]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-tools.sqlglot.core :as sql-tools.sqlglot]
+   [metabase.test :as mt]))
 
 ;; copied from enterprise/backend/test/metabase_enterprise/dependencies/native_validation_test.clj
 #_(defn- fake-query
@@ -18,16 +17,16 @@
      (-> (lib/native-query mp query)
          (lib/with-template-tags template-tags))))
 
-(defn- validates?
-  [mp driver card-id expected & [thunk]]
-  (is (=? expected
-          (-> (lib.metadata/card mp card-id)
-              :dataset-query
-              (assoc :lib/metadata mp)
-              (as-> $ (if (fn? thunk)
-                        (thunk $)
+#_(defn- validates?
+    [mp driver card-id expected & [thunk]]
+    (is (=? expected
+            (-> (lib.metadata/card mp card-id)
+                :dataset-query
+                (assoc :lib/metadata mp)
+                (as-> $ (if (fn? thunk)
+                          (thunk $)
                         ;; here, use thunk for my tests
-                        (deps.native-validation/validate-native-query driver $)))))))
+                          (deps.native-validation/validate-native-query driver $)))))))
 
 ;;; 2026-01-29 Thu
 ;;     going thru existing validation tests
@@ -135,3 +134,112 @@
                    "created_at" "UNKNOWN",
                    "tax" "UNKNOWN"}}}
                 @(def ss (#'sql-tools.sqlglot/sqlglot-schema :postgres query)))))))
+
+;;;; referenced-fields
+
+(deftest single-column-referenced-columns-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select id from orders")]
+      (is (=? [{:name "id"}]
+              (sql-tools.sqlglot/referenced-columns driver/*driver* query))))))
+
+(deftest referenced-columns-select-*-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select * from orders")]
+      (is (=? [{:name "id"}
+               {:name "user_id"}
+               {:name "product_id"}
+               {:name "subtotal"}
+               {:name "tax"}
+               {:name "total"}
+               {:name "discount"}
+               {:name "created_at"}
+               {:name "quantity"}]
+              (->> (sql-tools.sqlglot/referenced-columns driver/*driver* query)
+                   (sort-by :position)))))))
+
+(deftest referenced-columns-select-missing-entity-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)]
+      (testing "Missing referenced table results in an error"
+        (let [query (lib/native-query mp "select * from xix")]
+          (is (= :error (try
+                          (sql-tools.sqlglot/referenced-columns driver/*driver* query)
+                          :success
+                          (catch Exception e
+                            (is (instance? clojure.lang.ExceptionInfo e))
+                            (is (= "Referenced field not available."
+                                   (ex-message e)))
+                            (is (= {:table-name "xix"
+                                    :field-name "*"}
+                                   (ex-data e)))
+                            :error))))))
+      (testing "Missing referenced field results in an error"
+        (let [query (lib/native-query mp "select xix from orders")]
+          (is (= :error (try
+                          (sql-tools.sqlglot/referenced-columns driver/*driver* query)
+                          :success
+                          (catch Exception e
+                            (is (instance? clojure.lang.ExceptionInfo e))
+                            (is (= "Referenced field not available."
+                                   (ex-message e)))
+                            (is (= {:table-name "orders"
+                                    :field-name "xix"}
+                                   (ex-data e)))
+                            :error)))))))))
+
+(deftest referenced-columns-select-multi-stars-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp (str "select o.*, p.* \n"
+                                          "from (select * from orders) o\n"
+                                          "join (select * from products) p on o.product_id = p.id\n"))]
+      (is (=? {"orders"
+               [{:name "id"}
+                {:name "user_id"}
+                {:name "product_id"}
+                {:name "subtotal"}
+                {:name "tax"}
+                {:name "total"}
+                {:name "discount"}
+                {:name "created_at"}
+                {:name "quantity"}],
+               "products"
+               [{:name "id"}
+                {:name "ean"}
+                {:name "title"}
+                {:name "category"}
+                {:name "vendor"}
+                {:name "price"}
+                {:name "rating"}
+                {:name "created_at"}]}
+              (-> (sql-tools.sqlglot/referenced-columns driver/*driver* query)
+                  (->> (group-by :table-id))
+                  (update-keys (fn [table-id] (:name (lib.metadata/table mp table-id))))
+                  (update-vals (partial sort-by :position))))))))
+
+(deftest referenced-columns-duplicate-fields-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp (str "select o.id, oo.* \n"
+                                          "from (select id from orders) o\n"
+                                          "join (select * from orders) oo on o.id = oo.id\n"))]
+      (testing "No duplicate columns were returned"
+        (is (=? [{:name "id"}
+                 {:name "user_id"}
+                 {:name "product_id"}
+                 {:name "subtotal"}
+                 {:name "tax"}
+                 {:name "total"}
+                 {:name "discount"}
+                 {:name "created_at"}
+                 {:name "quantity"}]
+                (->> (sql-tools.sqlglot/referenced-columns driver/*driver* query)
+                     (sort-by :position))))))))
