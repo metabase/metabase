@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { pick } from "underscore";
 
 import {
   useGetAdminSettingsDetailsQuery,
@@ -14,7 +13,6 @@ import {
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
 import {
-  AUTO_IMPORT_KEY,
   BRANCH_KEY,
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
@@ -77,32 +75,26 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
-      const currentSettings: RemoteSyncConfigurationSettings = pick(
-        settingValues || {},
-        [
-          REMOTE_SYNC_KEY,
-          AUTO_IMPORT_KEY,
-          BRANCH_KEY,
-          TYPE_KEY,
-          COLLECTIONS_KEY,
-        ],
-      );
-
-      const settingsToUpdate: RemoteSyncConfigurationSettings = {
-        ...currentSettings,
+      const remoteSyncSettings: RemoteSyncConfigurationSettings = {
         [URL_KEY]: settingDetails?.[URL_KEY]?.value || null,
         [TOKEN_KEY]: settingDetails?.[TOKEN_KEY]?.value || null,
+        [BRANCH_KEY]: settingValues?.[BRANCH_KEY] || null,
+        [TYPE_KEY]: settingValues?.[TYPE_KEY] || null,
+        [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
+          COLLECTIONS_KEY
+        ],
+        [REMOTE_SYNC_KEY]: true,
         [TRANSFORMS_KEY]: true,
       };
 
       if (libraryCollection?.id) {
-        settingsToUpdate[COLLECTIONS_KEY] = {
-          ...currentSettings[COLLECTIONS_KEY],
-          [libraryCollection?.id]: true,
+        remoteSyncSettings[COLLECTIONS_KEY] = {
+          ...remoteSyncSettings[COLLECTIONS_KEY],
+          [libraryCollection.id]: !!libraryCollection?.id,
         };
       }
 
-      await updateRemoteSyncSettings(settingsToUpdate).unwrap();
+      await updateRemoteSyncSettings(remoteSyncSettings).unwrap();
     } catch (error) {
       sendErrorToast(t`Failed to mark library and transforms as synced`);
       throw error;
