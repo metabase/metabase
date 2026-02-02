@@ -83,7 +83,7 @@
   ;; Populate computed fields
   (let [target-db-id (transforms.i/target-db-id transform)
         ;; This is a work-around for remote-sync tests we have which contain invalid database references.
-        ;; TODO (Chris 2026-02-02 Fix tests. Perhaps throw an error here, or at least log a warning.
+        ;; TODO (Chris 2026-02-02) Fix tests. Perhaps throw an error here, or at least log a warning.
         target-db-id (when (and target-db-id (t2/exists? :model/Database :id target-db-id))
                        target-db-id)]
     (-> transform
