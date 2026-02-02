@@ -123,8 +123,7 @@
                                   :position idx})
                                tag_ids)))
     ;; Return with hydrated tag_ids
-    (-> (t2/hydrate job :tag_ids)
-        transforms.util/normalize-job-fields)))
+    (t2/hydrate job :tag_ids)))
 
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."
@@ -169,8 +168,7 @@
       (transform-job/update-job-tags! job-id tag-ids))
     ;; Return updated job with hydration
     (-> (t2/select-one :model/TransformJob :id job-id)
-        (t2/hydrate :tag_ids :last_run)
-        transforms.util/normalize-job-fields)))
+        (t2/hydrate :tag_ids :last_run))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
@@ -204,8 +202,7 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
   (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
-      (-> (t2/hydrate :tag_ids :last_run)
-          transforms.util/normalize-job-fields)))
+      (t2/hydrate :tag_ids :last_run)))
 
 (defn- add-next-run
   [{id :id :as job}]
@@ -245,7 +242,6 @@
                 (transforms.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map transforms.util/normalize-job-fields)
                 (map #(update % :last_run transforms.util/localize-run-timestamps))
                 (map #(update % :next_run transforms.util/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))
