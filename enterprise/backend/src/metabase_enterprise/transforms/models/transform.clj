@@ -87,14 +87,14 @@
         ;; In practice, our serialized representation should not contain any database ids, and this should
         ;; not be required.
         ;; TODO (Chris 2026-02-02) -- Update tests so this workaround is unnecessary.
-        valid-db-id? (when target-db-id (t2/exists? :model/Database :id target-db-id))]
+        valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
     (when-not valid-db-id?
       (log/warnf "Invalid target database id (%d) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
-        (assoc-in [:target :database] (when valid-db-id? target-db-id))
+        (assoc-in [:target :database] target-db-id)
         (assoc
          :source_type (transforms.util/transform-source-type source)
-         :target_db_id target-db-id))))
+         :target_db_id (when valid-db-id? target-db-id)))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
