@@ -11,7 +11,6 @@
   [transform]
   (-> transform :source :source-database))
 
-
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :python
   [transform options]
