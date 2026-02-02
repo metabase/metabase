@@ -71,11 +71,22 @@
                                                    :args     [{:type :column
                                                                :name "PRICE"}
                                                               {:type  :literal
-                                                               :value 2}]}}]}]})]
+                                                               :value 2}]}}
+                                          {:name "half-price"
+                                           :value {:type :operator
+                                                   :operator :/
+                                                   :args [{:type :column
+                                                           :name "double-price"}
+                                                          {:type :literal
+                                                           :value 4}]}}]}]})]
       (is (=? [[:*
                 {:lib/expression-name "double-price"}
                 [:field {} (meta/id :venues :price)]
-                2]]
+                2]
+               [:/
+                {:lib/expression-name "half-price"}
+                [:expression {} "double-price"]
+                4]]
               (lib/expressions query))))))
 
 (deftest ^:parallel test-query-with-filters-test

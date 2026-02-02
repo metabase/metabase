@@ -182,19 +182,20 @@
 (mu/defn- append-expression :- ::lib.schema/query
   [query                :- ::lib.schema/query
    stage-number         :- :int
-   available-columns    :- [:sequential ::lib.schema.metadata/column]
    {:keys [name value]} :- ::lib.schema.query/test-named-expression-spec]
-  (->> (expression-spec->expression-clause query stage-number value available-columns)
+  ;; NOTE: expressionable-columns needs to calculated inside the loop
+  ;; able to reference each other.
+  (->> (lib.expression/expressionable-columns query stage-number nil)
+       (expression-spec->expression-clause query stage-number value)
        (lib.expression/expression query stage-number name)))
 
 (mu/defn- append-expressions :- ::lib.schema/query
   [query            :- ::lib.schema/query
    stage-number     :- :int
    expression-specs :- [:sequential ::lib.schema.query/test-named-expression-spec]]
-  (let [available-columns (lib.expression/expressionable-columns query stage-number)]
-    (reduce #(append-expression %1 stage-number available-columns %2)
-            query
-            expression-specs)))
+  (reduce #(append-expression %1 stage-number %2)
+          query
+          expression-specs))
 
 (mu/defn- matches-strategy? :- :boolean
   [strategy-name      :- ::lib.schema.join/strategy
