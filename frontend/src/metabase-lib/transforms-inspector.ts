@@ -1,4 +1,4 @@
-import * as INSPECTOR from "cljs/metabase.lib.transforms.inspector";
+import * as INSPECTOR from "cljs/metabase.transforms.inspector.js";
 import type { InspectorLens, TransformInspectField } from "metabase-types/api";
 
 export type TriggeredCondition = {

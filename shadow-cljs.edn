@@ -22,7 +22,7 @@
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
-                metabase.lib.transforms.inspector
+                metabase.transforms.inspector.js
                 metabase.lib.types.isa
                 metabase.parameters.shared
                 metabase.pivot.core

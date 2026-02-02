@@ -1,4 +1,4 @@
-(ns metabase.lib.transforms.inspector.interestingness
+(ns metabase.transforms.inspector.interestingness
   "Column scoring for visualization worthiness.
    Determines which columns are interesting to display in inspector cards.
 
