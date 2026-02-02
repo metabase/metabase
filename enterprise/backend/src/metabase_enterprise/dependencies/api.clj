@@ -359,7 +359,7 @@
                                     {:user-id          api/*current-user-id*
                                      :is-superuser?    api/*is-superuser?*
                                      :is-data-analyst? api/*is-data-analyst?*}
-                                    {:perms/create-queries [:query-builder :query-builder-and-native]})]}]])
+                                    {:perms/create-queries :query-builder})]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
