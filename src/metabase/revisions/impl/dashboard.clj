@@ -100,7 +100,7 @@
 (defmethod revision/revert-to-revision! :model/Dashboard
   [model dashboard-id user-id serialized-dashboard]
   ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
-  (let [cleaned-parameters   (clean-invalid-parameter-card-references (:parameters serialized-dashboard))
+  (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))
         serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
     ;; Update the dashboard description / name / permissions
     ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
