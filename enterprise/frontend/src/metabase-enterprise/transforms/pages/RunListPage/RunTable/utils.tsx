@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Group, SortableHeaderPill, Text, Tooltip } from "metabase/ui";
+import { Box, Group, SortableHeaderPill, Text, Tooltip } from "metabase/ui";
 import {
   TRANSFORM_RUN_SORT_COLUMNS,
   type TransformRun,
@@ -12,11 +12,11 @@ import {
   type TransformTagId,
 } from "metabase-types/api";
 
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import {
   formatRunMethod,
   formatStatus,
   getTransformRunName,
+  isErrorStatus,
   parseTimestampWithTimezone,
 } from "../../../utils";
 import type { TransformRunSortOptions } from "../types";
@@ -117,9 +117,7 @@ function getEndedAtColumn(
   };
 }
 
-function getStatusColumn(
-  systemTimezone: string | undefined,
-): TreeTableColumnDef<TransformRun> {
+function getStatusColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "status" satisfies TransformRunSortColumn,
     header: t`Status`,
@@ -127,21 +125,11 @@ function getStatusColumn(
     enableSorting: true,
     accessorFn: (row) => formatStatus(row.status),
     cell: ({ row }) => {
-      const run = row.original;
+      const { status } = row.original;
       return (
-        <RunStatusInfo
-          transform={run.transform}
-          status={run.status}
-          message={run.message}
-          endTime={
-            run.end_time != null
-              ? parseTimestampWithTimezone(
-                  run.end_time,
-                  systemTimezone,
-                ).toDate()
-              : null
-          }
-        />
+        <Box c={isErrorStatus(status) ? "error" : undefined}>
+          {formatStatus(status)}
+        </Box>
       );
     },
   };
@@ -206,7 +194,7 @@ export function getColumns(
     getTransformColumn(),
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
-    getStatusColumn(systemTimezone),
+    getStatusColumn(),
     getRunMethodColumn(),
     getTransformTagsColumn(tagsById),
   ];
