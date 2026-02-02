@@ -25,6 +25,8 @@
    (java.sql Connection)
    (javax.sql DataSource)))
 
+(set! *warn-on-reflection* true)
+
 (deftest get-write-database-id-no-write-connection-test
   (testing "get-write-database-id returns nil when no write connection configured"
     (mt/with-premium-features #{:advanced-permissions}
