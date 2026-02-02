@@ -1248,12 +1248,32 @@
    :is_focal     is-focal
    :fields       (mapv build-erd-field fields)})
 
+(defn- resolve-erd-table-id
+  "Resolve the focal table ID for ERD. If `model-id` is provided, look up the Card's
+  underlying `table_id`. Otherwise use `table-id` directly."
+  [table-id model-id]
+  (if model-id
+    (let [card (api/read-check :model/Card model-id)]
+      (or (:table_id card)
+          (throw (ex-info (tru "Model does not have an underlying table")
+                          {:status-code 400
+                           :model-id    model-id}))))
+    table-id))
+
 (api.macros/defendpoint :get "/erd" :- ::erd-response
   "Return an Entity Relationship Diagram (ERD) for a focal table and its directly related tables.
-  Returns nodes (tables with columns) and edges (FK relationships)."
+  Returns nodes (tables with columns) and edges (FK relationships).
+  Accepts either `table-id` or `model-id` (a Card with type model). When `model-id` is provided,
+  the ERD is built for the model's underlying source table."
   [_route-params
-   {:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
-  (let [focal-table    (api/read-check :model/Table table-id)
+   {:keys [table-id model-id]} :- [:map
+                                    [:table-id {:optional true} [:maybe ms/PositiveInt]]
+                                    [:model-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when-not (or table-id model-id)
+    (throw (ex-info (tru "Either table-id or model-id must be provided")
+                    {:status-code 400})))
+  (let [table-id       (resolve-erd-table-id table-id model-id)
+        focal-table    (api/read-check :model/Table table-id)
         focal-fields   (active-fields-for-table table-id)
         ;; outgoing FKs: focal table fields that have fk_target_field_id set
         outgoing-fks   (filter :fk_target_field_id focal-fields)
