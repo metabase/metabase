@@ -138,9 +138,10 @@
                             :breakouts [{:type :column
                                          :name "PRICE"
                                          :bins 10}]}]})]
-      (is (= 1 (count (lib/breakouts query))))
-      (is (=? {:strategy :num-bins :num-bins 10}
-              (-> query lib/breakouts first lib/binning))))))
+      (is (=? [[:field
+                {:binning {:strategy :num-bins :num-bins 10}}
+                (meta/id :venues :price)]]
+              (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-bin-width-breakout-test
   (testing "test-query adds breakouts with bin width binning"
@@ -151,8 +152,10 @@
                             :breakouts [{:type      :column
                                          :name      "LATITUDE"
                                          :bin-width 20}]}]})]
-      (is (= 1 (count (lib/breakouts query))))
-      (is (=? {:strategy :bin-width :bin-width 20.0} (-> query lib/breakouts first second :binning))))))
+      (is (=? [[:field
+                {:binning {:strategy :bin-width :bin-width 20.0}}
+                (meta/id :venues :latitude)]]
+              (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-order-bys-test
   (testing "test-query adds order-bys to the query"
@@ -201,31 +204,36 @@
                                                                :name "CATEGORY_ID"}
                                                     :right    {:type :column
                                                                :name "ID"}}]}]}]})]
-      (is (= 1 (count (lib/joins query))))
-      (is (= 1 (count (:conditions (first (lib/joins query)))))))))
+      (is (=? [{:alias "Categories"
+                :strategy :left-join
+                :conditions [[:= {}
+                              [:field {:join-alias missing-value} (meta/id :venues :category-id)]
+                              [:field {:join-alias "Categories"} (meta/id :categories :id)]]]}]
+              (lib/joins query))))))
 
 (deftest ^:parallel test-query-with-join-conditions-with-binning-test
   (testing "test-query adds joins with binned conditions"
     (let [query (lib.query.util/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
-                                     :id   (meta/id :checkins)}
+                                     :id   (meta/id :users)}
                             :joins  [{:source     {:type :table
                                                    :id   (meta/id :checkins)}
                                       :strategy   :left-join
                                       :conditions [{:operator :=
                                                     :left     {:type :column
-                                                               :name "DATE"
+                                                               :name "LAST_LOGIN"
+                                                               :source-name "USERS"
                                                                :unit :month}
                                                     :right    {:type :column
                                                                :name "DATE"
+                                                               :source-name "CHECKINS"
                                                                :unit :month}}]}]}]})]
-      (is (= 1 (count (lib/joins query))))
-      (is (=? [[:=
-                {}
-                [:field {:temporal-unit :month} (meta/id :checkins :date)]
-                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
-              (-> query lib/joins first :conditions))))))
+      (is (=? [{:strategy :left-join
+                :conditions [[:= {}
+                              [:field {:temporal-unit :month} (meta/id :users :last-login)]
+                              [:field {:temporal-unit :month} (meta/id :checkins :date)]]]}]
+              (lib/joins query))))))
 
 (deftest ^:parallel test-query-multi-stage-test
   (testing "test-query handles multiple stages"
