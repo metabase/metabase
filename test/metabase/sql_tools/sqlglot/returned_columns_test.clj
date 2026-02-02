@@ -11,7 +11,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.sql-tools.sqlglot.experimental :as experimental]
+   [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -32,7 +32,7 @@
   "Get returned columns for a SQL query using the test metadata provider."
   [sql]
   (let [driver (:engine (lib.metadata/database (mt/metadata-provider)))]
-    (experimental/returned-columns driver (make-query sql))))
+    (sqlglot/returned-columns driver (make-query sql))))
 
 ;;; Basic SELECT Tests
 
