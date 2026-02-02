@@ -18,6 +18,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some]]
    [potemkin :as p]))
@@ -126,6 +127,7 @@
   [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
   (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    (log/tracef "Executing transform queries: %s" (pr-str queries))
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
@@ -134,6 +136,7 @@
                                                            :name (name output-table)})
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
+    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
