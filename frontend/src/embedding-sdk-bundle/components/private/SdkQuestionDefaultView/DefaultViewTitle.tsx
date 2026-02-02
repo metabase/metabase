@@ -7,8 +7,7 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
 
-interface DefaultViewTitleTextProps
-  extends Pick<SdkQuestionDefaultViewProps, "title"> {}
+type DefaultViewTitleTextProps = Pick<SdkQuestionDefaultViewProps, "title">;
 
 const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
   return (
