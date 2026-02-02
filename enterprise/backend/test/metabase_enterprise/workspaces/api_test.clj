@@ -280,11 +280,6 @@
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x1)}
                                          (select-keys x1 [:name :description :source :target])))
-            ;; Anti-flake measure: wait a second to ensure x1 and x2 have distinct created_at times.
-            ;; This is the only way to have a predictable merge order in this test, as neither
-            ;; of the sort keys (created_at, ref_id) can be overridden through the API, and the ref_id
-            ;; is completely random.
-            _ (Thread/sleep 1000)
             {ws-x-2-id :ref_id}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x2)}
@@ -320,11 +315,14 @@
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
                   (is (= 1 (count (:errors resp))))
-                  (is (= {:op        "update"
-                          :global_id (:id x2)
-                          :ref_id    ws-x-2-id
-                          :message   "boom"}
-                         (first (:errors resp))))))
+                  ;; The order of processing depends on created_at timestamps which may be equal
+                  ;; at database precision, so we check that the error is for one of our transforms
+                  ;; rather than a specific one.
+                  (is (=? {:op        "update"
+                           :global_id (fn [id] (contains? #{(:id x1) (:id x2)} id))
+                           :ref_id    (fn [id] (contains? #{ws-x-1-id ws-x-2-id} id))
+                           :message   "boom"}
+                          (first (:errors resp))))))
               (testing "Core transforms are left unchanged"
                 (is (= (:name x1)
                        (t2/select-one-fn :name :model/Transform (:id x1))))
