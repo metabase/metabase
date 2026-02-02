@@ -197,7 +197,7 @@ export const translateColumnDisplayName = (
     }
   }
 
-  // Fallback: handle colon-separated patterns like "Total: 10 bins", "Latitude: 0.1°",
+  // Handle colon-separated patterns like "Total: 10 bins", "Latitude: 0.1°",
   // or "Created At: Monat" (temporal buckets with backend-translated suffixes).
   const colonIndex = displayName.lastIndexOf(COLON_SEPARATOR);
 
@@ -229,7 +229,7 @@ export const translateColumnDisplayName = (
     }
   }
 
-  // Fallback: handle joined table column names like "Products → Created At"
+  // Handle joined table column names like "Products → Created At"
   // or nested joins like "Orders → Products → Created At: Monat"
   // We split on the FIRST arrow to preserve nested patterns in the column part.
   const arrowIndex = displayName.indexOf(JOIN_SEPARATOR);
