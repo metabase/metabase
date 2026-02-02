@@ -37,7 +37,7 @@
    - `replacement-fields`: the fields from the isolated table (what fields will exist after merge)"
   [base-provider target-table-id replacement-fields]
   (let [replacement-field-names (into #{} (map :name) replacement-fields)
-        ;; TODO we probably want to do one query for *all* the tables we care about, earlier in our validation.
+        ;; TODO (Chris 2026-02-02) -- better to do 1 query up-front for *all* the tables we will validate.
         table-field-id?         (t2/select-fn-set :id [:model/Field :id] :table_id target-table-id)]
     (reify
       lib.metadata.protocols/MetadataProvider
@@ -75,11 +75,11 @@
 
 ;;;; ---------------------------------------- External Transform Discovery ----------------------------------------
 
-;; TODO we could join these extra fields onto the graph before calling into this namespace, and save coupling
 (defn- workspace-outputs
   "Get all workspace outputs with their global and isolated table info.
    Includes both workspace transform outputs and enclosed external transform outputs."
   [workspace-id]
+  ;; TODO (Chris 2026-02-02) -- rather fetch all this as an input to graph analysis, and save it in [[graph]].
   (let [ws-outputs  (t2/select [:model/WorkspaceOutput
                                 :id :ref_id :db_id
                                 :global_schema :global_table :global_table_id
@@ -103,7 +103,7 @@
    Extracts workspace-transform ref_ids from the graph and looks up their global_ids."
   [{:keys [entities] :as _graph}]
   (if-let [ref-ids (seq (ids-for-type entities :workspace-transform))]
-    ;; TODO if we keep track of the global_id properties when building the graph, we can save this query.
+    ;; TODO (Chris 2026-02-02) -- rather fetch this as an input to graph analysis, and save it in [[graph]].
     (t2/select-fn-set :global_id
                       [:model/WorkspaceTransform :global_id]
                       :ref_id [:in ref-ids]

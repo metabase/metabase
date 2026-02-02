@@ -1,4 +1,3 @@
-;; TODO consider renaming this to dataflow
 (ns metabase-enterprise.workspaces.dag
   "Used to do graph computations with respect to dataflow within a workspace.
 

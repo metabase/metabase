@@ -40,15 +40,19 @@
           next-num      (inc (apply max 0 numbers))]
       (str stripped-name " (" next-num ")"))))
 
-;; TODO: Generate new metabase user for the workspace
 (defn- create-workspace-container!
   "Create the workspace and its related collection, user, and api key."
   [creator-id db-id workspace-name]
-  ;; TODO (Chris 2025-11-19): Ensure API key name is unique, and remove this (insecure) workaround.
-  (let [api-key (let [key-name (format "API key for Workspace %s" workspace-name)]
-                  (or (t2/select-one :model/ApiKey :name key-name)
-                      (api-key/create-api-key-with-new-user! {:key-name key-name})))
-        ;; TODO (Chris 2025-11-19): Associate the api-key user with the workspace as well.
+  (let [key-name (format "API key for Workspace: %s" workspace-name)
+        ;; Ensure the key-name is unique.
+        key-name (if-not (t2/exists? :model/ApiKey :name key-name)
+                   key-name
+                   ;; Rather than figuring out all the escapes we need for [[workspace-name]], just over fetch.
+                   (let [used? (t2/select-fn-set :name [:model/ApiKey :name] :name [:like "API key for Workspace: %"])]
+                     ;; By trying N + 1 names, we know at least 1 of them must be available.
+                     (first (remove used? (for [i (range (inc (count used?)))]
+                                            (str key-name "(" (inc i) ")"))))))
+        api-key  (api-key/create-api-key-with-new-user! {:key-name key-name})
         ws      (t2/insert-returning-instance! :model/Workspace
                                                {:name           workspace-name
                                                 :creator_id     creator-id

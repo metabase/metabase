@@ -716,7 +716,7 @@
       ;; Within a workspace, we defer blocking on conflicts outside the workspace
       #_{:status 403 :body (deferred-tru "A table with that name already exists.")}
 
-      ;; TODO consider deferring this validation until merge also.
+      ;; Consider deferring this validation until merge also.
       (internal-target-conflict? ws-id target tx-id)
       {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table")}
 
@@ -790,7 +790,7 @@
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
                       (api/check-400 (not= :archived (:base_status <>)) "Cannot create transforms in an archived workspace"))
-          ;; TODO: Why 400 here and 403 in the validation route?
+          ;; TODO (Chris 2026-02-02) -- We use 400 here, but 403 in the validation route. Consistency would be nice.
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))
@@ -811,7 +811,7 @@
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
       (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
 
-;; TODO Confirm precisely which fields are needed by the FE
+;; TODO (Sanya 2025-12-12) -- Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
   "Schema for a transform in a workspace"
   [:map {:closed true}
@@ -840,7 +840,6 @@
                     (map map-source-type))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
-  ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :ref_id tx-id :workspace_id ws-id)
       api/check-404
