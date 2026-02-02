@@ -491,7 +491,7 @@
       (is (every? #(= "Custom" (:display-name %)) cols))
       (is (every? #(= "model desc" (:description %)) cols)))))
 
-(deftest card->underlying-query-attaches-result-metadata-test
+(deftest ^:parallel card->underlying-query-attaches-result-metadata-test
   (let [venues-query (lib/query meta/metadata-provider (meta/table-metadata :venues))
         result-meta (lib/returned-columns venues-query)
         mp (lib.tu/mock-metadata-provider
