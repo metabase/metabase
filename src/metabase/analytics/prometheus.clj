@@ -460,6 +460,9 @@
    (prometheus/counter :metabase-transforms/job-runs-failed
                        {:description "Number of transform job runs that failed."
                         :labels [:run-method]})
+   (prometheus/counter :metabase-transforms/transform-run-outcomes
+                       {:description "Transform run outcomes by status and run method."
+                        :labels [:status :run-method]})
    (prometheus/histogram :metabase-transforms/job-run-duration-ms
                          {:description "Duration in milliseconds of transform job runs."
                           :labels [:run-method]

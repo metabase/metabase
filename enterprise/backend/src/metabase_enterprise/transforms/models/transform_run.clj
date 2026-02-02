@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as cancel]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -76,55 +77,67 @@
   ([run-id]
    (succeed-started-run! run-id {}))
   ([run-id properties]
-   (u/prog1 (t2/update! :model/TransformRun
-                        :id    run-id
-                        :is_active true
-                        (merge properties
-                               {:end_time  :%now
-                                :status    :succeeded
-                                :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+   (let [run (t2/select-one :model/TransformRun :id run-id)]
+     (u/prog1 (t2/update! :model/TransformRun
+                          :id    run-id
+                          :is_active true
+                          (merge properties
+                                 {:end_time  :%now
+                                  :status    :succeeded
+                                  :is_active nil}))
+       (prometheus/inc! :metabase-transforms/transform-run-outcomes
+                        {:status "succeeded" :run-method (name (:run_method run))})
+       (cancel/delete-cancelation! run-id)))))
 
 (defn fail-started-run!
   "Mark the started active run as failed and inactive."
   [run-id properties]
-  (u/prog1 (t2/update! :model/TransformRun
-                       :id    run-id
-                       :is_active true
-                       (merge properties
-                              {:end_time  :%now
-                               :status    :failed
-                               :is_active nil}))
-    (cancel/delete-cancelation! run-id)))
+  (let [run (t2/select-one :model/TransformRun :id run-id)]
+    (u/prog1 (t2/update! :model/TransformRun
+                         :id    run-id
+                         :is_active true
+                         (merge properties
+                                {:end_time  :%now
+                                 :status    :failed
+                                 :is_active nil}))
+      (prometheus/inc! :metabase-transforms/transform-run-outcomes
+                       {:status "failed" :run-method (name (:run_method run))})
+      (cancel/delete-cancelation! run-id))))
 
 (defn cancel-run!
   "Cancel a started run."
   ([run-id]
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id properties]
-   (u/prog1 (t2/update! :model/TransformRun
-                        :id    run-id
-                        :is_active true
-                        (merge properties
-                               {:end_time  :%now
-                                :status    :canceled
-                                :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+   (let [run (t2/select-one :model/TransformRun :id run-id)]
+     (u/prog1 (t2/update! :model/TransformRun
+                          :id    run-id
+                          :is_active true
+                          (merge properties
+                                 {:end_time  :%now
+                                  :status    :canceled
+                                  :is_active nil}))
+       (prometheus/inc! :metabase-transforms/transform-run-outcomes
+                        {:status "canceled" :run-method (name (:run_method run))})
+       (cancel/delete-cancelation! run-id)))))
 
 (defn timeout-run!
   "Mark a started run as timed out."
   ([run-id]
    (timeout-run! run-id {}))
   ([run-id properties]
-   (u/prog1 (t2/update! :model/TransformRun
-                        :id    run-id
-                        :is_active true
-                        (merge properties
-                               {:end_time  :%now
-                                :message   "Timed out"
-                                :status    :timeout
-                                :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+   (let [run (t2/select-one :model/TransformRun :id run-id)]
+     (u/prog1 (t2/update! :model/TransformRun
+                          :id    run-id
+                          :is_active true
+                          (merge properties
+                                 {:end_time  :%now
+                                  :message   "Timed out"
+                                  :status    :timeout
+                                  :is_active nil}))
+       (prometheus/inc! :metabase-transforms/transform-run-outcomes
+                        {:status "timeout" :run-method (name (:run_method run))})
+       (cancel/delete-cancelation! run-id)))))
 
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age."
