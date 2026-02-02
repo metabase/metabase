@@ -551,7 +551,8 @@
            metabase.driver.sql.util
            metabase.driver.sync
            metabase.driver.util}
-   :uses #{app-db
+   :uses #{analytics
+           app-db
            appearance
            auth-provider
            classloader
@@ -2409,7 +2410,9 @@
   enterprise/write-connection
   {:team "UX West"
    :api #{}
-   :uses #{premium-features
+   :uses #{analytics
+           premium-features
+           util
            warehouses}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
