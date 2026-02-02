@@ -2733,7 +2733,9 @@
       (let [db-id         (:id (new-instance-with-default :metabase_database))
             deleted-db-id (+ db-id 9999)
             query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
-            python-source (json/encode {:type "python" :script "x = 1"})
+            ;; Python transforms were meant to support 0-N source databases, but the table now has a single source id.
+            python-db-id  db-id
+            python-source (json/encode {:type "python" :script "x = 1", :source-database python-db-id})
             target        (fn [& {:keys [database]}]
                             (json/encode (cond-> {:schema "public" :table "out" :type "append"}
                                            database (assoc :database database))))
