@@ -125,7 +125,7 @@
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
-          ;; put module config file on classpath for log team attribution
+    ;; put module config file on classpath for log team attribution
     (b/copy-file {:src ".clj-kondo/config/modules/config.edn"
                   :target "resources/metabase/config/modules.edn"})
     (doseq [path (all-paths basis)]
