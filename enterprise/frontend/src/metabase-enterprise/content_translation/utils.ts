@@ -95,8 +95,20 @@ const COLUMN_DISPLAY_NAME_PATTERNS: ColumnDisplayNamePattern[] = [
   (value: string) => t`Variance of ${value}`,
 
   // Binning patterns (from metabase.lib.binning)
-  // Note: "Auto binned" uses t`` because it may be translated on the FE
+  // Auto binned (default strategy)
   (value: string) => t`${value}: Auto binned`,
+  // Numeric binning strategies: num-bins (10, 50, 100)
+  (value: string) => `${value}: 10 bins`,
+  (value: string) => `${value}: 50 bins`,
+  (value: string) => `${value}: 100 bins`,
+  // Coordinate binning strategies: bin-width with degree symbol
+  (value: string) => `${value}: 0.1°`,
+  (value: string) => `${value}: 1°`,
+  (value: string) => `${value}: 10°`,
+  (value: string) => `${value}: 20°`,
+  (value: string) => `${value}: 0.05°`,
+  (value: string) => `${value}: 0.01°`,
+  (value: string) => `${value}: 0.005°`,
 
   // Temporal bucket patterns (from metabase.lib.temporal_bucket)
   // Generated dynamically using the same Lib functions the backend uses,
@@ -136,36 +148,6 @@ const JOIN_SEPARATOR = " → ";
 // See: src/metabase/lib/join.cljc - standard-join-name
 const IMPLICIT_JOIN_SEPARATOR = " - ";
 
-/**
- * Regex patterns that match known binning suffixes that are NOT covered by
- * the explicit COLUMN_DISPLAY_NAME_PATTERNS (which handle locale-translated strings).
- *
- * These patterns match dynamic numeric suffixes:
- * - "10 bins", "50 bins", "100 bins" (num-bins strategy)
- * - "0.1°", "1°", "10°" (bin-width for coordinates)
- * - "0.1", "1", "10" (bin-width for non-coordinates)
- */
-const DYNAMIC_BINNING_SUFFIX_PATTERNS = [
-  // Matches "{number} bin" or "{number} bins" (English)
-  // Note: other locales may have different translations
-  /^\d+\s+bins?$/i,
-  // Matches "{number}°" (coordinate bin-width with degree symbol)
-  /^[\d.]+°$/,
-  // Matches plain number (non-coordinate bin-width)
-  // Only match if it looks like a decimal (has a dot) to avoid false positives
-  /^\d+\.\d+$/,
-];
-
-/**
- * Checks if a suffix looks like a dynamic binning pattern that should trigger
- * the colon-separator fallback for content translation.
- */
-const isDynamicBinningSuffix = (suffix: string): boolean => {
-  return DYNAMIC_BINNING_SUFFIX_PATTERNS.some((pattern) =>
-    pattern.test(suffix),
-  );
-};
-
 export const translateColumnDisplayName = (
   displayName: string,
   tc: ContentTranslationFunction,
@@ -197,8 +179,9 @@ export const translateColumnDisplayName = (
     }
   }
 
-  // Handle colon-separated patterns like "Total: 10 bins", "Latitude: 0.1°",
-  // or "Created At: Monat" (temporal buckets with backend-translated suffixes).
+  // Handle colon-separated patterns for backend-translated temporal bucket suffixes
+  // (e.g., "Created At: Monat" where "Monat" is already translated by the backend).
+  // Explicit binning patterns are already handled above in COLUMN_DISPLAY_NAME_PATTERNS.
   const colonIndex = displayName.lastIndexOf(COLON_SEPARATOR);
 
   if (colonIndex > 0) {
@@ -207,17 +190,7 @@ export const translateColumnDisplayName = (
       colonIndex + COLON_SEPARATOR.length,
     );
 
-    // For recognized dynamic binning suffixes, always split and translate column part
-    if (isDynamicBinningSuffix(suffixPart)) {
-      return (
-        translateColumnDisplayName(columnPart, tc, patterns) +
-        COLON_SEPARATOR +
-        suffixPart
-      );
-    }
-
-    // For other suffixes (e.g., temporal buckets like "Monat", "Day of week"),
-    // only split if the column part actually has a translation.
+    // Only split if the column part actually has a translation.
     // This avoids incorrectly splitting column names that contain ": " literally.
     const translatedColumn = translateColumnDisplayName(
       columnPart,
