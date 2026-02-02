@@ -13,6 +13,26 @@
 
 (set! *warn-on-reflection* true)
 
+;;; Templating
+
+(defn- md [& elements]
+  (->> elements
+       flatten
+       (remove nil?)
+       (str/join "\n")))
+
+(defn- code
+  ([content] (code content nil))
+  ([content lang]
+   (when content
+     (str "```" (or lang "") "\n" content "\n```\n"))))
+
+(defn- field [label value]
+  (cond
+    (nil? value)               nil
+    (str/includes? value "\n") (str label ":\n" value)
+    :else                      (str label ": " value "\n")))
+
 ;;; Time Formatting
 
 (defn format-current-time
@@ -71,136 +91,74 @@
 
 ;;; Entity Formatting
 
-(defn- format-table-representation
-  "Format a table entity for LLM representation."
-  [table]
-  (str "Table: " (:name table)
-       (when (:id table) (str " (ID: " (:id table) ")"))
-       (when (:description table) (str "\nDescription: " (:description table)))
-       (when-let [fields (:fields table)]
-         (str "\nFields: " (str/join ", " (map :name fields))))))
+(defn- format-simple-entity
+  [entity]
+  (md
+   (field (:type entity) (str (:name entity) " (ID: " (or (:id entity) "-") ")"))
+   (field "Description" (:description entity))
+   (field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
 
-(defn- format-model-representation
-  "Format a model entity for LLM representation."
-  [model]
-  (str "Model: " (:name model)
-       (when (:id model) (str " (ID: " (:id model) ")"))
-       (when (:description model) (str "\nDescription: " (:description model)))
-       (when-let [fields (:fields model)]
-         (str "\nFields: " (str/join ", " (map :name fields))))))
+(defmulti ^{:arglists '([entity])} format-entity "Format an entity for LLM representation."
+  (fn [entity] (normalize-context-type (:type entity))))
 
-(defn- format-question-representation
-  "Format a question/report entity for LLM representation."
-  [question]
-  (str "Question: " (:name question)
-       (when (:id question) (str " (ID: " (:id question) ")"))
-       (when (:description question) (str "\nDescription: " (:description question)))))
+(defmethod format-entity :default [entity]
+  (log/warn "Unknown viewing context type:" (:type entity))
+  "")
 
-(defn- format-metric-representation
-  "Format a metric entity for LLM representation."
-  [metric]
-  (str "Metric: " (:name metric)
-       (when (:id metric) (str " (ID: " (:id metric) ")"))
-       (when (:description metric) (str "\nDescription: " (:description metric)))))
-
-(defn- format-dashboard-representation
-  "Format a dashboard entity for LLM representation."
-  [dashboard]
-  (str "Dashboard: " (:name dashboard)
-       (when (:id dashboard) (str " (ID: " (:id dashboard) ")"))
-       (when (:description dashboard) (str "\nDescription: " (:description dashboard)))))
+(defmethod format-entity "table" [entity] (format-simple-entity entity))
+(defmethod format-entity "model" [entity] (format-simple-entity entity))
+(defmethod format-entity "question" [entity] (format-simple-entity entity))
+(defmethod format-entity "metric" [entity] (format-simple-entity entity))
+(defmethod format-entity "dashboard" [entity] (format-simple-entity entity))
 
 ;;; Viewing Context Formatting
 
-(defn- format-adhoc-query-context
-  "Format adhoc query (notebook editor) viewing context."
+;; Format adhoc query (notebook editor) viewing context.
+(defmethod format-entity "adhoc"
   [item]
-  (let [query (:query item)]
-    (str "The user is currently in the notebook editor.\n"
-         (when (:data_source query)
-           (str "Query data source: " (:data_source query) "\n"))
-         (when-let [used-tables (:used_tables item)]
-           (str "Tables used:\n"
-                (str/join "\n" (map format-table-representation used-tables))
-                "\n")))))
+  (md "The user is currently in the notebook editor."
+      (field "Query data source" (-> item :query :data_source))
+      (field "Tables used" (some->> (:used_tables item)
+                                    (map format-entity)
+                                    md))))
 
-(defn- format-native-query-context
-  "Format native SQL query viewing context."
+;; Format native SQL query viewing context.
+(defmethod format-entity "native"
   [item]
-  (str "The user is currently in the SQL editor.\n"
-       (when-let [query (:query item)]
-         (str "Current SQL query:\n```sql\n" query "\n```\n"))
-       (when-let [sql-engine (:sql_engine item)]
-         (str "Database SQL engine: " sql-engine "\n"))
-       (when-let [error (:error item)]
-         (str "Query error:\n```\n" error "\n```\n"))
-       (when-let [used-tables (:used_tables item)]
-         (str "Tables used:\n"
-              (str/join "\n" (map format-table-representation used-tables))
-              "\n"))))
+  (md
+   "The user is currently in the SQL editor."
+   (field "Current SQL query" (code (:query item) "sql"))
+   (field "Database SQL engine" (:sql_engine item))
+   (field "Query error" (code (:error item)))
+   (field "Tables used" (some->> (:used_tables item)
+                                 (map format-entity)
+                                 md))))
 
-(defn- format-transform-context
-  "Format transform viewing context."
+(defmethod format-entity "transform"
   [item]
-  (str "The user is currently viewing a Transform.\n"
-       (when (:id item)
-         (str "Transform ID: " (:id item) "\n"))
-       (when (:name item)
-         (str "Transform name: " (:name item) "\n"))
-       (when-let [source-type (:source_type item)]
-         (str "Source type: " source-type "\n"))
-       (when-let [used-tables (:used_tables item)]
-         (str "Tables used:\n"
-              (str/join "\n" (map format-table-representation used-tables))
-              "\n"))))
+  (md "The user is currently viewing a Transform."
+      (field "Transform ID" (:id item))
+      (field "Transform name" (:name item))
+      (field "Source type" (:source_type item))
+      (field "Tables used" (some->> (:used_tables item)
+                                    (map format-entity)
+                                    md))))
 
-(defn- format-code-editor-context
-  "Format code editor viewing context."
-  [item]
-  (if (empty? (:buffers item))
-    "\nThe user is in the code editor but no active buffers are available."
-    (let [buffers (:buffers item)]
-      (str "\nThe user is currently in the code editor with the following buffer(s):\n"
-           (str/join "\n"
-                     (for [buffer buffers]
-                       (str "Buffer ID: " (:id buffer)
-                            " | Language: " (get-in buffer [:source :language])
-                            " | Database ID: " (get-in buffer [:source :database_id])
-                            (when-let [cursor (:cursor buffer)]
-                              (str "\nCursor: Line " (:line cursor) ", Column " (:column cursor)))
-                            (when-let [selection (:selection buffer)]
-                              (str "\nSelection: Lines " (get-in selection [:start :line])
-                                   "-" (get-in selection [:end :line])
-                                   "\nSelected text:\n" (:text selection))))))))))
-
-(defn- format-entity-context
-  "Format entity (table/model/question/metric/dashboard) viewing context."
-  [item]
-  (case (:type item)
-    "table"
-    (str "The user is currently looking at a table:\n"
-         (format-table-representation item))
-
-    "model"
-    (str "The user is currently looking at a model:\n"
-         (format-model-representation item))
-
-    "question"
-    (str "The user is currently looking at a question:\n"
-         (format-question-representation item))
-
-    "metric"
-    (str "The user is currently looking at a metric:\n"
-         (format-metric-representation item))
-
-    "dashboard"
-    (str "The user is currently looking at a dashboard:\n"
-         (format-dashboard-representation item))
-
-    ;; Unknown entity type
-    (do
-      (log/warn "Unknown entity type in viewing context:" (:type item))
-      "")))
+(defmethod format-entity "code-editor"
+  [{:keys [buffers]}]
+  (if (empty? buffers)
+    "The user is in the code editor but no active buffers are available."
+    (md "The user is currently in the code editor with the following buffer(s):"
+        (for [{:keys [source cursor selection] :as buffer} buffers]
+          (md
+           (format "Buffer ID: %s | Language: %s | Database ID: %s"
+                   (:id buffer) (:language source) (:database_id source))
+           (when cursor
+             (format "Cursor: Line %s, Column %s" (:line cursor) (:column cursor)))
+           (when-let [{:keys [start end text]} selection]
+             (md
+              (field "Selected lines" (str (:line start) "-" (:line end)))
+              (field "Selected text" text))))))))
 
 (defn format-viewing-context
   "Format user's current viewing context for injection into system message.
@@ -214,41 +172,13 @@
 
   Returns formatted string for template variable {{viewing_context}}."
   [context]
-  (if-not (:user_is_viewing context)
-    ""
-    (str/join "\n\n"
-              (for [item (:user_is_viewing context)]
-                (try
-                  (let [item-type (normalize-context-type (:type item))]
-                    (cond
-                    ;; Adhoc query (notebook editor)
-                      (= item-type "adhoc")
-                      (format-adhoc-query-context item)
-
-                    ;; Native SQL query
-                      (= item-type "native")
-                      (format-native-query-context item)
-
-                    ;; Transform
-                      (= item-type "transform")
-                      (format-transform-context item)
-
-                    ;; Code editor
-                      (= item-type "code-editor")
-                      (format-code-editor-context item)
-
-                    ;; Entity (table, model, question, metric, dashboard)
-                      (contains? #{"table" "model" "question" "metric" "dashboard"} item-type)
-                      (format-entity-context (assoc item :type item-type))
-
-                    ;; Unknown type
-                      :else
-                      (do
-                        (log/warn "Unknown viewing context type:" (:type item))
-                        "")))
-                  (catch Exception e
-                    (log/error e "Error formatting viewing context item:" (:type item))
-                    ""))))))
+  (str/join "\n\n"
+            (for [item (:user_is_viewing context)]
+              (try
+                (format-entity item)
+                (catch Exception e
+                  (log/error e "Error formatting viewing context item:" (:type item))
+                  "")))))
 
 ;;; Recent Views Formatting
 
@@ -260,16 +190,13 @@
   (if-not (:user_recently_viewed context)
     ""
     (let [items (:user_recently_viewed context)]
-      (str "Here are some items the user has recently viewed:\n"
-           (str/join "\n"
-                     (for [item items]
-                       (str "- " (:type item) ": " (:name item)
-                            (when (:id item) (str " (ID: " (:id item) ")"))
-                            (when (:description item) (str " - " (:description item))))))
-           "\n\n"
-           "**Important:** These items might be relevant for answering the user's request. "
-           "If any item seems relevant, try to fetch its full details using the appropriate tool. "
-           "Otherwise, use the search tool to find relevant entities."))))
+      (md "Here are some items the user has recently viewed:"
+          (for [item items]
+            (format-simple-entity (select-keys item [:type :id :name :description])))
+          ""
+          "**Important:** These items might be relevant for answering the user's request."
+          "If any item seems relevant, try to fetch its full details using the appropriate tool."
+          "Otherwise, use the search tool to find relevant entities."))))
 
 ;;; Context Enrichment
 
