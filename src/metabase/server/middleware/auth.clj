@@ -4,8 +4,13 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
-   ;; TODO: not sure how to use an EE setting in OSS side of the code
-   [metabase-enterprise.metabot-v3.settings :as metabot.settings]))
+   [metabase.premium-features.core :refer [defenterprise]]))
+
+(defenterprise metabot-slack-signing-secret
+  "Returns the Slack signing secret for Metabot (EE only)."
+  metabase-enterprise.metabot-v3.settings
+  []
+  nil)
 
 (def ^:private ^:const ^String static-metabase-api-key-header "x-metabase-apikey")
 
@@ -30,7 +35,7 @@
 (defn- verify-slack-signature
   "Verify that the request came from Slack using signature verification"
   [request-body timestamp slack-signature]
-  (when-let [signing-secret (metabot.settings/metabot-slack-signing-secret)]
+  (when-let [signing-secret (metabot-slack-signing-secret)]
     (let [message (str "v0:" timestamp ":" request-body)
           computed-signature (hmac-sha256 signing-secret message)
           expected-signature (str "v0=" computed-signature)]
