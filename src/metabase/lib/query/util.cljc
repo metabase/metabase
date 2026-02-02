@@ -122,8 +122,8 @@
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   column                        :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-   {:keys [unit bins bin-width]} :- ::lib.schema.query/test-column-with-binning-spec]
+   {:keys [unit bins bin-width]} :- ::lib.schema.query/test-column-with-binning-spec
+   column                       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (cond->> column
     unit      (add-temporal-bucket query stage-number unit)
     bins      (add-binning query stage-number :num-bins bins)
@@ -134,9 +134,9 @@
    stage-number        :- :int
    columns             :- [:sequential ::lib.schema.metadata/column]
    breakout-spec       :- ::lib.schema.query/test-breakout-spec]
-  (let [column (find-column query stage-number columns breakout-spec)
-        column-with-binning (apply-binning query stage-number column breakout-spec)]
-    (lib.breakout/breakout query stage-number column-with-binning)))
+  (->> (find-column query stage-number columns breakout-spec)
+       (apply-binning query stage-number breakout-spec)
+       (lib.breakout/breakout query stage-number)))
 
 (mu/defn- append-breakouts :- ::lib.schema/query
   [query          :- ::lib.schema/query
@@ -216,12 +216,12 @@
    target       :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
    {:keys [operator left right]} :- ::lib.schema.query/test-join-condition-spec]
   (let [lhs (->> (lib.join/join-condition-lhs-columns query stage-number nil nil nil)
-                 (expression-spec->expression-clause query stage-number left))
+                 (expression-spec->expression-clause query stage-number left)
+                 (apply-binning query stage-number left))
         rhs (->> (lib.join/join-condition-rhs-columns query stage-number target lhs nil)
-                 (expression-spec->expression-clause query stage-number right))
-        lhs-with-binning (apply-binning query stage-number lhs left)
-        rhs-with-binning (apply-binning query stage-number rhs right)]
-    (lib.fe-util/join-condition-clause operator lhs-with-binning rhs-with-binning)))
+                 (expression-spec->expression-clause query stage-number right)
+                 (apply-binning query stage-number right))]
+    (lib.fe-util/join-condition-clause operator lhs rhs)))
 
 (mu/defn- append-join :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -281,9 +281,9 @@
    orderable-columns   :- [:sequential ::lib.schema.metadata/column]
    {:keys [direction]
     :as order-by-spec} :- ::lib.schema.query/test-order-by-spec]
-  (let [column (find-column query stage-number orderable-columns order-by-spec)
-        column-with-binning (apply-binning query stage-number column order-by-spec)]
-    (lib.order-by/order-by query column-with-binning direction)))
+  (as-> (find-column query stage-number orderable-columns order-by-spec) column
+    (apply-binning query stage-number order-by-spec column)
+    (lib.order-by/order-by query column direction)))
 
 (mu/defn- append-order-bys :- ::lib.schema/query
   [query          :- ::lib.schema/query
