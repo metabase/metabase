@@ -2728,8 +2728,8 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
 (deftest backfill-transform-target-db-id-test
-  (testing "v58.2026-01-31T10:00:00 : backfill target_db_id from target and source JSON"
-    (impl/test-migrations ["v58.2026-01-31T10:00:00"] [migrate!]
+  (testing "v59.2026-01-31T12:01:22 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v59.2026-01-31T12:01:22"] [migrate!]
       (let [db-id         (:id (new-instance-with-default :metabase_database))
             deleted-db-id (+ db-id 9999)
             query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
