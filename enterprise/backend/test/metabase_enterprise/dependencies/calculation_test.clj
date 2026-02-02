@@ -201,6 +201,8 @@
                                                  :source {:type :python
                                                           :source-tables {"PRODUCTS" products-id
                                                                           "ORDERS" orders-id}
+                                                          ;; A problematic field, hopefully removed again.
+                                                          :source-database (mt/id)
                                                           :body "..."}
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
