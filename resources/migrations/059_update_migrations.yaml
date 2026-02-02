@@ -2648,6 +2648,19 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-01-31T12:01:25
       author: christruter
+      comment: Clean up orphaned target_db_id references before adding FK constraint
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform
+              SET target_db_id = NULL
+              WHERE target_db_id IS NOT NULL
+                AND target_db_id NOT IN (SELECT id FROM metabase_database)
+      rollback:
+
+  - changeSet:
+      id: v59.2026-01-31T12:01:26
+      author: christruter
       comment: Add foreign key constraint from transform.target_db_id to metabase_database
       validCheckSum: ANY
       preConditions:
