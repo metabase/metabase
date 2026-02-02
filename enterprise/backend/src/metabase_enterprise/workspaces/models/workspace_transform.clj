@@ -15,7 +15,7 @@
 ;; IMPORTANT: ref_id is NOT unique across workspaces - it corresponds to a Representation id and
 ;; the same transform can be checked out into multiple workspaces. Always use BOTH workspace_id
 ;; AND ref_id to identify a specific WorkspaceTransform record.
-(methodical/defmethod t2/primary-keys :model/WorkspaceTransform [_model] [:ref_id :workspace_id])
+(methodical/defmethod t2/primary-keys :model/WorkspaceTransform [_model] [:workspace_id :ref_id])
 
 (doto :model/WorkspaceTransform
   (derive :metabase/model)
