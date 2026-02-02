@@ -1,10 +1,10 @@
-(ns metabase.lib.query.util-test
+(ns metabase.lib.query.test-spec-test
   (:require
    #?@(:cljs
        [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.query.util :as lib.query.util]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -14,7 +14,7 @@
 
 (deftest ^:parallel test-query-basic-table-source-test
   (testing "test-query creates a basic query from a table source"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}}]})]
@@ -26,7 +26,7 @@
 
 (deftest ^:parallel test-query-with-card-source-test
   (testing "test-query creates a query from a card source"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  lib.tu/metadata-provider-with-card
                  {:stages [{:source {:type :card
                                      :id   1}}]})]
@@ -38,7 +38,7 @@
 
 (deftest ^:parallel test-query-with-fields-test
   (testing "test-query adds fields to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :orders)}
@@ -61,7 +61,7 @@
 
 (deftest ^:parallel test-query-with-expressions-test
   (testing "test-query adds expressions to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source      {:type :table
                                           :id   (meta/id :venues)}
@@ -91,7 +91,7 @@
 
 (deftest ^:parallel test-query-with-filters-test
   (testing "test-query adds filters to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source  {:type :table
                                       :id   (meta/id :venues)}
@@ -106,7 +106,7 @@
 
 (deftest ^:parallel test-query-with-aggregations-test
   (testing "test-query adds aggregations to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -118,7 +118,7 @@
 
 (deftest ^:parallel test-query-with-breakouts-test
   (testing "test-query adds breakouts to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
@@ -129,7 +129,7 @@
 
 (deftest ^:parallel test-query-with-temporal-bucket-breakout-test
   (testing "test-query adds breakouts with temporal bucketing"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :checkins)}
@@ -143,7 +143,7 @@
 
 (deftest ^:parallel test-query-with-bin-count-breakout-test
   (testing "test-query adds breakouts with bin count binning"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
@@ -157,7 +157,7 @@
 
 (deftest ^:parallel test-query-with-bin-width-breakout-test
   (testing "test-query adds breakouts with bin width binning"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
@@ -171,7 +171,7 @@
 
 (deftest ^:parallel test-query-with-order-bys-test
   (testing "test-query adds order-bys to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
@@ -183,7 +183,7 @@
 
 (deftest ^:parallel test-query-with-limit-test
   (testing "test-query adds a limit to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}
@@ -192,7 +192,7 @@
 
 (deftest ^:parallel test-query-with-joins-test
   (testing "test-query adds joins to the query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}
@@ -204,7 +204,7 @@
 
 (deftest ^:parallel test-query-with-join-conditions-test
   (testing "test-query adds joins with explicit conditions"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}
@@ -225,7 +225,7 @@
 
 (deftest ^:parallel test-query-with-join-conditions-with-binning-test
   (testing "test-query adds joins with binned conditions"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :users)}
@@ -251,7 +251,7 @@
 
 (deftest ^:parallel test-query-multi-stage-test
   (testing "test-query handles multiple stages"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -276,7 +276,7 @@
 
 (deftest ^:parallel test-query-complex-expression-test
   (testing "test-query handles complex nested expressions"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source  {:type :table
                                       :id   (meta/id :venues)}
@@ -302,7 +302,7 @@
 
 (deftest ^:parallel test-query-named-aggregation-test
   (testing "test-query handles named aggregations"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -318,7 +318,7 @@
     (is (thrown-with-msg?
          #?(:clj Exception :cljs js/Error)
          #"No column found"
-         (lib.query.util/test-query
+         (lib.query.test-spec/test-query
           meta/metadata-provider
           {:stages [{:source {:type :table
                               :id   (meta/id :venues)}
@@ -332,7 +332,7 @@
     (is (thrown-with-msg?
          #?(:clj Exception :cljs js/Error)
          #"Multiple columns found"
-         (lib.query.util/test-query
+         (lib.query.test-spec/test-query
           meta/metadata-provider
           {:stages [{:source {:type :table
                               :id   (meta/id :venues)}
@@ -344,7 +344,7 @@
 
 (deftest ^:parallel test-query-aggregation-with-args-test
   (testing "test-query handles aggregations with column arguments"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -357,7 +357,7 @@
 
 (deftest ^:parallel test-query-aggregation-avg-test
   (testing "test-query handles avg aggregations"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -370,7 +370,7 @@
 
 (deftest ^:parallel test-query-named-aggregation-with-args-test
   (testing "test-query handles named aggregations with arguments"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -384,7 +384,7 @@
 
 (deftest ^:parallel test-query-with-join-card-source-test
   (testing "test-query supports joins with card sources"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  lib.tu/metadata-provider-with-card
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}
@@ -401,7 +401,7 @@
 
 (deftest ^:parallel test-query-with-join-conditions-with-bin-width-test
   (testing "test-query adds joins with bin-width binned conditions"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}
@@ -430,7 +430,7 @@
 
 (deftest ^:parallel test-query-order-by-with-temporal-bucket-test
   (testing "test-query adds order-by with temporal bucketing"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :checkins)}
@@ -444,7 +444,7 @@
 
 (deftest ^:parallel test-query-order-by-with-temporal-bucket-test-with-duplicate-column
   (testing "test-query adds order-by with temporal bucketing when selecting the first column"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :checkins)}
@@ -463,7 +463,7 @@
               (lib/order-bys query)))))
 
   (testing "test-query adds order-by with temporal bucketing when selecting the second column"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :checkins)}
@@ -483,7 +483,7 @@
 
 (deftest ^:parallel test-query-order-by-with-binning-test
   (testing "test-query adds order-by with binning"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
@@ -496,7 +496,7 @@
 
 (deftest ^:parallel test-query-expression-with-aggregation-test
   (testing "test-query handles expressions that reference aggregations from earlier stages"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -520,7 +520,7 @@
 
 (deftest ^:parallel test-query-multiple-filters-test
   (testing "test-query handles multiple independent filters"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source  {:type :table
                                       :id   (meta/id :venues)}
@@ -542,7 +542,7 @@
 
 (deftest ^:parallel test-query-multiple-joins-test
   (testing "test-query handles multiple joins"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :venues)}
@@ -560,7 +560,7 @@
 
 (deftest ^:parallel test-query-multiple-dependent-joins-test
   (testing "test-query handles multiple joins"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :orders)}
@@ -588,7 +588,7 @@
 
 (deftest ^:parallel test-query-with-implicit-join-test
   (testing "test-query handles implicit joins in most clauses"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source {:type :table
                                      :id   (meta/id :orders)}
@@ -643,7 +643,7 @@
                 (meta/id :products :created-at)]]
               (lib/breakouts query)))
 
-      (let [query (lib.query.util/test-query
+      (let [query (lib.query.test-spec/test-query
                    meta/metadata-provider
                    {:stages [{:source {:type :table
                                        :id   (meta/id :orders)}
@@ -657,7 +657,7 @@
 
 (deftest ^:parallel test-query-three-stage-test
   (testing "test-query handles three stages"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
@@ -682,7 +682,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel test-query-comprehensive-all-features-test
   (testing "test-query exercises all functionality in a comprehensive multi-stage query"
-    (let [query (lib.query.util/test-query
+    (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
                  {:stages [;; Stage 0
                            {:source {:type :table

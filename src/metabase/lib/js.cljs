@@ -81,7 +81,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.query.util :as lib.query.util]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.query :as lib.schema.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -2774,4 +2774,4 @@
   [metadata-providerable js-query-spec]
   (let [query-spec (js->clj js-query-spec :keywordize-keys true)
         parsed-query-spec (parse-query-spec query-spec)]
-    (lib.query.util/test-query metadata-providerable parsed-query-spec)))
+    (lib.query.test-spec/test-query metadata-providerable parsed-query-spec)))

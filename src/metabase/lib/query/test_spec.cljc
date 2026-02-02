@@ -1,4 +1,4 @@
-(ns metabase.lib.query.util
+(ns metabase.lib.query.test-spec
   (:refer-clojure :exclude [mapv name empty?])
   (:require
    [medley.core :as m]
