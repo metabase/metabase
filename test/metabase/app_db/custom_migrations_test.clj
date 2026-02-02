@@ -2756,19 +2756,19 @@
             none-id       (insert! "python" python-source (target))
             ;; deleted database reference — stays nil
             deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
-            target->id    #(t2/select-one-fn :target_db_id :transform :id %)]
+            id->target    #(t2/select-one-fn :target_db_id :transform :id %)]
         (testing "Before backfill, the field is uniformly empty"
           ;; Haven't turned this into a loop, as it would obscure which case failed.
-          (is (nil? (target->id both-id)))
-          (is (nil? (target->id source-id)))
-          (is (nil? (target->id target->id)))
-          (is (nil? (target->id none-id)))
-          (is (nil? (target->id deleted-id))))
+          (is (nil? (id->target both-id)))
+          (is (nil? (id->target source-id)))
+          (is (nil? (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))
         (migrate!)
         (testing "Valid database ids are backfilled"
           ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
-          (is (= db-id (target->id both-id)))
-          (is (= db-id (target->id source-id)))
-          (is (= db-id (target->id target->id)))
-          (is (nil? (target->id none-id)))
-          (is (nil? (target->id deleted-id))))))))
+          (is (= db-id (id->target both-id)))
+          (is (= db-id (id->target source-id)))
+          (is (= db-id (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))))))
