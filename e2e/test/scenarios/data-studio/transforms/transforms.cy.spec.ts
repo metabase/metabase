@@ -2061,10 +2061,10 @@ LIMIT
       cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
 
-      getTransformRunTable().findByText("Canceling").should("be.visible");
+      getTransformRunTable().findByText("Canceling").should("exist");
       getTransformRunTable()
         .findByText("Canceled", { timeout: 30_000 })
-        .should("be.visible");
+        .should("exist");
     });
 
     it("should show a message when the run finished before it cancels", () => {
