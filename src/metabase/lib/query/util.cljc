@@ -169,10 +169,10 @@
    (not (contains? expression-spec :type))))
 
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
-  [query                                   :- ::lib.schema/query
-   stage-number                            :- :int
+  [query                                    :- ::lib.schema/query
+   stage-number                             :- :int
    {:keys [name value] :as expression-spec} :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]
-   available-columns                       :- [:sequential ::lib.schema.metadata/column]]
+   available-columns                        :- [:sequential ::lib.schema.metadata/column]]
   (if (named-expression-spec? expression-spec)
     (-> (expression-spec->expression-clause query stage-number value available-columns)
         (lib.expression/with-expression-name name))
