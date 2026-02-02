@@ -105,7 +105,9 @@
   `(with-thread-context-fn ~context-map
      (fn [] ~@body)))
 
-(let [config (-> (io/resource "metabase/config/modules.edn")
+(let [config (-> (if config/is-dev?
+                   (io/file ".clj-kondo/config/modules/config.edn")
+                   (io/resource "metabase/config/modules.edn"))
                  slurp edn/read-string :metabase/modules)
       first-segment (fn first-segment [ns-sym]
                       (-> (str/split (name ns-sym) #"\.") second))
