@@ -98,7 +98,7 @@
 (mr/def ::join-step-metadata
   "Metadata for join analysis cards."
   [:map
-   [:card-type [:enum :base-count :join-step :table-count]]
+   [:card-type :keyword #_[:enum :base-count :join-step :table-count]]
    [:join-step {:optional true} :int]
    [:join-alias {:optional true} :string]
    [:join-strategy {:optional true} :keyword]])
