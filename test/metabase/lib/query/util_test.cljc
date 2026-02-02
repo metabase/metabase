@@ -547,6 +547,34 @@
                 :alias "Checkins"}]
               (lib/joins query))))))
 
+(deftest ^:parallel test-query-multiple-dependent-joins-test
+  (testing "test-query handles multiple joins"
+    (let [query (lib.query.util/test-query
+                 meta/metadata-provider
+                 {:stages [{:source {:type :table
+                                     :id   (meta/id :orders)}
+                            :joins  [{:source   {:type :table
+                                                 :id   (meta/id :products)}
+                                      :strategy :left-join}
+                                     {:source   {:type :table
+                                                 :id   (meta/id :reviews)}
+                                      :strategy :right-join
+                                      :conditions [{:operator :=
+                                                    :left {:type :column
+                                                           :name "ID"
+                                                           :source-name "PRODUCTS"}
+                                                    :right {:type :column
+                                                            :name "PRODUCT_ID"}}]}]}]})]
+
+      (is (=? [{:strategy :left-join
+                :alias "Products"}
+               {:strategy :right-join
+                :alias "Reviews"
+                :conditions [[:= {}
+                              [:field {:join-alias "Products"} (meta/id :products :id)]
+                              [:field {:join-alias "Reviews"} (meta/id :reviews :product-id)]]]}]
+              (lib/joins query))))))
+
 (deftest ^:parallel test-query-with-implicit-join-test
   (testing "test-query handles implicit joins in most clauses"
     (let [query (lib.query.util/test-query
