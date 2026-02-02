@@ -3,6 +3,7 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
+import { CancelationSection } from "./CancelationSection";
 import { ErrorSection } from "./ErrorSection";
 import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
@@ -44,6 +45,7 @@ export const RunSidebar = memo(function RunSidebar({
           <InfoSection run={run} />
         </Stack>
         {run.message != null && <ErrorSection run={run} />}
+        {run.status === "started" && <CancelationSection run={run} />}
       </Stack>
     </SidebarResizableBox>
   );

@@ -2057,11 +2057,8 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getRunsNavLink().click();
-      getTransformRunTable().within(() => {
-        cy.findByText("In progress").should("be.visible");
-        cy.findByLabelText("Cancel run").click();
-      });
-
+      getTransformRunTable().findByText("In progress").click();
+      cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
 
       getTransformRunTable().findByText("Canceling").should("be.visible");
