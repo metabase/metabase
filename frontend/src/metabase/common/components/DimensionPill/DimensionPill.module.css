@@ -1,0 +1,21 @@
+.pill {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--border-radius-xl);
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pill:hover:not([data-disabled="true"]):not([data-static="true"]) {
+  background-color: var(--mb-color-background-hover);
+}
+
+.pill[data-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pill[data-static="true"] {
+  cursor: default;
+}

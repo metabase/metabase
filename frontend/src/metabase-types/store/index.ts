@@ -6,6 +6,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./embed";
 export * from "./entities";
+export * from "./metrics-explorer";
 export * from "./qb";
 export * from "./requests";
 export * from "./settings";

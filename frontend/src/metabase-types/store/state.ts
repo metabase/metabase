@@ -13,6 +13,7 @@ import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
+import type { MetricsExplorerState } from "./metrics-explorer";
 import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { QueryBuilderState } from "./qb";
@@ -35,6 +36,7 @@ export interface State {
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;
   entities: EntitiesState;
+  metricsExplorer: MetricsExplorerState;
   parameters: ParametersState;
   qb: QueryBuilderState;
   requests: RequestsState;

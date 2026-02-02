@@ -1,0 +1,21 @@
+.resultItem {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  flex-grow: 1;
+  flex-basis: 0;
+}
+
+.icon {
+  flex-basis: 16px;
+  flex-shrink: 0;
+}
+
+.content {
+  overflow: hidden;
+}
+
+.description {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}

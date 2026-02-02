@@ -1,0 +1,6 @@
+.bar {
+  background-color: var(--mb-color-background-secondary);
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--border-radius-xl);
+  width: 100%;
+}

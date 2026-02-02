@@ -1,0 +1,75 @@
+.container {
+  position: relative;
+}
+
+.inputWrapper {
+  background-color: var(--mb-color-background-secondary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 1rem;
+  padding: 0.5rem 0.75rem;
+  cursor: text;
+}
+
+.metricPill {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+  font-weight: normal;
+  padding: 0.25rem 0.5rem;
+}
+
+.inputContainer {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+}
+
+.inputRoot {
+  width: 100%;
+}
+
+.inputFieldWrapper {
+  /* Remove default wrapper styling */
+}
+
+.inputField {
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: auto;
+  min-height: unset;
+  font-size: var(--mb-default-font-size);
+}
+
+.inputField::placeholder {
+  color: var(--mb-color-text-tertiary);
+}
+
+.rightSection {
+  flex-shrink: 0;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  margin-top: 4px;
+  max-height: 400px;
+  max-width: 400px;
+  min-width: 300px;
+  overflow-y: auto;
+}
+
+.pillLink {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  text-decoration: none;
+  color: inherit;
+}
+
+.pillLink:hover {
+  text-decoration: underline;
+}
