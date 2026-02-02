@@ -420,17 +420,17 @@
   (try
     (cond
       (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id"
-                                       {:agent-error? true :status-code 400}))
+                                              {:agent-error? true :status-code 400}))
       (int? model-id)         {:structured-output (-> (query-datasource* arguments)
                                                       (assoc :result-type :query))}
       (int? table-id)         {:structured-output (-> (query-datasource* arguments)
                                                       (assoc :result-type :query))}
       model-id                (throw (ex-info (str "Invalid model_id " model-id)
-                                       {:agent-error? true :status-code 400}))
+                                              {:agent-error? true :status-code 400}))
       table-id                (throw (ex-info (str "Invalid table_id " table-id)
-                                       {:agent-error? true :status-code 400}))
+                                              {:agent-error? true :status-code 400}))
       :else                   (throw (ex-info "Either table_id or model_id must be provided"
-                                       {:agent-error? true :status-code 400})))
+                                              {:agent-error? true :status-code 400})))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
