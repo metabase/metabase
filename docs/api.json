@@ -12940,7 +12940,7 @@
     "/api/cache/" : {
       "get" : {
         "summary" : "GET /api/cache/",
-        "description" : "Return cache configuration.",
+        "description" : "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,\n   and sorting via `sort_column` and `sort_direction`.",
         "parameters" : [ {
           "in" : "query",
           "name" : "model",
@@ -12982,6 +12982,24 @@
             } ]
           },
           "description" : "Model id to get configuration for."
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : true,
+          "schema" : {
+            "default" : "name",
+            "type" : "string",
+            "enum" : [ "name", "policy", "collection" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : true,
+          "schema" : {
+            "default" : "asc",
+            "type" : "string",
+            "enum" : [ "asc", "desc" ]
+          }
         } ],
         "responses" : {
           "2XX" : {
