@@ -106,8 +106,8 @@
      (fn [] ~@body)))
 
 (let [config (-> (if (config/jar?)
-                   (io/file ".clj-kondo/config/modules/config.edn")
-                   (io/resource "metabase/config/modules.edn"))
+                   (io/resource "metabase/config/modules.edn")
+                   (io/file ".clj-kondo/config/modules/config.edn"))
                  slurp edn/read-string :metabase/modules)
       first-segment (fn first-segment [ns-sym]
                       (-> (str/split (name ns-sym) #"\.") second))
