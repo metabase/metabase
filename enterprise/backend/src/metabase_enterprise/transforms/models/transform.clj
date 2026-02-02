@@ -80,12 +80,10 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-  ;; Populate computed fields
-  (let [target-db-id (transforms.i/target-db-id transform)
-        ;; This is a work-around for remote-sync tests we have which contain invalid database references.
-        ;; TODO (Chris 2026-02-02) -- Fix tests. Perhaps throw an error here, or at least log a warning.
-        target-db-id (when (and target-db-id (t2/exists? :model/Database :id target-db-id))
-                       target-db-id)]
+  ;; Populate computed fields. During deserialization, source/target may contain unresolved database
+  ;; references, so we skip target_db_id computation and let it be filled in later.
+  (let [target-db-id (when-not mi/*deserializing?*
+                       (transforms.i/target-db-id transform))]
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
@@ -101,6 +99,8 @@
     source
     (assoc :source_type (transforms.util/transform-source-type source))
 
+    ;; No need for a DB existence check here — updates come from the API where the database is always valid.
+    ;; (Unlike before-insert, which skips this during deserialization where DB refs may be stale.)
     (or (:source (t2/changes transform)) (:target (t2/changes transform)))
     (assoc :target_db_id (transforms.i/target-db-id transform))))
 

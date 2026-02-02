@@ -96,10 +96,11 @@
     ;; Give them empty dependency sets so they don't interfere with ordering.
     (into (zipmap (map :id transforms) (repeat #{}))
           (update-vals dependencies
-                       #(into #{}
-                              (keep (fn [dep]
-                                      (resolve-dependency dep output-tables transform-ids target-refs)))
-                              %)))))
+                       (fn [deps]
+                         (into #{}
+                               (keep (fn [dep]
+                                       (resolve-dependency dep output-tables transform-ids target-refs)))
+                               deps))))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
