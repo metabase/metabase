@@ -1,21 +1,14 @@
+import type { Location } from "history";
+
 import * as Urls from "metabase/lib/urls";
 import {
   DEPENDENCY_GROUP_TYPES,
   DEPENDENCY_SORT_COLUMNS,
-  DEPENDENCY_SORT_DIRECTIONS,
   type DependencyListUserParams,
+  SORT_DIRECTIONS,
 } from "metabase-types/api";
 
 import type { DependencyListMode } from "../../components/DependencyList/types";
-import {
-  parseBoolean,
-  parseEnum,
-  parseList,
-  parseNumber,
-  parseString,
-} from "../../utils";
-
-import type { DependencyListQueryParams } from "./types";
 
 export function getPageUrl(
   mode: DependencyListMode,
@@ -26,23 +19,27 @@ export function getPageUrl(
     : Urls.unreferencedDependencies(params);
 }
 
-export function parseUrlParams(
-  params: DependencyListQueryParams,
-): Urls.DependencyListParams {
+export function parseUrlParams(location: Location): Urls.DependencyListParams {
+  const {
+    page,
+    query,
+    "group-types": groupTypes,
+    "include-personal-collections": includePersonalCollections,
+    "sort-column": sortColumn,
+    "sort-direction": sortDirection,
+  } = location.query;
+
   return {
-    page: parseNumber(params.page),
-    query: parseString(params.query),
-    group_types: parseList(params.group_types, (item) =>
-      parseEnum(item, DEPENDENCY_GROUP_TYPES),
+    page: Urls.parseNumberParam(page),
+    query: Urls.parseStringParam(query),
+    groupTypes: Urls.parseListParam(groupTypes, (item) =>
+      Urls.parseEnumParam(item, DEPENDENCY_GROUP_TYPES),
     ),
-    include_personal_collections: parseBoolean(
-      params.include_personal_collections,
+    includePersonalCollections: Urls.parseBooleanParam(
+      includePersonalCollections,
     ),
-    sort_column: parseEnum(params.sort_column, DEPENDENCY_SORT_COLUMNS),
-    sort_direction: parseEnum(
-      params.sort_direction,
-      DEPENDENCY_SORT_DIRECTIONS,
-    ),
+    sortColumn: Urls.parseEnumParam(sortColumn, DEPENDENCY_SORT_COLUMNS),
+    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
   };
 }
 
@@ -50,20 +47,29 @@ export function parseUrlParams(
 export function parseUserParams(
   params: DependencyListUserParams | undefined | "",
 ): Urls.DependencyListParams {
-  return typeof params === "object" && params != null ? params : {};
+  if (typeof params !== "object" || params == null) {
+    return {};
+  }
+
+  return {
+    groupTypes: params.group_types,
+    includePersonalCollections: params.include_personal_collections,
+    sortColumn: params.sort_column,
+    sortDirection: params.sort_direction,
+  };
 }
 
 export function getUserParams(
   params: Urls.DependencyListParams,
 ): DependencyListUserParams {
   return {
-    group_types: params.group_types,
-    include_personal_collections: params.include_personal_collections,
-    sort_column: params.sort_column,
-    sort_direction: params.sort_direction,
+    group_types: params.groupTypes,
+    include_personal_collections: params.includePersonalCollections,
+    sort_column: params.sortColumn,
+    sort_direction: params.sortDirection,
   };
 }
 
-export function isEmptyParams(params: DependencyListQueryParams): boolean {
-  return Object.values(params).every((value) => value == null);
+export function isEmptyParams(location: Location): boolean {
+  return Object.values(location.query).every((value) => value == null);
 }

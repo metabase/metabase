@@ -56,13 +56,17 @@
 
 (defn start-run!
   "Start a run. If `user_id` is provided in properties, it will be stored with the run
-   and used for attribution in the audit log (avoiding 'External user' for scheduled runs)."
+   and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
+   Also captures `transform_name` and `transform_entity_id` for historical reference."
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [run (t2/insert-returning-instance! :model/TransformRun
+   (let [transform (t2/select-one [:model/Transform :name :entity_id] :id transform-id)
+         run (t2/insert-returning-instance! :model/TransformRun
                                             (assoc properties
                                                    :transform_id transform-id
+                                                   :transform_name (:name transform)
+                                                   :transform_entity_id (:entity_id transform)
                                                    :status :started
                                                    :is_active true))]
      ;; Pass user_id to the event so audit log properly attributes the run
@@ -178,63 +182,124 @@
            (when end
              [:< field-name end])])))
 
+(defn- paged-runs-join-clause
+  "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
+  [{:keys [sort_column]}]
+  (case (keyword sort_column)
+    :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
+    nil))
+
+(defn- paged-runs-where-clause
+  "Builds a `:where` clause for transform runs from the given filter parameters."
+  [{:keys [start_time end_time run_methods transform_ids transform_tag_ids statuses]}]
+  (let [where-cond (cond-> []
+                     (some? start_time)
+                     (conj (timestamp-constraint :start_time start_time))
+
+                     (some? end_time)
+                     (conj (timestamp-constraint :end_time end_time))
+
+                     (seq run_methods)
+                     (conj [:in :run_method (set run_methods)])
+
+                     (seq transform_ids)
+                     (conj [:in :transform_id transform_ids])
+
+                     (seq transform_tag_ids)
+                     (conj [:in :transform_id {:select [:transform_id]
+                                               :from   [:transform_transform_tag]
+                                               :where  [:in :tag_id transform_tag_ids]}])
+
+                     (seq statuses)
+                     (conj [:in :status (set statuses)])
+
+                     ;; optimization: is_active condition for started status
+                     (and (= (first statuses) "started")
+                          (nil? (next statuses)))
+                     (conj [:= :is_active true]))]
+    (when (seq where-cond)
+      (into [:and] where-cond))))
+
+(defn- translate-run-method-clause
+  "Returns a HoneySQL `:case` expression that translates run method values to display names."
+  []
+  [:case
+   [:= :run_method "manual"] (tru "Manual")
+   [:= :run_method "cron"] (tru "Schedule")
+   :run_method])
+
+(defn- translate-status-clause
+  "Returns a HoneySQL `:case` expression that translates run status values to display names."
+  []
+  [:case
+   [:= :status "started"]   (tru "In progress")
+   [:= :status "succeeded"] (tru "Success")
+   [:= :status "failed"]    (tru "Failed")
+   [:= :status "timeout"]   (tru "Timeout")
+   [:= :status "canceling"] (tru "Canceling")
+   [:= :status "canceled"]  (tru "Canceled")
+   :status])
+
+(defn- translate-tag-name-clause
+  "Returns a HoneySQL `:case` expression that translates built-in tag names.
+   `name-field` is the keyword for the name column (e.g. `:transform_tag.name`),
+   `built-in-type-field` is the keyword for the built_in_type column (e.g. `:transform_tag.built_in_type`)."
+  [name-field built-in-type-field]
+  [:case
+   [:= built-in-type-field "hourly"]  (tru "hourly")
+   [:= built-in-type-field "daily"]   (tru "daily")
+   [:= built-in-type-field "weekly"]  (tru "weekly")
+   [:= built-in-type-field "monthly"] (tru "monthly")
+   :else name-field])
+
+(defn- first-tag-name-subquery
+  "Returns a correlated subquery that selects the translated name of the first tag
+   (by minimum position) assigned to the transform for a transform run."
+  []
+  {:select [[(translate-tag-name-clause :tt.name :tt.built_in_type) :tag_name]]
+   :from   [[:transform_transform_tag :ttt]]
+   :join   [[:transform_tag :tt] [:= :ttt.tag_id :tt.id]]
+   :where  [:and
+            [:= :ttt.transform_id :transform_run.transform_id]
+            [:= :ttt.position {:select [[[:min :ttt2.position]]]
+                               :from   [[:transform_transform_tag :ttt2]]
+                               :where  [:= :ttt2.transform_id :transform_run.transform_id]}]]})
+
+(defn- paged-runs-order-by-clause
+  "Builds a HoneySQL `:order-by` clause for transform runs, translating display values for sortable columns."
+  [{:keys [sort_column sort_direction]}]
+  (let [sort-column    (or (keyword sort_column) :start-time)
+        sort-direction (or (keyword sort_direction) :desc)
+        nulls-sort     (if (= sort-direction :asc)
+                         :nulls-last
+                         :nulls-first)]
+    (conj
+     (case sort-column
+       :transform-name  [[:transform.name sort-direction]]
+       :start-time      [[:start_time sort-direction]]
+       :end-time        [[:end_time sort-direction nulls-sort]]
+       :status          [[(translate-status-clause) sort-direction]]
+       :run-method      [[(translate-run-method-clause) sort-direction]]
+       :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
+       [[:start_time sort-direction]
+        [:end_time   sort-direction nulls-sort]])
+     [:transform_run.id sort-direction])))
+
 (defn paged-runs
   "Return a page of the list of the runs.
 
   Follows the conventions used by the FE."
-  [{:keys [offset
-           limit
-           start_time
-           end_time
-           run_methods
-           sort_column
-           sort_direction
-           transform_ids
-           transform_tag_ids
-           statuses]}]
-  (let [offset           (or offset 0)
-        limit            (or limit 20)
-        sort-direction   (or (keyword sort_direction) :desc)
-        nulls-sort       (if (= sort-direction :asc)
-                           :nulls-last
-                           :nulls-first)
-        sort-column      (keyword sort_column)
-        order-by         (case sort-column
-                           :started_at [[sort-column sort-direction]]
-                           :ended_at   [[sort-column sort-direction nulls-sort]]
-                           [[:start_time sort-direction]
-                            [:end_time   sort-direction nulls-sort]])
-        where-cond       (cond-> []
-                           (some? start_time)
-                           (conj (timestamp-constraint :start_time start_time))
-
-                           (some? end_time)
-                           (conj (timestamp-constraint :end_time end_time))
-
-                           (seq run_methods)
-                           (conj [:in :run_method (set run_methods)])
-
-                           (seq transform_ids)
-                           (conj [:in :transform_id transform_ids])
-
-                           (seq transform_tag_ids)
-                           (conj [:in :transform_id {:select [:transform_id]
-                                                     :from   [:transform_transform_tag]
-                                                     :where  [:in :tag_id transform_tag_ids]}])
-
-                           (seq statuses)
-                           (conj [:in :status (set statuses)])
-
-                           ;; optimization: is_active condition for started status
-                           (and (= (first statuses) "started")
-                                (nil? (next statuses)))
-                           (conj [:= :is_active true]))
-        where-clause     (when (seq where-cond)
-                           (into [:and] where-cond))
-        count-options    (m/assoc-some {} :where where-clause)
-        query-options    (merge {:order-by order-by :offset offset :limit limit}
-                                count-options)
-        runs             (t2/select :model/TransformRun query-options)]
+  [{:keys [offset limit] :as params}]
+  (let [offset        (or offset 0)
+        limit         (or limit 20)
+        order-by      (paged-runs-order-by-clause params)
+        where-clause  (paged-runs-where-clause params)
+        join-clause   (paged-runs-join-clause params)
+        count-options (m/assoc-some {} :where where-clause)
+        query-options (m/assoc-some {:order-by order-by :offset offset :limit limit}
+                                    :where where-clause
+                                    :left-join join-clause)
+        runs          (t2/select :model/TransformRun query-options)]
     {:data   (t2/hydrate runs [:transform :transform_tag_ids])
      :limit  limit
      :offset offset

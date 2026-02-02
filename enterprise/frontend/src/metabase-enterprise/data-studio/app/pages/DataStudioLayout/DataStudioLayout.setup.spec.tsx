@@ -1,6 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
+  setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
@@ -201,6 +202,7 @@ export const setup = ({
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
+  setupLibraryEndpoints(false);
 
   renderDataStudioLayout({
     isAdmin,

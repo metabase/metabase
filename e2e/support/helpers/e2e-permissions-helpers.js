@@ -33,7 +33,9 @@ export function modifyPermission(
             }
           });
       }
-      value && cy.findByText(value).click();
+      if (value) {
+        cy.findByText(value).click();
+      }
     });
 }
 

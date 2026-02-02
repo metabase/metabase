@@ -91,7 +91,9 @@ export function TransformsPurchasePage() {
             <Card withBorder p={0}>
               <Radio.Card
                 value="basic"
-                bg={selectedTier === "basic" ? "brand-light" : undefined}
+                bg={
+                  selectedTier === "basic" ? "background-selected" : undefined
+                }
                 p="md"
                 radius={0}
               >
@@ -122,7 +124,11 @@ export function TransformsPurchasePage() {
 
               <Radio.Card
                 value="advanced"
-                bg={selectedTier === "advanced" ? "brand-light" : undefined}
+                bg={
+                  selectedTier === "advanced"
+                    ? "background-selected"
+                    : undefined
+                }
                 p="md"
                 radius={0}
               >

@@ -724,3 +724,14 @@
                            :display-name "Custom Lat")]
       (is (=? [{:display-name "Custom Lat: 1°"}]
               (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
+(deftest ^:parallel saved-question-metadata-test
+  (let [card (:venues (lib.tu/mock-cards))
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [card]})]
+    (testing "returns same results as card-returned-columns"
+      (is (= (lib.card/card-returned-columns mp card)
+             (lib.card/saved-question-metadata mp (:id card)))))
+    (testing "returns nil for a nonexistent card"
+      (is (nil? (lib.card/saved-question-metadata mp 99999))))))

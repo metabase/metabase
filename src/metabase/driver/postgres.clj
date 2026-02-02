@@ -1312,3 +1312,6 @@
   (let [type  (nippy/thaw-from-in! data-input)
         value (nippy/thaw-from-in! data-input)]
     (doto (PGobject.) (.setType type) (.setValue value))))
+
+(defmethod driver/llm-sql-dialect-resource :postgres [_]
+  "llm/prompts/dialects/postgresql.md")

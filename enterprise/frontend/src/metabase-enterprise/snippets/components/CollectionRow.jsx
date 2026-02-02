@@ -54,6 +54,7 @@ class CollectionRow extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SnippetCollections.load({
   id: (state, props) => props.item.id,
   wrapped: true,
