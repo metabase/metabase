@@ -44,6 +44,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       body: response,
     });
 
+    cy.log("Create a question");
     H.createQuestion({
       name: "1",
       query: {
@@ -55,6 +56,15 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     }).then(({ body: question }) => {
       cy.wrap(question.id).as("questionId");
       cy.wrap(question.entity_id).as("questionEntityId");
+    });
+
+    cy.log("Create a collection");
+    cy.request("POST", "/api/collection", {
+      name: "first_collection",
+      description: "First collection",
+      parent_id: undefined,
+    }).then(({ body }) => {
+      cy.wrap(body.id).as("collectionId");
     });
 
     cy.signOut();
@@ -73,35 +83,39 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     });
   });
 
-  it("should allow to save a question", () => {
+  it("should allow saving a question", () => {
     cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");
 
     setup(metabotResponseWithNavigateTo);
 
-    mountSdkContent(<MetabotQuestion />);
+    cy.get("@collectionId").then((collectionId) => {
+      mountSdkContent(
+        <MetabotQuestion isSaveEnabled targetCollection={collectionId} />,
+      );
 
-    getSdkRoot().within(() => {
-      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
-
-      cy.findByTestId("visualization-root").should("exist");
-
-      cy.findByText("Save").should("be.visible").click();
-
-      H.modal().within(() => {
-        cy.findByText("Save new question").should("be.visible");
-        cy.findByRole("button", { name: "Save" }).click();
-      });
-    });
-
-    cy.wait("@postCard").then((interception) => {
-      const response = interception.response?.body;
-      const questionId = response.id;
-
-      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
       getSdkRoot().within(() => {
-        cy.findByText(
-          "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
-        ).should("be.visible");
+        cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+        cy.findByTestId("visualization-root").should("exist");
+
+        cy.findByText("Save").should("be.visible").click();
+
+        H.modal().within(() => {
+          cy.findByText("Save new question").should("be.visible");
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+      });
+
+      cy.wait("@postCard").then((interception) => {
+        const response = interception.response?.body;
+        const questionId = response.id;
+
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+        getSdkRoot().within(() => {
+          cy.findByText(
+            "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
+          ).should("be.visible");
+        });
       });
     });
   });
