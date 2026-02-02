@@ -387,12 +387,12 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewMetric();
-      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+      cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
       H.miniPicker().within(() => {
         cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
-      cy.wait("@queryMetadata");
+      cy.wait("@metadata");
       H.getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();

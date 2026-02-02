@@ -1049,12 +1049,12 @@ describe("issue 49882", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+    cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
 
     H.openOrdersTable({ mode: "notebook" });
-    cy.wait(["@queryMetadata", "@queryMetadata"]);
+    cy.wait("@metadata");
     H.getNotebookStep("data").should("contain.text", "Orders");
-    cy.findByLabelText("Custom column").click();
+    H.addCustomColumn();
   });
 
   it("should not eat up subsequent characters when applying a suggestion (metabase#49882-1)", () => {
