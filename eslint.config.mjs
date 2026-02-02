@@ -6,35 +6,31 @@ import js from "@eslint/js";
 import { fixupPluginRules } from "@eslint/compat";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-import babelParser from "@babel/eslint-parser";
+import * as babelParser from "@babel/eslint-parser";
 import reactPlugin from "eslint-plugin-react";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
+import * as reactHooksPlugin from "eslint-plugin-react-hooks";
 import importXPlugin from "eslint-plugin-import-x";
 import jestPlugin from "eslint-plugin-jest";
 import jestDomPlugin from "eslint-plugin-jest-dom";
-import jestFormattingPlugin from "eslint-plugin-jest-formatting";
+import * as jestFormattingPlugin from "eslint-plugin-jest-formatting";
 import testingLibraryPlugin from "eslint-plugin-testing-library";
 import cypressPlugin from "eslint-plugin-cypress";
 import chaiFriendlyPlugin from "eslint-plugin-chai-friendly";
 import noOnlyTestsPlugin from "eslint-plugin-no-only-tests";
-import dependPlugin from "eslint-plugin-depend";
+import * as dependPlugin from "eslint-plugin-depend";
 import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
-// Custom plugin
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Conditional CSS modules linting
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
 
-// Messages for restricted imports
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
-// Base restricted imports config used in multiple places
 const baseMetabaseRestrictedConfig = {
   patterns: [
     { group: ["metabase-enterprise"] },
@@ -77,11 +73,7 @@ const baseMetabaseRestrictedConfig = {
   ],
 };
 
-// Configs array
 const configs = [
-  // ============================================
-  // GLOBAL IGNORES (replaces .eslintignore)
-  // ============================================
   {
     ignores: [
       "frontend/src/cljs/**",
@@ -99,25 +91,7 @@ const configs = [
       "!.storybook/**",
     ],
   },
-
-  // ============================================
-  // LINTER OPTIONS
-  // ============================================
-  {
-    linterOptions: {
-      // Restore ESLint 8 behavior - don't report unused disable directives
-      reportUnusedDisableDirectives: "off",
-    },
-  },
-
-  // ============================================
-  // BASE CONFIG (JS recommended + settings)
-  // ============================================
   js.configs.recommended,
-
-  // ============================================
-  // MAIN CONFIG for all JS/TS files
-  // ============================================
   {
     files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
     languageOptions: {
@@ -149,7 +123,6 @@ const configs = [
       ttag: fixupPluginRules(ttagPlugin),
       i18next: fixupPluginRules(i18nextPlugin),
       depend: fixupPluginRules(dependPlugin),
-      storybook: fixupPluginRules(storybookPlugin),
     },
     settings: {
       "import-x/internal-regex":
@@ -267,7 +240,6 @@ const configs = [
       ...reactHooksPlugin.configs.recommended.rules,
       "react-hooks/exhaustive-deps": "warn",
 
-      // No only tests
       "no-only-tests/no-only-tests": [
         "error",
         {
@@ -296,7 +268,6 @@ const configs = [
       "metabase/no-literal-metabase-strings": "error",
       "metabase/no-oss-reinitialize-import": "error",
 
-      // Depend plugin
       "depend/ban-dependencies": [
         "error",
         {
@@ -305,18 +276,19 @@ const configs = [
             "moment",
             "lodash.orderby",
             "lodash.debounce",
+            "chalk",
+            "node-fetch",
+            "js-yaml",
+            "glob",
+            "ora",
+            "cross-fetch",
           ],
         },
       ],
 
-      // i18next
-      ...i18nextPlugin.configs.recommended.rules,
+      ...i18nextPlugin.configs["flat/recommended"].rules,
     },
   },
-
-  // ============================================
-  // JAVASCRIPT FILES - Use Babel parser for class fields support
-  // ============================================
   {
     files: ["**/*.js", "**/*.jsx"],
     languageOptions: {
@@ -331,10 +303,6 @@ const configs = [
       },
     },
   },
-
-  // ============================================
-  // DISABLE CUSTOM RULES for specific paths
-  // ============================================
   {
     files: [
       "**/*.unit.spec.*",
@@ -360,8 +328,6 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
     },
   },
-
-  // Disable i18next for test/lint/stories files
   {
     files: [
       "**/*.unit.spec.*",
@@ -377,10 +343,7 @@ const configs = [
       "i18next/no-literal-string": "off",
     },
   },
-
-  // ============================================
-  // TYPESCRIPT FILES
-  // ============================================
+  // ts configs
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
     files: ["**/*.ts", "**/*.tsx"],
@@ -416,10 +379,6 @@ const configs = [
       "no-unused-vars": "off", // Disable base rule for TS files
     },
   },
-
-  // ============================================
-  // UNIT TEST FILES
-  // ============================================
   {
     files: [
       "**/*.unit.spec.ts",
@@ -431,6 +390,7 @@ const configs = [
       jest: jestPlugin,
       "jest-dom": jestDomPlugin,
       "testing-library": testingLibraryPlugin,
+      // @ts-ignore
       "jest-formatting": fixupPluginRules(jestFormattingPlugin),
     },
     rules: {
@@ -453,16 +413,13 @@ const configs = [
   {
     files: ["**/*.cy.spec.ts", "**/*.cy.spec.js"],
     plugins: {
+      // @ts-ignore
       "jest-formatting": fixupPluginRules(jestFormattingPlugin),
     },
     rules: {
       ...jestFormattingPlugin.configs.recommended.rules,
     },
   },
-
-  // ============================================
-  // E2E TEST FILES
-  // ============================================
   {
     files: ["e2e/**/*"],
     languageOptions: {
@@ -481,7 +438,6 @@ const configs = [
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
       "import/no-commonjs": "off",
-      "import/no-unresolved": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
       "@typescript-eslint/no-namespace": "off",
@@ -537,10 +493,6 @@ const configs = [
       "no-console": "error",
     },
   },
-
-  // ============================================
-  // FRONTEND/TEST
-  // ============================================
   {
     files: ["frontend/test/**/*"],
     languageOptions: {
@@ -553,20 +505,12 @@ const configs = [
       "metabase/no-color-literals": "off",
     },
   },
-
-  // ============================================
-  // RELEASE SCRIPTS
-  // ============================================
   {
     files: ["release/**/*.ts", "release/**/*.js"],
     rules: {
       "no-console": "off",
     },
   },
-
-  // ============================================
-  // FRONTEND/SRC/METABASE
-  // ============================================
   {
     files: ["frontend/src/metabase/**/*"],
     plugins: {
@@ -661,10 +605,6 @@ const configs = [
       ],
     },
   },
-
-  // ============================================
-  // FRONTEND/SRC/METABASE/METADATA
-  // ============================================
   {
     files: ["frontend/src/metabase/metadata/**/*"],
     rules: {
@@ -718,10 +658,6 @@ const configs = [
       ],
     },
   },
-
-  // ============================================
-  // FRONTEND/SRC/METABASE-LIB
-  // ============================================
   {
     files: ["frontend/src/metabase-lib/**/*"],
     plugins: {
@@ -771,10 +707,6 @@ const configs = [
       "ttag/no-module-declaration": "error",
     },
   },
-
-  // ============================================
-  // FRONTEND/SRC/EMBEDDING-SDK-BUNDLE
-  // ============================================
   {
     files: ["frontend/src/embedding-sdk-bundle/**/*"],
     plugins: {
@@ -814,10 +746,6 @@ const configs = [
       "metabase/no-color-literals": "off",
     },
   },
-
-  // ============================================
-  // FRONTEND/SRC/EMBEDDING-SDK-SHARED
-  // ============================================
   {
     files: ["frontend/src/embedding-sdk-shared/**/*"],
     plugins: {
@@ -840,20 +768,12 @@ const configs = [
       "ttag/no-module-declaration": "error",
     },
   },
-
-  // ============================================
-  // QUERY BUILDER - import cycle detection
-  // ============================================
   {
     files: ["frontend/src/metabase/query_builder/**/*"],
     rules: {
       "import/no-cycle": "error",
     },
   },
-
-  // ============================================
-  // ENTERPRISE/FRONTEND/SRC
-  // ============================================
   {
     files: ["enterprise/frontend/src/**/*"],
     plugins: {
@@ -1045,10 +965,6 @@ const configs = [
       ],
     },
   },
-
-  // ============================================
-  // ENTERPRISE/FRONTEND/SRC/EMBEDDING/AUTH-COMMON
-  // ============================================
   {
     files: ["enterprise/frontend/src/embedding/auth-common/**/*"],
     rules: {
@@ -1071,10 +987,6 @@ const configs = [
       ],
     },
   },
-
-  // ============================================
-  // SDK PACKAGE BIN/CLI
-  // ============================================
   {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
@@ -1090,10 +1002,6 @@ const configs = [
       "no-console": "off",
     },
   },
-
-  // ============================================
-  // DOCS SNIPPETS
-  // ============================================
   {
     files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
     rules: {
@@ -1106,10 +1014,6 @@ const configs = [
       "metabase/no-color-literals": "off",
     },
   },
-
-  // ============================================
-  // BUILD FILES
-  // ============================================
   {
     files: ["frontend/build/**/*.js"],
     languageOptions: {
@@ -1121,10 +1025,6 @@ const configs = [
       "import/no-commonjs": "off",
     },
   },
-
-  // ============================================
-  // CUSTOM ESLINT RULES (plugin)
-  // ============================================
   {
     files: ["frontend/lint/**/*.js"],
     languageOptions: {
@@ -1136,20 +1036,12 @@ const configs = [
       "import/no-commonjs": "off",
     },
   },
-
-  // ============================================
-  // STORIES - allow default export
-  // ============================================
   {
     files: ["**/*.stories.tsx", "**/preview.tsx"],
     rules: {
       "import/no-default-export": "off",
     },
   },
-
-  // ============================================
-  // NODE.JS CONFIG FILES (root level + scripts)
-  // ============================================
   {
     files: [
       "*.config.js",
@@ -1168,13 +1060,27 @@ const configs = [
       "no-console": "off",
     },
   },
+
+  // ============================================
+  // STORYBOOK (uses native flat config from v9)
+  // ============================================
+  ...storybookPlugin.configs["flat/recommended"],
+  {
+    files: ["**/*.stories.@(ts|tsx|js|jsx|mjs|cjs)"],
+    rules: {
+      // Disable new v9 rule - fixing this is out of scope for eslint upgrade
+      "storybook/no-renderer-packages": "off",
+    },
+  },
 ];
 
-// Conditionally add CSS modules linting
 if (shouldLintCssModules) {
   try {
-    const postcssModulesPlugin = await import("eslint-plugin-postcss-modules");
-    configs.push({
+    const postcssModulesPlugin =
+      // @ts-expect-error - optional plugin, may not be installed
+      await import("eslint-plugin-postcss-modules");
+    /** @type {any} */
+    const postcssConfig = {
       files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
       plugins: {
         "postcss-modules": fixupPluginRules(postcssModulesPlugin.default),
@@ -1187,8 +1093,9 @@ if (shouldLintCssModules) {
       rules: {
         "postcss-modules/no-undef-class": "error",
       },
-    });
-  } catch (e) {
+    };
+    configs.push(postcssConfig);
+  } catch {
     // eslint-plugin-postcss-modules not installed
   }
 }
