@@ -62,22 +62,28 @@ export function getDefaultDimensions(
 ) {
   const [{ card, data }] = rawSeries;
   const mainSeriesColumns = data?.cols ?? [];
+  const hasData = mainSeriesColumns.length > 0;
   const prevDimensionsRaw = (settings["graph.dimensions"] ?? []).filter(
     isNotNull,
   );
-  const prevDimensions = prevDimensionsRaw.filter((columnName: string) =>
-    mainSeriesColumns.some((col: DatasetColumn) => col.name === columnName),
-  );
+  const prevDimensions = hasData
+    ? prevDimensionsRaw.filter((columnName: string) =>
+        mainSeriesColumns.some((col: DatasetColumn) => col.name === columnName),
+      )
+    : prevDimensionsRaw;
   const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
   const canReusePrevious =
     prevDimensions.length > 0 &&
     defaultDimensions.length > 0 &&
     defaultDimensions[0] == null &&
-    columnsAreValid(
-      prevDimensionsRaw,
-      data,
-      getDefaultDimensionFilter(card.display),
-    );
+    (!hasData ||
+      (columnsAreValid(
+        prevDimensionsRaw,
+        data,
+        getDefaultDimensionFilter(card.display),
+      ) &&
+        prevDimensionsRaw.filter((colName) => colName !== null).length ===
+          prevDimensionsRaw.length));
 
   if (canReusePrevious) {
     return prevDimensions;
@@ -91,13 +97,21 @@ export function getDefaultMetrics(
   settings: ComputedVisualizationSettings,
 ) {
   const [{ card, data }] = rawSeries;
+  const hasData = (data?.cols ?? []).length > 0;
   const prevMetrics = settings["graph.metrics"] ?? [];
   const defaultMetrics = getDefaultColumns(rawSeries).metrics;
   const canReusePrevious =
     prevMetrics.length > 0 &&
     defaultMetrics.length > 0 &&
     defaultMetrics[0] == null &&
-    columnsAreValid(prevMetrics, data, getDefaultMetricFilter(card.display));
+    (!hasData ||
+      (columnsAreValid(
+        prevMetrics,
+        data,
+        getDefaultMetricFilter(card.display),
+      ) &&
+        prevMetrics.filter((metric) => metric !== null).length ===
+          prevMetrics.length));
 
   if (canReusePrevious) {
     return prevMetrics;
