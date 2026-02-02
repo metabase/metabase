@@ -46,7 +46,7 @@
         db-transforms (lib.metadata/transforms query)
         sql (lib/raw-native-query query)
         default-schema (driver.sql/default-schema driver)
-        query-tables (sql-parsing/referenced-tables sql (driver->dialect driver))]
+        query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
     (into #{}
           (keep (fn [[table-schema table]]
                   (sql-tools.common/find-table-or-transform
