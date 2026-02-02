@@ -16,9 +16,7 @@
 
    Layout: :flat"
   (:require
-   [clojure.string :as str]
-   [metabase-enterprise.transforms.inspector.lens.core :as lens.core]
-   [metabase.lib.util :as lib.util]))
+   [metabase-enterprise.transforms.inspector.lens.core :as lens.core]))
 
 (set! *warn-on-reflection* true)
 

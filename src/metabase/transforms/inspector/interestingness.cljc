@@ -44,19 +44,6 @@
      (and field-name
           (re-matches #"(?i).*_id$|^id$|.*_uuid$|^uuid$" field-name)))))
 
-(defn- cardinality-ratio
-  "Calculate the ratio of distinct values to total values.
-   Returns nil if stats are not available."
-  [field]
-  (let [distinct-count (get-in field [:stats :distinct-count])
-        ;; We don't have row-count in field stats, so we approximate
-        ;; using nil-percent if available
-        nil-percent    (get-in field [:stats :nil-percent])]
-    (when (and distinct-count (some? nil-percent))
-      ;; This is an approximation - actual cardinality ratio requires row count
-      ;; For now, we use distinct-count thresholds directly
-      nil)))
-
 (defn- high-cardinality?
   "Returns true if the column has very high cardinality (>1000 distinct values).
    High cardinality columns don't make good bar/pie charts."
