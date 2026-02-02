@@ -346,7 +346,8 @@
   [driver
    {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose?]}
    driver-deps-affected?
-   quarantined-drivers]
+   quarantined-drivers
+   updated]
   (cond
     ;; Priority 1: Global skip (no backend changes)
     skip
@@ -365,7 +366,7 @@
         (println "Driver" (name driver) "is quarantined; checking for '" (break-quarantine-label driver) "' label...."))
       (if (contains? pr-labels (break-quarantine-label driver))
         {:should-run true
-         :reason "driver is quarantined, but anti-quarantine label present; running anyway"}
+         :reason (str "driver is quarantined, but " (break-quarantine-label driver) " label found; running anyway")}
         {:should-run false
          :reason "driver is quarantined"}))
 
@@ -386,17 +387,23 @@
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 7: Cloud driver, no relevant changes
+    ;; Priority 7: Cloud driver + query-processor updated → run it
+    (and (contains? cloud-drivers driver)
+         (contains? updated 'query-processor))
+    {:should-run true
+     :reason "query-processor module updated"}
+
+    ;; Priority 8: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 8: Driver deps affected by shared code changes
+    ;; Priority 9: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 9: Self-hosted driver, not affected
+    ;; Priority 10: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
@@ -433,7 +440,7 @@
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined)
+                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
                                  :driver driver))
                         all-drivers)
         ;; Check for quarantined drivers with file changes but no break-quarantine label

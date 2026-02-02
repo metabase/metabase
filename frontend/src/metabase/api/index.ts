@@ -20,6 +20,7 @@ export * from "./entity-id";
 export * from "./field";
 export * from "./google";
 export * from "./ldap";
+export * from "./llm";
 export * from "./login-history";
 export * from "./measure";
 export * from "./model-index";

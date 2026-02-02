@@ -5,13 +5,21 @@ import { Route } from "react-router";
 import {
   findRequests,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
+  setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import {
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
@@ -54,28 +62,31 @@ const defaultSeedCollections = [
     id: 21,
     name: "Collection Two",
     model: "collection",
+    can_write: true,
     collection_name: "Collection Two Prime",
     parent_collection: {
       id: 3,
-      name: "Collection Two Prime",
+      name: "Collection Beta Prime",
     },
   },
   {
     id: 31,
     name: "Collection Three",
     model: "collection",
+    can_write: true,
     parent_collection: {
       id: 3,
-      name: "Collection Three Prime",
+      name: "Collection Delta Prime",
     },
   },
   {
     id: 32,
     name: "Collection Four",
     model: "collection",
+    can_write: true,
     parent_collection: {
       id: 3,
-      name: "Collection Four Prime",
+      name: "Collection Sigma Prime",
     },
   },
 ];
@@ -85,11 +96,14 @@ const setup = async (
   seedCollections = defaultSeedCollections,
   error = false,
 ) => {
+  mockGetBoundingClientRect();
   mockPathParam(initialPathParam);
   setupMetabotsEndpoints(metabots, error ? 500 : undefined);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
   });
+  setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
+  setupCollectionsEndpoints({ collections: [] });
 
   setupRecentViewsAndSelectionsEndpoints(seedCollections as RecentItem[]);
 
@@ -134,7 +148,7 @@ describe("MetabotAdminPage", () => {
     await setup();
     expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
     expect(
-      screen.getByText("Collection for natural language querying"),
+      await screen.findByText(/Collection for natural language querying/),
     ).toBeInTheDocument();
   });
 
@@ -177,8 +191,10 @@ describe("MetabotAdminPage", () => {
     await userEvent.click(screen.getByText("Pick a different collection"));
 
     await screen.findByText("Select a collection");
-    await userEvent.click(screen.getByText("Collection Three"));
-    await userEvent.click(screen.getByText("Select"));
+    await userEvent.click(await screen.findByText(/Recent items/));
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(await screen.findByText(/Collection Three/));
+    await userEvent.click(screen.getByRole("button", { name: "Select" }));
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");

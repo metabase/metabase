@@ -103,10 +103,10 @@ export const LookAndFeelSettings = ({
                   label: t`Use instance font`,
                   value: "",
                 },
-                ...availableFonts?.map((font) => ({
+                ...(availableFonts?.map((font) => ({
                   label: font,
                   value: font,
-                })),
+                })) ?? []),
               ]}
               onChange={(value) => {
                 onChangeDisplayOptions({

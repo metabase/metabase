@@ -681,7 +681,7 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
+    H.activateToken("bleeding-edge");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -694,9 +694,7 @@ describe("scenarios > admin > people > group managers", () => {
 
     cy.signInAsNormalUser();
     cy.visit("/");
-    cy.icon("gear").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
+    H.goToAdmin();
   });
 
   describe("group managers", () => {

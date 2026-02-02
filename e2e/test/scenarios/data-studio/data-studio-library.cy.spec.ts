@@ -81,7 +81,6 @@ describe("scenarios > data studio > library", () => {
     H.openQuestionActions("Duplicate");
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, "Library").click();
     H.entityPickerModalItem(1, "Metrics").click();
     H.entityPickerModal().button("Select this collection").click();
@@ -109,8 +108,10 @@ describe("scenarios > data studio > library", () => {
       H.popover().findByText("Published table").click();
 
       cy.log("Select a table and click 'Publish'");
-      H.entityPickerModalItem(3, "Orders").click();
-      H.entityPickerModal().button("Publish").click();
+      H.pickEntity({
+        path: ["Databases", /Sample Database/, "Orders"],
+        select: true,
+      });
 
       cy.log("Verify the table is published");
       H.DataStudio.Tables.overviewPage().should("exist");
@@ -123,8 +124,9 @@ describe("scenarios > data studio > library", () => {
       );
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Published table").click();
-      H.entityPickerModalItem(3, "Orders").should("have.attr", "data-disabled");
-      H.entityPickerModalItem(3, "People").should(
+      H.entityPickerModalItem(1, /Sample Database/).click();
+      H.entityPickerModalItem(2, "Orders").should("have.attr", "data-disabled");
+      H.entityPickerModalItem(2, "People").should(
         "not.have.attr",
         "data-disabled",
       );
@@ -170,7 +172,8 @@ describe("scenarios > data studio > library", () => {
         .findByRole("button", { name: "Publish a table" })
         .click();
       H.entityPickerModal().should("be.visible");
-      H.entityPickerModalItem(3, "Orders").should("exist");
+      H.entityPickerModalItem(1, "Sample Database").click();
+      H.entityPickerModalItem(2, "Orders").should("exist");
       H.entityPickerModal().button("Close").click();
 
       cy.log("Search for text and verify empty states are excluded");
@@ -194,7 +197,8 @@ describe("scenarios > data studio > library", () => {
       cy.log("Publish a table via the +New menu");
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Published table").click();
-      H.entityPickerModalItem(3, "Orders").click();
+      H.entityPickerModalItem(1, "Sample Database").click();
+      H.entityPickerModalItem(2, "Orders").click();
       H.entityPickerModal().button("Publish").click();
 
       cy.log("Navigate back to Library via breadcrumbs");
