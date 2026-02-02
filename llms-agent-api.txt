@@ -27,7 +27,7 @@ Requires: Metabase Pro/Enterprise with the `agent-api` feature enabled.
   be applied to queries by referencing their segment_id.
 - **Field IDs**: Opaque string identifiers for columns, formatted as
   `<prefix><entity-id>-<column-index>`. Prefix is `t` for table fields and
-  `c` for metric fields. Example: `t42-3` means column at index 3 of table 42.
+  `c` for metric fields. Example: `t42-3` means the column at index 3 of table 42.
   Field IDs are returned by the table/metric detail endpoints and must be used
   as-is in query construction. They are positional — always fetch current
   entity details before constructing queries.
@@ -251,7 +251,7 @@ Request:
 ```
 
 At least one of `term_queries` or `semantic_queries` should be provided. Both
-are arrays of strings.
+are arrays of strings. Results are limited to 50 by default.
 
 Response:
 
@@ -451,8 +451,7 @@ Field-based aggregation — `function` is required:
 {"field_id": "t42-3", "function": "sum"}
 ```
 
-For `count`, `field_id` is optional (count operates on rows, not a specific
-field):
+For `count`, omit `field_id` (count operates on rows, not a specific field):
 
 ```json
 {"function": "count"}
@@ -520,8 +519,8 @@ On success:
   "status": "completed",
   "data": {
     "cols": [
-      {"name": "CREATED_AT", "base_type": "type/DateTime", "display_name": "Created At"},
-      {"name": "sum", "base_type": "type/Float", "display_name": "Sum of Total"}
+      {"name": "CREATED_AT", "base_type": "type/DateTime", "effective_type": "type/DateTime", "display_name": "Created At"},
+      {"name": "sum", "base_type": "type/Float", "effective_type": "type/Float", "display_name": "Sum of Total"}
     ],
     "rows": [
       ["2024-01-01T00:00:00Z", 15234.50],
@@ -533,13 +532,13 @@ On success:
 }
 ```
 
-| Field        | Description                                              |
-|--------------|----------------------------------------------------------|
-| status       | `"completed"` on success, `"failed"` on error            |
-| data.cols    | Column metadata array (name, base_type, display_name)    |
-| data.rows    | Array of row arrays, in the same order as cols           |
-| row_count    | Number of rows returned                                  |
-| running_time | Query execution time in milliseconds                     |
+| Field        | Description                                                     |
+|--------------|-----------------------------------------------------------------|
+| status       | `"completed"` on success, `"failed"` on error                   |
+| data.cols    | Column metadata (name, base_type, effective_type, display_name) |
+| data.rows    | Array of row arrays, in the same order as cols                  |
+| row_count    | Number of rows returned                                         |
+| running_time | Query execution time in milliseconds                            |
 
 On failure:
 

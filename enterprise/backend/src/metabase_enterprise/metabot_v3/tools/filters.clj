@@ -225,6 +225,15 @@
             (lib/aggregate query agg-expr)))]
     (apply-aggregation-sort-order query-with-aggregation sort-order)))
 
+(defn- resolve-aggregation-column
+  "Resolve the column for an aggregation, skipping measures and field-less counts."
+  [resolve-visible-column aggregation]
+  (if (or (:measure-id aggregation)
+          (and (= :count (:function aggregation))
+               (not (:field-id aggregation))))
+    aggregation
+    (resolve-visible-column aggregation)))
+
 (defn- expression?
   [expr-or-column]
   (vector? expr-or-column))
@@ -262,11 +271,7 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Measures, segments, and count without field-id don't require column resolution
-        resolved-aggregations (map #(cond (:measure-id %)                               %
-                                          (and (= :count (:function %)) (not (:field-id %))) %
-                                          :else                                              (resolve-visible-column %))
-                                   aggregations)
+        resolved-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
@@ -327,11 +332,7 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Measures, segments, and count without field-id don't require column resolution
-        all-aggregations (map #(cond (:measure-id %)                               %
-                                     (and (= :count (:function %)) (not (:field-id %))) %
-                                     :else                                              (resolve-visible-column %))
-                              aggregations)
+        all-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query

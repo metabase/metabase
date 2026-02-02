@@ -359,9 +359,10 @@
 (mr/def ::column-metadata
   "Metadata for a single result column."
   [:map
-   [:name         :string]
-   [:base_type    :string]
-   [:display_name :string]])
+   [:name           :string]
+   [:base_type      :string]
+   [:effective_type {:optional true} [:maybe :string]]
+   [:display_name   :string]])
 
 (mr/def ::execute-query-response
   "Response from query execution. The HTTP status is always 202 because results are streamed —
