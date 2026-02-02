@@ -39,6 +39,7 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const {
     showAllLegendItems,
+    hideLegend,
     rawSeries,
     settings: originalSettings,
     card,
@@ -106,7 +107,7 @@ function CartesianChartInner(props: VisualizationProps) {
     () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
     [chartModel, showAllLegendItems],
   );
-  const hasLegend = legendItems.length > 0;
+  const hasLegend = !hideLegend && legendItems.length > 0;
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;

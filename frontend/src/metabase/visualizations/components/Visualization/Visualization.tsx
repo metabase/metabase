@@ -161,6 +161,7 @@ type VisualizationOwnProps = {
   settings?: VisualizationSettings;
   showTitle?: boolean;
   showWarnings?: boolean;
+  hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
@@ -682,6 +683,7 @@ class Visualization extends PureComponent<
       scrollToLastColumn,
       selectedTimelineEventIds,
       showAllLegendItems,
+      hideLegend,
       showTitle,
       style,
       tableHeaderHeight,
@@ -941,6 +943,7 @@ class Visualization extends PureComponent<
                     series={series}
                     settings={settings}
                     showAllLegendItems={showAllLegendItems}
+                    hideLegend={hideLegend}
                     showTitle={!!showTitle}
                     tableHeaderHeight={tableHeaderHeight}
                     timelineEvents={timelineEvents}

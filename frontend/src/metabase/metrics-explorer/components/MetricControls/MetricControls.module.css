@@ -1,0 +1,17 @@
+.container {
+  display: inline-flex;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.divider {
+  align-self: stretch;
+  margin: 0 0.25rem;
+}
+
+.controlButton {
+  font-weight: normal;
+  padding: 0.25rem 0.5rem;
+}

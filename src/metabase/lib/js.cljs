@@ -2749,3 +2749,312 @@
       js->clj
       lib.native/validate-template-tags
       clj->js))
+
+;;; ------------------------------------------------ MetricDefinition ------------------------------------------------
+
+(defn ^:export metric-definition
+  "Create an empty MetricDefinition with the given metadata provider.
+
+  > **Code health:** Healthy"
+  [metadata-provider]
+  (lib.core/metric-definition metadata-provider))
+
+(defn ^:export with-metric-card
+  "Set the metric definition source to a saved metric card.
+
+  > **Code health:** Healthy"
+  [definition card-id card]
+  (lib.core/with-metric-card definition card-id card))
+
+(defn ^:export with-measure
+  "Set the metric definition source to a measure (ad-hoc metric).
+
+  > **Code health:** Healthy"
+  [definition measure-id measure]
+  (lib.core/with-measure definition measure-id measure))
+
+(defn ^:export metric-definition-source
+  "Get the source configuration from a metric definition.
+
+  > **Code health:** Healthy"
+  [definition]
+  (when-let [source (lib.core/metric-definition-source definition)]
+    (clj->js (update source :type name))))
+
+(defn ^:export metric-definition-source-type
+  "Get the source type: \"metric-card\", \"measure\", or null if no source set.
+
+  > **Code health:** Healthy"
+  [definition]
+  (some-> (lib.core/metric-definition-source-type definition) name))
+
+(defn ^:export metric-definition-to-base-query
+  "Build the base query for this metric definition.
+
+  For metric-card: returns the card's query
+  For measure: builds a query from the measure's table with the measure as an aggregation
+
+  > **Code health:** Healthy"
+  [definition]
+  (lib.core/metric-definition->base-query definition))
+
+(defn ^:export available-dimensions
+  "Get columns that can be used for breakouts from this metric definition's base query.
+  These are the columns available for projections.
+
+  > **Code health:** Healthy"
+  [definition]
+  (to-array (lib.core/available-dimensions definition)))
+
+(defn ^:export add-projection
+  "Add a projection (dimension) to the metric definition.
+  The projection is a column with an optional temporal bucket that will become
+  a breakout when the query is built.
+
+  > **Code health:** Healthy"
+  [definition column bucket]
+  (lib.core/add-projection definition column bucket))
+
+(defn ^:export projections
+  "Get the current projections from a metric definition.
+  Returns an array of projection objects with column and bucket.
+
+  > **Code health:** Healthy"
+  [definition]
+  (to-array (lib.core/projections definition)))
+
+(defn ^:export clear-projections
+  "Remove all projections from a metric definition.
+
+  > **Code health:** Healthy"
+  [definition]
+  (lib.core/clear-projections definition))
+
+(defn ^:export add-filter
+  "Add a filter clause to the metric definition.
+  The filter will be applied when the query is built.
+
+  > **Code health:** Healthy"
+  [definition filter-clause]
+  (lib.core/add-filter definition filter-clause))
+
+(defn ^:export metric-definition-filters
+  "Get the current filters from a metric definition.
+  Returns an array of filter clauses.
+
+  > **Code health:** Healthy"
+  [definition]
+  (to-array (lib.core/metric-definition-filters definition)))
+
+(defn ^:export clear-filters
+  "Remove all filters from a metric definition.
+
+  > **Code health:** Healthy"
+  [definition]
+  (lib.core/clear-filters definition))
+
+(defn ^:export metric-definition-to-query
+  "Build a complete query from the metric definition.
+
+  This builds the base query and then applies:
+  1. All projections as breakouts
+  2. All filters
+
+  Returns null if no source is set.
+
+  > **Code health:** Healthy"
+  [definition]
+  (lib.core/metric-definition->query definition))
+
+;;; ------------------------------------------------ ProjectionConfig ------------------------------------------------
+
+;;; ------------------------------------------------ Column Matchers ------------------------------------------------
+
+(defn ^:export first-datetime-column-matcher
+  "Create a matcher that finds the first datetime column.
+
+  > **Code health:** Healthy"
+  []
+  (lib.core/first-datetime-column-matcher))
+
+(defn ^:export first-numeric-column-matcher
+  "Create a matcher that finds the first numeric column.
+
+  > **Code health:** Healthy"
+  []
+  (lib.core/first-numeric-column-matcher))
+
+(defn ^:export column-matcher-by-name
+  "Create a matcher that finds a column by name.
+
+  > **Code health:** Healthy"
+  [column-name]
+  (lib.core/column-matcher-by-name column-name))
+
+(defn ^:export column-matcher-by-field-id
+  "Create a matcher that finds a column by field ID.
+
+  > **Code health:** Healthy"
+  [field-id]
+  (lib.core/column-matcher-by-field-id field-id))
+
+;;; ------------------------------------------------ Apply to Query ------------------------------------------------
+
+(defn- filter-spec->js
+  "Convert a filter spec from CLJS (kebab-case) to JS (camelCase)."
+  [spec]
+  (when spec
+    (let [spec-type (:type spec)]
+      (case spec-type
+        :relative #js {:type "relative"
+                       :value (:value spec)
+                       :unit (some-> (:unit spec) name)
+                       :offsetValue (:offset-value spec)
+                       :offsetUnit (some-> (:offset-unit spec) name)}
+        :specific #js {:type "specific"
+                       :operator (some-> (:operator spec) name)
+                       :values (clj->js (:values spec))
+                       :hasTime (:has-time spec)}
+        :exclude #js {:type "exclude"
+                      :operator (some-> (:operator spec) name)
+                      :unit (some-> (:unit spec) name)
+                      :values (clj->js (:values spec))}
+        ;; fallback
+        (clj->js (update spec :type name))))))
+
+(defn- js->filter-spec
+  "Convert a filter spec from JS (camelCase) to CLJS (kebab-case)."
+  [js-spec]
+  (when js-spec
+    (let [spec (js->clj js-spec :keywordize-keys true)
+          spec-type (keyword (:type spec))]
+      (case spec-type
+        :relative {:type :relative
+                   :value (:value spec)
+                   :unit (some-> (:unit spec) keyword)
+                   :offset-value (:offsetValue spec)
+                   :offset-unit (some-> (:offsetUnit spec) keyword)}
+        :specific {:type :specific
+                   :operator (some-> (:operator spec) keyword)
+                   :values (:values spec)
+                   :has-time (:hasTime spec)}
+        :exclude {:type :exclude
+                  :operator (some-> (:operator spec) keyword)
+                  :unit (some-> (:unit spec) keyword)
+                  :values (:values spec)}
+        ;; fallback - just keywordize type
+        (assoc spec :type spec-type)))))
+
+(defn ^:export projection-config
+  "Create a projection config with optional initial settings.
+
+  Options (as a JS object):
+  - unit: temporal unit (\"month\", \"day\", \"quarter\", \"year\", etc.)
+  - filterSpec: abstract filter specification
+
+  > **Code health:** Healthy"
+  ([]
+   (lib.core/projection-config))
+  ([options]
+   (let [opts (js->clj options :keywordize-keys true)
+         filter-spec (js->filter-spec (:filterSpec opts))]
+     (lib.core/projection-config
+      {:unit (:unit opts)
+       :filter-spec filter-spec}))))
+
+(defn ^:export with-projection-unit
+  "Set the temporal unit on a projection config.
+
+  > **Code health:** Healthy"
+  [config unit]
+  (lib.core/with-projection-unit config (keyword unit)))
+
+(defn ^:export with-projection-filter
+  "Set the filter spec on a projection config.
+
+  filter-spec is a JS object with:
+  - type: \"relative\", \"specific\", or \"exclude\"
+  - Additional fields depending on type
+
+  > **Code health:** Healthy"
+  [config filter-spec]
+  (lib.core/with-projection-filter config (js->clj filter-spec :keywordize-keys true)))
+
+(defn ^:export clear-projection-filter
+  "Clear the filter from a projection config.
+
+  > **Code health:** Healthy"
+  [config]
+  (lib.core/clear-projection-filter config))
+
+(defn ^:export projection-config-unit
+  "Get the temporal unit from a projection config.
+
+  > **Code health:** Healthy"
+  [config]
+  (some-> (lib.core/projection-config-unit config) name))
+
+(defn ^:export projection-config-filter
+  "Get the filter spec from a projection config.
+
+  > **Code health:** Healthy"
+  [config]
+  (filter-spec->js (lib.core/projection-config-filter config)))
+
+(defn ^:export apply-projection-config-to-query
+  "Apply projection config directly to a query using the column matcher.
+
+  This function:
+  1. Finds the column using the matcher
+  2. Applies temporal bucket (unit) as a breakout
+  3. Applies filter (if any) to that column
+
+  Returns the modified query, or the original query if no matching column is found.
+
+  > **Code health:** Healthy"
+  [a-query stage-index projection-config column-matcher]
+  (lib.core/apply-projection-config-to-query a-query stage-index projection-config column-matcher))
+
+(defn ^:export apply-projection-config
+  "Apply projection config to a MetricDefinition.
+  This is the main integration point between UI config and metric state.
+
+  1. Gets the base query from the metric definition
+  2. Finds the column (via matcher)
+  3. Clears existing projections/filters on the definition
+  4. Adds projection with temporal bucket from config.unit
+  5. Creates filter clause from config.filter-spec
+  6. Returns updated MetricDefinition
+
+  > **Code health:** Healthy"
+  [metric-def projection-config column-matcher]
+  (lib.core/apply-projection-config metric-def projection-config column-matcher))
+
+(defn ^:export ensure-datetime-breakout
+  "If no breakout exists, find first datetime column and add as breakout with default bucket.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (lib.core/ensure-datetime-breakout a-query))
+
+(defn ^:export initialize-projection-config
+  "Extract ProjectionConfig from an existing query (unit + filter-spec).
+  Looks at the first breakout to determine unit, and extracts any filter on that column.
+
+  Returns a JS object with:
+  - unit: string (temporal unit name)
+  - filterSpec: filter spec object with camelCase keys (or null)
+
+  > **Code health:** Healthy"
+  [a-query]
+  (let [config (lib.core/initialize-projection-config a-query)]
+    #js {:unit (some-> (lib.core/projection-config-unit config) name)
+         :filterSpec (filter-spec->js (lib.core/projection-config-filter config))}))
+
+(defn ^:export extract-filter-spec
+  "Extract abstract filter spec from a query's filter on given column.
+  Returns null if no filter is found on the column.
+
+  > **Code health:** Healthy"
+  [a-query column]
+  (filter-spec->js (lib.core/extract-filter-spec a-query column)))

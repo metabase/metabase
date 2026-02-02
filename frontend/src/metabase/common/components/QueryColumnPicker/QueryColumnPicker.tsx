@@ -70,6 +70,8 @@ export interface QueryColumnPickerProps {
   hasInitialFocus?: boolean;
   alwaysExpanded?: boolean;
   disableSearch?: boolean;
+  /** Hide section/group names (table names) in the picker */
+  hideSectionNames?: boolean;
 }
 
 const SEARCH_PROP = [
@@ -100,6 +102,7 @@ export function QueryColumnPicker({
   hasInitialFocus = true,
   alwaysExpanded,
   disableSearch,
+  hideSectionNames = false,
 }: QueryColumnPickerProps) {
   const tc = useTranslateContent();
   const withCustomExpressions = onSelectExpression != null;
@@ -124,7 +127,7 @@ export function QueryColumnPicker({
       });
 
       return {
-        name: tc(groupInfo.displayName),
+        name: hideSectionNames ? undefined : tc(groupInfo.displayName),
         icon: getColumnGroupIcon(groupInfo),
         items,
       };
@@ -165,6 +168,7 @@ export function QueryColumnPicker({
     expressionSectionIcon,
     isSearching,
     tc,
+    hideSectionNames,
   ]);
 
   const handleSelectSection = useCallback(

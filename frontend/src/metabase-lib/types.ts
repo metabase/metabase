@@ -431,24 +431,23 @@ export type BooleanFilterParts = {
   values: boolean[];
 };
 
-export type SpecificDateFilterParts = {
+// Base filter types (column-agnostic, for abstract configuration)
+export type SpecificDateFilter = {
   operator: SpecificDateFilterOperator;
-  column: ColumnMetadata;
   values: Date[];
   hasTime: boolean;
 };
 
-export type RelativeDateFilterParts = {
-  column: ColumnMetadata;
+export type RelativeDateFilterOptions = {
+  includeCurrent?: boolean;
+};
+
+export type RelativeDateFilter = {
   unit: RelativeDateFilterUnit;
   value: number;
   offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;
-};
-
-export type RelativeDateFilterOptions = {
-  includeCurrent?: boolean;
 };
 
 /*
@@ -458,11 +457,23 @@ export type RelativeDateFilterOptions = {
  * quarter-of-year => 1-4
  * hour-of-day => 0-23
  */
-export type ExcludeDateFilterParts = {
+export type ExcludeDateFilter = {
   operator: ExcludeDateFilterOperator;
-  column: ColumnMetadata;
   unit: ExcludeDateFilterUnit | null;
   values: number[];
+};
+
+// Filter parts types (column-bound, for query operations)
+export type SpecificDateFilterParts = SpecificDateFilter & {
+  column: ColumnMetadata;
+};
+
+export type RelativeDateFilterParts = RelativeDateFilter & {
+  column: ColumnMetadata;
+};
+
+export type ExcludeDateFilterParts = ExcludeDateFilter & {
+  column: ColumnMetadata;
 };
 
 export type TimeFilterParts = {
@@ -694,3 +705,25 @@ export type FieldItem = {
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
 
 export type ValidationError = { message: string };
+
+// MetricDefinition - wraps either a saved metric card or an ad-hoc measure
+declare const MetricDefinitionBrand: unique symbol;
+export type MetricDefinition = unknown & {
+  _opaque: typeof MetricDefinitionBrand;
+};
+
+// ProjectionConfig - abstract projection configuration (unit, filter)
+declare const ProjectionConfigBrand: unique symbol;
+export type ProjectionConfig = unknown & {
+  _opaque: typeof ProjectionConfigBrand;
+};
+
+// Projection - column + optional bucket for MetricDefinition
+export type Projection = {
+  column: ColumnMetadata;
+  bucket: Bucket | null;
+};
+
+// ColumnMatcher - identifies which column to apply config to
+declare const ColumnMatcherBrand: unique symbol;
+export type ColumnMatcher = unknown & { _opaque: typeof ColumnMatcherBrand };

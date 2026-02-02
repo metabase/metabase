@@ -137,6 +137,7 @@ export interface VisualizationProps {
   isMobile: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  hideLegend?: boolean;
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
