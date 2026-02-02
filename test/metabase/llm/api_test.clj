@@ -183,7 +183,7 @@
                                    "prompt_tokens"       1000
                                    "completion_tokens"   200
                                    "total_tokens"        1200
-                                   "estimated_costs_usd" pos?
+                                   "estimated_costs_usd" #(and (number? %) (pos? %))
                                    "duration_ms"         500
                                    "source"              "oss_metabot"
                                    "tag"                 "oss-sqlgen"}}]
@@ -241,11 +241,12 @@
                               "total_tokens"                  1500
                               "prompt_tokens"                 1000
                               "completion_tokens"             500
-                              "estimated_costs_usd"           pos?
+                              "estimated_costs_usd"           #(and (number? %) (pos? %))
                               "duration_ms"                   1234
                               "source"                        "oss_metabot"
                               "tag"                           "oss-sqlgen"}}]
-                  (snowplow-test/pop-event-data-and-user-id!))))))))
+                  (->> (snowplow-test/pop-event-data-and-user-id!)
+                       (filter token-usage-event?)))))))))
 
 (deftest track-token-usage-with-premium-token-test
   (testing "hashes premium token when available"
@@ -260,4 +261,5 @@
                                    :tag         "test"})
         ;; Should be a SHA-256 hash (64 hex chars), not "oss__*"
         (is (=? [{:data {"hashed_metabase_license_token" #"[0-9a-f]{64}"}}]
-                (snowplow-test/pop-event-data-and-user-id!)))))))
+                (->> (snowplow-test/pop-event-data-and-user-id!)
+                     (filter token-usage-event?))))))))
