@@ -286,8 +286,16 @@ export function dataStudioMetricCaching(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/caching`;
 }
 
+export function dataStudioErdBase() {
+  return `${ROOT_URL}/erd`;
+}
+
 export function dataStudioErd(tableId: TableId) {
   return `${ROOT_URL}/erd?table-id=${tableId}`;
+}
+
+export function dataStudioErdModel(modelId: CardId) {
+  return `${ROOT_URL}/erd?model-id=${modelId}`;
 }
 
 export function dataStudioGlossary() {

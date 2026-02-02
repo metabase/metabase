@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { push } from "react-router-redux";
 
+import type { EntityPickerProps } from "metabase/common/components/Pickers";
 import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import type {
@@ -19,15 +20,20 @@ type GraphEntryInputProps = {
   node: DependencyNode | null;
   isGraphFetching: boolean;
   getGraphUrl: (entry: DependencyEntry | undefined) => string;
+  allowedSearchModels?: SearchModel[];
+  pickerModels?: EntityPickerProps["models"];
 };
 
 export function GraphEntryInput({
   node,
   isGraphFetching,
   getGraphUrl,
+  allowedSearchModels = SEARCH_MODELS,
+  pickerModels,
 }: GraphEntryInputProps) {
+  const showModelPicker = allowedSearchModels === SEARCH_MODELS;
   const [searchModels, setSearchModels] =
-    useState<SearchModel[]>(SEARCH_MODELS);
+    useState<SearchModel[]>(allowedSearchModels);
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
@@ -54,6 +60,7 @@ export function GraphEntryInput({
           <EntrySearchInput
             searchModels={searchModels}
             isGraphFetching={isGraphFetching}
+            showModelPicker={showModelPicker}
             onEntryChange={handleEntryChange}
             onSearchModelsChange={setSearchModels}
             onPickerOpen={openPicker}
@@ -63,6 +70,7 @@ export function GraphEntryInput({
       {isPickerOpened && (
         <EntryPickerModal
           value={node}
+          models={pickerModels}
           onChange={handlePickerChange}
           onClose={closePicker}
         />

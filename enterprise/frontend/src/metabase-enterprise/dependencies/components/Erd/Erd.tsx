@@ -1,28 +1,27 @@
 import {
   Background,
   Controls,
+  Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useEffect, useMemo } from "react";
-import { goBack } from "react-router-redux";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import {
-  ActionIcon,
-  Box,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-  Tooltip,
-  useColorScheme,
-} from "metabase/ui";
+import * as Urls from "metabase/lib/urls";
+import { Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
-import type { TableId } from "metabase-types/api";
+import type {
+  CardId,
+  DependencyEntry,
+  GetErdRequest,
+  SearchModel,
+  TableId,
+} from "metabase-types/api";
+
+import { GraphEntryInput } from "../DependencyGraph/GraphEntryInput";
 
 import S from "./Erd.module.css";
 import { ErdEdge } from "./ErdEdge";
@@ -44,19 +43,36 @@ const PRO_OPTIONS = {
   hideAttribution: true,
 };
 
+const ERD_SEARCH_MODELS: SearchModel[] = ["table", "dataset"];
+const ERD_PICKER_MODELS = ["table", "dataset"] as const;
+
 interface ErdProps {
   tableId: TableId | undefined;
+  modelId: CardId | undefined;
 }
 
-export function Erd({ tableId }: ErdProps) {
-  const dispatch = useDispatch();
+function getErdQueryParams(
+  tableId: TableId | undefined,
+  modelId: CardId | undefined,
+): GetErdRequest | typeof skipToken {
+  if (modelId != null) {
+    return { "model-id": modelId };
+  }
+  if (tableId != null) {
+    return { "table-id": tableId };
+  }
+  return skipToken;
+}
+
+export function Erd({ tableId, modelId }: ErdProps) {
   const { data, isFetching, error } = useGetErdQuery(
-    tableId != null ? { "table-id": tableId } : skipToken,
+    getErdQueryParams(tableId, modelId),
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ErdFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ErdFlowEdge>([]);
   const { colorScheme } = useColorScheme();
+  const hasEntry = tableId != null || modelId != null;
 
   const graph = useMemo(() => {
     if (data == null) {
@@ -75,59 +91,64 @@ export function Erd({ tableId }: ErdProps) {
     }
   }, [graph, setNodes, setEdges]);
 
-  if (isFetching) {
-    return (
-      <Stack align="center" justify="center" h="100%">
-        <Loader />
-      </Stack>
-    );
-  }
-
-  if (error) {
-    return (
-      <Stack align="center" justify="center" h="100%">
-        <Text c="error">{t`Failed to load ERD`}</Text>
-      </Stack>
-    );
-  }
-
-  if (tableId == null) {
-    return null;
-  }
+  const getGraphUrl = useCallback((entry?: DependencyEntry) => {
+    if (entry == null) {
+      return Urls.dataStudioErdBase();
+    }
+    if (entry.type === "card") {
+      return Urls.dataStudioErdModel(entry.id as CardId);
+    }
+    return Urls.dataStudioErd(entry.id as TableId);
+  }, []);
 
   return (
-    <Box className={S.container}>
-      <Tooltip label={t`Back`}>
-        <ActionIcon
-          className={S.backButton}
-          variant="outline"
-          radius="xl"
-          size="2.625rem"
-          color="border"
-          aria-label={t`Back`}
-          onClick={() => dispatch(goBack())}
-        >
-          <Icon c="text-primary" name="arrow_left" />
-        </ActionIcon>
-      </Tooltip>
-      <ReactFlow
-        className={S.reactFlow}
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={NODE_TYPES}
-        edgeTypes={EDGE_TYPES}
-        proOptions={PRO_OPTIONS}
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-        colorMode={colorScheme === "dark" ? "dark" : "light"}
-        fitView
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-      >
-        <Background />
-        <Controls showInteractive={false} />
-        <ErdNodeLayout />
-      </ReactFlow>
-    </Box>
+    <ReactFlow
+      className={S.reactFlow}
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={NODE_TYPES}
+      edgeTypes={EDGE_TYPES}
+      proOptions={PRO_OPTIONS}
+      minZoom={MIN_ZOOM}
+      maxZoom={MAX_ZOOM}
+      colorMode={colorScheme === "dark" ? "dark" : "light"}
+      fitView
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+    >
+      <Background />
+      <Controls showInteractive={false} />
+      {nodes.length > 0 && <ErdNodeLayout />}
+      <Panel className={S.entryInput} position="top-left">
+        <GraphEntryInput
+          node={null}
+          isGraphFetching={isFetching}
+          getGraphUrl={getGraphUrl}
+          allowedSearchModels={ERD_SEARCH_MODELS}
+          pickerModels={ERD_PICKER_MODELS}
+        />
+      </Panel>
+      {isFetching && (
+        <Panel position="top-center">
+          <Stack align="center" justify="center" pt="xl">
+            <Loader />
+          </Stack>
+        </Panel>
+      )}
+      {error != null && (
+        <Panel position="top-center">
+          <Stack align="center" justify="center" pt="xl">
+            <Text c="error">{t`Failed to load ERD`}</Text>
+          </Stack>
+        </Panel>
+      )}
+      {!hasEntry && !isFetching && error == null && (
+        <Panel position="top-center">
+          <Stack align="center" justify="center" pt="xl">
+            <Text c="text-tertiary">{t`Search for a table or model to view its ERD`}</Text>
+          </Stack>
+        </Panel>
+      )}
+    </ReactFlow>
   );
 }

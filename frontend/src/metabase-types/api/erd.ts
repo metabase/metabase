@@ -1,4 +1,4 @@
-import type { DatabaseId, FieldId, TableId } from "./";
+import type { CardId, DatabaseId, FieldId, TableId } from "./";
 
 export type ErdField = {
   id: FieldId;
@@ -32,6 +32,6 @@ export type ErdResponse = {
   edges: ErdEdge[];
 };
 
-export type GetErdRequest = {
-  "table-id": TableId;
-};
+export type GetErdRequest =
+  | { "table-id": TableId; "model-id"?: never }
+  | { "table-id"?: never; "model-id": CardId };

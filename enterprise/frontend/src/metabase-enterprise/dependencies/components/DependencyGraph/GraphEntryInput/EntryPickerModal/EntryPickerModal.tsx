@@ -7,6 +7,8 @@ import {
 } from "metabase/common/components/Pickers";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
+import type { EntityPickerProps } from "metabase/common/components/Pickers";
+
 import {
   ENTITY_PICKER_OPTIONS,
   ENTRY_PICKER_MODELS,
@@ -16,11 +18,13 @@ import { getEntryPickerItem, getEntryPickerValue } from "./utils";
 
 type EntryPickerModalProps = {
   value: DependencyNode | null;
+  models?: EntityPickerProps["models"];
   onChange: (value: DependencyEntry) => void;
   onClose: () => void;
 };
 export function EntryPickerModal({
   value,
+  models = ENTRY_PICKER_MODELS,
   onChange,
   onClose,
 }: EntryPickerModalProps) {
@@ -38,7 +42,7 @@ export function EntryPickerModal({
   return (
     <EntityPickerModal
       title={t`Pick an item to see its dependencies`}
-      models={ENTRY_PICKER_MODELS}
+      models={models}
       value={selectedItem}
       options={ENTITY_PICKER_OPTIONS}
       recentsContext={RECENTS_CONTEXT}
