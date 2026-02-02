@@ -135,9 +135,52 @@
                    "tax" "UNKNOWN"}}}
                 @(def ss (#'sql-tools.sqlglot/sqlglot-schema :postgres query)))))))
 
+;;;; referenced-tables
+
+(deftest referenced-tables-basic-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select id from orders")]
+      (is (=? #{{:table (mt/id :orders)}}
+              (#'sql-tools.sqlglot/referenced-tables driver/*driver* query))))))
+
+(deftest referenced-tables-join-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp (str "select o.id\n"
+                                          "from orders o\n"
+                                          "join products p on o.product_id = p.id"))]
+      (is (=? #{{:table (mt/id :orders)}
+                {:table (mt/id :products)}}
+              (#'sql-tools.sqlglot/referenced-tables driver/*driver* query))))))
+
+(deftest referenced-tables-no-appdb-table-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select id from xix")]
+      (is (=? #{}
+              (#'sql-tools.sqlglot/referenced-tables driver/*driver* query))))))
+
+(deftest referenced-tables-cte-and-subquery-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp (str "with CTE as(\n"
+                                          "  select * from orders\n"
+                                          ")\n"
+                                          "select *\n"
+                                          "from CTE c\n"
+                                          "join (select * from products) p on c.product_id = p.id"))]
+      (is (=? #{{:table (mt/id :orders)}
+                {:table (mt/id :products)}}
+              (#'sql-tools.sqlglot/referenced-tables driver/*driver* query))))))
+
 ;;;; referenced-fields
 
-(deftest single-column-referenced-columns-test
+(deftest referenced-columns-single-column-test
   (mt/test-driver
     :postgres
     (let [mp (mt/metadata-provider)
