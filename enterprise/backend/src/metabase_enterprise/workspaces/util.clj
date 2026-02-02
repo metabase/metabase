@@ -38,7 +38,7 @@
    Takes a map from child nodes to their parent nodes (dependencies).
    Returns nodes in topological order (dependencies before dependents)."
   [child->parents]
-  ;; TODO (Chris 2025-11-20): Detect cycles and throw an error. (In practice inputs will never be cyclic, but still.)
+  ;; TODO (Chris 2025-11-20) -- Detect cycles and throw an error.
   (let [all-nodes (set (keys child->parents))]
     (loop [visited   #{}
            result    []

@@ -80,7 +80,7 @@
         (is (= "archived" (:status updated))))
       (let [response (mt/user-http-request :crowberto :delete 200 (ws-url workspace-id))]
         (is (= {:ok true} response))
-        ;; TODO: Check the schema, tables, and user are gone.
+        ;; TODO (Chris 2026-02-02) -- would be good to check that the user, schema, and table metadata is gone too.
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
 (deftest archive-workspace-calls-destroy-isolation-test
@@ -194,7 +194,7 @@
             commit-msg                "Test batch merge commit"]
         (testing "We've got our workspace with transform to merge"
           (is (int? ws-id))
-          ;; TODO (Sanya): Maybe switch to using transform APIs once we get our own.
+          ;; We could make an API call here instead :shrug:
           (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified in workspace"}))
         (testing "returns merged transforms"
           (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
@@ -912,15 +912,6 @@
                                                    :name   (str "q_" (:name table))}})))))))))
 
 ;;;; Async workspace creation tests
-
-#_(deftest create-workspace-returns-updating-status-test
-    (testing "Creating workspace returns status :pending immediately"
-      (let [res (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                      {:name "async-test" :database_id (mt/id)})]
-      ;; TODO this isn't async yet, but it should be after BOT-746
-        #_(is (=? {:status "pending"} res))
-        (testing "and then it becomes ready"
-          (is (=? {:status :ready} (ws.tu/ws-done! res)))))))
 
 (deftest workspace-log-endpoint-test
   (testing "GET /api/ee/workspace/:id/log returns status and log entries"
