@@ -31,7 +31,7 @@
 
 ;;; 2026-01-29 Thu
 ;;     going thru existing validation tests
-;; 
+;;
 #_(deftest WIP-validation-test
     (testing "validate-native-query handles nonsense queries"
       (let [mp (mt/metadata-provider) #_(deps.tu/default-metadata-provider)
