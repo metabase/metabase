@@ -2730,67 +2730,45 @@
 (deftest backfill-transform-target-db-id-test
   (testing "v58.2026-01-31T10:00:00 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v58.2026-01-31T10:00:00"] [migrate!]
-      (let [db-id       (:id (new-instance-with-default :metabase_database))
-            ;; Transform with database in both source.query and target JSON — source.query.database takes precedence
-            with-target-db (t2/insert-returning-instance!
-                            :transform
-                            {:name        "target-db"
-                             :source      (json/encode {:type "query" :query {:database db-id}})
-                             :target      (json/encode {:database db-id :schema "public" :table "out" :type "append"})
-                             :source_type "mbql"
-                             :created_at  :%now
-                             :updated_at  :%now})
-            ;; Query transform with database only in source.query — should be backfilled from source fallback
-            with-source-db (t2/insert-returning-instance!
-                            :transform
-                            {:name        "source-db"
-                             :source      (json/encode {:type "query" :query {:database db-id}})
-                             :target      (json/encode {:schema "public" :table "out2" :type "append"})
-                             :source_type "mbql"
-                             :created_at  :%now
-                             :updated_at  :%now})
-            ;; Python transform with database only in target — should be backfilled from target.database
-            with-target-only (t2/insert-returning-instance!
-                              :transform
-                              {:name        "target-only-db"
-                               :source      (json/encode {:type "python" :script "x = 1"})
-                               :target      (json/encode {:database db-id :schema "public" :table "out_target" :type "append"})
-                               :source_type "python"
-                               :created_at  :%now
-                               :updated_at  :%now})
-            ;; Transform with no database anywhere — should stay NULL
-            without-db (t2/insert-returning-instance!
-                        :transform
-                        {:name        "no-db"
-                         :source      (json/encode {:type "python" :script "x = 1"})
-                         :target      (json/encode {:schema "public" :table "out3" :type "append"})
-                         :source_type "python"
-                         :created_at  :%now
-                         :updated_at  :%now})
-            ;; Transform referencing a database that has been deleted — should stay NULL
-            deleted-db-id   (+ db-id 9999)
-            with-deleted-db (t2/insert-returning-instance!
+      (let [db-id         (:id (new-instance-with-default :metabase_database))
+            deleted-db-id (+ db-id 9999)
+            query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
+            python-source (json/encode {:type "python" :script "x = 1"})
+            target        (fn [& {:keys [database]}]
+                            (json/encode (cond-> {:schema "public" :table "out" :type "append"}
+                                           database (assoc :database database))))
+            insert!       (fn [source-type source target]
+                            (t2/insert-returning-pk!
                              :transform
-                             {:name        "deleted-db"
-                              :source      (json/encode {:type "query" :query {:database deleted-db-id}})
-                              :target      (json/encode {:database deleted-db-id :schema "public" :table "out4" :type "append"})
-                              :source_type "mbql"
+                             {:name        "t"
+                              :source      source
+                              :target      target
+                              :source_type source-type
                               :created_at  :%now
-                              :updated_at  :%now})]
-        (testing "before migration, target_db_id is nil for all"
-          (is (nil? (:target_db_id with-target-db)))
-          (is (nil? (:target_db_id with-source-db)))
-          (is (nil? (:target_db_id with-target-only)))
-          (is (nil? (:target_db_id without-db)))
-          (is (nil? (:target_db_id with-deleted-db))))
+                              :updated_at  :%now}))
+            ;; source.query.database takes precedence over target.database
+            both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
+            ;; source.query.database used when target has no database
+            source-id     (insert! "mbql" (query-source db-id) (target))
+            ;; target.database used as fallback for python transforms
+            target-id     (insert! "python" python-source (target :database db-id))
+            ;; no database anywhere — stays nil
+            none-id       (insert! "python" python-source (target))
+            ;; deleted database reference — stays nil
+            deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
+            target->id    #(t2/select-one-fn :target_db_id :transform :id %)]
+        (testing "Before backfill, the field is uniformly empty"
+          ;; Haven't turned this into a loop, as it would obscure which case failed.
+          (is (nil? (target->id both-id)))
+          (is (nil? (target->id source-id)))
+          (is (nil? (target->id target->id)))
+          (is (nil? (target->id none-id)))
+          (is (nil? (target->id deleted-id))))
         (migrate!)
-        (testing "after migration, target_db_id is backfilled from source.query.database"
-          (is (= db-id (:target_db_id (t2/select-one :transform :id (:id with-target-db))))))
-        (testing "after migration, target_db_id is backfilled from source.query.database as fallback"
-          (is (= db-id (:target_db_id (t2/select-one :transform :id (:id with-source-db))))))
-        (testing "after migration, target_db_id is backfilled from target.database for python transforms"
-          (is (= db-id (:target_db_id (t2/select-one :transform :id (:id with-target-only))))))
-        (testing "after migration, target_db_id stays nil when no database anywhere"
-          (is (nil? (:target_db_id (t2/select-one :transform :id (:id without-db))))))
-        (testing "after migration, target_db_id stays nil when referenced database no longer exists"
-          (is (nil? (:target_db_id (t2/select-one :transform :id (:id with-deleted-db))))))))))
+        (testing "Valid database ids are backfilled"
+          ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
+          (is (= db-id (target->id both-id)))
+          (is (= db-id (target->id source-id)))
+          (is (= db-id (target->id target->id)))
+          (is (nil? (target->id none-id)))
+          (is (nil? (target->id deleted-id))))))))
