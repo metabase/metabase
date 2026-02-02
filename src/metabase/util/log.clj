@@ -121,14 +121,17 @@
       ::skip
       (-> ns-sym chop config :team))))
 
-(let [attribution (memoize ns->team*)]
+(let [attribution (if (config/config-bool :mb-log-team-attribution)
+                    (memoize ns->team*)
+                    (constantly nil))]
   (defn ns->team
     "Returns a string of the team for a namespace symbol, or nil. We skip a few chatty namespaces like
   `metabase.server.middleware.log` which logs requests."
     [logger-ns]
-    ;; read from ".clj-kondo/config/modules/config.edn",
     (let [team (attribution logger-ns)]
-      (when (and team (not (identical? team ::skip)))
+      (when (and (config/config-bool :mb-log-team-attribution)
+                 team
+                 (not (identical? team ::skip)))
         team))))
 
 (defn- tools-logp
