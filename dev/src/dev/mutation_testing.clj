@@ -70,11 +70,12 @@
 
    Options:
    - :name        — project name (required)
-   - :description — project description (optional)
+   - :description — short project description, ≤255 chars (optional)
+   - :content     — long-form project content as markdown (optional)
 
    Returns a map with :project-id.
    Also updates config with the new project-id."
-  [{:keys [name description]}]
+  [{:keys [name description content]}]
   (let [query "mutation($input: ProjectCreateInput!) {
                      projectCreate(input: $input) {
                        success
@@ -83,7 +84,8 @@
                    }"
         variables {:input (cond-> {:name name
                                    :teamIds [(team-id)]}
-                            description (assoc :description description))}
+                            description (assoc :description description)
+                            content (assoc :content content))}
         result (graphql-request query variables)
         project (get-in result [:data :projectCreate :project])]
     (set-config! {:project-id (:id project)})
@@ -352,6 +354,35 @@
        (:fully-covered stats) " covered ("
        (:pct-fully-covered stats) "%)"))
 
+(defn project-content
+  "Generate long-form markdown content for a Linear project.
+
+   `stats` is a map from `report-stats`."
+  [target-ns stats]
+  (str "## Goal\n"
+       "\n"
+       "Improve test coverage in `" target-ns "` to catch regressions and reduce bugs "
+       "in production. Mutation testing systematically finds code paths where the "
+       "existing test suite would not detect introduced bugs.\n"
+       "\n"
+       "## Baseline Report\n"
+       "\n"
+       "| Metric | Count |\n"
+       "| --- | --- |\n"
+       "| Total functions | " (:total-fns stats) " |\n"
+       "| Completely untested | " (:uncovered stats) " |\n"
+       "| Partially covered | " (:partially-covered stats) " |\n"
+       "| Fully covered | " (:fully-covered stats) " (" (:pct-fully-covered stats) "%) |\n"
+       "| Surviving mutations | " (:total-surviving-mutations stats) " |\n"
+       "\n"
+       "## Process\n"
+       "\n"
+       "For each function with surviving mutations:\n"
+       "1. Write the simplest tests that kill the mutations while remaining semantically meaningful\n"
+       "2. Open a draft PR with the new tests\n"
+       "3. A dev reviews the tests and any suggested code improvements\n"
+       "4. Merge once approved\n"))
+
 (defn create-project-for-namespace!
   "Create a Linear project for mutation testing a specific namespace.
    Reads statistics from the baseline report file.
@@ -359,7 +390,8 @@
   [target-ns report-path]
   (let [stats (report-stats report-path)]
     (create-project! {:name (project-name target-ns)
-                      :description (project-description target-ns stats)})))
+                      :description (project-description target-ns stats)
+                      :content (project-content target-ns stats)})))
 
 (defn create-issue-for-function!
   "Create a Linear issue for mutation testing a specific function.
