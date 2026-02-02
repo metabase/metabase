@@ -9,9 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.permissions.core :as perms]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

@@ -317,8 +317,7 @@
                            (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
             (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
               (is (= expected-tables
-                     (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))))))
-
+                     (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
