@@ -17,6 +17,7 @@ import {
 import type {
   Dashboard,
   DashboardSubscription,
+  Parameter,
   ParameterId,
 } from "metabase-types/api";
 
@@ -44,30 +45,37 @@ export const MutableParametersSection = ({
   }, [parameters, dashboard]);
 
   const pulseParameters = getPulseParameters(pulse);
-  const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
-    map[parameter.id] = parameter.value;
-    return map;
-  }, {});
+  const pulseParamValuesById = pulseParameters.reduce(
+    (map, parameter) => {
+      map[parameter.id] = parameter.value;
+      return map;
+    },
+    {} as Record<string, Parameter["value"]>,
+  );
 
   const valuePopulatedParameters = getDefaultValuePopulatedParameters(
     sortedParameters,
     pulseParamValuesById,
   );
 
-  const setParameterValue = (id: ParameterId, value: any) => {
+  const setParameterValue = (id: ParameterId, value: Parameter["value"]) => {
     const parameter = sortedParameters.find((parameter) => parameter.id === id);
-    const operator = parameter && deriveFieldOperatorFromParameter(parameter);
+    if (!parameter) {
+      return;
+    }
+    const operator = deriveFieldOperatorFromParameter(parameter);
     const filteredParameters = pulseParameters.filter(
       (parameter) => parameter.id !== id,
     );
+    const newParameter: Parameter = {
+      ...parameter,
+      value: value,
+      options: operator?.optionsDefaults,
+    };
     const newParameters =
       value === PULSE_PARAM_USE_DEFAULT
         ? filteredParameters
-        : filteredParameters.concat({
-            ...parameter,
-            value,
-            options: operator?.optionsDefaults,
-          });
+        : filteredParameters.concat(newParameter);
 
     setPulseParameters(newParameters);
   };

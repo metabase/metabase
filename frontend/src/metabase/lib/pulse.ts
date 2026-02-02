@@ -16,8 +16,7 @@ import type {
   ChannelApiResponse,
   ChannelSpec,
   DashboardSubscription,
-  Pulse,
-  PulseParameter,
+  Parameter,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
@@ -94,7 +93,10 @@ export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
     .every((field) => Boolean(channel.details?.[field.name]));
 }
 
-function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
+function pulseChannelsAreValid(
+  pulse: DashboardSubscription,
+  channelSpecs: any,
+) {
   return (
     pulse.channels.filter((channel) =>
       channelIsValid(channel, channelSpecs?.[channel.channel_type]),
@@ -120,7 +122,10 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
   );
 }
 
-export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
+export function pulseIsValid(
+  pulse: DashboardSubscription,
+  channelSpecs: ChannelSpecs,
+) {
   return (
     (pulse.name &&
       pulse.cards.length > 0 &&
@@ -130,13 +135,13 @@ export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
 }
 
 export function dashboardPulseIsValid(
-  pulse: Pick<Pulse, "channels">,
+  pulse: Pick<DashboardSubscription, "channels">,
   channelSpecs: ChannelSpecs,
 ) {
-  return pulseChannelsAreValid(pulse as Pulse, channelSpecs);
+  return pulseChannelsAreValid(pulse as DashboardSubscription, channelSpecs);
 }
 
-export function emailIsEnabled(pulse: Pulse) {
+export function emailIsEnabled(pulse: DashboardSubscription) {
   return (
     pulse.channels.filter(
       (channel) => channel.channel_type === "email" && channel.enabled,
@@ -144,7 +149,7 @@ export function emailIsEnabled(pulse: Pulse) {
   );
 }
 
-export function cleanPulse(pulse: Pulse, channelSpecs: any) {
+export function cleanPulse(pulse: DashboardSubscription, channelSpecs: any) {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
@@ -158,7 +163,7 @@ function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
   );
 }
 
-function cleanPulseParameters(parameters: PulseParameter[]) {
+function cleanPulseParameters(parameters: Parameter[]) {
   return parameters.map((parameter) => {
     const { default: defaultValue, name, slug, type, value, id } = parameter;
     const normalizedValue = normalizeParameterValue(type, value);
@@ -209,23 +214,25 @@ export function createChannel(
   };
 }
 
-export function getPulseParameters(pulse: Pulse | DashboardSubscription) {
+export function getPulseParameters(pulse: DashboardSubscription) {
   return pulse?.parameters || [];
 }
 
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(
-  pulse: Pulse | DashboardSubscription,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- getDefaultValuePopulatedParameters is untyped JS
-  parameters: any[],
+  pulse: DashboardSubscription,
+  parameters: Parameter[],
 ) {
-  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
-    map[parameter.id] = parameter.value;
-    return map;
-  }, {});
+  const parameterValues = getPulseParameters(pulse).reduce(
+    (map, parameter) => {
+      map[parameter.id] = parameter.value;
+      return map;
+    },
+    {} as Record<string, Parameter["value"]>,
+  );
   return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
-    (parameter: any) => parameter.value != null,
+    (parameter: Parameter) => parameter.value != null,
   );
 }
 

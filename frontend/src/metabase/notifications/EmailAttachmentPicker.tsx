@@ -5,9 +5,9 @@ import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Toggle } from "metabase/common/components/Toggle";
+import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Group, Icon, Text, Tooltip } from "metabase/ui";
-import type { ExportFormat } from "metabase/common/types/export";
 import type {
   DashboardSubscription,
   SubscriptionSupportingCard,
@@ -171,7 +171,6 @@ export function EmailAttachmentPicker({
     setIsFormattingEnabled(newState.isFormattingEnabled);
     setIsPivotingEnabled(newState.isPivotingEnabled);
     setIsAttachmentOnly(newState.isAttachmentOnly);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards, pulse]);
 
   const canAttachFiles = !!allowDownload;
