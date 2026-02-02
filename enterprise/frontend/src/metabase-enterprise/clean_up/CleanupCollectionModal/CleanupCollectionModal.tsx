@@ -39,7 +39,7 @@ interface CleanupCollectionModalProps {
   params: { slug: string };
 }
 
-const _CleanupCollectionModal = ({
+const CleanupCollectionModalInner = ({
   onClose: handleClose,
   params: { slug },
 }: CleanupCollectionModalProps) => {
@@ -224,4 +224,4 @@ const _CleanupCollectionModal = ({
   );
 };
 
-export const CleanupCollectionModal = withRouter(_CleanupCollectionModal);
+export const CleanupCollectionModal = withRouter(CleanupCollectionModalInner);
