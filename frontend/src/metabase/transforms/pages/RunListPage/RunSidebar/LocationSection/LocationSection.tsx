@@ -13,6 +13,7 @@ type LocationSectionProps = {
 
 export function LocationSection({ run }: LocationSectionProps) {
   const collectionId = run.transform?.collection_id ?? null;
+
   const { path } = useCollectionPath({
     collectionId,
     namespace: "transforms",

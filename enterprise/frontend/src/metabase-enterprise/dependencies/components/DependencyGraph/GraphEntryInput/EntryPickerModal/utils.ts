@@ -17,7 +17,6 @@ import type {
 import { getDependencyType } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
-
 export function getTablePickerItem(
   node: DependencyNode,
 ): OmniPickerTableItem | undefined {
