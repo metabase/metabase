@@ -20,6 +20,7 @@ import type {
   TransformInspectTarget,
 } from "metabase-types/api";
 
+import { FieldInfoSection } from "../../../../TransformInspectV2Page/components/FieldInfoSection";
 import type { CardStats } from "../../../types";
 
 type GenericSummaryLayoutProps = {
@@ -176,6 +177,7 @@ export const GenericSummaryLayout = ({
           </Card>
         </SimpleGrid>
       </Box>
+      <FieldInfoSection sources={sources} target={target} />
     </Stack>
   );
 };
