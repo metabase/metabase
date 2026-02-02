@@ -11,6 +11,7 @@
    Arguments:
    - condition: map with :name and any other keys the condition needs
    - card-results: map of card-id (string) -> result map (string keys)"
+  {:arglists '([condition card-results])}
   (fn [condition _card-results] (:name condition)))
 
 (defmethod evaluate-condition :default

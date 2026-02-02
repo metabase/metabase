@@ -18,6 +18,7 @@
    - lens-id: keyword like :join-analysis
    - card: the card map with :id, :metadata, etc.
    - rows: the raw query result rows (vector of vectors)"
+  {:arglists '([lens-id card rows])}
   (fn [lens-id card _rows]
     [lens-id (keyword (get-in card [:metadata :card-type]))]))
 

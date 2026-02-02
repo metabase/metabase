@@ -26,6 +26,7 @@
    - ctx: context map with :has-joins?, :column-matches, etc.
 
    Returns true if the lens can be generated for this transform."
+  {:arglists '([lens-type ctx])}
   (fn [lens-type _ctx] lens-type))
 
 (defmethod lens-applicable? :default
@@ -40,6 +41,7 @@
    {:id \"lens-id\"
     :display-name \"Human Name\"
     :description \"Optional description\"}"
+  {:arglists '([lens-type ctx])}
   (fn [lens-type _ctx] lens-type))
 
 (defmethod lens-metadata :default
@@ -67,6 +69,7 @@
     :drill-lenses [{:id :display-name :description} ...]
     :alert-triggers [...]
     :drill-lens-triggers [...]}"
+  {:arglists '([lens-type ctx params])}
   (fn [lens-type _ctx _params] lens-type))
 
 (defmethod make-lens :default

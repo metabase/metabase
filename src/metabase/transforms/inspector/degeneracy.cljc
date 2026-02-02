@@ -65,6 +65,7 @@
    - card-results: map of all card results (for companion card lookup)
 
    Returns {:degenerate? bool :reason keyword}."
+  {:arglists '([card-id card-result display-type card-results])}
   (fn [_card-id _card-result display-type _card-results] display-type))
 
 (defmethod degenerate-for-display? :default

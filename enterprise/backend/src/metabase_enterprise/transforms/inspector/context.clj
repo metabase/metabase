@@ -29,6 +29,7 @@
 (defmulti extract-sources
   "Extract source table information for a transform.
    Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
+  {:arglists '([transform])}
   (fn [transform] (transforms.util/transform-source-type (:source transform))))
 
 (defmethod extract-sources :mbql
