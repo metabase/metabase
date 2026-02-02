@@ -250,16 +250,17 @@
 
 (deftest track-token-usage-with-premium-token-test
   (testing "hashes premium token when available"
-    (mt/with-temporary-setting-values [premium-embedding-token "test-premium-token"]
-      (snowplow-test/with-fake-snowplow-collector
-        (#'api/track-token-usage! {:model       "claude-sonnet-4-5-20250929"
-                                   :prompt      100
-                                   :completion  50
-                                   :duration-ms 100
-                                   :user-id     1
-                                   :source      "test"
-                                   :tag         "test"})
-        ;; Should be a SHA-256 hash (64 hex chars), not "oss__*"
-        (is (=? [{:data {"hashed_metabase_license_token" #"[0-9a-f]{64}"}}]
-                (->> (snowplow-test/pop-event-data-and-user-id!)
-                     (filter token-usage-event?))))))))
+    (mt/with-random-premium-token! [premium-token]
+      (mt/with-temporary-setting-values [premium-embedding-token premium-token]
+        (snowplow-test/with-fake-snowplow-collector
+          (#'api/track-token-usage! {:model       "claude-sonnet-4-5-20250929"
+                                     :prompt      100
+                                     :completion  50
+                                     :duration-ms 100
+                                     :user-id     1
+                                     :source      "test"
+                                     :tag         "test"})
+          ;; Should be a SHA-256 hash (64 hex chars), not "oss__*"
+          (is (=? [{:data {"hashed_metabase_license_token" #"[0-9a-f]{64}"}}]
+                  (->> (snowplow-test/pop-event-data-and-user-id!)
+                       (filter token-usage-event?)))))))))
