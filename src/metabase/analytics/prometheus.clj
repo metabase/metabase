@@ -500,7 +500,14 @@
                         :labels [:status]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
-                        :labels [:status]})])
+                        :labels [:status]})
+   ;; Write-connection telemetry (PRO-86)
+   (prometheus/counter :metabase-db-connection/write-op
+                       {:description "Write-capable connection acquisitions by connection pool type."
+                        :labels [:connection-type]})
+   (prometheus/counter :metabase-db-connection/type-resolved
+                       {:description "Write-connection resolution decisions (transforms)."
+                        :labels [:connection-type]})])
 
 (defn- quartz-collectors
   []

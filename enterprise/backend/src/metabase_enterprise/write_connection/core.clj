@@ -5,7 +5,9 @@
   for a given database, which can be used by features that write to the
   database (Transforms, Actions, Table Editing, etc.)."
   (:require
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -49,13 +51,21 @@
   (let [original-id (if (map? db-or-id) (:id db-or-id) db-or-id)
         write-db-id (db-id->write-db-id original-id)]
     (if write-db-id
-      (-> (t2/select-one :model/Database :id write-db-id)
-          (assoc :connection/type :write
-                 :connection/parent-id original-id))
-      (let [db (if (map? db-or-id)
-                 db-or-id
-                 (t2/select-one :model/Database :id original-id))]
-        (assoc db :connection/type :primary)))))
+      (do
+        (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write"})
+             (catch Exception _ nil))
+        (log/infof "Resolved write connection for db %d → write-db %d" original-id write-db-id)
+        (-> (t2/select-one :model/Database :id write-db-id)
+            (assoc :connection/type :write
+                   :connection/parent-id original-id)))
+      (do
+        (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "primary"})
+             (catch Exception _ nil))
+        (log/debugf "No write connection configured for db %d, using primary" original-id)
+        (let [db (if (map? db-or-id)
+                   db-or-id
+                   (t2/select-one :model/Database :id original-id))]
+          (assoc db :connection/type :primary))))))
 
 (defn is-write-database?
   "Returns true if the given database is a write database (i.e., is referenced

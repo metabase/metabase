@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.settings :as driver.settings]
@@ -26,6 +27,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv empty? get-in]]
+   [metabase.warehouses.models.database :as database]
    [potemkin :as p])
   (:import
    (java.sql
@@ -344,6 +346,13 @@
    db-or-id-or-spec :- [:or :int :map]
    options          :- ConnectionOptions
    f                :- fn?]
+  ;; PRO-86 telemetry: track write-capable connection acquisitions when identity is available
+  (when (:write? options)
+    (when-let [db-id (u/id db-or-id-or-spec)]
+      (let [conn-type (if (database/is-write-database? {:id db-id}) "write" "primary")]
+        (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type conn-type})
+             (catch Exception _ nil))
+        (log/infof "Write connection acquired for db %d (pool: %s)" db-id conn-type))))
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)

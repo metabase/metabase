@@ -9,16 +9,21 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.write-connection.core :as write-connection]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.log.capture :as log.capture]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.models.database :as database]
    [metabase.write-connection.core :as write-connection.oss]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)
+   (javax.sql DataSource)))
 
 (deftest get-write-database-id-no-write-connection-test
   (testing "get-write-database-id returns nil when no write connection configured"
@@ -327,3 +332,152 @@
           (let [effective (write-connection.oss/get-effective-database (:id parent-db))]
             (is (= :primary (:connection/type effective)))
             (is (nil? (:connection/parent-id effective)))))))))
+
+;;; ==========================================================================
+;;; Telemetry tests (PRO-86 Observability)
+;;; ==========================================================================
+
+(defn- mock-datasource
+  "Returns a DataSource that yields a no-op Connection (for testing telemetry
+   without a real database)."
+  []
+  (let [mock-conn (reify Connection
+                    (close [_])
+                    (setReadOnly [_ _])
+                    (setAutoCommit [_ _]))]
+    (reify DataSource
+      (getConnection [_] mock-conn))))
+
+;; ---------------------------------------------------------------------------
+;; Layer 2: get-effective-database telemetry
+;; ---------------------------------------------------------------------------
+
+(deftest get-effective-database-telemetry-write-test
+  (testing "Layer 2: get-effective-database increments type-resolved counter with 'write' when write connection exists"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Database parent-db {}
+                       :model/Database write-db {}]
+          (database/link-write-database! (:id parent-db) (:id write-db))
+          (write-connection.oss/get-effective-database (:id parent-db))
+          (is (== 1 (mt/metric-value system :metabase-db-connection/type-resolved
+                                     {:connection-type "write"}))
+              "Should increment type-resolved counter with connection-type=write"))))))
+
+(deftest get-effective-database-telemetry-primary-test
+  (testing "Layer 2: get-effective-database increments type-resolved counter with 'primary' when no write connection"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Database db {}]
+          (write-connection.oss/get-effective-database (:id db))
+          (is (== 1 (mt/metric-value system :metabase-db-connection/type-resolved
+                                     {:connection-type "primary"}))
+              "Should increment type-resolved counter with connection-type=primary"))))))
+
+(deftest get-effective-database-telemetry-logging-test
+  (testing "Layer 2: get-effective-database emits structured log messages"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-prometheus-system! [_ _system]
+        (mt/with-temp [:model/Database parent-db {}
+                       :model/Database write-db {}]
+          (database/link-write-database! (:id parent-db) (:id write-db))
+          (testing "write resolution logs at info level"
+            (log.capture/with-log-messages-for-level [messages [metabase-enterprise.write-connection.core :info]]
+              (write-connection.oss/get-effective-database (:id parent-db))
+              (let [msgs (messages)]
+                (is (some #(and (= :info (:level %))
+                                (re-find #"Resolved write connection" (:message %)))
+                          msgs)
+                    "Should log write connection resolution at info level"))))
+          (testing "primary resolution logs at debug level"
+            (log.capture/with-log-messages-for-level [messages [metabase-enterprise.write-connection.core :debug]]
+              (write-connection.oss/get-effective-database (:id write-db))
+              (let [msgs (messages)]
+                (is (some #(and (= :debug (:level %))
+                                (re-find #"No write connection configured" (:message %)))
+                          msgs)
+                    "Should log primary resolution at debug level")))))))))
+
+;; ---------------------------------------------------------------------------
+;; Layer 1: do-with-resolved-connection telemetry
+;; ---------------------------------------------------------------------------
+
+(deftest do-with-resolved-connection-telemetry-write-db-test
+  (testing "Layer 1: do-with-resolved-connection increments write-op counter with 'write' for write database"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (database/link-write-database! (:id parent-db) (:id write-db))
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_ _ _] (mock-datasource))]
+          (sql-jdbc.execute/do-with-resolved-connection
+           :h2 (:id write-db) {:write? true}
+           (fn [_conn] :ok))
+          (is (== 1 (mt/metric-value system :metabase-db-connection/write-op
+                                     {:connection-type "write"}))
+              "Should increment write-op counter with connection-type=write"))))))
+
+(deftest do-with-resolved-connection-telemetry-primary-db-test
+  (testing "Layer 1: do-with-resolved-connection increments write-op counter with 'primary' for primary database"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/Database primary-db {}]
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_ _ _] (mock-datasource))]
+          (sql-jdbc.execute/do-with-resolved-connection
+           :h2 (:id primary-db) {:write? true}
+           (fn [_conn] :ok))
+          (is (== 1 (mt/metric-value system :metabase-db-connection/write-op
+                                     {:connection-type "primary"}))
+              "Should increment write-op counter with connection-type=primary"))))))
+
+(deftest do-with-resolved-connection-telemetry-no-write-flag-test
+  (testing "Layer 1: do-with-resolved-connection does NOT increment counter when :write? is not set"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/Database db {}]
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_ _ _] (mock-datasource))]
+          (sql-jdbc.execute/do-with-resolved-connection
+           :h2 (:id db) {}
+           (fn [_conn] :ok))
+          (is (zero? (or (mt/metric-value system :metabase-db-connection/write-op
+                                          {:connection-type "primary"})
+                         0))
+              "Should NOT increment counter when :write? is absent"))))))
+
+(deftest do-with-resolved-connection-telemetry-bare-conn-spec-test
+  (testing "Layer 1: do-with-resolved-connection does NOT increment counter for bare conn-spec (identity gap)"
+    (mt/with-prometheus-system! [_ system]
+      (let [bare-spec {:subprotocol "h2" :subname "mem:test"}]
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_ _ _] (mock-datasource))]
+          (sql-jdbc.execute/do-with-resolved-connection
+           :h2 bare-spec {:write? true}
+           (fn [_conn] :ok))
+          (is (zero? (or (mt/metric-value system :metabase-db-connection/write-op
+                                          {:connection-type "write"})
+                         0))
+              "Should NOT increment counter when db-or-id-or-spec has no :id")
+          (is (zero? (or (mt/metric-value system :metabase-db-connection/write-op
+                                          {:connection-type "primary"})
+                         0))
+              "Should NOT increment counter at all for bare conn-spec"))))))
+
+(deftest do-with-resolved-connection-telemetry-logging-test
+  (testing "Layer 1: do-with-resolved-connection emits log messages for write operations"
+    (mt/with-prometheus-system! [_ _system]
+      (mt/with-temp [:model/Database parent-db {}
+                     :model/Database write-db {}]
+        (database/link-write-database! (:id parent-db) (:id write-db))
+        (testing "logs write pool usage"
+          (log.capture/with-log-messages-for-level [messages [metabase.driver.sql-jdbc.execute :info]]
+            (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                          (fn [_ _ _] (mock-datasource))]
+              (sql-jdbc.execute/do-with-resolved-connection
+               :h2 (:id write-db) {:write? true}
+               (fn [_conn] :ok))
+              (let [msgs (messages)]
+                (is (some #(and (= :info (:level %))
+                                (re-find #"Write connection acquired" (:message %))
+                                (re-find #"write" (:message %)))
+                          msgs)
+                    "Should log write connection acquisition")))))))))
