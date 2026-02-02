@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -23,20 +22,15 @@
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
-(def ^:private transform-models
-  "Models that indicate transforms content in a snapshot."
-  #{"Transform" "TransformTag" "PythonLibrary"})
-
 (defn- snapshot-has-transforms?
   "Checks if the snapshot contains any Transform, TransformTag, or PythonLibrary entities.
    Used to auto-enable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata."
   [ingestable]
-  (let [serdes-paths (serialization/ingest-list ingestable)]
-    (some (fn [path]
-            (some #(transform-models (:model %)) path))
-          serdes-paths)))
+  (let [serdes-paths (serialization/ingest-list ingestable)
+        models-present (spec/models-in-import serdes-paths)]
+    (some spec/transform-models models-present)))
 
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
@@ -132,21 +126,36 @@
 
        :details {:error-type (type e)}})))
 
-(defn- get-conflicts [ingestable]
-  (let [local-has-library? (t2/exists? :model/Collection :type collection/library-collection-type)
-        local-has-transforms? (t2/exists? :model/Transform)
-        local-has-snippets? (t2/exists? :model/NativeQuerySnippet)
-        ingest-list (serialization/ingest-list ingestable)]
-    (->> ingest-list
-         (keep (fn [[item]]
-                 (or (when (and local-has-library?
-                                (= item {:model "Collection" :id collection/library-entity-id}))
-                       "Library")
-                     (when (and local-has-transforms? (transform-models (:model item)))
-                       "Transforms")
-                     (when (and local-has-snippets? (= "NativeQuerySnippet" (:model item)))
-                       "Snippets"))))
-         (into #{}))))
+(defn- get-conflicts
+  "Detects conflicts that would prevent or complicate import.
+   Returns a map with :conflicts (detailed list) and :summary (set of category names).
+
+   Conflict types detected:
+   - :entity-id-conflict - Items with existing entity IDs that are NOT already synced
+   - :library-conflict - First import only, local Library exists, import has Library
+   - :transforms-not-enabled - Import has Transform/TransformTag/PythonLibrary, setting disabled
+   - :snippets-without-library - Import has NativeQuerySnippet, Library not remote-synced"
+  [ingestable first-import?]
+  (let [ingest-list (serialization/ingest-list ingestable)
+        imported-data (spec/extract-imported-entities ingest-list)
+        models-present (spec/models-in-import ingest-list)
+        ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
+        feature-conflicts (spec/check-feature-conflicts models-present)
+        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
+                           (when (and first-import?
+                                      (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
+                                                 collection/library-entity-id)
+                                      (not (t2/exists? :model/RemoteSyncObject
+                                                       :model_type "Collection"
+                                                       :model_id (:id local-library))))
+                             {:type :library-conflict
+                              :category "Library"
+                              :message "Import contains Library but local instance has an unsynced Library collection"}))
+        all-conflicts (concat
+                       feature-conflicts
+                       (when library-conflict [library-conflict]))]
+    {:conflicts (vec all-conflicts)
+     :summary (into #{} (map :category) all-conflicts)}))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -167,18 +176,20 @@
       (try
         (let [snapshot-version (source.p/version snapshot)
               last-imported-version (remote-sync.task/last-version)
+              first-import? (nil? last-imported-version)
               path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
                             #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
               base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
               has-transforms? (snapshot-has-transforms? base-ingestable)
-              conflicts (get-conflicts base-ingestable)
+              {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
               ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
 
           (cond
-            (and (nil? last-imported-version) (not force?) (seq conflicts))
+            (and first-import? (not force?) (seq conflicts))
             (u/prog1 {:status :conflict
                       :version (source.p/version snapshot)
-                      :conflicts conflicts
+                      :conflicts summary  ; Keep backward compatibility: return set of category names
+                      :conflict-details conflicts  ; New: detailed conflict info
                       :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
               (log/infof (:message <>)))
 
@@ -383,19 +394,12 @@
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
 
-  Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes), and an
-  import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
-  exception if force? is false and changes exist.
+  Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
+  and an import-args map of additional arguments to pass to the import function.
 
-  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
-  are unsaved changes and force? is false."
+  Returns a RemoteSyncTask."
   [branch force? import-args]
-  (let [source (source/source-from-settings branch)
-        has-dirty? (remote-sync.object/dirty?)]
-    (when (and has-dirty? (not force?))
-      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true})))
+  (let [source (source/source-from-settings branch)]
     (run-async! "import" branch (fn [task-id] (import! (source.p/snapshot source) task-id (assoc import-args :force? force?))))))
 
 (defn async-export!
