@@ -79,24 +79,36 @@ Then create a Linear project for this namespace (uses report stats in the descri
 ;; Automatically sets :project-id in config for subsequent create-issue! calls
 ```
 
-### Step 4: Process each uncovered/partially-covered function
+### Step 4: Plan the work
 
-For each function that is uncovered or has surviving mutations:
+Before creating branches, analyze the report to plan how to group the work:
 
-#### 4a. Create a branch
+1. **Identify killable functions.** For each function with surviving mutations, assess whether any mutations are killable. Run `cov/test-mutations` to see the full mutation list. If ALL mutations for a function are unkillable (schema-only, semantically equivalent, etc.), skip that function — no branch or PR needed.
+
+2. **Group private functions by public entry point.** Private functions cannot be tested directly. Group them with the public function that exercises them. Create one branch/PR per group, not per private function.
+
+3. **Track mutations per group.** The `:mutations-before` and `:not-killed` fields in the PR should only reflect mutations for functions covered by that specific PR — never mutations from other functions.
+
+### Step 5: Process each group
+
+For each group of functions that has killable mutations:
+
+#### 5a. Create a branch
 
 ```clojure
-(mut-test/create-branch! "<target-ns>" "<fn-name>")
-;; => "mutation-testing/lib.order-by/orderable-columns"
+(mut-test/create-branch! "<target-ns>" "<primary-fn-name>")
+;; => "mutation-testing-lib-order-by-orderable-columns"
 ```
 
-#### 4b. Read context
+Use the primary public function name for the branch. If the group covers private functions too, name the branch after the public entry point.
 
-- Read the source function from the source file
+#### 5b. Read context
+
+- Read the source function(s) from the source file
 - Read the full test file to understand existing test patterns, helpers, and metadata providers used
 - If the function is private, identify which public function(s) call it
 
-#### 4c. Write tests
+#### 5c. Write tests
 
 Generate the **simplest tests** that kill the surviving mutations while still making semantic sense. Guidelines:
 
@@ -105,7 +117,9 @@ Generate the **simplest tests** that kill the surviving mutations while still ma
 - **Follow existing patterns.** Match the style of the existing tests: same metadata providers, same helper functions, same assertion patterns.
 - **Insert tests near related existing tests** for the same function, not at the end of the file. This minimizes merge conflicts between branches. If there are no existing tests for the function, find the most logical location based on the order of functions in the source file.
 
-#### 4d. Verify mutations are killed
+**IMPORTANT: Use `file_edit` (not `clojure_edit`) when editing test files.** The `clojure_edit` tool reformats the entire file, introducing unnecessary whitespace changes that pollute the diff. Use `file_edit` with exact string matching to make surgical insertions that only touch the lines you intend to change.
+
+#### 5d. Verify mutations are killed
 
 Use the REPL to check that the new tests kill the targeted mutations:
 
@@ -125,7 +139,7 @@ Check the `:survived` key in the result. If mutations still survive:
 - If a mutation is truly unkillable (semantically equivalent), note it for the PR description
 - If a mutation reveals dead/unreachable code, consider suggesting removal as a code improvement
 
-#### 4e. Handle unkillable mutations and improvements
+#### 5e. Handle unkillable mutations and improvements
 
 **Do NOT edit the source namespace just for documentation.** Instead:
 
@@ -135,43 +149,46 @@ Check the `:survived` key in the result. If mutations still survive:
   2. Verify all tests still pass with the change
   3. Note the file path, line range, and the improved code
   4. **Reset the change**: `git checkout -- <source-file>` — do NOT commit it
-  5. After creating the PR, use `add-suggested-change!` to post the improvement as a GitHub suggested change (Step 4h)
+  5. After creating the PR, use `add-suggested-change!` to post the improvement as a GitHub suggested change (Step 5h)
   6. The reviewer decides whether to accept it
 
-#### 4f. Commit and push
+#### 5f. Commit and push
 
 ```clojure
 ;; Only commit the test file — never commit source changes for improvements
-(mut-test/commit-and-push! "<target-ns>" "<fn-name>"
+(mut-test/commit-and-push! "<target-ns>" "<primary-fn-name>"
   ["test/metabase/lib/<short_name>_test.cljc"])
 ```
 
-#### 4g. Create Linear issue and draft PR
+#### 5g. Create Linear issue and draft PR
 
 ```clojure
-;; Create a Linear issue
-(def issue (mut-test/create-issue-for-function! "<target-ns>" "<fn-name>"))
+;; Create a Linear issue (use the primary function name)
+(def issue (mut-test/create-issue-for-function! "<target-ns>" "<primary-fn-name>"))
 ;; => {:identifier "QUE-1234", :url "https://linear.app/...", ...}
 
 ;; Create draft PR linked to the Linear issue
+;; :fn-names lists ALL functions covered by this PR
+;; :mutations-before counts only mutations for functions in this PR
+;; :not-killed lists only unkillable mutations for functions in this PR
 (def pr-url
   (mut-test/create-draft-pr!
     {:target-ns         "<target-ns>"
-     :fn-name           "<fn-name>"
+     :fn-name           "<primary-fn-name>"
      :linear-identifier (:identifier issue)
-     :mutations-before  5       ;; surviving mutations before this PR
-     :tests-added       3       ;; number of new test functions
-     :killed            ["Replace :asc with :asc__"
-                         "Replace = with not="]
-     :not-killed        [{:description "Replace nil with 0"
-                          :rationale   "Default value is never reached"}]
-     :suggested-changes ["Remove dead branch in cond (line 42)"]}))
+     :mutations-before  9       ;; surviving mutations for these functions only
+     :tests-added       2       ;; number of new test functions
+     :killed            ["Replace :segment-id with :segment-id__"
+                         "Replace cycle-path with nil"]
+     :not-killed        [{:description "Replace acc with nil"
+                          :rationale   "reduce always has single iteration"}]
+     :suggested-changes []}))
 ;; => "https://github.com/metabase/metabase/pull/12345"
 ```
 
-#### 4h. Add code improvement suggestions (if any)
+#### 5h. Add code improvement suggestions (if any)
 
-If you identified code improvements in step 4e (and reset them), post each as a GitHub suggested change:
+If you identified code improvements in step 5e (and reset them), post each as a GitHub suggested change:
 
 ```clojure
 (mut-test/add-suggested-change!
@@ -183,19 +200,20 @@ If you identified code improvements in step 4e (and reset them), post each as a 
    :comment    "**Suggested improvement:** <description of the change and why it's related to the surviving mutant>"})
 ```
 
-### Step 5: Return to master and repeat
+### Step 6: Return to master and repeat
 
 ```clojure
 (mut-test/return-to-master!)
 ```
 
-Repeat Step 4 for the next function.
+Repeat Step 5 for the next group.
 
-### Step 6: Summary
+### Step 7: Summary
 
 Print a summary of what was done:
 - Link to the Linear project for this namespace
 - Number of functions processed
+- Number of functions skipped (all mutations unkillable)
 - Number of draft PRs created
 - Number of mutations killed vs. unkillable
 - List of test PRs with links

@@ -130,22 +130,23 @@
 
    Options:
    - :target-ns           — the namespace under test
-   - :fn-name             — the function name
+   - :fn-names            — seq of function name strings covered by this PR
    - :linear-identifier   — Linear issue identifier (e.g., \"QUE-1234\")
-   - :mutations-before    — number of surviving mutations before this PR
+   - :mutations-before    — number of surviving mutations before this PR (for these functions only)
    - :tests-added         — number of new tests being added
    - :killed              — seq of mutation description strings
    - :not-killed          — seq of {:description ... :rationale ...} maps (can be empty)
    - :suggested-changes   — seq of short description strings for code improvements posted as suggested changes"
-  [{:keys [target-ns fn-name linear-identifier mutations-before tests-added killed not-killed suggested-changes]}]
+  [{:keys [target-ns fn-names linear-identifier mutations-before tests-added killed not-killed suggested-changes]}]
   (let [killed-count (count killed)
         remaining (- mutations-before killed-count)]
     (str "Part of the mutation testing project for `" target-ns "`.\n"
          "\n"
-         "Linear: " linear-identifier "\n"
+         "Closes " linear-identifier "\n"
          "\n"
-         "### Function\n"
-         "`" target-ns "/" fn-name "`\n"
+         "### Functions\n"
+         (str/join "\n" (map #(str "- `" target-ns "/" % "`") fn-names))
+         "\n"
          "\n"
          "### Stats\n"
          "- **Surviving mutations before:** " mutations-before "\n"
@@ -181,7 +182,16 @@
 (defn linear-issue-description
   "Generate a Linear issue description for a mutation testing issue."
   [target-ns fn-name]
-  (str "Kill surviving mutations in `" fn-name "` from `" target-ns "`."))
+  (str "Write targeted tests to kill surviving mutations in `" target-ns "/" fn-name "`.\n"
+       "\n"
+       "Mutation testing found code paths in this function that are not adequately "
+       "verified by the existing test suite. Surviving mutations indicate places where "
+       "the code could be changed (e.g., swapping operators, replacing values) without "
+       "any test failing — meaning bugs in those paths would go undetected.\n"
+       "\n"
+       "This issue tracks writing the simplest tests that kill these mutations while "
+       "remaining semantically meaningful. The corresponding draft PR will list which "
+       "mutations were killed and provide rationale for any that are unkillable."))
 
 ;;; --- Convenience ---
 
