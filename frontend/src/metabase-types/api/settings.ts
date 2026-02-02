@@ -258,8 +258,6 @@ const tokenStatusFeatures = [
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
-  "offer-metabase-ai",
-  "offer-metabase-ai-tiered",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -281,6 +279,9 @@ const tokenStatusFeatures = [
 ] as const;
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
+export const REMOTE_SYNC_TYPES = ["read-only", "read-write"] as const;
+export type RemoteSyncType = (typeof REMOTE_SYNC_TYPES)[number];
 
 interface TokenStatusStoreUsers {
   email: string;
@@ -336,8 +337,6 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
-  "offer_metabase_ai",
-  "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -437,6 +436,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
+  "llm-sql-generation-enabled": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -676,7 +676,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "read-only" | "read-write" | null;
+  "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
@@ -740,6 +740,8 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-model": string;
   /**
    * @deprecated
    */

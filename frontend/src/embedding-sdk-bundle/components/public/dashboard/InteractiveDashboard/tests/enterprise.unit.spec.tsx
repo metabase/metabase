@@ -11,7 +11,7 @@ const setupEnterprise = async (
 ) => {
   return setupSdkDashboard({
     ...options,
-    enterprisePlugins: ["sdk_subscriptions"],
+    enterprisePlugins: ["sdk_notifications"],
     component: InteractiveDashboard,
   });
 };

@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
+import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
@@ -57,6 +59,7 @@ export const SdkQuestionProvider = ({
   initialSqlParameters,
   hiddenParameters,
   withDownloads,
+  withAlerts,
   targetDashboardId,
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
@@ -194,6 +197,7 @@ export const SdkQuestionProvider = ({
     isSaveEnabled,
     targetCollection,
     withDownloads,
+    withAlerts,
     onRun,
     backToDashboard,
     hiddenParameters,
@@ -233,7 +237,10 @@ export const SdkQuestionProvider = ({
   return (
     <SdkQuestionContext.Provider value={questionContext}>
       <EmbeddingEntityContextProvider uuid={null} token={token}>
-        {children}
+        <QuestionAlertModalProvider>
+          {children}
+          <SdkQuestionAlertListModal />
+        </QuestionAlertModalProvider>
       </EmbeddingEntityContextProvider>
     </SdkQuestionContext.Provider>
   );

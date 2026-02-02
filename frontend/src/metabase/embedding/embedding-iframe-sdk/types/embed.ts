@@ -96,6 +96,7 @@ export type QuestionEmbedOptions = StrictUnion<
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withAlerts?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
   isSaveEnabled?: boolean;

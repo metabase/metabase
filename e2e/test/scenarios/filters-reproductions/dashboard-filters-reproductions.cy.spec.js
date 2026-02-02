@@ -5347,7 +5347,7 @@ describe("issue 46541", () => {
         });
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Dashboards").click();
+          cy.findByText("Our analytics").click();
           cy.findByText("Dashboard B").click();
         });
 

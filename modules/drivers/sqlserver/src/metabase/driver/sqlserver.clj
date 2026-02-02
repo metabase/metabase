@@ -1081,3 +1081,6 @@
             (if schema
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
+
+(defmethod driver/llm-sql-dialect-resource :sqlserver [_]
+  "llm/prompts/dialects/sqlserver.md")
