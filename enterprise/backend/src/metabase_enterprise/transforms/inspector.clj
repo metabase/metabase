@@ -1,9 +1,5 @@
 (ns metabase-enterprise.transforms.inspector
-  "Transform Inspector API.
-
-   Two-phase lens-based approach:
-   - Phase 1 (discover-lenses): Returns sources, target, available lenses
-   - Phase 2 (get-lens): Returns sections and cards for a specific lens"
+  "Transform Inspector API."
   (:require
    [metabase-enterprise.transforms.inspector.context :as context]
    [metabase-enterprise.transforms.inspector.lens.column-comparison]
@@ -15,7 +11,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
-;; Force load lens implementations
 (comment
   metabase-enterprise.transforms.inspector.lens.generic/keep-me
   metabase-enterprise.transforms.inspector.lens.column-comparison/keep-me
@@ -25,12 +20,11 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn discover-lenses :- ::schema/discovery-response
-  "Phase 1: Discover available lenses for a transform.
+  "Discover available lenses for a transform.
    Returns structural metadata and available lens types.
    This is a cheap operation - no query execution."
   [transform :- :map]
-  (let [ctx (context/build-context transform)
-        {:keys [sources target]} ctx]
+  (let [{:keys [sources target] :as ctx} (context/build-context transform)]
     (if-not target
       {:name             (str "Transform Inspector: " (:name transform))
        :description      (tru "Transform has not been run yet.")
@@ -47,7 +41,7 @@
        :available-lenses (lens.core/available-lenses ctx)})))
 
 (mu/defn get-lens :- ::schema/lens
-  "Phase 2: Get full lens contents for a transform.
+  "Get full lens contents for a transform.
    Returns sections, cards, and trigger definitions.
    Optional params can filter/customize drill lens output."
   [transform :- :map

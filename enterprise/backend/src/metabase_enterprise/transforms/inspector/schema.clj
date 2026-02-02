@@ -1,16 +1,12 @@
 (ns metabase-enterprise.transforms.inspector.schema
   "Schemas for Transform Inspector.
 
-   The inspector uses a lens-based approach:
-   - Phase 1 (discover): Returns sources, target, and available lenses
-   - Phase 2 (get-lens): Returns sections and cards for a specific lens
-
-   Key design principles:
+   Key principles:
    - Cards are generic; lens-specific data goes in :metadata
    - Only two layouts: :flat and :comparison
    - FE interprets rendering based on lens type + card metadata"
   (:require
-   [malli.util :as mu]
+   [malli.util :as mut]
    [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------------------------------------- Field & Table Schemas --------------------------------------------------
@@ -65,7 +61,6 @@
 ;;; -------------------------------------------------- Lens Metadata --------------------------------------------------
 
 (mr/def ::lens-metadata
-  "Lens metadata returned in Phase 1 discovery."
   [:map
    [:id :string]
    [:display-name :string]
@@ -106,14 +101,14 @@
 (mr/def ::card-metadata
   "Optional metadata for cards. An open map that may contain keys from
    comparison-metadata, join-step-metadata, or other lens-specific data."
-  (mu/open-schema
+  (mut/open-schema
    [:merge
     [:map
      [:dedup-key {:optional true} ::dedup-key]
      ;; Card IDs this card depends on (e.g. for degeneracy checks)
      [:depends-on-cards {:optional true} [:set :string]]]
-    (mu/optional-keys ::comparison-metadata)
-    (mu/optional-keys ::join-step-metadata)]))
+    (mut/optional-keys ::comparison-metadata)
+    (mut/optional-keys ::join-step-metadata)]))
 
 (mr/def ::card
   "A visualization card in the inspector output.
@@ -205,7 +200,7 @@
 ;;; -------------------------------------------------- Lens Response --------------------------------------------------
 
 (mr/def ::lens
-  "Full lens contents returned in Phase 2."
+  "Full lens contents and drill lens/alert triggers."
   [:map
    [:id :string]
    [:display-name :string]
@@ -224,10 +219,7 @@
   [:enum :not-run :ready])
 
 (mr/def ::discovery-response
-  "Response from Phase 1 discovery.
-
-   Returns structural metadata and available lenses.
-   This is a cheap operation - no query execution."
+  "Response from lens discovery."
   [:map
    [:name :string]
    [:description {:optional true} [:maybe :string]]
