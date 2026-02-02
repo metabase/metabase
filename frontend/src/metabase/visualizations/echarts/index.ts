@@ -21,6 +21,7 @@ import { LabelLayout } from "echarts/features";
 import { SVGRenderer } from "echarts/renderers";
 
 export const registerEChartsModules = () => {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   use([
     LineChart,
     BarChart,

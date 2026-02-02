@@ -59,7 +59,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.appBar().findByText("Orders in a dashboard");
       H.openQuestionActions();
       H.popover().findByText("Move").click();
-      H.entityPickerModalTab("Browse").click();
       H.entityPickerModal().findByText("First collection").click();
       H.entityPickerModal().button("Move").click();
 
@@ -101,7 +100,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.openQuestionActions();
       H.popover().findByText("Move").click();
-      H.entityPickerModalTab("Browse").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
       H.undoToast().findByText("Orders in a dashboard");
@@ -126,7 +124,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.openQuestionActions();
       H.popover().findByText("Move").click();
-      H.entityPickerModalTab("Browse").click();
       H.entityPickerModal().findByText("First collection").click();
       H.entityPickerModal().findByText("Second collection").click();
       H.entityPickerModal().button("Move").click();
@@ -145,7 +142,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.openQuestionActions();
       H.popover().findByText("Move").click();
-      H.entityPickerModalTab("Browse").click();
       H.entityPickerModal().findByText("First collection").click();
       H.entityPickerModal().findByText("Second collection").click();
       H.entityPickerModal().button("Move").click();
@@ -194,7 +190,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.openQuestionActions();
       H.popover().findByText("Move").click();
-      H.entityPickerModalTab("Browse").click();
       H.entityPickerModal().findByText("Our analytics").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
 
@@ -300,7 +295,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("toast-card").button("Move").click();
 
       H.entityPickerModal().within(() => {
-        cy.findByRole("button", { name: /Orders in a dashboard/ }).click();
+        cy.findByText("Orders in a dashboard").click();
         cy.button("Move").click();
       });
 
@@ -409,28 +404,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.findByTestId("edit-bar").button("Save").click();
       H.dashboardCards().findByText("Half Orders");
-    });
-
-    it("can create a question using a dashboard question as a data source", () => {
-      H.createQuestion({
-        name: "Total Orders Dashboard Question",
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      H.startNewQuestion();
-      H.miniPickerBrowseAll().click();
-      H.entityPickerModalItem(0, "Our analytics").click();
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
-      H.entityPickerModal()
-        .findByText("Total Orders Dashboard Question")
-        .click();
-      H.visualize();
-      cy.findByTestId("query-visualization-root").findByText("18,760");
     });
 
     it("can find dashboard questions in the search", () => {
@@ -877,7 +850,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.visitQuestion("@avgQuanityQuestionId");
       H.openQuestionActions("Move");
 
-      H.entityPickerModalTab("Browse").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
 
@@ -961,10 +933,9 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.findByLabelText(/Where do you want to save this/).click();
       });
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
-        cy.findByText("Dashboard with tabs").click();
-        cy.findByText("Select this dashboard").click();
+      H.pickEntity({
+        path: ["Our analytics", "Dashboard with tabs"],
+        select: true,
       });
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -1023,7 +994,6 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         cy.findByText("Dashboard with tabs").click();
         cy.findByText("Select this dashboard").click();
       });

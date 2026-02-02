@@ -212,8 +212,8 @@ function TransformLink({ table }: { table: Table }) {
           gap: 4,
           cursor: "pointer",
           textDecoration: "none",
-          backgroundColor: "var(--mb-color-bg-ocean-alpha-light)",
         }}
+        bg="background-brand"
         c="brand"
       >
         <Icon name="insight" size={12} />

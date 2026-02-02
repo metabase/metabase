@@ -272,9 +272,9 @@ describe("MetabotPurchasePage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai-tiered$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.quantity).toEqual(4567);
-    expect(cloudAddOnsRequest?.body?.terms_of_service).toEqual(true);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.quantity).toEqual(4567);
+    expect(cloudAddOnsRequest!.body.terms_of_service).toEqual(true);
 
     setupRefreshableProperties({
       current_user_matches_store_user: true,
@@ -313,8 +313,8 @@ describe("MetabotPurchasePage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai-tiered$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.quantity).toEqual(3456);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.quantity).toEqual(3456);
   });
 
   it("reports validation errors", async () => {

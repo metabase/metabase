@@ -1,5 +1,6 @@
 import type {
   DatabaseId,
+  ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
   TransformJob,
@@ -102,6 +103,18 @@ export function createMockTransformRun(
     end_time: "2000-01-01T00:00:00Z",
     message: null,
     run_method: "manual",
+    ...opts,
+  };
+}
+
+export function createMockListTransformRunsResponse(
+  opts?: Partial<ListTransformRunsResponse>,
+): ListTransformRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
     ...opts,
   };
 }

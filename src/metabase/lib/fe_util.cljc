@@ -507,7 +507,7 @@
    with-time? :- [:maybe :boolean]]
   (let [column (cond-> column
                  with-time? (lib.temporal-bucket/with-temporal-bucket :minute))
-        values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
+        values (mapv #(u.time/format-date-for-filter % with-time?) values)]
     (expression-clause operator (into [column] values) {})))
 
 (mu/defn specific-date-filter-parts :- [:maybe SpecificDateFilterParts]
