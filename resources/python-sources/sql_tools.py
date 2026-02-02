@@ -429,14 +429,23 @@ def serialize_error(e):
 # TODO: get rid of sqlglot_schema
 def validate_query(dialect, sql, default_table_schema, sqlglot_schema):
     """
-    Docstring for validate_query_stub
+    Validate a SQL query against a schema using sqlglot's qualify optimizer.
 
-    :param dialect: Description
-    :param sql: Description
-    :param default_table_schema: Description
-    :param sqlglot_schema: Description
+    Returns JSON with:
+    - If valid: {"status": "ok"}
+    - If error: {"status": "error", "type": "...", "message": "...", ...}
+
+    Error types:
+    - unknown_table: Table reference not found
+    - column_not_resolved: Column not found (includes 'column' and optionally 'details' with table info)
+    - invalid_expression: Syntax/parse error
+    - unhandled: Other errors
+
+    :param dialect: SQLGlot dialect string (e.g., "postgres", "mysql")
+    :param sql: SQL query string to validate
+    :param default_table_schema: Default schema for unqualified tables
+    :param sqlglot_schema: Schema dict {schema: {table: {column: type}}}
     """
-    print(sql)
     status = {"status": "ok"}
     # TODO: divide into 2 chunks -- parse, optimize
     try:

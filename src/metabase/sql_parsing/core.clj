@@ -91,6 +91,35 @@
         json/decode
         vec)))
 
+(defn validate-query
+  "Validate a SQL query against a schema using sqlglot's qualify optimizer.
+
+   Unlike `validate-sql-query` which only checks syntax, this validates that
+   column and table references actually exist in the provided schema.
+
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\")
+   - sql: The SQL query string to validate
+   - default-table-schema: Default schema name for unqualified table references
+   - sqlglot-schema: Schema map of {schema-name {table-name {column-name type}}}
+
+   Returns a map with:
+   - If valid: {:status \"ok\"}
+   - If error: {:status \"error\", :type \"...\", :message \"...\", ...}
+
+   Error types:
+   - \"unknown_table\": Table not found in schema
+   - \"column_not_resolved\": Column not found (includes :column key)
+   - \"invalid_expression\": Syntax/parse error
+   - \"unhandled\": Other errors"
+  [dialect sql default-table-schema sqlglot-schema]
+  (with-open [^Closeable ctx (python.pool/python-context)]
+    (common/eval-python ctx "import sql_tools")
+    (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
+        (.execute ^Value (object-array [dialect sql default-table-schema sqlglot-schema]))
+        .asString
+        json/decode+kw)))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
@@ -98,11 +127,12 @@
 
   (validate-sql-query "postgres" "SELECT * FORM users")
 
+  (validate-query "postgres" "SELECT * FROM users" "public" {"public" {"users" {"id" "INT"}}})
+
   (referenced-fields "postgres" "SELECT t.id, u.* FROM transactions t LEFT JOIN users u ON t.user_id = u.id")
 
   (referenced-fields "postgres" "SELECT * from users u left join transactions t on u.id = t.user_id")
 
   (referenced-fields "postgres" "select * from people")
 
-  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true")
-  )
+  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
