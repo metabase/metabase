@@ -1420,7 +1420,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-02-02T12:00:00
+      id: v59.2026-01-31T12:00:40
       author: christruter
       comment: Add composite primary key on workspace_transform (workspace_id, ref_id)
       preConditions:
@@ -1440,7 +1440,7 @@ databaseChangeLog:
   # ---------- Group 7: workspace_input ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:00:40
+      id: v59.2026-01-31T12:00:41
       author: qnkhuat
       comment: Create workspace_input table for external tables consumed by workspace transforms
       preConditions:
@@ -1527,7 +1527,7 @@ databaseChangeLog:
             tableName: workspace_input
 
   - changeSet:
-      id: v59.2026-01-31T12:00:41
+      id: v59.2026-01-31T12:00:42
       author: qnkhuat
       comment: Add index on workspace_input.workspace_id
       preConditions:
@@ -1545,7 +1545,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:42
+      id: v59.2026-01-31T12:00:43
       author: qnkhuat
       comment: Add index on workspace_input.table_id
       preConditions:
@@ -1563,7 +1563,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:43
+      id: v59.2026-01-31T12:00:44
       author: qnkhuat
       comment: Add composite index on workspace_input (workspace_id, ref_id)
       preConditions:
@@ -1583,7 +1583,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:44
+      id: v59.2026-01-31T12:00:45
       author: qnkhuat
       comment: Add FK from workspace_input.workspace_id to workspace with CASCADE
       preConditions:
@@ -1602,7 +1602,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:45
+      id: v59.2026-01-31T12:00:46
       author: qnkhuat
       comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
       preConditions:
@@ -1621,7 +1621,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:46
+      id: v59.2026-01-31T12:00:47
       author: qnkhuat
       comment: Add unique constraint on workspace_input (workspace_id, ref_id, db_id, schema, table, transform_version)
       preConditions:
@@ -1639,7 +1639,7 @@ databaseChangeLog:
   # ---------- Group 8: workspace_output ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:00:47
+      id: v59.2026-01-31T12:00:48
       author: sansolo
       comment: Create workspace_output table for tables produced by workspace transforms
       preConditions:
@@ -1737,7 +1737,7 @@ databaseChangeLog:
             tableName: workspace_output
 
   - changeSet:
-      id: v59.2026-01-31T12:00:48
+      id: v59.2026-01-31T12:00:49
       author: sansolo
       comment: Add index on workspace_output.workspace_id
       preConditions:
@@ -1755,7 +1755,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:49
+      id: v59.2026-01-31T12:00:50
       author: sansolo
       comment: Add index on workspace_output.ref_id
       preConditions:
@@ -1773,7 +1773,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:50
+      id: v59.2026-01-31T12:00:51
       author: sansolo
       comment: Add FK from workspace_output.workspace_id to workspace with CASCADE
       preConditions:
@@ -1792,7 +1792,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:51
+      id: v59.2026-01-31T12:00:52
       author: sansolo
       comment: Add FK from workspace_output.ref_id to workspace_transform with CASCADE
       preConditions:
@@ -1811,7 +1811,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:52
+      id: v59.2026-01-31T12:00:53
       author: sansolo
       comment: Add unique constraint on workspace_output (workspace_id, ref_id, transform_version)
       preConditions:
@@ -1829,7 +1829,7 @@ databaseChangeLog:
   # ---------- Group 9: workspace_merge ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:00:53
+      id: v59.2026-01-31T12:00:54
       author: qnkhuat
       comment: Create workspace_merge table to track batch merge events
       preConditions:
@@ -1885,7 +1885,7 @@ databaseChangeLog:
             tableName: workspace_merge
 
   - changeSet:
-      id: v59.2026-01-31T12:00:54
+      id: v59.2026-01-31T12:00:55
       author: qnkhuat
       comment: Add FK from workspace_merge.workspace_id to workspace with SET NULL
       preConditions:
@@ -1904,7 +1904,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:55
+      id: v59.2026-01-31T12:00:56
       author: qnkhuat
       comment: Add FK from workspace_merge.creator_id to core_user
       preConditions:
@@ -1922,7 +1922,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:56
+      id: v59.2026-01-31T12:00:57
       author: qnkhuat
       comment: Add index on workspace_merge.workspace_id
       preConditions:
@@ -1940,7 +1940,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:00:57
+      id: v59.2026-01-31T12:00:58
       author: qnkhuat
       comment: Add index on workspace_merge.creator_id
       preConditions:
@@ -1960,7 +1960,7 @@ databaseChangeLog:
   # ---------- Group 10: workspace_merge_transform ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:00:58
+      id: v59.2026-01-31T12:00:59
       author: qnkhuat
       comment: Create workspace_merge_transform table to track individual transform merges
       preConditions:
@@ -2028,7 +2028,7 @@ databaseChangeLog:
             tableName: workspace_merge_transform
 
   - changeSet:
-      id: v59.2026-01-31T12:00:59
+      id: v59.2026-01-31T12:01:00
       author: qnkhuat
       comment: Add FK from workspace_merge_transform.workspace_merge_id to workspace_merge with CASCADE
       preConditions:
@@ -2047,7 +2047,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:00
+      id: v59.2026-01-31T12:01:01
       author: qnkhuat
       comment: Add FK from workspace_merge_transform.workspace_id to workspace with SET NULL
       preConditions:
@@ -2066,7 +2066,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:01
+      id: v59.2026-01-31T12:01:02
       author: qnkhuat
       comment: Add FK from workspace_merge_transform.transform_id to transform with CASCADE
       preConditions:
@@ -2085,7 +2085,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:02
+      id: v59.2026-01-31T12:01:03
       author: qnkhuat
       comment: Add FK from workspace_merge_transform.merging_user_id to core_user
       preConditions:
@@ -2103,7 +2103,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:03
+      id: v59.2026-01-31T12:01:04
       author: qnkhuat
       comment: Add index on workspace_merge_transform.workspace_merge_id
       preConditions:
@@ -2121,7 +2121,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:04
+      id: v59.2026-01-31T12:01:05
       author: qnkhuat
       comment: Add index on workspace_merge_transform.workspace_id
       preConditions:
@@ -2139,7 +2139,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:05
+      id: v59.2026-01-31T12:01:06
       author: qnkhuat
       comment: Add index on workspace_merge_transform.transform_id
       preConditions:
@@ -2157,7 +2157,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:06
+      id: v59.2026-01-31T12:01:07
       author: qnkhuat
       comment: Add index on workspace_merge_transform.merging_user_id
       preConditions:
@@ -2177,7 +2177,7 @@ databaseChangeLog:
   # ---------- Group 11: workspace_output_external ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:01:07
+      id: v59.2026-01-31T12:01:08
       author: christruter
       comment: Create workspace_output_external table for output tables from external transforms
       preConditions:
@@ -2275,7 +2275,7 @@ databaseChangeLog:
             tableName: workspace_output_external
 
   - changeSet:
-      id: v59.2026-01-31T12:01:08
+      id: v59.2026-01-31T12:01:09
       author: christruter
       comment: Add index on workspace_output_external.workspace_id
       preConditions:
@@ -2293,7 +2293,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:09
+      id: v59.2026-01-31T12:01:10
       author: christruter
       comment: Add index on workspace_output_external.transform_id
       preConditions:
@@ -2311,7 +2311,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:10
+      id: v59.2026-01-31T12:01:11
       author: christruter
       comment: Add FK from workspace_output_external.workspace_id to workspace with CASCADE
       preConditions:
@@ -2330,7 +2330,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:11
+      id: v59.2026-01-31T12:01:12
       author: christruter
       comment: Add FK from workspace_output_external.transform_id to transform with CASCADE
       preConditions:
@@ -2349,7 +2349,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:12
+      id: v59.2026-01-31T12:01:13
       author: christruter
       comment: Add unique constraint on workspace_output_external (workspace_id, transform_id, graph_version)
       preConditions:
@@ -2367,7 +2367,7 @@ databaseChangeLog:
   # ---------- Group 12: workspace_input_external ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:01:13
+      id: v59.2026-01-31T12:01:14
       author: christruter
       comment: Create workspace_input_external table for external tables consumed by external transforms
       preConditions:
@@ -2448,7 +2448,7 @@ databaseChangeLog:
             tableName: workspace_input_external
 
   - changeSet:
-      id: v59.2026-01-31T12:01:14
+      id: v59.2026-01-31T12:01:15
       author: christruter
       comment: Add index on workspace_input_external.workspace_id
       preConditions:
@@ -2466,7 +2466,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:15
+      id: v59.2026-01-31T12:01:16
       author: christruter
       comment: Add FK from workspace_input_external.workspace_id to workspace with CASCADE
       preConditions:
@@ -2485,7 +2485,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:16
+      id: v59.2026-01-31T12:01:17
       author: christruter
       comment: Add unique constraint on workspace_input_external (workspace_id, db_id, schema, table, graph_version)
       preConditions:
@@ -2503,7 +2503,7 @@ databaseChangeLog:
   # ---------- Group 13: workspace_graph ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:01:17
+      id: v59.2026-01-31T12:01:18
       author: christruter
       comment: Create workspace_graph table for cached dependency graphs
       preConditions:
@@ -2561,7 +2561,7 @@ databaseChangeLog:
             tableName: workspace_graph
 
   - changeSet:
-      id: v59.2026-01-31T12:01:18
+      id: v59.2026-01-31T12:01:19
       author: christruter
       comment: Add unique index on workspace_graph (workspace_id, graph_version)
       preConditions:
@@ -2582,7 +2582,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:19
+      id: v59.2026-01-31T12:01:20
       author: christruter
       comment: Add FK from workspace_graph.workspace_id to workspace with CASCADE
       preConditions:
@@ -2603,7 +2603,7 @@ databaseChangeLog:
   # ---------- Group 14: Existing table changes ----------
 
   - changeSet:
-      id: v59.2026-01-31T12:01:20
+      id: v59.2026-01-31T12:01:21
       author: piranha
       comment: Add target_db_id column to transform table
       preConditions:
@@ -2625,7 +2625,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-01-31T12:01:21
+      id: v59.2026-01-31T12:01:22
       author: qnkhuat
       comment: Add workspace_permissions_status column to metabase_database table
       preConditions:
@@ -2648,7 +2648,7 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: v59.2026-01-31T12:01:22
+      id: v59.2026-01-31T12:01:23
       author: christruter
       comment: Backfill target_db_id for existing transforms
       changes:
@@ -2656,7 +2656,7 @@ databaseChangeLog:
             class: "metabase.app_db.custom_migrations.BackfillTransformTargetDbId"
 
   - changeSet:
-      id: v59.2026-01-31T12:01:23
+      id: v59.2026-01-31T12:01:24
       author: christruter
       comment: Add index on transform.target_db_id
       preConditions:
@@ -2678,7 +2678,7 @@ databaseChangeLog:
             indexName: idx_transform_target_db_id
 
   - changeSet:
-      id: v59.2026-01-31T12:01:24
+      id: v59.2026-01-31T12:01:25
       author: christruter
       comment: Add foreign key constraint from transform.target_db_id to metabase_database
       validCheckSum: ANY
