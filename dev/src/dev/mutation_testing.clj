@@ -199,10 +199,10 @@
 
 (defn branch-name
   "Generate a branch name for mutation testing a function.
-   Example: mutation-testing/lib.order-by/orderable-columns"
+   Example: mutation-testing-lib-order-by-orderable-columns"
   [target-ns fn-name]
   (let [short-ns (last (clojure.string/split (str target-ns) #"\."))]
-    (str "mutation-testing/lib." short-ns "/" fn-name)))
+    (str "mutation-testing-lib-" short-ns "-" fn-name)))
 
 (defn create-branch!
   "Create and checkout a new branch from master for mutation testing a function."
