@@ -10,6 +10,7 @@
    - Only two layouts: :flat and :comparison
    - FE interprets rendering based on lens type + card metadata"
   (:require
+   [malli.util :as mu]
    [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------------------------------------- Field & Table Schemas --------------------------------------------------
@@ -39,23 +40,13 @@
    [:semantic-type {:optional true} [:maybe :keyword]]
    [:stats {:optional true} [:maybe ::field-stats]]])
 
-(mr/def ::source-table
-  "Source table metadata."
+(mr/def ::table
+  "Table metadata."
   [:map
    [:table-id pos-int?]
    [:table-name :string]
    [:schema {:optional true} [:maybe :string]]
    [:db-id pos-int?]
-   [:column-count :int]
-   [:fields [:sequential ::field]]])
-
-(mr/def ::target-table
-  "Target table metadata (output of transform)."
-  [:map
-   [:table-id pos-int?]
-   [:table-name :string]
-   [:schema {:optional true} [:maybe :string]]
-   [:db-id {:optional true} pos-int?]
    [:column-count :int]
    [:fields [:sequential ::field]]])
 
@@ -112,18 +103,24 @@
    [:join-alias {:optional true} :string]
    [:join-strategy {:optional true} :keyword]])
 
+(mr/def ::card-metadata
+  "Optional metadata for cards. An open map that may contain keys from
+   comparison-metadata, join-step-metadata, or other lens-specific data."
+  (mu/open-schema
+   [:merge
+    [:map
+     [:dedup-key {:optional true} ::dedup-key]
+     ;; Card IDs this card depends on (e.g. for degeneracy checks)
+     [:depends-on-cards {:optional true} [:set :string]]]
+    (mu/optional-keys ::comparison-metadata)
+    (mu/optional-keys ::join-step-metadata)]))
+
 (mr/def ::card
   "A visualization card in the inspector output.
 
    Cards are generic - lens-specific data goes in :metadata.
    The :metadata map is opaque to the core but interpreted by
-   lens-specific lib utilities on the frontend.
-
-   Common metadata keys:
-   - :dedup-key - for deduplicating identical queries across lenses
-   - :group-id, :group-role, :group-order - for comparison grouping
-   - :card-type - lens-specific card type identifier
-   - :table-id, :field-id - entity references"
+   lens-specific lib utilities on the frontend. "
   [:map
    [:id :string]
    [:section-id {:optional true} [:maybe :string]]
@@ -134,7 +131,7 @@
    [:summary {:optional true} :boolean]
    [:visualization-settings {:optional true} :map]
    ;; Lens-specific metadata - opaque to core, interpreted by FE
-   [:metadata {:optional true} :map]])
+   [:metadata {:optional true} ::card-metadata]])
 
 ;;; -------------------------------------------------- Sections --------------------------------------------------
 
@@ -235,7 +232,7 @@
    [:name :string]
    [:description {:optional true} [:maybe :string]]
    [:status ::inspector-status]
-   [:sources [:sequential ::source-table]]
-   [:target {:optional true} [:maybe ::target-table]]
+   [:sources [:sequential ::table]]
+   [:target {:optional true} [:maybe ::table]]
    [:visited-fields {:optional true} [:maybe ::visited-fields]]
    [:available-lenses [:sequential ::lens-metadata]]])
