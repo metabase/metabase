@@ -14,9 +14,9 @@ import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
 
-import { DependenciesSection } from "./DependenciesSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
+import { TransformsSection } from "./TransformsSection";
 import type { TransformJobInfo } from "./types";
 
 type JobEditorProps = {
@@ -76,7 +76,7 @@ export function JobEditor({
           readOnly={readOnly}
           onTagsChange={onTagListChange}
         />
-        {job.id != null && <DependenciesSection jobId={job.id} />}
+        {job.id != null && <TransformsSection jobId={job.id} />}
       </Stack>
     </PageContainer>
   );

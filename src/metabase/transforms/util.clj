@@ -1,16 +1,10 @@
-(ns metabase-enterprise.transforms.util
+(ns metabase.transforms.util
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.transforms.canceling :as canceling]
-   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.schema :as transforms.schema]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -21,13 +15,18 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
+   [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -40,10 +39,6 @@
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:const transform-temp-table-prefix
-  "Prefix used for temporary tables created during transform execution."
-  "mb_transform_temp_table")
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -108,27 +103,15 @@
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
-  (if (python-transform? transform)
-    (and (premium-features/has-feature? :transforms)
-         (premium-features/has-feature? :transforms-python))
-    (premium-features/has-feature? :transforms)))
+  (cond
+    (query-transform? transform) (transforms.gating/query-transforms-enabled?)
+    (python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    :else false))
 
-(defenterprise has-db-transforms-permission?
-  "Returns true if the given user has the transforms permission for the given source db."
-  :feature :transforms
-  [user-id database-id]
-  (or (perms/is-superuser? user-id)
-      (perms/user-has-permission-for-database? user-id
-                                               :perms/transforms
-                                               :yes
-                                               database-id)))
-
-(defenterprise has-any-transforms-permission?
-  "Returns true if the current user has the transforms permission for _any_ source db."
-  :feature :transforms
-  [user-id]
-  (or (perms/is-superuser? user-id)
-      (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
+(defn enabled-source-types
+  "Returns set of enabled source types for WHERE clause filtering."
+  []
+  (transforms.gating/enabled-source-types))
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
@@ -499,21 +482,6 @@
   (log/infof "Dropping table %s" table-name)
   (driver/drop-table! driver database-id table-name))
 
-(defn temp-table-name
-  "Generate a temporary table name with current timestamp in milliseconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
-  [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (keyword schema table-name)))
-
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
    This is a simpler, composable operation that only handles renaming."
@@ -521,19 +489,12 @@
   (log/infof "Renaming tables: %s" (pr-str rename-map))
   (driver/rename-tables! driver database-id rename-map))
 
-(defenterprise is-temp-transform-table?
+(defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
-  :feature :transforms
   [table]
-  (when-let [table-name (:name table)]
-    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
-
-(defn db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database"
-  [db-or-id]
-  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               (t2/exists? :model/DatabaseRouter :database_id))))
+  (boolean
+   (when-let [table-name (and (transforms.gating/any-transforms-enabled?) (:name table))]
+     (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix))))
 
 ;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
 
@@ -738,6 +699,10 @@
         (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
           (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
           (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
+
+;; the real handler for this is in EE.
+(derive ::transform-run-noop :metabase/event)
+(derive :event/transform-run-complete ::transform-run-noop)
 
 (mu/defn handle-transform-complete!
   "Handles followup tasks for when a transform has completed.

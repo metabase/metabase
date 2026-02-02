@@ -1,15 +1,15 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
+(ns ^:mb/driver-tests metabase.transforms.util-test
   "Tests for transform utility functions."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]))
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms.util :as transforms.util]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,17 +19,16 @@
       (let [driver driver/*driver*]
 
         (testing "Basic table name generation"
-          (let [result (transforms.util/temp-table-name driver nil)
+          (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
-            (is (str/starts-with? table-name "mb_transform_temp_table_"))
-            (is (re-matches #"mb_transform_temp_table_\d+" table-name))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
 
         (testing "Table name preserves namespace when present"
-          (let [result (transforms.util/temp-table-name driver "schema")]
+          (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
-            (is (str/starts-with? (name result) "mb_transform_temp_table_"))))))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" (name result)))))))))
 
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
@@ -37,7 +36,7 @@
       (let [driver driver/*driver*
             db-id (mt/id)
 
-            table-name (transforms.util/temp-table-name driver nil)
+            table-name (driver.u/temp-table-name driver :test_table)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
@@ -57,16 +56,24 @@
                   ;; Ignore cleanup errors
                   nil)))))))))
 
-(deftest is-temp-transform-tables-test
-  (testing "tables with shcema"
-    (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
-          table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
-      (mt/with-premium-features #{}
-        (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
-        (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
-      (mt/with-premium-features #{:transforms}
-        (is (transforms.util/is-temp-transform-table? table-without-schema))
-        (is (transforms.util/is-temp-transform-table? table-with-schema)))))
+(mt/deftest-oss is-temp-transform-tables-oss-test
+  (testing "tables with schema"
+    (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
+          table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
+      (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
+      (is (true? (transforms.util/is-temp-transform-table? table-without-schema))))))
+
+(deftest is-temp-transform-tables-ee-test
+  (mt/when-ee-evailable
+   (testing "tables with schema"
+     (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
+           table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
+       (mt/with-premium-features #{}
+         (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
+         (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
+       (mt/with-premium-features #{:transforms}
+         (is (transforms.util/is-temp-transform-table? table-without-schema))
+         (is (transforms.util/is-temp-transform-table? table-with-schema))))))
 
   (testing "Ignores non-transform tables"
     (mt/with-premium-features #{:transforms}
