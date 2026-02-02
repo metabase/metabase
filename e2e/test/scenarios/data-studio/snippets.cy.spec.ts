@@ -19,15 +19,15 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("New snippet").click();
+      H.popover().findByText("Snippet").click();
 
       H.DataStudio.Snippets.newPage().should("be.visible");
       H.DataStudio.Snippets.saveButton().should("be.disabled");
 
       H.DataStudio.Snippets.editor.type("SELECT * FROM orders");
-      H.DataStudio.Snippets.saveButton().should("be.disabled");
+      H.DataStudio.Snippets.saveButton().should("be.enabled");
 
-      H.DataStudio.Snippets.nameInput().type("Test snippet");
+      H.DataStudio.Snippets.nameInput().clear().type("Test snippet");
       H.DataStudio.Snippets.saveButton().should("be.enabled");
 
       H.DataStudio.Snippets.descriptionInput().type(
@@ -121,6 +121,42 @@ describe("scenarios > data studio > snippets", () => {
 
       H.DataStudio.Snippets.editPage().should("be.visible");
     });
+
+    it("should preserve unsaved content changes when description or name is edited", () => {
+      cy.log("Navigate to a snippet and edit its content");
+      H.createSnippet({
+        name: "Test snippet",
+        content: "SELECT * FROM orders",
+      });
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
+      H.DataStudio.Snippets.editor.type("1");
+
+      cy.log("Edit its name");
+      cy.findByPlaceholderText("Name").type("1").blur();
+      H.undoToast().findByText("Snippet name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("Edit its description");
+      H.DataStudio.Snippets.descriptionInput().type("desc").blur();
+      H.undoToast()
+        .findByText("Snippet description updated")
+        .should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("Verify unsaved changes are preserved");
+      H.DataStudio.Snippets.editor
+        .value()
+        .should("eq", "SELECT * FROM orders1");
+
+      cy.log(
+        "Verify Save button saves the content without reverting the name and description changes",
+      );
+      H.DataStudio.Snippets.saveButton().click();
+      H.undoToast().findByText("Snippet content updated").should("be.visible");
+      cy.findByPlaceholderText("Name").should("have.value", "Test snippet1");
+      H.DataStudio.Snippets.editPage().findByText("desc").should("be.visible");
+    });
   });
 
   describe("description", () => {
@@ -152,7 +188,9 @@ describe("scenarios > data studio > snippets", () => {
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
-      cy.findByTestId("snippet-header").findByRole("button").click();
+      cy.findByTestId("snippet-header")
+        .findByRole("button", { name: /Snippet menu options/ })
+        .click();
       H.popover().findByText("Delete").click();
 
       H.modal().within(() => {
@@ -178,7 +216,7 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("New snippet folder").click();
+      H.popover().findByText("Snippet folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Give your folder a name").type("Test Folder");
@@ -194,9 +232,9 @@ describe("scenarios > data studio > snippets", () => {
         .should("be.visible");
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("New snippet").click();
+      H.popover().findByText("Snippet").click();
 
-      H.DataStudio.Snippets.nameInput().type("Folder snippet");
+      H.DataStudio.Snippets.nameInput().clear().type("Folder snippet");
       H.DataStudio.Snippets.editor.type("SELECT 1");
       H.DataStudio.Snippets.saveButton().click();
 

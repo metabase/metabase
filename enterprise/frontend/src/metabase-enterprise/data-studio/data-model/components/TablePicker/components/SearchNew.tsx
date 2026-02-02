@@ -1,10 +1,12 @@
 import { useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase-enterprise/data-studio/analytics";
 import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -96,9 +98,14 @@ export function SearchNew({
   filters,
   onChange,
 }: SearchNewProps) {
-  const { resetSelection } = useSelection();
+  const { resetSelection, filterSelectedTables } = useSelection();
+
   const routeParams = parseRouteParams(params);
-  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
+  const {
+    data: tables,
+    isLoading: isLoadingTables,
+    isFetching: isFetchingTables,
+  } = useListTablesQuery({
     term: query,
     "data-layer": filters.dataLayer ?? undefined,
     "data-source":
@@ -119,6 +126,8 @@ export function SearchNew({
     {},
     { defaultExpanded: true },
   );
+
+  const previousIsFetchingTables = usePrevious(isFetchingTables);
 
   const allowedDatabaseIds = useMemo(
     () => new Set(databases?.data.map((database) => database.id) ?? []),
@@ -141,8 +150,22 @@ export function SearchNew({
   );
 
   useEffect(() => {
+    filterSelectedTables(filteredTables.map((table) => table.id));
+  }, [filteredTables, filterSelectedTables]);
+
+  useEffect(() => {
     resetSelection();
   }, [query, filters, resetSelection]);
+
+  useEffect(() => {
+    const startedFetching =
+      (previousIsFetchingTables === false ||
+        previousIsFetchingTables === undefined) &&
+      isFetchingTables === true;
+    if (startedFetching) {
+      trackDataStudioTablePickerSearchPerformed();
+    }
+  }, [previousIsFetchingTables, isFetchingTables]);
 
   if (isLoading) {
     return (

@@ -6,13 +6,13 @@ import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import QuestionLoader from "metabase/common/components/QuestionLoader";
-import Radio from "metabase/common/components/Radio";
+import { QuestionLoader } from "metabase/common/components/QuestionLoader";
+import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
@@ -36,8 +36,6 @@ import {
   AttributeOptionsEmptyState,
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
-
-import { shouldDisableItem } from "./utils";
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
@@ -221,7 +219,14 @@ const EditSandboxingModal = ({
                   hideModal();
                 }}
                 onClose={hideModal}
-                shouldDisableItem={shouldDisableItem}
+                models={["card", "dataset"]}
+                namespaces={[null]}
+                options={{
+                  hasLibrary: false,
+                  hasRootCollection: true,
+                  hasPersonalCollections: true,
+                  hasConfirmButtons: true,
+                }}
               />
             )}
           </div>

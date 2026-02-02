@@ -4,12 +4,17 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
-import type { UserInfo } from "./user";
+import type { UserId, UserInfo } from "./user";
 
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
+
+export type TransformOwner = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+>;
 
 export type Transform = {
   id: TransformId;
@@ -20,6 +25,18 @@ export type Transform = {
   collection_id: number | null;
   created_at: string;
   updated_at: string;
+  source_readable: boolean;
+
+  // true when transform was deleted but still referenced by runs
+  deleted?: boolean;
+
+  // creator fields
+  creator_id?: UserId;
+
+  // owner fields (can be different from creator)
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
+  owner?: TransformOwner | null;
 
   // hydrated fields
   tag_ids?: TransformTagId[];
@@ -125,6 +142,7 @@ export type TransformTag = {
   name: string;
   created_at: string;
   updated_at: string;
+  can_run: boolean;
 };
 
 export type TransformJob = {
@@ -149,6 +167,8 @@ export type CreateTransformRequest = {
   target: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
 };
 
 export type UpdateTransformRequest = {
@@ -159,6 +179,8 @@ export type UpdateTransformRequest = {
   target?: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
 };
 
 export type CreateTransformJobRequest = {

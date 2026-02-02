@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Link } from "react-router";
 
-import LabelIcon from "../LabelIcon";
+import { LabelIcon } from "../LabelIcon";
 import S from "../Sidebar.module.css";
 
 type SidebarItemProps = {
@@ -12,7 +12,7 @@ type SidebarItemProps = {
   onClick?: () => void;
 };
 
-const SidebarItem = ({
+const SidebarItemInner = ({
   name,
   sidebar,
   icon,
@@ -32,5 +32,4 @@ const SidebarItem = ({
   </li>
 );
 
-// eslint-disable-next-line import/no-default-export
-export default memo(SidebarItem);
+export const SidebarItem = memo(SidebarItemInner);

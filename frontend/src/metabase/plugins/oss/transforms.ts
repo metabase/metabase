@@ -3,6 +3,10 @@ import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
 import type { TagType } from "metabase/api/tags";
+import type {
+  OmniPickerCollectionItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import {
   NotFoundPlaceholder,
@@ -11,6 +15,7 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
+  CollectionNamespace,
   GetDependencyGraphRequest,
   PythonTransformSourceDraft,
   Transform,
@@ -21,9 +26,7 @@ import type {
 import type { State } from "metabase-types/store";
 
 // Types
-export type TransformPickerItem = {
-  id: TransformId;
-  name: string;
+export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
 };
 
@@ -36,7 +39,9 @@ export type TransformsPlugin = {
   isEnabled: boolean;
   canAccessTransforms: (state: State) => boolean;
   getDataStudioTransformRoutes(): ReactNode;
-  TransformPicker: ComponentType<TransformPickerProps>;
+  getRootCollectionItem: (args: {
+    namespace: CollectionNamespace;
+  }) => OmniPickerCollectionItem | null;
   useGetTransformQuery: UseQuery<
     QueryDefinition<TransformId, BaseQueryFn, TagType, Transform>
   >;
@@ -46,6 +51,7 @@ export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transformId?: TransformId;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
@@ -77,7 +83,7 @@ export type PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
-  getDataStudioTasksRoutes: () => ReactNode;
+  getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -145,7 +151,7 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
   isEnabled: false,
   canAccessTransforms: () => false,
   getDataStudioTransformRoutes: () => null,
-  TransformPicker: PluginPlaceholder,
+  getRootCollectionItem: () => null,
   useGetTransformQuery:
     (() => []) as unknown as TransformsPlugin["useGetTransformQuery"],
 });
@@ -168,7 +174,7 @@ export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  getDataStudioTasksRoutes: () => null,
+  getDataStudioDependencyDiagnosticsRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

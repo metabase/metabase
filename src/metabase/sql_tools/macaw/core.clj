@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [macaw.core :as macaw]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
@@ -24,7 +25,7 @@
         db-transforms (lib.metadata/transforms query)]
     (-> query
         lib/raw-native-query
-        macaw/parsed-query
+        (driver.u/parsed-query driver)
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
@@ -138,7 +139,7 @@
   [driver native-query]
   (let [{:keys [returned-fields]} (-> native-query
                                       lib/raw-native-query
-                                      macaw/parsed-query
+                                      (driver.u/parsed-query driver)
                                       macaw/->ast
                                       (->> (sql-tools.macaw.references/field-references driver)))]
     (mapcat #(->> (resolve-field driver native-query %)
@@ -154,12 +155,12 @@
   [driver native-query]
   (let [{:keys [used-fields returned-fields errors]} (-> native-query
                                                          lib/raw-native-query
-                                                         macaw/parsed-query
+                                                         (driver.u/parsed-query driver)
                                                          macaw/->ast
-                                                         (-> (sql-tools.macaw.references/field-references driver)))
+                                                         (->> (sql-tools.macaw.references/field-references driver)))
         check-fields #(mapcat (fn [col-spec]
-                                (resolve-field driver (lib/->metadata-provider native-query) col-spec)
-                                (keep :error))
+                                (->> (resolve-field driver (lib/->metadata-provider native-query) col-spec)
+                                     (keep :error)))
                               %)]
     (-> errors
         (into (check-fields used-fields))

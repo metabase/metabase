@@ -24,6 +24,7 @@ type SetupOpts = {
   activeTab?: DataStudioTableMetadataTab;
   segments?: Segment[];
   isAdmin?: boolean;
+  isDataAnalyst?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
@@ -31,7 +32,8 @@ function setup({
   table = createMockTable(),
   activeTab = "field",
   segments,
-  isAdmin = true,
+  isAdmin = false,
+  isDataAnalyst = false,
   remoteSyncType,
 }: SetupOpts = {}) {
   const onSyncOptionsClick = jest.fn();
@@ -56,6 +58,7 @@ function setup({
           table={tableWithSegments}
           activeTab={activeTab}
           hasLibrary
+          canPublish
           onSyncOptionsClick={onSyncOptionsClick}
         />
       )}
@@ -63,7 +66,10 @@ function setup({
     {
       withRouter: true,
       storeInitialState: {
-        currentUser: createMockUser({ is_superuser: isAdmin }),
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+          is_data_analyst: isDataAnalyst,
+        }),
         settings,
       },
     },
@@ -85,26 +91,23 @@ describe("TableSection", () => {
     );
   });
 
-  it("should not render publish button for non-admin users", () => {
-    setup({ isAdmin: false });
+  it("should render publish button for admins", () => {
+    setup({ isAdmin: true });
 
-    expect(
-      screen.queryByRole("button", { name: /Publish/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Unpublish/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+  });
+
+  it("should render publish button for data analysts", () => {
+    setup({ isDataAnalyst: true });
+
+    expect(screen.getByText("Publish")).toBeInTheDocument();
   });
 
   it("should not render publish button when remote sync is set to read-only", () => {
     setup({ remoteSyncType: "read-only" });
 
-    expect(
-      screen.queryByRole("button", { name: /Publish/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Unpublish/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Publish")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unpublish")).not.toBeInTheDocument();
   });
 
   describe("tabs", () => {

@@ -2,12 +2,14 @@ import { useDisclosure } from "@mantine/hooks";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
+import { PythonTransformsUpsellModal } from "metabase-enterprise/data-studio/upsells";
 
 import { trackTransformCreate } from "../../analytics";
 import { CreateTransformCollectionModal } from "../CreateTransformCollectionModal";
@@ -22,10 +24,25 @@ export const CreateTransformMenu = () => {
     isCollectionModalOpened,
     { open: openCollectionModal, close: closeCollectionModal },
   ] = useDisclosure();
+  const [
+    isPythonUpsellOpened,
+    { open: openPythonUpsell, close: closePythonUpsell },
+  ] = useDisclosure();
+
+  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
 
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
   });
+
+  const handlePythonClick = () => {
+    if (hasPythonTransformsFeature) {
+      trackTransformCreate({ creationType: "python" });
+      dispatch(push(Urls.newPythonTransform()));
+    } else {
+      openPythonUpsell();
+    }
+  };
 
   return (
     <>
@@ -64,17 +81,15 @@ export const CreateTransformMenu = () => {
               >
                 {t`SQL query`}
               </Menu.Item>
-              {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-                <Menu.Item
-                  leftSection={<Icon name="code_block" />}
-                  onClick={() => {
-                    trackTransformCreate({ creationType: "python" });
-                    dispatch(push(Urls.newPythonTransform()));
-                  }}
-                >
-                  {t`Python script`}
-                </Menu.Item>
-              )}
+              <Menu.Item
+                leftSection={<Icon name="code_block" />}
+                rightSection={
+                  !hasPythonTransformsFeature ? <UpsellGem size={14} /> : null
+                }
+                onClick={handlePythonClick}
+              >
+                {t`Python script`}
+              </Menu.Item>
               <Menu.Item
                 leftSection={<Icon name="insight" />}
                 onClick={() => {
@@ -89,7 +104,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="folder" />}
                 onClick={openCollectionModal}
               >
-                {t`New collection`}
+                {t`Transform folder`}
               </Menu.Item>
             </>
           )}
@@ -100,12 +115,10 @@ export const CreateTransformMenu = () => {
         <QuestionPickerModal
           title={t`Pick a question or a model`}
           models={["card", "dataset"]}
-          shouldDisableItem={(item) => shouldDisableItem(item, databases?.data)}
+          isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            if (item.model === "card") {
-              dispatch(push(Urls.newTransformFromCard(item.id)));
-              closePicker();
-            }
+            dispatch(push(Urls.newTransformFromCard(item.id)));
+            closePicker();
           }}
           onClose={closePicker}
         />
@@ -114,6 +127,11 @@ export const CreateTransformMenu = () => {
       {isCollectionModalOpened && (
         <CreateTransformCollectionModal onClose={closeCollectionModal} />
       )}
+
+      <PythonTransformsUpsellModal
+        isOpen={isPythonUpsellOpened}
+        onClose={closePythonUpsell}
+      />
     </>
   );
 };

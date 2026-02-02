@@ -6,6 +6,7 @@ import _ from "underscore";
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { openSaveDialog } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
@@ -19,6 +20,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
@@ -67,7 +69,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
         </Link>
       </Flex>
 
-      <Stack>
+      <Stack gap="sm">
         <Title order={3}>{t`Task details`}</Title>
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`ID`}</Text>
@@ -104,13 +106,31 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             {isLoadingDatabases ? <Loader size="xs" /> : db ? dbEngine : "—"}
           </Text>
         </Flex>
-        <Flex gap="md">
+        <Flex gap="md" align="baseline">
           <Text fw="bold" w={120}>{t`Started at`}</Text>
-          <Text>{task.started_at}</Text>
+          <Tooltip label={task.started_at}>
+            <DateTime
+              value={task.started_at}
+              unit="minute"
+              data-testid="started-at"
+            />
+          </Tooltip>
+          <CopyButton value={task.started_at} />
         </Flex>
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`Ended at`}</Text>
-          <Text>{task.ended_at ?? "—"}</Text>
+          {task.ended_at ? (
+            <Tooltip label={task.ended_at}>
+              <DateTime
+                value={task.ended_at}
+                unit="minute"
+                data-testid="ended-at"
+              />
+            </Tooltip>
+          ) : (
+            "—"
+          )}
+          {task.ended_at && <CopyButton value={task.ended_at} />}
         </Flex>
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`Duration (ms)`}</Text>
@@ -129,6 +149,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           p={linesCount > 1 ? 0 : "xs"}
           pos="relative"
           mt="md"
+          data-testid="code-container"
         >
           <CodeEditor
             language="json"

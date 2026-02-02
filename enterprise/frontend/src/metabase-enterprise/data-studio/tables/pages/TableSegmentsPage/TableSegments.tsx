@@ -2,9 +2,8 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { getUserCanWriteSegments } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import {
@@ -17,13 +16,14 @@ type TableSegmentsProps = {
 };
 
 export function TableSegments({ table }: TableSegmentsProps) {
-  const canWriteSegments = useSelector(getUserCanWriteSegments);
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const canWriteSegments = useSelector((state) =>
+    getUserCanWriteSegments(state, table.is_published),
+  );
   const segments = table.segments ?? [];
   let newButtonLabel: string | undefined;
   let newButtonUrl: string | undefined;
 
-  if (!remoteSyncReadOnly && canWriteSegments) {
+  if (canWriteSegments) {
     newButtonLabel = t`New segment`;
     newButtonUrl = Urls.dataStudioPublishedTableSegmentNew(table.id);
   }

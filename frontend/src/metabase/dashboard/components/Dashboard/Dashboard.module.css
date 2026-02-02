@@ -2,6 +2,10 @@
   flex: 1 0 auto;
   background-color: var(--mb-color-background-secondary);
 
+  &.isEmbeddingSdk {
+    background-color: var(--mb-color-bg-dashboard);
+  }
+
   &.isEditingOrSharing {
     flex-basis: 0;
   }

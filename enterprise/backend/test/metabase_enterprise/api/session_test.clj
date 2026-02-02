@@ -34,8 +34,6 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
-                              :offer-metabase-ai
-                              :offer-metabase-ai-tiered
                               :official-collections
                               :query-reference-validation
                               :remote-sync
@@ -49,6 +47,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :sso-slack
                               :support-users
                               :transforms
                               :transforms-python
@@ -82,8 +81,6 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
-            :offer_metabase_ai              true
-            :offer_metabase_ai_tiered       true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true
@@ -97,6 +94,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
             :transforms                     true

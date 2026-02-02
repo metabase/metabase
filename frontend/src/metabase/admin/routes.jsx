@@ -6,9 +6,9 @@ import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
 import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
-import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
+import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
+import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
+import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -20,7 +20,7 @@ import { UserActivationModal } from "metabase/admin/people/containers/UserActiva
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
-import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
+import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
 import {
   EmbeddingSecuritySettings,
   EmbeddingSettings,
@@ -37,6 +37,7 @@ import {
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
@@ -44,7 +45,6 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
-  PLUGIN_METABOT,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -63,7 +63,7 @@ import {
   createTenantsRouteGuard,
 } from "./utils";
 
-const getRoutes = (store, CanAccessSettings, IsAdmin) => {
+export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
   const hasSimpleEmbedding = getTokenFeature(
     store.getState(),
     "embedding_simple",
@@ -262,7 +262,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => {
             />
           </Route>
         </Route>
-        {PLUGIN_METABOT.getAdminRoutes()}
+
+        {/* Metabot */}
+        <Route path="metabot" component={createAdminRouteGuard("metabot")}>
+          {getMetabotAdminRoutes()}
+        </Route>
+
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route title={t`Tools`} component={ToolsApp}>
             <IndexRedirect to="help" />
@@ -319,5 +324,3 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => {
     </Route>
   );
 };
-
-export default getRoutes;

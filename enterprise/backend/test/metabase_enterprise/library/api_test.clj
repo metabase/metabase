@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

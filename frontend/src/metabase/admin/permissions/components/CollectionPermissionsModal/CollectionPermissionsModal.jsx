@@ -4,9 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
-import ModalContent from "metabase/common/components/ModalContent";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
@@ -27,7 +27,7 @@ import {
 import { permissionEditorPropTypes } from "../PermissionsEditor";
 import { PermissionsTable } from "../PermissionsTable";
 
-import { PermissionTableContainer } from "./CollectionPermissionsModal.styled";
+import S from "./CollectionPermissionsModal.module.css";
 
 const getDefaultTitle = (namespace) =>
   namespace === "snippets"
@@ -146,20 +146,21 @@ const CollectionPermissionsModal = ({
         </Button>,
       ]}
     >
-      <PermissionTableContainer>
+      <div className={S.PermissionTableContainer}>
         {permissionEditor && (
           <PermissionsTable
             {...permissionEditor}
             onChange={handlePermissionChange}
           />
         )}
-      </PermissionTableContainer>
+      </div>
     </ModalContent>
   );
 };
 
 CollectionPermissionsModal.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,

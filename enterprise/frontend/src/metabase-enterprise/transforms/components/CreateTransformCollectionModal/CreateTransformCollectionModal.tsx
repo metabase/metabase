@@ -65,7 +65,7 @@ export function CreateTransformCollectionModal({
 
   return (
     <Modal
-      title={t`New collection`}
+      title={t`Transform folder`}
       opened
       onClose={onClose}
       padding="xl"
@@ -93,7 +93,7 @@ export function CreateTransformCollectionModal({
             <FormCollectionPicker
               name="parent_id"
               title={t`Parent collection`}
-              type="transform-collections"
+              collectionPickerModalProps={{ namespaces: ["transforms"] }}
             />
             <Group justify="flex-end">
               <FormErrorMessage />

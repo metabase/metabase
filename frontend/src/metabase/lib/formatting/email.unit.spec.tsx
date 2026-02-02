@@ -1,7 +1,7 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { isElementOfType } from "react-dom/test-utils";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatEmail } from "./email";
@@ -29,28 +29,22 @@ describe("formatEmail", () => {
       expect(screen.getByRole("link")).toHaveTextContent("test@example.com");
     });
 
-    it("should handle complex valid email addresses", () => {
-      const complexEmails = [
-        "user.name+tag@example.com",
-        "user123@subdomain.example.org",
-        "test-email@domain-name.com",
-        "firstname.lastname@company.co.uk",
-      ];
+    it.each([
+      "user.name+tag@example.com",
+      "user123@subdomain.example.org",
+      "test-email@domain-name.com",
+      "firstname.lastname@company.co.uk",
+    ])("should handle complex valid email address: %s", (email) => {
+      const result = formatEmail(email, { jsx: true, rich: true });
+      expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
-      complexEmails.forEach((email) => {
-        const result = formatEmail(email, { jsx: true, rich: true });
-        expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
+      render(result);
 
-        render(result);
-
-        expect(screen.getByRole("link")).toHaveAttribute(
-          "href",
-          `mailto:${email}`,
-        );
-        expect(screen.getByRole("link")).toHaveTextContent(email);
-
-        cleanup();
-      });
+      expect(screen.getByRole("link")).toHaveAttribute(
+        "href",
+        `mailto:${email}`,
+      );
+      expect(screen.getByRole("link")).toHaveTextContent(email);
     });
   });
 

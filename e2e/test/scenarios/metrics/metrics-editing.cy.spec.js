@@ -297,10 +297,9 @@ describe("scenarios > metrics > editing", () => {
       });
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Data").click();
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").should("be.visible");
-        // FIXME: metabase#66210
-        // cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
     });
 
@@ -504,7 +503,7 @@ function getActionButton(title) {
 }
 
 function getPlusButton() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
@@ -570,7 +569,7 @@ function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   }
   if (bucketName) {
     H.popover().findByLabelText(columnName).findByText("by month").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(bucketName).click();
   } else {
     H.popover().findByText(columnName).click();

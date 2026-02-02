@@ -231,7 +231,7 @@
                         :aggregation  [[:count]]
                         :limit        1})))))))))))
 
-(mt/defdataset long-col-name-dataset
+(mt/defdataset long-column-name-dataset
   [["long_col_name" [{:field-name "fk"
                       :base-type :type/Integer}
                      {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
@@ -239,7 +239,7 @@
     [[1 "a1"]
      [2 "a2"]
      [2 "a3"]]]
-   ["long_col_name_2" [{:field-name "foo"
+   ["long_col_name_2" [{:field-name "foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc"
                         :base-type :type/Integer}
                        {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
                         :base-type :type/Text}]
@@ -249,12 +249,12 @@
 
 (deftest long-col-name-repro-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (mt/dataset long-col-name-dataset
+    (mt/dataset long-column-name-dataset
       (let [mp (mt/metadata-provider)
             table (lib.metadata/table mp (mt/id :long_col_name))
             query (lib/query mp table)
             fk-field (mt/id :long_col_name :fk)
-            id-2-field (mt/id :long_col_name_2 :foo)]
+            id-2-field (mt/id :long_col_name_2 :foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc)]
         (t2/update! :model/Field fk-field {:semantic_type :type/FK
                                            :fk_target_field_id id-2-field})
         (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
@@ -272,7 +272,7 @@
           (let [table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
                 join-cols (lib/joinable-columns query -1 table-2)
                 fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
-                id-col (m/find-first #(= (u/lower-case-en (:name %)) "foo") join-cols)
+                id-col (m/find-first #(str/starts-with? (u/lower-case-en (:name %)) "foo") join-cols)
                 join-clause (-> (lib/join-clause table-2)
                                 (lib/with-join-conditions [(lib/= fk-col id-col)])
                                 (lib/with-join-fields :all))
@@ -317,8 +317,9 @@
               query           (lib/query mp (lib.metadata/table mp (mt/id :logs)))
               ;; Find the event_timestamp column that's implicitly joinable via FK.
               ;; Columns with :fk-field-id are from implicit joins.
-              filterable-cols (lib/filterable-columns query)
-              event-timestamp (lib/find-column-for-name filterable-cols "event_timestamp" :fk-field-id)
+              event-timestamp (->> (lib/filterable-columns query)
+                                   (filter :fk-field-id)
+                                   (m/find-first (comp #{"event_timestamp"} u/lower-case-en :name)))
               _               (is (some? event-timestamp) "Should find event_timestamp via implicit join")]
           (testing "Filter on coerced field via implicit join"
             ;; This would fail with "operator does not exist: integer >= timestamp"
@@ -360,8 +361,9 @@
                                   (lib/join join-clause))
               ;; Find the event_timestamp column from the explicit join.
               ;; Columns from explicit joins have :metabase.lib.join/join-alias.
-              filterable-cols (lib/filterable-columns query)
-              event-timestamp (lib/find-column-for-name filterable-cols "event_timestamp" :metabase.lib.join/join-alias)
+              event-timestamp (->> (lib/filterable-columns query)
+                                   (filter :metabase.lib.join/join-alias)
+                                   (m/find-first (comp #{"event_timestamp"} u/lower-case-en :name)))
               _               (is (some? event-timestamp) "Should find event_timestamp via explicit join")]
           (testing "Filter on coerced field via explicit join"
             (let [query (-> query

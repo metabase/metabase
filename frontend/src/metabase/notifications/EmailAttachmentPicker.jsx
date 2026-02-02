@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Group, Icon, Text, Tooltip } from "metabase/ui";
 
@@ -13,6 +13,7 @@ function getCardIdPair(card) {
   return card.id + "|" + card.dashboard_card_id;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
 

@@ -55,17 +55,25 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   type: TType;
   data: TData;
   dependents_count?: DependentsCount | null;
-  dependents_errors?: DependencyError[] | null;
+  dependents_errors?: AnalysisFindingError[] | null;
 };
 
 export type TableDependencyNodeData = Pick<
   Table,
-  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
+  | "name"
+  | "display_name"
+  | "description"
+  | "db_id"
+  | "schema"
+  | "db"
+  | "fields"
+  | "transform"
+  | "owner"
 >;
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "created_at"
+  "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -199,18 +207,26 @@ export type DependencyNode =
   | SegmentDependencyNode
   | MeasureDependencyNode;
 
-export const DEPENDENCY_ERROR_TYPES = [
+export type AnalysisFindingErrorId = number;
+
+export const ANALYSIS_FINDING_ERROR_TYPES = [
   "missing-column",
   "missing-table-alias",
   "duplicate-column",
   "syntax-error",
   "validation-error",
 ] as const;
-export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
+export type AnalysisFindingErrorType =
+  (typeof ANALYSIS_FINDING_ERROR_TYPES)[number];
 
-export type DependencyError = {
-  type: DependencyErrorType;
-  detail?: string | null;
+export type AnalysisFindingError = {
+  id: AnalysisFindingErrorId;
+  analyzed_entity_id: DependencyId;
+  analyzed_entity_type: DependencyType;
+  source_entity_id?: DependencyId | null;
+  source_entity_type?: DependencyType | null;
+  error_type: AnalysisFindingErrorType;
+  error_detail?: string | null;
 };
 
 export type DependencyEdge = {
@@ -233,9 +249,13 @@ export type GetDependencyGraphRequest = {
 export type ListNodeDependentsRequest = {
   id: DependencyId;
   type: DependencyType;
-  dependent_type: DependencyType;
-  dependent_card_type?: CardType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
+  query?: string;
+  include_personal_collections?: boolean;
   archived?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type CheckDependenciesResponse = {
@@ -256,7 +276,9 @@ export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
-  "dependents-count",
+  "view-count",
+  "dependents-errors",
+  "dependents-with-errors",
 ] as const;
 export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 
@@ -264,12 +286,7 @@ export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
 
-export type DependencySortingOptions = {
-  column: DependencySortColumn;
-  direction: DependencySortDirection;
-};
-
-export type ListBrokenGraphNodesRequest = PaginationRequest & {
+export type ListBreakingGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
@@ -278,8 +295,18 @@ export type ListBrokenGraphNodesRequest = PaginationRequest & {
   sort_direction?: DependencySortDirection;
 };
 
-export type ListBrokenGraphNodesResponse = PaginationResponse & {
+export type ListBreakingGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type ListBrokenGraphNodesRequest = {
+  id: DependencyId;
+  type: DependencyType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
@@ -293,4 +320,11 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type DependencyListUserParams = {
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };

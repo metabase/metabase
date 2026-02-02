@@ -146,6 +146,10 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-slack?
+  "Should we enable Slack Connect (OIDC) authentication?"
+  :sso-slack)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -163,6 +167,7 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
+      (enable-sso-slack?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -263,14 +268,6 @@
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
 
-(define-premium-feature ^{:added "0.55.0"} offer-metabase-ai-trial?
-  "Should we offer a trial of the Metabase AI add-on?"
-  :offer-metabase-ai)
-
-(define-premium-feature ^{:added "0.56.0"} offer-metabase-ai-paid?
-  "Should we offer the paid Metabase AI add-on?"
-  :offer-metabase-ai-tiered)
-
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
   :cloud-custom-smtp)
@@ -350,8 +347,6 @@
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
-   :offer_metabase_ai              (offer-metabase-ai-trial?)
-   :offer_metabase_ai_tiered       (offer-metabase-ai-paid?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)
@@ -365,6 +360,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_slack                      (enable-sso-slack?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)

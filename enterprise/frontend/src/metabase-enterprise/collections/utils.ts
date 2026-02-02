@@ -1,6 +1,7 @@
 import type { IconData, ObjectWithModel } from "metabase/lib/icon";
 import { getIconBase } from "metabase/lib/icon";
 import type { ItemWithCollection } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type {
   Bookmark,
   Collection,
@@ -68,6 +69,14 @@ export const getIcon = (
   }
 
   if (item.model === "collection") {
+    // Library collections keep their special icon regardless of sync status
+    const libraryCollectionType = PLUGIN_DATA_STUDIO.getLibraryCollectionType(
+      item.type as CollectionType,
+    );
+    if (libraryCollectionType != null) {
+      return getIconBase(item);
+    }
+
     // tenant users see the normal icon, they don't know what a synced collection is
     if (item.is_remote_synced && !isTenantUser) {
       return {

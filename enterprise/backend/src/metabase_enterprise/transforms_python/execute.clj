@@ -166,11 +166,8 @@
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees.
    Creates new table, then atomically renames target->old and new->target, then drops old."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))
-        temp-table-name (u/poll {:thunk #(transforms.util/temp-table-name driver (namespace table-name))
-                                 :done? #(not= source-table-name %)
-                                 ;; Poll every 1ms to quickly generate a different timestamp-based table name
-                                 :interval-ms 1})]
+  (let [source-table-name (driver.u/temp-table-name driver table-name)
+        temp-table-name   (driver.u/temp-table-name driver table-name)]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
 
@@ -190,7 +187,7 @@
   "Transfer data using create + drop + rename to minimize time without data.
    Creates new table, drops old table, then renames new->target."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))]
+  (let [source-table-name (driver.u/temp-table-name driver table-name)]
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
 
@@ -350,13 +347,17 @@
   "Execute a Python transform by calling the python runner.
 
   Blocks until the transform returns."
-  [transform {:keys [run-method start-promise]}]
+  [transform {:keys [run-method start-promise user-id]}]
   (assert (transforms.util/python-transform? transform) "Transform must be a python transform")
   (try
     (let [message-log (empty-message-log)
-          {:keys [target] transform-id :id} transform
+          {:keys [target owner_user_id creator_id] transform-id :id} transform
           {driver :engine :as db} (t2/select-one :model/Database (:database target))
-          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
+          ;; For manual runs, use the triggering user; for cron, use owner/creator
+          run-user-id (if (and (= run-method :manual) user-id)
+                        user-id
+                        (or owner_user_id creator_id))
+          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
@@ -373,9 +374,10 @@
             ex-message-fn     #(exceptional-run-message message-log %)
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
-        (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-          (transforms.util/sync-target! target db))
-        (transforms.util/execute-secondary-index-ddl-if-required! transform run-id db target)
+        (transforms.util/handle-transform-complete!
+         :run-id run-id
+         :transform transform
+         :db db)
         {:run_id run-id
          :result result}))
     (catch Throwable t

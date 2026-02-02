@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,7 +11,9 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
+import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -36,7 +38,7 @@ import {
 } from "../FlexibleSizeComponent";
 import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
-import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
@@ -87,7 +89,6 @@ export const SdkQuestionDefaultView = ({
     isQuestionLoading,
     originalQuestion,
     isSaveEnabled,
-    withDownloads,
     targetCollection,
     onReset,
     onNavigateBack,
@@ -164,6 +165,9 @@ export const SdkQuestionDefaultView = ({
     { skipCollectionFetching: !isSaveEnabled },
   );
 
+  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
+  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
+
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
@@ -193,15 +197,26 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+      <Stack
+        ref={hideEmptyParentRef}
+        className={InteractiveQuestionS.TopBar}
+        gap="sm"
+        p="md"
+        data-hide-empty
+      >
         <Group
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
+          data-hide-empty
         >
-          <Group gap="xs">
-            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
-              <BackButton />
+          <Group gap="xs" data-hide-empty>
+            <Box
+              className={InteractiveQuestionS.BackButtonWrapper}
+              mr="sm"
+              data-hide-empty
+            >
+              <BackButton data-hide-empty />
             </Box>
             <DefaultViewTitle
               title={title}
@@ -211,8 +226,11 @@ export const SdkQuestionDefaultView = ({
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
-          <ResultToolbar data-testid="interactive-question-result-toolbar">
-            <Group gap="xs">
+          <ResultToolbar
+            data-testid="interactive-question-result-toolbar"
+            data-hide-empty
+          >
+            <Group gap="xs" data-hide-empty>
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -253,8 +271,13 @@ export const SdkQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <Group gap="sm">
-              {withDownloads && <DownloadWidgetDropdown />}
+            <Group gap="sm" ml="auto" data-hide-empty>
+              {!isEditorOpen && (
+                <>
+                  <DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </>
+              )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </ResultToolbar>

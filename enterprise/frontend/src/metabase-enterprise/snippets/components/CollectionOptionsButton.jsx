@@ -4,12 +4,13 @@ import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { AccordionList } from "metabase/common/components/AccordionList";
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 const ICON_SIZE = 16;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class CollectionOptionsButton extends Component {
   render() {
     const items = this.popoverOptions();

@@ -9,11 +9,11 @@
   (mt/with-premium-features #{:dependencies}
     (testing "Can insert errors for an entity"
       (mt/with-empty-h2-app-db!
-        (let [errors [{:error-type :validate/missing-column
+        (let [errors [{:error-type :missing-column
                        :error-detail "CATEGORY"
                        :source-entity-type :table
                        :source-entity-id 100}
-                      {:error-type :validate/missing-column
+                      {:error-type :missing-column
                        :error-detail "PRICE"
                        :source-entity-type :table
                        :source-entity-id 100}]]
@@ -22,17 +22,17 @@
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id 1)]
             (is (= 2 (count stored)))
-            (is (= #{:validate/missing-column} (set (map :error_type stored))))
+            (is (= #{:missing-column} (set (map :error_type stored))))
             (is (= #{"CATEGORY" "PRICE"} (set (map :error_detail stored))))
             (is (= #{:table} (set (map :source_entity_type stored))))
             (is (= #{100} (set (map :source_entity_id stored))))))))
     (testing "Replaces existing errors when called again"
       (mt/with-empty-h2-app-db!
-        (let [old-errors [{:error-type :validate/missing-column
+        (let [old-errors [{:error-type :missing-column
                            :error-detail "OLD_COLUMN"
                            :source-entity-type :table
                            :source-entity-id 100}]
-              new-errors [{:error-type :validate/syntax-error
+              new-errors [{:error-type :syntax-error
                            :error-detail nil
                            :source-entity-type nil
                            :source-entity-id nil}]]
@@ -44,13 +44,13 @@
           (let [stored (t2/select-one :model/AnalysisFindingError
                                       :analyzed_entity_type :card
                                       :analyzed_entity_id 1)]
-            (is (= :validate/syntax-error (:error_type stored)))
+            (is (= :syntax-error (:error_type stored)))
             (is (nil? (:error_detail stored)))
             (is (nil? (:source_entity_type stored)))
             (is (nil? (:source_entity_id stored)))))))
     (testing "Clears errors when passed empty list"
       (mt/with-empty-h2-app-db!
-        (let [errors [{:error-type :validate/missing-column
+        (let [errors [{:error-type :missing-column
                        :error-detail "CATEGORY"
                        :source-entity-type :table
                        :source-entity-id 100}]]
@@ -68,15 +68,15 @@
   (mt/with-premium-features #{:dependencies}
     (mt/with-empty-h2-app-db!
       (testing "Can query errors by source entity"
-        (let [errors-card-1 [{:error-type :validate/missing-column
+        (let [errors-card-1 [{:error-type :missing-column
                               :error-detail "CATEGORY"
                               :source-entity-type :table
                               :source-entity-id 100}]
-              errors-card-2 [{:error-type :validate/missing-column
+              errors-card-2 [{:error-type :missing-column
                               :error-detail "PRICE"
                               :source-entity-type :table
                               :source-entity-id 100}
-                             {:error-type :validate/missing-column
+                             {:error-type :missing-column
                               :error-detail "NAME"
                               :source-entity-type :table
                               :source-entity-id 200}]]
@@ -93,11 +93,11 @@
   (mt/with-premium-features #{:dependencies}
     (mt/with-empty-h2-app-db!
       (testing "Can query all errors for a specific entity"
-        (let [errors [{:error-type :validate/missing-column
+        (let [errors [{:error-type :missing-column
                        :error-detail "CATEGORY"
                        :source-entity-type :table
                        :source-entity-id 100}
-                      {:error-type :validate/missing-column
+                      {:error-type :missing-column
                        :error-detail "PRICE"
                        :source-entity-type :card
                        :source-entity-id 50}]]

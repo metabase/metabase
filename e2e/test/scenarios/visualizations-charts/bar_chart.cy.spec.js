@@ -54,7 +54,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -67,7 +67,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)");
     });
   });
@@ -89,9 +89,9 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       H.chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
     });
   });
@@ -322,10 +322,10 @@ describe("scenarios > visualizations > bar chart", () => {
         });
 
         cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Products").click();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Category is Doohickey").should("be.visible");
       });
     });
@@ -853,7 +853,7 @@ describe("scenarios > visualizations > bar chart", () => {
         H.popover()
           .findByTestId("graph-other-category-aggregation-fn-picker")
           .click();
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.popover().last().findByText(fnName).click();
       }
 
@@ -1119,6 +1119,9 @@ describe("scenarios > visualizations > bar chart", () => {
         "graph.metrics": ["amount"],
       },
     });
+
+    // Open the data reference sidebar to squish the data further
+    cy.findByLabelText("Learn about your data").click();
 
     cy.wait("@dataset");
     H.echartsContainer().should("be.visible");

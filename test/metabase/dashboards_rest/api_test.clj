@@ -2088,7 +2088,7 @@
 (deftest update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-      (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
+      (testing "if a dashboard has multiple tabs, check if all cards from the request has a tab_id"
         (is (= "This dashboard has tab, makes sure every card has a tab"
                (mt/user-http-request :crowberto :put 400 (format "dashboard/%d" dashboard-id)
                                      {:dashcards (conj
@@ -2099,6 +2099,30 @@
                                                    :col    1
                                                    :row    1})
                                       :tabs      (tabs dashboard-id)})))))))
+
+(deftest update-cards-auto-assign-single-tab-test
+  (testing "PUT /api/dashboard/:id - auto-assign null dashboard_tab_id to the single tab (metabase#67971)"
+    (mt/with-temp
+      [:model/Dashboard     {dashboard-id :id} {}
+       :model/Card          {card-id :id}      {}
+       :model/DashboardTab  {tab-id :id}       {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+       :model/DashboardCard _                  {:dashboard_id     dashboard-id
+                                                :card_id          card-id
+                                                :dashboard_tab_id tab-id}]
+      (testing "when dashboard has exactly one tab, cards with null dashboard_tab_id are auto-assigned to that tab"
+        (let [resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                                         {:dashcards (conj
+                                                      (current-cards dashboard-id)
+                                                      {:id     -1
+                                                       :size_x 4
+                                                       :size_y 4
+                                                       :col    1
+                                                       :row    1
+                                                       :card_id card-id})
+                                          :tabs      [{:id tab-id :name "Tab 1"}]})
+              new-card (last (sort-by :id (:dashcards resp)))]
+          ;; The new card should have been auto-assigned to the single tab
+          (is (= tab-id (:dashboard_tab_id new-card))))))))
 
 (deftest update-tabs-track-snowplow-test
   (mt/with-temp
@@ -4802,6 +4826,30 @@
                      :tables     empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata)))))))))
+
+(deftest dashboard-query-metadata-with-archived-table-test
+  (testing "Don't throw an error if the dashboard uses an archived table (#68493)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp
+        [:model/Table         {inactive-table-id :id} {:active false}
+         :model/Table         {active-table-id :id}   {}
+         :model/Field         _                       {:table_id active-table-id}
+         :model/Card          {card-id-1 :id}         {:dataset_query (lib/query mp (lib.metadata/table mp inactive-table-id))}
+         :model/Card          {card-id-2 :id}         {:dataset_query (lib/query mp (lib.metadata/table mp active-table-id))}
+         :model/Dashboard     {dashboard-id :id}      {}
+         :model/DashboardCard _                       {:card_id      card-id-1
+                                                       :dashboard_id dashboard-id}
+         :model/DashboardCard _                       {:card_id      card-id-2
+                                                       :dashboard_id dashboard-id}]
+        (is (=?
+             {:cards      empty?
+              :fields     empty?
+              :dashboards empty?
+              :tables     [{:id inactive-table-id :name string?}
+                           {:id active-table-id :name string?}]
+              :databases  [{:id (mt/id) :engine string?}]}
+             (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
+                 (api.test-util/select-query-metadata-keys-for-debugging))))))))
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"

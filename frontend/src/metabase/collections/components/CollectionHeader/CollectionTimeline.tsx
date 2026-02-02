@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";

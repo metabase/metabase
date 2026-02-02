@@ -11,7 +11,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";

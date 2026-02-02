@@ -20,6 +20,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -202,7 +203,8 @@
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part timezone card_part {:channel.render/include-title? true
+                                                            :channel.render/disable-links? (boolean (:disable_links notification_card))})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
@@ -293,6 +295,35 @@
 ;;                                         System Events                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(def ^:private data-uri-pattern
+  #"^data:([^;]+);base64,(.+)$")
+
+(defn- parse-data-uri
+  "Parse a data URI and return {:content-type <string> :bytes <byte-array>}, or nil if not a data URI."
+  [data-uri]
+  (when-let [[_ content-type base64-data] (re-matches data-uri-pattern data-uri)]
+    {:content-type content-type
+     :bytes        (u.jvm/decode-base64-to-bytes base64-data)}))
+
+(defn- logo-bundle
+  "Create a logo bundle from the application logo URL.
+   Returns {:image-src <url-or-cid> :attachment <attachment-map-or-nil>}.
+   For data URIs, converts to an embedded attachment for email compatibility."
+  [logo-url]
+  (cond
+    (nil? logo-url)
+    nil
+
+    (str/starts-with? logo-url "data:")
+    (when-let [{:keys [bytes]} (parse-data-uri logo-url)]
+      (let [bundle (channel.render/make-image-bundle :attachment bytes)]
+        {:image-src  (:image-src bundle)
+         :attachment (channel.render/image-bundle->attachment bundle)}))
+
+    :else
+    {:image-src logo-url
+     :attachment nil}))
+
 (defn- notification-recipients->emails
   [recipients notification-payload]
   (into [] cat (for [recipient recipients
@@ -319,8 +350,16 @@
                                      [:template ::models.channel/ChannelTemplate]
                                      [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                    (notification-recipients->emails recipients notification-payload)
-                    [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
-                    (-> template :details :recipient-type keyword))])
+  (let [logo-url              (get-in notification-payload [:context :application_logo_url])
+        logo                  (logo-bundle logo-url)
+        ;; Update context with the processed logo URL (cid: reference if data URI was converted)
+        updated-payload       (if (:image-src logo)
+                                (assoc-in notification-payload [:context :application_logo_url] (:image-src logo))
+                                notification-payload)
+        logo-attachment       (when (:attachment logo)
+                                [(make-message-attachment (first (:attachment logo)))])
+        attachments           logo-attachment]
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) updated-payload)
+                      (notification-recipients->emails recipients updated-payload)
+                      (render-message-body template updated-payload attachments)
+                      (-> template :details :recipient-type keyword))]))

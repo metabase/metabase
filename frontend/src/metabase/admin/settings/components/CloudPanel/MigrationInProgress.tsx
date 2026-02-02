@@ -2,7 +2,7 @@
 import { t } from "ttag";
 
 import { useCancelCloudMigrationMutation } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { Plan } from "metabase/common/utils/plan";
@@ -69,7 +69,7 @@ export const MigrationInProgress = ({
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg="brand-light"
+            bg="background-brand"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"

@@ -1,8 +1,17 @@
-.panel {
+.leftPanel {
+  right: 0;
+  pointer-events: none;
+}
+
+.rightPanel {
   display: flex;
   flex-direction: column;
   bottom: 0;
   pointer-events: none;
+}
+
+.panelContent {
+  pointer-events: all;
 }
 
 [data-mantine-color-scheme="dark"] {

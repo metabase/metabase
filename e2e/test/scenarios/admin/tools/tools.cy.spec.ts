@@ -84,13 +84,13 @@ describe("issue 14636", () => {
 
     cy.location("search").should("eq", "");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("field values scanning");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("513");
 
     cy.findByLabelText("Previous page").should("be.disabled");
@@ -103,9 +103,9 @@ describe("issue 14636", () => {
       .findByText(`51 - ${total}`)
       .should("be.visible");
     cy.findByLabelText("pagination").findByText("1 - 50").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("analyze");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
     cy.findByLabelText("Next page").should("be.disabled");
@@ -139,17 +139,14 @@ describe("issue 14636", () => {
       "have.value",
       "field values scanning",
     );
-    cy.findByPlaceholderText("Filter by status").should(
-      "have.value",
-      "Success",
-    );
+    getFilterByStatus().should("have.value", "Success");
     cy.findAllByTestId("task").should("have.length", 1);
     cy.findByTestId("task")
       .should("contain.text", "field values scanning")
       .and("contain.text", "Sample Database")
       .and("contain.text", "Success");
 
-    cy.findByPlaceholderText("Filter by status").click();
+    getFilterByStatus().click();
     H.popover().findByText("Failed").click();
     cy.location("search").should(
       "eq",
@@ -161,12 +158,9 @@ describe("issue 14636", () => {
       "No results",
     );
 
-    cy.findByPlaceholderText("Filter by status")
-      .parent()
-      .findByLabelText("Clear")
-      .click();
+    getFilterByStatus().parent().findByLabelText("Clear").click();
     cy.location("search").should("eq", "?task=field+values+scanning");
-    cy.findByPlaceholderText("Filter by status").should("have.value", "");
+    getFilterByStatus().should("have.value", "");
     cy.findAllByTestId("task").should("have.length", 1);
     cy.findByTestId("task")
       .should("contain.text", "field values scanning")
@@ -184,14 +178,14 @@ describe("issue 14636", () => {
 
     cy.log("should reset pagination when changing filters");
     cy.visit("/admin/tools/tasks/list?page=1");
-    cy.findByPlaceholderText("Filter by status").click();
+    getFilterByStatus().click();
     H.popover().findByText("Success").click();
     cy.location("search").should("eq", "?status=success");
 
     cy.log("should remove invalid query params");
     cy.visit("/admin/tools/tasks/list?status=foobar");
     cy.location("search").should("eq", "");
-    cy.findByPlaceholderText("Filter by status").should("have.value", "");
+    getFilterByStatus().should("have.value", "");
   });
 });
 
@@ -244,7 +238,7 @@ describe("scenarios > admin > tools > tasks", () => {
     cy.window().then((window) => {
       cy.stub(window.navigator.clipboard, "writeText").resolves();
     });
-    cy.icon("copy").click();
+    cy.findByTestId("code-container").icon("copy").click();
     cy.window()
       .its("navigator.clipboard.writeText")
       .should("be.calledWith", formattedTaskJson);
@@ -832,54 +826,40 @@ describe("scenarios > admin > tools > task runs filtering", () => {
     cy.wait("@getTaskRuns");
 
     cy.log("Filter by run type");
-    cy.findByPlaceholderText("Filter by run type").click();
+    getFilterByRun().click();
     H.popover().findByText("Sync").click();
     cy.location("search").should("contain", "run-type=sync");
+    cy.wait("@getTaskRuns");
+    cy.log("Filter by started at");
+    getFilterByStartedAt().click();
+    H.popover().findByText("Previous 30 days").click();
+    cy.location("search").should("contain", "started-at=past30days");
     cy.wait("@getTaskRuns");
 
     cy.wait("@getEntities");
     cy.log("Filter by entity");
-    cy.findByPlaceholderText("Filter by entity").click();
+    getFilterByEntity().click();
     H.popover().findByText("Sample Database").click();
     cy.location("search").should("contain", "entity-type=database");
     cy.location("search").should("contain", "entity-id=1");
     cy.wait("@getTaskRuns");
 
     cy.log("Filter by status");
-    cy.findByPlaceholderText("Filter by status").click();
+    getFilterByStatus().click();
     H.popover().findByText("Success").click();
     cy.location("search").should("contain", "status=success");
     cy.wait("@getTaskRuns");
 
     cy.log("Clear all filters");
-    cy.findByPlaceholderText("Filter by run type")
-      .parent()
-      .findByLabelText("Clear")
-      .click();
-    cy.findByPlaceholderText("Filter by status")
-      .parent()
-      .findByLabelText("Clear")
-      .click();
+    getFilterByRun().parent().findByLabelText("Clear").click();
+    getFilterByStartedAt().parent().findByLabelText("Clear").click();
+    getFilterByStatus().parent().findByLabelText("Clear").click();
     cy.location("search").should("eq", "");
   });
 
-  it("entity picker should be disabled/enabled based on run type and entities availability", () => {
+  it("entity picker should be disabled/enabled based on run type, started at and entities availability", () => {
     cy.visit("/admin/tools/tasks/runs");
     cy.wait("@getTaskRuns");
-
-    cy.log("Should be disabled when no run type is selected");
-    cy.findByPlaceholderText("Filter by entity").should("be.disabled");
-
-    cy.log("Should show tooltip 'Select a run type first' when hovering");
-    cy.findByPlaceholderText("Filter by entity").trigger("mouseenter", {
-      force: true,
-    });
-    cy.findByRole("tooltip").should("have.text", "Select a run type first");
-    cy.findByPlaceholderText("Filter by entity").trigger("mouseleave", {
-      force: true,
-    });
-
-    cy.log("Should show loader while loading entities");
     cy.intercept("GET", "/api/task/runs/entities?*", {
       body: [
         {
@@ -891,10 +871,24 @@ describe("scenarios > admin > tools > task runs filtering", () => {
       delay: 500,
     }).as("getEntitiesDelayed");
 
-    cy.findByPlaceholderText("Filter by run type").click();
+    cy.log("Should be disabled when no run type is selected");
+    getFilterByEntity().should("be.disabled");
+    assertFilterByEntityTooltipText("Select a run type first");
+
+    getFilterByRun().click();
     H.popover().findByText("Sync").click();
 
-    cy.findByPlaceholderText("Filter by entity")
+    cy.log("Should be still disabled until started at is selected");
+    getFilterByEntity().should("be.disabled");
+
+    cy.log("Should show tooltip 'Select a start time' when hovering");
+    assertFilterByEntityTooltipText("Select a start time first");
+
+    getFilterByStartedAt().click();
+    H.popover().findByText("Previous 30 days").click();
+
+    cy.log("Should show loader while loading entities");
+    getFilterByEntity()
       .should("be.disabled")
       .closest(".mb-mantine-Select-root")
       .find(".mb-mantine-Loader-root")
@@ -903,30 +897,56 @@ describe("scenarios > admin > tools > task runs filtering", () => {
     cy.wait("@getEntitiesDelayed");
 
     cy.log("Should be enabled after entities are loaded");
-    cy.findByPlaceholderText("Filter by entity").should("not.be.disabled");
+    getFilterByEntity().should("not.be.disabled");
 
     cy.log("Should clear and disable entity filter when run type is cleared");
-    cy.findByPlaceholderText("Filter by run type")
-      .parent()
-      .findByLabelText("Clear")
-      .click();
+    getFilterByRun().parent().findByLabelText("Clear").click();
 
-    cy.findByPlaceholderText("Filter by entity").should("be.disabled");
-    cy.findByPlaceholderText("Filter by entity").should("have.value", "");
+    getFilterByEntity().should("be.disabled");
+    getFilterByEntity().should("have.value", "");
+
+    cy.log("Should clear and disable entity filter when started at is cleared");
+    getFilterByRun().click();
+    H.popover().findByText("Sync").click();
+    getFilterByStartedAt().parent().findByLabelText("Clear").click();
+
+    getFilterByEntity().should("be.disabled");
+    getFilterByEntity().should("have.value", "");
 
     cy.log("Should show tooltip 'No entities available' when no entities");
     cy.intercept("GET", "/api/task/runs/entities?*", {
       body: [],
     }).as("getEmptyEntities");
 
-    cy.findByPlaceholderText("Filter by run type").click();
+    getFilterByRun().click();
     H.popover().findByText("Alert").click();
+    getFilterByStartedAt().click();
+    H.popover().findByText("Previous 30 days").click();
     cy.wait("@getEmptyEntities");
 
-    cy.findByPlaceholderText("Filter by entity").should("be.disabled");
-    cy.findByPlaceholderText("Filter by entity").trigger("mouseenter", {
-      force: true,
-    });
-    cy.findByRole("tooltip").should("have.text", "No entities available");
+    getFilterByEntity().should("be.disabled");
+    assertFilterByEntityTooltipText("No entities available");
   });
 });
+
+function getFilterByRun() {
+  return cy.findByPlaceholderText("Filter by run type");
+}
+function getFilterByStartedAt() {
+  return cy.findByPlaceholderText("Filter by started at");
+}
+
+function getFilterByEntity() {
+  return cy.findByPlaceholderText("Filter by entity");
+}
+
+function getFilterByStatus() {
+  return cy.findByPlaceholderText("Filter by status");
+}
+
+function assertFilterByEntityTooltipText(text: string) {
+  getFilterByEntity().trigger("mouseenter", {
+    force: true,
+  });
+  cy.findByRole("tooltip").should("have.text", text);
+}

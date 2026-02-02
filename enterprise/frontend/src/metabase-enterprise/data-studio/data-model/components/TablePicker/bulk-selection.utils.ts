@@ -1,7 +1,7 @@
 import type { SelectionState } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import type { DatabaseNode, SchemaNode, TreeNode } from "./types";
+import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "./types";
 import { isSchemaNode, isTableNode } from "./types";
 
 export interface NodeSelection {
@@ -106,9 +106,11 @@ export function markAllSchemas(
   for (const schema of database.children) {
     const schemaId = getSchemaId(schema);
     if (schema.children.length === 0) {
-      targetChecked === "all"
-        ? schemas.add(schemaId)
-        : schemas.delete(schemaId);
+      if (targetChecked === "all") {
+        schemas.add(schemaId);
+      } else {
+        schemas.delete(schemaId);
+      }
     } else {
       markAllTables(schema, targetChecked, tables);
     }
@@ -127,9 +129,11 @@ function markAllTables(
   tablesSelection: Set<TableId>,
 ) {
   for (const tableId of getSchemaChildrenTableIds(schema)) {
-    targetChecked === "all"
-      ? tablesSelection.add(tableId)
-      : tablesSelection.delete(tableId);
+    if (targetChecked === "all") {
+      tablesSelection.add(tableId);
+    } else {
+      tablesSelection.delete(tableId);
+    }
   }
 }
 
@@ -167,4 +171,59 @@ export function toggleSchemaSelection(
     schemas: selection.schemas,
     databases: selection.databases,
   };
+}
+
+export function toggleInSet<T>(set: Set<T>, item: T): Set<T> {
+  const newSet = new Set(set);
+  if (newSet.has(item)) {
+    newSet.delete(item);
+  } else {
+    newSet.add(item);
+  }
+  return newSet;
+}
+
+export const cloneSelection = (selection: NodeSelection): NodeSelection => ({
+  tables: new Set(selection.tables),
+  databases: new Set(selection.databases),
+  schemas: new Set(selection.schemas),
+});
+
+export function addTableToSelection(
+  table: TableNode,
+  selection: NodeSelection,
+): NodeSelection {
+  const nextSelection = cloneSelection(selection);
+  nextSelection.tables.add(table.value.tableId);
+  return nextSelection;
+}
+
+export function addSchemaToSelection(
+  schema: SchemaNode,
+  selection: NodeSelection,
+): NodeSelection {
+  const nextSelection = cloneSelection(selection);
+  if (schema.children.length > 0) {
+    return schema.children.reduce(
+      (memo, tableNode) => addTableToSelection(tableNode, memo),
+      nextSelection,
+    );
+  }
+  nextSelection.schemas.add(getSchemaId(schema));
+  return nextSelection;
+}
+
+export function addDatabaseToSelection(
+  database: DatabaseNode,
+  selection: NodeSelection,
+): NodeSelection {
+  const nextSelection = cloneSelection(selection);
+  if (database.children.length > 0) {
+    return database.children.reduce(
+      (memo, schema) => addSchemaToSelection(schema, memo),
+      nextSelection,
+    );
+  }
+  nextSelection.databases.add(database.value.databaseId);
+  return nextSelection;
 }

@@ -19,6 +19,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -775,6 +776,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
+                              :create-or-replace-table          true
                               :database-routing                 true
                               :datetime-diff                    true
                               :describe-fields                  true
@@ -1028,7 +1030,7 @@
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
               driver-api/raw-native-query
-              macaw/parsed-query
+              (driver.u/parsed-query driver)
               macaw/query->components
               :tables))))
 
@@ -1050,3 +1052,6 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
+
+(defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
+  "llm/prompts/dialects/bigquery.md")

@@ -1,7 +1,24 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
+
+// Mock useHasTokenFeature to return true for required features
+jest.mock(
+  "metabase/common/hooks/use-has-token-feature/use-has-token-feature",
+  () => ({
+    useHasTokenFeature: (feature: string) => {
+      const enabledFeatures = [
+        "remote_sync",
+        "transforms",
+        "data_studio",
+        "dependencies",
+        "advanced_permissions",
+      ];
+      return enabledFeatures.includes(feature);
+    },
+  }),
+);
 
 import { setup } from "./DataStudioLayout.setup.spec";
 
@@ -18,7 +35,7 @@ describe("DataStudioLayout", () => {
 
   describe("Set up git sync button", () => {
     it("should show Set up git sync button when git settings is visible", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -28,7 +45,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should hide Set up git sync button when git settings is not visible", async () => {
-      setup({ isGitSettingsVisible: false });
+      setup({ remoteSyncEnabled: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -40,7 +57,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should open modal when Set up git sync button is clicked", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -57,7 +74,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should close modal when onClose is called", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -84,7 +101,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should show Set up git sync text when sidebar is expanded", async () => {
-      setup({ isGitSettingsVisible: true, isNavbarOpened: true });
+      setup({ remoteSyncEnabled: false, isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -96,18 +113,17 @@ describe("DataStudioLayout", () => {
 
   describe("sidebar rendering", () => {
     it("should render the sidebar with navigation tabs", async () => {
-      setup({ isGitSyncVisible: true });
+      setup({ remoteSyncBranch: "main" });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
       expect(screen.getByText("Library")).toBeInTheDocument();
-      expect(screen.getByText("Exit")).toBeInTheDocument();
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
-      setup({ isGitSyncVisible: true, isNavbarOpened: true });
+      setup({ remoteSyncBranch: "main", isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -117,7 +133,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({ isGitSyncVisible: true, isNavbarOpened: false });
+      setup({ remoteSyncBranch: "main", isNavbarOpened: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -127,13 +143,70 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render content area", async () => {
-      setup({ isGitSyncVisible: false });
+      setup({ remoteSyncBranch: null });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
       expect(screen.getByTestId("content")).toBeInTheDocument();
+    });
+  });
+
+  describe("transform dirty indicator", () => {
+    it("should show dirty indicator on Exit tab when transforms have dirty changes", async () => {
+      setup({
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: true,
+        remoteSyncTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      // Should show the dirty indicator badge on the Exit tab
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show dirty indicator on Exit tab when no dirty changes", async () => {
+      setup({
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: false,
+        remoteSyncTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+      setup({
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: true,
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
     });
   });
 });

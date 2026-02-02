@@ -48,18 +48,43 @@ interface AllChangesViewProps {
 
 export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const isUsingTenants = useSetting("use-tenants");
+  const isTransformsSyncEnabled = useSetting("remote-sync-transforms");
   const { data: collectionTree = [] } = useListCollectionsTreeQuery({
     namespaces: [
       "",
       "analytics",
       ...(isUsingTenants ? ["shared-tenant-collection"] : []),
+      ...(isTransformsSyncEnabled ? ["transforms"] : []),
     ],
     "include-library": true,
   });
 
+  // Fetch snippets namespace collections separately
+  const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "snippets",
+  });
+
+  // Build a set of snippet collection IDs for icon selection
+  const snippetCollectionIds = useMemo(() => {
+    const ids = new Set<number>();
+    const collectIds = (collections: typeof snippetCollectionTree) => {
+      for (const collection of collections) {
+        if (typeof collection.id === "number") {
+          ids.add(collection.id);
+        }
+        if (collection.children) {
+          collectIds(collection.children);
+        }
+      }
+    };
+    collectIds(snippetCollectionTree);
+    return ids;
+  }, [snippetCollectionTree]);
+
   const collectionMap = useMemo(() => {
-    return buildCollectionMap(collectionTree);
-  }, [collectionTree]);
+    // Merge regular collections with snippet collections
+    return buildCollectionMap([...collectionTree, ...snippetCollectionTree]);
+  }, [collectionTree, snippetCollectionTree]);
 
   const hasRemovals = useMemo(() => {
     return (
@@ -132,15 +157,19 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           (a, b) => a.tableName.localeCompare(b.tableName),
         );
 
+        const numericCollectionId = Number(collectionId) || undefined;
         return {
           pathSegments: getCollectionPathSegments(
-            Number(collectionId) || undefined,
+            numericCollectionId,
             collectionMap,
           ),
-          collectionId: Number(collectionId) || undefined,
+          collectionId: numericCollectionId,
           collectionEntity,
           tableGroups,
           items: sortByStatus(otherItems),
+          isSnippetCollection:
+            numericCollectionId !== undefined &&
+            snippetCollectionIds.has(numericCollectionId),
         };
       })
       .sort((a, b) =>
@@ -149,7 +178,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           .join(" / ")
           .localeCompare(b.pathSegments.map((s) => s.name).join(" / ")),
       );
-  }, [entities, collectionMap]);
+  }, [entities, collectionMap, snippetCollectionIds]);
 
   return (
     <Box>
@@ -186,7 +215,11 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                     bdrs="md"
                   >
                     <Icon
-                      name="synced_collection"
+                      name={
+                        group.isSnippetCollection
+                          ? "snippet"
+                          : "synced_collection"
+                      }
                       size={16}
                       c="text-secondary"
                     />

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
@@ -193,4 +193,5 @@ const TableBrowserItemButtons = ({
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableBrowser;

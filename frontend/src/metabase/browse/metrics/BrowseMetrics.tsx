@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
-import Link, { ForwardRefLink } from "metabase/common/components/Link";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
@@ -84,7 +84,7 @@ export function BrowseMetrics() {
           >
             <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon size={24} c="icon-primary" name="metric" />
+                <Icon size={24} c="icon-brand" name="metric" />
                 {t`Metrics`}
               </Group>
             </Title>
