@@ -1110,10 +1110,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_log
-            constraintName: fk_workspace_log_workspace_id
 
   # ---------- Group 6: workspace_transform ----------
 
@@ -1352,10 +1348,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:36
@@ -1374,10 +1366,6 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_global_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:37
@@ -1396,10 +1384,6 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_collection_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:38
@@ -1418,10 +1402,6 @@ databaseChangeLog:
             referencedTableName: core_user
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_creator_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:39
@@ -1629,10 +1609,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input
-            constraintName: fk_workspace_input_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:46
@@ -1651,10 +1627,6 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input
-            constraintName: fk_workspace_input_table_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:47
@@ -1828,10 +1800,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output
-            constraintName: fk_workspace_output_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:52
@@ -1850,10 +1818,6 @@ databaseChangeLog:
             referencedTableName: workspace_transform
             referencedColumnNames: workspace_id, ref_id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output
-            constraintName: fk_workspace_output_ref_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:53
@@ -1947,10 +1911,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_merge
-            constraintName: fk_workspace_merge_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:56
@@ -1968,10 +1928,6 @@ databaseChangeLog:
             constraintName: fk_workspace_merge_creator_id
             referencedTableName: core_user
             referencedColumnNames: id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_merge
-            constraintName: fk_workspace_merge_creator_id
 
   - changeSet:
       id: v59.2026-01-31T12:00:57
@@ -2098,10 +2054,6 @@ databaseChangeLog:
             referencedTableName: workspace_merge
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_merge_transform
-            constraintName: fk_workspace_merge_transform_workspace_merge_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:01
@@ -2120,10 +2072,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_merge_transform
-            constraintName: fk_workspace_merge_transform_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:02
@@ -2142,10 +2090,6 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_merge_transform
-            constraintName: fk_workspace_merge_transform_transform_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:03
@@ -2163,10 +2107,6 @@ databaseChangeLog:
             constraintName: fk_workspace_merge_transform_merging_user_id
             referencedTableName: core_user
             referencedColumnNames: id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_merge_transform
-            constraintName: fk_workspace_merge_transform_merging_user_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:04
@@ -2399,10 +2339,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output_external
-            constraintName: fk_workspace_output_external_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:12
@@ -2421,10 +2357,6 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output_external
-            constraintName: fk_workspace_output_external_transform_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:13
@@ -2562,10 +2494,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input_external
-            constraintName: fk_workspace_input_external_workspace_id
 
   - changeSet:
       id: v59.2026-01-31T12:01:17
@@ -2683,10 +2611,6 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_graph
-            constraintName: fk_workspace_graph_workspace_id
 
   # ---------- Group 14: Existing table changes ----------
 
