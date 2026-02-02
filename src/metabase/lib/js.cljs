@@ -82,8 +82,8 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
-   [metabase.lib.schema.query :as lib.schema.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -2762,7 +2762,7 @@
 
 (def parse-query-spec
   "Parser for query-spec."
-  (mc/coercer [:ref ::lib.schema.query/test-query-spec]
+  (mc/coercer [:ref ::lib.schema.test-spec/test-query-spec]
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode decode-js-key})

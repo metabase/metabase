@@ -1,4 +1,4 @@
-(ns metabase.lib.schema.query
+(ns metabase.lib.schema.test-spec
   "Schemas for creating a query for testing purposes."
   (:require
    [metabase.lib.schema.binning :as lib.schema.binning]

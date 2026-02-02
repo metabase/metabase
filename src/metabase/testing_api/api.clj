@@ -14,7 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.query :as lib.schema.query]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -248,6 +248,6 @@
    {:keys [database], :as query-spec} :- [:merge
                                           [:map
                                            [:database ::lib.schema.id/database]]
-                                          [:ref ::lib.schema.query/test-query-spec]]]
+                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))

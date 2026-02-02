@@ -20,9 +20,9 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.query :as lib.schema.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util.malli :as mu]
@@ -30,7 +30,7 @@
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
-   {spec-id :id spec-type :type} :- ::lib.schema.query/test-source-spec]
+   {spec-id :id spec-type :type} :- ::lib.schema.test-spec/test-source-spec]
   (case spec-type
     :table (lib.metadata/table metadata-providerable spec-id)
     :card  (lib.metadata/card metadata-providerable spec-id)))
@@ -38,7 +38,7 @@
 (mu/defn- matches-column? :- :boolean
   [query                                   :- ::lib.schema/query
    _stage-number                           :- :int
-   {:keys [name source-name display-name]} :- ::lib.schema.query/test-column-spec
+   {:keys [name source-name display-name]} :- ::lib.schema.test-spec/test-column-spec
    column                     :- ::lib.schema.metadata/column]
   (cond-> (= name (:name column))
     (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
@@ -48,7 +48,7 @@
   [query             :- ::lib.schema/query
    stage-number      :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
-   column-spec       :- ::lib.schema.query/test-column-spec]
+   column-spec       :- ::lib.schema.test-spec/test-column-spec]
   (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
@@ -58,7 +58,7 @@
 (mu/defn- append-fields :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   field-specs  :- [:sequential ::lib.schema.query/test-column-spec]]
+   field-specs  :- [:sequential ::lib.schema.test-spec/test-column-spec]]
   (let [visible (lib.metadata.calculation/visible-columns query stage-number)]
     (->> field-specs
          (mapv (partial find-column query stage-number visible))
@@ -122,7 +122,7 @@
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [unit bins bin-width]} :- ::lib.schema.query/test-column-with-binning-spec
+   {:keys [unit bins bin-width]} :- ::lib.schema.test-spec/test-column-with-binning-spec
    column                       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (cond->> column
     unit      (add-temporal-bucket query stage-number unit)
@@ -133,7 +133,7 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    columns             :- [:sequential ::lib.schema.metadata/column]
-   breakout-spec       :- ::lib.schema.query/test-breakout-spec]
+   breakout-spec       :- ::lib.schema.test-spec/test-breakout-spec]
   (->> (find-column query stage-number columns breakout-spec)
        (apply-binning query stage-number breakout-spec)
        (lib.breakout/breakout query stage-number)))
@@ -141,7 +141,7 @@
 (mu/defn- append-breakouts :- ::lib.schema/query
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   breakout-specs :- [:sequential ::lib.schema.query/test-breakout-spec]]
+   breakout-specs :- [:sequential ::lib.schema.test-spec/test-breakout-spec]]
   (let [columns (lib.breakout/breakoutable-columns query stage-number)]
     (reduce #(append-breakout %1 stage-number columns %2)
             query
@@ -150,7 +150,7 @@
 (mu/defn- expression-spec->expression-parts
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   expression-spec   :- ::lib.schema.query/test-expression-spec
+   expression-spec   :- ::lib.schema.test-spec/test-expression-spec
    available-columns :- [:sequential ::lib.schema.metadata/column]]
   (case (:type expression-spec)
     :literal  (:value expression-spec)
@@ -162,7 +162,7 @@
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean
-  [expression-spec :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
+  [expression-spec :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-named-expression-spec]]
   (and
    (contains? expression-spec :name)
    (contains? expression-spec :value)
@@ -171,7 +171,7 @@
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
   [query                                    :- ::lib.schema/query
    stage-number                             :- :int
-   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]
+   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-named-expression-spec]
    available-columns                        :- [:sequential ::lib.schema.metadata/column]]
   (if (named-expression-spec? expression-spec)
     (-> (expression-spec->expression-clause query stage-number value available-columns)
@@ -182,7 +182,7 @@
 (mu/defn- append-expression :- ::lib.schema/query
   [query                :- ::lib.schema/query
    stage-number         :- :int
-   {:keys [name value]} :- ::lib.schema.query/test-named-expression-spec]
+   {:keys [name value]} :- ::lib.schema.test-spec/test-named-expression-spec]
   ;; NOTE: expressionable-columns needs to calculated inside the loop
   ;; able to reference each other.
   (->> (lib.expression/expressionable-columns query stage-number nil)
@@ -192,7 +192,7 @@
 (mu/defn- append-expressions :- ::lib.schema/query
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   expression-specs :- [:sequential ::lib.schema.query/test-named-expression-spec]]
+   expression-specs :- [:sequential ::lib.schema.test-spec/test-named-expression-spec]]
   (reduce #(append-expression %1 stage-number %2)
           query
           expression-specs))
@@ -215,7 +215,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    target       :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
-   {:keys [operator left right]} :- ::lib.schema.query/test-join-condition-spec]
+   {:keys [operator left right]} :- ::lib.schema.test-spec/test-join-condition-spec]
   (let [lhs (->> (lib.join/join-condition-lhs-columns query stage-number nil nil nil)
                  (expression-spec->expression-clause query stage-number left)
                  (apply-binning query stage-number left))
@@ -227,7 +227,7 @@
 (mu/defn- append-join :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   {:keys [source strategy conditions]} :- ::lib.schema.query/test-join-spec]
+   {:keys [source strategy conditions]} :- ::lib.schema.test-spec/test-join-spec]
   (let [join-target (find-source query source)
         join-strategy (find-join-strategy query stage-number strategy)
         join-conditions (if conditions
@@ -239,7 +239,7 @@
 (mu/defn- append-joins :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   join-specs   :- [:sequential ::lib.schema.query/test-join-spec]]
+   join-specs   :- [:sequential ::lib.schema.test-spec/test-join-spec]]
   (reduce #(append-join %1 stage-number %2)
           query
           join-specs))
@@ -247,7 +247,7 @@
 (mu/defn- append-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   filter-spec  :- ::lib.schema.query/test-expression-spec]
+   filter-spec  :- ::lib.schema.test-spec/test-expression-spec]
   (->> (lib.filter/filterable-columns query stage-number)
        (expression-spec->expression-clause query stage-number filter-spec)
        (lib.filter/filter query stage-number)))
@@ -255,7 +255,7 @@
 (mu/defn- append-filters :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   filter-specs :- [:sequential ::lib.schema.query/test-expression-spec]]
+   filter-specs :- [:sequential ::lib.schema.test-spec/test-expression-spec]]
   (reduce #(append-filter %1 stage-number %2)
           query
           filter-specs))
@@ -263,7 +263,7 @@
 (mu/defn- append-aggregation :- ::lib.schema/query
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   aggregation-spec :- ::lib.schema.query/test-aggregation-spec]
+   aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
   (->> (lib.aggregation/aggregable-columns query stage-number)
        (expression-spec->expression-clause query stage-number aggregation-spec)
        (lib.aggregation/aggregate query stage-number)))
@@ -271,7 +271,7 @@
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   aggregation-specs :- [:sequential ::lib.schema.query/test-aggregation-spec]]
+   aggregation-specs :- [:sequential ::lib.schema.test-spec/test-aggregation-spec]]
   (reduce #(append-aggregation %1 stage-number %2)
           query
           aggregation-specs))
@@ -281,7 +281,7 @@
    stage-number        :- :int
    orderable-columns   :- [:sequential ::lib.schema.metadata/column]
    {:keys [direction]
-    :as order-by-spec} :- ::lib.schema.query/test-order-by-spec]
+    :as order-by-spec} :- ::lib.schema.test-spec/test-order-by-spec]
   (as-> (find-column query stage-number orderable-columns order-by-spec) column
     (apply-binning query stage-number order-by-spec column)
     (lib.order-by/order-by query column direction)))
@@ -289,7 +289,7 @@
 (mu/defn- append-order-bys :- ::lib.schema/query
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   order-by-specs :- [:sequential ::lib.schema.query/test-order-by-spec]]
+   order-by-specs :- [:sequential ::lib.schema.test-spec/test-order-by-spec]]
   (let [orderable-columns (lib.order-by/orderable-columns query stage-number)]
     (reduce #(append-order-by %1 stage-number orderable-columns %2)
             query
@@ -298,7 +298,7 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   {:keys [fields expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [fields expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.test-spec/test-stage-spec]
   (cond-> query
     (> stage-number 0) (lib.stage/append-stage)
     joins              (append-joins stage-number joins)
@@ -313,7 +313,7 @@
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [stages]}      :- ::lib.schema.query/test-query-spec]
+   {:keys [stages]}      :- ::lib.schema.test-spec/test-query-spec]
   (let [source (->> stages first :source (find-source metadata-providerable))
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
