@@ -89,7 +89,7 @@
         ;; TODO (Chris 2026-02-02) -- Update tests so this workaround is unnecessary.
         valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
     (when-not valid-db-id?
-      (log/warnf "Invalid target database id (%d) ignored for new transform (%s)" target-db-id (:name transform)))
+      (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
