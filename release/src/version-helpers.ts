@@ -143,6 +143,17 @@ export const getDotXVersion = (version: string) => {
   return getDotXs(version, 2);
 };
 
+const shouldAddLatestTag = ({
+  version,
+  latestMajorVersion,
+}: {
+  version: string;
+  latestMajorVersion?: string;
+}) => {
+  const majorVersion = getMajorVersion(version);
+  return majorVersion === latestMajorVersion;
+};
+
 export const getExtraTagsForVersion = ({
   version,
   latestMajorVersion,
@@ -157,37 +168,13 @@ export const getExtraTagsForVersion = ({
   // eg. v0.23.x / v1.23.x
   const tags = [getDotXs(ossVerion, 1), getDotXs(eeVersion, 1)];
 
-  if (versionType === "major") {
-    return maybeAddLatestTag({ tags, version, latestMajorVersion });
+  if (versionType !== "major") {
+    // eg. v0.23.4.x / v1.23.4.x
+    tags.push(getDotXs(ossVerion, 2), getDotXs(eeVersion, 2));
   }
 
-  // eg. v0.23.4.x / v1.23.4.x
-  return maybeAddLatestTag({
-    tags: [...tags, getDotXs(ossVerion, 2), getDotXs(eeVersion, 2)],
-    version,
-    latestMajorVersion,
-  });
-};
-
-const maybeAddLatestTag = ({
-  tags,
-  version,
-  latestMajorVersion,
-}: {
-  tags: string[];
-  version: string;
-  latestMajorVersion?: string;
-}) => {
-  if (!latestMajorVersion) {
-    return tags;
-  }
-
-  const versionMajor = getMajorVersion(version);
-  const isLatestMajor = versionMajor === latestMajorVersion;
-  const isPreRelease = isPreReleaseVersion(version);
-
-  if (isLatestMajor && !isPreRelease) {
-    return [...tags, "latest"];
+  if (shouldAddLatestTag({ version, latestMajorVersion })) {
+    tags.push("latest");
   }
 
   return tags;

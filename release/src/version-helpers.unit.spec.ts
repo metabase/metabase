@@ -838,20 +838,20 @@ describe("version-helpers", () => {
       ).toEqual(["v0.59.x", "v1.59.x"]);
     });
 
-    it("should NOT add latest tag for pre-release versions even when major matches", () => {
+    it("should add latest tag for pre-release versions when major matches", () => {
       expect(
         getExtraTagsForVersion({
           version: "v0.58.1-rc1",
           latestMajorVersion: "58",
         }),
-      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
 
       expect(
         getExtraTagsForVersion({
           version: "v0.58.0-beta",
           latestMajorVersion: "58",
         }),
-      ).toEqual(["v0.58.x", "v1.58.x"]);
+      ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
     });
 
     it("should NOT add latest tag when latestMajorVersion is not provided", () => {
