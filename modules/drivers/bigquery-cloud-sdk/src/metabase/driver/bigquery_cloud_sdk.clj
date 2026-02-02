@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
-   [macaw.core :as macaw]
+   [metabase.sql-tools.core :as sql-tools]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -15,11 +15,9 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-   [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -1020,19 +1018,8 @@
 (mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (driver-api/tables query)
-        transforms (t2/select [:model/Transform :id :target])]
-    (into #{} (comp
-               (map :component)
-               (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
-               (map #(let [parts (str/split (:table %) #"\.")]
-                       {:schema (first parts) :table (second parts)}))
-               (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
-          (-> query
-              driver-api/raw-native-query
-              (driver.u/parsed-query driver)
-              macaw/query->components
-              :tables))))
+  ;; sql-tools/referenced-tables handles parsing, dialect selection, and table matching
+  (sql-tools/referenced-tables driver query))
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
