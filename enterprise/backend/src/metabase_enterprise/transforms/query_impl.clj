@@ -14,6 +14,10 @@
 
 (set! *warn-on-reflection* true)
 
+(defmethod transforms.i/source-db-id :query
+  [transform]
+  (-> transform :source :query :database))
+
 (defmethod transforms.i/target-db-id :query
   [transform]
   ;; For query transforms, the target needs to match the source, so use the query as the source of truth.
