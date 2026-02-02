@@ -553,11 +553,11 @@
                                      :id   (meta/id :orders)}
                             :filters [{:type     :operator
                                        :operator :=
-                                       :args     [{:type :column
+                                       :args     [{:type :literal
+                                                   :value "Gadget"}
+                                                  {:type :column
                                                    :source-name "PRODUCTS"
-                                                   :name "CATEGORY"}
-                                                  {:type :literal
-                                                   :value "Gadget"}]}]
+                                                   :name "CATEGORY"}]}]
 
                             :aggregations [{:type     :operator
                                             :operator :sum
@@ -566,21 +566,53 @@
                                                         :name "PRICE"}]}]
                             :breakouts    [{:type :column
                                             :source-name "PRODUCTS"
-                                            :name "CREATED_AT"}]}]})]
-      (is (=? [:field
-               {:source-field (meta/id :orders :product-id)}
-               (meta/id :products :category)]
-              (-> query lib/filters first (nth 2))))
+                                            :name "CREATED_AT"}]
 
-      (is (=? [:field
-               {:source-field (meta/id :orders :product-id)}
-               (meta/id :products :price)]
-              (-> query lib/aggregations first (nth 2))))
+                            :expressions [{:name  "Custom"
+                                           :value {:type     :operator
+                                                   :operator :+
+                                                   :args [{:type :literal
+                                                           :value 42}
+                                                          {:type :column
+                                                           :name "PRICE"}]}}]}]})]
 
-      (is (=? [:field
-               {:source-field (meta/id :orders :product-id)}
-               (meta/id :products :created-at)]
-              (-> query lib/breakouts first))))))
+      (is (=? [[:=
+                {} "Gadget"
+                [:field
+                 {:source-field (meta/id :orders :product-id)}
+                 (meta/id :products :category)]]]
+              (lib/filters query)))
+
+      (is (=? [[:sum {}
+                [:field
+                 {:source-field (meta/id :orders :product-id)}
+                 (meta/id :products :price)]]]
+              (lib/aggregations query)))
+
+      (is (=? [[:+
+                {:lib/expression-name "Custom"}
+                42
+                [:field
+                 {:source-field (meta/id :orders :product-id)}
+                 (meta/id :products :price)]]]
+              (lib/expressions query)))
+
+      (is (=? [[:field
+                {:source-field (meta/id :orders :product-id)}
+                (meta/id :products :created-at)]]
+              (lib/breakouts query)))
+
+      (let [query (lib.query.util/test-query
+                   meta/metadata-provider
+                   {:stages [{:source {:type :table
+                                       :id   (meta/id :orders)}
+                              :order-bys [{:type :column
+                                           :name "PRICE"}]}]})]
+
+        (is (=? [[:asc {} [:field
+                           {:source-field (meta/id :orders :product-id)}
+                           (meta/id :products :price)]]]
+                (lib/order-bys query)))))))
 
 (deftest ^:parallel test-query-three-stage-test
   (testing "test-query handles three stages"
