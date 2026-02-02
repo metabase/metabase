@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -284,6 +285,11 @@
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x2)}
                                          (select-keys x2 [:name :description :source :target])))
+            ;; Ensure deterministic merge order by setting x2's created_at later than x1's.
+            x1-created-at (t2/select-one-fn :created_at :model/WorkspaceTransform
+                                            :workspace_id ws-id :ref_id ws-x-1-id)
+            _ (t2/update! (t2/table-name :model/WorkspaceTransform) {:workspace_id ws-id :ref_id ws-x-2-id}
+                          {:created_at (t/plus x1-created-at (t/hours 1))})
 
             ;; Update transform names
             {ws-x-1-id :ref_id :as ws-x-1}
@@ -315,14 +321,11 @@
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
                   (is (= 1 (count (:errors resp))))
-                  ;; The order of processing depends on created_at timestamps which may be equal
-                  ;; at database precision, so we check that the error is for one of our transforms
-                  ;; rather than a specific one.
-                  (is (=? {:op        "update"
-                           :global_id (fn [id] (contains? #{(:id x1) (:id x2)} id))
-                           :ref_id    (fn [id] (contains? #{ws-x-1-id ws-x-2-id} id))
-                           :message   "boom"}
-                          (first (:errors resp))))))
+                  (is (= {:op        "update"
+                          :global_id (:id x2)
+                          :ref_id    ws-x-2-id
+                          :message   "boom"}
+                         (first (:errors resp))))))
               (testing "Core transforms are left unchanged"
                 (is (= (:name x1)
                        (t2/select-one-fn :name :model/Transform (:id x1))))
