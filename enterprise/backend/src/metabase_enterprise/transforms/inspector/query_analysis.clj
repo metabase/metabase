@@ -1,5 +1,5 @@
-(ns metabase-enterprise.transforms.inspector-v2.query-analysis
-  "Query analysis for Transform Inspector v2.
+(ns metabase-enterprise.transforms.inspector.query-analysis
+  "Query analysis for Transform Inspector.
 
    Extracts structural information from MBQL and native SQL queries:
    - Join structure (strategy, alias, source table, conditions)

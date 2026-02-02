@@ -1,5 +1,5 @@
-(ns metabase.lib.transforms.inspector-v2
-  "Simple utilities for Transform Inspector v2 trigger evaluation."
+(ns metabase.lib.transforms.inspector
+  "Simple utilities for Transform Inspector trigger evaluation."
   (:require
    [clojure.set :as set]
    [metabase.lib.transforms.inspector.interestingness :as interestingness]))

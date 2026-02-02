@@ -1,26 +1,26 @@
-(ns metabase-enterprise.transforms.inspector-v2
-  "Transform Inspector v2 API.
+(ns metabase-enterprise.transforms.inspector
+  "Transform Inspector API.
 
    Two-phase lens-based approach:
    - Phase 1 (discover-lenses): Returns sources, target, available lenses
    - Phase 2 (get-lens): Returns sections and cards for a specific lens"
   (:require
-   [metabase-enterprise.transforms.inspector-v2.context :as context]
-   [metabase-enterprise.transforms.inspector-v2.lens.column-comparison]
-   [metabase-enterprise.transforms.inspector-v2.lens.core :as lens.core]
-   [metabase-enterprise.transforms.inspector-v2.lens.generic]
-   [metabase-enterprise.transforms.inspector-v2.lens.join-analysis]
-   [metabase-enterprise.transforms.inspector-v2.lens.unmatched-rows]
-   [metabase-enterprise.transforms.inspector-v2.schema :as schema]
+   [metabase-enterprise.transforms.inspector.context :as context]
+   [metabase-enterprise.transforms.inspector.lens.column-comparison]
+   [metabase-enterprise.transforms.inspector.lens.core :as lens.core]
+   [metabase-enterprise.transforms.inspector.lens.generic]
+   [metabase-enterprise.transforms.inspector.lens.join-analysis]
+   [metabase-enterprise.transforms.inspector.lens.unmatched-rows]
+   [metabase-enterprise.transforms.inspector.schema :as schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 ;; Force load lens implementations
 (comment
-  metabase-enterprise.transforms.inspector-v2.lens.generic/keep-me
-  metabase-enterprise.transforms.inspector-v2.lens.column-comparison/keep-me
-  metabase-enterprise.transforms.inspector-v2.lens.join-analysis/keep-me
-  metabase-enterprise.transforms.inspector-v2.lens.unmatched-rows/keep-me)
+  metabase-enterprise.transforms.inspector.lens.generic/keep-me
+  metabase-enterprise.transforms.inspector.lens.column-comparison/keep-me
+  metabase-enterprise.transforms.inspector.lens.join-analysis/keep-me
+  metabase-enterprise.transforms.inspector.lens.unmatched-rows/keep-me)
 
 (set! *warn-on-reflection* true)
 

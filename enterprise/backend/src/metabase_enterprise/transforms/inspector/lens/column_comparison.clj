@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.inspector-v2.lens.column-comparison
+(ns metabase-enterprise.transforms.inspector.lens.column-comparison
   "Column Comparison lens - compare distributions for matched columns.
 
    This lens is applicable when there are matched columns between
@@ -7,7 +7,7 @@
 
    Layout: :comparison"
   (:require
-   [metabase-enterprise.transforms.inspector-v2.lens.core :as lens.core]
+   [metabase-enterprise.transforms.inspector.lens.core :as lens.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]))

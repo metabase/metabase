@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.inspector-v2.lens.unmatched-rows
+(ns metabase-enterprise.transforms.inspector.lens.unmatched-rows
   "Unmatched Rows lens - analyze rows that failed to join.
 
    This is a drill-down lens triggered from join-analysis when
@@ -17,7 +17,7 @@
    Layout: :flat"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms.inspector-v2.lens.core :as lens.core]
+   [metabase-enterprise.transforms.inspector.lens.core :as lens.core]
    [metabase.lib.util :as lib.util]))
 
 (set! *warn-on-reflection* true)

@@ -1,9 +1,9 @@
-(ns metabase-enterprise.transforms.inspector-v2.context
-  "Context building for Transform Inspector v2."
+(ns metabase-enterprise.transforms.inspector.context
+  "Context building for Transform Inspector."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.transforms.inspector-v2.query-analysis :as query-analysis]
+   [metabase-enterprise.transforms.inspector.query-analysis :as query-analysis]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.util :as u]

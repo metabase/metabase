@@ -4,8 +4,8 @@
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.inspector-v2 :as inspector-v2]
-   [metabase-enterprise.transforms.inspector-v2.schema :as inspector-v2.schema]
+   [metabase-enterprise.transforms.inspector :as inspector]
+   [metabase-enterprise.transforms.inspector.schema :as inspector.schema]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -509,18 +509,18 @@
 
 ;;; -------------------------------------------------- Inspector API --------------------------------------------------
 
-(api.macros/defendpoint :get "/:id/inspect-v2"
-  :- ::inspector-v2.schema/discovery-response
-  "Phase 1: Discover available lenses for a transform (v2).
+(api.macros/defendpoint :get "/:id/inspect"
+  :- ::inspector.schema/discovery-response
+  "Phase 1: Discover available lenses for a transform.
    Returns structural metadata and available lens types."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [transform (api/read-check :model/Transform id)]
     (check-feature-enabled! transform)
-    (inspector-v2/discover-lenses transform)))
+    (inspector/discover-lenses transform)))
 
-(api.macros/defendpoint :get "/:id/inspect-v2/:lens-id"
-  :- ::inspector-v2.schema/lens
-  "Phase 2: Get full lens contents for a transform (v2).
+(api.macros/defendpoint :get "/:id/inspect/:lens-id"
+  :- ::inspector.schema/lens
+  "Phase 2: Get full lens contents for a transform.
    Returns sections, cards with dataset_query, and trigger definitions.
    Accepts optional params for drill lenses as query params."
   [{:keys [id lens-id]} :- [:map
@@ -529,7 +529,7 @@
    params :- [:map-of :keyword :any]]
   (let [transform (api/read-check :model/Transform id)]
     (check-feature-enabled! transform)
-    (inspector-v2/get-lens transform lens-id params)))
+    (inspector/get-lens transform lens-id params)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

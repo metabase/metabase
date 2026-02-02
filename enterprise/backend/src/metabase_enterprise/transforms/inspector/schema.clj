@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms.inspector-v2.schema
-  "Schemas for Transform Inspector v2.
+(ns metabase-enterprise.transforms.inspector.schema
+  "Schemas for Transform Inspector.
 
-   The v2 inspector uses a lens-based approach:
+   The inspector uses a lens-based approach:
    - Phase 1 (discover): Returns sources, target, and available lenses
    - Phase 2 (get-lens): Returns sections and cards for a specific lens
 
