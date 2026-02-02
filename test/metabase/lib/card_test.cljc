@@ -672,6 +672,10 @@
           adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
       (is (some? (lib/returned-columns adhoc-query))))))
 
+(deftest ^:parallel fallback-display-name-test
+  (is (= "Question 42" (lib.card/fallback-display-name 42)))
+  (is (= "Question 7" (lib.card/fallback-display-name 7))))
+
 (deftest ^:parallel saved-question-metadata-test
   (let [card (:venues (lib.tu/mock-cards))
         mp (lib.tu/mock-metadata-provider
