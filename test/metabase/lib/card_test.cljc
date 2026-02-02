@@ -672,7 +672,7 @@
           adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
       (is (some? (lib/returned-columns adhoc-query))))))
 
-(deftest merge-model-metadata-preserved-keys-test
+(deftest ^:parallel merge-model-metadata-preserved-keys-test
   (let [result-col {:lib/type :metadata/column
                     :name "FOO"
                     :id 100
