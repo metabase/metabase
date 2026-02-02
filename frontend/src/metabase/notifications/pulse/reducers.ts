@@ -19,6 +19,7 @@ const DEFAULT_EDITING_PULSE = {
   name: null,
   cards: [],
   channels: [],
+  // Required casting because we can't fully instantiate DashboardSubscription on the client.
 } as unknown as DashboardSubscription;
 
 export const editingPulse = handleActions(
@@ -52,12 +53,12 @@ export const formInput = handleActions(
   {
     [FETCH_PULSE_FORM_INPUT]: {
       next: (
-        _state: ChannelApiResponse | Record<string, never>,
+        _state: ChannelApiResponse,
         { payload }: { payload: ChannelApiResponse },
       ) => payload,
     },
   },
-  {} as Record<string, never>,
+  {} as ChannelApiResponse,
 );
 
 type CardPreviewEntry = { id: number };

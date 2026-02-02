@@ -311,11 +311,11 @@ function DashboardSubscriptionsSidebarInner({
 
   const setPulseParameters = useCallback(
     (parameters: UiParameter[]) => {
-      setPulse({
+      const updatedPulse: DashboardSubscription = {
         ...pulse,
-        parameters:
-          parameters as unknown as DashboardSubscription["parameters"],
-      });
+        parameters: parameters,
+      };
+      setPulse(updatedPulse);
     },
     [pulse, setPulse],
   );
@@ -325,15 +325,12 @@ function DashboardSubscriptionsSidebarInner({
       return;
     }
 
-    const cleanedPulse = cleanPulse(
-      pulse as unknown as Parameters<typeof cleanPulse>[0],
-      formInput.channels,
-    );
+    const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
 
     try {
       setIsSaving(true);
-      await updateEditing(cleanedPulse as unknown as DashboardSubscription);
+      await updateEditing(cleanedPulse);
       await saveEditing();
       setEditingMode(EDITING_MODES.LIST_PULSES_OR_NEW_PULSE);
       setReturnMode([]);

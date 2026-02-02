@@ -91,7 +91,7 @@ export interface ChannelApiResponse {
 export type ChannelType = keyof ChannelApiResponse["channels"];
 
 export type Channel = {
-  channel_type: string;
+  channel_type: ChannelType;
   details?: Record<string, string | boolean>;
   enabled?: boolean;
   recipients?: User[];

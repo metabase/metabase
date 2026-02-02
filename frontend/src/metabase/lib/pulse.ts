@@ -15,6 +15,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelType,
   DashboardSubscription,
   Parameter,
   ScheduleSettings,
@@ -135,10 +136,10 @@ export function pulseIsValid(
 }
 
 export function dashboardPulseIsValid(
-  pulse: Pick<DashboardSubscription, "channels">,
+  pulse: DashboardSubscription,
   channelSpecs: ChannelSpecs,
 ) {
-  return pulseChannelsAreValid(pulse as DashboardSubscription, channelSpecs);
+  return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
 export function emailIsEnabled(pulse: DashboardSubscription) {
@@ -149,7 +150,10 @@ export function emailIsEnabled(pulse: DashboardSubscription) {
   );
 }
 
-export function cleanPulse(pulse: DashboardSubscription, channelSpecs: any) {
+export function cleanPulse(
+  pulse: DashboardSubscription,
+  channelSpecs: ChannelSpecs,
+) {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
@@ -157,7 +161,7 @@ export function cleanPulse(pulse: DashboardSubscription, channelSpecs: any) {
   };
 }
 
-function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
+function cleanPulseChannels(channels: Channel[], channelSpecs: ChannelSpecs) {
   return channels.filter((channel) =>
     channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
@@ -179,11 +183,7 @@ function cleanPulseParameters(parameters: Parameter[]) {
   });
 }
 
-type ChannelSpecs = {
-  email?: {
-    configured: boolean;
-  };
-};
+type ChannelSpecs = Record<ChannelType, ChannelSpec>;
 
 export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   // email is the first choice
