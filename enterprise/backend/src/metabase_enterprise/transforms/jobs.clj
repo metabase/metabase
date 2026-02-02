@@ -239,7 +239,9 @@
               (try
                 (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
                 (when (= :cron run-method)
-                  (notify-job-failure job-id (.getMessage t)))
+                  (if (::transform-failure (ex-data t))
+                    (notify-transform-failures job-id (::failures (ex-data t)))
+                    (notify-job-failure job-id (.getMessage t))))
                 (catch Exception e
                   (log/error e "Error when failing a transform job run.")))
               (throw t))))

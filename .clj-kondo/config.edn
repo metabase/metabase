@@ -239,7 +239,6 @@
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
     (metabase.lib.util.match/match-lite)
-    (metabase.lib.util.match/match-lite-recursive)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)
