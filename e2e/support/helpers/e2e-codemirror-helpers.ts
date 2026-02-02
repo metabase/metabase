@@ -11,11 +11,17 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return cy.get(`[data-testid=${testId}] .cm-content`);
     },
     focus() {
-      helpers.get().should("be.visible").focus();
-      // Move caret to end
-      const isMac = Cypress.platform === "darwin";
-      cy.realPress([isMac ? "Meta" : "Control", "End"]);
-
+      helpers.get().should("be.visible").click("right", {
+        /**
+         * We want to click on the right, because we want the caret to be positioned at the end of the editor.
+         * Transform editor in workspaces (data studio) has a resize handle at the right of the editor,
+         * which causes this click("right") to fail.
+         * Alternative approach with pressing End key for moving the caret to the end made
+         * repro for (metabase#49882-2, metabase#15892) fail in CI every time.
+         * Hence force: true.
+         */
+        force: true,
+      });
       helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       return helpers;
     },
