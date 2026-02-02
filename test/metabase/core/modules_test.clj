@@ -2,7 +2,6 @@
   "Tests that the modules config file is configured correctly."
   (:require
    [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
