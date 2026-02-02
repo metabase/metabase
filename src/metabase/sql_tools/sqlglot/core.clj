@@ -33,9 +33,20 @@
           {}
           (lib.metadata/tables mp)))
 
-(defn- driver->dialect
+(defn driver->dialect
+  "Map a Metabase driver keyword to a SQLGlot dialect string.
+   Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
   [driver]
-  (when-not (= :h2 driver)
+  (case driver
+    :postgres            "postgres"
+    :mysql               "mysql"
+    :snowflake           "snowflake"
+    :bigquery            "bigquery"
+    :bigquery-cloud-sdk  "bigquery"
+    :redshift            "redshift"
+    :sqlserver           "tsql"
+    :h2                  nil
+    ;; Default: try using the driver name as dialect
     (name driver)))
 
 ;;;; Tables

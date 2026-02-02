@@ -3,8 +3,9 @@
    and fetches table metadata formatted as DDL for SQL generation."
   (:require
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase.api.common :as api]
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -52,7 +53,7 @@
       [:= [:lower :name] table-lower])))
 
 (defn extract-tables-from-sql
-  "Extract table IDs from a raw SQL string using Macaw parser.
+  "Extract table IDs from a raw SQL string using SQLGlot parser.
 
    Parses the SQL to identify referenced table names, then queries the
    database to resolve those names to table IDs. When the SQL includes
@@ -64,8 +65,15 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [result (macaw/query->tables sql-string {:mode :compound-select})
-            tables (:tables result)]
+      ;; We use sql-parsing directly (rather than sql-tools) because we only have a raw SQL
+      ;; string and database ID, not a full pMBQL query. We do our own table matching below
+      ;; rather than relying on sql-tools' metadata-provider-based matching.
+      (let [driver (t2/select-one-fn :engine :model/Database :id database-id)
+            dialect (sqlglot/driver->dialect driver)
+            ;; sql-parsing/referenced-tables returns [[schema table] ...]
+            ;; Convert to [{:schema ... :table ...} ...] for table-match-clause
+            table-tuples (sql-parsing/referenced-tables dialect sql-string)
+            tables (mapv (fn [[schema table]] {:schema schema :table table}) table-tuples)]
         (if (seq tables)
           (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table
