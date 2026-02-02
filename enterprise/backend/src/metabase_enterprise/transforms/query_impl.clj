@@ -1,91 +1,43 @@
 (ns metabase-enterprise.transforms.query-impl
+  "Query transform implementation for scheduled execution.
+
+   This namespace provides the scheduled wrapper that creates transform_run rows
+   and tracks status. The actual execution logic is in transforms-base.query."
   (:require
-   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.common :as schema.common]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(defmethod transforms.i/target-db-id :query
-  [transform]
-  ;; For query transforms, the target needs to match the source, so use the query as the source of truth.
-  (or (-> transform :source :query :database)
-      ;; Fallback to using a configured value.
-      (get-in transform [:target :database])
-      (:target_db_id transform)))
-
-(mr/def ::transform-details
-  [:map
-   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
-   [:conn-spec :any]
-   [:query ::qp.compile/compiled]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
-
-(mr/def ::transform-opts
-  [:map
-   [:overwrite? :boolean]])
-
-(defn- transform-opts [{:keys [transform-type]}]
-  (case transform-type
-    :table {:overwrite? true}
-
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
-    :table-incremental {}))
+;;; ------------------------------------------------- Scheduled Execution Wrapper -------------------------------------------------
 
 (defn- run-mbql-transform!
+  "Execute a query transform with transform_run tracking.
+
+   This wrapper:
+   1. Creates a transform_run row via try-start-unless-already-running
+   2. Calls the base execution via run-cancelable-transform!
+   3. Updates transform_run status on completion/failure"
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
+  ([{:keys [id owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
    (try
-     (let [db (get-in source [:query :database])
-           {driver :engine :as database} (t2/select-one :model/Database db)
-           transform-details {:db-id db
-                              :database database
-                              :transform-id   id
-                              :transform-type (keyword (:type target))
-                              :conn-spec (driver/connection-spec driver database)
-                              :query (transforms.util/compile-source transform)
-                              :output-schema (:schema target)
-                              :output-table (transforms.util/qualified-table-name driver target)}
-           opts (transform-opts transform-details)
-           features (transforms.util/required-database-features transform)
-           ;; For manual runs, use the triggering user; for cron, use owner/creator
+     (let [;; For manual runs, use the triggering user; for cron, use owner/creator
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
-                         (or owner_user_id creator_id))]
-
-       (when (transforms.util/db-routing-enabled? database)
-         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
-                         {:driver driver, :database database})))
-       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
-         (throw (ex-info "The database does not support the requested transform target type."
-                         {:driver driver, :database database, :features features})))
-       ;; mark the execution as started and notify any observers
-       (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
-         (when start-promise
-           (deliver start-promise [:started run-id]))
-         (log/info "Executing transform" id "with target" (pr-str target))
-         (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-           (transforms.util/run-cancelable-transform!
-            run-id driver transform-details
-            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
-         (transforms.util/handle-transform-complete!
-          :run-id run-id
-          :transform transform
-          :db database)))
+                         (or owner_user_id creator_id))
+           {run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
+       (when start-promise
+         (deliver start-promise [:started run-id]))
+       (transforms.util/run-cancelable-transform! run-id transform {}))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
-         ;; if the start-promise has been delivered, this is a no-op,
-         ;; but we assume nobody would catch the exception anyway
+         ;; if the start-promise has been delivered, this is a no-op
          (deliver start-promise t))
        (throw t)))))
+
+;;; ------------------------------------------------- Interface Implementation -------------------------------------------------
 
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :query [transform opts]

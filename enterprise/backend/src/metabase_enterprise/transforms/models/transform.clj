@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms-base.interface :as transforms-base.i]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -25,6 +25,9 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
+
+(defmethod mi/non-timestamped-fields :model/Transform [_]
+  #{:dependency_analysis_version})
 
 ;; Only superusers can access transforms, and writes/creates are blocked globally in remote-sync read-only mode
 (defmethod mi/can-read? :model/Transform
@@ -61,7 +64,7 @@
 
 (defn- transform-source-in [m]
   (-> m
-      (m/update-existing :source-tables transforms.util/normalize-source-tables)
+      (m/update-existing :source-tables transforms-base.util/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
@@ -81,11 +84,11 @@
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   ;; Populate computed fields
-  (let [target-db-id (transforms.i/target-db-id transform)]
+  (let [target-db-id (transforms-base.i/target-db-id transform)]
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
-         :source_type (transforms.util/transform-source-type source)
+         :source_type (transforms-base.util/transform-source-type source)
          :target_db_id target-db-id))))
 
 (t2/define-before-update :model/Transform
@@ -94,13 +97,13 @@
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
   (if source
-    (assoc transform :source_type (transforms.util/transform-source-type source))
+    (assoc transform :source_type (transforms-base.util/transform-source-type source))
     transform))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :source_type (transforms.util/transform-source-type source))
+    (assoc transform :source_type (transforms-base.util/transform-source-type source))
     transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
@@ -252,7 +255,7 @@
   "Fetch tables with their fields. The tables show up under the `:table` property."
   [transforms]
   (let [table-key-fn (fn [{:keys [target] :as transform}]
-                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
+                       [(transforms-base.i/target-db-id transform) (:schema target) (:name target)])
         table-keys (into #{} (map table-key-fn) transforms)
         table-keys-with-schema (filter second table-keys)
         table-keys-without-schema (keep (fn [[db-id schema table-name]]

@@ -3,11 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.python-runner-test :as python-runner-test]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.sync.core :as sync]
@@ -120,7 +120,7 @@
         table-schema {:name qualified-table-name
                       :columns (:columns schema)}]
     (mt/as-admin
-      (transforms.util/create-table-from-schema! driver db-id table-schema))
+      (transforms-base.util/create-table-from-schema! driver db-id table-schema))
 
     (when (seq data)
       (driver/insert-from-source! driver db-id table-schema

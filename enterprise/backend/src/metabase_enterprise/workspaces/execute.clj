@@ -10,10 +10,10 @@
   (:require
    [clojure.string :as str]
    [macaw.core :as macaw]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -111,7 +111,7 @@
   [{:keys [source]} remapping]
   (let [table-mapping          (:tables remapping no-mapping)
         remapped-source        (remap-python-source table-mapping source)
-        resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))
+        resolved-source-tables (transforms-base.util/resolve-source-tables (:source-tables remapped-source))
         {:as   result
          :keys [cols rows]}    (python-runner/execute-and-read-output!
                                 {:code          (:body remapped-source)

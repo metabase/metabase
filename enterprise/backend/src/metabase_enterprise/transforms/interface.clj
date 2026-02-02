@@ -1,23 +1,21 @@
-(ns metabase-enterprise.transforms.interface)
+(ns metabase-enterprise.transforms.interface
+  "Interface for scheduled transform execution.
 
-(defn- transform->transform-type
-  [transform]
-  (-> transform :source :type keyword))
+   For core interface methods (source-db-id, target-db-id, table-dependencies),
+   use metabase-enterprise.transforms-base.interface directly.
 
-(defmulti target-db-id
-  "Return the ID of the target database for a given `transform`. The target database is the destination where the
-  transformed data will be written. Often this is the same database as the source database."
-  {:added "0.57.0" :arglists '([transform])}
-  transform->transform-type)
+   This namespace defines the scheduled-execution-specific `execute!` multimethod
+   which handles transform_run tracking."
+  (:require
+   [metabase-enterprise.transforms-base.interface :as transforms-base.i]))
 
+;; Scheduled execution multimethod - dispatches on transform type
+;; This is separate from transforms-base.i/execute-base! which does NOT track transform_run
 (defmulti execute!
-  "Execute a transform operation. Runs the actual transformation process, which might involve running SQL queries,
-  Python scripts, or other transformation logic depending on the transform type.
+  "Execute a transform operation with transform_run tracking.
 
-  This method blocks and may take significant time depending on the data volume. Implementations
-  should handle errors gracefully and provide appropriate logging.
-
-  Returns nil (or a result that can be discarded).
+  This method creates transform_run rows, tracks status, and handles cancellation.
+  For base execution without database tracking, use transforms-base.i/execute-base! instead.
 
   Options:
   - `:start-promise`
@@ -36,24 +34,4 @@
   Do not use this directly. Use [[metabase-enterprise.transforms.execute/execute!]] instead."
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
-    (transform->transform-type transform)))
-
-(defmulti table-dependencies
-  "Return a set of logical table dependencies of the transform, including indirect dependencies via cards.
-  The transform execution system uses these dependencies to determine the correct order of execution
-  and to detect circular dependencies.
-
-  Each dependency is represented as one of:
-  - `{:table <table-id>}`
-     A dependency on a table that exists and has been synced.
-  - `{:transform <transform-id>}`
-     A dependency on a table that does not yet exist, but is known to be the target of another transform.
-     Represents a 'placeholder' table (as we no table id / metadata) for the same purposes.
-  - `{:table-ref {:database_id <db-id> :schema <schema> :table <name>}}`
-     A dependency on a table by name, for cases where the table_id may not exist yet (e.g., when
-     bulk importing transforms that depend on each other's outputs). The ordering system will
-     resolve these to transforms by matching against target table definitions.
-
-  An empty set indicates no dependencies."
-  {:added "0.57.0" :arglists '([transform])}
-  transform->transform-type)
+    (transforms-base.i/transform->transform-type transform)))

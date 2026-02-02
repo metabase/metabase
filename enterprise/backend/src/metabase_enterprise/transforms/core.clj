@@ -2,10 +2,10 @@
   "API namespace for the `metabase-enterprise.transform` module."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.transforms-base.util]
    [metabase-enterprise.transforms.models.transform]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.settings]
-   [metabase-enterprise.transforms.util]
    [metabase.premium-features.core :refer [defenterprise]]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -13,7 +13,7 @@
 (p/import-vars
  [metabase-enterprise.transforms.settings
   transform-timeout]
- [metabase-enterprise.transforms.util
+ [metabase-enterprise.transforms-base.util
   native-query-transform?
   python-transform?
   query-transform?

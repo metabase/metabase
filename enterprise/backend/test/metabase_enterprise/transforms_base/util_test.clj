@@ -1,9 +1,9 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
-  "Tests for transform utility functions."
+(ns ^:mb/driver-tests metabase-enterprise.transforms-base.util-test
+  "Tests for transform base utility functions."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]))
@@ -16,7 +16,7 @@
       (let [driver driver/*driver*]
 
         (testing "Basic table name generation"
-          (let [result (transforms.util/temp-table-name driver nil)
+          (let [result (transforms-base.util/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
@@ -24,7 +24,7 @@
             (is (re-matches #"mb_transform_temp_table_\d+" table-name))))
 
         (testing "Table name preserves namespace when present"
-          (let [result (transforms.util/temp-table-name driver "schema")]
+          (let [result (transforms-base.util/temp-table-name driver "schema")]
             (is (= "schema" (namespace result)))
             (is (str/starts-with? (name result) "mb_transform_temp_table_"))))))))
 
@@ -34,7 +34,7 @@
       (let [driver driver/*driver*
             db-id (mt/id)
 
-            table-name (transforms.util/temp-table-name driver nil)
+            table-name (transforms-base.util/temp-table-name driver nil)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
@@ -56,19 +56,19 @@
 
 (deftest is-temp-transform-tables-test
   (testing "tables with shcema"
-    (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
-          table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
+    (let [table-with-schema    {:name (name (transforms-base.util/temp-table-name :postgres "schema"))}
+          table-without-schema {:name (name (transforms-base.util/temp-table-name :postgres "schema"))}]
       (mt/with-premium-features #{}
-        (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
-        (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
+        (is (false? (transforms-base.util/is-temp-transform-table? table-with-schema)))
+        (is (false? (transforms-base.util/is-temp-transform-table? table-without-schema))))
       (mt/with-premium-features #{:transforms}
-        (is (transforms.util/is-temp-transform-table? table-without-schema))
-        (is (transforms.util/is-temp-transform-table? table-with-schema)))))
+        (is (transforms-base.util/is-temp-transform-table? table-without-schema))
+        (is (transforms-base.util/is-temp-transform-table? table-with-schema)))))
 
   (testing "Ignores non-transform tables"
     (mt/with-premium-features #{:transforms}
-      (is (false? (transforms.util/is-temp-transform-table? {:name :orders})))
-      (is (false? (transforms.util/is-temp-transform-table? {:name :public/orders}))))))
+      (is (false? (transforms-base.util/is-temp-transform-table? {:name :orders})))
+      (is (false? (transforms-base.util/is-temp-transform-table? {:name :public/orders}))))))
 
 (deftest create-table-from-schema!-test
   (testing "create-table-from-schema! preserves column order from schema definition"
@@ -88,7 +88,7 @@
         (mt/as-admin
           (try
             (testing "Creating table with ordered columns"
-              (transforms.util/create-table-from-schema! driver db-id table-schema)
+              (transforms-base.util/create-table-from-schema! driver db-id table-schema)
               (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
 
             (when (get-method driver/describe-table driver)
@@ -115,7 +115,7 @@
 
 (deftest ^:parallel matching-timestamp?-test
   (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
-    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+    (let [matching-timestamp? #'transforms-base.util/matching-timestamp?
           field-path          [:start_time]
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
@@ -158,30 +158,30 @@
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema "my_schema"}]
       (testing "returns nil for empty input"
-        (is (nil? (transforms.util/batch-lookup-table-ids [])))
-        (is (nil? (transforms.util/batch-lookup-table-ids nil))))
+        (is (nil? (transforms-base.util/batch-lookup-table-ids [])))
+        (is (nil? (transforms-base.util/batch-lookup-table-ids nil))))
 
       (testing "looks up table without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.util/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
 
       (testing "looks up table with schema"
         (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.util/batch-lookup-table-ids refs)]
           (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
 
       (testing "handles mixed refs with and without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
                     {:database_id (:id db) :schema "my_schema" :table "table_two"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.util/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)
                   [(:id db) "my_schema" "table_two"] (:id t2)}
                  result))))
 
       (testing "returns empty for non-existent table"
         (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.util/batch-lookup-table-ids refs)]
           (is (= {} result)))))))
 
 (deftest normalize-source-tables-test
@@ -189,7 +189,7 @@
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "existing_table" :schema nil}]
       (testing "converts integer table ID to map format"
-        (let [result (transforms.util/normalize-source-tables {"t" (:id t1)})]
+        (let [result (transforms-base.util/normalize-source-tables {"t" (:id t1)})]
           (is (map? (get result "t")))
           (is (= (:id db) (get-in result ["t" :database_id])))
           (is (= "existing_table" (get-in result ["t" :table])))
@@ -197,27 +197,27 @@
 
       (testing "throws for non-existent integer table ID"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
-                              (transforms.util/normalize-source-tables {"t" 999999}))))
+                              (transforms-base.util/normalize-source-tables {"t" 999999}))))
 
       (testing "populates table_id for existing table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.util/normalize-source-tables source-tables)]
           (is (= (:id t1) (get-in result ["t" :table_id])))))
 
       (testing "preserves existing table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table" :table_id 999}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.util/normalize-source-tables source-tables)]
           (is (= 999 (get-in result ["t" :table_id])))))
 
       (testing "leaves table_id nil for non-existent table ref"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.util/normalize-source-tables source-tables)]
           (is (nil? (get-in result ["t" :table_id])))))
 
       (testing "handles mixed int and map entries"
         (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.util/normalize-source-tables source-tables)]
           (is (map? (get result "t1")))
           (is (= (:id t1) (get-in result ["t1" :table_id])))
           (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
@@ -228,28 +228,28 @@
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "passes through integer entries (old format)"
-        (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
+        (is (= {"t" 123} (transforms-base.util/resolve-source-tables {"t" 123}))))
 
       (testing "resolves map with table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
-          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+          (is (= {"t" (:id t1)} (transforms-base.util/resolve-source-tables source-tables)))))
 
       (testing "looks up table_id for map without it"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one"}}]
-          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+          (is (= {"t" (:id t1)} (transforms-base.util/resolve-source-tables source-tables)))))
 
       (testing "throws for non-existent table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
-                                (transforms.util/resolve-source-tables source-tables)))))
+                                (transforms-base.util/resolve-source-tables source-tables)))))
 
       (testing "throws with schema in error message"
         (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
-                                (transforms.util/resolve-source-tables source-tables)))))
+                                (transforms-base.util/resolve-source-tables source-tables)))))
 
       (testing "handles mixed entries (old and new format)"
         (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
           (is (= {"t1" (:id t1) "t2" (:id t2)}
-                 (transforms.util/resolve-source-tables source-tables))))))))
+                 (transforms-base.util/resolve-source-tables source-tables))))))))
