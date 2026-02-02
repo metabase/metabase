@@ -37,7 +37,7 @@ Unlike collections, each folder in the Library restricts which type of content i
 
 You can add a metric or snippet, or publish a table. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. Tables people can use to get answers they can trust. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../data-modeling/transforms.md).
 
-You can also publish tables directly from the table view in the [Data Structures](./data-structures.md) tab.
+You can also publish tables directly from the table view in the Data Structures tab.
 
 In addition to being available for browsing in the library, published tables appear first when people pick data for new questions.
 
@@ -60,8 +60,7 @@ If other tables depend on the table you want to unpublish, Metabase will unpubli
 Once a table is published, you can view and manage its metadata, and more.
 
 - Overview
-- [Fields](./data-editing.md)
-- [Segments](/docs/data-modeling/segments.md)
+- [Segments](../data-modeling/segments.md)
 - Measures
 - [Dependencies](./dependency-graph.md).
 
