@@ -503,3 +503,19 @@ function getSortItems(stageIndex: number) {
 export function clauseStepPopover() {
   return popover({ testId: "clause-popover" });
 }
+
+export function openPopoverFromDefaultBucketSize(
+  column: string,
+  bucket: string,
+) {
+  cy.findAllByTestId("dimension-list-item")
+    .filter(`:contains("${column}")`)
+    .as("targetListItem")
+    .realHover()
+    .within(() => {
+      cy.findByTestId("dimension-list-item-binning")
+        .as("listItemSelectedBinning")
+        .should("contain", bucket)
+        .click();
+    });
+}
