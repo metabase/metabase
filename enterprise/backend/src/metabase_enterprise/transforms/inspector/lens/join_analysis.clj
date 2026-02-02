@@ -147,9 +147,9 @@
      (case source-type
        :mbql (make-join-step-query-mbql preprocessed-query step
                                         (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
-       :native #p (make-native-query db-id
-                                     (build-native-join-step-sql from-clause-sql
-                                                                 (take step join-structure) join)))
+       :native (make-native-query db-id
+                                  (build-native-join-step-sql from-clause-sql
+                                                              (take step join-structure) join)))
      :metadata {:card-type     :join-step
                 :join-step     step
                 :join-alias    alias
