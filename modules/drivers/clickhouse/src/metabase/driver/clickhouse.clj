@@ -351,3 +351,14 @@
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
+
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
+  [driver database]
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
+   ;; TODO(rileythomp, 2026-01-29): Remove this once we upgrade past 0.8.4
+   ;; This is to work around 68674 where connections are being poisoned with bad roles
+   {"preferredTestQuery" "SELECT 1"}))
+
+(defmethod driver/llm-sql-dialect-resource :clickhouse [_]
+  "llm/prompts/dialects/clickhouse.md")

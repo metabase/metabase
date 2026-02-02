@@ -64,8 +64,11 @@ describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      test === "QB" ? cy.findByText("Q1").click() : cy.findByText("Q2").click();
+      if (test === "QB") {
+        cy.findByText("Q1").click();
+      } else {
+        cy.findByText("Q2").click();
+      }
 
       cy.wait("@dataset", { timeout: 5000 });
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

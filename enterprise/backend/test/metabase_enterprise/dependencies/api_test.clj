@@ -1814,8 +1814,8 @@
                      (= sort-direction :desc) reverse)
                    names))))))))
 
-(deftest ^:sequential broken-entities-returns-source-of-errors-test
-  (testing "GET /api/ee/dependencies/graph/broken - returns entities that are SOURCE of downstream errors"
+(deftest ^:sequential breaking-entities-returns-source-of-errors-test
+  (testing "GET /api/ee/dependencies/graph/breaking - returns entities that are SOURCE of downstream errors"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -1831,12 +1831,12 @@
             (lib-be/with-metadata-provider-cache
               (while (#'dependencies.backfill/backfill-dependencies!))
               (run-analysis-for-card! (:id dependent-card)))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=brokentest")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=brokentest")]
               (is (= [(:id model-card)] (mapv :id (:data response)))
                   "Model card should appear as a breaking entity"))))))))
 
-(deftest ^:sequential broken-entities-types-filtering-test
-  (testing "GET /api/ee/dependencies/graph/broken - types parameter filters results"
+(deftest ^:sequential breaking-entities-types-filtering-test
+  (testing "GET /api/ee/dependencies/graph/breaking - types parameter filters results"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -1858,17 +1858,17 @@
               (run-analysis-for-card! (:id dependent-card-1))
               (run-analysis-for-card! (:id dependent-card-2)))
             (testing "filtering by card returns only card sources"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=typesfiltertest")
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=typesfiltertest")
                     ids (set (map :id (:data response)))]
                 (is (contains? ids (:id model-card-1)) "Model card 1 should be in results")
                 (is (contains? ids (:id model-card-2)) "Model card 2 should be in results")))
             (testing "filtering by table returns empty (no table sources in this test)"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=table&query=typesfiltertest")
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=table&query=typesfiltertest")
                     ids (set (map :id (:data response)))]
                 (is (empty? ids) "No tables should be in results")))))))))
 
-(deftest ^:sequential broken-entities-archived-card-test
-  (testing "GET /api/ee/dependencies/graph/broken with archived parameter for source cards"
+(deftest ^:sequential breaking-entities-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/breaking with archived parameter for source cards"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -1893,18 +1893,18 @@
               (run-analysis-for-card! (:id dependent-card-1))
               (run-analysis-for-card! (:id dependent-card-2)))
             (testing "archived=false (default) excludes archived source card"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=archivedbrokentestcard")
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=archivedbrokentestcard")
                     card-ids (set (map :id (:data response)))]
                 (is (contains? card-ids (:id active-model)))
                 (is (not (contains? card-ids (:id archived-model))))))
             (testing "archived=true includes archived source card"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=archivedbrokentestcard&archived=true")
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=archivedbrokentestcard&archived=true")
                     card-ids (set (map :id (:data response)))]
                 (is (contains? card-ids (:id active-model)))
                 (is (contains? card-ids (:id archived-model)))))))))))
 
-(deftest ^:sequential broken-entities-multiple-dependents-test
-  (testing "GET /api/ee/dependencies/graph/broken - model breaking multiple dependents appears once"
+(deftest ^:sequential breaking-entities-multiple-dependents-test
+  (testing "GET /api/ee/dependencies/graph/breaking - model breaking multiple dependents appears once"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -1923,12 +1923,12 @@
               (while (#'dependencies.backfill/backfill-dependencies!))
               (run-analysis-for-card! (:id dependent-card-1))
               (run-analysis-for-card! (:id dependent-card-2)))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=multipledependents")
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=multipledependents")
                   model-ids (filter #(= (:id %) (:id model-card)) (:data response))]
               (is (= 1 (count model-ids)) "Model should appear exactly once even with multiple broken dependents"))))))))
 
-(deftest ^:sequential broken-entities-personal-collection-card-test
-  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+(deftest ^:sequential breaking-entities-personal-collection-card-test
+  (testing "GET /api/ee/dependencies/graph/breaking with include_personal_collections parameter"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
@@ -1955,18 +1955,18 @@
                 (run-analysis-for-card! (:id dependent-card-1))
                 (run-analysis-for-card! (:id dependent-card-2)))
               (testing "include_personal_collections=false (default) excludes source cards in personal collections"
-                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=personalcollbrokentest")
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=personalcollbrokentest")
                       card-ids (set (map :id (:data response)))]
                   (is (not (contains? card-ids (:id model-in-personal))))
                   (is (contains? card-ids (:id model-regular)))))
               (testing "include_personal_collections=true includes source cards in personal collections"
-                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=personalcollbrokentest&include_personal_collections=true")
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=personalcollbrokentest&include_personal_collections=true")
                       card-ids (set (map :id (:data response)))]
                   (is (contains? card-ids (:id model-in-personal)))
                   (is (contains? card-ids (:id model-regular))))))))))))
 
-(deftest ^:sequential broken-entities-pagination-test
-  (testing "GET /api/ee/dependencies/graph/broken - should paginate results"
+(deftest ^:sequential breaking-entities-pagination-test
+  (testing "GET /api/ee/dependencies/graph/breaking - should paginate results"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -1991,15 +1991,15 @@
                      :total  2
                      :offset 0
                      :limit  1}
-                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=paginationtest&offset=0&limit=1")))
+                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=paginationtest&offset=0&limit=1")))
             (is (=? {:data   [{:id (:id model-card-2)}]
                      :total  2
                      :offset 1
                      :limit  1}
-                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=paginationtest&offset=1&limit=1")))))))))
+                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=paginationtest&offset=1&limit=1")))))))))
 
-(deftest ^:sequential broken-entities-sort-by-name-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting by name"
+(deftest ^:sequential breaking-entities-sort-by-name-test
+  (testing "GET /api/ee/dependencies/graph/breaking - sorting by name"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2022,7 +2022,7 @@
               (run-analysis-for-card! (:id dependent-card-b)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
+                                                   "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sortnametest"
                                                    :sort_column :name
@@ -2033,8 +2033,8 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential broken-entities-sort-by-location-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting by location"
+(deftest ^:sequential breaking-entities-sort-by-location-test
+  (testing "GET /api/ee/dependencies/graph/breaking - sorting by location"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}
                      :model/Collection {collection1-id :id} {:name "B Collection"}
@@ -2059,7 +2059,7 @@
               (run-analysis-for-card! (:id dependent-card-2)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
+                                                   "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sortloctest"
                                                    :sort_column :location
@@ -2070,8 +2070,8 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential broken-entities-sort-by-dependents-with-errors-count-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents with errors count"
+(deftest ^:sequential breaking-entities-sort-by-dependents-with-errors-count-test
+  (testing "GET /api/ee/dependencies/graph/breaking - sorting by dependents with errors count"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2097,7 +2097,7 @@
               (run-analysis-for-card! (:id dependent-card-2a)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
+                                                   "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sortdepstest"
                                                    :sort_column :dependents-with-errors
@@ -2108,8 +2108,8 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential broken-entities-sort-by-dependents-with-errors-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents with errors count"
+(deftest ^:sequential breaking-entities-sort-by-dependents-with-errors-test
+  (testing "GET /api/ee/dependencies/graph/breaking - sorting by dependents with errors count"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2136,7 +2136,7 @@
               (run-analysis-for-card! (:id dependent-card-2a)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
+                                                   "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sorterrorstest"
                                                    :sort_column :dependents-with-errors
@@ -2336,7 +2336,7 @@
             (is (= visible-card (:analyzed_entity_id (first card-errors))))))))))
 
 (deftest ^:sequential broken-endpoint-error-visibility-filtering-test
-  (testing "GET /api/ee/dependencies/graph/broken - pagination and sorting work with error visibility filtering"
+  (testing "GET /api/ee/dependencies/graph/breaking - pagination and sorting work with error visibility filtering"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2369,7 +2369,7 @@
             (testing "pagination works correctly with error filtering"
               ;; Both model cards should appear in results with only visible errors
               (let [page-1 (mt/user-http-request :crowberto :get 200
-                                                 "ee/dependencies/graph/broken"
+                                                 "ee/dependencies/graph/breaking"
                                                  :types "card"
                                                  :query "errvistest"
                                                  :offset 0
@@ -2377,7 +2377,7 @@
                                                  :sort_column "name"
                                                  :sort_direction "asc")
                     page-2 (mt/user-http-request :crowberto :get 200
-                                                 "ee/dependencies/graph/broken"
+                                                 "ee/dependencies/graph/breaking"
                                                  :types "card"
                                                  :query "errvistest"
                                                  :offset 1
@@ -2392,7 +2392,7 @@
                   (is (= (:id model-card-b) (-> page-2 :data first :id))))))
             (testing "dependents_errors contains only errors for visible entities"
               (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
+                                                   "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "errvistest")
                     model-a-result (first (filter #(= (:id %) (:id model-card-a)) (:data response)))
@@ -2415,13 +2415,13 @@
                            :error_type           "missing-column"
                            :error_detail         "extra_col"})
               (let [asc-response (mt/user-http-request :crowberto :get 200
-                                                       "ee/dependencies/graph/broken"
+                                                       "ee/dependencies/graph/breaking"
                                                        :types "card"
                                                        :query "errvistest"
                                                        :sort_column "dependents-errors"
                                                        :sort_direction "asc")
                     desc-response (mt/user-http-request :crowberto :get 200
-                                                        "ee/dependencies/graph/broken"
+                                                        "ee/dependencies/graph/breaking"
                                                         :types "card"
                                                         :query "errvistest"
                                                         :sort_column "dependents-errors"
@@ -2432,7 +2432,7 @@
                   (is (= (:id model-card-b) (-> desc-response :data first :id))))))))))))
 
 (deftest ^:sequential broken-endpoint-sort-by-visible-errors-only-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting counts only visible errors, not archived"
+  (testing "GET /api/ee/dependencies/graph/breaking - sorting counts only visible errors, not archived"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2487,7 +2487,7 @@
                           :error_type           "missing-column"
                           :error_detail         "col5"}])
             (let [asc-response (mt/user-http-request :crowberto :get 200
-                                                     "ee/dependencies/graph/broken"
+                                                     "ee/dependencies/graph/breaking"
                                                      :types "card"
                                                      :query "sortviserr"
                                                      :sort_column "dependents-errors"
@@ -2580,3 +2580,275 @@
                           (filter #(= (:db_id %) db-id))
                           (map :id)
                           set))))))))))
+
+;;; --------------------------------------------- /graph/broken tests ---------------------------------------------
+;;; Tests for the /graph/broken endpoint that returns broken dependents for a specific source entity.
+
+(deftest ^:synchronized broken-dependents-source-filtering-test
+  (testing "GET /api/ee/dependencies/graph/broken - returns broken dependents filtered by source"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Setup: two models, each with one dependent
+          (let [[model-card-1 model-card-2 dependent-card-1 dependent-card-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-1 (create-model-card! user "Model Card 1 - sourcefiltertest")
+                        model-card-2 (create-model-card! user "Model Card 2 - sourcefiltertest")
+                        dependent-card-1 (create-dependent-card-on-model! user model-card-1
+                                                                          "Dependent 1 - sourcefiltertest")
+                        dependent-card-2 (create-dependent-card-on-model! user model-card-2
+                                                                          "Dependent 2 - sourcefiltertest")]
+                    [model-card-1 model-card-2 dependent-card-1 dependent-card-2]))]
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card-1)
+              (break-model-card! model-card-2))
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
+            (testing "returns only broken dependents for the specified source (not other sources)"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (str "ee/dependencies/graph/broken?id=" (:id model-card-1)
+                                                        "&type=card"))]
+                (is (= [(:id dependent-card-1)] (mapv :id response))
+                    "Should return only dependent-card-1, not dependent-card-2 with errors from model-2")))))))))
+
+(deftest ^:synchronized broken-count-and-sorting-test
+  (testing "GET /api/ee/dependencies/graph/broken - count matches and sorting works"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Setup: one model with two dependents (named for sorting)
+          (let [[model-card dependent-card-a dependent-card-b]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card (create-model-card! user "Model Card - countsorttest")
+                        dependent-card-a (create-dependent-card-on-model! user model-card
+                                                                          "A Dependent - countsorttest")
+                        dependent-card-b (create-dependent-card-on-model! user model-card
+                                                                          "B Dependent - countsorttest")]
+                    [model-card dependent-card-a dependent-card-b]))]
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card))
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-a))
+              (run-analysis-for-card! (:id dependent-card-b)))
+            (testing "count matches dependents-with-errors from /graph/breaking"
+              (let [breaking-response (mt/user-http-request
+                                       :crowberto :get 200
+                                       "ee/dependencies/graph/breaking?types=card&query=countsorttest")
+                    model-entry (first (filter #(= (:id %) (:id model-card)) (:data breaking-response)))
+                    dependents-with-errors-count (count (:dependents_errors model-entry))
+                    ;; Get actual broken dependents from new /graph/broken endpoint
+                    broken-response (mt/user-http-request :crowberto :get 200
+                                                          (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                               "&type=card"))]
+                (is (= dependents-with-errors-count (count broken-response))
+                    "Count from /graph/broken should match dependents_errors count from /graph/breaking")))
+            (testing "sort by name ascending"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                        "&type=card&sort_column=name&sort_direction=asc"))
+                    names (mapv #(get-in % [:data :name]) response)]
+                (is (= ["A Dependent - countsorttest" "B Dependent - countsorttest"] names))))
+            (testing "sort by name descending"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                        "&type=card&sort_column=name&sort_direction=desc"))
+                    names (mapv #(get-in % [:data :name]) response)]
+                (is (= ["B Dependent - countsorttest" "A Dependent - countsorttest"] names))))))))))
+
+(deftest ^:parallel broken-requires-id-and-type-test
+  (testing "GET /api/ee/dependencies/graph/broken - requires id and type parameters"
+    (mt/with-premium-features #{:dependencies}
+      (testing "missing both id and type returns 400"
+        (mt/user-http-request :crowberto :get 400 "ee/dependencies/graph/broken"))
+      (testing "missing type returns 400"
+        (mt/user-http-request :crowberto :get 400 "ee/dependencies/graph/broken?id=1"))
+      (testing "missing id returns 400"
+        (mt/user-http-request :crowberto :get 400 "ee/dependencies/graph/broken?type=card")))))
+
+(deftest ^:synchronized broken-requires-read-permission-test
+  (testing "GET /api/ee/dependencies/graph/broken - requires read permission on source entity"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/User user {:email "test@test.com"}
+                       :model/Collection {coll-id :id} {:name "Private Collection"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+            (let [[model-card dependent-card]
+                  (lib-be/with-metadata-provider-cache
+                    (let [model-card (create-model-card! user "Model Card - permtest" :collection-id coll-id)
+                          dependent-card (create-dependent-card-on-model! user model-card "Dependent Card - permtest"
+                                                                          :collection-id coll-id)]
+                      [model-card dependent-card]))]
+              (lib-be/with-metadata-provider-cache
+                (break-model-card! model-card))
+              (lib-be/with-metadata-provider-cache
+                (while (#'dependencies.backfill/backfill-dependencies!))
+                (run-analysis-for-card! (:id dependent-card)))
+              ;; Admin can access
+              (is (sequential? (mt/user-http-request :crowberto :get 200
+                                                     (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                          "&type=card"))))
+              ;; Regular user without collection access gets 403
+              (mt/user-http-request :rasta :get 403
+                                    (str "ee/dependencies/graph/broken?id=" (:id model-card) "&type=card")))))))))
+
+(deftest ^:synchronized broken-no-transitive-breakage-test
+  (testing "GET /api/ee/dependencies/graph/broken - does not report transitive breakage"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create chain: model-1 -> model-2 -> card
+          ;; When model-1 breaks:
+          ;;   - model-2 gets error with source_entity_id=model-1
+          ;;   - card gets error with source_entity_id=model-2 (NOT model-1)
+          (let [[model-card-1 model-card-2 dependent-card]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-1 (create-model-card! user "Model 1 - transitivetest")
+                        ;; Create model-2 as a model that depends on model-1
+                        model-card-2-question (create-dependent-card-on-model! user model-card-1
+                                                                               "Model 2 - transitivetest")
+                        model-card-2 (card/update-card! {:card-before-update model-card-2-question
+                                                         :card-updates {:type :model}})
+                        ;; Create card that depends on model-2
+                        dependent-card (create-dependent-card-on-model! user model-card-2 "Card - transitivetest")]
+                    [model-card-1 model-card-2 dependent-card]))]
+            ;; Break model-1
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card-1))
+            ;; Run analysis for both model-2 and dependent-card
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id model-card-2))
+              (run-analysis-for-card! (:id dependent-card)))
+            ;; Query /graph/broken for model-1 - should only return model-2, not dependent-card
+            ;; because dependent-card's error source is model-2, not model-1
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (str "ee/dependencies/graph/broken?id=" (:id model-card-1)
+                                                      "&type=card"))]
+              (is (= [(:id model-card-2)] (mapv :id response))
+                  "Should return only model-2 (direct dependent), not card (transitive)"))))))))
+
+(deftest ^:synchronized broken-filter-by-dependent-types-test
+  (testing "GET /api/ee/dependencies/graph/broken - filters by dependent_types"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          (let [[model-card dependent-card]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card (create-model-card! user "Model Card - deptypestest")
+                        dependent-card (create-dependent-card-on-model! user model-card "Dependent Card - deptypestest")]
+                    [model-card dependent-card]))]
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card))
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card)))
+            (testing "filtering by card type returns the dependent card"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                        "&type=card&dependent_types=card&dependent_card_types=question"))]
+                (is (= [(:id dependent-card)] (mapv :id response)))))
+            (testing "filtering by dashboard returns empty (no dashboards in this test)"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                        "&type=card&dependent_types=dashboard"))]
+                (is (empty? response))))))))))
+
+(deftest ^:synchronized broken-personal-collections-test
+  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/User creator {:email "creator@test.com"}
+                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                 :name "Test Personal Collection"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+            ;; one model, two dependents: one in personal collection, one in regular collection
+            (let [[model-card dependent-in-personal dependent-regular]
+                  (lib-be/with-metadata-provider-cache
+                    (let [model-card (create-model-card! creator "Model - personalcollbrokentest2")
+                          dependent-in-personal (create-dependent-card-on-model! creator model-card
+                                                                                 "Dependent in Personal - personalcollbrokentest2"
+                                                                                 :collection-id personal-coll-id)
+                          dependent-regular (create-dependent-card-on-model! creator model-card
+                                                                             "Dependent Regular - personalcollbrokentest2")]
+                      [model-card dependent-in-personal dependent-regular]))]
+              (lib-be/with-metadata-provider-cache
+                (break-model-card! model-card))
+              (lib-be/with-metadata-provider-cache
+                (while (#'dependencies.backfill/backfill-dependencies!))
+                (run-analysis-for-card! (:id dependent-in-personal))
+                (run-analysis-for-card! (:id dependent-regular)))
+              (testing "include_personal_collections=false (default) excludes broken dependents in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200
+                                                     (str "ee/dependencies/graph/broken?id=" (:id model-card) "&type=card"))
+                      card-ids (set (map :id response))]
+                  (is (not (contains? card-ids (:id dependent-in-personal))))
+                  (is (contains? card-ids (:id dependent-regular)))))
+              (testing "include_personal_collections=true includes broken dependents in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200
+                                                     (str "ee/dependencies/graph/broken?id=" (:id model-card)
+                                                          "&type=card&include_personal_collections=true"))
+                      card-ids (set (map :id response))]
+                  (is (contains? card-ids (:id dependent-in-personal)))
+                  (is (contains? card-ids (:id dependent-regular))))))))))))
+
+(deftest ^:sequential unreferenced-table-owner-test
+  (testing "GET /api/ee/dependencies/unreferenced - table owner is returned"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency]
+        (mt/with-temp [:model/Table {table1-id :id} {:name          "User Owned Table - ownertest"
+                                                     :owner_user_id (mt/user->id :crowberto)}
+                       :model/Table {table2-id :id} {:name        "Email Owned Table - ownertest"
+                                                     :owner_email "external@example.com"}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :types "table" :query "ownertest"
+                                               :sort_column "name" :sort_direction "asc")]
+            (is (=? {:data [{:id   table2-id
+                             :type "table"
+                             :data {:name  "Email Owned Table - ownertest"
+                                    :owner {:email "external@example.com"}}}
+                            {:id   table1-id
+                             :type "table"
+                             :data {:name  "User Owned Table - ownertest"
+                                    :owner {:id    (mt/user->id :crowberto)
+                                            :email "crowberto@metabase.com"}}}]}
+                    response))))))))
+
+(deftest ^:sequential unreferenced-transform-owner-test
+  (testing "GET /api/ee/dependencies/unreferenced - transform owner is returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp       (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-model-cleanup [:model/Dependency]
+          (mt/with-temp [:model/Transform {transform1-id :id} {:name          "User Owned Transform - ownertest"
+                                                               :owner_user_id (mt/user->id :crowberto)
+                                                               :source        {:type  :query
+                                                                               :query (lib/query mp products)}
+                                                               :target        {:schema "PUBLIC"
+                                                                               :name   "user_owned_transform_table"}}
+                         :model/Transform {transform2-id :id} {:name        "Email Owned Transform - ownertest"
+                                                               :owner_email "external@example.com"
+                                                               :source      {:type  :query
+                                                                             :query (lib/query mp products)}
+                                                               :target      {:schema "PUBLIC"
+                                                                             :name   "email_owned_transform_table"}}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/unreferenced"
+                                                 :types "transform" :query "ownertest"
+                                                 :sort_column "name" :sort_direction "asc")]
+              (is (=? {:data [{:id   transform2-id
+                               :type "transform"
+                               :data {:name  "Email Owned Transform - ownertest"
+                                      :owner {:email "external@example.com"}}}
+                              {:id   transform1-id
+                               :type "transform"
+                               :data {:name  "User Owned Transform - ownertest"
+                                      :owner {:id    (mt/user->id :crowberto)
+                                              :email "crowberto@metabase.com"}}}]}
+                      response)))))))))

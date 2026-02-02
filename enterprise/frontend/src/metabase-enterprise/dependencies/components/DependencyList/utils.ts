@@ -16,13 +16,13 @@ export function getAvailableGroupTypes(mode: DependencyListMode) {
 export function getFilterOptions(
   mode: DependencyListMode,
   {
-    group_types = getAvailableGroupTypes(mode),
-    include_personal_collections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    groupTypes = getAvailableGroupTypes(mode),
+    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
   }: Urls.DependencyListParams,
 ): DependencyFilterOptions {
   return {
-    groupTypes: group_types,
-    includePersonalCollections: include_personal_collections,
+    groupTypes,
+    includePersonalCollections,
   };
 }
 
@@ -33,11 +33,11 @@ export function getDefaultFilterOptions(
 }
 
 export function getSortOptions({
-  sort_column,
-  sort_direction,
+  sortColumn,
+  sortDirection,
 }: Urls.DependencyListParams): DependencySortOptions | undefined {
-  return sort_column != null && sort_direction != null
-    ? { column: sort_column, direction: sort_direction }
+  return sortColumn != null && sortDirection != null
+    ? { column: sortColumn, direction: sortDirection }
     : undefined;
 }
 
@@ -45,8 +45,8 @@ export function getParamsWithoutDefaults(
   mode: DependencyListMode,
   {
     page,
-    group_types,
-    include_personal_collections,
+    groupTypes,
+    includePersonalCollections,
     ...params
   }: Urls.DependencyListParams,
 ): Urls.DependencyListParams {
@@ -55,13 +55,11 @@ export function getParamsWithoutDefaults(
   return {
     ...params,
     page: page === 0 ? undefined : page,
-    group_types:
-      group_types?.length === defaultGroupTypes.length
+    groupTypes:
+      groupTypes?.length === defaultGroupTypes.length ? undefined : groupTypes,
+    includePersonalCollections:
+      includePersonalCollections === DEFAULT_INCLUDE_PERSONAL_COLLECTIONS
         ? undefined
-        : group_types,
-    include_personal_collections:
-      include_personal_collections === DEFAULT_INCLUDE_PERSONAL_COLLECTIONS
-        ? undefined
-        : include_personal_collections,
+        : includePersonalCollections,
   };
 }

@@ -77,10 +77,14 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         }
         switch (event.key) {
           case "ArrowRight":
-            !isExpanded && onToggleExpand();
+            if (!isExpanded) {
+              onToggleExpand();
+            }
             break;
           case "ArrowLeft":
-            isExpanded && onToggleExpand();
+            if (isExpanded) {
+              onToggleExpand();
+            }
             break;
         }
       },

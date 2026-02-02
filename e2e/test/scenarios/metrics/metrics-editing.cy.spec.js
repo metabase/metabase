@@ -297,10 +297,9 @@ describe("scenarios > metrics > editing", () => {
       });
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Data").click();
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").should("be.visible");
-        // FIXME: metabase#66210
-        // cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
     });
 

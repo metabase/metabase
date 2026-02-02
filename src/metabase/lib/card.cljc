@@ -190,6 +190,8 @@
    card                  :- ::lib.schema.metadata/card]
   (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
+      ;; TODO (eric 2026-01-29): this self-reference check is not reachable from the current callers.
+      ;; I suggest we delete this check.
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
           (when (= (:type source-card) :model)

@@ -465,7 +465,31 @@
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-card mp (lib.metadata/card mp 1)))))))
+      (is (nil? (lib.card/card-returned-columns mp (lib.metadata/card mp 1))))))
+  (testing "question sourcing a model gets model metadata merged in"
+    (let [venues-query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          model-result-metadata (mapv #(assoc % :display-name "Custom" :description "model desc")
+                                      (lib/returned-columns venues-query))
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1
+                        :name "Source Model"
+                        :type :model
+                        :database-id (meta/id)
+                        :dataset-query venues-query
+                        :result-metadata model-result-metadata}]})
+          card-2-query (lib/query mp (lib.metadata/card mp 1))
+          mp2 (lib.tu/mock-metadata-provider
+               mp
+               {:cards [{:id 2
+                         :name "Question"
+                         :type :question
+                         :database-id (meta/id)
+                         :dataset-query card-2-query
+                         :result-metadata (lib/returned-columns card-2-query)}]})
+          cols (lib.card/card-returned-columns mp2 (lib.metadata/card mp2 2))]
+      (is (every? #(= "Custom" (:display-name %)) cols))
+      (is (every? #(= "model desc" (:description %)) cols)))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
@@ -724,3 +748,48 @@
                            :display-name "Custom Lat")]
       (is (=? [{:display-name "Custom Lat: 1°"}]
               (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
+(deftest ^:parallel merge-model-metadata-preserved-keys-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :id 100
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :id 200
+                         :display-name "Custom Foo"
+                         :settings {:show_mini_bar true}
+                         :visibility-type :details-only
+                         :fk-target-field-id 42
+                         :lib/source-display-name "Original Foo")]
+    (testing "all preserved keys flow from model to result"
+      (is (=? [{:display-name "Custom Foo"
+                :settings {:show_mini_bar true}
+                :visibility-type :details-only
+                :fk-target-field-id 42
+                :lib/source-display-name "Original Foo"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))
+    (testing "native model also preserves :id"
+      (is (=? [{:id 200}]
+              (lib.card/merge-model-metadata [result-col] [model-col] true))))
+    (testing "non-native model does not override :id"
+      (is (=? [{:id 100}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
+(deftest ^:parallel fallback-display-name-test
+  (is (= "Question 42" (lib.card/fallback-display-name 42)))
+  (is (= "Question 7" (lib.card/fallback-display-name 7))))
+
+(deftest ^:parallel saved-question-metadata-test
+  (let [card (:venues (lib.tu/mock-cards))
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [card]})]
+    (testing "returns same results as card-returned-columns"
+      (is (= (lib.card/card-returned-columns mp card)
+             (lib.card/saved-question-metadata mp (:id card)))))
+    (testing "returns nil for a nonexistent card"
+      (is (nil? (lib.card/saved-question-metadata mp 99999))))))

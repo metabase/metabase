@@ -5,7 +5,7 @@
         <td>
           <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
             {{#if context.include_branding}}
-              <a {{#unless payload.disable_links}}href="https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=dashboard_subscription"{{/unless}}>
+              <a {{#unless payload.dashboard_subscription.disable_links}}href="https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=dashboard_subscription"{{/unless}}>
                 <div style="text-align: right; height: 28px; margin-bottom: 16px; color: {{payload.style.color_text_dark}};">
                   <span style="font-size: 12px; vertical-align: middle;">Made with</span>
                   <img width="22.4" height="28" src="{{context.application_logo_url}}" style="vertical-align: middle; margin-inline: 4px;"/>
@@ -19,7 +19,7 @@
                   <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{computed.icon_cid}}"/>
                 </td>
                 <td>
-                  <a class="title" {{#unless payload.disable_links}}href="{{{dashboard-url payload.dashboard.id payload.parameters}}}"{{/unless}} style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+                  <a class="title" {{#unless payload.dashboard_subscription.disable_links}}href="{{{dashboard-url payload.dashboard.id payload.parameters}}}"{{/unless}} style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
                     {{payload.dashboard.name}}
                   </a>
                 </td>
@@ -55,7 +55,7 @@
               <hr>
             {{/unless}}
             {{{computed.dashboard_content}}}
-            {{#unless payload.disable_links}}
+            {{#unless payload.dashboard_subscription.disable_links}}
               <hr>
               <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
                 Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
