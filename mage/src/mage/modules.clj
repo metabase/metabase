@@ -44,7 +44,7 @@
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
   []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. "resources/metabase/config/modules.edn"))]
+  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
                      (edn/read r))
                    :metabase/modules
                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
