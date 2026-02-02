@@ -43,7 +43,7 @@ const getDefaultPluginTenants = () => ({
     null as React.ReactElement | null,
   TenantGroupHintIcon: PluginPlaceholder,
   MainNavSharedCollections: PluginPlaceholder as React.ComponentType<{
-    canAccessTenantSpecific: boolean;
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>,
@@ -75,7 +75,7 @@ const getDefaultPluginTenants = () => ({
     null as string | null,
   getFlattenedCollectionsForNavbar: () => [],
   useTenantMainNavbarData: () => ({
-    canAccessTenantSpecific: false,
+    canAccessTenantSpecificCollections: false,
     canCreateSharedCollection: false,
     showExternalCollectionsSection: false,
     sharedTenantCollections: [],
@@ -86,7 +86,7 @@ export const PLUGIN_TENANTS: {
   isEnabled: boolean;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
-    canAccessTenantSpecific: boolean;
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     showExternalCollectionsSection: boolean;
     sharedTenantCollections: Collection[] | undefined;
@@ -109,7 +109,7 @@ export const PLUGIN_TENANTS: {
   }) => React.ReactElement | null;
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType<{
-    canAccessTenantSpecific: boolean;
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>;

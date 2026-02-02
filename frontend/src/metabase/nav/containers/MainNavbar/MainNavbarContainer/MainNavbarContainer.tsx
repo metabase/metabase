@@ -111,7 +111,7 @@ function MainNavbarContainer({
   });
 
   const {
-    canAccessTenantSpecific,
+    canAccessTenantSpecificCollections,
     canCreateSharedCollection,
     showExternalCollectionsSection,
     sharedTenantCollections,
@@ -211,7 +211,7 @@ function MainNavbarContainer({
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
         sharedTenantCollections={sharedTenantCollections}
-        canAccessTenantSpecific={canAccessTenantSpecific}
+        canAccessTenantSpecificCollections={canAccessTenantSpecificCollections}
         canCreateSharedCollection={canCreateSharedCollection}
         showExternalCollectionsSection={showExternalCollectionsSection}
       />

@@ -22,13 +22,13 @@ const setup = ({
   tenantCollections = MOCK_TENANT_COLLECTIONS,
   currentUser = createMockUser({ is_superuser: isAdmin }),
   canWriteToSharedCollectionRoot = false,
-  canAccessTenantSpecific = isAdmin,
+  canAccessTenantSpecificCollections = isAdmin,
 }: {
   isAdmin?: boolean;
   tenantCollections?: Collection[];
   currentUser?: ReturnType<typeof createMockUser>;
   canWriteToSharedCollectionRoot?: boolean;
-  canAccessTenantSpecific?: boolean;
+  canAccessTenantSpecificCollections?: boolean;
 } = {}) => {
   const settings = mockSettings({ "use-tenants": true });
 
@@ -44,7 +44,7 @@ const setup = ({
 
   renderWithProviders(
     <MainNavSharedCollections
-      canAccessTenantSpecific={canAccessTenantSpecific}
+      canAccessTenantSpecificCollections={canAccessTenantSpecificCollections}
       canCreateSharedCollection={canWriteToSharedCollectionRoot}
       sharedTenantCollections={tenantCollections}
     />,
@@ -145,7 +145,7 @@ describe("MainNavSharedCollections > section visibility", () => {
 
     renderWithProviders(
       <MainNavSharedCollections
-        canAccessTenantSpecific={false}
+        canAccessTenantSpecificCollections={false}
         canCreateSharedCollection={false}
         sharedTenantCollections={[]}
       />,
