@@ -104,7 +104,9 @@ export function EntityPickerModal({
     (event) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        !isDialogOpen && onClose();
+        if (!isDialogOpen) {
+          onClose();
+        }
       }
     },
     { capture: true },

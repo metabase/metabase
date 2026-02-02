@@ -305,7 +305,11 @@ function assertQueryBuilderState({
   mode = null,
   values,
 } = {}) {
-  mode === "notebook" ? H.visualize() : waitAndAssertOnRequest("@dataset");
+  if (mode === "notebook") {
+    H.visualize();
+  } else {
+    waitAndAssertOnRequest("@dataset");
+  }
 
   const visualizationSelector = columnType === "time" ? "circle" : "bar";
 
@@ -319,10 +323,11 @@ function assertQueryBuilderState({
 
   H.echartsContainer().get("text").should("contain", "Count");
 
-  values &&
+  if (values) {
     H.echartsContainer().within(() => {
       values.forEach((value) => {
         cy.findByText(value);
       });
     });
+  }
 }
