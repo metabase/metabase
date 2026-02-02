@@ -802,6 +802,70 @@ describe("version-helpers", () => {
         "v1.75.1.x",
       ]);
     });
+
+    it("should add latest tag when version major matches latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "58" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v1.58.2", latestMajorVersion: "58" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.2.x", "v1.58.2.x", "latest"]);
+    });
+
+    it("should add latest tag for major versions when major matches latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v0.58.0", latestMajorVersion: "58" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
+    });
+
+    it("should add latest tag for patch versions when major matches latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.1.3",
+          latestMajorVersion: "58",
+        }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
+    });
+
+    it("should NOT add latest tag when version major does not match latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v0.57.5", latestMajorVersion: "58" }),
+      ).toEqual(["v0.57.x", "v1.57.x", "v0.57.5.x", "v1.57.5.x"]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v0.59.0", latestMajorVersion: "58" }),
+      ).toEqual(["v0.59.x", "v1.59.x"]);
+    });
+
+    it("should NOT add latest tag for pre-release versions even when major matches", () => {
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.1-rc1",
+          latestMajorVersion: "58",
+        }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
+
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.0-beta",
+          latestMajorVersion: "58",
+        }),
+      ).toEqual(["v0.58.x", "v1.58.x"]);
+    });
+
+    it("should NOT add latest tag when latestMajorVersion is not provided", () => {
+      expect(getExtraTagsForVersion({ version: "v0.58.1" })).toEqual([
+        "v0.58.x",
+        "v1.58.x",
+        "v0.58.1.x",
+        "v1.58.1.x",
+      ]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
+    });
   });
 
   describe("filterOutNonSupportedPrereleaseIdentifier", () => {

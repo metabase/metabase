@@ -143,7 +143,13 @@ export const getDotXVersion = (version: string) => {
   return getDotXs(version, 2);
 };
 
-export const getExtraTagsForVersion = ({ version }: { version: string }) => {
+export const getExtraTagsForVersion = ({
+  version,
+  latestMajorVersion,
+}: {
+  version: string;
+  latestMajorVersion?: string;
+}) => {
   const ossVerion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
   const versionType = getVersionType(version);
@@ -152,11 +158,39 @@ export const getExtraTagsForVersion = ({ version }: { version: string }) => {
   const tags = [getDotXs(ossVerion, 1), getDotXs(eeVersion, 1)];
 
   if (versionType === "major") {
-    return tags;
+    return maybeAddLatestTag({ tags, version, latestMajorVersion });
   }
 
   // eg. v0.23.4.x / v1.23.4.x
-  return [...tags, getDotXs(ossVerion, 2), getDotXs(eeVersion, 2)];
+  return maybeAddLatestTag({
+    tags: [...tags, getDotXs(ossVerion, 2), getDotXs(eeVersion, 2)],
+    version,
+    latestMajorVersion,
+  });
+};
+
+const maybeAddLatestTag = ({
+  tags,
+  version,
+  latestMajorVersion,
+}: {
+  tags: string[];
+  version: string;
+  latestMajorVersion?: string;
+}) => {
+  if (!latestMajorVersion) {
+    return tags;
+  }
+
+  const versionMajor = getMajorVersion(version);
+  const isLatestMajor = versionMajor === latestMajorVersion;
+  const isPreRelease = isPreReleaseVersion(version);
+
+  if (isLatestMajor && !isPreRelease) {
+    return [...tags, "latest"];
+  }
+
+  return tags;
 };
 
 /**
