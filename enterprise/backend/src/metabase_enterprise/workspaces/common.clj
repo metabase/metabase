@@ -44,11 +44,11 @@
 (defn- create-workspace-container!
   "Create the workspace and its related collection, user, and api key."
   [creator-id db-id workspace-name]
-  ;; TODO (Chris 2025-11-19) Unsure API key name is unique, and remove this (insecure) workaround.
+  ;; TODO (Chris 2025-11-19): Ensure API key name is unique, and remove this (insecure) workaround.
   (let [api-key (let [key-name (format "API key for Workspace %s" workspace-name)]
                   (or (t2/select-one :model/ApiKey :name key-name)
                       (api-key/create-api-key-with-new-user! {:key-name key-name})))
-        ;; TODO (Chris 2025-11-19) Associate the api-key user with the workspace as well.
+        ;; TODO (Chris 2025-11-19): Associate the api-key user with the workspace as well.
         ws      (t2/insert-returning-instance! :model/Workspace
                                                {:name           workspace-name
                                                 :creator_id     creator-id
@@ -64,7 +64,7 @@
         ws      (assoc ws :collection_id (:id coll))]
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
-    ;; TODO (Sanya 2025-11-18) -- for now we expose this in logs for manual testing, in future we need a secure channel
+    ;; TODO (Sanya 2025-11-18): For now we expose this in logs for manual testing. In future we need a secure channel.
     (log/infof "Generated API key for workspace: %s" (:unmasked_key api-key))
     ws))
 
@@ -109,7 +109,7 @@
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
     (let [ws (t2/select-one :model/Workspace (:id workspace))]
-      ;; TODO allow this to be fully async as part of BOT-746
+      ;; TODO: Allow this to be fully async as part of BOT-746.
       (try
         @(quick-task/submit-task! #(run-workspace-setup! ws database))
         (catch Exception e

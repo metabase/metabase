@@ -56,7 +56,7 @@
    [:updated_at ms/TemporalInstant]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
-;; TODO we should reuse these schemas, by exposing common types from the transforms module. they *can* match exactly.
+;; TODO: We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
 
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}
@@ -790,7 +790,7 @@
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
                       (api/check-400 (not= :archived (:base_status <>)) "Cannot create transforms in an archived workspace"))
-          ;; TODO why 400 here and 403 in the validation route? T_T
+          ;; TODO: Why 400 here and 403 in the validation route?
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))

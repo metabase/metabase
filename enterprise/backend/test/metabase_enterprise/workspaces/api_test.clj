@@ -80,7 +80,7 @@
         (is (= "archived" (:status updated))))
       (let [response (mt/user-http-request :crowberto :delete 200 (ws-url workspace-id))]
         (is (= {:ok true} response))
-        ;; todo: check the schema / tables and user are gone
+        ;; TODO: Check the schema, tables, and user are gone.
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
 (deftest archive-workspace-calls-destroy-isolation-test
@@ -194,7 +194,7 @@
             commit-msg                "Test batch merge commit"]
         (testing "We've got our workspace with transform to merge"
           (is (int? ws-id))
-          ;; (sanya) TODO: maybe switch to using transform APIs once we get our own
+          ;; TODO (Sanya): Maybe switch to using transform APIs once we get our own.
           (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified in workspace"}))
         (testing "returns merged transforms"
           (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
