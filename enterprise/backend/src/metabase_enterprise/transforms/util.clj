@@ -454,26 +454,10 @@
   [t]
   (-> t ->instant str))
 
-(defn normalize-run-fields
-  "Ensure run_method and status are keywords."
-  [run]
-  (when run
-    (cond-> run
-      (string? (:run_method run)) (update :run_method keyword)
-      (string? (:status run))     (update :status keyword))))
-
-(defn normalize-job-fields
-  "Ensure ui_display_type is a keyword."
-  [job]
-  (when job
-    (cond-> job
-      (string? (:ui_display_type job)) (update :ui_display_type keyword))))
-
 (defn localize-run-timestamps
-  "Convert the timestamps of a `run` to ISO strings in UTC and normalize keyword fields."
+  "Convert the timestamps of a `run` to ISO strings in UTC."
   [run]
   (-> run
-      normalize-run-fields
       (u/update-some :start_time utc-timestamp-string)
       (u/update-some :end_time   utc-timestamp-string)))
 
