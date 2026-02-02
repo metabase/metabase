@@ -409,8 +409,10 @@
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
+  (api/write-check :model/Transform id)
   (update-transform! id body))
 
 (defn delete-transform!
@@ -486,7 +488,6 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (run-transform! (api/write-check :model/Transform id)))
 
 (defn- simple-native-query?
