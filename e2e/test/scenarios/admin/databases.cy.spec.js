@@ -50,43 +50,48 @@ describe(
       );
     });
 
-    it("should allow to enable and disable workspaces in postgres database", () => {
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.addPostgresDatabase("Test DB");
+    [
+      { dbName: "Writable Postgres12", snapshot: "postgres-writable" },
+      { dbName: "Writable MySQL8", snapshot: "mysql-writable" },
+    ].forEach(({ dbName, snapshot }) => {
+      it(`should allow to enable and disable workspaces in ${snapshot} database`, () => {
+        H.restore(snapshot);
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+        H.addPostgresDatabase("Test DB");
 
-      visitDatabase(WRITABLE_DB_ID);
+        visitDatabase(WRITABLE_DB_ID);
 
-      cy.findByLabelText("Enable workspaces").should("not.be.checked");
-      cy.findByLabelText("Enable workspaces").parent().click();
+        cy.findByLabelText("Enable workspaces").should("not.be.checked");
+        cy.findByLabelText("Enable workspaces").parent().click();
 
-      cy.wait("@checkPermissions");
-      cy.findByLabelText("Enable workspaces").should("be.checked");
+        cy.wait("@checkPermissions");
+        cy.findByLabelText("Enable workspaces").should("be.checked");
 
-      cy.findByRole("link", { name: "Exit admin" }).click();
-      cy.button("Settings").click();
-      H.popover().findByText("Data studio").click();
-      H.Workspaces.getNewWorkspaceButton().click();
-      cy.findByPlaceholderText("Select a database").click();
-      H.popover().within(() => {
-        cy.findByText("Writable Postgres12").should("be.visible");
-        cy.findByText("Test DB").should("not.exist");
+        cy.findByRole("link", { name: "Exit admin" }).click();
+        cy.button("Settings").click();
+        H.popover().findByText("Data studio").click();
+        H.Workspaces.getNewWorkspaceButton().click();
+        cy.findByPlaceholderText("Select a database").click();
+        H.popover().within(() => {
+          cy.findByText(dbName).should("be.visible");
+          cy.findByText("Test DB").should("not.exist");
+        });
+
+        cy.go(-3);
+        cy.findByLabelText("Enable workspaces").should("be.checked");
+        cy.findByLabelText("Enable workspaces").parent().click();
+        cy.findByLabelText("Enable workspaces").should("not.be.checked");
+
+        cy.go(3);
+        cy.findByPlaceholderText("No database supports workspaces").should(
+          "be.visible",
+        );
       });
-
-      cy.go(-3);
-      cy.findByLabelText("Enable workspaces").should("be.checked");
-      cy.findByLabelText("Enable workspaces").parent().click();
-      cy.findByLabelText("Enable workspaces").should("not.be.checked");
-
-      cy.go(3);
-      cy.findByPlaceholderText("No database supports workspaces").should(
-        "be.visible",
-      );
     });
 
     it("should not show workspaces setting for unsupported mysql database", () => {
-      H.restore("mysql-writable");
+      H.restore();
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
