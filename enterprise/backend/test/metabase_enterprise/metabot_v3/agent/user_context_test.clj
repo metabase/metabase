@@ -6,7 +6,7 @@
 (deftest format-current-time-test
   (testing "formats time from context with timezone"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"}
-          result (user-context/format-current-time context)]
+          result  (user-context/format-current-time context)]
       (is (some? result))
       (is (string? result))
       ;; Should contain date components
@@ -15,23 +15,20 @@
 
   (testing "uses current_user_time when provided"
     (let [context {:current_user_time "2024-02-01T09:15:00"}
-          result (user-context/format-current-time context)]
+          result  (user-context/format-current-time context)]
       (is (= "2024-02-01T09:15:00" result))))
 
   (testing "handles missing timezone by using current time"
     (let [context {}
-          result (user-context/format-current-time context)]
+          result  (user-context/format-current-time context)]
       (is (some? result))
       (is (string? result))
       ;; Should contain some date
       (is (re-find #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}" result))))
 
   (testing "handles invalid timezone gracefully"
-    (let [context {:current_time_with_timezone "invalid"}
-          result (user-context/format-current-time context)]
-      ;; Should fall back to current time
-      (is (some? result))
-      (is (string? result)))))
+    (is (string?
+         (user-context/format-current-time {:current_time_with_timezone "invalid"})))))
 
 (deftest extract-sql-dialect-test
   (testing "extracts sql_engine from native query context"
@@ -58,20 +55,14 @@
 
 (deftest format-viewing-context-test
   (testing "formats adhoc query context"
-    (let [context {:user_is_viewing [{:type "adhoc"
-                                      :query {:data_source "card__123"}}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (string? result))
-      (is (re-find #"notebook editor" result))
-      (is (re-find #"card__123" result))))
+    (is (=? #"(?s).*notebook editor.*card__123.*"
+            (user-context/format-viewing-context {:user_is_viewing [{:type  "adhoc"
+                                                                     :query {:data_source "card__123"}}]}))))
 
   (testing "formats native query context with SQL"
-    (let [context {:user_is_viewing [{:type "native"
-                                      :query "SELECT * FROM users"
-                                      :sql_engine "PostgreSQL"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
+    (let [result (user-context/format-viewing-context {:user_is_viewing [{:type "native"
+                                                                          :query "SELECT * FROM users"
+                                                                          :sql_engine "PostgreSQL"}]})]
       (is (re-find #"SQL editor" result))
       (is (re-find #"SELECT \* FROM users" result))
       (is (re-find #"PostgreSQL" result))))
@@ -119,7 +110,7 @@
                                                              :text "SELECT * FROM foo"}}]}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
-      (is (re-find #"Selection" result))
+      (is (re-find #"Selected lines:" result))
       (is (re-find #"SELECT \* FROM foo" result))))
 
   (testing "formats code editor with no buffers"
