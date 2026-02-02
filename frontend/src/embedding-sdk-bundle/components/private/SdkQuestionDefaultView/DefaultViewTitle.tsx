@@ -2,7 +2,6 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { Stack, Text } from "metabase/ui";
 
 import { getQuestionTitle } from "../QuestionTitle";
-import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
@@ -12,7 +11,6 @@ type DefaultViewTitleTextProps = Pick<SdkQuestionDefaultViewProps, "title">;
 const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
   return (
     <Stack gap="xs" align="flex-start">
-      <SdkInternalNavigationBackButton />
       {typeof Title === "function" ? <Title></Title> : Title}
     </Stack>
   );

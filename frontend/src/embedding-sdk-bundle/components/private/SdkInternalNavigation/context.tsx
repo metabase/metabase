@@ -5,7 +5,6 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionId,
 } from "embedding-sdk-bundle/types/question";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 
 export type SdkInternalNavigationEntry =
@@ -21,12 +20,23 @@ export type SdkInternalNavigationEntry =
       name: string;
       parameters?: ParameterValues;
     }
-  | { type: "placeholder"; onPop?: () => void }
   | {
-      type: "adhoc-question";
+      /** Placeholder for question drills - parent component handles rendering */
+      type: "placeholder-question-drill";
+      onPop?: () => void;
+    }
+  | {
+      /** Placeholder for adhoc questions from dashboard drills */
+      type: "placeholder-adhoc-question";
       /** The URL path for the ad-hoc question (e.g., /question#... with serialized card) */
       questionPath: string;
       name: string;
+      onPop?: () => void;
+    }
+  | {
+      /** Placeholder for new question creation from dashboard */
+      type: "placeholder-new-question";
+      onPop?: () => void;
     };
 
 export type SdkInternalNavigationContextValue = {
@@ -37,9 +47,6 @@ export type SdkInternalNavigationContextValue = {
   canGoBack: boolean;
   previousEntry: SdkInternalNavigationEntry | undefined;
   navigateToNewCard: (params: NavigateToNewCardParams) => Promise<void>;
-  navigateToNewCardFromDashboard: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
   initWithDashboard: (dashboard: { id: SdkDashboardId; name: string }) => void;
 };
 

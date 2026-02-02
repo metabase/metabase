@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useMemo } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -172,6 +178,25 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
+  // Wrap navigateToNewCard to use placeholder pattern (like dashboards)
+  // This keeps the question mounted while drill results are shown
+  const navigateToNewCardWithSdkInternalNavigation = useCallback(
+    async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
+      // Use internal navigation (keeps question mounted, updates state internally)
+      await navigateToNewCard?.(params);
+      // Only push placeholder if last entry is NOT already a placeholder
+      // (prevents stacking multiple placeholders on consecutive drills)
+      const currentEntry = navigation?.stack.at(-1);
+      if (!currentEntry?.type.startsWith("placeholder")) {
+        navigation?.push({
+          type: "placeholder-question-drill",
+          onPop: () => loadAndQueryQuestion(),
+        });
+      }
+    },
+    [navigateToNewCard, navigation, loadAndQueryQuestion],
+  );
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     token,
@@ -185,9 +210,9 @@ export const SdkQuestionProvider = ({
     updateQuestion,
     updateParameterValues,
     navigateToNewCard:
-      userNavigateToNewCard !== undefined
-        ? userNavigateToNewCard
-        : (navigation?.navigateToNewCard ?? navigateToNewCard),
+      userNavigateToNewCard === undefined
+        ? navigateToNewCardWithSdkInternalNavigation
+        : userNavigateToNewCard,
     plugins,
     question,
     originalQuestion,

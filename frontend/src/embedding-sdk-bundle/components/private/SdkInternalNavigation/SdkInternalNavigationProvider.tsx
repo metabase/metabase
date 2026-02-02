@@ -10,22 +10,14 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
-import { useSdkStore } from "embedding-sdk-bundle/store";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
-import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import * as Urls from "metabase/lib/urls";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Stack } from "metabase/ui";
-import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
-import type { QuestionDashboardCard } from "metabase-types/api";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
-import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
 
 import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
 import {
@@ -35,8 +27,6 @@ import {
 
 type Props = {
   children: ReactNode;
-  /** The dashboard ID for navigateToNewCardFromDashboard */
-  dashboardId?: SdkDashboardId | null;
   dashboardProps?: Partial<Omit<SdkDashboardInnerProps, "dashboardId">>;
   /** Custom renderer for drill-through questions */
   renderDrillThroughQuestion?: () => ReactNode;
@@ -55,13 +45,11 @@ const SdkInternalNavigationProviderInner = ({
   style,
   className,
   children,
-  dashboardId,
   dashboardProps,
   renderDrillThroughQuestion: RenderDrillThroughQuestion,
   drillThroughQuestionProps,
 }: Props) => {
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
-  const store = useSdkStore();
 
   const push = useCallback((entry: SdkInternalNavigationEntry) => {
     setStack((prev) => [...prev, entry]);
@@ -71,8 +59,8 @@ const SdkInternalNavigationProviderInner = ({
     // Get the entry being popped before updating state
     const poppedEntry = stack.at(-1);
     setStack((prev) => prev.slice(0, -1));
-    // Call onPop after state update to avoid calling setState inside setState
-    if (poppedEntry?.type === "placeholder" && poppedEntry.onPop) {
+    // Call onPop for placeholder entries (types starting with "placeholder-")
+    if (poppedEntry && "onPop" in poppedEntry && poppedEntry.onPop) {
       poppedEntry.onPop();
     }
   }, [stack]);
@@ -97,13 +85,13 @@ const SdkInternalNavigationProviderInner = ({
       const url = Urls.question(null, { hash: nextCard });
       const currentEntry = stack.at(-1);
 
-      // If we're already on an adhoc question, just update its path instead of pushing
+      // If we're already on a placeholder adhoc question, just update its path instead of pushing
       // otherwise we'll have an entry for each filter change done from drills
-      if (currentEntry?.type === "adhoc-question") {
+      if (currentEntry?.type === "placeholder-adhoc-question") {
         setStack((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
-            type: "adhoc-question",
+            type: "placeholder-adhoc-question",
             questionPath: url,
             name: nextCard.name || t`Question`,
           };
@@ -111,80 +99,13 @@ const SdkInternalNavigationProviderInner = ({
         });
       } else {
         push({
-          type: "adhoc-question",
+          type: "placeholder-adhoc-question",
           questionPath: url,
           name: nextCard.name || t`Question`,
         });
       }
     },
     [push, stack],
-  );
-
-  // Navigate to a new card from a dashboard context (for drills and "go to card" actions)
-  const navigateToNewCardFromDashboard = useCallback(
-    ({
-      nextCard,
-      previousCard,
-      dashcard,
-      objectId,
-    }: NavigateToNewCardFromDashboardOpts) => {
-      const state = store.getState();
-      const metadata = getMetadata(state);
-      const { dashboards, parameterValues } = state.dashboard;
-
-      if (dashboardId == null) {
-        console.warn(
-          "[SDK Navigation] dashboardId is null in navigateToNewCardFromDashboard",
-        );
-        return;
-      }
-
-      // Find the dashboard by ID (numeric or entity ID)
-      const dashboard = Object.values(dashboards).find(
-        (d) =>
-          d.id === dashboardId ||
-          d.entity_id === dashboardId ||
-          String(d.id) === String(dashboardId),
-      );
-
-      if (dashboard) {
-        // Check if this is a "go to card" action (clicking card title) vs a drill action
-        // When clicking on a card title, previousCard is undefined (from ChartCaption)
-        // OR nextCard and previousCard are equivalent (from other places)
-        const isGoToCardAction =
-          (previousCard == null || cardIsEquivalent(nextCard, previousCard)) &&
-          nextCard.id != null;
-
-        if (isGoToCardAction) {
-          // Navigate to the saved question directly
-          push({
-            type: "question",
-            id: nextCard.id,
-            name: nextCard.name || t`Question`,
-          });
-        } else {
-          // This is a drill action - generate URL for adhoc question
-          const url = getNewCardUrl({
-            metadata,
-            dashboard,
-            parameterValues,
-            nextCard,
-            previousCard,
-            dashcard: dashcard as QuestionDashboardCard,
-            objectId,
-          });
-
-          if (url) {
-            push({
-              type: "adhoc-question",
-              questionPath: url,
-              name: nextCard.name || t`Question`,
-            });
-          }
-        }
-      }
-    },
-    [store, dashboardId, push],
   );
 
   const value = useMemo(
@@ -196,81 +117,68 @@ const SdkInternalNavigationProviderInner = ({
       previousEntry: stack.at(-2),
       canGoBack: stack.length > 1,
       navigateToNewCard,
-      navigateToNewCardFromDashboard,
       initWithDashboard,
     }),
-    [
-      stack,
-      push,
-      pop,
-      navigateToNewCard,
-      navigateToNewCardFromDashboard,
-      initWithDashboard,
-    ],
+    [stack, push, pop, navigateToNewCard, initWithDashboard],
   );
 
-  const currentEntry = value.currentEntry;
+  // "Placeholder" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
+  // we don't have to render them, but we need them in the stack to make the back button work correctly
+  const nonPlaceholderEntries = useMemo(
+    () => stack.filter((entry) => !entry.type.startsWith("placeholder")),
+    [stack],
+  );
 
-  const content = match({
-    currentEntry,
-    stackLength: stack.length,
-  })
-    .with({ currentEntry: { type: "placeholder" } }, () => children)
-    .when(
-      ({ stackLength }) => stackLength <= 1,
-      () => children,
-    )
-    .with({ currentEntry: { type: "dashboard" } }, ({ currentEntry }) => (
-      <>
-        <Stack align="flex-start">
-          <SdkInternalNavigationBackButton />
-        </Stack>
-        <InteractiveDashboardContent
-          {...dashboardProps}
-          style={undefined}
-          className={undefined}
-          dashboardId={currentEntry.id}
-          initialParameters={currentEntry.parameters}
-        />
-      </>
+  const entryToRender = nonPlaceholderEntries.at(-1);
+  const entryIndex = entryToRender ? stack.indexOf(entryToRender) : -1;
+  // If the entry is the original entry, we just need to return the children.
+  const entryIsOriginalEntity = stack.length === 0 || entryIndex === 0;
+
+  const shouldRenderBackButton = match(stack.at(-1)?.type ?? null)
+    .with(null, () => false)
+    .with("dashboard", () => true)
+    .with("question", () => false) // questions render their button in the header toolbar
+    .otherwise(() => false);
+
+  const maybeButton = shouldRenderBackButton ? (
+    <SdkInternalNavigationBackButton style={{ border: "1px solid red" }} />
+  ) : null;
+
+  const content = match({ activeEntry: entryToRender })
+    .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => (
+      <InteractiveDashboardContent
+        {...dashboardProps}
+        style={undefined}
+        className={undefined}
+        dashboardId={activeEntry.id}
+        initialParameters={activeEntry.parameters}
+      />
     ))
-    .with({ currentEntry: { type: "question" } }, ({ currentEntry }) => (
+    .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => (
       <SdkQuestion
-        questionId={currentEntry.id}
+        questionId={activeEntry.id}
         onNavigateBack={pop}
         navigateToNewCard={navigateToNewCard}
-        initialSqlParameters={currentEntry.parameters}
+        initialSqlParameters={activeEntry.parameters}
         {...drillThroughQuestionProps}
       >
         {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
       </SdkQuestion>
     ))
-    .with({ currentEntry: { type: "adhoc-question" } }, ({ currentEntry }) => (
-      <SdkAdHocQuestion
-        questionPath={currentEntry.questionPath}
-        onNavigateBack={pop}
-        navigateToNewCard={navigateToNewCard}
-        {...drillThroughQuestionProps}
-      >
-        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
-      </SdkAdHocQuestion>
-    ))
     .otherwise(() => children);
 
-  // Only wrap in styled wrapper when rendering actual navigation content,
-  // not when rendering children (placeholder or initial entry).
-  // Changing the wrapper causes React to remount children, resetting their state.
-  const isRenderingNavigationContent =
-    stack.length > 1 && currentEntry?.type !== "placeholder";
-
+  // When we don't render the children directly, we need to render a wrapper with the styles applied.
+  // Otherwise we don pass `style` and `className` to anything, we can't always wrap it otherwise we may render
+  // paddings and borders twice.
   return (
     <SdkInternalNavigationContext.Provider value={value}>
-      {isRenderingNavigationContent ? (
+      {entryIsOriginalEntity ? (
+        children
+      ) : (
         <SdkDashboardStyledWrapper className={className} style={style}>
+          {maybeButton}
           {content}
         </SdkDashboardStyledWrapper>
-      ) : (
-        content
       )}
     </SdkInternalNavigationContext.Provider>
   );

@@ -36,6 +36,7 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
+import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
 import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
@@ -204,7 +205,10 @@ export const SdkQuestionDefaultView = ({
           data-hide-empty
         >
           <Group gap="xs" data-hide-empty>
-            <DefaultViewTitle title={title} />
+            <Stack align="flex-start">
+              <SdkInternalNavigationBackButton />
+              <DefaultViewTitle title={title} />
+            </Stack>
           </Group>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>

@@ -28,7 +28,7 @@ export const useCommonDashboardParams = ({
   dashboardId: DashboardId | null;
   /** Optional callback to push to navigation stack when navigating to a new card */
   onNavigationPush?: (entry: {
-    type: "adhoc-question";
+    type: "placeholder-adhoc-question";
     questionPath: string;
     name: string;
   }) => void;
@@ -92,7 +92,7 @@ export const useCommonDashboardParams = ({
 
           // Push to navigation stack for back button support
           onNavigationPush?.({
-            type: "adhoc-question",
+            type: "placeholder-adhoc-question",
             questionPath: url,
             name: nextCard.name || "Question",
           });

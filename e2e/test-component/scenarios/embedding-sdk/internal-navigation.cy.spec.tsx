@@ -297,8 +297,55 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // Verify breadcrumb shows Dashboard A
         cy.findByText("Back to Dashboard A").should("be.visible");
-
         // Go back to Dashboard A
+        cy.findByText("Back to Dashboard A").click();
+
+        // Verify we're back on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Verify no back button exists (we're at the root)
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should allow drilling directly from the initial dashboard and show the drilled question", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        // Verify we're on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Click on a User ID cell (column without custom click behavior) to trigger drill menu
+        // The ID and Product ID columns have custom click behaviors, so we use User ID
+        H.getDashboardCard()
+          .findByTestId("visualization-root")
+          .findAllByRole("gridcell", { name: "1" })
+          .first()
+          .click();
+
+        // Click on drill option to view orders for this user
+        H.popover().findByText("View this User's Orders").click();
+
+        // Verify the drilled question is now shown (not the dashboard)
+        cy.findByTestId("visualization-root").should("be.visible");
+
+        // The dashboard title should no longer be visible since we're viewing the drill result
+        cy.findByText("Dashboard A").should("not.exist");
+
+        // Verify back button shows Dashboard A
+        cy.findByText("Back to Dashboard A").should("be.visible");
+
+        // Click back to return to the dashboard
         cy.findByText("Back to Dashboard A").click();
 
         // Verify we're back on Dashboard A
@@ -404,7 +451,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     });
 
-    it("should return to original question after drill with back click", () => {
+    it("should allow drilling and returning to the original question", () => {
       cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />);
       });
@@ -430,6 +477,49 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText("Back to Orders Question").click();
 
         // Should be back at original question
+        cy.findByText("Orders Question").should("be.visible");
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should return to original question after nested drills with one back click", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+      });
+
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
+
+      getSdkRoot().within(() => {
+        // Verify original question
+        cy.findByText("Orders Question").should("be.visible");
+
+        // No back button initially
+        cy.findByText(/Back to/).should("not.exist");
+
+        // First drill - click on PRODUCT_ID cell
+        H.tableInteractiveBody().findAllByText("14").first().click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        // Verify back button appears after first drill
+        cy.findByText("Back to Orders Question").should("be.visible");
+
+        // Second drill
+        H.tableInteractiveBody().findAllByText("2.07").first().click();
+        H.popover().findByText("<").click();
+
+        cy.findByText("Back to Orders Question").should("be.visible");
+
+        // Third drill
+        H.tableInteractiveBody().findAllByText("1.09").first().click();
+        H.popover().findByText(">").click();
+
+        cy.findByText("Back to Orders Question").should("be.visible");
+
+        // One button click should return to the original question
+        cy.findByText("Back to Orders Question").click();
+
+        // Verify we're back at the original question
         cy.findByText("Orders Question").should("be.visible");
         cy.findByText(/Back to/).should("not.exist");
       });

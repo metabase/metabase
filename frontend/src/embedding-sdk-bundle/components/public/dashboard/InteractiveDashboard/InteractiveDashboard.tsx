@@ -79,7 +79,6 @@ export const InteractiveDashboardContent = (
 const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   return (
     <SdkInternalNavigationProvider
-      dashboardId={props.dashboardId}
       style={props.style}
       className={props.className}
       dashboardProps={props}
