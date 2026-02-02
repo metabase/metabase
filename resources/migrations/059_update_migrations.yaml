@@ -1447,9 +1447,8 @@ databaseChangeLog:
               - column:
                   name: ref_id
                   type: char(36)
-                  remarks: Unique UUID identifier for the workspace transform
+                  remarks: Representation id for the workspace transform, not unique across workspaces
                   constraints:
-                    primaryKey: true
                     nullable: false
               - column:
                   name: workspace_id
@@ -2943,6 +2942,21 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: transform
             constraintName: fk_transform_target_db_id
+
+  - changeSet:
+      id: v59.2026-02-02T12:00:00
+      author: christruter
+      comment: Add composite primary key on workspace_transform (workspace_id, ref_id)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - primaryKeyExists:
+                tableName: workspace_transform
+      changes:
+        - addPrimaryKey:
+            tableName: workspace_transform
+            columnNames: workspace_id, ref_id
+            constraintName: pk_workspace_transform
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
