@@ -14,6 +14,7 @@ const mapStateToProps = (state, props) => ({
   isModerator: getIsModerator(state, props),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(QuestionModerationSection);
 
 QuestionModerationSection.VerifyButton = DefaultVerifyButton;

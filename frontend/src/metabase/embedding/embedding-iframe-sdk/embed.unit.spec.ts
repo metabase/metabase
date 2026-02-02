@@ -12,6 +12,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   beforeEach(() => {
     jest.resetModules();
     delete window.metabaseConfig;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require after jest.resetModules
     require("./embed"); // we do things when the script is loaded
 
     document.body.innerHTML = "";

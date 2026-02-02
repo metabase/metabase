@@ -2,7 +2,7 @@ import { RuleTester } from "eslint";
 
 import rule from "../eslint-rules/no-unordered-test-helpers";
 
-const ruleTester = new RuleTester({ parserOptions: { ecmaVersion: 2015 } });
+const ruleTester = new RuleTester({ languageOptions: { ecmaVersion: 2015 } });
 
 const orderError = {
   message: "H.restore() must come before H.resetTestTable()",

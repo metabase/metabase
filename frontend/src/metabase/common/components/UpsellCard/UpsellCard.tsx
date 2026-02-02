@@ -53,7 +53,7 @@ export type UpsellCardProps = {
 } & CardWidthProps &
   CardLinkProps;
 
-export const _UpsellCard: React.FC<UpsellCardProps> = ({
+export const UpsellCardInner: React.FC<UpsellCardProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -125,4 +125,4 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   );
 };
 
-export const UpsellCard = UpsellWrapper(_UpsellCard);
+export const UpsellCard = UpsellWrapper(UpsellCardInner);
