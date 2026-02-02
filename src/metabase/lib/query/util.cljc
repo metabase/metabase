@@ -227,13 +227,11 @@
    {:keys [source strategy conditions]} :- ::lib.schema.query/test-join-spec]
   (let [join-target (find-source query source)
         join-strategy (find-join-strategy query stage-number strategy)
-        join-conditions (if (nil? conditions)
-                          (lib.join/suggested-join-conditions query stage-number join-target)
-                          (mapv (partial join-condition-spec->join-condition query stage-number join-target) conditions))
+        join-conditions (if conditions
+                          (mapv (partial join-condition-spec->join-condition query stage-number join-target) conditions)
+                          (lib.join/suggested-join-conditions query stage-number join-target))
         join-clause (lib.join/join-clause join-target join-conditions join-strategy)]
-    (if (empty? join-conditions)
-      (throw (ex-info "No join conditions provided" {:join-conditions join-conditions, :join-strategy join-strategy}))
-      (lib.join/join query stage-number join-clause))))
+    (lib.join/join query stage-number join-clause)))
 
 (mu/defn- append-joins :- ::lib.schema/query
   [query        :- ::lib.schema/query
