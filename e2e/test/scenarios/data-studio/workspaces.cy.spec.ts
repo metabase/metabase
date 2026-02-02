@@ -5,6 +5,7 @@ import { NativeEditor } from "e2e/support/helpers";
 import type {
   DatabaseId,
   PythonTransformTableAliases,
+  TransformId,
   TransformTagId,
   WorkspaceRunResponse,
 } from "metabase-types/api";
@@ -1383,7 +1384,7 @@ describe("scenarios > data studio > workspaces", () => {
       },
     );
 
-    it.skip("should show ad-hoc error for SQL transform", () => {
+    it("should show ad-hoc error for SQL transform", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1407,7 +1408,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.skip(
+    it(
       "should show ad-hoc error for Python transform",
       { tags: ["@python"] },
       () => {
@@ -1431,9 +1432,11 @@ describe("scenarios > data studio > workspaces", () => {
             "Graph",
             "Python transform",
             "Preview (Python transform)",
+            "Results",
+            "Output",
           ]);
           cy.findByText("Preview (Python transform)").click();
-          cy.findByText(/Python execution failure /i).should("be.visible");
+          cy.findByText(/Transform preview failed/i).should("be.visible");
         });
       },
     );
@@ -1503,7 +1506,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.tooltip().should("not.exist");
     });
 
-    it.skip("should run all stale transforms", { tags: ["@python"] }, () => {
+    it("should run all stale transforms", { tags: ["@python"] }, () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1564,7 +1567,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("transform -> workspace", () => {
+  describe("transform -> workspace > ", () => {
     it("should check out transform into a new workspace from the transform page", () => {
       cy.log("Create 2 workspaces, add transform to the second one");
       createTransforms();
@@ -1664,7 +1667,11 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.skip("should not allow to checkout transform if checkout_disabled is received", () => {
+    it("should not allow to checkout transform if checkout_disabled is received", () => {
+      cy.intercept("GET", "/api/ee/workspace/checkout*").as(
+        "checkoutWorkspace",
+      );
+
       H.createModelFromTableName({
         tableName: "Animals",
         modelName: "Animals",
@@ -1682,6 +1689,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       H.DataStudio.Transforms.saveChangesButton().click();
+
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Model Reference Transform");
         cy.findByLabelText("Table name").clear().type("model_ref_transform");
@@ -1690,6 +1698,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify Edit transform button is disabled");
       cy.findByRole("button", { name: /Edit/ }).click();
+      cy.wait("@checkoutWorkspace");
       H.popover().contains("New workspace").should("be.disabled");
       H.popover().contains("New workspace").realHover();
       H.tooltip().should(
@@ -1700,7 +1709,7 @@ describe("scenarios > data studio > workspaces", () => {
       cy.get("body").click();
 
       cy.log("Edit transform to remove model reference");
-      Transforms.editDefinition();
+      Transforms.clickEditDefinition();
       H.NativeEditor.type(
         '{selectall}SELECT * FROM "Schema A"."Animals" as t;',
       );
@@ -1708,6 +1717,33 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify Edit transform button is now enabled");
       cy.findByRole("button", { name: /Edit/ }).should("be.enabled");
+    });
+
+    // unskip once GDGT-1564 is unblocked
+    it.skip("should not allow workspace checkout when workspaces are disabled on DB (blocked by backend)", () => {
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: false,
+      });
+
+      cy.log("Disable workspaces on the database");
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
+        settings: { "database-enable-workspaces": false },
+      });
+
+      cy.get<TransformId>("@transformId").then((transformId) => {
+        H.visitTransform(transformId);
+      });
+
+      H.DataStudio.Transforms.editDefinitionButton().click();
+
+      cy.log("Verify workspace checkout is disabled");
+      // The backend should return checkout_disabled with a reason like "database-workspaces-disabled"
+      // Frontend maps this to a user-friendly message via getCheckoutDisabledMessage()
+      H.popover().contains("New workspace").should("be.disabled");
+      H.popover().contains("New workspace").realHover();
+      // TODO: update tooltip text once backend is done
+      H.tooltip().should("contain.text", "cannot be edited in a workspace");
     });
   });
 
@@ -2225,11 +2261,16 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("repros", () => {
+  describe("repros > ", () => {
     it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
       Workspaces.visitTransformListPage();
       cy.findByLabelText("Create a transform").click();
       H.popover().findByText("SQL query").click();
+      // to avoid flakiness on editor's focus
+      cy.findByTestId("native-query-top-bar").should(
+        "contain.text",
+        "Writable Postgres12",
+      );
       NativeEditor.type("select 1");
       cy.button("Save").click();
       cy.findByPlaceholderText("My Great Transform").type("My transform");

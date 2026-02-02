@@ -90,8 +90,14 @@ export function DataTab({
     return <PythonPreviewResults executionResult={pythonPreviewResult} />;
   }
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
+  }
+
+  if (error) {
+    const errorMessage =
+      typeof error === "string" ? error : t`An error occurred`;
+    return <ErrorState error={errorMessage} title={t`Error loading data`} />;
   }
 
   if (!databaseId || (!tableId && !query)) {
@@ -172,12 +178,12 @@ function PythonPreviewResults({
   );
 }
 
-function ErrorState({ error }: { error: string }) {
+function ErrorState({ error, title }: { error: string; title?: string }) {
   return (
     <Stack gap="sm" h="100%" p="md" c="error">
       <Group fw="bold" gap="sm">
         <Icon name="warning" />
-        {t`Error`}
+        {title ?? t`Error`}
       </Group>
       <Box fz="sm">{error}</Box>
     </Stack>
