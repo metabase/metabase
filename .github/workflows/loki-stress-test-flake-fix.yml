@@ -1,12 +1,18 @@
 name: Loki Visual Stress Test Flake Fix
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/**/*.stories.tsx'
+      - 'enterprise/frontend/**/*.stories.tsx'
   workflow_dispatch:
     inputs:
       stories_filter:
-        description: "Regex pattern to filter stories (e.g. 'DataGrid' or 'static-viz|viz')"
+        description: "Regex pattern to filter stories (leave empty for auto-detection from changed files)"
         type: string
-        required: true
+        required: false
+        default: ""
       burn_in:
         description: "Number of times to run the test (e.g. 50)"
         type: string
@@ -14,8 +20,99 @@ on:
         default: "50"
 
 jobs:
+  detect-stories-filter:
+    name: Detect changed stories
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      stories_filter: ${{ steps.detect.outputs.stories_filter }}
+      should_run: ${{ steps.detect.outputs.should_run }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed story files
+        id: detect
+        run: |
+          # If manual trigger with filter provided, use it directly
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.stories_filter }}" ]]; then
+            echo "Using manually provided filter: ${{ inputs.stories_filter }}"
+            echo "stories_filter=${{ inputs.stories_filter }}" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Determine the base ref for comparison
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            # For workflow_dispatch, compare against default branch
+            BASE_REF="origin/${{ github.event.repository.default_branch }}"
+          fi
+
+          echo "Comparing against: $BASE_REF"
+
+          # Find changed story files
+          CHANGED_FILES=$(git diff --name-only "$BASE_REF"...HEAD -- '*.stories.tsx' 2>/dev/null || git diff --name-only "$BASE_REF" HEAD -- '*.stories.tsx' 2>/dev/null || echo "")
+
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "No changed story files detected"
+            echo "stories_filter=" >> $GITHUB_OUTPUT
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Changed story files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Extract story titles from changed files
+          PATTERNS=()
+          while IFS= read -r file; do
+            if [[ -z "$file" || ! -f "$file" ]]; then
+              continue
+            fi
+
+            echo "Processing: $file"
+
+            # Try to extract title from the story file
+            TITLE=$(grep -oP "title:\s*['\"][^'\"]+['\"]" "$file" 2>/dev/null | head -1 | sed "s/title:[[:space:]]*['\"]//;s/['\"]$//")
+
+            if [[ -n "$TITLE" ]]; then
+              echo "  Found title: $TITLE"
+              # Escape special regex characters and add to patterns
+              ESCAPED_TITLE=$(echo "$TITLE" | sed 's/[[\.*^$()+?{|]/\\&/g')
+              PATTERNS+=("$ESCAPED_TITLE")
+            else
+              # Fallback: extract component name from filename
+              COMPONENT_NAME=$(basename "$file" .stories.tsx)
+              echo "  Using filename fallback: $COMPONENT_NAME"
+              PATTERNS+=("$COMPONENT_NAME")
+            fi
+          done <<< "$CHANGED_FILES"
+
+          if [[ ${#PATTERNS[@]} -eq 0 ]]; then
+            echo "No patterns extracted"
+            echo "stories_filter=" >> $GITHUB_OUTPUT
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Remove duplicates and combine patterns with OR (|)
+          UNIQUE_PATTERNS=($(printf '%s\n' "${PATTERNS[@]}" | sort -u))
+          FILTER=$(IFS='|'; echo "${UNIQUE_PATTERNS[*]}")
+
+          echo ""
+          echo "Generated stories filter: $FILTER"
+          echo "stories_filter=$FILTER" >> $GITHUB_OUTPUT
+          echo "should_run=true" >> $GITHUB_OUTPUT
+
   workflow-summary:
     name: Stress test inputs
+    needs: detect-stories-filter
+    if: needs.detect-stories-filter.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
@@ -24,12 +121,19 @@ jobs:
           echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `stories_filter`: ${{ inputs.stories_filter }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `stories_filter`: ${{ needs.detect-stories-filter.outputs.stories_filter }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: ${{ inputs.burn_in || '50' }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `trigger`: ${{ github.event_name }}' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo 'triggered by: PR #${{ github.event.pull_request.number }} from @${{ github.event.pull_request.user.login }}' >> $GITHUB_STEP_SUMMARY
+          else
+            echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          fi
 
   stress-test-loki:
+    needs: detect-stories-filter
+    if: needs.detect-stories-filter.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     name: Stress test Loki visual tests
@@ -61,10 +165,10 @@ jobs:
       - name: Build Storybook (once)
         run: yarn build-storybook
 
-      - name: Stress-test Loki "${{ inputs.stories_filter }}" ${{ inputs.burn_in }} times
+      - name: Stress-test Loki "${{ needs.detect-stories-filter.outputs.stories_filter }}" ${{ inputs.burn_in || '50' }} times
         run: |
-          BURN_IN=${{ inputs.burn_in }}
-          STORIES_FILTER='${{ inputs.stories_filter }}'
+          BURN_IN=${{ inputs.burn_in || '50' }}
+          STORIES_FILTER='${{ needs.detect-stories-filter.outputs.stories_filter }}'
 
           echo "Running Loki visual tests $BURN_IN times for stories matching: $STORIES_FILTER"
           echo ""
