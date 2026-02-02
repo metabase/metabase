@@ -16,6 +16,7 @@
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -80,12 +81,17 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-  ;; Populate computed fields. During deserialization, source/target may contain unresolved database
-  ;; references, so we skip target_db_id computation and let it be filled in later.
-  (let [target-db-id (when-not mi/*deserializing?*
-                       (transforms.i/target-db-id transform))]
+  (let [target-db-id (transforms.i/target-db-id transform)
+        ;; This is defensive code to cope with some tests for remote sync, where we deserialize a transform
+        ;; with a concrete database id within it, for a potentially non-existent database.
+        ;; In practice, our serialized representation should not contain any database ids, and this should
+        ;; not be required.
+        ;; TODO (Chris 2026-02-02) -- Update tests so this workaround is unnecessary.
+        valid-db-id? (when target-db-id (t2/exists? :model/Database :id target-db-id))]
+    (when-not valid-db-id?
+      (log/warnf "Invalid target database id (%d) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
-        (assoc-in [:target :database] target-db-id)
+        (assoc-in [:target :database] (when valid-db-id? target-db-id))
         (assoc
          :source_type (transforms.util/transform-source-type source)
          :target_db_id target-db-id))))
@@ -99,9 +105,8 @@
     source
     (assoc :source_type (transforms.util/transform-source-type source))
 
-    ;; No need for a DB existence check here — updates come from the API where the database is always valid.
-    ;; (Unlike before-insert, which skips this during deserialization where DB refs may be stale.)
     (or (:source (t2/changes transform)) (:target (t2/changes transform)))
+    ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
     (assoc :target_db_id (transforms.i/target-db-id transform))))
 
 (t2/define-after-select :model/Transform
