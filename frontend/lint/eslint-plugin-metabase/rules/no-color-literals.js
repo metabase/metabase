@@ -12,9 +12,9 @@ const COLOR_REGEX =
 const LINT_MESSAGE =
   "Color literals forbidden. Import colors from 'metabase/lib/colors'.";
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
+    type: "problem",
     docs: {
       description: "disallow color literals",
       category: "Possible Errors",

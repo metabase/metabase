@@ -5,13 +5,12 @@
  */
 
 const ADD_COMMENT_MESSAGE =
-  'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins."';
+  'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins."';
 const ERROR_MESSAGE =
   "Metabase string must not be used directly.\n\nPlease import `getApplicationName` selector from `metabase/selectors/whitelabel` and use it to render the application name.\n\nOr " +
   ADD_COMMENT_MESSAGE;
 const LITERAL_METABASE_STRING_REGEX = /Metabase/;
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",
@@ -23,14 +22,15 @@ module.exports = {
   },
 
   create(context) {
+    const sourceCode = context.sourceCode;
     return {
       Literal(node) {
         if (
           typeof node.value !== "string" ||
           [
+            "ExportAllDeclaration",
             "ExportNamedDeclaration",
             "ImportDeclaration",
-            "ExportAllDeclaration",
           ].includes(node.parent.type)
         ) {
           return;
@@ -63,7 +63,7 @@ module.exports = {
         }
       },
       Program() {
-        const comments = context.getSourceCode().getAllComments();
+        const comments = sourceCode.getAllComments();
 
         const ESLINT_DISABLE_BLOCK_REGEX =
           /eslint-disable\s+no-literal-metabase-strings/;

@@ -157,11 +157,11 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
   useMetabotSQLSuggestion: (options) => {
+    // lazy require to avoid loading metabase/api and its cljs dependencies at
+    // module init time. without this the jest unit tests will break.
     const {
       useMetabotSQLSuggestion,
-      // lazy require to avoid loading metabase/api and its cljs dependencies at
-      // module init time. without this the jest unit tests will break.
-      /* eslint-disable @typescript-eslint/no-var-requires */
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
     } = require("metabase/metabot/hooks/use-metabot-sql-suggestion");
     return useMetabotSQLSuggestion(options);
   },

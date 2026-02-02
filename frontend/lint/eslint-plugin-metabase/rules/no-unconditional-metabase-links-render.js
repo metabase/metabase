@@ -11,7 +11,7 @@
 // 5. inline string "metabase.com/learn/"
 //
 // If a link shouldn't be rendered conditionally e.g. it's only show for admins, or is rendered inside admin settings, you need to disable the rule with a reason.
-// e.g. "// eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins."
+// e.g. "// eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This link only shows for admins."
 
 function getImportNodeLocation(node) {
   return node.source.value;
@@ -25,7 +25,7 @@ function getParentDeclarationNode(node) {
 }
 
 const ADD_COMMENT_MESSAGE =
-  'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins."';
+  'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins."';
 const ERROR_MESSAGE =
   "Metabase links must be rendered conditionally.\n\nPlease import `getShowMetabaseLinks` selector from `metabase/selectors/whitelabel` and use it to conditionally render Metabase links.\n\nOr " +
   ADD_COMMENT_MESSAGE;
@@ -37,7 +37,6 @@ const HOOK_ERROR_MESSAGE =
 const LITERAL_METABASE_URL_REGEX =
   /(metabase\.com\/docs|metabase\.com\/learn)($|\/)/;
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",
@@ -49,6 +48,7 @@ module.exports = {
   },
 
   create(context) {
+    const sourceCode = context.sourceCode;
     let isGetDocsUrlSelectorImported = false;
     let isGetLearnUrlSelectorImported = false;
     let isGetShowMetabaseLinksSelectorImported = false;
@@ -67,7 +67,7 @@ module.exports = {
      */
     function getImportedModuleNode(node, { isDefault, named, source }) {
       if (getImportNodeLocation(node) === source) {
-        const variables = context.getDeclaredVariables(node);
+        const variables = sourceCode.getDeclaredVariables(node);
         if (isDefault) {
           return variables.find(
             (variable) =>
@@ -190,7 +190,7 @@ module.exports = {
         });
       },
       Program() {
-        const comments = context.getSourceCode().getAllComments();
+        const comments = sourceCode.getAllComments();
 
         const ESLINT_DISABLE_BLOCK_REGEX =
           /eslint-disable\s+no-unconditional-metabase-links-render/;
