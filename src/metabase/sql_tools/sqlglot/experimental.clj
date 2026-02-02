@@ -1,5 +1,6 @@
 (ns metabase.sql-tools.sqlglot.experimental
-  "Do not use code from this ns. It uses lienage features and `sqlglot-schema`."
+  "SQLGlot returned-columns implementation using lineage analysis.
+   Provides column metadata for native SQL queries."
   (:require
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
@@ -7,15 +8,14 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]))
+   [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]))
 
 (defn- table-schema
   [driver table]
   (or (:schema table)
       (driver.sql/default-schema driver)))
 
-;; TODO: there are some 1000+ fields schemas lurking, this functionality should be disabled for them!
-;; TODO: driver not needed, as in various other places, could be inferred from query
 (defn- sqlglot-schema
   "Generate the database schema structure processable by Sqlglot."
   [driver mp]
@@ -77,60 +77,52 @@
   (update single-lineage 2 #(mapv (partial normalize-dependency driver)
                                   %)))
 
-;; TODO: Avoid use of `sqlglot-schema` and lineage.
-(defn returned-columns
-  "Given a native query return columns it produces.
+(def ^:private ^:const max-schema-fields
+  "Maximum number of fields in schema before skipping lineage analysis."
+  1000)
 
-  Normalizes identifiers returned by the Sqlglot. (TODO: questionable! get back to this.)"
+(defn- schema-field-count
+  "Count total fields across all tables in the metadata provider."
+  [mp]
+  (reduce + (map #(count (lib.metadata/fields mp (:id %)))
+                 (lib.metadata/tables mp))))
+
+(defn- returned-columns-lineage
+  "Call Python sqlglot to get returned column lineage.
+   Returns vector of [alias pure? [[schema table col]...]] tuples."
+  [dialect sql default-table-schema sqlglot-schema]
+  (sql-parsing/returned-columns-lineage dialect sql default-table-schema sqlglot-schema))
+
+(defn- returned-columns*
+  "Internal implementation of returned-columns."
   [driver query]
   (let [sqlglot-schema* (sqlglot-schema driver query)
         sql-str (lib/raw-native-query query)
         default-schema* (driver.sql/default-schema driver)
-        lineage "returned-columns-lineage is commented out below." #_(returned-columns-lineage
+        lineage (returned-columns-lineage
                  (driver->dialect driver) sql-str default-schema* sqlglot-schema*)
-        normalized-lienage (mapv (partial normalized-dependencies driver)
+        normalized-lineage (mapv (partial normalized-dependencies driver)
                                  lineage)
-        schema->table->col* (schema->table->col query)
-        returned-columns (lineage->returned-columns schema->table->col* normalized-lienage)]
-    returned-columns))
+        schema->table->col* (schema->table->col query)]
+    (lineage->returned-columns schema->table->col* normalized-lineage)))
+
+(defn returned-columns
+  "Given a native query return columns it produces.
+   Normalizes identifiers returned by SQLGlot.
+   Returns empty vector for large schemas or on error."
+  [driver query]
+  (let [field-count (schema-field-count query)]
+    (if (> field-count max-schema-fields)
+      (do
+        (log/warnf "Schema has %d fields (> %d max), skipping returned-columns analysis"
+                   field-count max-schema-fields)
+        [])
+      (try
+        (returned-columns* driver query)
+        (catch Exception e
+          (log/warn e "Failed to get returned columns for query")
+          [])))))
 
 (defmethod sql-tools/returned-columns-impl :sqlglot
   [_parser driver query]
   (returned-columns driver query))
-
-;; copied over from sql-parsing core. we aren't ready to do this yet.
-;; (defn returned-columns-lineage
-;;   "WIP"
-;;   [dialect sql default-table-schema sqlglot-schema]
-;;   (log/warn "I'm using sqlglot-schema, please fix me.")
-;;   (with-open [^Closeable ctx (python.pool/python-context)]
-;;     (common/eval-python ctx "import sql_tools")
-;;     (-> ^Value (common/eval-python ctx "sql_tools.returned_columns_lineage")
-;;         (.execute ^Value (object-array [dialect
-;;                                         sql
-;;                                         default-table-schema
-;;                                         sqlglot-schema]))
-;;         .asString
-;;         json/decode)))
-
-;; (defn- sanitize-validation-output
-;;   [validation-output]
-;;   (-> validation-output
-;;       (update :status (comp u/->kebab-case-en keyword))
-;;       (m/update-existing :type (comp u/->kebab-case-en keyword))))
-
-;; ;; TODO: Implement so schema is `sqlglot-schema` (generated from appdb sync data) is not needed.
-;; (defn validate-query
-;;   "WIP"
-;;   [dialect sql default-table-schema sqlglot-schema]
-;;   (log/warn "I'm using sqlglot-schema, please fix me.")
-;;   (with-open [^Closeable ctx (python.pool/python-context)]
-;;     (common/eval-python ctx "import sql_tools")
-;;     (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
-;;         (.execute ^Value (object-array [dialect
-;;                                         sql
-;;                                         default-table-schema
-;;                                         sqlglot-schema]))
-;;         .asString
-;;         json/decode+kw
-;;         sanitize-validation-output)))
