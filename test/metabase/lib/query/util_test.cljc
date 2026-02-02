@@ -4,7 +4,6 @@
        [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.query.util :as lib.query.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
@@ -72,10 +71,12 @@
                                                    :args     [{:type :column
                                                                :name "PRICE"}
                                                               {:type  :literal
-                                                               :value 2}]}}]}]})
-          exprs (lib/expressions query 0)]
-      (is (= 1 (count exprs)))
-      (is (= "double-price" (-> exprs first lib.options/options :lib/expression-name))))))
+                                                               :value 2}]}}]}]})]
+      (is (=? [[:*
+                {:lib/expression-name "double-price"}
+                [:field {} (meta/id :venues :price)]
+                2]]
+              (lib/expressions query))))))
 
 (deftest ^:parallel test-query-with-filters-test
   (testing "test-query adds filters to the query"
@@ -280,12 +281,11 @@
                                                                :name "PRICE"}
                                                               {:type  :literal
                                                                :value 4}]}]}]}]})]
-      (is (= 1 (count (lib/filters query))))
-      (is (=? [:and
-               {}
-               [:> {} [:field {} (meta/id :venues :price)] 2]
-               [:< {} [:field {} (meta/id :venues :price)] 4]]
-              (first (lib/filters query)))))))
+      (is (=? [[:and
+                {}
+                [:> {} [:field {} (meta/id :venues :price)] 2]
+                [:< {} [:field {} (meta/id :venues :price)] 4]]]
+              (lib/filters query))))))
 
 (deftest ^:parallel test-query-named-aggregation-test
   (testing "test-query handles named aggregations"
@@ -297,8 +297,8 @@
                                             :value {:type     :operator
                                                     :operator :count
                                                     :args     []}}]}]})]
-      (is (= 1 (count (lib/aggregations query))))
-      (is (= "my-count" (lib/display-name query (first (lib/aggregations query))))))))
+      (is (=? [[:count {:display-name "my-count"}]]
+              (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-error-no-column-found-test
   (testing "test-query throws when column is not found"
@@ -339,9 +339,8 @@
                                             :operator :sum
                                             :args     [{:type :column
                                                         :name "PRICE"}]}]}]})]
-      (is (= 1 (count (lib/aggregations query))))
-      (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
-              (first (lib/aggregations query)))))))
+      (is (=? [[:sum {} [:field {} (meta/id :venues :price)]]]
+              (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-aggregation-avg-test
   (testing "test-query handles avg aggregations"
@@ -353,9 +352,8 @@
                                             :operator :avg
                                             :args     [{:type :column
                                                         :name "PRICE"}]}]}]})]
-      (is (= 1 (count (lib/aggregations query))))
-      (is (=? [:avg {} [:field {} (meta/id :venues :price)]]
-              (first (lib/aggregations query)))))))
+      (is (=? [[:avg {} [:field {} (meta/id :venues :price)]]]
+              (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-named-aggregation-with-args-test
   (testing "test-query handles named aggregations with arguments"
@@ -368,10 +366,8 @@
                                                     :operator :sum
                                                     :args     [{:type :column
                                                                 :name "PRICE"}]}}]}]})]
-      (is (= 1 (count (lib/aggregations query))))
-      (is (= "total-price" (lib/display-name query (first (lib/aggregations query)))))
-      (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
-              (first (lib/aggregations query)))))))
+      (is (=? [[:sum {:display-name "total-price"} [:field {} (meta/id :venues :price)]]]
+              (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-with-join-card-source-test
   (testing "test-query supports joins with card sources"
@@ -482,9 +478,8 @@
                                          :name      "PRICE"
                                          :bins      10
                                          :direction :asc}]}]})]
-      (is (= 1 (count (lib/order-bys query))))
-      (is (=? [:asc {} [:field {:binning {:strategy :num-bins}} (meta/id :venues :price)]]
-              (first (lib/order-bys query)))))))
+      (is (=? [[:asc {} [:field {:binning {:strategy :num-bins}} (meta/id :venues :price)]]]
+              (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-expression-with-aggregation-test
   (testing "test-query handles expressions that reference aggregations from earlier stages"
@@ -543,10 +538,12 @@
                                       :strategy :left-join}
                                      {:source   {:type :table
                                                  :id   (meta/id :checkins)}
-                                      :strategy :left-join}]}]})]
-      (is (= 2 (count (lib/joins query))))
-      (is (= :left-join (-> query (lib/joins) first :strategy)))
-      (is (= :left-join (-> query (lib/joins) second :strategy))))))
+                                      :strategy :right-join}]}]})]
+      (is (=? [{:strategy :left-join
+                :alias "Categories"}
+               {:strategy :right-join
+                :alias "Checkins"}]
+              (lib/joins query))))))
 
 (deftest ^:parallel test-query-with-implicit-join-test
   (testing "test-query handles implicit joins in most clauses"
