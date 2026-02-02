@@ -1,7 +1,7 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -35,6 +35,8 @@ import {
   getSortOptions,
   hasFilterOptions,
 } from "./utils";
+
+const EMPTY_RUNS: TransformRun[] = [];
 
 type RunListPageProps = {
   location: Location;
@@ -93,12 +95,15 @@ export function RunListPage({ location }: RunListPageProps) {
     setIsPolling(isPollingNeeded(data?.data));
   }
 
-  const runs = data?.data ?? [];
+  const runs = data?.data ?? EMPTY_RUNS;
 
-  const selectedRun =
-    selectedRunId != null
-      ? runs.find((run) => run.id === selectedRunId)
-      : undefined;
+  const selectedRun = useMemo(
+    () =>
+      selectedRunId != null
+        ? runs.find((run) => run.id === selectedRunId)
+        : undefined,
+    [selectedRunId, runs],
+  );
 
   useLayoutEffect(() => {
     if (selectedRunId != null && selectedRun == null) {
