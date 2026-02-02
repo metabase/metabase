@@ -651,3 +651,14 @@
 (deftest ^:parallel fallback-display-name-test
   (is (= "Question 42" (lib.card/fallback-display-name 42)))
   (is (= "Question 7" (lib.card/fallback-display-name 7))))
+
+(deftest ^:parallel saved-question-metadata-test
+  (let [card (:venues (lib.tu/mock-cards))
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [card]})]
+    (testing "returns same results as card-returned-columns"
+      (is (= (lib.card/card-returned-columns mp card)
+             (lib.card/saved-question-metadata mp (:id card)))))
+    (testing "returns nil for a nonexistent card"
+      (is (nil? (lib.card/saved-question-metadata mp 99999))))))
