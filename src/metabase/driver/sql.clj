@@ -12,7 +12,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.driver.util :as driver.u]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.log :as log]
