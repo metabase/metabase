@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+
 import {
   dashboardUsesRoutingEnabledDatabases,
   questionUsesRoutingEnabledDatabase,
@@ -20,41 +23,40 @@ export const DatabaseRoutingWarning = ({
   resourceType,
 }: DatabaseRoutingWarningProps) => {
   const { data: databasesResponse } = useListDatabasesQuery();
-  const databases = databasesResponse?.data || [];
 
   // Check if this resource uses databases with routing enabled
-  const usesRoutingEnabledDatabase = (() => {
+  const usesRoutingEnabledDatabase = useMemo(() => {
+    const databases = databasesResponse?.data || [];
+
     if (resourceType === "question") {
       return questionUsesRoutingEnabledDatabase(resource as Card, databases);
     }
+
     if (resourceType === "dashboard") {
       return dashboardUsesRoutingEnabledDatabases(
         resource as Dashboard,
         databases,
       );
     }
+
     return false;
-  })();
+  }, [resource, resourceType, databasesResponse]);
 
   if (!usesRoutingEnabledDatabase) {
     return null;
   }
-
-  const getWarningMessage = () => {
-    if (resourceType === "dashboard") {
-      return "One or more questions in this dashboard are querying a database with database routing enabled. The corresponding database queries will be executed against the router database.";
-    }
-    return "This question is querying a database with database routing enabled. The database queries will be executed against the router database.";
-  };
 
   return (
     <Alert
       variant="light"
       color="warning"
       icon={<Icon name="warning" />}
+      title={t`Database routing active`}
       mb="md"
     >
-      {getWarningMessage()}
+      {resourceType === "dashboard"
+        ? t`One or more questions in this dashboard are querying a database with database routing enabled. The corresponding database queries will be executed against the router database.`
+        : t`This question is querying a database with database routing enabled. The database queries will be executed against the router database.`}
     </Alert>
   );
 };

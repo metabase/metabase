@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
@@ -41,24 +41,28 @@ describe("DatabaseRoutingWarning", () => {
       });
 
       expect(
-        screen.queryByText(/database routing active/i),
+        screen.queryByText(
+          /this question is querying a database with database routing enabled/i,
+        ),
       ).not.toBeInTheDocument();
     });
 
-    it("renders warning for question using routing-enabled database", () => {
+    it("renders warning for question using routing-enabled database", async () => {
       const question = { database_id: 2 };
-      setup({
+      await setup({
         resourceType: "question",
         resource: question,
         databases: [mockNormalDatabase, mockRoutingDatabase],
       });
 
-      expect(screen.getByText(/database routing active/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /this question is querying a database with database routing enabled/i,
-        ),
-      ).toBeInTheDocument();
+      // waitFor because the rendering needs the list of databases and it's async
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            /this question is querying a database with database routing enabled/i,
+          ),
+        ).toBeInTheDocument();
+      });
     });
 
     it("does not render warning for question without database_id", () => {
@@ -70,7 +74,9 @@ describe("DatabaseRoutingWarning", () => {
       });
 
       expect(
-        screen.queryByText(/database routing active/i),
+        screen.queryByText(
+          /this question is querying a database with database routing enabled/i,
+        ),
       ).not.toBeInTheDocument();
     });
   });
@@ -92,11 +98,13 @@ describe("DatabaseRoutingWarning", () => {
       });
 
       expect(
-        screen.queryByText(/database routing active/i),
+        screen.queryByText(
+          /one or more questions in this dashboard are querying/i,
+        ),
       ).not.toBeInTheDocument();
     });
 
-    it("renders warning for dashboard with routing-enabled databases", () => {
+    it("renders warning for dashboard with routing-enabled databases", async () => {
       const dashboard = {
         dashcards: [
           {
@@ -111,15 +119,16 @@ describe("DatabaseRoutingWarning", () => {
         databases: [mockNormalDatabase, mockRoutingDatabase],
       });
 
-      expect(screen.getByText(/database routing active/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /one or more questions in this dashboard are querying/i,
-        ),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            /one or more questions in this dashboard are querying/i,
+          ),
+        ).toBeInTheDocument();
+      });
     });
 
-    it("renders warning for dashboard with series cards using routing", () => {
+    it("renders warning for dashboard with series cards using routing", async () => {
       const dashboard = {
         dashcards: [
           {
@@ -135,12 +144,13 @@ describe("DatabaseRoutingWarning", () => {
         databases: [mockNormalDatabase, mockRoutingDatabase],
       });
 
-      expect(screen.getByText(/database routing active/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /one or more questions in this dashboard are querying/i,
-        ),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            /one or more questions in this dashboard are querying/i,
+          ),
+        ).toBeInTheDocument();
+      });
     });
 
     it("does not render warning for dashboard without dashcards", () => {
@@ -153,7 +163,9 @@ describe("DatabaseRoutingWarning", () => {
       });
 
       expect(
-        screen.queryByText(/database routing active/i),
+        screen.queryByText(
+          /one or more questions in this dashboard are querying/i,
+        ),
       ).not.toBeInTheDocument();
     });
   });
