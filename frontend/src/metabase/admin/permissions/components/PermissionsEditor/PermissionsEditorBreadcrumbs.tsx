@@ -1,26 +1,27 @@
-import PropTypes from "prop-types";
 import { Fragment } from "react";
 
 import { Icon, Text } from "metabase/ui";
+
+import type { PermissionEditorBreadcrumb } from "../../types";
 
 import {
   BreadcrumbsLink,
   BreadcrumbsSeparator,
 } from "./PermissionsEditorBreadcrumbs.styled";
 
-const propTypes = {
-  items: PropTypes.array,
-  onBreadcrumbsItemSelect: PropTypes.func,
-};
+export interface PermissionsEditorBreadcrumbsProps {
+  breadcrumbs: PermissionEditorBreadcrumb[];
+  onBreadcrumbsItemSelect: (item: PermissionEditorBreadcrumb) => void;
+}
 
 export const PermissionsEditorBreadcrumbs = ({
-  items,
+  breadcrumbs,
   onBreadcrumbsItemSelect,
-}) => {
+}: PermissionsEditorBreadcrumbsProps) => {
   return (
     <Fragment>
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
+      {breadcrumbs.map((item, index) => {
+        const isLast = index === breadcrumbs.length - 1;
         const subtext = item.subtext ? (
           <Text display="inline-block" c="text-secondary" fw="500" fz="1em">
             {item.subtext}
@@ -54,5 +55,3 @@ export const PermissionsEditorBreadcrumbs = ({
     </Fragment>
   );
 };
-
-PermissionsEditorBreadcrumbs.propTypes = propTypes;

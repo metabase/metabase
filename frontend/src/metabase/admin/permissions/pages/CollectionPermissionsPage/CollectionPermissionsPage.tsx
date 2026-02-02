@@ -30,7 +30,6 @@ import {
 } from "../../permissions";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "../../selectors/collection-permissions";
 import {
@@ -40,6 +39,7 @@ import {
   getCollectionsSidebar,
   getIsDirty,
 } from "../../selectors/collection-permissions";
+import type { PermissionEditorType } from "../../types";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
@@ -70,7 +70,7 @@ type UpdateCollectionPermissionParams = {
 type CollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
-  permissionEditor: CollectionPermissionEditorType;
+  permissionEditor: PermissionEditorType | null;
   collection: Collection;
   navigateToItem: (item: any) => void;
   updateCollectionPermission: ({

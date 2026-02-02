@@ -13,18 +13,13 @@ import {
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
-import type {
-  Database,
-  DatabaseId,
-  Group,
-  GroupsPermissions,
-  TableId,
-} from "metabase-types/api";
+import type { Database, Group, GroupsPermissions } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
   DataRouteParams,
   EntityId,
+  PermissionEditorType,
   PermissionSectionConfig,
   PermissionSubject,
   RawGroupRouteParams,
@@ -38,7 +33,6 @@ import {
 } from "../../utils/data-entity-id";
 import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
 
-import type { EditorBreadcrumb } from "./breadcrumbs";
 import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
@@ -348,26 +342,6 @@ export const getDatabasesPermissionEditor = createSelector(
   },
 );
 
-type DataPermissionEditorEntity = {
-  id: Group["id"];
-  name: Group["name"];
-  hint: React.ReactNode | string | null;
-  entityId: {
-    databaseId?: DatabaseId;
-    schemaName?: Schema["name"];
-    tableId?: TableId;
-  };
-  permissions?: PermissionSectionConfig[];
-};
-
-type DataPermissionEditorProps = {
-  title: string;
-  filterPlaceholder: string;
-  breadcrumbs: EditorBreadcrumb[] | null;
-  columns: { name: string }[];
-  entities: DataPermissionEditorEntity[];
-};
-
 type GetGroupsDataPermissionEditorSelectorParameters =
   RouteParamsSelectorParameters & {
     includeHiddenTables?: boolean;
@@ -375,7 +349,7 @@ type GetGroupsDataPermissionEditorSelectorParameters =
 
 type GetGroupsDataPermissionEditorSelector = Selector<
   State,
-  DataPermissionEditorProps | null,
+  PermissionEditorType | null,
   GetGroupsDataPermissionEditorSelectorParameters[]
 >;
 

@@ -1,37 +1,43 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { useRef, useState } from "react";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { Flex, Text, Tooltip } from "metabase/ui";
+import { Flex, Icon, Text, Tooltip } from "metabase/ui";
 
+import type {
+  DataPermissionValue,
+  PermissionAction,
+  PermissionConfirmationProps,
+  PermissionEditorEntity,
+  PermissionEditorType,
+  PermissionSectionConfig,
+} from "../../types";
 import { PermissionsSelect } from "../PermissionsSelect";
 
 import {
   ColumnName,
   EntityNameLink,
-  HintIcon,
   PermissionTableHeaderCell,
   PermissionsTableCell,
   PermissionsTableRoot,
   PermissionsTableRow,
 } from "./PermissionsTable.styled";
 
-const propTypes = {
-  entities: PropTypes.arrayOf(PropTypes.object),
-  columns: PropTypes.arrayOf(
-    PropTypes.shape({
-      name: PropTypes.string.isRequired,
-      hint: PropTypes.string,
-    }),
-  ),
-  emptyState: PropTypes.node,
-  onSelect: PropTypes.func,
-  onChange: PropTypes.func,
-  onAction: PropTypes.func,
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
+export type PermissionsTableProps = Pick<
+  PermissionEditorType,
+  "entities" | "columns"
+> & {
+  onSelect?: (entity: PermissionEditorEntity) => void;
+  onAction?: (action: PermissionAction, entity: PermissionEditorEntity) => void;
+  onChange: (
+    entity: PermissionEditorEntity,
+    permission: PermissionSectionConfig,
+    value: DataPermissionValue,
+    toggleState: boolean | null,
+  ) => void;
+  emptyState?: React.ReactNode;
 };
 
 export function PermissionsTable({
@@ -40,18 +46,24 @@ export function PermissionsTable({
   onSelect,
   onAction,
   onChange,
-  colorScheme,
   emptyState = null,
-}) {
-  const [confirmations, setConfirmations] = useState([]);
-  const confirmActionRef = useRef(null);
+}: PermissionsTableProps) {
+  const [confirmations, setConfirmations] = useState<
+    PermissionConfirmationProps[]
+  >([]);
+  const confirmActionRef = useRef<(() => void) | null>(null);
 
-  const handleChange = (value, toggleState, entity, permission) => {
+  const handleChange = (
+    value: DataPermissionValue,
+    toggleState: boolean | null,
+    entity: PermissionEditorEntity,
+    permission: PermissionSectionConfig,
+  ) => {
     const confirmAction = () =>
       onChange(entity, permission, value, toggleState);
 
     const confirmations =
-      permission.confirmations?.(value).filter(Boolean) || [];
+      permission.confirmations?.(value).filter((c) => c !== undefined) || [];
 
     if (confirmations.length > 0) {
       setConfirmations(confirmations);
@@ -64,7 +76,7 @@ export function PermissionsTable({
   const handleConfirm = () => {
     setConfirmations((prev) => prev.slice(1));
     if (confirmations.length === 1) {
-      confirmActionRef.current();
+      confirmActionRef.current?.();
       confirmActionRef.current = null;
     }
   };
@@ -92,7 +104,12 @@ export function PermissionsTable({
                         closeDelay={100}
                         classNames={{ tooltip: CS.pointerEventsAuto }}
                       >
-                        <HintIcon />
+                        <Icon
+                          name="info"
+                          c="text-tertiary"
+                          ml="0.375rem"
+                          className={CS.cursorPointer}
+                        />
                       </Tooltip>
                     )}
                   </ColumnName>
@@ -107,8 +124,13 @@ export function PermissionsTable({
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
                 {typeof entity.hint === "string" && (
-                  <Tooltip tooltip={entity.hint}>
-                    <HintIcon />
+                  <Tooltip label={entity.hint}>
+                    <Icon
+                      name="info"
+                      c="text-tertiary"
+                      ml="0.375rem"
+                      className={CS.cursorPointer}
+                    />
                   </Tooltip>
                 )}
               </span>
@@ -120,7 +142,10 @@ export function PermissionsTable({
               >
                 <PermissionsTableCell>
                   {entity.canSelect ? (
-                    <EntityNameLink onClick={() => onSelect(entity)}>
+                    // @ts-expect-error - Link expects a `to` prop, but we don't have one. maybe this should be a button?
+                    <EntityNameLink //force line break so we can type check next line
+                      onClick={() => onSelect?.(entity)}
+                    >
                       {entityName}
                     </EntityNameLink>
                   ) : (
@@ -134,7 +159,7 @@ export function PermissionsTable({
                   )}
                 </PermissionsTableCell>
 
-                {entity.permissions.map((permission, index) => {
+                {entity.permissions?.map((permission, index) => {
                   return (
                     <PermissionsTableCell
                       key={permission.type ?? String(index)}
@@ -144,10 +169,7 @@ export function PermissionsTable({
                         onChange={(value, toggleState) =>
                           handleChange(value, toggleState, entity, permission)
                         }
-                        onAction={(actionCreator) =>
-                          onAction(actionCreator, entity)
-                        }
-                        colorScheme={colorScheme}
+                        onAction={(action) => onAction?.(action, entity)}
                       />
                     </PermissionsTableCell>
                   );
@@ -167,5 +189,3 @@ export function PermissionsTable({
     </>
   );
 }
-
-PermissionsTable.propTypes = propTypes;

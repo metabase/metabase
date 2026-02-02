@@ -19,9 +19,9 @@ import {
 } from "metabase/admin/permissions/permissions";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
+import type { PermissionEditorType } from "metabase/admin/permissions/types";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect } from "metabase/lib/redux";
@@ -64,7 +64,7 @@ type UpdateCollectionPermissionParams = {
 type TenantCollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
-  permissionEditor: CollectionPermissionEditorType;
+  permissionEditor: PermissionEditorType | null;
   collection: Collection;
   navigateToItem: (item: { id: CollectionId }) => void;
   updateCollectionPermission: ({
@@ -101,13 +101,13 @@ function TenantCollectionPermissionsPageView({
       item: { id: GroupId },
       _permission: unknown,
       value: unknown,
-      toggleState: boolean,
+      toggleState: boolean | null,
     ) => {
       updateCollectionPermission({
         groupId: item.id,
         collection,
         value,
-        shouldPropagate: toggleState,
+        shouldPropagate: toggleState ?? false,
       });
     },
     [collection, updateCollectionPermission],

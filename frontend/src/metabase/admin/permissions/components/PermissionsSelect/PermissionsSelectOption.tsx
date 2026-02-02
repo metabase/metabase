@@ -1,25 +1,22 @@
-import PropTypes from "prop-types";
 import { useState } from "react";
 
-import { Icon, Tooltip } from "metabase/ui";
-
+import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import {
-  IconContainer,
-  PermissionsSelectLabel,
-  PermissionsSelectOptionRoot,
-} from "./PermissionsSelectOption.styled";
+  Box,
+  Center,
+  Group,
+  Icon,
+  Tooltip,
+  isValidIconName,
+} from "metabase/ui";
 
-export const optionShape = {
-  label: PropTypes.oneOfType([PropTypes.string, PropTypes.element]).isRequired,
-  icon: PropTypes.string.isRequired,
-  iconColor: PropTypes.string.isRequired,
-};
+import type { PermissionOption } from "../../types";
 
-const propTypes = {
-  ...optionShape,
-  className: PropTypes.string,
-  hint: PropTypes.string,
-};
+interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
+  className?: string;
+  hint?: string | null;
+}
 
 export function PermissionsSelectOption({
   label,
@@ -27,23 +24,35 @@ export function PermissionsSelectOption({
   iconColor,
   className,
   hint,
-}) {
+}: PermissionsSelectOptionProps) {
   const [shouldShowTooltip, setShouldShowTooltip] = useState(false);
 
   return (
-    <PermissionsSelectOptionRoot
+    <Group
+      align="center"
+      gap={0}
+      w="100%"
       className={className}
       onMouseEnter={() => setShouldShowTooltip(true)}
       onMouseLeave={() => setShouldShowTooltip(false)}
     >
-      <Tooltip label={hint} disabled={!hint} opened={shouldShowTooltip}>
-        <IconContainer color={iconColor}>
-          <Icon name={icon} />
-        </IconContainer>
-      </Tooltip>
-      <PermissionsSelectLabel>{label}</PermissionsSelectLabel>
-    </PermissionsSelectOptionRoot>
+      {isValidIconName(icon) && (
+        <Tooltip label={hint} disabled={!hint} opened={shouldShowTooltip}>
+          <Center
+            bg={iconColor as ColorName}
+            c="text-primary-inverse"
+            w={20}
+            h={20}
+            bdrs={3}
+            className={CS.flexNoShrink}
+          >
+            <Icon name={icon} />
+          </Center>
+        </Tooltip>
+      )}
+      <Box fz="14px" fw="700" px="0.5rem">
+        {label}
+      </Box>
+    </Group>
   );
 }
-
-PermissionsSelectOption.propTypes = propTypes;

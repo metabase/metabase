@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
+
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 export type GroupRouteParams = {
   groupId?: number;
@@ -48,6 +51,7 @@ export enum DataPermission {
   DATA_MODEL = "data-model",
   DETAILS = "details",
   TRANSFORMS = "transforms",
+  COLLECTIONS = "collections",
 }
 
 export enum DataPermissionType {
@@ -57,6 +61,7 @@ export enum DataPermissionType {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
+  COLLECTIONS = "collections",
 }
 
 export enum DataPermissionValue {
@@ -77,11 +82,38 @@ export enum DataPermissionValue {
   YES = "yes",
   // data model specific values
   ALL = "all",
+  //collections
+  WRITE = "write",
+  READ = "read",
+  //NONE = "none", //shared with download above
 }
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 
 export type SpecialGroupType = "admin" | "analyst" | "external" | null;
+
+export interface PermissionOption {
+  label: string;
+  value: DataPermissionValue;
+  //todo this should be IconName but would require updating a lot of call sites
+  icon: string;
+  //todo this should be ColorName but would require updating a lot of call sites
+  iconColor: string;
+}
+
+export interface PermissionAction {
+  label: string;
+  icon: string;
+  iconColor: string;
+  actionCreator: (...args: unknown[]) => void;
+}
+
+export interface PermissionConfirmationProps {
+  title: string;
+  message: string | ReactNode;
+  confirmButtonText: string;
+  cancelButtonText: string;
+}
 
 export type PermissionSectionConfig = {
   permission: DataPermission;
@@ -89,25 +121,13 @@ export type PermissionSectionConfig = {
   value: DataPermissionValue;
   isDisabled: boolean;
   disabledTooltip: string | null;
-  isHighlighted: boolean;
+  isHighlighted?: boolean;
   warning?: string | null;
-  options: {
-    label: string;
-    value: string;
-    icon: string;
-    iconColor: string;
-  }[];
+  toggleLabel?: string | null;
+  hasChildren?: boolean;
+  options: PermissionOption[];
   actions?: Partial<
-    Record<
-      DataPermissionValue,
-      | {
-          label: string;
-          icon: string;
-          iconColor: string;
-          actionCreator: (...args: unknown[]) => void;
-        }[]
-      | undefined
-    >
+    Record<DataPermissionValue, PermissionAction[] | undefined>
   >;
   postActions?: Partial<
     Record<
@@ -115,13 +135,37 @@ export type PermissionSectionConfig = {
       ((...args: unknown[]) => void) | null | undefined
     >
   >;
-  confirmations?: (newValue: DataPermissionValue) => (
-    | {
-        title: string;
-        message: string | ReactNode;
-        confirmButtonText: string;
-        cancelButtonText: string;
-      }
-    | undefined
-  )[];
+  confirmations?: (
+    newValue: DataPermissionValue,
+  ) => (PermissionConfirmationProps | undefined)[];
+};
+
+export interface PermissionEditorEntity {
+  id: number;
+  name: string;
+  icon?: ReactElement;
+  hint?: ReactNode;
+  entityId?: {
+    databaseId?: DatabaseId;
+    schemaName?: Schema["name"];
+    tableId?: TableId;
+  };
+  permissions?: PermissionSectionConfig[];
+  canSelect?: boolean;
+  callout?: string;
+}
+
+export type PermissionEditorBreadcrumb = {
+  id?: number | string;
+  text: string;
+  subtext?: string;
+  url?: string;
+};
+
+export type PermissionEditorType = {
+  title: string;
+  filterPlaceholder: string;
+  columns: { name: string; hint?: string }[];
+  entities: PermissionEditorEntity[];
+  breadcrumbs?: PermissionEditorBreadcrumb[] | null;
 };

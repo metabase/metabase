@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -9,7 +8,14 @@ import { Text } from "metabase/common/components/type/Text";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
-import { PermissionsTable } from "../PermissionsTable";
+import type {
+  PermissionEditorBreadcrumb,
+  PermissionEditorType,
+} from "../../types";
+import {
+  PermissionsTable,
+  type PermissionsTableProps,
+} from "../PermissionsTable";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 import {
@@ -19,20 +25,13 @@ import {
   PermissionTableWrapper,
 } from "./PermissionsEditorContent.styled";
 
-export const permissionEditorContentPropTypes = {
-  title: PropTypes.string.isRequired,
-  description: PropTypes.string,
-  columns: PropTypes.array,
-  entities: PropTypes.array,
-  filterPlaceholder: PropTypes.string.isRequired,
-  onChange: PropTypes.func,
-  onSelect: PropTypes.func,
-  onAction: PropTypes.func,
-  onBreadcrumbsItemSelect: PropTypes.func,
-  breadcrumbs: PropTypes.array,
-  postHeaderContent: PropTypes.func,
-  preHeaderContent: PropTypes.func,
-};
+export type PermissionsEditorContentProps = PermissionEditorType &
+  Pick<PermissionsTableProps, "onChange" | "onSelect" | "onAction"> & {
+    onBreadcrumbsItemSelect?: (item: PermissionEditorBreadcrumb) => void;
+    description?: string;
+    postHeaderContent?: React.FC;
+    preHeaderContent?: React.FC;
+  };
 
 export function PermissionsEditorContent({
   title,
@@ -47,7 +46,7 @@ export function PermissionsEditorContent({
   onAction,
   postHeaderContent: PostHeaderContent = () => null,
   preHeaderContent: PreHeaderContent = () => null,
-}) {
+}: PermissionsEditorContentProps) {
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
@@ -63,16 +62,17 @@ export function PermissionsEditorContent({
     );
   }, [entities, debouncedFilter]);
 
-  const handleFilterChange = (e) => setFilter(e.target.value);
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFilter(e.target.value);
 
   return (
     <PermissionEditorContentRoot data-testid="permissions-editor">
       <PreHeaderContent />
       <Subhead data-testid="permissions-editor-breadcrumbs">
         {title}{" "}
-        {breadcrumbs && (
+        {breadcrumbs && onBreadcrumbsItemSelect && (
           <PermissionsEditorBreadcrumbs
-            items={breadcrumbs}
+            breadcrumbs={breadcrumbs}
             onBreadcrumbsItemSelect={onBreadcrumbsItemSelect}
           />
         )}
@@ -89,7 +89,7 @@ export function PermissionsEditorContent({
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}
           value={filter}
-          leftSection="search"
+          leftIcon="search"
         />
       </EditorFilterContainer>
 
@@ -110,5 +110,3 @@ export function PermissionsEditorContent({
     </PermissionEditorContentRoot>
   );
 }
-
-PermissionsEditorContent.propTypes = permissionEditorContentPropTypes;
