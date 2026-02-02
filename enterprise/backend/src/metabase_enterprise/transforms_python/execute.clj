@@ -368,7 +368,7 @@
       (let [start-ms          (u/start-timer)
             transform-details {:db-id          target-db-id
                                :transform-type (keyword (:type target))
-                               :conn-spec      (driver/connection-spec driver db)
+                               :database db
                                :output-schema  (:schema target)
                                :output-table   (transforms.util/qualified-table-name driver target)}
             run-fn            (fn [cancel-chan]

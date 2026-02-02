@@ -1059,9 +1059,9 @@
          (.next rs))))))
 
 (defmethod driver/create-schema-if-needed! :sqlserver
-  [driver conn-spec schema]
+  [driver database schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+    (driver/execute-raw-queries! driver database sql)))
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]

@@ -1309,11 +1309,11 @@
 (defmulti create-schema-if-needed!
   "Creates a schema if it does not already exist.
    Used to create new schemas for transforms."
-  {:added "0.57.0" :arglists '([driver conn-spec schema])}
+  {:added "0.57.0" :arglists '([driver database schema])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod create-schema-if-needed! :default [_driver _conn-spec _schema] nil)
+(defmethod create-schema-if-needed! :default [_driver _database _schema] nil)
 
 (defmulti connection-spec
   "Get connection details for a given driver and db object"

@@ -368,8 +368,7 @@
           record-call! (fn [call-name] (swap! calls conj call-name))
           mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
           mock-rows [[1]]
-          transform-details {:conn-spec {}
-                             :output-table :test_schema/test_table
+          transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]
       (with-redefs [driver/table-exists? (constantly true)

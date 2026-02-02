@@ -188,11 +188,11 @@
 
   Options:
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
+  [run-id driver {:keys [db-id database output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
-      (driver/create-schema-if-needed! driver conn-spec output-schema))
+      (driver/create-schema-if-needed! driver database output-schema))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (let [cancel-chan (a/promise-chan)
           ret (binding [qp.pipeline/*canceled-chan* cancel-chan]

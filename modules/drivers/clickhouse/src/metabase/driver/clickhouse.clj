@@ -336,9 +336,9 @@
      sql-params]))
 
 (defmethod driver/create-schema-if-needed! :clickhouse
-  [driver conn-spec schema]
+  [driver database schema]
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+    (driver/execute-raw-queries! driver database sql)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :clickhouse
