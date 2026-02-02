@@ -1834,8 +1834,8 @@
     (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
                                                   :from   [:transform]
                                                   :where  [:= :target_db_id nil]})]
-      (let [source-map (json-out source)
-            target-map (json-out target)
+      (let [source-map (json-out source false)
+            target-map (json-out target false)
             ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
             ;; for python transforms, target.database is the only option.
             db-id      (or (get-in source-map ["query" "database"])
