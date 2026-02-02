@@ -150,15 +150,15 @@
 (mu/defn- expression-spec->expression-parts
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   available-columns :- [:sequential ::lib.schema.metadata/column]
-   expression-spec   :- ::lib.schema.query/test-expression-spec]
+   expression-spec   :- ::lib.schema.query/test-expression-spec
+   available-columns :- [:sequential ::lib.schema.metadata/column]]
   (case (:type expression-spec)
     :literal  (:value expression-spec)
     :column   (find-column query stage-number available-columns expression-spec)
     :operator {:lib/type :mbql/expression-parts
                :operator (:operator expression-spec)
                :options {}
-               :args (mapv (partial expression-spec->expression-parts query stage-number available-columns)
+               :args (mapv #(expression-spec->expression-parts query stage-number % available-columns)
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean
@@ -169,14 +169,14 @@
    (not (contains? expression-spec :type))))
 
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
-  [query                                    :- ::lib.schema/query
-   stage-number                             :- :int
-   available-columns                        :- [:sequential ::lib.schema.metadata/column]
-   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
+  [query                                   :- ::lib.schema/query
+   stage-number                            :- :int
+   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]
+   available-columns                       :- [:sequential ::lib.schema.metadata/column]]
   (if (named-expression-spec? expression-spec)
-    (-> (expression-spec->expression-clause query stage-number available-columns value)
+    (-> (expression-spec->expression-clause query stage-number value available-columns)
         (lib.expression/with-expression-name name))
-    (-> (expression-spec->expression-parts query stage-number available-columns expression-spec)
+    (-> (expression-spec->expression-parts query stage-number expression-spec available-columns)
         lib.fe-util/expression-clause)))
 
 (mu/defn- append-expression :- ::lib.schema/query
@@ -184,7 +184,7 @@
    stage-number         :- :int
    available-columns    :- [:sequential ::lib.schema.metadata/column]
    {:keys [name value]} :- ::lib.schema.query/test-named-expression-spec]
-  (->> (expression-spec->expression-clause query stage-number available-columns value)
+  (->> (expression-spec->expression-clause query stage-number value available-columns)
        (lib.expression/expression query stage-number name)))
 
 (mu/defn- append-expressions :- ::lib.schema/query
@@ -215,8 +215,10 @@
    stage-number :- :int
    target       :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
    {:keys [operator left right]} :- ::lib.schema.query/test-join-condition-spec]
-  (let [lhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-lhs-columns query stage-number nil nil nil) left)
-        rhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-rhs-columns query stage-number target lhs nil) right)
+  (let [lhs (->> (lib.join/join-condition-lhs-columns query stage-number nil nil nil)
+                 (expression-spec->expression-clause query stage-number left))
+        rhs (->> (lib.join/join-condition-rhs-columns query stage-number target lhs nil)
+                 (expression-spec->expression-clause query stage-number right))
         lhs-with-binning (apply-binning query stage-number lhs left)
         rhs-with-binning (apply-binning query stage-number rhs right)]
     (lib.fe-util/join-condition-clause operator lhs-with-binning rhs-with-binning)))
@@ -245,7 +247,8 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    filter-spec  :- ::lib.schema.query/test-expression-spec]
-  (->> (expression-spec->expression-clause query stage-number (lib.filter/filterable-columns query stage-number) filter-spec)
+  (->> (lib.filter/filterable-columns query stage-number)
+       (expression-spec->expression-clause query stage-number filter-spec)
        (lib.filter/filter query stage-number)))
 
 (mu/defn- append-filters :- ::lib.schema/query
@@ -260,7 +263,8 @@
   [query            :- ::lib.schema/query
    stage-number     :- :int
    aggregation-spec :- ::lib.schema.query/test-aggregation-spec]
-  (->> (expression-spec->expression-clause query stage-number (lib.aggregation/aggregable-columns query stage-number) aggregation-spec)
+  (->> (lib.aggregation/aggregable-columns query stage-number)
+       (expression-spec->expression-clause query stage-number aggregation-spec)
        (lib.aggregation/aggregate query stage-number)))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
