@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import type { Location } from "history";
 import { Route } from "react-router";
 
 import {
@@ -13,6 +12,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import type * as Urls from "metabase/lib/urls";
 import type {
   DependencyListUserParams,
   DependencyNode,
@@ -27,8 +27,10 @@ import {
 
 import type { DependencyListMode } from "../../components/DependencyList/types";
 
-import { DependencyListPage } from "./DependencyListPage";
-import type { DependencyListQueryParams } from "./types";
+import {
+  BrokenDependencyListPage,
+  UnreferencedDependencyListPage,
+} from "./DependencyListPage";
 import { getPageUrl } from "./utils";
 
 const CARD_NODES = [
@@ -44,21 +46,19 @@ const CARD_NODES = [
 
 type SetupOpts = {
   mode?: DependencyListMode;
-  location?: Pick<Location<DependencyListQueryParams>, "query">;
   nodes?: DependencyNode[];
   total?: number;
+  urlParams?: Urls.DependencyListParams;
   lastUsedParams?: DependencyListUserParams;
 };
 
 function setup({
   mode = "broken",
-  location = { query: {} },
   nodes = [],
   total,
+  urlParams = {},
   lastUsedParams = {},
 }: SetupOpts) {
-  const path = getPageUrl(mode, {});
-
   if (mode === "broken") {
     setupListBreakingGraphNodesEndpoint(
       createMockListBrokenGraphNodesResponse({
@@ -83,14 +83,16 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
+  const PageComponent =
+    mode === "broken"
+      ? BrokenDependencyListPage
+      : UnreferencedDependencyListPage;
+
   const { history } = renderWithProviders(
-    <Route
-      path={path}
-      component={() => <DependencyListPage mode={mode} location={location} />}
-    />,
+    <Route path={getPageUrl(mode, {})} component={PageComponent} />,
     {
       withRouter: true,
-      initialRoute: path,
+      initialRoute: getPageUrl(mode, urlParams),
       storeInitialState: {
         currentUser: createMockUser(),
       },
@@ -127,11 +129,11 @@ describe("DependencyListPage", () => {
   });
 
   describe("URL parameters", () => {
-    it("should set the group_types parameter when not all types are selected", async () => {
+    it("should set the group-types parameter when not all types are selected", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: { group_types: ["table", "question", "model"] } },
+        urlParams: { groupTypes: ["table", "question", "model"] },
       });
 
       await waitForListToLoad();
@@ -140,15 +142,15 @@ describe("DependencyListPage", () => {
       await userEvent.click(getTypeCheckbox(popover, "Table"));
 
       expect(history?.getCurrentLocation().query).toEqual({
-        group_types: ["question", "model"],
+        "group-types": ["question", "model"],
       });
     });
 
-    it("should not set the group_types parameter when all types are selected", async () => {
+    it("should not set the group-types parameter when all types are selected", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: { group_types: ["table", "question"] } },
+        urlParams: { groupTypes: ["table", "question"] },
       });
 
       await waitForListToLoad();
@@ -159,11 +161,11 @@ describe("DependencyListPage", () => {
       expect(history?.getCurrentLocation().query).toEqual({});
     });
 
-    it("should set the include_personal_collections parameter when it is unchecked", async () => {
+    it("should set the include-personal-collections parameter when it is unchecked", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: { include_personal_collections: "true" } },
+        urlParams: { includePersonalCollections: true },
       });
 
       await waitForListToLoad();
@@ -175,15 +177,15 @@ describe("DependencyListPage", () => {
       await userEvent.click(checkbox);
 
       expect(history?.getCurrentLocation().query).toEqual({
-        include_personal_collections: "false",
+        "include-personal-collections": "false",
       });
     });
 
-    it("should not set the include_personal_collections parameter when it is checked", async () => {
+    it("should not set the include-personal-collections parameter when it is checked", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: { include_personal_collections: "false" } },
+        urlParams: { includePersonalCollections: false },
       });
 
       await waitForListToLoad();
@@ -202,7 +204,7 @@ describe("DependencyListPage", () => {
         mode: "broken",
         nodes: CARD_NODES,
         total: 50,
-        location: { query: {} },
+        urlParams: {},
       });
 
       await waitForListToLoad();
@@ -216,7 +218,7 @@ describe("DependencyListPage", () => {
         mode: "broken",
         nodes: CARD_NODES,
         total: 50,
-        location: { query: { page: "2" } },
+        urlParams: { page: 2 },
       });
 
       await waitForListToLoad();
@@ -229,7 +231,7 @@ describe("DependencyListPage", () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: { page: "1" } },
+        urlParams: { page: 1 },
         total: 50,
       });
 
@@ -244,7 +246,7 @@ describe("DependencyListPage", () => {
     it("should use default filters when there are no query string or last used parameters", async () => {
       setup({
         nodes: CARD_NODES,
-        location: { query: {} },
+        urlParams: {},
       });
 
       await waitForListToLoad();
@@ -259,7 +261,7 @@ describe("DependencyListPage", () => {
     it("should use last used parameters when there is no query string", async () => {
       setup({
         nodes: CARD_NODES,
-        location: { query: {} },
+        urlParams: {},
         lastUsedParams: { group_types: ["table"] },
       });
 
@@ -275,7 +277,7 @@ describe("DependencyListPage", () => {
     it("should use query string filters when there are no last used parameters", async () => {
       setup({
         nodes: CARD_NODES,
-        location: { query: { group_types: ["question"] } },
+        urlParams: { groupTypes: ["question"] },
       });
 
       await waitForListToLoad();
@@ -290,7 +292,7 @@ describe("DependencyListPage", () => {
     it("should use only query string values when both query string and last used parameters are provided", async () => {
       setup({
         nodes: CARD_NODES,
-        location: { query: { group_types: ["model"] } },
+        urlParams: { groupTypes: ["model"] },
         lastUsedParams: { group_types: ["table", "question"] },
       });
 
@@ -307,7 +309,7 @@ describe("DependencyListPage", () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: {} },
+        urlParams: {},
         lastUsedParams: { group_types: ["table", "question"] },
       });
 
@@ -315,7 +317,7 @@ describe("DependencyListPage", () => {
 
       const currentLocation = history?.getCurrentLocation();
       expect(currentLocation?.query).toEqual({
-        group_types: ["table", "question"],
+        "group-types": ["table", "question"],
       });
     });
   });
