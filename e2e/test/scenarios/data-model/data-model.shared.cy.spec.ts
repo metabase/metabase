@@ -45,9 +45,11 @@ class DataModelContext {
       | Parameters<typeof H.DataModel.visit>
       | Parameters<typeof H.DataModel.visitDataStudio>
   ) {
-    this.area === "admin"
-      ? H.DataModel.visit(...args)
-      : H.DataModel.visitDataStudio(...args);
+    if (this.area === "admin") {
+      H.DataModel.visit(...args);
+    } else {
+      H.DataModel.visitDataStudio(...args);
+    }
   }
 
   checkLocation(path: string) {
