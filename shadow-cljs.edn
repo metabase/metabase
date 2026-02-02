@@ -23,7 +23,6 @@
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.transforms.inspector
-                metabase.lib.transforms.inspector
                 metabase.lib.types.isa
                 metabase.parameters.shared
                 metabase.pivot.core

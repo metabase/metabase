@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from "react";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { checkDegenerate } from "metabase-lib/transforms-inspector";
 import type { DatasetQuery, InspectorCard } from "metabase-types/api";
 
 import type { CardStats } from "../types";
@@ -38,16 +37,10 @@ export const useLensCardLoader = (
 
   const stats = useMemo(() => extractStats(data), [data]);
 
+  // TODO: implement degeneracy check
   const { isDegenerate, degenerateReason } = useMemo(() => {
-    if (!stats) {
-      return { isDegenerate: false, degenerateReason: null };
-    }
-    const result = checkDegenerate(card.id, stats, card.display, cardSummaries);
-    return {
-      isDegenerate: result.degenerate,
-      degenerateReason: result.reason,
-    };
-  }, [stats, card.id, card.display, cardSummaries]);
+    return { isDegenerate: false, degenerateReason: null };
+  }, []);
 
   useEffect(() => {
     if (stats) {

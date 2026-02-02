@@ -281,7 +281,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
     >({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/transform/${id}/inspect-v2`,
+        url: `/api/ee/transform/${id}/inspect`,
       }),
       transformResponse: (response: unknown) =>
         transformKeys(response) as InspectorDiscoveryResponse,
@@ -291,7 +291,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
     getInspectorLens: builder.query<InspectorLens, GetInspectorLensRequest>({
       query: ({ transformId, lensId, params }) => ({
         method: "GET",
-        url: `/api/ee/transform/${transformId}/inspect-v2/${lensId}`,
+        url: `/api/ee/transform/${transformId}/inspect/${lensId}`,
         params: params ? snakeTokebabParams(params) : undefined,
       }),
       transformResponse: (response: unknown) =>
