@@ -672,6 +672,35 @@
           adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
       (is (some? (lib/returned-columns adhoc-query))))))
 
+(deftest ^:parallel merge-model-metadata-preserved-keys-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :id 100
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :id 200
+                         :display-name "Custom Foo"
+                         :settings {:show_mini_bar true}
+                         :visibility-type :details-only
+                         :fk-target-field-id 42
+                         :lib/source-display-name "Original Foo")]
+    (testing "all preserved keys flow from model to result"
+      (is (=? [{:display-name "Custom Foo"
+                :settings {:show_mini_bar true}
+                :visibility-type :details-only
+                :fk-target-field-id 42
+                :lib/source-display-name "Original Foo"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))
+    (testing "native model also preserves :id"
+      (is (=? [{:id 200}]
+              (lib.card/merge-model-metadata [result-col] [model-col] true))))
+    (testing "non-native model does not override :id"
+      (is (=? [{:id 100}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
 (deftest ^:parallel fallback-display-name-test
   (is (= "Question 42" (lib.card/fallback-display-name 42)))
   (is (= "Question 7" (lib.card/fallback-display-name 7))))
