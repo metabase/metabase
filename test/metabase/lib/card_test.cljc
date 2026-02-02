@@ -708,6 +708,83 @@
           adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
       (is (some? (lib/returned-columns adhoc-query))))))
 
+(deftest ^:parallel merge-model-metadata-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :display-name "Custom Foo"
+                         :description "A custom description"
+                         :semantic-type :type/Quantity)]
+    (testing "result-cols only, no model-cols"
+      (is (= [result-col]
+             (lib.card/merge-model-metadata [result-col] [] false))))
+    (testing "model-cols only, no result-cols"
+      (is (= [model-col]
+             (lib.card/merge-model-metadata [] [model-col] false))))
+    (testing "both present — model metadata merged onto result"
+      (is (=? [model-col]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
+(deftest ^:parallel merge-model-metadata-temporal-and-aggregation-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :display-name "Custom Foo"
+                         :semantic-type :type/Quantity)]
+    (testing "temporal unit appended to display name"
+      (let [temporal-result (assoc result-col
+                                   :base-type :type/Date
+                                   :effective-type :type/Date
+                                   :metabase.lib.field/temporal-unit :month)]
+        (is (=? [{:display-name "Custom Foo: Month"}]
+                (lib.card/merge-model-metadata [temporal-result] [model-col] false)))))
+    (testing "aggregation source columns are not overridden by model metadata"
+      (let [agg-result (assoc result-col
+                              :display-name "Sum of Foo"
+                              :lib/source :source/aggregations)]
+        (is (=? [{:display-name "Sum of Foo"}]
+                (lib.card/merge-model-metadata [agg-result] [model-col] false)))))))
+
+(deftest ^:parallel merge-model-metadata-binning-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :base-type :type/Float
+                    :effective-type :type/Float
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1
+                    :metabase.lib.field/binning {:strategy :num-bins :num-bins 10}}
+        model-col (assoc result-col
+                         :display-name "Custom Foo"
+                         :semantic-type :type/Quantity)]
+    (testing "binning appended to display name"
+      (is (=? [{:display-name "Custom Foo: 10 bins"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false)))))
+  (testing "bin-width with coordinate semantic type includes degree symbol"
+    (let [result-col {:lib/type :metadata/column
+                      :name "LAT"
+                      :base-type :type/Float
+                      :effective-type :type/Float
+                      :display-name "Latitude"
+                      :semantic-type :type/Latitude
+                      :lib/source :source/card
+                      :lib/card-id 1
+                      :metabase.lib.field/binning {:strategy :bin-width :bin-width 1.0}}
+          model-col (assoc result-col
+                           :display-name "Custom Lat")]
+      (is (=? [{:display-name "Custom Lat: 1°"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
 (deftest ^:parallel merge-model-metadata-preserved-keys-test
   (let [result-col {:lib/type :metadata/column
                     :name "FOO"
@@ -737,6 +814,7 @@
     (testing "non-native model does not override :id"
       (is (=? [{:id 100}]
               (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
 (deftest ^:parallel fallback-display-name-test
   (is (= "Question 42" (lib.card/fallback-display-name 42)))
   (is (= "Question 7" (lib.card/fallback-display-name 7))))
