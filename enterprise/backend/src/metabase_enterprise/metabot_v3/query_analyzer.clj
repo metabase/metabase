@@ -1,15 +1,16 @@
 (ns metabase-enterprise.metabot-v3.query-analyzer
-  "Integration with Macaw, which parses native SQL queries. All SQL-specific logic is in Macaw, the purpose of this
+  "Integration with SQLGlot, which parses native SQL queries. All SQL-specific logic is in SQLGlot, the purpose of this
   namespace is to:
 
-  1. Translate Metabase-isms into generic SQL that Macaw can understand.
+  1. Translate Metabase-isms into generic SQL that SQLGlot can understand.
   2. Encapsulate Metabase-specific business logic."
   (:require
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase-enterprise.metabot-v3.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -110,17 +111,22 @@
                           [:= :t.db_id db-id]
                           (into [:or] (map table-query tables))]}))))
 
-(defn- tables-via-macaw
+(defn- tables-via-sqlglot
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
-  [driver query & {:keys [mode] :or {mode :compound-select}}]
+  [driver query & {:keys [_mode] :or {_mode :compound-select}}]
+  ;; We use sql-parsing directly (rather than sql-tools) because we need to do custom
+  ;; table matching via table-refs-for-query that handles Metabase parameter substitution
+  ;; and case-insensitive matching. sql-tools expects a metadata-provider-enabled query.
   (let [db-id      (:database query)
-        macaw-opts (driver.u/macaw-options driver)
-        table-opts (assoc macaw-opts :mode mode)
+        dialect    (sqlglot/driver->dialect driver)
         sql-string (:query (nqa.sub/replace-tags query))
-        result     (macaw/query->tables sql-string table-opts)]
-    (u/update-if-exists result :tables table-refs-for-query db-id)))
+        ;; sql-parsing/referenced-tables returns [[schema table] ...]
+        ;; Convert to [{:schema ... :table ...} ...] for table-refs-for-query
+        table-tuples (sql-parsing/referenced-tables dialect sql-string)
+        tables (mapv (fn [[schema table]] {:schema schema :table table}) table-tuples)]
+    {:tables (table-refs-for-query tables db-id)}))
 
 ;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
 (defmulti ^:private tables-for-native*
@@ -141,7 +147,7 @@
   [driver query opts]
   (if (or (:all-drivers-trusted? opts)
           (driver.u/trusted-for-table-permissions? driver))
-    (tables-via-macaw driver query opts)
+    (tables-via-sqlglot driver query opts)
     {:error :query-analysis.error/driver-not-supported}))
 
 (defn tables-for-native
