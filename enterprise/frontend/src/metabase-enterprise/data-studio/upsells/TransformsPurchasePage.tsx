@@ -9,7 +9,6 @@ import {
   Card,
   Center,
   Divider,
-  DottedBackground,
   Flex,
   Group,
   Icon,
@@ -22,6 +21,7 @@ import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "../common/components/PaneHeader";
+import { DottedBackground } from "../components/DottedBackground";
 
 import { LineDecorator } from "./LineDecorator";
 import S from "./TransformsPurchasePage.module.css";

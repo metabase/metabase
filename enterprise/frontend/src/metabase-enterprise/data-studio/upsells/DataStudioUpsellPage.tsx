@@ -16,7 +16,6 @@ import { getIsHosted } from "metabase/setup/selectors";
 import {
   Card,
   Center,
-  DottedBackground,
   Flex,
   Icon,
   Image,
@@ -27,6 +26,7 @@ import {
 
 import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "../common/components/PaneHeader";
+import { DottedBackground } from "../components/DottedBackground";
 
 import S from "./DataStudioUpsellPage.module.css";
 import { LineDecorator } from "./LineDecorator";

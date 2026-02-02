@@ -1,5 +1,6 @@
-import { Box, type BoxProps } from "@mantine/core";
 import cx from "classnames";
+
+import { Box, type BoxProps } from "metabase/ui";
 
 import styles from "./DottedBackground.module.css";
 

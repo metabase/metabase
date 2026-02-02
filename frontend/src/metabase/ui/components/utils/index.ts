@@ -1,7 +1,6 @@
 export * from "./Box";
 export * from "./DelayGroup";
 export * from "./Divider";
-export * from "./DottedBackground";
 export * from "./FocusTrap";
 export * from "./PreventEagerPortal";
 export * from "./Paper";

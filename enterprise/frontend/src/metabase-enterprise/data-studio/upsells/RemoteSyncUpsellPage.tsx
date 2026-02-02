@@ -15,7 +15,6 @@ import {
   Card,
   Center,
   Divider,
-  DottedBackground,
   Flex,
   Image,
   Stack,
@@ -25,6 +24,7 @@ import {
 
 import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "../common/components/PaneHeader";
+import { DottedBackground } from "../components/DottedBackground";
 
 import S from "./DataStudioUpsellPage.module.css";
 import { LineDecorator } from "./LineDecorator";
