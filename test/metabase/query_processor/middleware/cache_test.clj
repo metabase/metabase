@@ -716,7 +716,9 @@
     (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
       (is (= max-bytes (count (transduce identity
                                          (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                         (repeat max-bytes [1])))))))
+                                         (repeat max-bytes [1]))))))))
+
+(deftest save-results-xform-updates-cache-details-test
   (testing "save-results-xform annotates results with cache hash and stored flag based on eligibility"
     (let [start-time-ns 0
           metadata      {:preprocessed_query {:info {:card-id      1
@@ -726,17 +728,16 @@
           seen          (atom nil)
           rf            (fn
                           ([] nil)
-                          ([_] nil)
+                          ([result] (reset! seen result))
                           ([_ result] (reset! seen result)))]
       (with-redefs [cache/add-object-to-cache! (fn [& _])
                     cache/cache-results!       (fn [& _])]
-        (let [xform ((#'cache/save-results-xform start-time-ns metadata query-hash strategy rf))]
+        (let [xform (#'cache/save-results-xform start-time-ns metadata query-hash strategy rf)]
           ;; feed a single row so has-rows? becomes true
           (xform {} [:row])
           (xform {}))
         (is (map? @seen))
-        (is (= true
-               (get-in @seen [:cache/details :stored])))
+        (is (true? (get-in @seen [:cache/details :stored])))
         (is (some? (get-in @seen [:cache/details :hash])))))))
 
 (deftest perms-checks-should-still-apply-test

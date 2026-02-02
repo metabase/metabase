@@ -15,7 +15,7 @@
    [net.cgrand.macrovich :as macros])
   (:import
    (clojure.lang ExceptionInfo)
-   (org.apache.logging.log4j Level ThreadContext)))
+   (org.apache.logging.log4j Level Logger ThreadContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -181,8 +181,8 @@
   "Returns true if logging at `level` is enabled for the current namespace. `level` may be a
   keyword (e.g. `:debug`) or an org.apache.logging.log4j.Level."
   [level]
-  (let [logger (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* *ns*)
-        lvl    (->level level)]
+  (let [^Logger logger (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* *ns*)
+        lvl            (->level level)]
     (.isEnabled logger lvl)))
 
 (defmacro trace
