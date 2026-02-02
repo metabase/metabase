@@ -70,10 +70,10 @@
       ;; rather than relying on sql-tools' metadata-provider-based matching.
       (let [driver (t2/select-one-fn :engine :model/Database :id database-id)
             dialect (sqlglot/driver->dialect driver)
-            ;; sql-parsing/referenced-tables returns [[schema table] ...]
+            ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
             ;; Convert to [{:schema ... :table ...} ...] for table-match-clause
             table-tuples (sql-parsing/referenced-tables dialect sql-string)
-            tables (mapv (fn [[schema table]] {:schema schema :table table}) table-tuples)]
+            tables (mapv (fn [[_catalog schema table]] {:schema schema :table table}) table-tuples)]
         (if (seq tables)
           (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table

@@ -5,7 +5,8 @@
   All functions take strings and return strings/simple data structures.
 
   API:
-    (referenced-tables sql dialect) → [[schema table] ...]
+    (referenced-tables sql dialect) → [[catalog schema table] ...]
+    (referenced-fields dialect sql) → [[catalog schema table field] ...]
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
   (:require
@@ -23,8 +24,8 @@
 (defn referenced-tables
   "Extract table references from SQL.
 
-   Returns a vector of [schema-or-nil table-name] pairs:
-   [[nil \"users\"] [\"public\" \"orders\"]]
+   Returns a vector of [catalog schema table] 3-tuples:
+   [[nil nil \"users\"] [nil \"public\" \"orders\"] [\"myproject\" \"analytics\" \"events\"]]
 
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
@@ -61,11 +62,11 @@
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
 
-   Returns a vector of [table-name field-name] pairs:
-   [[\"users\" \"id\"] [\"users\" \"email\"] [\"orders\" \"total\"]]
+   Returns a vector of [catalog schema table field] 4-tuples:
+   [[nil nil \"users\" \"id\"] [nil \"public\" \"orders\" \"total\"]]
 
    Includes:
-   - Wildcards as [\"table-name\" \"*\"] (both qualified like users.* and unqualified SELECT *)
+   - Wildcards as [catalog schema table \"*\"]
    - All specific column references
 
    Excludes:
@@ -73,14 +74,14 @@
    - Table aliases (returns actual table names)
 
    Examples:
-   (referenced-fields \"postgres\" \"SELECT t.id, u.* FROM transactions t LEFT JOIN users u ON t.user_id = u.id\")
-   => [[\"transactions\" \"id\"] [\"transactions\" \"user_id\"] [\"users\" \"*\"] [\"users\" \"id\"]]
+   (referenced-fields \"postgres\" \"SELECT id FROM users\")
+   => [[nil nil \"users\" \"id\"]]
 
-   (referenced-fields \"postgres\" \"SELECT * FROM users\")
-   => [[\"users\" \"*\"]]
+   (referenced-fields \"postgres\" \"SELECT * FROM public.users\")
+   => [[nil \"public\" \"users\" \"*\"]]
 
-   (referenced-fields \"postgres\" \"SELECT * FROM users u LEFT JOIN transactions t ON u.id = t.user_id\")
-   => [[\"transactions\" \"*\"] [\"transactions\" \"user_id\"] [\"users\" \"*\"] [\"users\" \"id\"]]"
+   (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
+   => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (common/eval-python ctx "import sql_tools")

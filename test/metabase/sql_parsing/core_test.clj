@@ -22,17 +22,17 @@
 
 (deftest ^:parallel referenced-tables-basic-test
   (testing "Simple table extraction"
-    (is (= [[nil "users"]]
+    (is (= [[nil nil "users"]]
            (sql-parsing/referenced-tables "postgres" "SELECT * FROM users"))))
 
   (testing "Multiple tables from JOIN"
-    (is (= [[nil "orders"] [nil "users"]]
+    (is (= [[nil nil "orders"] [nil nil "users"]]
            (sql-parsing/referenced-tables
             "postgres"
             "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id"))))
 
   (testing "Schema-qualified tables are preserved"
-    (is (= [["other" "users"] ["public" "users"]]
+    (is (= [[nil "other" "users"] [nil "public" "users"]]
            (sql-parsing/referenced-tables
             "postgres"
             "SELECT public.users.id, other.users.id
@@ -40,14 +40,14 @@
              LEFT JOIN other.users u2 ON u1.id = u2.id"))))
 
   (testing "CTE names are excluded"
-    (is (= [[nil "users"]]
+    (is (= [[nil nil "users"]]
            (sql-parsing/referenced-tables
             "postgres"
             "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active")))))
 
 (deftest ^:parallel cte-test
     (testing "CTE (WITH clause) parsing"
-      (is (= [[nil "users"]]
+      (is (= [[nil nil "users"]]
              (sql-parsing/referenced-tables
               "postgres"
               "WITH active_users AS (SELECT * FROM users WHERE active)
@@ -55,7 +55,7 @@
 
 (deftest ^:parallel join-test
   (testing "JOIN parsing extracts all tables"
-    (is (=? [[nil "orders"] [nil "users"]]
+    (is (=? [[nil nil "orders"] [nil nil "users"]]
             (sql-parsing/referenced-tables
              "postgres"
              "SELECT u.name, o.total
@@ -64,10 +64,73 @@
 
 (deftest ^:parallel subquery-test
     (testing "Subquery table extraction"
-      (is (=? [[nil "users"]]
+      (is (=? [[nil nil "users"]]
               (sql-parsing/referenced-tables
                "postgres"
                "SELECT * FROM (SELECT id FROM users) AS sub")))))
+
+;;; ---------------------------------------- Catalog/Schema Extraction Tests ----------------------------------------
+;;; These tests verify the 3-tuple (tables) and 4-tuple (fields) API per the design doc:
+;;; - BigQuery: project.dataset.table → [project, dataset, table]
+;;; - Snowflake: database.schema.table → [database, schema, table]
+;;; - PostgreSQL: schema.table → [nil, schema, table]
+;;; - MySQL: database.table → [nil, database, table] (MySQL's "database" = schema level)
+
+(deftest ^:parallel catalog-schema-tables-bigquery-test
+  (testing "BigQuery: project.dataset.table extracts all three levels"
+    (is (= [["myproject" "analytics" "events"]]
+           (sql-parsing/referenced-tables "bigquery" "SELECT * FROM myproject.analytics.events")))
+    (is (= [["myproject" "analytics" "events"] ["myproject" "analytics" "users"]]
+           (sql-parsing/referenced-tables "bigquery"
+                                          "SELECT * FROM myproject.analytics.events e
+                                           JOIN myproject.analytics.users u ON e.user_id = u.id")))))
+
+(deftest ^:parallel catalog-schema-tables-snowflake-test
+  (testing "Snowflake: database.schema.table extracts all three levels"
+    ;; Snowflake uppercases identifiers by default
+    (let [result (sql-parsing/referenced-tables "snowflake" "SELECT * FROM mydb.public.orders")
+          normalized (mapv (fn [[c s t]] [(some-> c u/lower-case-en)
+                                          (some-> s u/lower-case-en)
+                                          (u/lower-case-en t)])
+                           result)]
+      (is (= [["mydb" "public" "orders"]] normalized)))))
+
+(deftest ^:parallel catalog-schema-tables-postgres-test
+  (testing "PostgreSQL: schema.table (no cross-database queries)"
+    (is (= [[nil "public" "users"]]
+           (sql-parsing/referenced-tables "postgres" "SELECT * FROM public.users")))
+    (is (= [[nil "other_schema" "accounts"] [nil "public" "users"]]
+           (sql-parsing/referenced-tables "postgres"
+                                          "SELECT * FROM public.users u
+                                           JOIN other_schema.accounts a ON u.id = a.user_id")))))
+
+(deftest ^:parallel catalog-schema-tables-mysql-test
+  (testing "MySQL: database.table (MySQL 'database' maps to schema slot)"
+    ;; In MySQL, CREATE SCHEMA = CREATE DATABASE, so there's no separate schema level
+    ;; SQLGlot maps MySQL's database to the schema slot (slot 2)
+    (is (= [[nil "mydb" "users"]]
+           (sql-parsing/referenced-tables "mysql" "SELECT * FROM mydb.users")))
+    (is (= [[nil nil "users"]]
+           (sql-parsing/referenced-tables "mysql" "SELECT * FROM users")))))
+
+(deftest ^:parallel catalog-schema-fields-bigquery-test
+  (testing "BigQuery: fully-qualified field references"
+    (is (= [["myproject" "analytics" "users" "email"]]
+           (sql-parsing/referenced-fields "bigquery"
+                                          "SELECT myproject.analytics.users.email
+                                           FROM myproject.analytics.users")))))
+
+(deftest ^:parallel catalog-schema-fields-postgres-test
+  (testing "PostgreSQL: schema-qualified field references"
+    (is (= [[nil "public" "orders" "total"]]
+           (sql-parsing/referenced-fields "postgres" "SELECT public.orders.total FROM public.orders")))))
+
+(deftest ^:parallel catalog-schema-fields-mysql-test
+  (testing "MySQL: database-qualified field references"
+    (is (= [[nil "mydb" "users" "id"]]
+           (sql-parsing/referenced-fields "mysql" "SELECT mydb.users.id FROM mydb.users")))
+    (is (= [[nil nil "users" "id"]]
+           (sql-parsing/referenced-fields "mysql" "SELECT id FROM users")))))
 
 #_(deftest ^:parallel aggregate-test
     (testing "Aggregate functions in projections"
@@ -109,13 +172,14 @@
           (is (vector? result)
               (format "dialect %s: should return vector, got %s" dialect (type result)))
           (is (every? vector? result)
-              (format "dialect %s: each element should be [schema table] pair" dialect)))))
+              (format "dialect %s: each element should be [catalog schema table] tuple" dialect)))))
 
     (doseq [[dialect sql] udtf-with-table-queries]
       (testing (str "dialect: " dialect " - UDTF mixed with real table")
         (let [result (sql-parsing/referenced-tables (name dialect) sql)]
           ;; Case-insensitive comparison since dialects like Snowflake uppercase identifiers
-          (is (some #(= "orders" (u/lower-case-en (second %))) result)
+          ;; 3-tuple: [catalog schema table] - table is third element
+          (is (some #(= "orders" (u/lower-case-en (nth % 2))) result)
               (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
 
 #_(deftest ^:parallel udtf-returned-columns-lineage-test
@@ -196,11 +260,14 @@
       (testing (str "dialect: " (name dialect) " - " (name op-type))
         (let [result (sql-parsing/referenced-tables (name dialect) sql)
               ;; Normalize to lowercase for case-insensitive comparison (Snowflake uppercases)
-              normalized (into #{} (map (fn [[schema table]]
-                                          [(some-> schema u/lower-case-en) (u/lower-case-en table)])
+              ;; 3-tuple: [catalog schema table]
+              normalized (into #{} (map (fn [[catalog schema table]]
+                                          [(some-> catalog u/lower-case-en)
+                                           (some-> schema u/lower-case-en)
+                                           (u/lower-case-en table)])
                                         result))]
-          (is (= #{[nil "a"] [nil "b"]} normalized)
-              (format "%s/%s should return [[nil a] [nil b]], got %s"
+          (is (= #{[nil nil "a"] [nil nil "b"]} normalized)
+              (format "%s/%s should return [[nil nil a] [nil nil b]], got %s"
                       (name dialect) (name op-type) normalized)))))))
 
 #_(def ^:private set-operation->returned-columns
@@ -413,10 +480,22 @@
     (read-string (slurp resource))))
 
 (defn- normalize-fields
-  "Normalize field references for comparison (sort and ensure consistent format)."
+  "Normalize field references for comparison (sort and ensure consistent format).
+   Handles both 2-tuples (expected format in test cases) and 4-tuples (actual API format)."
   [fields]
-  (vec (sort-by (fn [[table field]] [(u/lower-case-en table) (u/lower-case-en field)])
-                (map (fn [[table field]] [(u/lower-case-en table) (u/lower-case-en field)]) fields))))
+  (vec (sort-by (fn [f]
+                  (if (= 4 (count f))
+                    ;; 4-tuple: [catalog schema table field]
+                    [(u/lower-case-en (nth f 2)) (u/lower-case-en (nth f 3))]
+                    ;; 2-tuple: [table field] (test case format)
+                    [(u/lower-case-en (first f)) (u/lower-case-en (second f))]))
+                (map (fn [f]
+                       (if (= 4 (count f))
+                         ;; Convert 4-tuple to 2-tuple for comparison
+                         [(u/lower-case-en (nth f 2)) (u/lower-case-en (nth f 3))]
+                         ;; Already 2-tuple
+                         [(u/lower-case-en (first f)) (u/lower-case-en (second f))]))
+                     fields))))
 
 (defn- fields-match?
   "Check if actual fields match expected fields (case-insensitive, order-independent)."
@@ -444,8 +523,8 @@
         (let [result (sql-parsing/referenced-fields dialect "SELECT id, name FROM users WHERE active = true")]
           (is (seq result)
               (str "Should return fields for " dialect))
-          (is (every? #(and (vector? %) (= 2 (count %))) result)
-              (str "Each field should be [table field] pair for " dialect)))))))
+          (is (every? #(and (vector? %) (= 4 (count %))) result)
+              (str "Each field should be [catalog schema table field] tuple for " dialect)))))))
 
 (deftest ^:parallel referenced-fields-wildcard-test
   (testing "Wildcard handling in referenced fields"

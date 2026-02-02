@@ -59,7 +59,7 @@
         default-schema (driver.sql/default-schema driver)
         query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
     (into #{}
-          (keep (fn [[table-schema table]]
+          (keep (fn [[_catalog table-schema table]]
                   (sql-tools.common/find-table-or-transform
                    driver db-tables db-transforms
                    (sql-tools.common/normalize-table-spec
@@ -133,7 +133,7 @@
           (lib.metadata/tables mp)))
 
 (defn- field->columns
-  [namespaced-columns* [table-name field-name :as _coords]]
+  [namespaced-columns* [_catalog _schema table-name field-name :as _coords]]
   (let [columns (or (if (= "*" field-name)
                       (some-> (get namespaced-columns* table-name) vals)
                       (some-> (get-in namespaced-columns* [table-name field-name]) vector))
