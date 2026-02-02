@@ -43,7 +43,6 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
 import type { State } from "metabase-types/store";
 
 import { ModelUploadModal } from "../ModelUploadModal";
@@ -338,7 +337,7 @@ export const CollectionContentView = Search.loadList({
     collection: collectionId,
     pinned_state: "is_pinned",
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   }),
   loadingAndErrorWrapper: false,
   wrapped: true,

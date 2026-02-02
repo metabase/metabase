@@ -609,7 +609,9 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
+    if (IS_ENTERPRISE) {
+      H.activateToken("pro-self-hosted");
+    }
 
     cy.intercept(
       {
@@ -953,7 +955,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("not.exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -970,7 +972,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {

@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -121,6 +122,22 @@
 (defmethod mi/can-update? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-update? args))
+
+(methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
+  [_model k snippets]
+  (let [non-nil-snippets (remove nil? snippets)
+        snippets-with-collections (t2/hydrate non-nil-snippets :collection)
+        editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
+    (mi/instances-with-hydrated-data
+     snippets k
+     #(into {}
+            (map (fn [snippet]
+                   [(:id snippet)
+                    (and (get editable-map (:id snippet) true)
+                         (mi/can-write? snippet))]))
+            snippets-with-collections)
+     :id
+     {:default false})))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 

@@ -821,11 +821,7 @@ function addQuestionFromQueryBuilder({
   H.openQuestionActions();
   H.popover().findByText("Add to dashboard").click();
 
-  H.entityPickerModal().within(() => {
-    H.modal().findByText("Dashboards").click();
-    H.modal().findByText("36275").click();
-    cy.button("Select").click();
-  });
+  H.pickEntity({ path: ["Our analytics", "36275"], select: true });
 
   H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
   H.undoToast().should("contain", "Undo");

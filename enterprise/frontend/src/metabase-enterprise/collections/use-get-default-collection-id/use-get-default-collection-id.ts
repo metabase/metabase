@@ -1,5 +1,5 @@
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { _useGetDefaultCollectionId as useOSSGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useOSSGetDefaultCollectionId } from "metabase/collections/hooks";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 import type { CollectionId } from "metabase-types/api";
