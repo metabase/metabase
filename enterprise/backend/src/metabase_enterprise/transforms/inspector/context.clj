@@ -180,8 +180,7 @@
      :target              target-info
      :db-id               (transforms.util/transform-source-database transform)
      :preprocessed-query  (:preprocessed-query query-info)
-     :parsed-ast          (:parsed-ast query-info)
-     :driver-kw           (:driver-kw query-info)
+     :from-clause-sql     (:from-clause-sql query-info)
      :has-joins?          (boolean (seq join-structure))
      :join-structure      join-structure
      :visited-fields      (:visited-fields query-info)

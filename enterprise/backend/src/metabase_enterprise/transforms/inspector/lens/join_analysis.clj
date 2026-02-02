@@ -15,8 +15,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms.inspector.lens.core :as lens.core]
-   [metabase.driver.sql.normalize :as sql.normalize]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]))
@@ -87,111 +85,20 @@
         (lib/aggregate (lib/count)))))
 
 ;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
-
-(defn- sql-quote
-  [driver-kw s]
-  (let [style (sql.qp/quote-style driver-kw)
-        s (sql.normalize/normalize-name driver-kw (str s))]
-    (case style
-      :mysql (str "`" (str/replace s "`" "``") "`")
-      :sqlserver (str "[" (str/replace s "]" "]]") "]")
-      (str "\"" (str/replace s "\"" "\"\"") "\""))))
-
-(defn- sql-table-ref
-  [driver-kw {:keys [schema table table-alias]}]
-  (str (when schema (str (sql-quote driver-kw schema) "."))
-       (sql-quote driver-kw table)
-       (when table-alias (str " " (sql-quote driver-kw table-alias)))))
-
-(defn- sql-column-ref
-  [driver-kw {:keys [schema table column]}]
-  (str/join "." (map (partial sql-quote driver-kw) (remove nil? [schema table column]))))
-
-(defn- sql-literal
-  "Convert a macaw literal to SQL."
-  [{:keys [value]}]
-  (cond
-    (string? value) (str "'" (str/replace value "'" "''") "'")
-    (nil? value) "NULL"
-    :else (str value)))
-
-(defn- sql-expr
-  "Convert a macaw AST expression to SQL."
-  [driver-kw node]
-  (case (:type node)
-    :macaw.ast/column (sql-column-ref driver-kw node)
-    :macaw.ast/literal (sql-literal node)
-    nil))
-
-(defn- sql-condition
-  "Convert a macaw AST condition to SQL. Handles AND/OR compound conditions recursively."
-  [driver-kw condition]
-  (when (= (:type condition) :macaw.ast/binary-expression)
-    (let [{:keys [operator left right]} condition
-          op-upper (str/upper-case (str operator))]
-      (cond
-        ;; Compound condition (AND/OR) - recurse into both sides
-        (contains? #{"AND" "OR"} op-upper)
-        (let [left-sql (sql-condition driver-kw left)
-              right-sql (sql-condition driver-kw right)]
-          (when (and left-sql right-sql)
-            (str "(" left-sql " " op-upper " " right-sql ")")))
-
-        ;; Binary comparison - handle columns, literals, etc.
-        :else
-        (let [left-sql (sql-expr driver-kw left)
-              right-sql (sql-expr driver-kw right)]
-          (when (and left-sql right-sql)
-            (str left-sql " " operator " " right-sql)))))))
-
-(def ^:private strategy->sql
-  {:left-join  "LEFT JOIN"
-   :right-join "RIGHT JOIN"
-   :full-join  "FULL JOIN"
-   :cross-join "CROSS JOIN"
-   :inner-join "JOIN"})
-
-(defn- sql-join-clause
-  [driver-kw {:keys [strategy ast-node]}]
-  (let [table (sql-table-ref driver-kw (:source ast-node))
-        ;; :condition may be a single node or a list - normalize to list
-        conditions-raw (:condition ast-node)
-        conditions-list (if (sequential? conditions-raw) conditions-raw [conditions-raw])
-        ;; Each condition may be compound (with AND) - sql-condition handles that
-        on-parts (keep (partial sql-condition driver-kw) conditions-list)
-        on-clause (when (seq on-parts) (str/join " AND " on-parts))]
-    (if on-clause
-      (str (strategy->sql strategy) " " table " ON " on-clause)
-      (str (strategy->sql strategy) " " table))))
-
-(defn- rhs-column-from-ast
-  "Extract the first RHS column from join conditions (for COUNT(rhs_field) in outer joins).
-   Handles compound AND conditions by recursively searching."
-  [conditions]
-  (let [conditions-list (if (sequential? conditions) conditions [conditions])]
-    (some (fn find-rhs [cond]
-            (when (= (:type cond) :macaw.ast/binary-expression)
-              (let [{:keys [operator left right]} cond
-                    op-upper (str/upper-case (str operator))]
-                (if (contains? #{"AND" "OR"} op-upper)
-                  ;; Compound - recurse into left side first
-                  (or (find-rhs left) (find-rhs right))
-                  ;; Simple comparison - check if right is a column
-                  (when (= (:type right) :macaw.ast/column)
-                    right)))))
-          conditions-list)))
+;;; Uses prebuilt SQL strings from query-analysis (no macaw AST knowledge needed here)
 
 (defn- build-native-join-step-sql
-  "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins."
-  [driver-kw from-ast joins-so-far current-join]
+  "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins.
+   Uses prebuilt :join-clause-sql and :rhs-column-sql from join-structure."
+  [from-clause-sql joins-so-far current-join]
   (let [strategy (:strategy current-join)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-col (when is-outer? (rhs-column-from-ast (:condition (:ast-node current-join))))
-        from-clause (str "FROM " (sql-table-ref driver-kw from-ast)
+        rhs-col-sql (when is-outer? (:rhs-column-sql current-join))
+        from-clause (str "FROM " from-clause-sql
                          (when (seq joins-so-far)
-                           (str " " (str/join " " (map (partial sql-join-clause driver-kw) joins-so-far)))))]
-    (if rhs-col
-      (str "SELECT COUNT(*), COUNT(" (sql-column-ref driver-kw rhs-col) ") " from-clause)
+                           (str " " (str/join " " (map :join-clause-sql joins-so-far)))))]
+    (if rhs-col-sql
+      (str "SELECT COUNT(*), COUNT(" rhs-col-sql ") " from-clause)
       (str "SELECT COUNT(*) " from-clause))))
 
 (defn- make-native-query
@@ -205,18 +112,15 @@
 
 (defn- resolve-from-table-id
   "Find the table-id for the FROM table."
-  [{:keys [source-type preprocessed-query parsed-ast driver-kw sources]}]
+  [{:keys [source-type preprocessed-query sources]}]
   (case source-type
     :mbql (get-in preprocessed-query [:stages 0 :source-table])
-    :native (let [from-name (get-in parsed-ast [:from :table])]
-              (->> sources
-                   (some #(when (= (sql.normalize/normalize-name driver-kw (:table-name %))
-                                   (sql.normalize/normalize-name driver-kw from-name))
-                            (:table-id %)))))))
+    ;; For native, first source is the FROM table
+    :native (:table-id (first sources))))
 
 (defn- base-count-card
   [ctx]
-  (let [{:keys [source-type preprocessed-query parsed-ast driver-kw db-id]} ctx
+  (let [{:keys [source-type preprocessed-query from-clause-sql db-id]} ctx
         source-table-id (resolve-from-table-id ctx)]
     {:id         "base-count"
      :section-id "join-stats"
@@ -226,13 +130,13 @@
      (case source-type
        :mbql (-> preprocessed-query (query-with-n-joins 0) make-count-query)
        :native (make-native-query db-id
-                 (str "SELECT COUNT(*) FROM " (sql-table-ref driver-kw (:from parsed-ast)))))
+                                  (str "SELECT COUNT(*) FROM " from-clause-sql)))
      :metadata {:dedup-key [:table-count source-table-id]
                 :card-type :base-count}}))
 
 (defn- join-step-card
   [ctx step]
-  (let [{:keys [source-type preprocessed-query parsed-ast driver-kw db-id join-structure]} ctx
+  (let [{:keys [source-type preprocessed-query from-clause-sql db-id join-structure]} ctx
         join (nth join-structure (dec step))
         {:keys [strategy alias]} join]
     {:id         (str "join-step-" step)
@@ -242,10 +146,10 @@
      :dataset-query
      (case source-type
        :mbql (make-join-step-query-mbql preprocessed-query step
-               (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
-       :native (make-native-query db-id
-                 (build-native-join-step-sql driver-kw (:from parsed-ast)
-                                             (take step join-structure) join)))
+                                        (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
+       :native #p (make-native-query db-id
+                                     (build-native-join-step-sql from-clause-sql
+                                                                 (take step join-structure) join)))
      :metadata {:card-type     :join-step
                 :join-step     step
                 :join-alias    alias
