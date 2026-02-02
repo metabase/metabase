@@ -34,7 +34,7 @@ export function LocationSection({ run }: LocationSectionProps) {
             component={Link}
             className={CS.textWrap}
             lh="1rem"
-            to={`${Urls.transformList()}?collectionId=${folder.id}`}
+            to={Urls.transformList({ collectionId: folder.id })}
           >
             <Group gap="sm" wrap="nowrap">
               {index === 0 && <FixedSizeIcon name="folder" />}

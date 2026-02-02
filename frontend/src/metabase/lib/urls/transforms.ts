@@ -1,5 +1,6 @@
 import type {
   CardId,
+  CollectionId,
   DatabaseId,
   SortDirection,
   TableId,
@@ -20,8 +21,20 @@ export type TransformPythonLibraryParams = {
   path: string;
 };
 
-export function transformList() {
-  return TRANSFORMS_ROOT_URL;
+export type TransformListParams = {
+  collectionId?: CollectionId;
+};
+
+export function transformList({ collectionId }: TransformListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (collectionId != null) {
+    searchParams.set("collectionId", String(collectionId));
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0
+    ? `${TRANSFORMS_ROOT_URL}?${queryString}`
+    : TRANSFORMS_ROOT_URL;
 }
 
 export function newQueryTransform() {
