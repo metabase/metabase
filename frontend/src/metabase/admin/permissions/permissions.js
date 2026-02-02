@@ -589,7 +589,7 @@ const collectionPermissions = handleActions(
           collection,
           groupId,
           originalPermissionsState,
-          shouldPropagate,
+          shouldPropagateToChildren,
           value,
         } = payload;
         let newPermissionsState = assocIn(
@@ -599,15 +599,15 @@ const collectionPermissions = handleActions(
         );
 
         /**
-         * Check if shouldPropagate is explicitly set (true or false) vs unset (null or undefined).
+         * Check if shouldPropagateToChildren is explicitly set (true or false) vs unset (null or undefined).
          * If it's a boolean, we either propagate the new value or restore the original. When not a boolean, we do nothing.
          */
-        if (isBoolean(shouldPropagate)) {
+        if (isBoolean(shouldPropagateToChildren)) {
           for (const descendent of getDecendentCollections(collection)) {
             newPermissionsState = assocIn(
               newPermissionsState,
               [groupId, descendent.id],
-              shouldPropagate
+              shouldPropagateToChildren
                 ? value
                 : getIn(originalPermissionsState, [groupId, descendent.id]),
             );
@@ -656,10 +656,11 @@ const tenantCollectionPermissions = handleActions(
     },
     [UPDATE_TENANT_COLLECTION_PERMISSION]: {
       next: (state, { payload }) => {
-        const { groupId, collection, value, shouldPropagate } = payload;
+        const { groupId, collection, value, shouldPropagateToChildren } =
+          payload;
         let newPermissions = assocIn(state, [groupId, collection.id], value);
 
-        if (shouldPropagate) {
+        if (shouldPropagateToChildren) {
           for (const descendent of getDecendentCollections(collection)) {
             newPermissions = assocIn(
               newPermissions,
@@ -710,10 +711,11 @@ const tenantSpecificCollectionPermissions = handleActions(
     },
     [UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION]: {
       next: (state, { payload }) => {
-        const { groupId, collection, value, shouldPropagate } = payload;
+        const { groupId, collection, value, shouldPropagateToChildren } =
+          payload;
         let newPermissions = assocIn(state, [groupId, collection.id], value);
 
-        if (shouldPropagate) {
+        if (shouldPropagateToChildren) {
           for (const descendent of getDecendentCollections(collection)) {
             newPermissions = assocIn(
               newPermissions,

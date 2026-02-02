@@ -35,7 +35,7 @@ type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;
-  shouldPropagate: boolean;
+  shouldPropagateToChildren: boolean;
 };
 
 type TenantSpecificCollectionPermissionsPageProps = {
@@ -85,14 +85,14 @@ function TenantSpecificCollectionPermissionsPageView({
       groupId,
       collection,
       value,
-      shouldPropagate,
+      shouldPropagateToChildren,
     }: UpdateCollectionPermissionParams) => {
       dispatch(
         updateTenantSpecificCollectionPermission({
           groupId,
           collection,
           value,
-          shouldPropagate,
+          shouldPropagateToChildren,
         }),
       );
     },
@@ -118,7 +118,7 @@ function TenantSpecificCollectionPermissionsPageView({
         groupId: item.id,
         collection: collection as Collection,
         value,
-        shouldPropagate: true,
+        shouldPropagateToChildren: true,
       });
     },
     [collection, updateCollectionPermission],

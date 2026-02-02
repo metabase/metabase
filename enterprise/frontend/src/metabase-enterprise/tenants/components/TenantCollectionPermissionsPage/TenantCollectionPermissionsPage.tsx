@@ -58,7 +58,7 @@ type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;
-  shouldPropagate: boolean;
+  shouldPropagateToChildren: boolean;
 };
 
 type TenantCollectionPermissionsPageProps = {
@@ -71,7 +71,7 @@ type TenantCollectionPermissionsPageProps = {
     groupId,
     collection,
     value,
-    shouldPropagate,
+    shouldPropagateToChildren,
   }: UpdateCollectionPermissionParams) => void;
   isDirty: boolean;
   savePermissions: () => void;
@@ -107,7 +107,7 @@ function TenantCollectionPermissionsPageView({
         groupId: item.id,
         collection,
         value,
-        shouldPropagate: toggleState,
+        shouldPropagateToChildren: toggleState,
       });
     },
     [collection, updateCollectionPermission],

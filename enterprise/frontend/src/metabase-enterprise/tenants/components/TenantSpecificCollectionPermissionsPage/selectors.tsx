@@ -12,6 +12,7 @@ import type {
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
 import type { DataPermissionValue } from "metabase/admin/permissions/types";
+import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
   ROOT_COLLECTION,
@@ -25,7 +26,6 @@ import {
 } from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
-  Collection,
   CollectionId,
   CollectionPermissions,
   Group as GroupType,
@@ -46,7 +46,7 @@ export const getIsTenantSpecificDirty = createSelector(
   (
     permissions: CollectionPermissions,
     originalPermissions: CollectionPermissions,
-  ) => JSON.stringify(permissions) !== JSON.stringify(originalPermissions),
+  ) => !_.isEqual(permissions, originalPermissions),
 );
 
 export const getCurrentTenantSpecificCollectionId = (
@@ -57,6 +57,7 @@ export const getCurrentTenantSpecificCollectionId = (
     return undefined;
   }
 
+  // collectionId comes from the route param and is either "root" or a numeric string
   return props.params.collectionId === ROOT_COLLECTION.id
     ? ROOT_COLLECTION.id
     : parseInt(String(props.params.collectionId));
@@ -77,13 +78,10 @@ const getTenantSpecificCollections = (state: State) =>
     entityQuery: tenantSpecificCollectionsQuery,
   }) ?? [];
 
-const getTenantSpecificCollectionsTree = createSelector(
-  [getTenantSpecificCollections],
-  () => {
-    // Only show the single "Root tenant collection" in the sidebar
-    return [getTenantSpecificRootCollectionTreeItem()];
-  },
-);
+const getTenantSpecificCollectionsTree = () => {
+  // Only show the single "Root tenant collection" in the sidebar
+  return [getTenantSpecificRootCollectionTreeItem()];
+};
 
 export const getTenantSpecificCollectionsSidebar = createSelector(
   getTenantSpecificCollectionsTree,
@@ -101,28 +99,6 @@ export const getTenantSpecificCollectionsSidebar = createSelector(
 const getTenantSpecificCollectionsPermissions = (state: State) =>
   state.admin.permissions.tenantSpecificCollectionPermissions;
 
-const findCollection = (
-  collections: Collection[],
-  collectionId: CollectionId,
-): Collection | null => {
-  if (collections.length === 0) {
-    return null;
-  }
-
-  const collection = collections.find(
-    (collection) => collection.id === collectionId,
-  );
-
-  if (collection) {
-    return collection;
-  }
-
-  return findCollection(
-    collections.map((collection) => collection.children ?? []).flat(),
-    collectionId,
-  );
-};
-
 const getTenantSpecificCollection = createSelector(
   [getCurrentTenantSpecificCollectionId, getTenantSpecificCollections],
   (collectionId, collections) => {
@@ -138,7 +114,7 @@ const getTenantSpecificCollection = createSelector(
       };
     }
 
-    return findCollection(collections, collectionId);
+    return findCollectionById(collections, collectionId);
   },
 );
 
