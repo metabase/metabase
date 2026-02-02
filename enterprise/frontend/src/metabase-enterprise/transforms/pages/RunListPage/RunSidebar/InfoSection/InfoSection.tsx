@@ -11,7 +11,8 @@ import {
   formatStatus,
   isErrorStatus,
 } from "../../../../utils";
-import S from "../RunSidebar.module.css";
+
+import S from "./InfoSection.module.css";
 
 type InfoSectionProps = {
   run: TransformRun;
@@ -21,11 +22,11 @@ export function InfoSection({ run }: InfoSectionProps) {
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <InfoSectionItem label={t`Started at`}>
-        <DateTime value={run.start_time} unit="second" />
+        <DateTime value={run.start_time} unit="minute" />
       </InfoSectionItem>
       {run.end_time != null && (
         <InfoSectionItem label={t`Ended at`}>
-          <DateTime value={run.end_time} unit="second" />
+          <DateTime value={run.end_time} unit="minute" />
         </InfoSectionItem>
       )}
       <InfoSectionItem label={t`Status`}>
@@ -33,7 +34,7 @@ export function InfoSection({ run }: InfoSectionProps) {
           {formatStatus(run.status)}
         </Box>
       </InfoSectionItem>
-      <InfoSectionItem label={t`Run method`}>
+      <InfoSectionItem label={t`Trigger`}>
         {formatRunMethod(run.run_method)}
       </InfoSectionItem>
     </Card>

@@ -9,7 +9,8 @@ import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
 import { getTransformRunName } from "../../../../utils";
-import S from "../RunSidebar.module.css";
+
+import S from "./SidebarHeader.module.css";
 
 const TOOLTIP_OPEN_DELAY_MS = 700;
 
@@ -37,6 +38,7 @@ export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
         fw="bold"
         lh="h3"
         to={transform != null ? Urls.transform(transform.id) : ""}
+        target="_blank"
       >
         {label}
       </Anchor>

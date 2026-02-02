@@ -3,18 +3,3 @@
   overflow: auto;
   border-left: 1px solid var(--mb-color-border);
 }
-
-.link {
-  color: var(--mb-color-text-primary);
-
-  &:hover {
-    color: var(--mb-color-brand);
-    text-decoration: none;
-  }
-}
-
-.section {
-  &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-border);
-  }
-}

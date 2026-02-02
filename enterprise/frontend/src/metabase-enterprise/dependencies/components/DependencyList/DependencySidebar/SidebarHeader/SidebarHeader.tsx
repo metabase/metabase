@@ -9,7 +9,8 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
-import S from "../DependencySidebar.module.css";
+
+import S from "./SidebarHeader.module.css";
 
 type SidebarHeaderProps = {
   node: DependencyNode;

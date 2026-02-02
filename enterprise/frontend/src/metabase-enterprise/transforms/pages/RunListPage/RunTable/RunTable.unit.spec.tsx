@@ -46,14 +46,14 @@ describe("RunTable", () => {
   });
 
   it("should call onSelect when clicking a row", async () => {
-    const transform = createMockTransform({ id: 123, name: "Test Transform" });
-    const run = createMockTransformRun({ id: 456, transform });
+    const transform = createMockTransform({ id: 1, name: "Test Transform" });
+    const run = createMockTransformRun({ id: 2, transform });
     const { onSelect } = setup({ runs: [run] });
 
     const row = await screen.findByRole("row", { name: /Test Transform/ });
     await userEvent.click(row);
 
-    expect(onSelect).toHaveBeenCalledWith(456);
+    expect(onSelect).toHaveBeenCalledWith(run.id);
   });
 
   describe("deleted transforms", () => {
@@ -70,11 +70,11 @@ describe("RunTable", () => {
 
     it("should call onSelect when clicking a row with deleted transform", async () => {
       const transform = createMockTransform({
-        id: 456,
+        id: 1,
         name: "Deleted Transform",
         deleted: true,
       });
-      const run = createMockTransformRun({ id: 789, transform });
+      const run = createMockTransformRun({ id: 2, transform });
       const { onSelect } = setup({ runs: [run] });
 
       const row = await screen.findByRole("row", {
@@ -82,7 +82,7 @@ describe("RunTable", () => {
       });
       await userEvent.click(row);
 
-      expect(onSelect).toHaveBeenCalledWith(789);
+      expect(onSelect).toHaveBeenCalledWith(run.id);
     });
   });
 });

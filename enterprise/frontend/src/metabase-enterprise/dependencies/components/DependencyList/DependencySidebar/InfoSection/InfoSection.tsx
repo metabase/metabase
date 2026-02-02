@@ -19,7 +19,8 @@ import {
   getNodeOwner,
   getNodeTransform,
 } from "../../../../utils";
-import S from "../DependencySidebar.module.css";
+
+import S from "./InfoSection.module.css";
 
 type InfoSectionProps = {
   node: DependencyNode;
