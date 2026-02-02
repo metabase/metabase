@@ -189,6 +189,8 @@ function DashboardSubscriptionsSidebarInner({
   const [users, setUsers] = useState<User[] | undefined>(undefined);
 
   const prevPulsesRef = useRef(pulses);
+  const pulseRef = useRef(pulse);
+  pulseRef.current = pulse;
 
   const setPulse = useCallback(
     (p: Partial<DashboardSubscription>) => {
@@ -297,11 +299,12 @@ function DashboardSubscriptionsSidebarInner({
 
   const onChannelPropertyChange = useCallback(
     (index: number, name: string, value: unknown) => {
-      const channels = [...pulse.channels];
+      const p = pulseRef.current;
+      const channels = [...p.channels];
       channels[index] = { ...channels[index], [name]: value };
-      setPulse({ ...pulse, channels });
+      setPulse({ ...p, channels });
     },
-    [pulse, setPulse],
+    [setPulse],
   );
 
   // changedProp contains the schedule property that user just changed
@@ -312,26 +315,25 @@ function DashboardSubscriptionsSidebarInner({
       newSchedule: ScheduleSettings,
       _changedProp: ScheduleChangeProp,
     ) => {
-      const channels = [...pulse.channels];
+      const p = pulseRef.current;
+      const channels = [...p.channels];
       channels[index] = { ...channels[index], ...newSchedule };
-      setPulse({ ...pulse, channels });
+      setPulse({ ...p, channels });
     },
-    [pulse, setPulse],
+    [setPulse],
   );
 
   const toggleSkipIfEmpty = useCallback(() => {
-    setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
-  }, [pulse, setPulse]);
+    const p = pulseRef.current;
+    setPulse({ ...p, skip_if_empty: !p.skip_if_empty });
+  }, [setPulse]);
 
   const setPulseParameters = useCallback(
     (parameters: UiParameter[]) => {
-      const updatedPulse: DashboardSubscription = {
-        ...pulse,
-        parameters: parameters,
-      };
-      setPulse(updatedPulse);
+      const p = pulseRef.current;
+      setPulse({ ...p, parameters });
     },
-    [pulse, setPulse],
+    [setPulse],
   );
 
   const handleSave = useCallback(async () => {

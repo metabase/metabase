@@ -146,11 +146,16 @@ export function EmailAttachmentPicker({
 
   // Sync state from cards on mount and when cards/pulse change
   const isInitialMount = useRef(true);
+  const prevComputedStateRef = useRef<ReturnType<
+    typeof calculateStateFromCards
+  > | null>(null);
+
   useEffect(() => {
     const newState = calculateStateFromCards(cards, pulse);
 
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      prevComputedStateRef.current = newState;
       setIsEnabled(newState.isEnabled);
       setSelectedAttachmentType(newState.selectedAttachmentType);
       setSelectedCardIds(newState.selectedCardIds);
@@ -159,6 +164,21 @@ export function EmailAttachmentPicker({
       setIsAttachmentOnly(newState.isAttachmentOnly);
       return;
     }
+
+    const prev = prevComputedStateRef.current;
+    // Match class component's shouldUpdateState: skip if nothing meaningful changed
+    if (
+      prev &&
+      (prev.isEnabled || !newState.isEnabled) &&
+      prev.selectedAttachmentType === newState.selectedAttachmentType &&
+      _.isEqual(prev.selectedCardIds, newState.selectedCardIds) &&
+      prev.isFormattingEnabled === newState.isFormattingEnabled &&
+      prev.isPivotingEnabled === newState.isPivotingEnabled &&
+      prev.isAttachmentOnly === newState.isAttachmentOnly
+    ) {
+      return;
+    }
+    prevComputedStateRef.current = newState;
 
     setIsEnabled((prev) => newState.isEnabled || prev);
     setSelectedAttachmentType((prev) =>
