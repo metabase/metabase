@@ -11,8 +11,9 @@ description: Version control your dashboards, questions, and transforms. Sync yo
 
 Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 
-- Top-level collections (dashboards, questions)
-- Library content (published tables and their segments and measures, metrics, snippets)
+- Top-level collections (dashboards, questions, models, metrics)
+- Library content (published tables and their segments and measures)
+- Snippets
 - Transforms
 
 Metabase doesn't sync any of your data. What it stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never goes to GitHub.
@@ -34,7 +35,7 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 **Remote Sync has two modes for different roles**:
 
 - **Read-write mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (even if transforms syncing isn't enabled), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
+- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (even if transforms syncing wasn't enabled in read-write mode), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
 
 **You choose what to sync**: You can sync the Library, any top-level collections, and transforms. Everything inside selected collections (including sub-collections) is versioned and synchronized with your repository. If you use [Tenants](../embedding/tenants.md), you can also sync shared collections.
 
@@ -55,7 +56,7 @@ You'll need to be an admin to set up Remote Sync.
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
 6. [Create a personal access token for production](#6-create-a-personal-access-token-for-production)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
-8. [Configure Transforms syncing (optional)](#8-configure-transforms-syncing-optional)
+8. [Configure transforms syncing (optional)](#8-configure-transforms-syncing-optional)
 
 ### 1. Set up a repository to store your content
 
@@ -161,9 +162,9 @@ In Read-only mode, synced collections appear in the regular collections list wit
 
 At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced collections in your production Metabase.
 
-### 8. Configure Transforms syncing (optional)
+### 8. Configure transforms syncing (optional)
 
-To version control your data transformation logic, you can sync your [Transforms](../data-modeling/transforms.md) including all your job tags. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync certain transform folders.
+To version control your data transformation logic, you can sync your [Transforms](../data-modeling/transforms.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync certain transform folders.
 
 ## An example dev-to-production workflow
 
@@ -213,6 +214,8 @@ You can select any top-level collection under Our Analytics to sync with Git. Sy
 If you are using [tenants](../embedding/tenants.md), you can also sync shared collections. You'll see the same yellow dot indicator for shared collections.
 
 In Read-only mode, synced collections appear in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate they're versioned and read-only.
+
+When transforms syncing is enabled, you'll find your transforms in the Transforms section of the Admin settings. Synced transforms are also read-only in Read-only mode.
 
 ### Moving and deleting content in synced collections
 
