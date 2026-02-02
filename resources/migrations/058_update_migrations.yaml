@@ -1616,7 +1616,6 @@ databaseChangeLog:
         - not:
             - primaryKeyExists:
                 tableName: workspace_mapping_table
-                primaryKeyName: pk_workspace_mapping_table
       changes:
         - addPrimaryKey:
             tableName: workspace_mapping_table
