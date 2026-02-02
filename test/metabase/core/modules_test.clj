@@ -17,8 +17,7 @@
 (defn- modules-config
   "Kondo modules config."
   []
-  (-> (io/resource "metabase/config/modules.edn")
-      slurp
+  (-> (slurp ".clj-kondo/config/modules/config.edn")
       edn/read-string
       :metabase/modules))
 
