@@ -68,7 +68,8 @@ const OnboardingStepperRoot = ({
     const nextIncomplete = stepIds.find((id) => !completedSteps[id]) ?? null;
 
     setActiveStepState(nextIncomplete);
-  }, [completedSteps, stepIds]);
+    scrollStepIntoView(nextIncomplete);
+  }, [completedSteps, stepIds, scrollStepIntoView]);
 
   return (
     <StepperContext.Provider

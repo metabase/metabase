@@ -10,3 +10,5 @@ export const StepperContext = createContext<StepperContextValue>({
   stepRefs: {},
   setActiveStep: () => {},
 });
+
+StepperContext.displayName = "StepperContext";
