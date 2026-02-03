@@ -313,7 +313,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
     H.modal().findByTestId("collection-picker-button").click();
     H.entityPickerModal()
-      .findByRole("button", { name: /New collection/ })
+      .findByRole("button", { name: /New folder/ })
       .click();
     H.collectionOnTheGoModal()
       .findByLabelText("Give it a name")

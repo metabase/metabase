@@ -241,7 +241,7 @@ describe(
           H.DataStudio.Transforms.header()
             .findByDisplayValue("Read Only Transform")
             .should("be.disabled");
-          H.DataStudio.Transforms.editDefinition().should("not.exist");
+          H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
         });
       });
     });

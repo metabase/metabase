@@ -47,6 +47,7 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
       dashboardActions={[
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
+        DASHBOARD_ACTION.REFRESH_INDICATOR,
       ]}
       dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&

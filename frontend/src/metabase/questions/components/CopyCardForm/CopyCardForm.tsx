@@ -6,7 +6,7 @@ import * as Yup from "yup";
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import type { CollectionPickerModel } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,
@@ -97,7 +97,7 @@ export const CopyCardForm = ({
     onSaved?.(newCard, { dashboardTabId });
   };
 
-  const models: CollectionPickerModel[] =
+  const models: OmniPickerItem["model"][] =
     model === "question" ? ["collection", "dashboard"] : ["collection"];
 
   return (
@@ -133,15 +133,7 @@ export const CopyCardForm = ({
                 entityType={
                   model ? getEntityTypeFromCardType(model) : undefined
                 }
-                collectionPickerModalProps={{
-                  models,
-                  recentFilter: (items) =>
-                    items.filter((item) => {
-                      // narrow type and make sure it's a dashboard or
-                      // collection that the user can write to
-                      return item.model !== "table" && item.can_write;
-                    }),
-                }}
+                collectionPickerModalProps={{ models }}
               />
               <FormDashboardTabSelect
                 name="dashboard_tab_id"

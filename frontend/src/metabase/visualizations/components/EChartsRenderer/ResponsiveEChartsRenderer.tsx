@@ -11,10 +11,10 @@ export interface ResponsiveEChartsRendererProps
   onResize?: (width: number, height: number) => void;
 }
 
-const _ResponsiveEChartsRenderer = forwardRef<
+const ResponsiveEChartsRendererInner = forwardRef<
   HTMLDivElement,
   ResponsiveEChartsRendererProps
->(function _ResponsiveEChartsRenderer(
+>(function ResponsiveEChartsRendererBase(
   {
     onResize,
     width,
@@ -51,4 +51,4 @@ export const ResponsiveEChartsRendererExplicitSize =
   ExplicitSize<ResponsiveEChartsRendererProps>({
     wrapped: true,
     refreshMode: "debounceLeading",
-  })(_ResponsiveEChartsRenderer);
+  })(ResponsiveEChartsRendererInner);

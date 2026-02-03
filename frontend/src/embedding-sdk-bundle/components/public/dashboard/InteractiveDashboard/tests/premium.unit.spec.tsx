@@ -1,3 +1,4 @@
+import { addPremiumAutoRefreshTests } from "../../shared-tests/auto-refresh.spec";
 import { addPremiumSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -22,4 +23,5 @@ console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
   addPremiumSubscriptionsTests(setupPremium);
+  addPremiumAutoRefreshTests(setupPremium);
 });

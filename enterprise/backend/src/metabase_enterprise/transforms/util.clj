@@ -265,11 +265,15 @@
   [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (transforms.i/target-db-id transform)
-          {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-transform-target! driver database target)
-      (log/info "Deactivating  target " (pr-str target) "for transform" id)
-      (deactivate-table! database target))))
+          database-id (transforms.i/target-db-id transform)]
+      (when database-id
+        (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
+          (do
+            (driver/drop-transform-target! driver database target)
+            (log/info "Deactivating  target " (pr-str target) "for transform" id)
+            (deactivate-table! database target))
+          (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
+                     (pr-str target) id database-id))))))
 
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
@@ -603,42 +607,38 @@
                         :ref   v})]
     (when (seq unresolved)
       (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
-                      {:unresolved unresolved})))
+                      {:unresolved unresolved
+                       :transform-message "Input table not found"})))
     resolved))
 
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
   (when-let [field-instant (->instant (get-in job field-path))]
-    (let [start-instant (some-> start u.date/parse ->instant)
-          end-instant (some-> end u.date/parse ->instant)]
-      (and (or (nil? start)
-               (not (.isBefore field-instant start-instant)))
-           (or (nil? end)
-               (.isAfter end-instant field-instant))))))
+    (let [parse #(-> % u.date/parse ->instant)]
+      ;; logic here is to find when it's not matching and invert this
+      (not (or (and start (.isBefore field-instant (parse start)))
+               (and end   (.isAfter field-instant (parse end))))))))
 
 (defn ->date-field-filter-xf
   "Returns an xform for a date filter."
   [field-path filter-value]
-  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
-    (if range
-      (filter #(matching-timestamp? % field-path range))
-      identity)))
+  (if-let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
+    (filter #(matching-timestamp? % field-path range))
+    identity))
 
 (defn ->status-filter-xf
   "Returns an xform for a transform run status filter."
   [field-path statuses]
-  (let [statuses (->> statuses (map keyword) set not-empty)]
-    (if statuses
-      (filter #(statuses (get-in % field-path)))
-      identity)))
+  (if-let [statuses (->> statuses (map keyword) set not-empty)]
+    (filter #(statuses (get-in % field-path)))
+    identity))
 
 (defn ->tag-filter-xf
   "Returns an xform for a transform tag filter."
   [field-path tag-ids]
-  (let [tag-ids (-> tag-ids set not-empty)]
-    (if tag-ids
-      (filter #(some tag-ids (get-in % field-path)))
-      identity)))
+  (if-let [tag-ids (-> tag-ids set not-empty)]
+    (filter #(some tag-ids (get-in % field-path)))
+    identity))
 
 (def ^:private metabase-index-prefix "mb_transform_idx_")
 

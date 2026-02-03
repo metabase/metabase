@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv empty?]]
@@ -61,6 +62,91 @@
   {:style/indent 1}
   [driver & body]
   `(do-with-driver ~driver (fn [] ~@body)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Connection Details Swapping                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private ^:dynamic *swapped-connection-details*
+  "A dynamic var that holds a map of database-id -> swapped-details-map for temporarily swapping connection details.
+  When a connection spec is created for a database, if its ID is present in this map, the swap map will be
+  merged into the connection `:details` before they are used to create a connection.
+
+  This provides a mechanism for temporarily using different connection details (e.g., using alternative credentials
+  for workspaces) without mutating the database record.
+
+  The swap map is merged into the database `:details` map. The swap is applied before any connection-specific
+  processing (like hash calculation for connection pooling), so different swaps will result in different
+  connection pools.
+
+  Different drivers may apply this swap at different points in their connection lifecycle, but the semantics
+  are consistent: swapped details are used for the duration of the dynamic scope.
+
+  See [[with-swapped-connection-details]] for usage."
+  nil)
+
+(defn- apply-detail-swaps
+  "Merges the `swap-map` into `details`. Supports nested maps via deep merge."
+  [details swap-map]
+  (reduce-kv
+   (fn [acc k v]
+     (if (and (map? v) (map? (get acc k)))
+       (assoc acc k (apply-detail-swaps (get acc k) v))
+       (assoc acc k v)))
+   details
+   swap-map))
+
+(defn has-connection-swap?
+  "Returns true if there is an active connection detail swap for `database-id`."
+  [database-id]
+  (contains? *swapped-connection-details* database-id))
+
+(defn maybe-swap-details
+  "Returns the database details with any swaps applied from [[*swapped-connection-details*]].
+  If no swap exists for `database-id`, returns `details` unchanged.
+
+  Drivers should call this function when creating connections to apply any active swaps.
+  For JDBC drivers, this is called in [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]].
+  For other drivers (e.g., MongoDB), this should be called in their connection creation logic."
+  [database-id details]
+  (if-let [swap-map (get *swapped-connection-details* database-id)]
+    (do
+      (log/debugf "Applying swapped connection details for database %d, swap keys: %s"
+                  database-id (keys swap-map))
+      (apply-detail-swaps details swap-map))
+    details))
+
+(defn do-with-swapped-connection-details
+  "Implementation for [[with-swapped-connection-details]]."
+  [database-id swap-map thunk]
+  (when (contains? *swapped-connection-details* database-id)
+    (throw (ex-info "Nested connection detail swaps are not supported for the same database"
+                    {:database-id database-id})))
+  (log/debugf "Entering swapped connection details scope for database %d, swap keys: %s"
+              database-id (keys swap-map))
+  (binding [*swapped-connection-details* (assoc *swapped-connection-details* database-id swap-map)]
+    (thunk)))
+
+(defmacro with-swapped-connection-details
+  "Temporarily swap the connection details for a specific database within the dynamic scope of `body`.
+
+  The `swap-map` is a map of detail keys to swap values. These will be merged into the database's
+  connection `:details` map. Nested maps are deep-merged.
+
+  Any code that creates a connection for `database-id` within this scope will use the modified details.
+
+  **Important:** Nested swaps for the same database are not supported and will throw an exception.
+  Different databases can have concurrent swaps.
+
+  Example:
+
+    ;; Swap connection to use alternate credentials
+    (driver/with-swapped-connection-details 1 {:user \"workspace-user\" :password \"workspace-pass\"}
+      ;; All connections created in this scope use the swapped credentials
+      (qp/process-query query))"
+  {:style/indent 2}
+  [database-id swap-map & body]
+  `(do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
@@ -222,6 +308,15 @@
 (defmethod contact-info :default
   [_]
   nil)
+
+(defmulti llm-sql-dialect-resource
+  "Returns the resource path for dialect-specific LLM prompt instructions,
+   or nil if no dialect-specific instructions exist for this driver."
+  {:added "0.59.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod llm-sql-dialect-resource :default [_] nil)
 
 (defn dispatch-on-initialized-driver-safe-keys
   "Dispatch on initialized driver, except checks for `classname`,
@@ -807,6 +902,9 @@
 
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
     :describe-is-generated
+    
+    ;; Does this driver support the workspace feature
+    :workspace
 
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
@@ -857,7 +955,8 @@
                               :test/uuids-in-create-table-statements  true
                               :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false}]
+                              :metadata/table-writable-check          false
+                              :workspace                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1285,6 +1384,31 @@
                      :args args}))
     #{}))
 
+(mr/def ::native-query-table-refs.table-ref
+  [:map
+   {:closed true}
+   [:schema {:optional true} [:maybe :string]]
+   [:table :string]])
+
+(mr/def ::native-query-table-refs
+  [:set ::native-query-table-refs.table-ref])
+
+(defmulti native-query-table-refs
+  "Gets the raw table references from a native query without resolving them to IDs.
+
+  Unlike [[native-query-deps]] which looks up tables in the database to return IDs,
+  this method returns just the schema and table names as they appear in the query.
+  This is useful for workspace dependency tracking where referenced tables may not
+  exist yet.
+
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
+  [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
+
+  The return value should match the `:metabase.driver/native-query-table-refs` schema."
+  {:changelog-test/ignore true :added "0.58.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
   going to the database).
@@ -1710,3 +1834,75 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti init-workspace-isolation!
+  "Initialize database isolation for a workspace. Creates an isolated schema/database,
+   user credentials, and grants appropriate permissions for the workspace to operate
+   within its own namespace.
+
+   Returns a map with:
+   - :schema           - The name of the isolated schema/database created
+   - :database_details - Connection details (user, password, etc.) for the isolated user
+
+   Implementations should:
+   - Create an isolated schema or database for the workspace
+   - Create a user with credentials that can only access that schema
+   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+
+   This is an enterprise feature. Drivers must also return true for
+   (database-supports? driver :workspace database) to indicate support."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti destroy-workspace-isolation!
+  "Destroy all database resources created for workspace isolation.
+   This includes dropping schemas/databases, users, roles, and any other
+   resources created by init-workspace-isolation!.
+
+   Should be called when deleting a workspace. Implementations should be
+   idempotent - calling on an already-destroyed workspace should not error."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti grant-workspace-read-access!
+  "Grant read access on specified tables to a workspace's isolated user.
+   This allows the workspace to read from source tables that it needs as inputs.
+
+   `tables` is a sequence of maps with :schema and :name keys identifying
+   the tables to grant access to."
+  {:added "0.59.0" :arglists '([driver database workspace tables])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti check-isolation-permissions
+  "Check if database connection has sufficient permissions for workspace isolation.
+
+   Rather than directly checking permissions, this method performs the actual isolation
+   operations (init workspace, grant access, destroy resources) in a test workspace
+   because:
+
+   1. Some databases don't provide reliable APIs to check permissions a priori.
+   2. Keeping static permission checks in sync with the actual operations is error-prone.
+   3. A database user might have the necessary workspace permissions even if they
+      lack the introspection permissions to query permission tables.
+
+   Isolation operations run in a transaction that is always rolled back (for databases
+   that support transactional DDL), or are manually cleaned up immediately after testing
+   (for databases where transactions don't work, like BigQuery).
+
+   `test-table` is an optional {:schema ... :name ...} map used to test GRANT SELECT.
+   If nil, the grant test is skipped.
+
+   Returns nil on success, or an error message string on failure.
+
+   Default :sql-jdbc implementation tests CREATE SCHEMA, CREATE USER, GRANT, and DROP.
+   Drivers can override for database-specific syntax."
+  {:added "0.59.0" :arglists '([driver database test-table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

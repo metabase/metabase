@@ -18,7 +18,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -51,9 +51,7 @@ export function GlossaryTable({
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(
-    SortDirection.Asc,
-  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const hasMetabot = useHasTokenFeature("metabot_v3");
 
@@ -68,7 +66,7 @@ export function GlossaryTable({
       const ak = a[sortColumnName] ?? "";
       const bk = b[sortColumnName] ?? "";
       const cmp = String(ak).localeCompare(String(bk));
-      return sortDirection === SortDirection.Asc ? cmp : -cmp;
+      return sortDirection === "asc" ? cmp : -cmp;
     });
     return [
       ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),

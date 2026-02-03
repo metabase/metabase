@@ -17,7 +17,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest publish-table-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:data-studio :audit-app}
     (without-library
      (testing "POST /api/ee/data-studio/table/(un)publish-table"
        (testing "publishes tables into the library-data collection"
@@ -36,6 +36,11 @@
                          :collection_id collection-id
                          :is_published true}]
                        (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+             (testing "audit log entries are created for publish"
+               (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
+                       (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
+               (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :venues)}
+                       (mt/latest-audit-log-entry "table-publish" (mt/id :venues)))))
              (testing "unpublishing"
                (testing "normal users are not allowed"
                  (mt/user-http-request :rasta :post 403 "ee/data-studio/table/unpublish-tables"
@@ -45,22 +50,25 @@
                (is (=? {:display_name "Venues"
                         :collection_id nil
                         :is_published false}
-                       (t2/select-one :model/Table (mt/id :venues)))))))
-         (testing "deleting the collection unpublishes"
-           (is (=? {:display_name "Users"
-                    :collection_id nil
-                    :is_published false}
-                   (t2/select-one :model/Table (mt/id :users))))))
-       (testing "returns 404 when no library-data collection exists"
-         (is (= "Not found."
-                (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
-                                      {:table_ids [(mt/id :users)]}))))
-       (testing "returns 409 when multiple library-data collections exist"
-         (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
-                        :model/Collection _ {:type collection/library-data-collection-type}]
-           (is (= "Multiple library-data collections found."
-                  (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
-                                        {:table_ids [(mt/id :users)]})))))))))
+                       (t2/select-one :model/Table (mt/id :venues))))
+               (testing "audit log entry is created for unpublish"
+                 (is (=? {:topic :table-unpublish, :model "Table", :model_id (mt/id :venues)}
+                         (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues)))))))))
+       (testing "deleting the collection unpublishes"
+         (is (=? {:display_name "Users"
+                  :collection_id nil
+                  :is_published false}
+                 (t2/select-one :model/Table (mt/id :users))))))
+     (testing "returns 404 when no library-data collection exists"
+       (is (= "Not found."
+              (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
+                                    {:table_ids [(mt/id :users)]}))))
+     (testing "returns 409 when multiple library-data collections exist"
+       (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
+                      :model/Collection _ {:type collection/library-data-collection-type}]
+         (is (= "Multiple library-data collections found."
+                (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
+                                      {:table_ids [(mt/id :users)]}))))))))
 
 (deftest bulk-edit-visibility-sync-test
   (mt/with-premium-features #{:data-studio}
