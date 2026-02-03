@@ -196,11 +196,6 @@
                  (:owner_email transform)
                  {:email (:owner_email transform)}))))))
 
-(derive ::transform-noop :metabase/event)
-(derive :event/create-transform ::transform-noop)
-(derive :event/update-transform ::transform-noop)
-(derive :event/delete-transform ::transform-noop)
-
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})
   transform)

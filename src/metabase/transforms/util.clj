@@ -700,10 +700,6 @@
           (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
           (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
 
-;; the real handler for this is in EE.
-(derive ::transform-run-noop :metabase/event)
-(derive :event/transform-run-complete ::transform-run-noop)
-
 (mu/defn handle-transform-complete!
   "Handles followup tasks for when a transform has completed.
 
