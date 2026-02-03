@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -80,6 +81,26 @@
                   (assoc-in result [:collection :description] (get descriptions coll-id))
                   result))
               results)))))
+
+(defn- remove-unreadable-transforms
+  "Remove transforms from search results that the user cannot read.
+  This filters out transforms where the user doesn't have access to the source tables/database."
+  [results]
+  (let [transform-ids (->> results
+                           (filter #(= "transform" (:type %)))
+                           (map :id)
+                           seq)]
+    (if-not transform-ids
+      results
+      (let [readable-ids (->> (t2/select :model/Transform :id [:in transform-ids])
+                              transforms.util/add-source-readable
+                              (filter :source_readable)
+                              (map :id)
+                              set)]
+        (filterv (fn [result]
+                   (or (not= "transform" (:type result))
+                       (contains? readable-ids (:id result))))
+                 results)))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -218,7 +239,8 @@
     (->> fused-results
          (take limit)
          (map postprocess-search-result)
-         enrich-with-collection-descriptions)))
+         enrich-with-collection-descriptions
+         remove-unreadable-transforms)))
 
 (defn search-tool
   "Handler for the /search and /search_v2 tool endpoints.

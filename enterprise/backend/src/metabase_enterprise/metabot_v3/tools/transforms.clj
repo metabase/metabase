@@ -15,9 +15,10 @@
   (try
     {:structured_output
      (->> (api.transforms/get-transforms)
-          (into [] (comp (map #(select-keys % [:id :entity_id :name :type :description :source]))
-                         (filter #(or (transforms/python-transform? %)
-                                      (transforms/native-query-transform? %))))))}
+          (into [] (comp (filter #(or (transforms/python-transform? %)
+                                      (transforms/native-query-transform? %)))
+                         (filter :source_readable)
+                         (map #(select-keys % [:id :entity_id :name :type :description :source])))))}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
 
