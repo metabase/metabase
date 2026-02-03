@@ -228,14 +228,14 @@ function getFieldStats(field: TransformInspectField): string | null {
 function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
   return [
     {
-      id: "table",
-      header: t`Table`,
-      width: 150,
+      id: "column",
+      header: t`Column`,
+      minWidth: "auto",
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "table") {
           return (
-            <Text size="sm">
+            <Text size="sm" style={{ whiteSpace: "nowrap" }}>
               {node.tableName}
               <Text span size="xs" c="text-tertiary" ml="xs" display="inline">
                 ({node.fieldCount})
@@ -243,25 +243,13 @@ function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
             </Text>
           );
         }
-        return null;
-      },
-    },
-    {
-      id: "field",
-      header: t`Field`,
-      minWidth: "auto",
-      cell: ({ row }) => {
-        const node = row.original;
-        if (node.type === "field") {
-          return <Text size="sm">{node.fieldName}</Text>;
-        }
-        return null;
+        return <Text size="sm">{node.fieldName}</Text>;
       },
     },
     {
       id: "type",
       header: t`Type`,
-      width: 100,
+      width: "auto",
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "field") {
@@ -277,12 +265,11 @@ function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
     {
       id: "stats",
       header: t`Stats`,
-      width: 220,
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "field" && node.stats) {
           return (
-            <Text size="xs" c="text-tertiary" ta="right">
+            <Text size="xs" c="text-tertiary">
               {node.stats}
             </Text>
           );
