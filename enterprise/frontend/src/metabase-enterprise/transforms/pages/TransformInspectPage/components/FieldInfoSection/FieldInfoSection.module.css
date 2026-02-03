@@ -1,3 +1,6 @@
+/* duplicated frontend/src/metabase/home/components/Onboarding/Onboarding.module.css
+   if this pattern persists and is approved by designers, consider moving it to common components */
+
 .item:not([data-css-specificity-hack="🪗"]) {
   &,
   & + &,
