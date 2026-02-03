@@ -14,6 +14,8 @@
 ;; Table events
 (derive ::table-event :metabase/event)
 (derive :event/table-update ::table-event)
+(derive :event/table-publish ::table-event)
+(derive :event/table-unpublish ::table-event)
 
 ;; Timeline events
 (derive ::timeline-event :metabase/event)
