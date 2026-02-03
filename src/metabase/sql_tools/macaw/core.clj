@@ -292,3 +292,9 @@
         ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. table-name)])
     (str parsed-query)))
+
+(defmethod sql-tools/replace-names-impl :macaw
+  [_parser driver sql-string replacements]
+  ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names
+  ;; due to regex pattern handling. Omit it for now until Macaw is fixed.
+  (macaw/replace-names sql-string replacements (dissoc (macaw-options driver) :case-insensitive)))

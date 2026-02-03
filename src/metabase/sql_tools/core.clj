@@ -48,19 +48,22 @@
   [driver native-query]
   (validate-query-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
-;; TODO: Workspaces will be merged into master soon. They use `macaw/replace-names`.
-;; when that happens we should move their usage behind this API. Later we should
-;; implement the Sqlglot's version.
 (defmulti replace-names-impl
   "Parser specific implementation of [[replace-names]]. Do not use directly."
-  {:arglists '([parser driver query replacements])}
+  {:arglists '([parser driver sql-string replacements])}
   #'parser-dispatch)
 
 (defn replace-names
-  "Replace names in a query."
-  [_driver _query _replacements]
-  (throw (java.lang.UnsupportedOperationException. "Not implemented."))
-  #_(replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver query))
+  "Replace schema, table, and column names in a SQL query.
+
+   `replacements` is a map with optional keys:
+   - :schemas  - map of old schema name -> new schema name
+   - :tables   - map of old table name -> new table name
+   - :columns  - map of {:table t :column c} -> new column name
+
+   Returns the modified SQL string."
+  [driver sql-string replacements]
+  (replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements))
 
 (defmulti referenced-tables-raw-impl
   "Parser specific implementation of [[referenced-tables-raw]]. Do not use directly."
