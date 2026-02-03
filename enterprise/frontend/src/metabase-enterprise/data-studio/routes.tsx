@@ -25,12 +25,9 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
-<<<<<<< HEAD
-import { getDataStudioWorkspaceRoutes } from "./workspaces/routes";
-=======
 import { DependenciesUpsellPage } from "./upsells";
 import { DependencyDiagnosticsUpsellPage } from "./upsells/DependencyDiagnosticsUpsellPage";
->>>>>>> master
+import { getDataStudioWorkspaceRoutes } from "./workspaces/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -62,16 +59,12 @@ export function getDataStudioRoutes(
           {getDataStudioSegmentRoutes()}
           {getDataStudioSnippetRoutes()}
         </Route>
-<<<<<<< HEAD
         {hasPremiumFeature("workspaces") && (
           <Route path="workspaces" component={WorkspacesSectionLayout}>
             {getDataStudioWorkspaceRoutes()}
           </Route>
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-=======
         {PLUGIN_DEPENDENCIES.isEnabled ? (
->>>>>>> master
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
