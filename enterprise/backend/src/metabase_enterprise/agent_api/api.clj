@@ -394,12 +394,15 @@
    {encoded-query :query} :- ::execute-query-request]
   (let [query (-> encoded-query
                   u/decode-base64
-                  json/decode+kw)]
+                  json/decode+kw)
+        info  {:executed-by api/*current-user-id*
+               :context     :agent}]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query
        (-> query
            (update-in [:middleware :js-int-to-string?] (fnil identity true))
-           qp/userland-query-with-default-constraints)
+           qp/userland-query-with-default-constraints
+           (update :info merge info))
        rff))))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------

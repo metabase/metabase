@@ -345,6 +345,22 @@
           (is (every? :name cols) "Each column should have a name")
           (is (every? :base_type cols) "Each column should have a base_type"))))))
 
+(deftest execute-query-records-query-execution-test
+  (with-agent-api-setup!
+    (testing "Executed queries are recorded with :agent context"
+      (mt/with-temp [:model/User {user-id :id email :email} {:is_superuser true}]
+        (let [table-id        (mt/id :orders)
+              headers         (auth-headers email)
+              construct-resp  (client/client :post 200 "agent/v1/construct-query"
+                                             {:request-options {:headers headers}}
+                                             {:table_id table-id :limit 5})
+              _               (client/client :post 202 "agent/v1/execute"
+                                             {:request-options {:headers headers}}
+                                             {:query (:query construct-resp)})
+              query-execution (t2/select-one :model/QueryExecution :executor_id user-id)]
+          (is (some? query-execution) "QueryExecution should be recorded")
+          (is (= :agent (:context query-execution))))))))
+
 (deftest get-metric-field-values-test
   (with-agent-api-setup!
     (ensure-fresh-field-values! (mt/id :orders :quantity))
