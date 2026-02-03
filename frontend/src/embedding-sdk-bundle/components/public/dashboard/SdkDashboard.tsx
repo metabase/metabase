@@ -389,7 +389,7 @@ const SdkDashboardInner = ({
                  * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
                  */
                 sdkNavigation?.push({
-                  type: "placeholder-new-question",
+                  type: "virtual-new-question",
                   onPop: () => setRenderMode("dashboard"),
                 });
                 setRenderMode("queryBuilder");
@@ -404,7 +404,7 @@ const SdkDashboardInner = ({
             });
           } else {
             sdkNavigation?.push({
-              type: "placeholder-new-question",
+              type: "virtual-new-question",
               onPop: () => setRenderMode("dashboard"),
             });
             setRenderMode("queryBuilder");

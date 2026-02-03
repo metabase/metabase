@@ -21,21 +21,21 @@ export type SdkInternalNavigationEntry =
       parameters?: ParameterValues;
     }
   | {
-      /** Placeholder for question drills - parent component handles rendering */
-      type: "placeholder-question-drill";
+      /** Virtual entry for question drills - parent component handles rendering, this just tracks navigation depth */
+      type: "virtual-question-drill";
       onPop?: () => void;
     }
   | {
-      /** Placeholder for adhoc questions from dashboard drills */
-      type: "placeholder-adhoc-question";
+      /** Virtual entry for adhoc questions from dashboard drills */
+      type: "virtual-adhoc-question";
       /** The URL path for the ad-hoc question (e.g., /question#... with serialized card) */
       questionPath: string;
       name: string;
       onPop?: () => void;
     }
   | {
-      /** Placeholder for new question creation from dashboard */
-      type: "placeholder-new-question";
+      /** Virtual entry for new question creation from dashboard */
+      type: "virtual-new-question";
       onPop?: () => void;
     };
 

@@ -178,18 +178,18 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
-  // Wrap navigateToNewCard to use placeholder pattern (like dashboards)
+  // Wrap navigateToNewCard to use virtual entry pattern (like dashboards)
   // This keeps the question mounted while drill results are shown
   const navigateToNewCardWithSdkInternalNavigation = useCallback(
     async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
       // Use internal navigation (keeps question mounted, updates state internally)
       await navigateToNewCard?.(params);
-      // Only push placeholder if last entry is NOT already a placeholder
-      // (prevents stacking multiple placeholders on consecutive drills)
+      // Only push virtual entry if last entry is NOT already virtual
+      // (prevents stacking multiple virtual entries on consecutive drills)
       const currentEntry = navigation?.stack.at(-1);
-      if (!currentEntry?.type.startsWith("placeholder")) {
+      if (!currentEntry?.type.startsWith("virtual")) {
         navigation?.push({
-          type: "placeholder-question-drill",
+          type: "virtual-question-drill",
           onPop: () => loadAndQueryQuestion(),
         });
       }
