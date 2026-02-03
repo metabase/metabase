@@ -1,7 +1,5 @@
 import { t } from "ttag";
 
-import { createCard } from "metabase/lib/card";
-
 import { trackCardCreated } from "../analytics";
 
 import { addDashCardToDashboard } from "./cards-typed";
@@ -12,10 +10,12 @@ export const addActionToDashboard =
     trackCardCreated("action", dashId);
 
     const virtualActionsCard = {
-      ...createCard(),
+      name: null,
       id: action.model_id,
       display: "action",
       archived: false,
+      visualization_settings: {},
+      dataset_query: {},
     };
 
     const buttonLabel = action.name ?? action.id ?? t`Click Me`;

@@ -2,15 +2,6 @@ import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { equals } from "metabase/lib/utils";
 import type { Card } from "metabase-types/api";
 
-export function createCard(name = null): Card {
-  return {
-    name: name,
-    display: "table",
-    visualization_settings: {},
-    dataset_query: {},
-  };
-}
-
 function getCleanCard(card: Card) {
   return {
     name: card.name,
