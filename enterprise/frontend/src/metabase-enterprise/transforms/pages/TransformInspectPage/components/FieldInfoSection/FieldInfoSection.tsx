@@ -2,6 +2,8 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getFormattedTime } from "metabase/common/components/DateTime";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { Icon } from "metabase/ui";
 import {
   Accordion,
@@ -157,40 +159,24 @@ function isNumericField(field: TransformInspectField): boolean {
   return NUMERIC_BASE_TYPES.some((type) => type === field.base_type);
 }
 
+function isDate(field: TransformInspectField): boolean {
+  return field.base_type === "type/Date";
+}
+
 function formatType(field: TransformInspectField): string {
-  return field.base_type?.replace("type/", "") ?? "Unknown";
+  return field.base_type?.replace("type/", "") ?? t`Unknown`;
 }
 
 function formatNumber(value: number | undefined): string {
   if (value === undefined) {
     return "-";
   }
+
   if (Number.isInteger(value)) {
     return value.toLocaleString();
   }
+
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-function formatPercent(value: number | undefined): string {
-  if (value === undefined) {
-    return "-";
-  }
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function formatDate(value: string | undefined): string {
-  if (!value) {
-    return "-";
-  }
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return value;
-  }
 }
 
 function getFieldStats(field: TransformInspectField): string | null {
@@ -218,7 +204,10 @@ function getFieldStats(field: TransformInspectField): string | null {
     }
   } else if (isTemporalField(field)) {
     if (stats.earliest && stats.latest) {
-      parts.push(`${formatDate(stats.earliest)} → ${formatDate(stats.latest)}`);
+      const unit = isDate(field) ? "day" : "hour-of-day";
+      const earliest = getFormattedTime(stats.earliest, unit);
+      const latest = getFormattedTime(stats.latest, unit);
+      parts.push(`${earliest} → ${latest}`);
     }
   }
 
