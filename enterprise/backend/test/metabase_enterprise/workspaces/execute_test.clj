@@ -56,7 +56,8 @@
                     (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
 
         (testing "app DB records are rolled back"
-          (is (= before
+          ;; TransformRun is +1 because cascade delete was removed in d1e940e66b5
+          (is (= (update before :xfrun inc)
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
 
