@@ -102,14 +102,14 @@
           (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
                  (mt/rows (qp/process-query (mt/native-query query))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::case-branch-coersion]
+(defmethod driver/database-supports? [::driver/driver ::case-branch-coercion]
   [_driver _feature _database]
   true)
 
 ;; Don't test bigquery because it can't do the case with a default. It requires all
 ;; case branches to return the same type while others will coerce if they can.
 ;; The assertion above should be enough for BigQuery.
-(defmethod driver/database-supports? [:bigquery-cloud-sdk ::case-branch-coersion]
+(defmethod driver/database-supports? [:bigquery-cloud-sdk ::case-branch-coercion]
   [_driver _feature _database]
   false)
 
@@ -136,7 +136,7 @@
             (testing "MBQL: case with and without default should produce the same result for matching rows"
               ;; Should not have a timezone
               (is (not (str/ends-with? original-without-default-val "Z"))))
-            (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone ::case-branch-coersion)
+            (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone ::case-branch-coercion)
               (let [mp (mt/metadata-provider)
                     query (lib/query mp (lib.metadata/table mp (mt/id :times)))
                     dt-tz-col (lib.metadata/field mp (mt/id :times :dt_tz))
