@@ -27,15 +27,13 @@
   becomes a serious enough issue, at which point we will have to redesign version marking and
   analysis triggering."
   {:style/indent 0}
-  ([& body]
-   `(ignore-errors :unknown nil ~@body))
-  ([entity-type entity-id & body]
-   `(try
-      ~@body
-      (catch Throwable e#
-        (log/error e# "Dependency calculation failed" {:entity-type ~entity-type
-                                                       :entity-id   ~entity-id})
-        nil))))
+  [entity-type entity-id & body]
+  `(try
+     ~@body
+     (catch Throwable e#
+       (log/error e# "Dependency calculation failed" {:entity-type ~entity-type
+                                                      :entity-id   ~entity-id})
+       nil)))
 
 ;; ### Cards
 (derive ::card-deps :metabase/event)

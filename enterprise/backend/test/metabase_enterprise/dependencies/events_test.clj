@@ -240,8 +240,8 @@
                  (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
                  (is (some #(and (= "Dependency calculation failed" (ex-message (:e %)))
                                  (= :error (:level %))
-                                 (= :card (get-in (:context %) [:entity-type]))
-                                 (= card-id (get-in (:context %) [:entity-id])))
+                                 (= :card (-> % :context :entity-type))
+                                 (= card-id (-> % :context :entity-id)))
                            (messages)))
                  (is (= models.dependency/current-dependency-analysis-version
                         (t2/select-one-fn :dependency_analysis_version :model/Card :id card-id)))
@@ -250,8 +250,8 @@
                  (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})
                  (is (some #(and (= "Dependency calculation failed" (ex-message (:e %)))
                                  (= :error (:level %))
-                                 (= :card (get-in (:context %) [:entity-type]))
-                                 (= card-id (get-in (:context %) [:entity-id])))
+                                 (= :card (-> % :context :entity-type))
+                                 (= card-id (-> % :context :entity-id)))
                            (messages)))
                  (is (= models.dependency/current-dependency-analysis-version
                         (t2/select-one-fn :dependency_analysis_version :model/Card :id card-id)))
