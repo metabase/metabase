@@ -68,4 +68,8 @@
   :sensitive? true
   :feature    :metabot-v3
   :export?    false
-  :audit      :no-value)
+  :audit      :no-value
+  :setter     (fn [new-value]
+                (when (seq new-value)
+                  ((requiring-resolve 'metabase-enterprise.metabot-v3.api.slackbot/validate-bot-token!) new-value))
+                (setting/set-value-of-type! :string :metabot-slack-bot-token new-value)))

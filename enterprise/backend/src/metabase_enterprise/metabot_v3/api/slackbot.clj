@@ -61,6 +61,35 @@
       :body
       (json/decode true)))
 
+(def ^:private slack-token-error-codes
+  "Error codes from Slack that indicate an invalid or revoked token."
+  #{"invalid_auth" "account_inactive" "token_revoked" "token_expired" "not_authed"})
+
+(defn validate-bot-token!
+  "Validate a Slack bot token using the auth.test endpoint.
+   Throws an exception with appropriate status code if validation fails:
+   - 400 for invalid/revoked tokens
+   - 502 for Slack API errors (e.g., Slack is down)
+   Returns the response map on success."
+  [token]
+  (try
+    (let [response (slack-post-json {:token token} "/auth.test" {})]
+      (if (:ok response)
+        response
+        (let [error-code (:error response)
+              invalid-token? (slack-token-error-codes error-code)]
+          (throw (ex-info (if invalid-token?
+                            (tru "Invalid Slack bot token: {0}" error-code)
+                            (tru "Slack API error: {0}" error-code))
+                          {:status-code (if invalid-token? 400 502)
+                           :error-code error-code})))))
+    (catch clojure.lang.ExceptionInfo e
+      (throw e))
+    (catch Exception e
+      (throw (ex-info (tru "Unable to connect to Slack API: {0}" (.getMessage e))
+                      {:status-code 502}
+                      e)))))
+
 (defn- fetch-thread
   "Fetch an entire full Slack thread"
   [client message]
