@@ -93,7 +93,7 @@ export function getTransformRunName(run: TransformRun): string {
   return run.transform?.name ?? t`Unknown transform`;
 }
 
-export function isErrorStatus(status: TransformRunStatus) {
+export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
 }
 
