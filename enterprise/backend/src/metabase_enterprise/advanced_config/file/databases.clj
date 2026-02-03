@@ -76,7 +76,7 @@
       (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
         ;; TODO: should be done automatically
-        (t2/delete! :model/Transform :db_id existing-database-id)
+        (t2/delete! :model/Transform :source_database_id existing-database-id)
         (t2/delete! :model/Database existing-database-id)))
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
