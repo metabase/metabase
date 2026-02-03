@@ -595,6 +595,7 @@ const DashboardSubscriptionsSidebarConnected = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
 )(DashboardSubscriptionsSidebarInner);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DashboardSubscriptionsSidebar() {
   const { dashboard, setSharing } = useDashboardContext();
 

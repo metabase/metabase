@@ -74,30 +74,14 @@ export function entityPickerModalLevel(level) {
  * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("a");
-}
-
-export function entityPickerModalTab(name) {
-  return cy.findAllByRole("tab").filter(`:contains(${name})`);
-}
-
-// displays at least these tabs:
-export function shouldDisplayTabs(tabs) {
-  tabs.forEach((tab) => {
-    entityPickerModalTab(tab).should("exist");
-  });
-}
-
-export function tabsShouldBe(selected, tabs) {
-  cy.log(tabs);
-  cy.findAllByRole("tab").should("have.length", tabs.length);
-  tabs.forEach((tab) => {
-    if (tab === selected) {
-      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
-    } else {
-      entityPickerModalTab(tab).should("exist");
-    }
-  });
+  return (
+    entityPickerModalLevel(level)
+      // in the recents and search results, the items look like: [collection name] [parent collection name]
+      // which makes matching difficult as you may inadvertently match the parent collection name
+      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
+      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
+      .parents("a")
+  );
 }
 
 export function collectionOnTheGoModal() {
@@ -321,6 +305,8 @@ export const moveDnDKitListElement = (
   { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
 ) => {
   const selector = new RegExp(dataTestId);
+  const getElement = () =>
+    cy.findAllByTestId(selector).should("have.length.gt", 1).eq(startIndex);
 
   const getCenter = ($el) => {
     const { x, y, width, height } = $el.getBoundingClientRect();
@@ -334,9 +320,7 @@ export const moveDnDKitListElement = (
     const dragPoint = getCenter(dragEl);
     const dropPoint = getCenter(dropEl);
 
-    cy.wrap(dragEl).as("dragElement");
-
-    moveDnDKitElementByAlias("@dragElement", {
+    moveDnDKitElementByGetter(getElement, {
       vertical: dropPoint.clientY - dragPoint.clientY,
       horizontal: dropPoint.clientX - dragPoint.clientX,
       onBeforeDragEnd,
@@ -353,29 +337,45 @@ export const moveDnDKitListElement = (
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
-export const moveDnDKitElementByAlias = (
-  alias,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
-) => {
+export const moveDnDKitElementByAlias = (alias, options) => {
   // This function queries alias before triggering every event to avoid running into "element was removed from the DOM"
   // error caused by node remounting https://on.cypress.io/element-has-detached-from-dom
-  cy.get(alias)
+  const getElement = () => cy.get(alias);
+  return moveDnDKitElementByGetter(getElement, options);
+};
+
+/**
+ * Moves a dnd-kit draggable element by a specified offset using a function that returns the element.
+ *
+ * @param {() => Cypress.Chainable} getElement - A function that returns the element to drag
+ * @param {Object} options
+ * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
+ * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
+ */
+const moveDnDKitElementByGetter = (
+  getElement,
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
+) => {
+  getElement()
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200);
+
   // This initial move needs to be greater than the activation constraint
   // of the pointer sensor
-  cy.get(alias)
+  getElement()
     .trigger("pointermove", 20, 20, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200);
-  cy.get(alias)
+
+  getElement()
     .trigger("pointermove", horizontal, vertical, {
       force: true,
       isPrimary: true,

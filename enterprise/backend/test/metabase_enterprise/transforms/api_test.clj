@@ -1679,3 +1679,200 @@
                                                                  :target-incremental-strategy {:type "append"}}})]
                     (is (some? (:id response))
                         "Should accept column not in extracted metadata, allowing text input fallback")))))))))))
+
+;;; ------------------------------------------------------------
+;;; Run List Sorting
+;;; ------------------------------------------------------------
+
+(deftest get-runs-sort-by-transform-name-test
+  (testing "GET /api/ee/transform/run - sort by transform-name"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-b-id :id} {:name "Transform B"}
+                     :model/Transform    {transform-a-id :id} {:name "Transform A"}
+                     :model/TransformRun {run-b-id :id}       {:transform_id transform-b-id}
+                     :model/TransformRun {run-a-id :id}       {:transform_id transform-a-id}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "transform-name"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-a-id transform-b-id])]
+              (is (= (cond-> [run-a-id run-b-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-stable-test
+  (testing "GET /api/ee/transform/run - sorting is stable when values are equal (tiebreaker by :id)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-1-id :id} {:name "Same Name"}
+                     :model/Transform    {transform-2-id :id} {:name "Same Name"}
+                     :model/TransformRun {run-1-id :id}       {:transform_id transform-1-id}
+                     :model/TransformRun {run-2-id :id}       {:transform_id transform-2-id}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "transform-name"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-1-id transform-2-id])]
+              (is (= (cond-> [run-1-id run-2-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-by-start-time-test
+  (testing "GET /api/ee/transform/run - sort by start-time"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id} {}
+                     :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
+                                                               :start_time   (parse-instant "2025-01-01T00:00:00")}
+                     :model/TransformRun {later-run-id :id}   {:transform_id transform-id
+                                                               :start_time   (parse-instant "2025-01-02T00:00:00")}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "start-time"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-id])]
+              (is (= (cond-> [earlier-run-id later-run-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-by-end-time-test
+  (testing "GET /api/ee/transform/run - sort by end-time"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id} {}
+                     :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
+                                                               :end_time     (parse-instant "2025-01-01T00:00:00")}
+                     :model/TransformRun {later-run-id :id}   {:transform_id transform-id
+                                                               :end_time     (parse-instant "2025-01-02T00:00:00")}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "end-time"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-id])]
+              (is (= (cond-> [earlier-run-id later-run-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-by-run-method-test
+  (testing "GET /api/ee/transform/run - sort by run-method (translated names)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id}   {}
+                     ;; "Manual" < "Schedule"
+                     :model/TransformRun {manual-run-id :id}   {:transform_id transform-id :run_method "manual"}
+                     :model/TransformRun {schedule-run-id :id} {:transform_id transform-id :run_method "cron"}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "run-method"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-id])]
+              (is (= (cond-> [manual-run-id schedule-run-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-by-status-test
+  (testing "GET /api/ee/transform/run - sort by status (translated names)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform    {transform-id :id}        {}
+                     ;; Sorted by translated name: "Canceled" < "Canceling" < "Failed" < "In progress" < "Success" < "Timeout"
+                     :model/TransformRun {canceled-run-id :id}     {:transform_id transform-id :status "canceled"}
+                     :model/TransformRun {canceling-run-id :id}    {:transform_id transform-id :status "canceling"}
+                     :model/TransformRun {failed-run-id :id}       {:transform_id transform-id :status "failed"}
+                     :model/TransformRun {in-progress-run-id :id}  {:transform_id transform-id :status "started"
+                                                                    :is_active    true}
+                     :model/TransformRun {success-run-id :id}      {:transform_id transform-id :status "succeeded"}
+                     :model/TransformRun {timeout-run-id :id}      {:transform_id transform-id :status "timeout"}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "status"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-id])]
+              (is (= (cond-> [canceled-run-id canceling-run-id failed-run-id
+                              in-progress-run-id success-run-id timeout-run-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-by-transform-tags-test
+  (testing "GET /api/ee/transform/run - sort by transform-tags (first tag name)"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/TransformTag          {tag-a-id :id}       {:name "Tag A"}
+                     :model/TransformTag          {tag-b-id :id}       {:name "Tag B"}
+                     :model/TransformTag          {tag-ignored-id :id} {:name "Tag Ignored"}
+                     ;; Transform with tags "Tag A" (pos 0) and "Tag Ignored" (pos 1) — sorted by first tag "Tag A"
+                     :model/Transform             {transform-a-id :id} {:name "Transform A"}
+                     :model/TransformTransformTag _                    {:transform_id transform-a-id :tag_id tag-a-id       :position 0}
+                     :model/TransformTransformTag _                    {:transform_id transform-a-id :tag_id tag-ignored-id :position 1}
+                     ;; Transform with tag "Tag B" (pos 0) — sorted by first tag "Tag B"
+                     :model/Transform             {transform-b-id :id} {:name "Transform B"}
+                     :model/TransformTransformTag _                    {:transform_id transform-b-id :tag_id tag-b-id :position 0}
+                     :model/TransformRun          {run-a-id :id}       {:transform_id transform-a-id}
+                     :model/TransformRun          {run-b-id :id}       {:transform_id transform-b-id}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "transform-tags"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-a-id transform-b-id])]
+              (is (= (cond-> [run-a-id run-b-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))
+
+(deftest get-runs-sort-by-built-in-transform-tags-test
+  (testing "GET /api/ee/transform/run - sort by built-in transform-tags (translated names)"
+    (mt/with-premium-features #{:transforms}
+      ;; Translated names alphabetically: "daily" < "hourly" < "monthly" < "weekly"
+      (mt/with-temp [:model/TransformTag {tag-daily-id :id}
+                     {:name "daily" :built_in_type "daily"}
+
+                     :model/TransformTag {tag-hourly-id :id}
+                     {:name "hourly" :built_in_type "hourly"}
+
+                     :model/TransformTag {tag-monthly-id :id}
+                     {:name "monthly" :built_in_type "monthly"}
+
+                     :model/TransformTag {tag-weekly-id :id}
+                     {:name "weekly" :built_in_type "weekly"}
+
+                     :model/Transform {transform-daily-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-daily-id
+                                                     :tag_id       tag-daily-id
+                                                     :position     0}
+
+                     :model/Transform {transform-hourly-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-hourly-id
+                                                     :tag_id       tag-hourly-id
+                                                     :position     0}
+
+                     :model/Transform {transform-monthly-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-monthly-id
+                                                     :tag_id       tag-monthly-id
+                                                     :position     0}
+
+                     :model/Transform {transform-weekly-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform-weekly-id
+                                                     :tag_id       tag-weekly-id
+                                                     :position     0}
+
+                     :model/TransformRun {daily-run-id :id}
+                     {:transform_id transform-daily-id}
+
+                     :model/TransformRun {hourly-run-id :id}
+                     {:transform_id transform-hourly-id}
+
+                     :model/TransformRun {monthly-run-id :id}
+                     {:transform_id transform-monthly-id}
+
+                     :model/TransformRun {weekly-run-id :id}
+                     {:transform_id transform-weekly-id}]
+        (doseq [sort-direction [:asc :desc]]
+          (testing (str sort-direction)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                                 :sort_column "transform-tags"
+                                                 :sort_direction sort-direction
+                                                 :transform_ids [transform-daily-id transform-hourly-id
+                                                                 transform-monthly-id transform-weekly-id])]
+              (is (= (cond-> [daily-run-id hourly-run-id monthly-run-id weekly-run-id]
+                       (= sort-direction :desc) reverse)
+                     (->> response :data (map :id)))))))))))

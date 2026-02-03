@@ -803,7 +803,6 @@ describe("scenarios > question > filter", () => {
       .findByLabelText(/Where do you want to save this/)
       .click();
     H.pickEntity({
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.entityPickerModal().findByText("Select this collection").click();

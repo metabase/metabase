@@ -9,9 +9,8 @@
   position: relative;
   color: var(--mb-color-text-primary);
 
-  &:hover,
-  &.selected {
-    background-color: var(--mb-color-brand-light);
+  &:hover {
+    background-color: var(--mb-color-background-hover);
     color: var(--mb-color-brand);
 
     .icon {

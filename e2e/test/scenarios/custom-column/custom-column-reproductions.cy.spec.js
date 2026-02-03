@@ -1302,7 +1302,7 @@ describe("issue 49305", () => {
     H.saveQuestion(
       "49305 Base question",
       { wrapId: true },
-      { tab: "Browse", path: ["Our analytics"], select: true },
+      { path: ["Our analytics"], select: true },
     );
 
     cy.get("@questionId").then((id) => {
