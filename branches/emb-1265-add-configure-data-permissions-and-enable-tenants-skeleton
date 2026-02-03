@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "7abfb8753f80c225d768242d798f4cea22458c23"
+    "hash": "4df94bd3589c23ba7b3018b97e5600583d0fbc8a"
   },
   "upstream": {
     "branch": "emb-1265-add-configure-data-permissions-and-enable-tenants-skeleton"
