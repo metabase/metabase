@@ -270,35 +270,35 @@
               (format "%s/%s should return [[nil nil a] [nil nil b]], got %s"
                       (name dialect) (name op-type) normalized)))))))
 
-#_(def ^:private set-operation->returned-columns
-    {:union          ["id" "name"]
-     :union-all      ["id" "name"]
-     :intersect      ["id"]
-     :except         ["id"]
-     :nested-union   ["id"]
-     :cte-with-union ["id"]})
+(def ^:private set-operation->returned-columns
+  {:union          ["id" "name"]
+   :union-all      ["id" "name"]
+   :intersect      ["id"]
+   :except         ["id"]
+   :nested-union   ["id"]
+   :cte-with-union ["id"]})
 
-#_(deftest ^:parallel set-operation-validate-query-test
-    (testing "Set operations validate correctly across dialects"
-      (doseq [[dialect ops] dialect->set-operation->query
-              [op-type sql] ops]
-        (testing (str "dialect: " (name dialect) " - " (name op-type))
-          (let [result (sql-parsing/validate-query (name dialect) sql "public" {})]
-            (is (= :ok (:status result))
-                (format "%s/%s should validate OK, got %s"
-                        (name dialect) (name op-type) result)))))))
+(deftest ^:parallel set-operation-validate-query-test
+  (testing "Set operations validate correctly across dialects"
+    (doseq [[dialect ops] dialect->set-operation->query
+            [op-type sql] ops]
+      (testing (str "dialect: " (name dialect) " - " (name op-type))
+        (let [result (sql-parsing/validate-query (name dialect) sql "public" {})]
+          (is (= :ok (:status result))
+              (format "%s/%s should validate OK, got %s"
+                      (name dialect) (name op-type) result)))))))
 
-#_(deftest ^:parallel set-operation-returned-columns-lineage-test
-    (testing "Set operations return correct column lineage across dialects"
-      (doseq [[dialect ops] dialect->set-operation->query
-              [op-type sql] ops
-              :let [expected (get set-operation->returned-columns op-type)]]
-        (testing (str "dialect: " (name dialect) ", operation: " (name op-type))
-          (let [result (sql-parsing/returned-columns-lineage (name dialect) sql "public" {})
-                columns (sort (map (comp u/lower-case-en first) result))]
-            (is (= expected columns)
-                (format "%s %s should return %s, got %s"
-                        (name dialect) (name op-type) (pr-str expected) columns)))))))
+(deftest ^:parallel set-operation-returned-columns-lineage-test
+  (testing "Set operations return correct column lineage across dialects"
+    (doseq [[dialect ops] dialect->set-operation->query
+            [op-type sql] ops
+            :let [expected (get set-operation->returned-columns op-type)]]
+      (testing (str "dialect: " (name dialect) ", operation: " (name op-type))
+        (let [result (sql-parsing/returned-columns-lineage (name dialect) sql "public" {})
+              columns (sort (map (comp u/lower-case-en first) result))]
+          (is (= expected columns)
+              (format "%s %s should return %s, got %s"
+                      (name dialect) (name op-type) (pr-str expected) columns)))))))
 
 ;;; -------------------------------------------- SQL Validation Tests ------------------------------------------------
 

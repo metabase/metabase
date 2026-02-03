@@ -64,7 +64,7 @@
             (def ttt t)
             (throw t))))))
 
-;; copied, OK
+;; copied, OK most of these cases are extracted from `enterprise/backend/test/metabase_enterprise/dependencies/native_validation_test.clj`
 #_(deftest ^:parallel validate-native-query-with-subquery-columns-test
     (testing "validate-native-query should detect invalid columns in subqueries"
       (let [mp (deps.tu/default-metadata-provider)
@@ -97,43 +97,6 @@
           (validates? mp driver 17 #{(lib/missing-column-error "EMAIL")}
                       (fn [query]
                         (sql-tools.sqlglot/validate-query driver query)))))))
-
-#_(deftest www-returned-columns-001-test
-    (mt/test-driver
-      :postgres
-      (let [mp (mt/metadata-provider)
-            query (lib/native-query mp "select * from orders")]
-        (is (=? {:base-type :type/Float,
-                 :effective-type :type/Float,
-                 :semantic-type nil,
-                 :database-type "float8",
-                 :lib/type :metadata/column,
-                 :lib/desired-column-alias "total",
-                 :name "total",
-                 :display-name "Total"}
-                (try
-                  (first @(def ss (#'sql-tools.sqlglot/returned-columns driver/*driver* query)))
-                  (catch Throwable t
-                    (def ttt t)
-                    (throw t))))))))
-
-#_(deftest schema-001-test
-    (mt/test-driver
-      :postgres
-      (let [mp (mt/metadata-provider)
-            query (lib/native-query mp "select * from orders")]
-        (is (=? {"public"
-                 {"orders"
-                  {"total" "UNKNOWN",
-                   "product_id" "UNKNOWN",
-                   "user_id" "UNKNOWN",
-                   "discount" "UNKNOWN",
-                   "id" "UNKNOWN",
-                   "quantity" "UNKNOWN",
-                   "subtotal" "UNKNOWN",
-                   "created_at" "UNKNOWN",
-                   "tax" "UNKNOWN"}}}
-                @(def ss (#'sql-tools.sqlglot/sqlglot-schema :postgres query)))))))
 
 ;;;; referenced-tables
 
