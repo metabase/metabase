@@ -9,7 +9,6 @@ import {
   Stack,
   Text,
   Title,
-  type TreeNodeData,
   TreeTable,
   type TreeTableColumnDef,
   useTreeTableInstance,
@@ -122,10 +121,11 @@ function getFieldStats(field: TransformInspectField): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-type FieldTreeNode = TreeNodeData & {
+type FieldTreeNode = {
   id: string;
-  name: string;
   type: "table" | "field";
+  tableName: string;
+  fieldName?: string;
   fieldCount?: number;
   baseType?: string;
   stats?: string | null;
@@ -138,103 +138,50 @@ type TableWithFields = {
   fields: TransformInspectField[];
 };
 
-const buildTableNode = (table: TableWithFields): FieldTreeNode => {
-  const tableKey = table.table_id ?? table.table_name;
-  return {
-    id: `table-${tableKey}`,
-    name: table.table_name,
-    type: "table" as const,
-    fieldCount: table.fields.length,
-    children: table.fields.map((field) => ({
-      id: `field-${tableKey}-${field.name}`,
-      name: field.display_name ?? field.name,
-      type: "field" as const,
-      baseType: formatType(field),
-      stats: getFieldStats(field),
-    })),
-  };
+const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
+  return tables.map((table) => {
+    const tableKey = table.table_id ?? table.table_name;
+    return {
+      id: `table-${tableKey}`,
+      type: "table" as const,
+      tableName: table.table_name,
+      fieldCount: table.fields.length,
+      children: table.fields.map((field) => ({
+        id: `field-${tableKey}-${field.name}`,
+        type: "field" as const,
+        tableName: table.table_name,
+        fieldName: field.display_name ?? field.name,
+        baseType: formatType(field),
+        stats: getFieldStats(field),
+      })),
+    };
+  });
 };
 
 export const FieldInfoSection = ({
   sources,
   target,
 }: FieldInfoSectionProps) => {
-  const sourceTreeData = useMemo(() => sources.map(buildTableNode), [sources]);
-  const targetTreeData = useMemo(
-    () => (target ? [buildTableNode(target)] : []),
+  const sourceData = useMemo(() => buildTableNodes(sources), [sources]);
+  const targetData = useMemo(
+    () => (target ? buildTableNodes([target]) : []),
     [target],
   );
 
   const columns: TreeTableColumnDef<FieldTreeNode>[] = useMemo(
-    () => [
-      {
-        id: "name",
-        header: t`Field`,
-        minWidth: "auto",
-        cell: ({ row }) => {
-          const node = row.original;
-          if (node.type === "table") {
-            return (
-              <Text size="sm" fw={600}>
-                {node.name}
-                <Text size="xs" c="text-tertiary" ml="xs">
-                  ({node.fieldCount})
-                </Text>
-              </Text>
-            );
-          }
-          return (
-            <Text size="sm" fw={500}>
-              {node.name}
-            </Text>
-          );
-        },
-      },
-      {
-        id: "type",
-        header: t`Type`,
-        width: 100,
-        cell: ({ row }) => {
-          const node = row.original;
-          if (node.type === "field") {
-            return (
-              <Text size="xs" c="text-tertiary" ta="right">
-                {node.baseType}
-              </Text>
-            );
-          }
-          return null;
-        },
-      },
-      {
-        id: "stats",
-        header: t`Stats`,
-        width: 220,
-        cell: ({ row }) => {
-          const node = row.original;
-          if (node.type === "field" && node.stats) {
-            return (
-              <Text size="xs" c="text-tertiary" ta="right">
-                {node.stats}
-              </Text>
-            );
-          }
-          return null;
-        },
-      },
-    ],
+    () => getColumns(),
     [],
   );
 
   const sourceInstance = useTreeTableInstance({
-    data: sourceTreeData,
+    data: sourceData,
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
   });
 
   const targetInstance = useTreeTableInstance({
-    data: targetTreeData,
+    data: targetData,
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
@@ -280,3 +227,75 @@ export const FieldInfoSection = ({
     </Accordion>
   );
 };
+
+function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
+  return [
+    {
+      id: "table",
+      header: t`Table`,
+      width: 150,
+      cell: ({ row }) => {
+        const node = row.original;
+        if (node.type === "table") {
+          return (
+            <Text size="sm">
+              {node.tableName}
+              <Text span size="xs" c="text-tertiary" ml="xs" display="inline">
+                ({node.fieldCount})
+              </Text>
+            </Text>
+          );
+        }
+        return null;
+      },
+    },
+    {
+      id: "field",
+      header: t`Field`,
+      minWidth: "auto",
+      cell: ({ row }) => {
+        const node = row.original;
+        if (node.type === "field") {
+          return (
+            <Text size="sm" fw={500}>
+              {node.fieldName}
+            </Text>
+          );
+        }
+        return null;
+      },
+    },
+    {
+      id: "type",
+      header: t`Type`,
+      width: 100,
+      cell: ({ row }) => {
+        const node = row.original;
+        if (node.type === "field") {
+          return (
+            <Text size="xs" c="text-tertiary" ta="right">
+              {node.baseType}
+            </Text>
+          );
+        }
+        return null;
+      },
+    },
+    {
+      id: "stats",
+      header: t`Stats`,
+      width: 220,
+      cell: ({ row }) => {
+        const node = row.original;
+        if (node.type === "field" && node.stats) {
+          return (
+            <Text size="xs" c="text-tertiary" ta="right">
+              {node.stats}
+            </Text>
+          );
+        }
+        return null;
+      },
+    },
+  ];
+}
