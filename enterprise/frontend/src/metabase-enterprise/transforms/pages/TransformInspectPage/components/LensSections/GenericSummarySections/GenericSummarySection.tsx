@@ -21,7 +21,6 @@ import type {
 
 import type { CardStats } from "../../../types";
 
-import { FieldInfoSection } from "./components/FieldInfoSection";
 import { RowCountCard } from "./components/RowCountCard";
 
 type GenericSummarySectionProps = {
@@ -131,14 +130,6 @@ export const GenericSummarySection = ({
             <TreeTable instance={outputInstance} />
           </Card>
         </SimpleGrid>
-      </Box>
-      <Box
-        bg="background-tertiary"
-        bdrs="md"
-        p="md"
-        bd="1px solid var(--mb-color-border)"
-      >
-        <FieldInfoSection sources={sources} target={target} />
       </Box>
     </Stack>
   );
