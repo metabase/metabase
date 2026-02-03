@@ -499,7 +499,7 @@
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
               enabled-clause
-              (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
+              (when-not (api/is-data-analyst?)
                 [:=
                  [:inline 0]
                  [:inline 1]])]}))
