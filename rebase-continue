@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-1266-add-backend-completion-checks-for-data-segregation-and"
+    }
+  ]
 }
