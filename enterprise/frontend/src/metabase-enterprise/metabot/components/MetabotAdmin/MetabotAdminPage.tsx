@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { IndexRoute, Route } from "react-router";
-import { push } from "react-router-redux";
+import { replace } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
@@ -128,7 +128,9 @@ function MetabotNavPane() {
     const hasMetabotId = metabots?.some((metabot) => metabot.id === metabotId);
 
     if (!hasMetabotId && metabots?.length) {
-      dispatch(push(`/admin/metabot/${metabots[0]?.id}`));
+      // Use replace to avoid breaking the back button - `/admin/metabot` (without ID)
+      // is not a standalone page, so we don't want it in browser history
+      dispatch(replace(`/admin/metabot/${metabots[0]?.id}`));
     }
   }, [metabots, metabotId, dispatch]);
 
