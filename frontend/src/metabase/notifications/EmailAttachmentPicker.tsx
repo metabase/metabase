@@ -96,27 +96,20 @@ export function EmailAttachmentPicker({
     new Set(),
   );
 
-  // Use refs to access latest state in updatePulseCards without stale closures
-  const isFormattingEnabledRef = useRef(isFormattingEnabled);
-  const isPivotingEnabledRef = useRef(isPivotingEnabled);
-  const isAttachmentOnlyRef = useRef(isAttachmentOnly);
-
-  useEffect(() => {
-    isFormattingEnabledRef.current = isFormattingEnabled;
-  }, [isFormattingEnabled]);
-  useEffect(() => {
-    isPivotingEnabledRef.current = isPivotingEnabled;
-  }, [isPivotingEnabled]);
-  useEffect(() => {
-    isAttachmentOnlyRef.current = isAttachmentOnly;
-  }, [isAttachmentOnly]);
-
   const updatePulseCards = useCallback(
     /*
      * Reaches into the parent component (via setPulse) to update its pulsecard's include_{csv,xls} values
      * based on this component's state.
      */
-    (attachmentType: AttachmentType, cardIds: Set<string>) => {
+    (
+      attachmentType: AttachmentType,
+      cardIds: Set<string>,
+      options: {
+        isFormattingEnabled: boolean;
+        isPivotingEnabled: boolean;
+        isAttachmentOnly: boolean;
+      },
+    ) => {
       const isXls = attachmentType === "xlsx";
       const isCsv = attachmentType === "csv";
 
@@ -128,15 +121,14 @@ export function EmailAttachmentPicker({
           ...card,
           include_csv: cardIds.has(getCardIdPair(card)) && isCsv,
           include_xls: cardIds.has(getCardIdPair(card)) && isXls,
-          format_rows: isCsv && isFormattingEnabledRef.current,
-          pivot_results:
-            card.display === "pivot" && isPivotingEnabledRef.current,
+          format_rows: isCsv && options.isFormattingEnabled,
+          pivot_results: card.display === "pivot" && options.isPivotingEnabled,
         })),
         channels: pulse.channels.map((channel) => ({
           ...channel,
           details: {
             ...channel.details,
-            attachment_only: isAttachmentOnlyRef.current,
+            attachment_only: options.isAttachmentOnly,
           },
         })),
       });
@@ -222,14 +214,23 @@ export function EmailAttachmentPicker({
     (includeAttachment: boolean) => {
       if (!includeAttachment) {
         const emptySet = new Set<string>();
-        updatePulseCards(selectedAttachmentType, emptySet);
         setSelectedCardIds(emptySet);
+        updatePulseCards(selectedAttachmentType, emptySet, {
+          isFormattingEnabled,
+          isPivotingEnabled,
+          isAttachmentOnly: false,
+        });
       }
 
       setIsEnabled(includeAttachment);
       setIsAttachmentOnly((prev) => (includeAttachment ? prev : false));
     },
-    [selectedAttachmentType, updatePulseCards],
+    [
+      selectedAttachmentType,
+      updatePulseCards,
+      isFormattingEnabled,
+      isPivotingEnabled,
+    ],
   );
 
   const setAttachmentType = useCallback(
@@ -238,80 +239,132 @@ export function EmailAttachmentPicker({
      */
     (format: ExportFormat) => {
       if (format === "csv" || format === "xlsx") {
-        updatePulseCards(format, selectedCardIds);
+        updatePulseCards(format, selectedCardIds, {
+          isFormattingEnabled,
+          isPivotingEnabled,
+          isAttachmentOnly,
+        });
       }
     },
-    [selectedCardIds, updatePulseCards],
+    [
+      selectedCardIds,
+      updatePulseCards,
+      isFormattingEnabled,
+      isPivotingEnabled,
+      isAttachmentOnly,
+    ],
   );
 
   const onToggleCard = useCallback(
     (card: SubscriptionSupportingCard) => {
-      setSelectedCardIds((prev) => {
-        const id = getCardIdPair(card);
-        const attachmentType =
-          getAttachmentTypeFor(cardIdsToCards(prev)) || selectedAttachmentType;
+      const id = getCardIdPair(card);
+      const attachmentType =
+        getAttachmentTypeFor(cardIdsToCards(selectedCardIds)) ||
+        selectedAttachmentType;
 
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
+      const next = new Set(selectedCardIds);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
 
-        updatePulseCards(attachmentType, next);
-        return next;
+      setSelectedCardIds(next);
+      updatePulseCards(attachmentType, next, {
+        isFormattingEnabled,
+        isPivotingEnabled,
+        isAttachmentOnly,
       });
     },
-    [cardIdsToCards, selectedAttachmentType, updatePulseCards],
+    [
+      cardIdsToCards,
+      selectedCardIds,
+      selectedAttachmentType,
+      updatePulseCards,
+      isFormattingEnabled,
+      isPivotingEnabled,
+      isAttachmentOnly,
+    ],
   );
 
   const onToggleAll = useCallback(() => {
     /*
      * Called when (de)select-all checkbox is clicked
      */
-    setSelectedCardIds((prev) => {
-      const attachmentType =
-        getAttachmentTypeFor(cardIdsToCards(prev)) || selectedAttachmentType;
-      const newSelectedCardIds =
-        cards.length === prev.size ? new Set<string>() : allCardIds;
+    const attachmentType =
+      getAttachmentTypeFor(cardIdsToCards(selectedCardIds)) ||
+      selectedAttachmentType;
+    const newSelectedCardIds =
+      cards.length === selectedCardIds.size ? new Set<string>() : allCardIds;
 
-      updatePulseCards(attachmentType, newSelectedCardIds);
-      return newSelectedCardIds;
+    setSelectedCardIds(newSelectedCardIds);
+    updatePulseCards(attachmentType, newSelectedCardIds, {
+      isFormattingEnabled,
+      isPivotingEnabled,
+      isAttachmentOnly,
     });
   }, [
     allCardIds,
     cardIdsToCards,
     cards.length,
+    selectedCardIds,
     selectedAttachmentType,
     updatePulseCards,
+    isFormattingEnabled,
+    isPivotingEnabled,
+    isAttachmentOnly,
   ]);
 
   const onToggleFormatting = useCallback(() => {
-    setIsFormattingEnabled((prev) => {
-      const next = !prev;
-      isFormattingEnabledRef.current = next;
-      updatePulseCards(selectedAttachmentType, selectedCardIds);
-      return next;
+    const newValue = !isFormattingEnabled;
+    setIsFormattingEnabled(newValue);
+    updatePulseCards(selectedAttachmentType, selectedCardIds, {
+      isFormattingEnabled: newValue,
+      isPivotingEnabled,
+      isAttachmentOnly,
     });
-  }, [selectedAttachmentType, selectedCardIds, updatePulseCards]);
+  }, [
+    selectedAttachmentType,
+    selectedCardIds,
+    updatePulseCards,
+    isFormattingEnabled,
+    isPivotingEnabled,
+    isAttachmentOnly,
+  ]);
 
   const onTogglePivoting = useCallback(() => {
-    setIsPivotingEnabled((prev) => {
-      const next = !prev;
-      isPivotingEnabledRef.current = next;
-      updatePulseCards(selectedAttachmentType, selectedCardIds);
-      return next;
+    const newValue = !isPivotingEnabled;
+    setIsPivotingEnabled(newValue);
+    updatePulseCards(selectedAttachmentType, selectedCardIds, {
+      isFormattingEnabled,
+      isPivotingEnabled: newValue,
+      isAttachmentOnly,
     });
-  }, [selectedAttachmentType, selectedCardIds, updatePulseCards]);
+  }, [
+    selectedAttachmentType,
+    selectedCardIds,
+    updatePulseCards,
+    isFormattingEnabled,
+    isPivotingEnabled,
+    isAttachmentOnly,
+  ]);
 
   const onToggleAttachmentOnly = useCallback(() => {
-    setIsAttachmentOnly((prev) => {
-      const next = !prev;
-      isAttachmentOnlyRef.current = next;
-      updatePulseCards(selectedAttachmentType, selectedCardIds);
-      return next;
+    const newValue = !isAttachmentOnly;
+    setIsAttachmentOnly(newValue);
+    updatePulseCards(selectedAttachmentType, selectedCardIds, {
+      isFormattingEnabled,
+      isPivotingEnabled,
+      isAttachmentOnly: newValue,
     });
-  }, [selectedAttachmentType, selectedCardIds, updatePulseCards]);
+  }, [
+    selectedAttachmentType,
+    selectedCardIds,
+    updatePulseCards,
+    isFormattingEnabled,
+    isPivotingEnabled,
+    isAttachmentOnly,
+  ]);
 
   return (
     <div>
