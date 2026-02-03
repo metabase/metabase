@@ -9,13 +9,13 @@
   decoupled from AppDb."
   (:require
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -58,9 +58,11 @@
                    {:schemas {}
                     :tables  {}}
                    ;; Strip out the numeric keys (table ids)
-                   (filter (comp vector? key) table-mapping))]
-    ;; We may need to set other options, like the case insensitivity (driver dependent)
-    (update-in source [:query :stages 0 :native] #(macaw/replace-names % remapping {:allow-unused? true}))))
+                   (filter (comp vector? key) table-mapping))
+        database-id (get-in source [:query :database])
+        driver      (some-> database-id (t2/select-one :model/Database) :engine)]
+    (update-in source [:query :stages 0 :native]
+               #(sql-tools/replace-names driver % remapping {:allow-unused? true}))))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))

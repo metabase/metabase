@@ -294,7 +294,7 @@
     (str parsed-query)))
 
 (defmethod sql-tools/replace-names-impl :macaw
-  [_parser driver sql-string replacements]
+  [_parser driver sql-string replacements opts]
   ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names
   ;; due to regex pattern handling. Omit it for now until Macaw is fixed.
-  (macaw/replace-names sql-string replacements (dissoc (macaw-options driver) :case-insensitive)))
+  (macaw/replace-names sql-string replacements (merge (dissoc (macaw-options driver) :case-insensitive) opts)))

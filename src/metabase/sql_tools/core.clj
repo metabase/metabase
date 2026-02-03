@@ -50,7 +50,7 @@
 
 (defmulti replace-names-impl
   "Parser specific implementation of [[replace-names]]. Do not use directly."
-  {:arglists '([parser driver sql-string replacements])}
+  {:arglists '([parser driver sql-string replacements opts])}
   #'parser-dispatch)
 
 (defn replace-names
@@ -61,9 +61,14 @@
    - :tables   - map of old table name -> new table name
    - :columns  - map of {:table t :column c} -> new column name
 
+   `opts` is an optional map with:
+   - :allow-unused? - if true, don't error when a replacement isn't used
+
    Returns the modified SQL string."
-  [driver sql-string replacements]
-  (replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements))
+  ([driver sql-string replacements]
+   (replace-names driver sql-string replacements {}))
+  ([driver sql-string replacements opts]
+   (replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
 
 (defmulti referenced-tables-raw-impl
   "Parser specific implementation of [[referenced-tables-raw]]. Do not use directly."

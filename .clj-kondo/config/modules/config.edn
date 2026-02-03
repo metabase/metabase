@@ -2458,6 +2458,7 @@
            query-processor
            request
            settings
+           sql-tools
            system
            util
            enterprise/transforms
