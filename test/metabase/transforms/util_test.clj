@@ -56,31 +56,13 @@
                   ;; Ignore cleanup errors
                   nil)))))))))
 
-(mt/deftest-oss is-temp-transform-tables-oss-test
-  (testing "tables with schema"
-    (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
-          table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
-      (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
-      (is (true? (transforms.util/is-temp-transform-table? table-without-schema))))))
-
-(deftest is-temp-transform-tables-ee-test
-  (testing "tables with schema"
-    (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
-          table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
-      (mt/with-premium-features #{:hosting}
-        (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
-        (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
-      (mt/with-premium-features #{}
-        (is (transforms.util/is-temp-transform-table? table-without-schema))
-        (is (transforms.util/is-temp-transform-table? table-with-schema)))
-      (mt/with-premium-features #{:hosting :transforms}
-        (is (transforms.util/is-temp-transform-table? table-without-schema))
-        (is (transforms.util/is-temp-transform-table? table-with-schema)))))
-
-  (testing "Ignores non-transform tables"
-    (mt/with-premium-features #{:transforms}
-      (is (false? (transforms.util/is-temp-transform-table? {:name :orders})))
-      (is (false? (transforms.util/is-temp-transform-table? {:name :public/orders}))))))
+(deftest is-temp-transform-tables-test
+  (mt/with-premium-features #{}
+    (testing "tables with schema"
+      (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
+            table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
+        (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
+        (is (true? (transforms.util/is-temp-transform-table? table-without-schema)))))))
 
 (deftest create-table-from-schema!-test
   (testing "create-table-from-schema! preserves column order from schema definition"

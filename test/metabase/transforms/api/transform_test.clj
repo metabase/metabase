@@ -114,8 +114,12 @@
               (is (nil? (:owner_email response))
                   "owner_email should be nil when owner_user_id is set")
               (is (= rasta-id (get-in response [:owner :id]))
-                  "Hydrated owner should match the specified user"))))
+                  "Hydrated owner should match the specified user"))))))))
 
+(deftest create-transform-with-external-email-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
         (testing "Creating a transform with external owner_email"
           (with-transform-cleanup! [table-name "owner_email_test"]
             (let [query (make-query "Gadget")
@@ -152,10 +156,8 @@
                 transform-id (:id created)
                 crowberto-id (mt/user->id :crowberto)
                 rasta-id (mt/user->id :rasta)]
-
             (testing "Initial owner is the creator"
               (is (= crowberto-id (:owner_user_id created))))
-
             (testing "Update owner to a different user"
               (let [updated (mt/user-http-request :crowberto :put 200
                                                   (format "transform/%s" transform-id)
@@ -163,7 +165,6 @@
                 (is (= rasta-id (:owner_user_id updated)))
                 (is (nil? (:owner_email updated)))
                 (is (= rasta-id (get-in updated [:owner :id])))))
-
             (testing "Update owner to external email"
               (let [updated (mt/user-http-request :crowberto :put 200
                                                   (format "transform/%s" transform-id)
@@ -172,7 +173,6 @@
                 (is (nil? (:owner_user_id updated)))
                 (is (= "new.owner@example.com" (:owner_email updated)))
                 (is (= {:email "new.owner@example.com"} (:owner updated)))))
-
             (testing "Clear owner by setting both to nil"
               (let [updated (mt/user-http-request :crowberto :put 200
                                                   (format "transform/%s" transform-id)
@@ -201,7 +201,6 @@
                                                                  :schema schema
                                                                  :name   table-name}})]
                     (is (= "mbql" (:source_type response))))))
-
               (testing "Native query transforms are detected as :native"
                 (with-transform-cleanup! [table-name "native_transform"]
                   (let [schema (get-test-schema)
@@ -233,7 +232,6 @@
                                                               :schema schema
                                                               :name   table-name}})]
                   (is (= "native" (:source_type created)))
-
                   (testing "Type automatically changes to mbql when updating to an MBQL query"
                     (let [updated (mt/user-http-request :lucky :put 200
                                                         (format "transform/%s" (:id created))
@@ -406,17 +404,14 @@
                       (testing "in POST /transform response"
                         (is (contains? created :source_readable))
                         (is (boolean? (:source_readable created))))
-
                       (testing "in GET /transform response"
                         (let [list-resp (mt/user-http-request :lucky :get 200 "transform")]
                           (is (every? #(contains? % :source_readable) list-resp))
                           (is (every? #(boolean? (:source_readable %)) list-resp))))
-
                       (testing "in GET /transform/:id response"
                         (let [get-resp (mt/user-http-request :lucky :get 200 (format "transform/%s" (:id created)))]
                           (is (contains? get-resp :source_readable))
                           (is (boolean? (:source_readable get-resp)))))
-
                       (testing "source_readable is true when user has database read permission"
                         (let [get-resp (mt/user-http-request :lucky :get 200 (format "transform/%s" (:id created)))]
                           (is (true? (:source_readable get-resp))
@@ -672,7 +667,6 @@
               (assert-run-count response 1)
               (assert-transform-ids response #{(:id transform1)})
               (is (= (:id run1) (-> response :data first :id)))))
-
           (testing "Filter by transform2 ID only returns transform2 runs"
             (let [response (mt/user-http-request :lucky :get 200 "transform/run"
                                                  :transform_ids [(:id transform2)])]
@@ -708,7 +702,6 @@
             (is (>= (count (:data response)) 2))
             (is (every? #(= "failed" (:status %))
                         (filter #(= (:id transform) (:transform_id %)) (:data response))))))
-
         (testing "Filter by 'succeeded' status returns only succeeded runs"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                :statuses ["succeeded"])]
@@ -883,7 +876,6 @@
                      :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag1) :position 0}
                      :model/TransformTransformTag _ {:transform_id (:id transform2) :tag_id (:id tag2) :position 1}
                      :model/TransformTransformTag _ {:transform_id (:id transform3) :tag_id (:id tag2) :position 0}
-
                      :model/TransformRun _run1 {:transform_id (:id transform1)}
                      :model/TransformRun _run2 {:transform_id (:id transform2)}
                      :model/TransformRun _run3 {:transform_id (:id transform3)}
@@ -969,13 +961,11 @@
                                                :transform_tag_ids [(:id tag1)])]
             (assert-run-count response 1)
             (assert-transform-ids response #{(:id transform1)})))
-
         (testing "Filter by transform1 ID and tag2 returns empty (transform1 doesn't have tag2)"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                :transform_ids [(:id transform1)]
                                                :transform_tag_ids [(:id tag2)])]
             (assert-run-count response 0)))
-
         (testing "Filter by both transform IDs and tag1 returns only transform1"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                :transform_ids [(:id transform1) (:id transform2)]
@@ -1039,7 +1029,6 @@
           (mt/user-http-request :rasta :put 403 (str "transform/" (:id transform))
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "transform/" (:id transform))))
-
         (testing "Data analysts can read transforms"
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/user-http-request :lucky :get 200 "transform")
@@ -1070,29 +1059,24 @@
                                                    {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
                 (is (= ["id" "price"] (:columns response))
                     "Should only return numeric (id, price) columns, filtering out text columns (name, category)")))
-
             (testing "Returns nil for invalid SQL"
               (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
                                                    {:query (make-native-query "SELECT * FORM invalid_table")})]
                 (is (nil? (:columns response)))))
-
             (testing "Extracts columns from query with aliases"
               (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
                                                    {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
                 (is (= ["product_id"] (:columns response))
                     "Should only return numeric column (id), filtering out text column (name)")))
-
             (testing "Filters columns by type - only returns numeric and temporal columns"
               (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
                                                    {:query (make-native-query "SELECT id, name, category, price, created_at FROM transforms_products")})]
                 (is (= ["id" "price" "created_at"] (:columns response))
                     "Should return numeric (id, price) and temporal (created_at) columns, filtering out text columns (name, category)")))
-
             (testing "Requires superuser permissions"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :post 403 "transform/extract-columns"
                                            {:query (make-native-query "SELECT * FROM transforms_products")}))))
-
             (testing "Returns 404 for non-existent database"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 "transform/extract-columns"
@@ -1109,35 +1093,29 @@
                                              {:query "SELECT id, name FROM products"})]
           (is (true? (:is_simple response)))
           (is (nil? (:reason response)))))
-
       (testing "Returns true for simple SELECT with WHERE clause"
         (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
                                              {:query "SELECT id, name FROM products WHERE category = 'Electronics'"})]
           (is (true? (:is_simple response)))))
-
       (testing "Returns true for simple SELECT with JOIN"
         (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
                                              {:query "SELECT p.id, p.name, c.name FROM products p JOIN categories c ON p.category_id = c.id"})]
           (is (true? (:is_simple response)))))
-
       (testing "Returns false for query with LIMIT"
         (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
                                              {:query "SELECT id, name FROM products LIMIT 10"})]
           (is (false? (:is_simple response)))
           (is (= "Contains a LIMIT" (:reason response)))))
-
       (testing "Returns false for query with OFFSET"
         (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
                                              {:query "SELECT id, name FROM products OFFSET 5"})]
           (is (false? (:is_simple response)))
           (is (= "Contains an OFFSET" (:reason response)))))
-
       (testing "Returns false for query with LIMIT and OFFSET"
         (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
                                              {:query "SELECT id, name FROM products LIMIT 10 OFFSET 5"})]
           (is (false? (:is_simple response)))
           (is (= "Contains a LIMIT" (:reason response)))))
-
       (testing "Returns false for query with CTE"
         (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
                                              {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
@@ -1281,17 +1259,14 @@
                            :model/TransformTag tag1 {:name "update-tag-1"}
                            :model/TransformTag tag2 {:name "update-tag-2"}
                            :model/TransformTag tag3 {:name "update-tag-3"}]
-
               (testing "Can add tags to transform"
                 (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
                                                     {:tag_ids [(:id tag1) (:id tag2)]})]
                   (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids updated))))))
-
               (testing "Can update tags on transform"
                 (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
                                                     {:tag_ids [(:id tag2) (:id tag3)]})]
                   (is (= [(:id tag2) (:id tag3)] (sort (:tag_ids updated))))))
-
               (testing "Can remove all tags from transform"
                 (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
                                                     {:tag_ids []})]
@@ -1314,11 +1289,9 @@
                            :model/TransformTag tag2 {:name "get-tag-2"}]
               ;; Add tags to transform
               (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
-
               (testing "Single transform returns tag_ids"
                 (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
                   (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids fetched))))))
-
               (testing "Transform without tags returns empty array"
                 (mt/with-temp [:model/Transform transform2 {:name "Transform Without Tags"
                                                             :source {:type "query"
@@ -1354,7 +1327,6 @@
             ;; Add tags to transforms
             (transform.model/update-transform-tags! (:id transform1) [(:id tag1)])
             (transform.model/update-transform-tags! (:id transform2) [(:id tag1) (:id tag2)])
-
             (testing "List endpoint returns all transforms with their tag_ids"
               (let [transforms (mt/user-http-request :lucky :get 200 "transform")
                     t1 (some #(when (= (:id %) (:id transform1)) %) transforms)
@@ -1464,14 +1436,12 @@
                                                      :models "transform"))]
               (is (= 1 (count items)))
               (is (= transform-id (:id (first items))))))
-
           (testing "Transform NOT returned when filtering for other models only"
             (let [items (:data (mt/user-http-request :crowberto :get 200
                                                      "collection/root/items"
                                                      :namespace "transforms"
                                                      :models "card"))]
               (is (empty? items))))
-
           (testing "Non-admin users don't see transforms"
             (let [items (->> (:data (mt/user-http-request :rasta :get 200
                                                           "collection/root/items"
