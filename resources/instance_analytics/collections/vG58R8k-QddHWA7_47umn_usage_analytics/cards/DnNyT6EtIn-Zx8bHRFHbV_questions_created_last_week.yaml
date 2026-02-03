@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_content
+table_id: [Internal Metabase Database, public, v_content]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,32 +21,22 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - created_at
-      - base-type: type/DateTimeWithLocalTZ
-        temporal-unit: week
+      - [Internal Metabase Database, public, v_content, created_at]
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week}
     filter:
     - and
     - - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_type
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_content, entity_type]
+        - {base-type: type/Text}
       - question
     - - time-interval
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - created_at
-        - base-type: type/DateTimeWithLocalTZ
+        - [Internal Metabase Database, public, v_content, created_at]
+        - {base-type: type/DateTimeWithLocalTZ}
       - -2
       - week
     joins:
@@ -57,18 +44,11 @@ dataset_query:
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - creator_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_content, creator_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Group Members - Creator
+        - [Internal Metabase Database, public, v_group_members, user_id]
+        - {base-type: type/Integer, join-alias: Group Members - Creator}
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     source-table: AxSackBiyXVRUzM_TyyQY
@@ -81,18 +61,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - created_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: week
+  - [Internal Metabase Database, public, v_content, created_at]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - created_at
+  id: [Internal Metabase Database, public, v_content, created_at]
   name: created_at
   nfc_path: null
   parent_id: null
@@ -100,35 +72,25 @@ result_metadata:
   semantic_type: type/CreationTimestamp
   settings: null
   source: breakout
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
+  table_id: [Internal Metabase Database, public, v_content]
   unit: week
   visibility_type: normal
 - base_type: type/Integer
   display_name: Count
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: count
   semantic_type: type/Quantity
   source: aggregation
 visualization_settings:
   column_settings: null
-  graph.dimensions:
-  - created_at
-  - group_name
-  graph.metrics:
-  - count
-  - count
+  graph.dimensions: [created_at, group_name]
+  graph.metrics: [count, count]
+card_schema: 23
 serdes/meta:
-- id: DnNyT6EtIn-Zx8bHRFHbV
-  label: questions_created_last_week
-  model: Card
+- {id: DnNyT6EtIn-Zx8bHRFHbV, label: questions_created_last_week, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

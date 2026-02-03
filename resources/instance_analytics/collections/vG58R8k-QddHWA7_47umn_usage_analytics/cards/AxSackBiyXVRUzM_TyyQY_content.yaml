@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 13
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_content
+table_id: [Internal Metabase Database, public, v_content]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_content
+    source-table: [Internal Metabase Database, public, v_content]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -37,17 +31,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_id
+  - [Internal Metabase Database, public, v_content, entity_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_id
+  id: [Internal Metabase Database, public, v_content, entity_id]
   name: entity_id
   semantic_type: type/PK
   settings: null
@@ -60,17 +47,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_qualified_id
+  - [Internal Metabase Database, public, v_content, entity_qualified_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
+  id: [Internal Metabase Database, public, v_content, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/PK
   settings: null
@@ -83,17 +63,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_type
+  - [Internal Metabase Database, public, v_content, entity_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_type
+  id: [Internal Metabase Database, public, v_content, entity_type]
   name: entity_type
   semantic_type: type/Category
   settings: null
@@ -106,17 +79,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - created_at
+  - [Internal Metabase Database, public, v_content, created_at]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - created_at
+  id: [Internal Metabase Database, public, v_content, created_at]
   name: created_at
   semantic_type: type/CreationTimestamp
   settings: null
@@ -129,17 +95,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - updated_at
+  - [Internal Metabase Database, public, v_content, updated_at]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - updated_at
+  id: [Internal Metabase Database, public, v_content, updated_at]
   name: updated_at
   semantic_type: type/UpdatedTimestamp
   settings: null
@@ -152,21 +111,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - creator_id
+  - [Internal Metabase Database, public, v_content, creator_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - creator_id
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_content, creator_id]
   name: creator_id
   semantic_type: type/FK
   settings: null
@@ -179,17 +127,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - name
+  - [Internal Metabase Database, public, v_content, name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
+  id: [Internal Metabase Database, public, v_content, name]
   name: name
   semantic_type: type/Name
   settings: null
@@ -202,17 +143,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - description
+  - [Internal Metabase Database, public, v_content, description]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - description
+  id: [Internal Metabase Database, public, v_content, description]
   name: description
   semantic_type: type/Description
   settings: null
@@ -225,21 +159,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - collection_id
+  - [Internal Metabase Database, public, v_content, collection_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - event_timestamp
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - collection_id
+  fk_target_field_id: [Internal Metabase Database, public, v_content, event_timestamp]
+  id: [Internal Metabase Database, public, v_content, collection_id]
   name: collection_id
   semantic_type: null
   settings: null
@@ -252,21 +175,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - made_public_by_user
+  - [Internal Metabase Database, public, v_content, made_public_by_user]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - made_public_by_user
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_content, made_public_by_user]
   name: made_public_by_user
   semantic_type: type/FK
   settings: null
@@ -279,17 +191,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - is_embedding_enabled
+  - [Internal Metabase Database, public, v_content, is_embedding_enabled]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - is_embedding_enabled
+  id: [Internal Metabase Database, public, v_content, is_embedding_enabled]
   name: is_embedding_enabled
   semantic_type: type/Category
   settings: null
@@ -302,17 +207,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - is_verified
+  - [Internal Metabase Database, public, v_content, is_verified]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - is_verified
+  id: [Internal Metabase Database, public, v_content, is_verified]
   name: is_verified
   semantic_type: type/Category
   settings: null
@@ -325,17 +223,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - archived
+  - [Internal Metabase Database, public, v_content, archived]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - archived
+  id: [Internal Metabase Database, public, v_content, archived]
   name: archived
   semantic_type: type/Enum
   settings: null
@@ -348,17 +239,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - action_type
+  - [Internal Metabase Database, public, v_content, action_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - action_type
+  id: [Internal Metabase Database, public, v_content, action_type]
   name: action_type
   semantic_type: type/Category
   settings: null
@@ -371,21 +255,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - action_model_id
+  - [Internal Metabase Database, public, v_content, action_model_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - event_timestamp
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - action_model_id
+  fk_target_field_id: [Internal Metabase Database, public, v_content, event_timestamp]
+  id: [Internal Metabase Database, public, v_content, action_model_id]
   name: action_model_id
   semantic_type: null
   settings: null
@@ -398,17 +271,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - collection_is_official
+  - [Internal Metabase Database, public, v_content, collection_is_official]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - collection_is_official
+  id: [Internal Metabase Database, public, v_content, collection_is_official]
   name: collection_is_official
   semantic_type: type/Category
   settings: null
@@ -421,17 +287,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - collection_is_personal
+  - [Internal Metabase Database, public, v_content, collection_is_personal]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - collection_is_personal
+  id: [Internal Metabase Database, public, v_content, collection_is_personal]
   name: collection_is_personal
   semantic_type: type/Category
   settings: null
@@ -444,17 +303,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - question_viz_type
+  - [Internal Metabase Database, public, v_content, question_viz_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - question_viz_type
+  id: [Internal Metabase Database, public, v_content, question_viz_type]
   name: question_viz_type
   semantic_type: type/Category
   settings: null
@@ -467,21 +319,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - question_database_id
+  - [Internal Metabase Database, public, v_content, question_database_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - question_database_id
+  fk_target_field_id: [Internal Metabase Database, public, v_databases, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_content, question_database_id]
   name: question_database_id
   semantic_type: type/FK
   settings: null
@@ -494,17 +335,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - question_is_native
+  - [Internal Metabase Database, public, v_content, question_is_native]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - question_is_native
+  id: [Internal Metabase Database, public, v_content, question_is_native]
   name: question_is_native
   semantic_type: type/Category
   settings: null
@@ -517,32 +351,21 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - event_timestamp
+  - [Internal Metabase Database, public, v_content, event_timestamp]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - event_timestamp
+  id: [Internal Metabase Database, public, v_content, event_timestamp]
   name: event_timestamp
   semantic_type: null
   settings: null
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: event_timestamp
-  table.pivot_column: action_type
+visualization_settings: {column_settings: null, table.cell_column: event_timestamp, table.pivot_column: action_type}
+card_schema: 23
 serdes/meta:
-- id: AxSackBiyXVRUzM_TyyQY
-  label: content
-  model: Card
+- {id: AxSackBiyXVRUzM_TyyQY, label: content, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

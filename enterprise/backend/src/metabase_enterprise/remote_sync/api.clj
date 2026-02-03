@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
    [medley.core :as m]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -50,7 +51,27 @@
   to the remote sync source."
   []
   (api/check-superuser)
-  {:is_dirty (remote-sync.object/dirty-global?)})
+  {:is_dirty (remote-sync.object/dirty?)})
+
+(api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
+  "Check if there are new changes on the remote branch that can be pulled.
+   Uses in-memory caching (configurable TTL via remote-sync-check-changes-cache-ttl-seconds setting).
+
+   Returns:
+   - has_changes: true if remote version differs from last imported version, or if never imported
+   - remote_version: current Git SHA on remote branch
+   - local_version: Git SHA of last successful import (nil if never imported)
+   - cached: true if result was served from cache"
+  [_route-params
+   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
+   _body]
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
+    {:has_changes (:has-changes? result)
+     :remote_version (:remote-version result)
+     :local_version (:local-version result)
+     :cached (:cached? result)}))
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
@@ -59,7 +80,7 @@
   (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
-                (remote-sync.object/dirty-for-global))})
+                (remote-sync.object/dirty-objects))})
 
 (api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
   "Export the current state of the Remote Sync collection to a Source.
@@ -111,17 +132,31 @@
   "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [remote-sync-type] :as settings}
+   {:keys [remote-sync-type collections] :as settings}
    :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
-       [:remote-sync-branch {:optional true} [:maybe :string]]]]
+       [:remote-sync-branch {:optional true} [:maybe :string]]
+       [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
+       [:remote-sync-transforms {:optional true} [:maybe :boolean]]
+       [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
-  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
+  (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
+  ;; Check if trying to change collections while in read-only mode
+  (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
+    (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
+                   "Cannot change synced collections when remote-sync-type is read-only."))
+  (when (seq collections)
+    (try
+      (remote-sync.core/bulk-set-remote-sync collections)
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                        {:error       (ex-message e)
+                         :status-code 400} e)))))
   (try
-    (settings/check-and-update-remote-settings! settings)
+    (settings/check-and-update-remote-settings! (dissoc settings :collections))
     (catch Exception e
       (throw (ex-info (or (ex-message e) "Invalid settings")
                       {:error       (ex-message e)
@@ -129,11 +164,10 @@
   (events/publish-event! :event/remote-sync-settings-update
                          {:details {:remote-sync-type remote-sync-type}
                           :user-id api/*current-user-id*})
-  (let [task-id (impl/finish-remote-config!)]
-    (if task-id
-      {:success true
-       :task_id task-id}
-      {:success true})))
+  (if-let [task-id (impl/finish-remote-config!)]
+    {:success true
+     :task_id task-id}
+    {:success true}))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured source.

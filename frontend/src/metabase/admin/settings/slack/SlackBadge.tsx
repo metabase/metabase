@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { Box, Center, Text } from "metabase/ui";
+import { Box, Center, type CenterProps, Text } from "metabase/ui";
 
 import S from "./slack.module.css";
 
-export interface SlackBadgeProps {
+export interface SlackBadgeProps extends CenterProps {
   isBot?: boolean;
   isValid?: boolean;
 }
@@ -12,11 +12,12 @@ export interface SlackBadgeProps {
 export const SlackBadge = ({
   isBot,
   isValid,
+  ...props
 }: SlackBadgeProps): JSX.Element => {
   const color = isValid ? "success" : "error";
 
   return (
-    <Center>
+    <Center {...props}>
       <Box className={S.StatusBadge} bg={color} />
       <Text fw="bold" c={color}>
         {getMessage(isBot, isValid)}

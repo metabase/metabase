@@ -12,6 +12,7 @@
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.tenants.core :as tenants]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -34,7 +35,7 @@
   the only place to get it (the token stored in the DB is an encrypted hash)."
   [new-user-email-address]
   (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
-    (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
+    (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)\?.+#new" invite-email)]
       (client/client :post 200 "session/reset_password" {:token    reset-token
                                                          :password "p@ssword1"}))))
 
@@ -484,47 +485,130 @@
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
         (is (nil? deactivated-at))))))
 
-(deftest add-attributes-test
-  (testing "add-attributes function"
-    (testing "should add :attributes key with merged login attributes"
+(deftest add-attributes-merges-login-and-jwt-attributes-test
+  (testing "add-attributes should add :attributes key with merged login attributes"
+    (let [user {:login_attributes {"user_attr" "user_value"}
+                :jwt_attributes {"jwt_attr" "jwt_value"}
+                :email "test@example.com"}
+          result (user/add-attributes user)]
+      (is (= {"jwt_attr" "jwt_value"
+              "user_attr" "user_value"}
+             (:attributes result)))
+      (is (= user (dissoc result :attributes))))))
+
+(deftest add-attributes-handles-nil-login-attributes-test
+  (testing "add-attributes should handle nil login_attributes"
+    (let [user {:email "test@example.com"
+                :jwt_attributes {"jwt_attr" "jwt_value"}}
+          result (user/add-attributes user)]
+      (is (= {"jwt_attr" "jwt_value"}
+             (:attributes result))))))
+
+(deftest add-attributes-handles-empty-login-attributes-test
+  (testing "add-attributes should handle empty login_attributes"
+    (let [user {:login_attributes {}
+                :jwt_attributes {"jwt_attr" "jwt_value"}
+                :email "test@example.com"}
+          result (user/add-attributes user)]
+      (is (= {"jwt_attr" "jwt_value"}
+             (:attributes result))))))
+
+(deftest add-attributes-user-overrides-jwt-test
+  (testing "add-attributes: user attributes should override jwt attributes with same keys"
+    (let [user {:login_attributes {"shared_key" "user_value"
+                                   "user_only" "user_val"}
+                :jwt_attributes   {"shared_key" "jwt_value"
+                                   "jwt_only" "jwt_val"}
+                :email "test@example.com"}
+          result (user/add-attributes user)]
+      (is (= {"shared_key" "user_value"
+              "jwt_only" "jwt_val"
+              "user_only" "user_val"}
+             (:attributes result))))))
+
+(deftest add-attributes-preserves-user-fields-test
+  (testing "add-attributes should preserve all other user fields"
+    (let [user {:id 123
+                :email "test@example.com"
+                :first_name "John"
+                :last_name "Doe"
+                :jwt_attributes {"jwt_attr" "jwt_value"}
+                :login_attributes {"user_attr" "user_value"}}
+          result (user/add-attributes user)]
+      (is (= 123 (:id result)))
+      (is (= "test@example.com" (:email result)))
+      (is (= "John" (:first_name result)))
+      (is (= "Doe" (:last_name result)))
+      (is (= {"user_attr" "user_value"} (:login_attributes result)))
+      (is (= {"jwt_attr" "jwt_value"
+              "user_attr" "user_value"}
+             (:attributes result))))))
+
+(deftest add-attributes-merges-tenant-attributes-test
+  (testing "add-attributes should merge tenant attributes"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {"user_attr" "user_value"}
-                  :jwt_attributes {"jwt_attr" "jwt_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
-        (is (= {"jwt_attr" "jwt_value"
+        (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))
-        (is (= user (dissoc result :attributes)))))
-    (testing "should handle nil login_attributes"
-      (let [user {:email "test@example.com"
-                  :jwt_attributes {"jwt_attr" "jwt_value"}}
+        (is (= user (dissoc result :attributes)))))))
+
+(deftest add-attributes-tenant-handles-nil-login-attributes-test
+  (testing "add-attributes with tenant attributes should handle nil login_attributes"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+      (let [user {:email "test@example.com"}
             result (user/add-attributes user)]
-        (is (= {"jwt_attr" "jwt_value"}
-               (:attributes result)))))
-    (testing "should handle empty login_attributes"
+        (is (= {"tenant_attr" "tenant_value"}
+               (:attributes result)))))))
+
+(deftest add-attributes-tenant-handles-empty-login-attributes-test
+  (testing "add-attributes with tenant attributes should handle empty login_attributes"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {}
-                  :jwt_attributes {"jwt_attr" "jwt_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
-        (is (= {"jwt_attr" "jwt_value"}
-               (:attributes result)))))
-    (testing "user attributes should override jwt attributes with same keys"
+        (is (= {"tenant_attr" "tenant_value"}
+               (:attributes result)))))))
+
+(deftest add-attributes-handles-nil-tenant-attributes-test
+  (testing "add-attributes should handle nil tenant attributes"
+    (with-redefs [tenants/login-attributes (constantly nil)]
+      (let [user {:login_attributes {"user_attr" "user_value"}
+                  :email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {"user_attr" "user_value"}
+               (:attributes result)))))))
+
+(deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
+  (testing "add-attributes should handle both nil tenant and user attributes"
+    (with-redefs [tenants/login-attributes (constantly nil)]
+      (let [user {:email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {}
+               (:attributes result)))))))
+
+(deftest add-attributes-user-overrides-tenant-test
+  (testing "add-attributes: user attributes should override tenant attributes with same keys"
+    (with-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
+                                                        "tenant_only" "tenant_val"})]
       (let [user {:login_attributes {"shared_key" "user_value"
                                      "user_only" "user_val"}
-                  :jwt_attributes   {"shared_key" "jwt_value"
-                                     "jwt_only" "jwt_val"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
         (is (= {"shared_key" "user_value"
-                "jwt_only" "jwt_val"
+                "tenant_only" "tenant_val"
                 "user_only" "user_val"}
-               (:attributes result)))))
-    (testing "should preserve all other user fields"
+               (:attributes result)))))))
+
+(deftest add-attributes-tenant-preserves-user-fields-test
+  (testing "add-attributes with tenant attributes should preserve all other user fields"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:id 123
                   :email "test@example.com"
                   :first_name "John"
                   :last_name "Doe"
-                  :jwt_attributes {"jwt_attr" "jwt_value"}
                   :login_attributes {"user_attr" "user_value"}}
             result (user/add-attributes user)]
         (is (= 123 (:id result)))
@@ -532,6 +616,6 @@
         (is (= "John" (:first_name result)))
         (is (= "Doe" (:last_name result)))
         (is (= {"user_attr" "user_value"} (:login_attributes result)))
-        (is (= {"jwt_attr" "jwt_value"
+        (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))))))

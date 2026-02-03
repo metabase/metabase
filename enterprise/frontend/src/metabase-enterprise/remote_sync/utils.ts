@@ -1,9 +1,11 @@
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import type {
   Collection,
   CollectionId,
+  RemoteSyncEntityModel,
   RemoteSyncEntityStatus,
 } from "metabase-types/api";
 
@@ -42,18 +44,20 @@ export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
   }
 };
 
-export const getSyncStatusColor = (status: RemoteSyncEntityStatus): string => {
+export const getSyncStatusColor = (
+  status: RemoteSyncEntityStatus,
+): ColorName => {
   switch (status) {
     case "create":
-      return "var(--mb-color-success)";
+      return "success";
     case "removed":
     case "delete":
-      return "var(--mb-color-danger)";
+      return "danger";
     case "update":
     case "touch":
-      return "var(--mb-color-saturated-blue)";
+      return "saturated-blue";
     default:
-      return "var(--mb-color-info)";
+      return "info";
   }
 };
 
@@ -116,16 +120,20 @@ export const buildCollectionMap = (
 ): Map<number, Collection> => {
   const map = new Map<number, Collection>();
 
-  const processCollection = (collection: Collection) => {
+  const processCollection = (parents: Collection[], collection: Collection) => {
     if (typeof collection.id === "number") {
-      map.set(collection.id, collection);
+      map.set(collection.id, { ...collection, effective_ancestors: parents });
     }
     if (collection.children) {
-      collection.children.forEach(processCollection);
+      collection.children.forEach((child) => {
+        processCollection([...parents, collection], child);
+      });
     }
   };
 
-  collectionTree.forEach(processCollection);
+  collectionTree.forEach((collection) => {
+    processCollection([], collection);
+  });
   return map;
 };
 
@@ -168,4 +176,20 @@ export const getCollectionPathSegments = (
 
   segments.push({ id: collection.id, name: collection.name });
   return segments;
+};
+
+/**
+ * Models that are children of tables (get their collection from a parent table)
+ */
+const TABLE_CHILD_MODELS: Set<RemoteSyncEntityModel> = new Set([
+  "field",
+  "segment",
+  "measure",
+]);
+
+/**
+ * Check if a model type is a child of a table (field, segment, or measure)
+ */
+export const isTableChildModel = (model: RemoteSyncEntityModel): boolean => {
+  return TABLE_CHILD_MODELS.has(model);
 };

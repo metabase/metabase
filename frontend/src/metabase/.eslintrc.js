@@ -14,6 +14,11 @@ const baseRestrictedConfig = {
       group: ["cljs/metabase.lib*"],
     },
     { group: ["/embedding-sdk-package"] },
+    {
+      group: ["metabase-types/openapi", "metabase-types/openapi/**"],
+      message:
+        "Direct imports from metabase-types/openapi are restricted. Reexport types under readable names from metabase-types/api instead.",
+    },
   ],
   paths: [
     {
@@ -46,6 +51,12 @@ const baseRestrictedConfig = {
       name: "@storybook/test",
       message:
         "Please use `testing-library/react` or `@testing-library/user-event`",
+    },
+    {
+      name: "metabase/lib/colors/constants/base-colors",
+      importNames: ["getBaseColorsForThemeDefinitionOnly"],
+      message:
+        "getBaseColorsForThemeDefinitionOnly is only for use within lib/colors. Use theme colors from 'metabase/lib/colors' instead.",
     },
   ],
 };

@@ -1,5 +1,5 @@
 (ns metabase.driver.clickhouse-introspection
-  (:refer-clojure :exclude [empty?])
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -10,7 +10,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.util :as u]
-   [metabase.util.performance :refer [empty?]])
+   [metabase.util.performance :refer [empty? get-in]])
   (:import
    (java.sql Connection DatabaseMetaData)))
 

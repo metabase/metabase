@@ -2,8 +2,8 @@ import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import ModalContent from "metabase/common/components/ModalContent";
+import { Button } from "metabase/common/components/Button";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
@@ -126,4 +126,5 @@ const getRecipientsMessage = (item) => {
   return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ArchiveModal;

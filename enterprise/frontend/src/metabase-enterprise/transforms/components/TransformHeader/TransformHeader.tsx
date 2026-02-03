@@ -1,105 +1,73 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link/Link";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import type { Transform, TransformId } from "metabase-types/api";
-
-import { NAME_MAX_LENGTH } from "../../constants";
+import type { StackProps } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { Transform } from "metabase-types/api";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";
+import { TransformNameInput } from "./TransformNameInput";
+import { TransformTabs } from "./TransformTabs";
 
 type TransformHeaderProps = {
-  transform: Transform;
   actions?: ReactNode;
   hasMenu?: boolean;
-};
+  isEditMode?: boolean;
+  readOnly?: boolean;
+  transform: Transform;
+} & Omit<StackProps, "title">;
 
 export function TransformHeader({
   transform,
   actions,
   hasMenu = true,
+  isEditMode = false,
+  readOnly,
+  ...restProps
 }: TransformHeaderProps) {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: transform.collection_id,
+    namespace: "transforms",
+  });
+
   return (
     <PaneHeader
-      title={<TransformNameInput transform={transform} />}
-      menu={hasMenu && <TransformMoreMenu transform={transform} />}
-      tabs={<TransformTabs transform={transform} />}
+      title={<TransformNameInput transform={transform} readOnly={readOnly} />}
+      icon="transform"
+      menu={
+        hasMenu && (
+          <TransformMoreMenu
+            readOnly={readOnly || isRemoteSyncReadOnly}
+            transform={transform}
+          />
+        )
+      }
+      tabs={!isEditMode && <TransformTabs transform={transform} />}
       actions={actions}
       data-testid="transforms-header"
+      breadcrumbs={
+        <DataStudioBreadcrumbs loading={isLoadingPath}>
+          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          {path?.map((folder) => (
+            <Link
+              key={folder.id}
+              to={`${Urls.transformList()}?collectionId=${folder.id}`}
+            >
+              {folder.name}
+            </Link>
+          ))}
+          {transform.name}
+        </DataStudioBreadcrumbs>
+      }
+      showMetabotButton
+      {...restProps}
     />
   );
-}
-
-type TransformNameInputProps = {
-  transform: Transform;
-};
-
-function TransformNameInput({ transform }: TransformNameInputProps) {
-  const [updateTransform] = useUpdateTransformMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const handleChangeName = async (newName: string) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      name: newName,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform name`);
-    } else {
-      sendSuccessToast(t`Transform name updated`);
-    }
-  };
-
-  return (
-    <PaneHeaderInput
-      initialValue={transform.name}
-      maxLength={NAME_MAX_LENGTH}
-      onChange={handleChangeName}
-    />
-  );
-}
-
-type TransformTabsProps = {
-  transform: Transform;
-};
-
-function TransformTabs({ transform }: TransformTabsProps) {
-  const tabs = getTabs(transform.id);
-  return <PaneHeaderTabs tabs={tabs} />;
-}
-
-function getTabs(id: TransformId): PaneHeaderTab[] {
-  const tabs: PaneHeaderTab[] = [
-    {
-      label: t`Definition`,
-      to: Urls.transform(id),
-    },
-    {
-      label: t`Run`,
-      to: Urls.transformRun(id),
-    },
-    {
-      label: t`Target`,
-      to: Urls.transformTarget(id),
-    },
-  ];
-
-  if (PLUGIN_DEPENDENCIES.isEnabled) {
-    tabs.push({
-      label: t`Dependencies`,
-      to: Urls.transformDependencies(id),
-    });
-  }
-
-  return tabs;
 }

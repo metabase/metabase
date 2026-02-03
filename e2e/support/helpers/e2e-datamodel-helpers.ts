@@ -5,19 +5,31 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { popover } from "./e2e-ui-elements-helpers";
+
 export const DataModel = {
   visit,
   visitDataStudio,
+  visitDataStudioSegments,
+  visitDataStudioMeasures,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
+    getDatabaseToggle: getTablePickerDatabaseToggle,
+    getDatabaseCheckbox,
     getDatabases: getTablePickerDatabases,
     getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
+    getSchemaToggle: getTablePickerSchemaToggle,
+    getSchemaCheckbox,
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
+    getFilterForm: getTablePickerFilter,
+    openFilterPopover,
+    selectFilterOption,
+    applyFilters,
   },
   TableSection: {
     get: getTableSection,
@@ -35,6 +47,7 @@ export const DataModel = {
     getSortableFields: getTableSectionSortableFields,
     getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
+    getCloseButton: getTableSectionCloseButton,
   },
   FieldSection: {
     get: getFieldSection,
@@ -59,10 +72,59 @@ export const DataModel = {
     getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
+    getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
     get: getPreviewSection,
     getPreviewTypeInput: getPreviewTabsInput,
+  },
+  SegmentList: {
+    get: getSegmentList,
+    getEmptyState: getSegmentListEmptyState,
+    getNewSegmentLink: getSegmentListNewLink,
+    getSegment: getSegmentListItem,
+    getSegments: getSegmentListItems,
+  },
+  SegmentEditor: {
+    get: getSegmentEditor,
+    getNameInput: getSegmentEditorNameInput,
+    getDescriptionInput: getSegmentEditorDescriptionInput,
+    getFilterPlaceholder: getSegmentEditorFilterPlaceholder,
+    getPreviewLink: getSegmentEditorPreviewLink,
+    getSaveButton: getSegmentEditorSaveButton,
+    getCancelButton: getSegmentEditorCancelButton,
+    getActionsButton: getSegmentEditorActionsButton,
+    getBreadcrumb: getSegmentEditorBreadcrumb,
+    getDefinitionTab: getSegmentEditorDefinitionTab,
+    getRevisionHistoryTab: getSegmentEditorRevisionHistoryTab,
+    getDependenciesTab: getSegmentEditorDependenciesTab,
+  },
+  SegmentRevisionHistory: {
+    get: getSegmentRevisionHistory,
+  },
+  MeasureList: {
+    get: getMeasureList,
+    getEmptyState: getMeasureListEmptyState,
+    getNewMeasureLink: getMeasureListNewLink,
+    getMeasure: getMeasureListItem,
+    getMeasures: getMeasureListItems,
+  },
+  MeasureEditor: {
+    get: getMeasureEditor,
+    getNameInput: getMeasureEditorNameInput,
+    getDescriptionInput: getMeasureEditorDescriptionInput,
+    getAggregationPlaceholder: getMeasureEditorAggregationPlaceholder,
+    getPreviewLink: getMeasureEditorPreviewLink,
+    getSaveButton: getMeasureEditorSaveButton,
+    getCancelButton: getMeasureEditorCancelButton,
+    getActionsButton: getMeasureEditorActionsButton,
+    getBreadcrumb: getMeasureEditorBreadcrumb,
+    getDefinitionTab: getMeasureEditorDefinitionTab,
+    getRevisionHistoryTab: getMeasureEditorRevisionHistoryTab,
+    getDependenciesTab: getMeasureEditorDependenciesTab,
+  },
+  MeasureRevisionHistory: {
+    get: getMeasureRevisionHistory,
   },
 };
 
@@ -197,6 +259,10 @@ function getTablePickerDatabase(name: string) {
     .filter(`:contains("${name}")`);
 }
 
+function getTablePickerDatabaseToggle(name: string) {
+  return getTablePickerDatabase(name).find("[aria-expanded]");
+}
+
 function getTablePickerDatabases() {
   return cy.findAllByTestId("tree-item").filter('[data-type="database"]');
 }
@@ -206,6 +272,10 @@ function getTablePickerSchema(name: string) {
     .findAllByTestId("tree-item")
     .filter('[data-type="schema"]')
     .filter(`:contains("${name}")`);
+}
+
+function getTablePickerSchemaToggle(name: string) {
+  return getTablePickerSchema(name).find("[aria-expanded]");
 }
 
 function getTablePickerSchemas() {
@@ -223,6 +293,10 @@ function getTablePickerSearchInput() {
   return cy.findByPlaceholderText("Search tables");
 }
 
+function getTablePickerFilter() {
+  return cy.findByTestId("table-picker-filter");
+}
+
 function getTablePickerTables() {
   return cy.findAllByTestId("tree-item").filter('[data-type="table"]');
 }
@@ -231,6 +305,10 @@ function getTablePickerTables() {
 
 function getTableSection() {
   return cy.findByTestId("table-section");
+}
+
+function getTableSectionHeader() {
+  return cy.findByTestId("table-section-header");
 }
 
 function getTableNameInput() {
@@ -248,27 +326,27 @@ function getTableDescriptionInput() {
 }
 
 function getTableSortButton() {
-  return getTableSection().button(/Sorting/);
+  return getTableSection().findByRole("button", { name: "Sorting" });
 }
 
 function getTableSortDoneButton() {
-  return getTableSection().button(/Done/);
+  return getTableSection().findByRole("button", { name: "Done" });
 }
 
 function getTableSortOrderInput() {
-  return getTableSection().findByLabelText("Column order");
+  return getTableSection().findByRole("radiogroup", { name: "Column order" });
 }
 
 function getTableSyncOptionsButton() {
-  return getTableSection().button(/Sync/);
+  return getTableSection().findByRole("button", { name: /Sync/ });
 }
 
 function getTableSectionField(name: string) {
-  return getTableSection().findByLabelText(name);
+  return getTableSection().findByRole("listitem", { name });
 }
 
 function getTableSectionSortableField(name: string) {
-  return getTableSection().findByLabelText(name);
+  return getTableSection().findByRole("listitem", { name });
 }
 
 function getTableSectionSortableFields() {
@@ -276,7 +354,7 @@ function getTableSectionSortableFields() {
 }
 
 function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByLabelText("Visibility type");
+  return getTableSection().findByRole("textbox", { name: "Visibility type" });
 }
 
 function getTableSectionFieldNameInput(name: string) {
@@ -294,10 +372,18 @@ function clickTableSectionField(name: string) {
   return getTableSectionField(name).findByRole("img").scrollIntoView().click();
 }
 
+function getTableSectionCloseButton() {
+  return getTableSectionHeader().findByRole("link", { name: /close/ });
+}
+
 /** field section helpers */
 
 function getFieldSection() {
   return cy.findByTestId("field-section");
+}
+
+function getFieldSectioHeader() {
+  return cy.findByTestId("field-section-header");
 }
 
 function getFieldNameInput() {
@@ -388,6 +474,10 @@ function getFieldSuffixInput() {
   return getFieldSection().findByTestId("suffix");
 }
 
+function getFieldSectionCloseButton() {
+  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+}
+
 /** preview section helpers */
 
 function getPreviewSection() {
@@ -396,4 +486,211 @@ function getPreviewSection() {
 
 function getPreviewTabsInput() {
   return getPreviewSection().findByLabelText("Preview type");
+}
+
+/** segment list helpers */
+
+function visitDataStudioSegments(options: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.visit(
+    `/data-studio/data/database/${options.databaseId}/schema/${options.schemaId}/table/${options.tableId}/segments`,
+  );
+  cy.wait("@datamodel/visit/metadata");
+}
+
+function getSegmentList() {
+  return cy.findByTestId("table-segments-page");
+}
+
+function getSegmentListEmptyState() {
+  return getSegmentList().findByText("No segments yet");
+}
+
+function getSegmentListNewLink() {
+  return getSegmentList().findByRole("link", { name: /New segment/i });
+}
+
+function getSegmentListItem(name: string) {
+  return getSegmentList().findByRole("listitem", { name });
+}
+
+function getSegmentListItems() {
+  return getSegmentList().findAllByRole("listitem");
+}
+
+/** segment editor helpers */
+
+function getSegmentEditor() {
+  return cy.get(
+    "[data-testid='new-segment-page'], [data-testid='segment-detail-page']",
+  );
+}
+
+function getSegmentEditorNameInput() {
+  return getSegmentEditor().findByPlaceholderText("New segment");
+}
+
+function getSegmentEditorDescriptionInput() {
+  return getSegmentEditor().findByLabelText("Give it a description");
+}
+
+function getSegmentEditorFilterPlaceholder() {
+  return getSegmentEditor().findByText("Add filters to narrow your answer");
+}
+
+function getSegmentEditorPreviewLink() {
+  return getSegmentEditor().findByRole("link", { name: /Preview/i });
+}
+
+function getSegmentEditorSaveButton() {
+  return getSegmentEditor().button("Save");
+}
+
+function getSegmentEditorCancelButton() {
+  return getSegmentEditor().button("Cancel");
+}
+
+function getSegmentEditorActionsButton() {
+  return cy.findByLabelText("Segment actions");
+}
+
+function getSegmentEditorBreadcrumb(tableName: string) {
+  return cy.findByText(tableName);
+}
+
+function getSegmentEditorDefinitionTab() {
+  return cy.findByTestId("segment-pane-header").findByText("Definition");
+}
+
+function getSegmentEditorRevisionHistoryTab() {
+  return cy.findByTestId("segment-pane-header").findByText("Revision history");
+}
+
+function getSegmentEditorDependenciesTab() {
+  return cy.findByTestId("segment-pane-header").findByText("Dependencies");
+}
+
+function getSegmentRevisionHistory() {
+  return cy.findByTestId("segment-revision-history-page");
+}
+
+/** measure list helpers */
+
+function visitDataStudioMeasures(options: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.visit(
+    `/data-studio/data/database/${options.databaseId}/schema/${options.schemaId}/table/${options.tableId}/measures`,
+  );
+  cy.wait("@datamodel/visit/metadata");
+}
+
+function getMeasureList() {
+  return cy.findByTestId("table-measures-page");
+}
+
+function getMeasureListEmptyState() {
+  return getMeasureList().findByText("No measures yet");
+}
+
+function getMeasureListNewLink() {
+  return getMeasureList().findByRole("link", { name: /New measure/i });
+}
+
+function getMeasureListItem(name: string) {
+  return getMeasureList().findByRole("listitem", { name });
+}
+
+function getMeasureListItems() {
+  return getMeasureList().findAllByRole("listitem");
+}
+
+/** measure editor helpers */
+
+function getMeasureEditor() {
+  return cy.get(
+    "[data-testid='new-measure-page'], [data-testid='measure-detail-page']",
+  );
+}
+
+function getMeasureEditorNameInput() {
+  return getMeasureEditor().findByPlaceholderText("New measure");
+}
+
+function getMeasureEditorDescriptionInput() {
+  return getMeasureEditor().findByLabelText("Give it a description");
+}
+
+function getMeasureEditorAggregationPlaceholder() {
+  return getMeasureEditor().findByText("Pick an aggregation function");
+}
+
+function getMeasureEditorPreviewLink() {
+  return getMeasureEditor().findByRole("link", { name: /Preview/i });
+}
+
+function getMeasureEditorSaveButton() {
+  return getMeasureEditor().button("Save");
+}
+
+function getMeasureEditorCancelButton() {
+  return getMeasureEditor().button("Cancel");
+}
+
+function getMeasureEditorActionsButton() {
+  return cy.findByLabelText("Measure actions");
+}
+
+function getMeasureEditorBreadcrumb(tableName: string) {
+  return cy.findByText(tableName);
+}
+
+function getMeasureEditorDefinitionTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Definition");
+}
+
+function getMeasureEditorRevisionHistoryTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Revision history");
+}
+
+function getMeasureEditorDependenciesTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Dependencies");
+}
+
+function getMeasureRevisionHistory() {
+  return cy.findByTestId("measure-revision-history-page");
+}
+
+export function openFilterPopover() {
+  cy.findByRole("button", { name: "Filter" }).click();
+  popover();
+}
+
+export function selectFilterOption(fieldLabel: string, optionLabel: string) {
+  cy.findByRole("textbox", { name: fieldLabel }).click();
+  popover().contains(optionLabel).click();
+}
+
+export function applyFilters() {
+  cy.findByRole("button", { name: "Apply" }).click();
+  cy.wait("@listTables");
+}
+
+export function getDatabaseCheckbox(databaseName: string) {
+  return getTablePickerDatabase(databaseName).find('input[type="checkbox"]');
+}
+
+export function getSchemaCheckbox(schemaName: string) {
+  return getTablePickerSchema(schemaName).find('input[type="checkbox"]');
 }

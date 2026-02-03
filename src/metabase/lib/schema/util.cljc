@@ -129,21 +129,67 @@
        (map? x) (dissoc :lib/uuid)))
    x))
 
-(defn indexed-order-bys-for-stage
-  "Convert all order-bys in a stage to refer to aggregations by index instead of uuid"
-  [{:keys [aggregation order-by] :as stage}]
-  (if (and aggregation order-by)
-    (let [agg-lookups (->> aggregation
-                           (map-indexed (fn [i [_type {agg-uuid :lib/uuid}]]
-                                          [agg-uuid i]))
-                           (into {}))]
-      (update stage :order-by (fn [order-bys]
-                                (mapv (fn [[_dir _opts [order-type agg-opts agg-uuid] :as order-by]]
-                                        (if (= order-type :aggregation)
-                                          (assoc order-by 2 [order-type agg-opts (agg-lookups agg-uuid)])
-                                          order-by))
-                                      order-bys))))
-    stage))
+(defn sorted-maps
+  "Recursively convert all maps in `x` to sorted maps using the same comparator
+   as [[metabase.lib.schema.common/unfussy-sorted-map]]. This ensures consistent
+   JSON serialization order regardless of how maps were constructed."
+  [x sorted-map-fn]
+  (perf/postwalk
+   (fn [x]
+     (if (and (map? x) (not (sorted? x)))
+       (into (sorted-map-fn) x)
+       x))
+   x))
+
+(defn- aggregation-ref?
+  "Check if `x` is an aggregation ref clause `[:aggregation opts uuid-string]`."
+  [x]
+  (and (vector? x)
+       (= :aggregation (first x))
+       (>= (count x) 3)
+       (map? (second x))
+       (string? (nth x 2))))
+
+(defn- replace-aggregation-ref-uuids
+  "Walk `form` recursively, replacing aggregation ref UUIDs with indices.
+   Only descends into vectors (MBQL clauses), not maps."
+  [form agg-lookups]
+  (cond
+    (aggregation-ref? form)
+    (update form 2 #(get agg-lookups % %))
+
+    (vector? form)
+    (mapv #(replace-aggregation-ref-uuids % agg-lookups) form)
+
+    :else
+    form))
+
+(def ^:private stage-keys-with-clauses
+  "Stage keys that can contain MBQL clauses with aggregation refs."
+  [:aggregation :breakout :expressions :fields :filters :order-by])
+
+(defn indexed-aggregation-refs-for-stage
+  "Convert all aggregation refs in a stage to refer to aggregations by index instead of uuid.
+   This ensures that semantically identical queries with different UUIDs hash the same."
+  [{:keys [aggregation joins] :as stage}]
+  (if-not aggregation
+    stage
+    (let [agg-lookups (into {}
+                            (map-indexed (fn [i [_type {agg-uuid :lib/uuid}]]
+                                           [agg-uuid i]))
+                            aggregation)
+          replace-in-clauses (fn [clauses]
+                               (mapv #(replace-aggregation-ref-uuids % agg-lookups) clauses))
+          result (cond-> (reduce (fn [stage k]
+                                   (cond-> stage
+                                     (get stage k) (update k replace-in-clauses)))
+                                 stage
+                                 stage-keys-with-clauses)
+                   ;; Also handle join conditions
+                   joins (update :joins (fn [joins]
+                                          (mapv #(m/update-existing % :conditions replace-in-clauses)
+                                                joins))))]
+      result)))
 
 (defn pred-matches-form?
   "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal

@@ -9,6 +9,7 @@ import { compileExpression } from "../compile-expression";
 import {
   expressions,
   fields,
+  measures,
   metrics,
   query,
   segments,
@@ -287,6 +288,7 @@ describe("format", () => {
       { result: "[Unknown Field]", parts: fields.orders.TOTAL },
       { result: "[Unknown Segment]", parts: segments.EXPENSIVE_THINGS },
       { result: "[Unknown Metric]", parts: metrics.FOO },
+      { result: "[Unknown Measure]", parts: measures.BAR },
     ])("should format an unknown %s as %s", async ({ result, parts }) => {
       const clause = Lib.expressionClause(parts);
 
@@ -641,6 +643,12 @@ describe("if printWidth = Infinity, it should return the same results as the sin
   it("should format metrics", async () => {
     await all({
       "[Foo Metric]": metrics.FOO,
+    });
+  });
+
+  it("should format measures", async () => {
+    await all({
+      "[Bar Measure]": measures.BAR,
     });
   });
 

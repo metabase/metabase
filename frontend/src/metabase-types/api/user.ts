@@ -1,5 +1,6 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DependencyListUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type UserId = number;
@@ -7,7 +8,7 @@ export type UserAttributeKey = string;
 export type UserAttributeValue = string;
 export type UserAttributeMap = Record<UserAttributeKey, UserAttributeValue>;
 
-export type UserAttributeSource = "system" | "jwt" | "user";
+export type UserAttributeSource = "system" | "tenant" | "jwt" | "user";
 
 type StructuredAttributeBase = {
   frozen: boolean;
@@ -34,25 +35,47 @@ export interface BaseUser {
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
+  is_data_analyst: boolean;
 
   date_joined: string;
   last_login: string;
   first_login: string;
   updated_at: string;
+  tenant_id: number | null;
+}
+
+export interface UserPermissions {
+  can_create_queries?: boolean;
+  can_create_native_queries?: boolean;
+
+  // requires advanced_permissions feature
+  is_group_manager?: boolean;
+  is_data_analyst?: boolean;
+  can_access_data_model?: boolean;
+  can_access_db_details?: boolean;
+  can_access_monitoring?: boolean;
+  can_access_setting?: boolean;
+  can_access_subscription?: boolean;
+  can_access_data_studio?: boolean;
+  can_access_transforms?: boolean;
 }
 
 export interface User extends BaseUser {
+  attributes: UserAttributeMap | null;
   login_attributes: UserAttributeMap | null;
   structured_attributes?: StructuredUserAttributes;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
+  can_write_any_collection: boolean;
   personal_collection_id: CollectionId;
+  tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
+  permissions?: UserPermissions;
 }
 
 export interface UserListResult {
@@ -119,6 +142,8 @@ export type ListUsersRequest = {
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
+  tenancy?: UserTenancy;
+  tenant_id?: number;
 } & PaginationRequest;
 
 export type ListUsersResponse = {
@@ -157,6 +182,16 @@ export type UserKeyValue =
       namespace: "transforms";
       key: string;
       value: "tree" | "alphabetical" | "last-modified";
+    }
+  | {
+      namespace: "data_studio";
+      key: string;
+      value: boolean;
+    }
+  | {
+      namespace: "dependency_list";
+      key: string;
+      value: DependencyListUserParams;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
@@ -168,3 +203,5 @@ export type GetUserKeyValueRequest = UserKeyValueKey;
 export type UpdateUserKeyValueRequest = UserKeyValue & {
   expires_at?: string;
 };
+
+export type UserTenancy = "internal" | "external" | "all";

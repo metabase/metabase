@@ -45,10 +45,10 @@ export const SyncOptionsModal = ({
 
             <Text c="text-secondary" size="sm">
               {isSingleTable
-                ? /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                ? /* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings */
                   t`If you’ve made changes to this table in the underlying database that aren’t showing up in Metabase yet, re-syncing the schema can fix that.`
-                : /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
-                  t`If you’ve made changes to thes tables in the underlying databases that aren’t showing up in Metabase yet, re-syncing the schemas can fix that.`}
+                : /* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings */
+                  t`If you've made changes to these tables in the underlying databases that aren't showing up in Metabase yet, re-syncing the schemas can fix that.`}
             </Text>
           </Stack>
 
@@ -65,9 +65,9 @@ export const SyncOptionsModal = ({
 
             <Text c="text-secondary" size="sm">
               {isSingleTable
-                ? /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                ? /* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings */
                   t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`
-                : /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                : /* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin settings */
                   t`Metabase can scan the values in these tables to enable checkbox filters in dashboards and questions.`}
             </Text>
           </Stack>

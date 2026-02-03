@@ -10,6 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { runQuestionQuerySdk } from "./run-question-query";
@@ -34,6 +35,8 @@ interface UpdateQuestionParams {
 
   queryResults?: any[];
   cancelDeferred?: Deferred;
+  isGuestEmbed: boolean;
+  token: EntityToken | null | undefined;
 
   /** Optimistic update the question in the query builder UI */
   optimisticUpdateQuestion: (question: Question) => void;
@@ -55,6 +58,8 @@ export const updateQuestionSdk =
       queryResults,
       optimisticUpdateQuestion: onQuestionChange,
       shouldRunQueryOnQuestionChange = false,
+      isGuestEmbed,
+      token,
     } = params;
 
     nextQuestion = getAdHocQuestionWithVizSettings({
@@ -63,7 +68,7 @@ export const updateQuestionSdk =
       shouldStartAdHocQuestion,
     });
 
-    if (!nextQuestion.canAutoRun()) {
+    if (!isGuestEmbed && !nextQuestion.canAutoRun()) {
       shouldRunQueryOnQuestionChange = false;
     }
 
@@ -107,7 +112,7 @@ export const updateQuestionSdk =
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      await dispatch(loadMetadataForCard(nextQuestion.card()));
+      await dispatch(loadMetadataForCard(nextQuestion.card(), { token }));
     }
 
     const metadata = getMetadata(getState());
@@ -122,7 +127,10 @@ export const updateQuestionSdk =
     if (shouldRunQueryOnQuestionChange) {
       return runQuestionQuerySdk({
         question: nextQuestion,
+        isGuestEmbed,
+        token,
         originalQuestion,
+        parameterValues: nextParameterValues,
         cancelDeferred,
       });
     }

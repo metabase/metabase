@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
-  setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
@@ -10,8 +9,9 @@ import {
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   createMockCollection,
-  createMockDatabase,
   createMockSearchResult,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
 
@@ -34,7 +34,6 @@ const setup = ({
   recentModelCount = 5,
   hasDataPermissions = true,
 }: SetupOptions) => {
-  const databases = hasDataPermissions ? [createMockDatabase()] : [];
   const mockModelResults = mockModels.map((model) =>
     createMockModelResult(model),
   );
@@ -42,7 +41,6 @@ const setup = ({
     .slice(0, recentModelCount)
     .map((model) => createMockRecentModel(model));
   const models = mockModelResults.slice(0, modelCount);
-  setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models.map((model) => createMockSearchResult(model)));
   setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
@@ -56,6 +54,12 @@ const setup = ({
     </>,
     {
       storeInitialState: {
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: hasDataPermissions,
+            can_create_native_queries: hasDataPermissions,
+          }),
+        }),
         setup: createMockSetupState({
           locale: { name: "English", code: "en" },
         }),

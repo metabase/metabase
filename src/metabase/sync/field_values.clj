@@ -26,11 +26,11 @@
   (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
     (cond
       (not field-values)
-      (log/infof "Field %s does not have FieldValues. Skipping..."
+      (log/infof "%s does not have FieldValues. Skipping..."
                  (sync-util/name-for-logging field))
 
       (field-values/inactive? field-values)
-      (log/infof "Field %s has not been used since %s. Skipping..."
+      (log/infof "%s has not been used since %s. Skipping..."
                  (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
 
       :else

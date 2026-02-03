@@ -5,11 +5,11 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
@@ -151,4 +151,5 @@ SearchApp.propTypes = {
   location: PropTypes.object,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SearchApp;

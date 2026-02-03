@@ -1,17 +1,28 @@
 import { type ReactNode, useMemo, useState } from "react";
+import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import { useSetting } from "metabase/common/hooks";
+import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
+import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
+import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
+import { shouldAllowPreviewAndNavigation } from "metabase/embedding/embedding-iframe-sdk-setup/utils/should-allow-preview-and-navigation";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  type SdkIframeEmbedSetupModalInitialState,
+} from "metabase/plugins";
 
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
 import {
+  useAvailableParameters,
   useGetCurrentResource,
-  useParameters,
   useParametersValues,
   useRecentItems,
+  useSdkIframeEmbedNavigation,
 } from "../hooks";
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
@@ -20,12 +31,29 @@ import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
+  onClose: () => void;
 }
 
 export const SdkIframeEmbedSetupProvider = ({
   children,
   initialState,
+  onClose,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const isSimpleEmbedFeatureAvailable =
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
+
+  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
+
+  const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();
+
+  useMount(() => {
+    trackEmbedWizardOpened();
+  });
+
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
   const {
@@ -67,6 +95,9 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     isRecentsLoading,
     modelCount,
+    isSimpleEmbedFeatureAvailable,
+    isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
   });
 
   // Which embed experience are we setting up?
@@ -77,28 +108,93 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const { resource, isError, isLoading, isFetching } = useGetCurrentResource({
     experience,
-    settings,
+    dashboardId: settings.dashboardId,
+    questionId: settings.questionId,
   });
 
-  const { availableParameters } = useParameters({
-    experience,
+  const { availableParameters, initialAvailableParameters } =
+    useAvailableParameters({
+      experience,
+      resource,
+    });
+
+  const {
+    embeddingParameters,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  } = useEmbeddingParameters({
+    settings,
+    updateSettings,
     resource,
+    availableParameters,
+    initialAvailableParameters,
   });
 
-  const { parametersValuesById } = useParametersValues({
+  const { parametersValuesById, previewParameterValuesBySlug } =
+    useParametersValues({
+      settings,
+      availableParameters,
+      embeddingParameters,
+    });
+
+  const {
+    signedTokenForSnippet: guestEmbedSignedTokenForSnippet,
+    signedTokenForPreview: guestEmbedSignedTokenForPreview,
+  } = useGetGuestEmbedSignedToken({
     settings,
-    availableParameters,
+    experience,
+    previewParameterValuesBySlug,
+    embeddingParameters,
+  });
+
+  const { handleNext, handleBack, canGoBack, isFirstStep, isLastStep } =
+    useSdkIframeEmbedNavigation({
+      isSimpleEmbedFeatureAvailable,
+      isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
+      initialState,
+      experience,
+      resource,
+      currentStep,
+      defaultStep,
+      setCurrentStep,
+      settings,
+      defaultSettings,
+      embeddingParameters,
+    });
+
+  const isGuestEmbed = !!settings.isGuest;
+  const allowPreviewAndNavigation = shouldAllowPreviewAndNavigation({
+    isGuestEmbed,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
+    isSimpleEmbedFeatureAvailable,
+    isSimpleEmbeddingEnabled,
+    isSimpleEmbeddingTermsAccepted,
   });
 
   const value: SdkIframeEmbedSetupContextType = {
+    isSimpleEmbedFeatureAvailable,
+    isSimpleEmbeddingEnabled,
+    isSimpleEmbeddingTermsAccepted,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
+    isSsoEnabledAndConfigured,
     currentStep,
     setCurrentStep,
+    handleNext,
+    handleBack,
+    canGoBack,
+    isFirstStep,
+    isLastStep,
     initialState,
+    allowPreviewAndNavigation,
     experience,
     resource,
     isError,
     isLoading,
     isFetching,
+    isRecentsLoading,
     settings,
     defaultSettings,
     replaceSettings,
@@ -109,7 +205,14 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
+    initialEmbeddingParameters,
     parametersValuesById,
+    previewParameterValuesBySlug,
+    embeddingParameters,
+    onEmbeddingParametersChange,
+    guestEmbedSignedTokenForSnippet,
+    guestEmbedSignedTokenForPreview,
+    onClose,
   };
 
   return (

@@ -2,19 +2,23 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
+import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
+import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
-  setLoaderComponent,
+  setIsGuestEmbed,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
+import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
@@ -27,7 +31,7 @@ import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
-type ComponentProviderInternalProps = ComponentProviderProps & {
+export type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
   isLocalHost?: boolean;
 };
@@ -50,28 +54,43 @@ function useInitPlugins() {
   }, [tokenFeatures]);
 }
 
-export const ComponentProviderInternal = ({
-  children,
-  authConfig,
-  pluginsConfig,
-  eventHandlers,
-  theme,
-  reduxStore,
-  locale,
-  errorComponent,
-  loaderComponent,
-  allowConsoleLog,
-  isLocalHost,
-}: ComponentProviderInternalProps): JSX.Element => {
-  const { fontFamily } = theme ?? {};
+export const ComponentProviderInternal = (
+  props: ComponentProviderInternalProps,
+): JSX.Element => {
+  const {
+    children,
+    authConfig,
+    pluginsConfig,
+    eventHandlers,
+    theme,
+    reduxStore,
+    locale,
+    errorComponent,
+    allowConsoleLog,
+    isLocalHost,
+  } = useNormalizeComponentProviderProps(props);
+
+  const isGuestEmbed = !!authConfig.isGuest;
+  const fontFamily = isEmbeddingThemeV1(theme) ? theme.fontFamily : undefined;
 
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig, isLocalHost });
+  useInitDataInternal({
+    reduxStore,
+    isGuestEmbed,
+    authConfig,
+    isLocalHost,
+  });
 
   useInitPlugins();
+
+  useSdkCustomLoader();
+
+  useEffect(() => {
+    reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
+  }, [reduxStore, isGuestEmbed]);
 
   useEffect(() => {
     if (fontFamily) {
@@ -86,10 +105,6 @@ export const ComponentProviderInternal = ({
   useEffect(() => {
     reduxStore.dispatch(setEventHandlers(eventHandlers || null));
   }, [reduxStore, eventHandlers]);
-
-  useEffect(() => {
-    reduxStore.dispatch(setLoaderComponent(loaderComponent ?? null));
-  }, [reduxStore, loaderComponent]);
 
   useEffect(() => {
     reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
@@ -110,6 +125,8 @@ export const ComponentProviderInternal = ({
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
+
+                {isInstanceToRender && <ContentTranslationsProvider />}
               </LocaleProvider>
 
               {isInstanceToRender && (

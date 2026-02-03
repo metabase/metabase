@@ -142,12 +142,23 @@ export const IMPERSONATED_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
 
 export const ADMINISTRATORS_GROUP_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.groups,
-  { name: "Administrators" },
+  { magic_group_type: "admin" },
 ).id;
 
 export const ALL_USERS_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
-  name: "All Users",
+  magic_group_type: "all-internal-users",
 }).id;
+
+export const ALL_EXTERNAL_USERS_GROUP_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.groups,
+  {
+    magic_group_type: "all-external-users",
+  },
+)?.id;
+
+export const DATA_ANALYSTS_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
+  magic_group_type: "data-analyst",
+})?.id;
 
 export const COLLECTION_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
   name: "collection",

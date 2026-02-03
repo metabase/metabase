@@ -1,33 +1,34 @@
 import { t } from "ttag";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
+import { getIcon } from "metabase/lib/icon";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";
+import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
 import {
   EllipsifiedEntityContainer,
   EntityDisplayContainer,
   LeftContainer,
 } from "./EntityDisplay.styled";
-import type { WrappedUnrestrictedLinkEntity } from "./types";
 
 export const EntityDisplay = ({
   entity,
   showDescription = false,
 }: {
-  entity: WrappedUnrestrictedLinkEntity;
+  entity: UnrestrictedLinkEntity;
   showDescription?: boolean;
 }) => {
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon color="var(--mb-color-brand)" name={getSearchIconName(entity)} />
+        <Icon c="brand" name={getSearchIconName(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
           name="info"
-          color="var(--mb-color-text-light)"
+          c="text-tertiary"
           tooltip={
             <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
               {entity.description}
@@ -42,7 +43,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" color="var(--mb-color-text-light)" />
+      <Icon name="key" c="text-tertiary" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>
@@ -64,8 +65,8 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   );
 };
 
-function getSearchIconName(entity: WrappedUnrestrictedLinkEntity) {
-  const entityIcon = entity.getIcon?.() ?? { name: "link" };
+function getSearchIconName(entity: UnrestrictedLinkEntity) {
+  const entityIcon = getIcon(entity) ?? { name: "link" };
 
   // we need to change this icon to make it match the icon in the search results
   if (entity.model === "table") {

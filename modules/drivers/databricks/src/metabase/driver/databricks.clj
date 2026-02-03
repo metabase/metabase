@@ -1,5 +1,5 @@
 (ns metabase.driver.databricks
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -19,7 +19,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]]
+   [metabase.util.performance :refer [not-empty get-in]]
    [ring.util.codec :as codec])
   (:import
    [java.sql
@@ -390,7 +390,7 @@
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
 ;;
-;; `set-parameter` is implmented also for LocalTime and OffsetTime, even though Databricks does not support time types.
+;; `set-parameter` is implemented also for LocalTime and OffsetTime, even though Databricks does not support time types.
 ;; It enables creation of `attempted-murders` dataset, hence making the driver compatible with more of existing tests.
 ;;
 

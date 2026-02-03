@@ -1,10 +1,10 @@
 import L from "leaflet";
 
-import LeafletMap from "./LeafletMap";
+import { LeafletMap } from "./LeafletMap";
 
 import "leaflet.heat";
 
-export default class LeafletHeatMap extends LeafletMap {
+export class LeafletHeatMap extends LeafletMap {
   componentDidMount() {
     super.componentDidMount();
 

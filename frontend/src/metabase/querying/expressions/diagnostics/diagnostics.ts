@@ -15,6 +15,7 @@ type Options = {
   stageIndex: number;
   expressionIndex?: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   metadata?: Metadata;
 };
 

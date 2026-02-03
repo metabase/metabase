@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.parameter
-  "`:parameters` specify the *values* of parameters previously definied for a Dashboard or Card (native query template
+  "`:parameters` specify the *values* of parameters previously defined for a Dashboard or Card (native query template
   tag parameters.) See [[metabase.lib.schema.template-tag]] above for more information on the later.
 
   There are three things called 'type' in play when we talk about parameters and template tags.
@@ -21,6 +21,7 @@
   currently still allowed for backwards-compatibility purposes -- currently the FE client will just parrot back the
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
@@ -28,7 +29,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 (defn- variadic-opts-first
   "Some clauses, like `:contains`, have optional `options` last in their binary form, and required options first in
@@ -159,11 +161,28 @@
                                         :else                             param-type)))}]
         (keys types)))
 
+(def ^:private valid-widget-types (set (keys types)))
+
+(defn- normalize-widget-type [x]
+  (when-let [x (lib.schema.common/normalize-keyword x)]
+    (cond
+      (valid-widget-types x)
+      x
+
+      ;; for invalid namespaced types like `:category/=` return closest unnamespaced match e.g. `:category`
+      (and (qualified-keyword? x)
+           (valid-widget-types (keyword (namespace x))))
+      (keyword (namespace x))
+
+      ;; if no close match return `:none`
+      :else
+      :none)))
+
 (mr/def ::widget-type
   "The type of widget to display in the FE UI for the user to use to pick values for this parameter."
   (into [:enum
          {:error/message    "valid parameter widget type"
-          :decode/normalize lib.schema.common/normalize-keyword}
+          :decode/normalize normalize-widget-type}
          :none]
         (keys types)))
 

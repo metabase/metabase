@@ -37,6 +37,7 @@ export type BillingInfoLineItem = BillingInfoFormatType &
 
 interface IBillingInfoData {
   billing_period_months?: number | null;
+  previous_add_ons?: { product_type: string; self_service: boolean }[] | null;
 }
 
 export type BillingInfo = {

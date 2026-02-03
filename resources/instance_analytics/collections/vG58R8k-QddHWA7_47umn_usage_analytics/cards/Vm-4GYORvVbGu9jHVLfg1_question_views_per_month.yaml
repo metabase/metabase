@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,60 +21,84 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - base-type: type/DateTimeWithLocalTZ
-        temporal-unit: month
+      - [Internal Metabase Database, public, v_view_log, timestamp]
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: month}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_type
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_view_log, entity_type]
+      - {base-type: type/Text}
     - card
     joins:
     - alias: People - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_view_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - User}
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
-result_metadata: null
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  description: When the view happened
+  display_name: 'Timestamp: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, timestamp]
+  - {temporal-unit: month}
+  id: [Internal Metabase Database, public, v_view_log, timestamp]
+  inherited_temporal_unit: month
+  name: timestamp
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 281
+  lib/deduplicated-name: timestamp
+  lib/desired-column-alias: timestamp
+  lib/model-display-name: Timestamp
+  lib/original-display-name: Timestamp
+  lib/original-name: timestamp
+  lib/source: source/previous-stage
+  lib/source-column-alias: timestamp
+  metabase.lib.field/temporal-unit: month
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
 visualization_settings:
   column_settings: null
-  graph.dimensions:
-  - timestamp
-  graph.metrics:
-  - count
+  graph.dimensions: [timestamp]
+  graph.metrics: [count]
   graph.show_values: true
+card_schema: 23
 serdes/meta:
-- id: Vm-4GYORvVbGu9jHVLfg1
-  label: question_views_per_month
-  model: Card
+- {id: Vm-4GYORvVbGu9jHVLfg1, label: question_views_per_month, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

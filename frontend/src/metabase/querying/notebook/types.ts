@@ -1,3 +1,4 @@
+import type { ColorName } from "metabase/lib/colors/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -54,7 +55,7 @@ export interface NotebookStepProps {
   step: NotebookStep;
   query: Lib.Query;
   stageIndex: number;
-  color: string;
+  color: ColorName;
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
@@ -65,7 +66,7 @@ export interface NotebookStepProps {
 export interface NotebookStepHeaderProps {
   step: NotebookStep;
   title: string;
-  color: string;
+  color: ColorName;
   canRevert: boolean;
   onRevert?: () => void;
 }

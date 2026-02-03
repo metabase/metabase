@@ -200,8 +200,10 @@
   with-restored-data-perms-for-groups!
   with-no-data-perms-for-all-users!
   with-full-data-perms-for-all-users!
+  with-db-perm-for-group!
   with-perm-for-group!
-  with-perm-for-group-and-table!]
+  with-perm-for-group-and-table!
+  with-data-analyst-role!]
 
  [qp
   process-query
@@ -267,6 +269,7 @@
   format-env-key
   priv-key->base64-uri
   latest-audit-log-entry
+  all-entries-for
   let-url
   metric-value
   obj->json->obj

@@ -66,10 +66,29 @@
           [:model/User _ {:login_attributes {:foo "bar"
                                              :woo "hoo"}}
            :model/User _ {:login_attributes {:foo "biz"
-                                             :woo "haa"}}
+                                             :woo "haa"}} ; codespell:ignore haa
            :model/User _ {:login_attributes {:third-one "nope"}}]
           (is (= 2
                  (count (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))))
+
+(deftest get-user-attributes-with-tenants-test
+  (mt/with-premium-features #{:tenants :sandboxes}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (testing "includes tenant attributes from tenant models"
+        (mt/with-temp
+          [:model/Tenant _ {:name "Test Tenant"
+                            :slug "test-tenant"
+                            :attributes {"tenant-key-1" "value1"
+                                         "tenant-key-2" "value2"}}
+           :model/Tenant _ {:name "Another Tenant"
+                            :slug "another-tenant"
+                            :attributes {"tenant-key-3" "value3"
+                                         "tenant-key-1" "different-value"}}
+           :model/User _ {:login_attributes {:user-key "user-value"}}]
+
+          (let [attributes (set (mt/user-http-request :crowberto :get 200 "mt/user/attributes"))]
+            (is (set/subset? #{"tenant-key-1" "tenant-key-2" "tenant-key-3" "user-key"}
+                             attributes))))))))
 
 (deftest update-user-attributes-test
   (mt/with-premium-features #{}

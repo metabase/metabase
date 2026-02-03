@@ -20,12 +20,14 @@ interface DateRangePickerBodyProps {
   value: [Date, Date];
   hasTime: boolean;
   onChange: (value: [Date, Date]) => void;
+  valueFormat?: string;
 }
 
 export function DateRangePickerBody({
   value,
   hasTime,
   onChange,
+  valueFormat = "LL",
 }: DateRangePickerBodyProps) {
   const [startDate, endDate] = value;
   const [inProgressDateRange, setInProgressDateRange] =
@@ -56,7 +58,7 @@ export function DateRangePickerBody({
     const newEndDate = setDatePart(endDate, newDate);
     onChange([startDate, newEndDate]);
     setInProgressDateRange(null);
-    // substract 1 month because we want the end date to be shown in the 2nd column
+    // subtract 1 month because we want the end date to be shown in the 2nd column
     setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
   };
 
@@ -74,7 +76,7 @@ export function DateRangePickerBody({
       const newEndDate = setTimePart(endDate, newTime);
       onChange([startDate, newEndDate]);
       setInProgressDateRange(null);
-      // substract 1 month because we want the end date to be shown in the 2nd column
+      // subtract 1 month because we want the end date to be shown in the 2nd column
       setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
     }
   };
@@ -85,14 +87,16 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={startDate}
+          valueFormat={valueFormat}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
         />
-        <Text c="text-light">{t`and`}</Text>
+        <Text c="text-tertiary">{t`and`}</Text>
         <DateInput
           className={S.FlexDateInput}
           value={endDate}
+          valueFormat={valueFormat}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
@@ -106,7 +110,7 @@ export function DateRangePickerBody({
             aria-label={t`Start time`}
             onChange={handleStartTimeChange}
           />
-          <Text c="text-light">{t`and`}</Text>
+          <Text c="text-tertiary">{t`and`}</Text>
           <TimeInput
             className={S.FlexTimeInput}
             value={endDate}

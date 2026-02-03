@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 
-import { EmptyStateRoot } from "./PermissionsEditorEmptyState.styled";
+import S from "./PermissionsEditorEmptyState.module.css";
 
 const propTypes = {
   icon: PropTypes.string.isRequired,
@@ -10,9 +10,9 @@ const propTypes = {
 };
 
 export const PermissionsEditorEmptyState = (props) => (
-  <EmptyStateRoot>
+  <div className={S.EmptyStateRoot}>
     <EmptyState {...props} />
-  </EmptyStateRoot>
+  </div>
 );
 
 PermissionsEditorEmptyState.propTypes = propTypes;

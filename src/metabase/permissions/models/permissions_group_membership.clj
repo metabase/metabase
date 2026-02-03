@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -24,11 +23,23 @@
   but enable it when adding or deleting users."
   false)
 
+(def ^:dynamic *allow-changing-all-external-users-group-members*
+  "Should we allow people to be added to or removed from the All tenant users permissions group? By default, this is
+  `false`, but enable it when adding or deleting users."
+  false)
+
 (defmacro allow-changing-all-users-group-members
   "Allow people to be added to or removed from the All Users permissions group? By default, this is disallowed."
   {:style/indent 0}
   [& body]
   `(binding [*allow-changing-all-users-group-members* true]
+     ~@body))
+
+(defmacro allow-changing-all-external-users-group-members
+  "Allow users to be added to or removed from the All tenant users permissions group? By default, this is disallowed."
+  {:style/indent 0}
+  [& body]
+  `(binding [*allow-changing-all-external-users-group-members* true]
      ~@body))
 
 (defn- check-not-all-users-group
@@ -39,23 +50,25 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                       {:status-code 400})))))
 
-(defn- admin-count
-  "The current number of non-archived admins (superusers)."
-  []
-  (:count
-   (first
-    (app-db/query {:select [[:%count.* :count]]
-                   :from   [[:permissions_group_membership :pgm]]
-                   :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
-                   :where  [:and
-                            [:= :pgm.group_id (u/the-id (perms-group/admin))]
-                            [:= :user.is_active true]]}))))
+(defn- check-not-all-external-users-group
+  "Throw an Exception if we're trying to add or remove a user to the All Users group."
+  [group-id]
+  (when (= group-id (:id (perms-group/all-external-users)))
+    (when-not *allow-changing-all-external-users-group-members*
+      (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
+                      {:status-code 400})))))
 
 (defn throw-if-last-admin!
-  "Throw an Exception if there is only one admin (superuser) left. The assumption is that the one admin is about to be
+  "Throw an Exception if there are no admins left besides this one. The assumption is that the one admin is about to be
   archived or have their admin status removed."
-  []
-  (when (<= (admin-count) 1)
+  [user-id]
+  (when (zero?
+         (t2/count :model/PermissionsGroupMembership
+                   {:join   [[:core_user :user] [:= :user.id :user_id]]
+                    :where  [:and
+                             [:= :group_id (u/the-id (perms-group/admin))]
+                             [:= :user.is_active true]
+                             [:not= :user.id user-id]]}))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
@@ -64,13 +77,17 @@
 (t2/define-before-delete :model/PermissionsGroupMembership
   [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
-  ;; Otherwise if this is the Admin group...
+  (check-not-all-external-users-group group_id)
+  ;; If this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception
-    (throw-if-last-admin!)
+    (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false}))))
+      (t2/update! 'User user_id {:is_superuser false})))
+  ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
+  (when (= group_id (:id (perms-group/data-analyst)))
+    (t2/update! 'User user_id {:is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the
@@ -149,6 +166,7 @@
           user-id->tenant? (t2/select-pk->fn (comp (complement nil?) :tenant_id)
                                              [:model/User :id :tenant_id]
                                              :id [:in user-ids])
+
           bad-user-group-pairs (->> (keys user-id-group-id->is-group-manager?)
                                     (keep (fn [[user-id group-id]]
                                             (when (not= (group-id->tenant? group-id)
@@ -158,16 +176,29 @@
                                                :user-is-tenant? (user-id->tenant? user-id)
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
           _ (doseq [group-id group-ids]
-              (check-not-all-users-group group-id))
+              (check-not-all-users-group group-id)
+              (check-not-all-external-users-group group-id))
+          _ (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
+              (when (and is-group-manager? (user-id->tenant? user-id))
+                (throw (ex-info (tru "Tenant users cannot be made group managers")
+                                {:bad-user-group-pair [user-id group-id]
+                                 :status-code 400}))))
           _ (when (seq bad-user-group-pairs)
               (throw (ex-info (tru "Cannot add non-tenant user to tenant-group or vice versa")
-                              {:bad-user-group-pairs bad-user-group-pairs})))
+                              {:bad-user-group-pairs bad-user-group-pairs
+                               :status-code 400})))
 
           new-admin-ids (->> user-id-group-id->is-group-manager?
                              keys
                              (keep (fn [[user-id group-id]]
                                      (when (= group-id (:id (perms-group/admin)))
                                        user-id))))
+
+          new-data-analyst-ids (->> user-id-group-id->is-group-manager?
+                                    keys
+                                    (keep (fn [[user-id group-id]]
+                                            (when (= group-id (:id (perms-group/data-analyst)))
+                                              user-id))))
 
           sql (add-users-to-groups-sql user-id-group-id->is-group-manager?)]
       (t2/with-transaction [_conn]
@@ -179,6 +210,8 @@
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
           (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+        (when (seq new-data-analyst-ids)
+          (t2/update! :model/User :id [:in new-data-analyst-ids] {:is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create

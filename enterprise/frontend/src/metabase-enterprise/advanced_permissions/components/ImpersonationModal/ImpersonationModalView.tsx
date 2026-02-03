@@ -2,18 +2,18 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import Alert from "metabase/common/components/Alert";
-import Button from "metabase/common/components/Button";
-import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import { Alert } from "metabase/common/components/Alert";
+import { Button } from "metabase/common/components/Button";
+import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
+import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import FormSelect from "metabase/common/components/FormSelect";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import Link from "metabase/common/components/Link/Link";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
+import { Link } from "metabase/common/components/Link/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSelect } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttributeKey } from "metabase-types/api";
 
@@ -55,10 +55,7 @@ export const ImpersonationModalView = ({
         ? [selectedAttribute, ...attributes]
         : attributes;
 
-    return selectableAttributes.map((attribute) => ({
-      name: attribute,
-      value: attribute,
-    }));
+    return selectableAttributes;
   }, [attributes, selectedAttribute]);
 
   const hasAttributes = attributeOptions.length > 0;
@@ -76,18 +73,18 @@ export const ImpersonationModalView = ({
 
   // for redshift, we impersonate using users, not roles
   const impersonationUsesUsers = database.engine === "redshift";
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only shows for admins.
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only shows for admins.
   const { url: permsDocsUrl } = useDocsUrl("permissions/data");
 
   const modalTitle = impersonationUsesUsers
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
       t`Map a Metabase user attribute to database users`
     : t`Map a user attribute to database roles`;
 
   const modalMessage = impersonationUsesUsers
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
-    : // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
@@ -126,8 +123,10 @@ export const ImpersonationModalView = ({
               <FormSelect
                 name="attribute"
                 placeholder={t`Pick a user attribute`}
-                title={t`User attribute`}
-                options={attributeOptions}
+                label={t`User attribute`}
+                data={attributeOptions}
+                mb="1.25rem"
+                renderOption={renderUserAttributesForSelect}
               />
 
               <ImpersonationWarning database={database} />

@@ -1,7 +1,7 @@
 (ns metabase.lib.swap
-  #?(:clj (:refer-clojure :exclude [for]))
+  #?(:clj (:refer-clojure :exclude [for get-in]))
   (:require
-   #?(:clj [metabase.util.performance :refer [for]])
+   #?(:clj [metabase.util.performance :refer [for get-in]])
    [metabase.lib.options :as lib.options]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.util :as lib.util]

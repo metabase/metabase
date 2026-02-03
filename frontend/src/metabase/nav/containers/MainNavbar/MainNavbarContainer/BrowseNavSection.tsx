@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { useUserSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
@@ -54,7 +54,7 @@ export const BrowseNavSection = ({
           <Tooltip label={t`Add data`}>
             <ActionIcon
               aria-label={t`Add data`}
-              color="var(--mb-color-text-medium)"
+              color="text-secondary"
               onClick={() => {
                 trackAddDataModalOpened("left-nav");
                 onAddDataModalOpen();

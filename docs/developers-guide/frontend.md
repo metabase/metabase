@@ -4,414 +4,66 @@ title: Frontend
 
 # Frontend
 
-## Entity Loaders
+## Typescript
 
-If you're developing a new feature or just generally need to get at some of the application data on the frontend, Entity Loaders are going to be your friend. They abstract away calling the API, handling loading and error state, cache previously loaded objects, invalidating the cache (in some cases) and let you easily perform updates, or create new items.
+We are aggressively pressing toward having our entire frontend codebase in typescript. If you find yourself working on a javascript file, consider making a small initial PR to convert it to typescript before making further changes (and making it a functional component if you've happened upon a class component 😱).
 
-### Good uses for Entity Loaders
+Avoid typecasts, and avoid use of `any` at all costs.
 
-- I need to get a specific X (user, database, etc) and display it.
-- I need to get a list of X (databases, questions, etc) and display it.
+Most of our widely-used types are located in [metabase-types](https://github.com/metabase/metabase/tree/master/frontend/src/metabase-types). Generally they break down as
 
-### Currently available entities:
+- API Types: should reflect the data we receive from the backend API
+- Store Types: should reflect the shape of data in the redux store
 
-- Questions, Dashboards, Pulses
-- Collections
-- Databases, Tables, Fields, Segments, Metrics
-- Users, Groups
-- Full current list of entities here: https://github.com/metabase/metabase/tree/master/frontend/src/metabase/entities
+In cases where types are only used by some local components, they should be defined locally in a `types.ts` file. (see e.g. [DataGrid](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/data-grid/types.ts) types)
 
-There are two ways to use loaders, either as React "render prop" components or as React component class decorators ("higher order components").
+## Redux
 
-### Object loading
+We use Redux for global state. You will find domain-specific actions, reducers, and selectors generally grouped with the components that use them. e.g:
 
-In this example we're going to load information about a specific database for a new page.
+- [query_builder](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/query_builder)
+- [dashboard](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/dashboard)
 
-```js
-import React from "react";
-import Databases from "metabase/entities/databases";
+Use Redux global state as little as possible, and wherever possible, prefer local component state, or narrowly-defined context.
 
-@Databases.load({ id: 4 })
-class MyNewPage extends React.Component {
-  render() {
-    const { database } = this.props;
-    return (
-      <div>
-        <h1>{database.name}</h1>
-      </div>
-    );
-  }
-}
-```
+## Data Fetching
 
-This example uses a class decorator to ask for and then display a database with ID 4. If you instead wanted to use a render prop component your code would look like this.
+We use [RTK Query](https://redux-toolkit.js.org/rtk-query/overview) for data fetching and caching. All API endpoints are defined in `metabase/api`. These should be properly typed, and should not depend on any other application code or contain business logic outside of invalidating tags within the API.
 
-```js
-import React from "react";
-import Databases from "metabase/entities/databases";
+### Entity Loaders
 
-class MyNewPage extends React.Component {
-  render() {
-    const { database } = this.props;
-    return (
-      <div>
-        <Databases.Loader id={4}>
-          {({ database }) => <h1>{database.name}</h1>}
-        </Databases.Loader>
-      </div>
-    );
-  }
-}
-```
+Legacy code uses `metabase/entities` to load data. These entity loaders are deprecated, and wherever possible, use of RTK query apis should be preferred.
 
-Now you most likely don't just want to display just one static item so for cases where some of the values you might need will be dynamic you can use a function to get at the props and return the value you need. If you're using the component approach you can just pass props as you would normally for dynamic values.
+## UI Library
 
-```js
-@Databases.load({
-  id: (state, props) => props.params.databaseId
-}))
-```
+Our UI library in `metabase/ui` is built on top of [`Mantine`](https://mantine.dev/core/package/). You should almost always prefer using mantine components above anything else in the codebase. We have a lot of customization on top of mantine, but no business logic should leak into the `metabase/ui` folder. It should remain purely display-level. All components added to the UI library must have a storybook file to demonstrate usage.
 
-## List loading
-
-Loading a list of items is as easy as applying the `loadList` decorator:
-
-```js
-import React from "react";
-import Users from "metabase/entities/users";
-
-@Users.loadList()
-class MyList extends React.Component {
-  render() {
-    const { users } = this.props;
-    return <div>{users.map((u) => u.first_name)}</div>;
-  }
-}
-```
-
-Similar to the object loader's `id` argument you can also pass a `query` object (if the API supports it):
-
-```js
-@Users.loadList({
-  query: (state, props) => ({ archived: props.showArchivedOnly })
-})
-```
-
-### Control over loading and error states
-
-By default both `EntityObject` and `EntityList` loaders will handle loading state for you by using `LoadingAndErrorWrapper` under the hood. If for some reason you want to handle loading on your own you can disable this behavior by setting `loadingAndErrorWrapper: false`.
-
-### Wrapped objects
-
-If you pass `wrapped: true` to a loader then the object or objects will be wrapped with helper classes that let you do things like `user.getName()`, `user.delete()`, or `user.update({ name: "new name" )`. Actions are automatically already bound to `dispatch`.
-
-This may incur a performance penalty if there are many objects.
-
-Any additional selectors and actions defined in the entities' `objectSelectors` or `objectActions` will appear as the wrapped object's methods.
-
-### Advanced usage
-
-You can also use the Redux actions and selectors directly, for example, `dispatch(Users.actions.loadList())` and `Users.selectors.getList(state)`.
-
-## Style Guide
-
-### Set up Prettier
-
-We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `yarn prettier`, and verify it has been formatted correctly using `yarn lint-prettier`.
-
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `yarn lint-eslint` to check.
-
-### React and JSX Style Guide
-
-For the most part we follow the [Airbnb React/JSX Style Guide](https://github.com/airbnb/javascript/tree/master/react). ESLint and Prettier should take care of a majority of the rules in the Airbnb style guide. Exceptions will be noted in this document.
-
-- Prefer React [function components over class components](https://reactjs.org/docs/components-and-props.html#function-and-class-components)
-- Avoid creating new components within the `containers` folder, as this approach has been deprecated. Instead, store both connected and view components in the `components` folder for a more unified and efficient organization. If a connected component grows substantially in size and you need to extract a view component, opt for using the `View` suffix.
-- For control components, typically we use `value` and `onChange`. Controls that have options (e.x. `Radio`, `Select`) usually take an `options` array of objects with `name` and `value` properties.
-- Components named like `FooWidget` typically include a `FooPopover` inside a `PopoverWithTrigger` with some sort of trigger element, often `FooName`
-
-- Use arrow function instance properties if you need to bind a method in a class (instead of `this.method = this.method.bind(this);` in the constructor), but only if the function needs to be bound (e.x. if you're passing it as a prop to a React component)
-
-```javascript
-class MyComponent extends React.Component {
-  constructor(props) {
-    super(props);
-    // NO:
-    this.handleChange = this.handleChange.bind(this);
-  }
-  // YES:
-  handleChange = (e) => {
-    // ...
-  };
-  // no need to bind:
-  componentDidMount() {}
-  render() {
-    return <input onChange={this.handleChange} />;
-  }
-}
-```
-
-- For styling components we currently use a mix of `styled-components` and ["atomic" / "utility-first" CSS classes](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/css/core).
-- Prefer using `grid-styled`'s `Box` and `Flex` components over raw `div`.
-- Components should typically pass along their `className` prop to the root element of the component. It can be merged with additional classes using the `cx` function from the `classnames` package.
-- In order to make components more reusable, a component should only apply classes or styles to the root element of the component which affects the layout/styling of it's own content, but _not_ the layout of itself within it's parent container. For example, it can include padding or the `flex` class, but it shouldn't include margin or `flex-full`, `full`, `absolute`, `spread`, etc. Those should be passed via `className` or `style` props by the consumer of the component, which knows how the component should be positioned within itself.
-- Avoid breaking JSX up into separate method calls within a single component. Prefer inlining JSX so that you can better see what the relation is of the JSX a `render` method returns to what is in the `state` or `props` of a component. By inlining JSX you'll also get a better sense of what parts should and should not be separate components.
-
-```javascript
-
-// don't do this
-render () {
-  return (
-    <div>
-      {this.renderThing1()}
-      {this.renderThing2()}
-      {this.state.thing3Needed && this.renderThing3()}
-    </div>
-  );
-}
-
-// do this
-render () {
-  return (
-    <div>
-      <button onClick={this.toggleThing3Needed}>toggle</button>
-      <Thing2 randomProp={this.props.foo} />
-      {this.state.thing3Needed && <Thing3 randomProp2={this.state.bar} />}
-    </div>
-  );
-}
-```
-
-### JavaScript Conventions
-
-- `import`s should be ordered by type, typically:
-  1. external libraries (`react` is often first, along with things like `ttags`, `underscore`, `classnames`, etc)
-  2. Metabase's top-level React components and containers (`metabase/components/*`, `metabase/containers/*`, etc)
-  3. Metabase's React components and containers specific to this part of the application (`metabase/*/components/*` etc)
-  4. Metabase's `lib`s, `entities`, `services`, Redux files, etc
-- Prefer `const` to `let` (and never use `var`). Only use `let` if you have a specific reason to reassign the identifier (note: this now enforced by ESLint)
-- Prefer [arrow functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions) for inline functions, especially if you need to reference `this` from the parent scope (there should almost never be a need to do `const self = this;` etc), but usually even if you don't (e.x. `array.map(x => x * 2)`).
-- Prefer `function` declarations for top-level functions, including React function components. The exception is for one-liner functions that return a value
-
-```javascript
-// YES:
-function MyComponent(props) {
-  return <div>...</div>;
-}
-// NO:
-const MyComponent = (props) => {
-  return <div>...</div>;
-};
-// YES:
-const double = (n) => n * 2;
-// ALSO OK:
-function double(n) {
-  return n * 2;
-}
-```
-
-- Prefer native `Array` methods over `underscore`'s. We polyfill all ES6 features. Use Underscore for things that aren't implemented natively.
-- Prefer [`async`/`await`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) over using `promise.then(...)` etc directly.
-- You may use assignment destructuring or argument destructuring, but avoid deeply nested destructuring, since they can be hard to read and `prettier` sometimes formats them with extra whitespace.
-  - avoid destructuring properties from "entity"-like objects, e.x. don't do `const { display_name } = column;`
-  - don't destructure `this` directly, e.x. `const { foo } = this.props; const { bar } = this.state;` instead of `const { props: { foo }, state: { bar } } = this;`
-- Avoid nested ternaries as they often result in code that is difficult to read. If you have logical branches in your code that are dependent on the value of a string, prefer using an object as a map to multiple values (when evaluation is trivial) or a `switch` statement (when evaluation is more complex, like when branching on which React component to return):
-
-```javascript
-// don't do this
-const foo = str == 'a' ? 123 : str === 'b' ? 456 : str === 'c' : 789 : 0;
-
-// do this
-const foo = {
-  a: 123,
-  b: 456,
-  c: 789,
-}[str] || 0;
-
-// or do this
-switch (str) {
-  case 'a':
-    return <ComponentA />;
-  case 'b':
-    return <ComponentB />;
-  case 'c':
-    return <ComponentC />;
-  case 'd':
-  default:
-    return <ComponentD />;
-}
-```
-
-If your nested ternaries are in the form of predicates evaluating to booleans, prefer an `if/if-else/else` statement that is siloed to a separate, pure function:
-
-```javascript
-const foo = getFoo(a, b);
-
-function getFoo(a, b, c) {
-  if (a.includes("foo")) {
-    return 123;
-  } else if (a === b) {
-    return 456;
-  } else {
-    return 0;
-  }
-}
-```
-
-- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in GitHub. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
-
-```javascript
-
-// don't do this--the comment is redundant
-
-// get the native permissions for this db
-const nativePermissions = getNativePermissions(perms, groupId, {
-  databaseId: database.id,
-});
-
-// don't add TODOs -- they quickly become forgotten cruft
-
-isSearchable(): boolean {
-  // TODO: this should return the thing instead
-  return this.isString();
-}
-
-// this is acceptable -- the implementer explains a not-obvious edge case of a third party library
-
-// foo-lib seems to return undefined/NaN occasionally, which breaks things
-if (isNaN(x) || isNaN(y)) {
-  return;
-}
-
-```
-
-- Avoid complex logical expressions inside of if statements
-
-```javascript
-// don't do this
-if (typeof children === "string" && children.split(/\n/g).length > 1) {
-  // ...
-}
-
-// do this
-const isMultilineText =
-  typeof children === "string" && children.split(/\n/g).length > 1;
-if (isMultilineText) {
-  // ...
-}
-```
-
-- Use ALL_CAPS for constants
-
-```javascript
-// do this
-const MIN_HEIGHT = 200;
-
-// also acceptable
-const OBJECT_CONFIG_CONSTANT = {
-  camelCaseProps: "are OK",
-  abc: 123,
-};
-```
-
-- Prefer named exports over default exports
-
-```javascript
-// this makes it harder to search for Widget
-import Foo from "./Widget";
-// do this to enforce using the proper name
-import { Widget } from "./Widget";
-```
-
-- Avoid magic strings and numbers
-
-```javascript
-// don't do this
-const options = _.times(10, () => ...);
-
-// do this in a constants file
-export const MAX_NUM_OPTIONS = 10;
-const options = _.times(MAX_NUM_OPTIONS,  () => ...);
-```
-
-### Write Declarative Code
-
-You should write code with other engineers in mind as other engineers will spend more time reading than you spend writing (and re-writing). Code is more readable when it tells the computer "what to do" versus "how to do." Avoid imperative patterns like for loops:
-
-```javascript
-// don't do this
-let foo = [];
-for (let i = 0; i < list.length; i++) {
-  if (list[i].bar === false) {
-    continue;
-  }
-
-  foo.push(list[i]);
-}
-
-// do this
-const foo = list.filter((entry) => entry.bar !== false);
-```
-
-When dealing with business logic you don't want to be concerned with the specifics of the language. Instead of writing `const query = new Question(card).query();` which entails instantiating a new `Question` instance and calling a `query` method on said instance, you should introduce a function like `getQueryFromCard(card)` so that implementers can avoid thinking about what goes into getting a `query` value from a card.
-
-## Component Styling Tree Rings
-
-### CSS modules
-
-```css
-.primary {
-  color: -var(--mb-color-brand);
-}
-```
-
-```javascript
-import S from "./Foo.css";
-
-const Foo = () => <div className={S.primary} />;
-```
-
-### [Emotion](https://emotion.sh/) (discouraged)
-
-```javascript
-import styled from "@emotion/styled";
-
-const Foo = styled.div`
-  color: ${(props) => props.color};
-`;
-
-const Bar = ({ color }) => <Foo color={color} />;
-```
-
-## Popover
-
-Popovers are popups or modals.
-
-In Metabase core, they are visually responsive: they appear above or below the element that triggers their appearance. Their height is automatically calculated to make them fit on the screen.
-
-### Where to Find Popovers in the User Journey
-
-#### When creating custom questions
-
-1. From home, click on `New` and then `Question`
-2. 👀 The option picker that automatically opened next to `Pick your starting data` is a `<Popover />`.
-3. Choose `Sample Database` if not already selected
-4. Choose any of the tables, for example `People`
-
-Here, clicking on the following will open `<Popover />` components:
-
-- `Pick columns` (arrow on the right-hand side of a `FieldsPicker` control in the section labeled `Data`)
-- Gray icon of a grid with + below section labeled `Data`
-- `Add filters to narrow your answers`
-- `Pick the metric you want to see`
-- `Pick a column to group by`
-- `Sort` icon with arrows pointing up and down above `Visualize` button
+## Styling
+
+You'll note several styling patterns in the codebase. Currently you should prefer
+
+1. [Mantine Style Props](https://mantine.dev/styles/style-props/) for most simple styling
+2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
+
+Other patterns, such as emotion styled components and global utility CSS classes are deprecated and should not be used for new code. Where convenient, please updated deprecated styling patterns to the updated ones.
+
+Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
+
+## Colors
+
+Colors should only be used in the form of mantine color props (primarily `c` and `bg`), or in css modules using variables eg: `color: var(--mb-color-text-primary);`. Using these colors ensures consistent visual design and user experience across both dark and light modes. Literal color values such as `black` or `#FFF` are not allowed, as well as using `color-mix` in your CSS modules to adjust the color or transparency of a variable. The full list of keys can be found in `frontend/src/metabase/lib/colors/types/color-keys.ts`, with their light and dark values found in `frontend/src/metabase/lib/colors/constants/themes`. If you find yourself requiring a color that does not already exist but is present in designs, reach out to the design team for guidance.
 
 ## Unit testing
 
+All code must be tested. Unit tests should always be preferred over end-to-end tests; they are much faster to run and debug, even if they take a little longer to write initially.
+
+Unit tests should be placed with the components they are testing.
+
+Setting up unit tests in metabase can be quite complex due to all the data mocking that must be done for even simple components. We have many helpers to make this faster, for app context providers, data mocking, and API mocking. (also note: LLMs are quite good at absorbing existing mocking patterns and helping set up mock data)
+
 ### Setup pattern
 
-We use the following pattern to unit test components:
+We use the following pattern to setup test components:
 
 ```tsx
 import React from "react";
@@ -495,3 +147,127 @@ Key points:
 
 - `setup` function
 - Call helpers from `__support__/server-mocks` to setup endpoints for your data
+
+## Localization
+
+The frontend uses [ttag](https://www.npmjs.com/package/ttag) to localize strings. All user-facing strings must be tagged, and automation will handle the rest. It is often helpful to add context for strings, especially when interpolating parameters
+
+```ts
+<div>{t`This is a user-facing string`}</div>
+
+<div>
+	{c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
+</div>
+```
+
+As much as possible, try to translate phrases, rather than words, to make localization across languages with different structures possible.
+
+```ts
+// ❌
+const output = name + t` is going to the ` + place + t`with` + anotherName;
+
+// ✅
+const output = t`${name} is going to the ${place} with ${anotherName}`;
+
+// 😍
+const output = c("{0} and {2} are people's names, and {1} is a place")
+  .t`${name} is going to the ${place} with ${anotherName}`;
+```
+
+## Style Guide
+
+The first rule of frontend style, is we want to avoid talking about frontend style. Wherever possible, style-level considerations should be encapsulated in lint rules.
+
+### Prettier + Eslint
+
+We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `yarn prettier`, and verify it has been formatted correctly using `yarn lint-prettier`.
+
+We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `yarn lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
+
+### Miscellaneous notes on coding style
+
+- Avoid creating separate `Container` and `Components` directories. In some cases it makes sense to separate components for data loading and viewing, but this is easy to do in a single file.
+- Avoid nested ternaries as they often result in code that is difficult to read. If you have logical branches in your code that are dependent on the value of a string, prefer using an object as a map to multiple values (when evaluation is trivial) or a `switch` statement. Where logic is complex, we often use [ts-pattern](https://github.com/gvergnaud/ts-pattern) over a set of if/else statement.
+- Be conservative with what comments you add to the codebase. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
+- Avoid breaking JSX up into separate method calls within a single component. Prefer inlining JSX so that you can better see what the relation is of the JSX a `render` method returns to what is in the `state` or `props` of a component. By inlining JSX you'll also get a better sense of what parts should and should not be separate components.
+
+```ts
+// don't do this
+render () {
+  return (
+    <div>
+      {this.renderThing1()}
+      {this.renderThing2()}
+      {this.state.thing3Needed && this.renderThing3()}
+    </div>
+  );
+}
+
+// do this
+render () {
+  return (
+    <div>
+      <button onClick={this.toggleThing3Needed}>toggle</button>
+      <Thing2 randomProp={this.props.foo} />
+      {this.state.thing3Needed && <Thing3 randomProp2={this.state.bar} />}
+    </div>
+  );
+}
+```
+
+- Avoid complex logical expressions inside of if statements. Often extracting logic to a well-named boolean variable can make code much easier to read.
+
+```javascript
+// don't do this
+if (typeof children === "string" && children.split(/\n/g).length > 1) {
+  // ...
+}
+
+// do this
+const isMultilineText =
+  typeof children === "string" && children.split(/\n/g).length > 1;
+if (isMultilineText) {
+  // ...
+}
+```
+
+- Use ALL_CAPS for constants
+
+```javascript
+// do this
+const MIN_HEIGHT = 200;
+
+// also acceptable
+const OBJECT_CONFIG_CONSTANT = {
+  camelCaseProps: "are OK",
+  abc: 123,
+};
+```
+
+- Avoid magic strings and numbers
+
+```javascript
+// don't do this
+const options = _.times(10, () => ...);
+
+// do this in a constants file
+export const MAX_NUM_OPTIONS = 10;
+const options = _.times(MAX_NUM_OPTIONS,  () => ...);
+```
+
+- prefer declarative over imperative patterns where possible. You should write code with other engineers in mind as other engineers will spend more time reading than you spend writing (and re-writing). Code is more readable when it tells the computer "what to do" versus "how to do." Avoid imperative patterns like for loops:
+
+```javascript
+// don't do this
+let foo = [];
+for (let i = 0; i < list.length; i++) {
+  if (list[i].bar === false) {
+    continue;
+  }
+
+  foo.push(list[i]);
+}
+
+// do this
+const foo = list.filter((entry) => entry.bar !== false);
+```

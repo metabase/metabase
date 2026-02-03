@@ -5,9 +5,9 @@ import { t } from "ttag";
 
 import { Button, Card, FixedSizeIcon, Select, Tooltip } from "metabase/ui";
 
-import { TOOLTIP_OPEN_DELAY } from "../constants";
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
+import { getNodeIcon, getNodeLabel } from "../../../utils";
 import type { NodeType } from "../types";
-import { getNodeIcon, getNodeLabel } from "../utils";
 
 type GraphSelectInputProps = {
   nodes: NodeType[];
@@ -26,7 +26,7 @@ export function GraphSelectInput({ nodes }: GraphSelectInputProps) {
   };
 
   return (
-    <Card p={0} bdrs={0}>
+    <Card p={0} flex="0 0 auto" bdrs={0} bg="transparent">
       {isOpened ? (
         <Select
           value={null}
@@ -44,7 +44,7 @@ export function GraphSelectInput({ nodes }: GraphSelectInputProps) {
       ) : (
         <Tooltip
           label={t`Jump to an item on the graph`}
-          openDelay={TOOLTIP_OPEN_DELAY}
+          openDelay={TOOLTIP_OPEN_DELAY_MS}
         >
           <Button
             leftSection={<FixedSizeIcon name="search" />}

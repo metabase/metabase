@@ -2604,6 +2604,101 @@ databaseChangeLog:
             path: instance_analytics_views/content/v5/h2-content.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v57.2025-12-08T19:05:23
+      author: nvoxland
+      comment: Add remote_sync_object.model_name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_name
+                  type: varchar(255)
+                  remarks: Copy of the name from the object being sync'ed
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:24
+      author: nvoxland
+      comment: Add remote_sync_object.model_collection_id
+      changes:
+        # No foreign key because the referenced collection may be deleted
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_collection_id
+                  type: int
+                  remarks: Copy of the collection from the object being sync'ed
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:25
+      author: nvoxland
+      comment: Add remote_sync_object.model_display
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_display
+                  type: varchar(50)
+                  remarks: Copy of the display field from the object being sync'ed
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:26
+      author: nvoxland
+      comment: Update in-flight remote_sync_objects
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              update remote_sync_object set model_name = (select name from collection where id = remote_sync_object.model_id) where model_type = 'Collection';
+              update remote_sync_object set model_collection_id = (select id from collection where id = remote_sync_object.model_id) where model_type = 'Collection';
+
+              update remote_sync_object set model_name = (select name from report_card where id = remote_sync_object.model_id) where model_type = 'Card';
+              update remote_sync_object set model_collection_id = (select collection_id from report_card where id = remote_sync_object.model_id) where model_type = 'Card';
+              update remote_sync_object set model_display = (select display from report_card where id = remote_sync_object.model_id) where model_type = 'Card';
+
+              update remote_sync_object set model_name = (select name from document where id = remote_sync_object.model_id) where model_type = 'Document';
+              update remote_sync_object set model_collection_id = (select collection_id from document where id = remote_sync_object.model_id) where model_type = 'Document';
+
+              update remote_sync_object set model_name = (select name from report_dashboard where id = remote_sync_object.model_id) where model_type = 'Dashboard';
+              update remote_sync_object set model_collection_id = (select collection_id from report_dashboard where id = remote_sync_object.model_id) where model_type = 'Dashboard';
+
+              update remote_sync_object set model_name = (select name from native_query_snippet where id = remote_sync_object.model_id) where model_type = 'NativeQuerySnippet';
+              update remote_sync_object set model_collection_id = (select collection_id from native_query_snippet where id = remote_sync_object.model_id) where model_type = 'NativeQuerySnippet';
+
+              update remote_sync_object set model_name = (select name from timeline where id = remote_sync_object.model_id) where model_type = 'Timeline';
+              update remote_sync_object set model_collection_id = (select collection_id from timeline where id = remote_sync_object.model_id) where model_type = 'Timeline';
+
+              update remote_sync_object set model_name='DELETED' where model_name is null;
+      rollback: ## Changes will get rolled back when columns are rolled back
+
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:27
+      author: nvoxland
+      comment: Mark remote_sync_objects.model_name as not null
+      changes:
+        - addNotNullConstraint:
+            tableName: remote_sync_object
+            columnName: model_name
+            columnDataType: varchar(255)
+
+
+
+  - changeSet:
+      id: v57.2025-12-09T12:45:01
+      author: dpsutton
+      comment: >-
+        Copy legacy MBQL queries from report_card.legacy_query to report_card.dataset_query where the parsed query is erroneously '{}'
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            where dataset_query = '{}' and legacy_query is not null;
+      rollback: # nothing to undo
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

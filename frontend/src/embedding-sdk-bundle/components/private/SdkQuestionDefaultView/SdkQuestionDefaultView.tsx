@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,8 +10,15 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
+import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
+import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -31,7 +38,7 @@ import {
 } from "../FlexibleSizeComponent";
 import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
-import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
@@ -50,7 +57,7 @@ import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
-   * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout.
+   * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default.
    */
   title?: SdkQuestionTitleProps;
 
@@ -82,20 +89,23 @@ export const SdkQuestionDefaultView = ({
     isQuestionLoading,
     originalQuestion,
     isSaveEnabled,
-    withDownloads,
+    targetCollection,
     onReset,
     onNavigateBack,
+    queryQuestion,
   } = useSdkQuestionContext();
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
-  const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
 
-  const [
-    isEditorOpen,
-    { close: closeEditor, toggle: toggleEditor, open: openEditor },
-  ] = useDisclosure(isNewQuestion && !isQuestionSaved);
+  const { isEditorOpen, closeEditor, toggleEditor } = useQuestionEditorSync({
+    originalId,
+    isQuestionSaved,
+    queryResults,
+    queryQuestion,
+  });
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
@@ -110,33 +120,34 @@ export const SdkQuestionDefaultView = ({
     return isNative;
   }, [question]);
 
-  useEffect(() => {
-    if (isNewQuestion && !isQuestionSaved) {
-      // When switching to new question, open the notebook editor
-      openEditor();
-    } else if (!isNewQuestion) {
-      // When no longer in a notebook editor, switch back to visualization.
-      // When a question is saved, also switch back to visualization.
-      closeEditor();
-    }
-  }, [isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
-
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    question && shouldRunCardQuery(question) && !queryResults;
+    question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    if (
+    const isNewQuestion = originalId === "new" || originalId === "new-native";
+    const isExistingQuestion =
+      question &&
       !isQuestionLoading &&
       question?.isSaved() &&
-      originalId !== "new" &&
-      queryResults
-    ) {
+      !isNewQuestion &&
+      queryResults;
+
+    const onNavigate = onNavigateBack ?? onReset ?? undefined;
+
+    if (isNewQuestion) {
+      reportLocation({
+        type: "question",
+        id: originalId,
+        name: "New exploration",
+        onNavigate,
+      });
+    } else if (isExistingQuestion) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate: onNavigateBack ?? onReset ?? undefined,
+        onNavigate,
       });
     }
   }, [
@@ -148,6 +159,14 @@ export const SdkQuestionDefaultView = ({
     onNavigateBack,
     onReset,
   ]);
+
+  const { canWrite: canWriteToTargetCollection } = useCollectionData(
+    targetCollection,
+    { skipCollectionFetching: !isSaveEnabled },
+  );
+
+  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
+  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
 
   if (
     !isEditorOpen &&
@@ -165,7 +184,11 @@ export const SdkQuestionDefaultView = ({
   }
 
   const showSaveButton =
-    shouldShowSaveButton({ question, originalQuestion }) && isSaveEnabled;
+    shouldShowSaveButton({
+      question,
+      originalQuestion,
+      canWriteToTargetCollection,
+    }) && isSaveEnabled;
 
   return (
     <FlexibleSizeComponent
@@ -174,15 +197,26 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+      <Stack
+        ref={hideEmptyParentRef}
+        className={InteractiveQuestionS.TopBar}
+        gap="sm"
+        p="md"
+        data-hide-empty
+      >
         <Group
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
+          data-hide-empty
         >
-          <Group gap="xs">
-            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
-              <BackButton />
+          <Group gap="xs" data-hide-empty>
+            <Box
+              className={InteractiveQuestionS.BackButtonWrapper}
+              mr="sm"
+              data-hide-empty
+            >
+              <BackButton data-hide-empty />
             </Box>
             <DefaultViewTitle
               title={title}
@@ -192,12 +226,15 @@ export const SdkQuestionDefaultView = ({
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
-          <ResultToolbar data-testid="interactive-question-result-toolbar">
-            <Group gap="xs">
+          <ResultToolbar
+            data-testid="interactive-question-result-toolbar"
+            data-hide-empty
+          >
+            <Group gap="xs" data-hide-empty>
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
-                  color="brand"
+                  c="brand"
                   fz="md"
                   ml="sm"
                 >
@@ -216,8 +253,9 @@ export const SdkQuestionDefaultView = ({
                         <Divider
                           mx="xs"
                           orientation="vertical"
-                          // we have to do this for now because Mantine's divider overrides this color no matter what
-                          color="var(--mb-color-border) !important"
+                          style={{
+                            color: "var(--mb-color-border) !important",
+                          }}
                         />
                       )}
                     </>
@@ -233,11 +271,22 @@ export const SdkQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <Group gap="sm">
-              {withDownloads && <DownloadWidgetDropdown />}
+            <Group gap="sm" ml="auto" data-hide-empty>
+              {!isEditorOpen && (
+                <>
+                  <DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </>
+              )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </ResultToolbar>
+        )}
+
+        {isGuestEmbed && (
+          <Box w="100%">
+            <SdkQuestion.SqlParametersList />
+          </Box>
         )}
       </Stack>
 

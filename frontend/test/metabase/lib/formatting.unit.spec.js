@@ -2,8 +2,8 @@ import dayjs from "dayjs";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import {
   capitalize,
   formatDateTimeWithUnit,
@@ -146,7 +146,7 @@ describe("formatting", () => {
         expect(formatNumber(1000n, options)).toEqual("10,000");
       });
 
-      it("should resepect 'decimals' setting", () => {
+      it("should respect 'decimals' setting", () => {
         expect(formatNumber(500000, { compact: true, decimals: 0 })).toBe(
           "500k",
         );
@@ -717,7 +717,7 @@ describe("formatting", () => {
       ["month", "April 2022"],
       ["year", "2022"],
     ])(
-      "should include weekday when date unit is smaller or equal whan a week",
+      "should include weekday when date unit is smaller than or equal to a week",
       (unit, formatted) => {
         const dateString = "2022-04-27T06:00:00.000Z";
 
@@ -788,6 +788,25 @@ describe("formatting", () => {
         // End of year
         const endYear = formatDateTimeWithUnit("2023-12-25", "week-of-year");
         expect(endYear).toMatch(/^5[0-3][a-z]+$/);
+      });
+
+      it("should remove square brackets from English ordinals", () => {
+        expect(formatDateTimeWithUnit(1, "week-of-year")).toEqual("1st");
+        expect(formatDateTimeWithUnit(2, "week-of-year")).toEqual("2nd");
+        expect(formatDateTimeWithUnit(3, "week-of-year")).toEqual("3rd");
+      });
+
+      it("should handle non-English locales where ordinals are not wrapped in brackets (#66658)", () => {
+        const originalLocale = dayjs.locale();
+        try {
+          require("dayjs/locale/fr");
+          dayjs.locale("fr");
+          expect(formatDateTimeWithUnit(1, "week-of-year")).toEqual("1er");
+          expect(formatDateTimeWithUnit(2, "week-of-year")).toEqual("2");
+          expect(formatDateTimeWithUnit(3, "week-of-year")).toEqual("3");
+        } finally {
+          dayjs.locale(originalLocale);
+        }
       });
     });
   });

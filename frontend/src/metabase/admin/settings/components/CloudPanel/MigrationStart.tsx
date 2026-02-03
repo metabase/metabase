@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { UpsellCloud } from "metabase/admin/upsells/UpsellCloud";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Button, Icon, Modal, Text } from "metabase/ui";
 
 interface MigrationStartProps {
@@ -35,7 +35,7 @@ export const MigrationStart = ({
         }}
       >
         <Box mt="md" pb="4rem" px="6rem" ta="center">
-          <Icon name="cloud_filled" size="3rem" color="brand" />
+          <Icon name="cloud_filled" size="3rem" c="brand" />
           <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
 
           <Text mt="1.5rem">

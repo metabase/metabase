@@ -35,28 +35,6 @@
         (is (thrown? Exception
                      (t2/delete! :model/PermissionsGroupMembership :user_id id, :group_id (u/the-id (perms-group/admin)))))))))
 
-(deftest tenant-users-and-groups
-  ;; This will need to get fixed once we have actual tenants - right now the `tenant_id` doesn't actually connect to
-  ;; anything.
-  (mt/with-temp [:model/User {tenant-user :id} {:tenant_id 1}
-                 :model/User {normal-user :id} {}
-                 :model/PermissionsGroup {tenant-group :id} {:is_tenant_group true}
-                 :model/PermissionsGroup {normal-group :id} {:is_tenant_group false}]
-    (testing "A tenant user"
-      (testing "cannot be added to a normal group"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms/add-user-to-group! tenant-user normal-group))))
-      (testing "can be added to tenant groups"
-        (perms/add-user-to-group! tenant-user tenant-group)))
-    (testing "A normal user"
-      (testing "cannot be added to a tenant group"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms/add-user-to-group! normal-user tenant-group))))
-      (testing "can be added to a normal group"
-        (perms/add-user-to-group! normal-user normal-group)))))
-
 (deftest permissions-group-membership-audit-add-test
   (testing "PermissionsGroupMembership audit events"
     (mt/with-premium-features #{:audit-app}

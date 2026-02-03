@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Icon } from "metabase/ui";
 
 const CardRootMixin = css`
@@ -11,7 +11,7 @@ const CardRootMixin = css`
   padding: 1.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.375rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   box-shadow: 0 1px 6px var(--mb-color-shadow);
   box-sizing: border-box;
 `;
@@ -30,7 +30,7 @@ export const CardRootLink = styled(ExternalLink)`
   ${CardRootMixin};
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 `;
 
@@ -57,7 +57,7 @@ export const CardIcon = styled(Icon)`
 
 export const CardMessage = styled.div`
   display: block;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   line-height: 1.25rem;
 
   p {

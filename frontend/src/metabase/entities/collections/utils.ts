@@ -5,6 +5,7 @@ import {
   isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
@@ -19,10 +20,10 @@ export function normalizedCollection(collection: Collection) {
 
 export function getCollectionIcon(
   collection: Partial<Collection>,
-  { tooltip = "default" } = {},
+  { tooltip = "default", isTenantUser = false } = {},
 ): {
   name: IconName;
-  color?: string;
+  color?: ColorName;
   tooltip?: string;
 } {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -37,15 +38,16 @@ export function getCollectionIcon(
     return { name: "person" };
   }
 
-  if (isSyncedCollection(collection)) {
+  if (isSyncedCollection(collection) && !isTenantUser) {
+    // tenant users see the normal icon, they don't know what a synced collection is
     return { name: "synced_collection" };
   }
 
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
     case "root":
       return { name: "repository" };
-    case "models":
-      return { name: "model" };
+    case "data":
+      return { name: "table" };
     case "metrics":
       return { name: "metric" };
   }
@@ -81,7 +83,13 @@ export interface CollectionTreeItem extends Collection {
 
 export function buildCollectionTree(
   collections: Collection[] = [],
-  modelFilter?: (model: CollectionContentModel) => boolean,
+  {
+    modelFilter,
+    isTenantUser = false,
+  }: {
+    modelFilter?: (model: CollectionContentModel) => boolean;
+    isTenantUser?: boolean;
+  } = {},
 ): CollectionTreeItem[] {
   return collections.flatMap((collection) => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
@@ -98,7 +106,7 @@ export function buildCollectionTree(
     const children = !isRootTrashCollection(collection)
       ? buildCollectionTree(
           collection.children?.filter((child) => !child.archived) || [],
-          modelFilter,
+          { modelFilter, isTenantUser },
         )
       : [];
 
@@ -109,7 +117,7 @@ export function buildCollectionTree(
     return {
       ...collection,
       schemaName: collection.originalName || collection.name,
-      icon: getCollectionIcon(collection),
+      icon: getCollectionIcon(collection, { isTenantUser }),
       children,
     };
   });

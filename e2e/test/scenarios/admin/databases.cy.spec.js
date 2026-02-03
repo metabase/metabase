@@ -89,7 +89,7 @@ describe("admin > database > add", () => {
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?");
 
     cy.findByLabelText("Database type").click();
@@ -356,11 +356,11 @@ describe("admin > database > add", () => {
     );
 
     it("should add MySQL database and redirect to db info page", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
       H.typeAndBlurUsingLabel("Display name", "QA MySQL8");
@@ -377,7 +377,7 @@ describe("admin > database > add", () => {
         "allowPublicKeyRetrieval=true",
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
@@ -506,7 +506,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.get("nav").should("contain", "Metabase Admin");
     // The response still contains the database name,
     // so there's no reason we can't display it.
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Sample Database/i);
     // This seems like a reasonable CTA if the database is beyond repair.
     cy.button("Remove this database").should("not.be.disabled");
@@ -601,7 +601,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.wait("@loadDatabase").then(({ response }) => {
       expect(response.statusCode).to.eq(404);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not found.");
     cy.findByRole("table").should("not.exist");
   });
@@ -609,7 +609,9 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
+    if (IS_ENTERPRISE) {
+      H.activateToken("pro-self-hosted");
+    }
 
     cy.intercept(
       {
@@ -632,18 +634,18 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.visit("/admin/databases");
     cy.wait("@failedGet");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Something.s gone wrong/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       /We.ve run into an error\. You can try refreshing the page, or just go back\./,
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(errorMessage).should("not.be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show error details").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(errorMessage).should("be.visible");
   });
 });
@@ -666,7 +668,7 @@ describe("scenarios > admin > databases > sample database", () => {
     editDatabase();
 
     // should not display a setup help card
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?").should("not.exist");
 
     cy.log(
@@ -683,7 +685,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .and("contain", "sample-database.db");
 
     cy.log("should be possible to modify the connection settings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show advanced options").click();
     // `auto_run_queries` toggle should be ON by default
     cy.findByLabelText(/Rerun queries for simple explorations/)
@@ -702,7 +704,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByLabelText(/Choose when syncs and scans happen/).click({
       force: true,
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hourly").click();
     H.popover().within(() => {
       cy.findByText("Daily").click({ force: true });
@@ -836,14 +838,14 @@ describe("scenarios > admin > databases > sample database", () => {
     // lets you trigger the manual database schema sync
     cy.button("Sync database schema").click();
     cy.wait("@sync_schema");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
 
     // lets you trigger the manual rescan of field values
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Re-scan field values").click();
     cy.wait("@rescan_values");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Scan triggered!");
 
     // lets you discard saved field values
@@ -905,7 +907,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.location("pathname").should("eq", "/admin/databases/"); // FIXME why the trailing slash?
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Bring the sample database back", {
       timeout: 10000,
     }).click();
@@ -953,7 +955,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("not.exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -970,7 +972,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -995,7 +997,7 @@ describe("add database card", () => {
   it("should track the click on the card", () => {
     cy.visit("/browse/databases");
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("database-browser")
       .findAllByRole("link")
       .last()

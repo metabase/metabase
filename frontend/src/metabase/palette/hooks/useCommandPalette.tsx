@@ -9,12 +9,13 @@ import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/c
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -204,7 +205,7 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: wrappedResult.getUrl?.(),
+              href: modelToUrl(wrappedResult),
               iconColor: icon.color,
               subtext: getSearchResultSubtext(wrappedResult),
             },
@@ -352,7 +353,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
       )} ${wrappedSearchResult.model_name}`}</SubtitleText>
     );
   } else if (wrappedSearchResult.model === "table") {
-    return (
+    return wrappedSearchResult.collection?.name ? (
+      <SubtitleText>{wrappedSearchResult.collection.name}</SubtitleText>
+    ) : (
       <SubtitleText>
         {wrappedSearchResult.table_schema
           ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`

@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_audit_log
+table_id: [Internal Metabase Database, public, v_audit_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,25 +22,16 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - topic
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_audit_log, topic]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - timestamp
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_audit_log, timestamp]
+      - {base-type: type/DateTimeWithLocalTZ}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - topic
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_audit_log, topic]
+      - {base-type: type/Text}
     - card-create
     - card-delete
     - card-update
@@ -52,55 +40,34 @@ dataset_query:
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_audit_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - User}
       fields:
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - full_name
-        - base-type: type/Text
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, full_name]
+        - {base-type: type/Text, join-alias: People - User}
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     - alias: Content - Entity Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - entity_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Entity Qualified}
       fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:
     - - desc
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - timestamp
-        - base-type: type/DateTimeWithLocalTZ
+        - [Internal Metabase Database, public, v_audit_log, timestamp]
+        - {base-type: type/DateTimeWithLocalTZ}
     source-table: -lNDM3tJmuL5ltGbX0oyT
   type: query
 result_metadata:
@@ -111,17 +78,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_audit_log
-    - topic
-  - base-type: type/Text
+  - [Internal Metabase Database, public, v_audit_log, topic]
+  - {base-type: type/Text}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_audit_log
-  - topic
+  id: [Internal Metabase Database, public, v_audit_log, topic]
   name: topic
   nfc_path: null
   parent_id: null
@@ -129,10 +89,7 @@ result_metadata:
   semantic_type: type/Category
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_audit_log
+  table_id: [Internal Metabase Database, public, v_audit_log]
   visibility_type: normal
 - base_type: type/DateTimeWithLocalTZ
   coercion_strategy: null
@@ -141,18 +98,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_audit_log
-    - timestamp
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
+  - [Internal Metabase Database, public, v_audit_log, timestamp]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_audit_log
-  - timestamp
+  id: [Internal Metabase Database, public, v_audit_log, timestamp]
   name: timestamp
   nfc_path: null
   parent_id: null
@@ -160,10 +109,7 @@ result_metadata:
   semantic_type: type/CreationTimestamp
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_audit_log
+  table_id: [Internal Metabase Database, public, v_audit_log]
   unit: default
   visibility_type: normal
 - base_type: type/Text
@@ -173,18 +119,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
-  - base-type: type/Text
-    join-alias: People - User
+  - [Internal Metabase Database, public, v_users, full_name]
+  - {base-type: type/Text, join-alias: People - User}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
+  id: [Internal Metabase Database, public, v_users, full_name]
   name: full_name
   nfc_path: null
   parent_id: null
@@ -192,55 +130,40 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_users
+  table_id: [Internal Metabase Database, public, v_users]
   visibility_type: normal
 visualization_settings:
   column_settings:
-    '["name","full_name"]':
-      column_title: Person
+    '["name","full_name"]': {column_title: Person}
     ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: Person
+    : {column_title: Person}
   table.cell_column: model_id
   table.columns:
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_audit_log
-      - topic
-    - base-type: type/Text
+    - [Internal Metabase Database, public, v_audit_log, topic]
+    - {base-type: type/Text}
     name: topic
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_audit_log
-      - timestamp
-    - base-type: type/DateTimeWithLocalTZ
+    - [Internal Metabase Database, public, v_audit_log, timestamp]
+    - {base-type: type/DateTimeWithLocalTZ}
     name: timestamp
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - full_name
-    - base-type: type/Text
-      join-alias: People - User
+    - [Internal Metabase Database, public, v_users, full_name]
+    - {base-type: type/Text, join-alias: People - User}
     name: full_name
   table.pivot_column: end_timestamp
+card_schema: 23
 serdes/meta:
-- id: MOAq881VSlM2BhVUv5e_K
-  label: last_activity_on_question
-  model: Card
+- {id: MOAq881VSlM2BhVUv5e_K, label: last_activity_on_question, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
-metabase_version: vUNKNOWN (13e6090)
+document_id: null
+embedding_type: null
 source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question

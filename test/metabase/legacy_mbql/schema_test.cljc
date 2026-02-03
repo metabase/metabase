@@ -1,5 +1,7 @@
 (ns metabase.legacy-mbql.schema-test
   (:require
+   #?@(:clj
+       ([java-time.api :as t]))
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
@@ -89,10 +91,10 @@
 
 (deftest ^:parallel coalesce-aggregation-test
   (testing "should be able to nest aggregation functions within a coalesce"
-    (let [query {:database 1,
-                 :type :query,
+    (let [query {:database 1
+                 :type :query
                  :query
-                 {:source-table 5,
+                 {:source-table 5
                   :aggregation
                   [[:aggregation-options
                     [:/
@@ -104,11 +106,11 @@
 
 (deftest ^:parallel year-of-era-test
   (testing "year-of-era aggregations should be recognized"
-    (let [query {:database 1,
-                 :type :query,
+    (let [query {:database 1
+                 :type :query
                  :query
-                 {:source-table 5,
-                  :aggregation [[:count]],
+                 {:source-table 5
+                  :aggregation [[:count]]
                   :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]]}
                  :parameters []}]
       (is (not (me/humanize (mr/explain ::mbql.s/Query query)))))))
@@ -172,10 +174,9 @@
     true
     false))
 
+;; Allowed in #67203 and above
 (deftest ^:parallel expression-unwrapped-literals-test
-  (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: expression, field"]}}
-                  (me/humanize (mr/explain ::mbql.s/MBQLQuery
-                                           {:source-table 1, :expressions {"expr" value}})))
+  (are [value] (mr/validate ::mbql.s/MBQLQuery {:source-table 1, :expressions {"expr" value}})
     ""
     "192.168.1.1"
     "2025-03-11"
@@ -275,14 +276,14 @@
   (testing "Fix really messed up fingerprints with lower-cased type names (only in prod) (#63397)"
     (mu/disable-enforcement
       (is (= {:base_type   :type/*
-              :fingerprint {:global {:distinct-count 418, :nil% 0.0},
+              :fingerprint {:global {:distinct-count 418, :nil% 0.0}
                             :type
                             {:type/Text
                              {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
              (lib/normalize
               ::mbql.s/legacy-column-metadata
               {:fingerprint
-               {:global {:distinct-count 418, :nil% 0.0},
+               {:global {:distinct-count 418, :nil% 0.0}
                 :type
                 {:type/text
                  {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}))))))
@@ -317,3 +318,343 @@
   (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
     (is (= {:base_type :type/*, :name "X", :display_name "X"}
            (lib/normalize ::mbql.s/legacy-column-metadata {:name "X", :model/inner_ident "wow"})))))
+
+(deftest ^:parallel normalize-aggregation-inside-non-aggregation-function-test
+  (is (= [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
+         (lib/normalize
+          ::mbql.s/Aggregation
+          ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]])))
+  (is (= [:aggregation-options
+          [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
+          {:name "Sum", :display-name "Sum"}]
+         (lib/normalize
+          ::mbql.s/Aggregation
+          ["aggregation-options"
+           ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]]
+           {"name" "Sum", "display-name" "Sum"}]))))
+
+(deftest ^:parallel normalize-widget-type-test
+  (is (= :category
+         (lib/normalize ::mbql.s/WidgetType "category/=")))
+  (is (= {:widget-type  :category
+          :id           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+          :name         "device_category"
+          :display-name "Device category"
+          :type         :dimension
+          :dimension    [:field 298221 nil]
+          :default      nil}
+         (lib/normalize
+          ::mbql.s/TemplateTag
+          {"id"           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
+           "name"         "device_category"
+           "display-name" "Device category"
+           "type"         "dimension"
+           "dimension"    ["field" 298221 nil]
+           "widget-type"  "category/="
+           "default"      nil}))))
+
+(deftest ^:parallel normalize-text-clause-test
+  (is (= [:text
+          [:floor
+           [:/ [:avg [:field 11476 {:base-type :type/Integer}]] 60]]]
+         (lib/normalize ::mbql.s/ExpressionArg ["text" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]]]))))
+
+(deftest ^:parallel normalize-hairball-aggregation-expression-test
+  (let [expr ["aggregation-options"
+              ["concat"
+               ["text" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]]]
+               ":"
+               ["substring"
+                ["concat"
+                 "0"
+                 ["text"
+                  ["floor"
+                   ["-"
+                    ["avg" ["field" 11476 {"base-type" "type/Integer"}]]
+                    ["*" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]] 60]]]]]
+                ["-"
+                 ["+"
+                  1
+                  ["length"
+                   ["concat"
+                    "0"
+                    ["text"
+                     ["floor"
+                      ["-"
+                       ["avg" ["field" 11476 {"base-type" "type/Integer"}]]
+                       ["*" ["floor" ["/" ["avg" ["field" 11476 {"base-type" "type/Integer"}]] 60]] 60]]]]]]]
+                 2]
+                2]]
+              {"name" "Min+sec", "display-name" "Min+sec"}]
+        normalized (lib/normalize ::mbql.s/Aggregation expr)]
+    (is (= [:aggregation-options
+            [:concat
+             [:text
+              [:floor
+               [:/ [:avg [:field 11476 {:base-type :type/Integer}]] 60]]]
+             ":"
+             [:substring
+              [:concat
+               "0"
+               [:text
+                [:floor
+                 [:-
+                  [:avg [:field 11476 {:base-type :type/Integer}]]
+                  [:*
+                   [:floor
+                    [:/ [:avg [:field 11476 {:base-type :type/Integer}]] 60]]
+                   60]]]]]
+              [:-
+               [:+
+                1
+                [:length
+                 [:concat
+                  "0"
+                  [:text
+                   [:floor
+                    [:-
+                     [:avg [:field 11476 {:base-type :type/Integer}]]
+                     [:*
+                      [:floor
+                       [:/
+                        [:avg [:field 11476 {:base-type :type/Integer}]]
+                        60]]
+                      60]]]]]]]
+               2]
+              2]]
+            {:name "Min+sec", :display-name "Min+sec"}]
+           normalized))
+    (is (mr/validate ::mbql.s/Aggregation normalized))))
+
+(deftest ^:parallel normalize-aggregation-options-with-nil-options-test
+  (testing "nil options in :aggregation-options should get normalized to an empty map"
+    (let [normalized (lib/normalize ::mbql.s/aggregation-options [:aggregation-options [:count] nil])]
+      (is (= [:aggregation-options [:count] {}]
+             normalized))
+      (is (mr/validate ::mbql.s/aggregation-options normalized))))
+  (testing "::Aggregation itself should unwrap :aggregation-options with an empty options map"
+    (is (= [:count]
+           (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] nil])
+           (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] {}])))))
+
+(deftest ^:parallel normalize-template-tag-options-test
+  (testing "template tag `:options` should get normalized correctly"
+    (let [normalized (lib/normalize
+                      ::mbql.s/TemplateTag
+                      {"type"         "dimension"
+                       "name"         "owner_name"
+                       "id"           "d14f7964-4de7-4d0a-905c-2d2799e87db7"
+                       "display-name" "Owner Name"
+                       "default"      nil
+                       "dimension"    ["field" 28486 nil]
+                       "widget-type"  "string/contains"
+                       "options"      {"case-sensitive" false}})]
+      (is (= {:default      nil
+              :dimension    [:field 28486 nil]
+              :display-name "Owner Name"
+              :id           "d14f7964-4de7-4d0a-905c-2d2799e87db7"
+              :name         "owner_name"
+              :options      {:case-sensitive false}
+              :type         :dimension
+              :widget-type  :string/contains}
+             normalized))
+      (is (mr/validate ::mbql.s/TemplateTag normalized)))))
+
+(deftest ^:parallel automatically-remove-expression-idents-during-normalization-test
+  (is (= {:type     :query
+          :database 3
+          :query    {:expressions  {"Organizer fees should be" 0.5}
+                     :source-table 310}}
+         (lib/normalize
+          ::mbql.s/Query
+          {"database" 3
+           "type"     "query"
+           "query"    {"source-table"      310
+                       "expressions"       {"Organizer fees should be" 0.5}
+                       "expression-idents" {"Organizer fees should be"
+                                            "expression_9CRGGaQ6ASwsIRouX0ID0@0__Organizer fees should be"}}}))))
+
+(deftest ^:parallel allow-raw-literals-as-expressions-tst
+  (doseq [[message xs] {"Raw numeric literals"            [10 10.5]
+                        "Raw string literals"             ["X"]
+                        "Raw boolean literals"            [true false]
+                        #?(:clj "Raw JVM temporal types") #?(:clj [(t/local-date "2025-12-18")
+                                                                   (t/local-date-time "2025-12-18T12:57:00")
+                                                                   (t/offset-date-time "2025-12-18T12:57:00-08:00")
+                                                                   (t/zoned-date-time "2025-12-18T12:57:00-08:00[US/Pacific]")
+                                                                   (t/local-time "12:57:00")
+                                                                   (t/offset-time "12:57:00-08:00")
+                                                                   (t/instant (t/zoned-date-time "2025-12-18T12:57:00-08:00[US/Pacific]"))])}
+          x            xs]
+    (testing (str message " should be allowed as expressions (x =" (pr-str x) ")")
+      (let [query {:type     :query
+                   :database 3
+                   :query    {:expressions  {"Organizer fees should be" x}
+                              :source-table 310}}]
+        (is (mr/validate ::mbql.s/Query query))))))
+
+(deftest ^:parallel case-if-aggregation-expression-test
+  (doseq [clause [:if :case]]
+    (testing (str clause " should be allowed as an aggregation expression if it contains an aggregation")
+      (let [normalized (lib/normalize
+                        ::mbql.s/Aggregation
+                        [(name clause)
+                         [[["="
+                            ["sum-where"
+                             ["field" 781 {"base-type" "type/Float"}]
+                             ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]
+                            0]
+                           0]]
+                         {"default"
+                          ["/"
+                           ["sum-where"
+                            ["field" 755 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Refund" {"base-type" "type/Boolean"}] true]]
+                           ["sum-where"
+                            ["field" 781 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]]}])]
+        (is (= [clause
+                [[[:=
+                   [:sum-where
+                    [:field 781 {:base-type :type/Float}]
+                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]
+                   0]
+                  0]]
+                {:default
+                 [:/
+                  [:sum-where
+                   [:field 755 {:base-type :type/Float}]
+                   [:= [:expression "Refund" {:base-type :type/Boolean}] true]]
+                  [:sum-where
+                   [:field 781 {:base-type :type/Float}]
+                   [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
+               normalized))
+        (is (mr/validate ::mbql.s/Aggregation normalized))))))
+
+(deftest ^:parallel allow-coalesce-as-datetime-expression-test
+  (let [normalized (lib/normalize
+                    ::mbql.s/datetime-diff
+                    ["datetime-diff"
+                     ["coalesce"
+                      ["field" 191303 {"base-type" "type/DateTimeWithLocalTZ"}]
+                      ["field" 191302 {"base-type" "type/DateTimeWithLocalTZ"}]]
+                     ["coalesce"
+                      ["field" 191332 {"base-type" "type/DateTimeWithLocalTZ"}]
+                      ["field" 191333 {"base-type" "type/DateTimeWithLocalTZ"}]]
+                     "minute"])]
+    (is (= [:datetime-diff
+            [:coalesce
+             [:field 191303 {:base-type :type/DateTimeWithLocalTZ}]
+             [:field 191302 {:base-type :type/DateTimeWithLocalTZ}]]
+            [:coalesce
+             [:field 191332 {:base-type :type/DateTimeWithLocalTZ}]
+             [:field 191333 {:base-type :type/DateTimeWithLocalTZ}]]
+            :minute]
+           normalized))
+    (is (mr/validate ::mbql.s/datetime-diff normalized))))
+
+(deftest ^:parallel allow-if-and-case-as-datetime-expression-test
+  (doseq [clause [:if :case]]
+    (testing (str clause " should be allowed as an aggregation expression if it contains an aggregation")
+      (let [normalized (lib/normalize
+                        ::mbql.s/DateTimeExpressionArg
+                        [(name clause)
+                         [[["="
+                            ["sum-where"
+                             ["field" 781 {"base-type" "type/Float"}]
+                             ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]
+                            0]
+                           0]]
+                         {"default"
+                          ["/"
+                           ["sum-where"
+                            ["field" 755 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Refund" {"base-type" "type/Boolean"}] true]]
+                           ["sum-where"
+                            ["field" 781 {"base-type" "type/Float"}]
+                            ["=" ["expression" "Paid" {"base-type" "type/Boolean"}] true]]]}])]
+        (is (= [clause
+                [[[:=
+                   [:sum-where
+                    [:field 781 {:base-type :type/Float}]
+                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]
+                   0]
+                  0]]
+                {:default
+                 [:/
+                  [:sum-where
+                   [:field 755 {:base-type :type/Float}]
+                   [:= [:expression "Refund" {:base-type :type/Boolean}] true]]
+                  [:sum-where
+                   [:field 781 {:base-type :type/Float}]
+                   [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
+               normalized))
+        (is (mr/validate ::mbql.s/DateTimeExpressionArg normalized))))))
+
+(deftest ^:parallel normalize-unwrapped-field-id-test
+  (is (= [:sum [:field 10 nil]]
+         (lib/normalize ::mbql.s/sum [:sum 10]))))
+
+(deftest ^:parallel allow-aggregation-refs-inside-expressions-test
+  (let [expr ["concat"
+              "We saw a change of "
+              ["aggregation" 1 {"base-type" "type/Integer", "name" "Ag 1"}] "%."]
+        normalized (lib/normalize ::mbql.s/concat expr)]
+    (is (= [:concat
+            "We saw a change of "
+            [:aggregation 1 {:base-type :type/Integer, :name "Ag 1"}] "%."]
+           normalized))
+    (is (mr/validate ::mbql.s/concat normalized))))
+
+(deftest ^:parallel allow-aggregation-refs-inside-aggregations-test
+  (let [ags        [["concat"
+                     "We saw a change of "
+                     ["aggregation" 1 {"base-type" "type/Integer"}] "%."]
+                    ["round"
+                     ["*"
+                      ["avg"
+                       ["/"
+                        ["field" "rating_change" {"base-type" "type/Decimal"}]
+                        ["field" "first_rating" {"base-type" "type/Integer"}]]]
+                      100]]]
+        normalized (lib/normalize ::mbql.s/Aggregations ags)]
+    (is (= [[:concat
+             "We saw a change of "
+             [:aggregation 1 {:base-type :type/Integer}] "%."]
+            [:round
+             [:*
+              [:avg
+               [:/
+                [:field "rating_change" {:base-type :type/Decimal}]
+                [:field "first_rating" {:base-type :type/Integer}]]]
+              100]]]
+           normalized))
+    (is (mr/validate ::mbql.s/Aggregations normalized))))
+
+(deftest ^:parallel is-null-not-null-arbitrary-expressions-test
+  (testing "is-null and not-null should allow arbitrary expressions"
+    (doseq [clause [:is-null
+                    :not-null]]
+      (let [schema     (keyword "metabase.legacy-mbql.schema" (name clause))
+            expr       [(name clause)
+                        ["="
+                         ["field" 620 {"base-type" "type/Text"}]
+                         false]]
+            normalized (lib/normalize schema expr)]
+        (is (= [clause
+                [:=
+                 [:field 620 {:base-type :type/Text}]
+                 false]]
+               normalized))
+        (is (mr/validate schema normalized))))))
+
+(deftest ^:parallel allow-temporal-args-for-minus-test
+  (let [expr       ["-"
+                    ["date" ["now"]]
+                    ["expression" "Last_Date_Active" {"base-type" "type/DateTimeWithLocalTZ"}]]
+        normalized (lib/normalize ::mbql.s/- expr)]
+    (is (= [:-
+            [:date [:now]]
+            [:expression "Last_Date_Active" {:base-type :type/DateTimeWithLocalTZ}]]
+           normalized))
+    (is (mr/validate ::mbql.s/- normalized))))

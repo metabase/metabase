@@ -20,7 +20,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
     cy.findByTestId("Map-container").within(() => {
@@ -134,6 +134,59 @@ describe("scenarios > visualizations > maps", () => {
     H.popover().findByText("Blastoise").should("be.visible");
   });
 
+  it("should preserve zoom and pan after resize (metabase#11211)", () => {
+    cy.viewport(800, 600);
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 999,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+        "map.center_latitude": 40,
+        "map.center_longitude": -100,
+        "map.zoom": 4,
+      },
+    });
+
+    zoomIn(4);
+
+    cy.get(".leaflet-marker-icon")
+      .first()
+      .then(($marker) => {
+        const posAfterZoom = $marker[0].getBoundingClientRect();
+
+        // 1px resize should not reset zoom
+        cy.viewport(801, 600);
+        cy.wait(300);
+
+        cy.get(".leaflet-marker-icon")
+          .first()
+          .then(($markerAfterResize) => {
+            const posAfterResize =
+              $markerAfterResize[0].getBoundingClientRect();
+            // Position should be nearly identical (within 5px tolerance)
+            const tolerance = 5;
+            expect(posAfterResize.left).to.be.closeTo(
+              posAfterZoom.left,
+              tolerance,
+            );
+            expect(posAfterResize.top).to.be.closeTo(
+              posAfterZoom.top,
+              tolerance,
+            );
+          });
+      });
+  });
+
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
     cy.intercept("/app/assets/geojson/**").as("geojson");
     H.visitQuestionAdhoc({
@@ -163,21 +216,21 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").trigger("mousemove");
 
     // check tooltip content
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State:"); // column name key
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Texas"); // feature name as value
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is TX");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
@@ -263,11 +316,11 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-interactive").trigger("mousemove");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Latitude: 10°:");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Longitude: 10°:");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1");
   });
 
@@ -296,7 +349,7 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
     // Ensure the Map visualization is sensible
@@ -464,4 +517,11 @@ function toggleFieldSelectElement(field) {
   return cy.get(`[data-field-title="${field}"]`).within(() => {
     cy.findByTestId("chart-setting-select").click();
   });
+}
+
+function zoomIn(times) {
+  for (let i = 0; i < times; i++) {
+    cy.get(".leaflet-control-zoom-in").click();
+    cy.wait(200);
+  }
 }

@@ -14,14 +14,12 @@ export const alertOverrides: MantineThemeOverride["components"] = {
       title: AlertStyles.title,
     },
     vars: (_theme, props) => {
-      if (
-        isColorName(props.color) &&
-        isColorName(`background-${props.color}`)
-      ) {
+      const bgColor = `background-${props.color}`;
+      if (isColorName(props.color) && isColorName(bgColor)) {
         return {
           root: {
             "--alert-color": color(props.color),
-            "--alert-bg": color(`background-${props.color}`),
+            "--alert-bg": color(bgColor),
           },
         };
       } else {

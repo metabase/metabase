@@ -9,7 +9,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
-const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -18,64 +18,25 @@ describe("scenarios > notebook > data source", () => {
       cy.signInAsAdmin();
     });
 
-    it(
-      "should display tables from the only existing database by default",
-      { tags: "@OSS" },
-      () => {
-        cy.visit("/");
-        cy.findByTestId("app-bar").findByText("New").click();
-        H.popover().findByTextEnsureVisible("Question").click();
-        cy.findByPlaceholderText("Search for tables and more...").should(
-          "exist",
-        );
-
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          cy.log("Should not have Recents tab");
-          cy.findAllByRole("tab").should("not.exist");
-
-          H.entityPickerModalItem(0, "Databases").click();
-          H.entityPickerModalLevel(0)
-            .findByText("Sample Database")
-            .should("not.exist");
-          H.entityPickerModalLevel(3)
-            .find("[data-index]")
-            .should("have.length", 8);
-          assertDataPickerEntityNotSelected(3, "Accounts");
-          assertDataPickerEntityNotSelected(3, "Analytic Events");
-          assertDataPickerEntityNotSelected(3, "Feedback");
-          assertDataPickerEntityNotSelected(3, "Invoices");
-          assertDataPickerEntityNotSelected(3, "Orders");
-          assertDataPickerEntityNotSelected(3, "People");
-          assertDataPickerEntityNotSelected(3, "Products");
-          assertDataPickerEntityNotSelected(3, "Reviews");
-        });
-      },
-    );
-
-    it("should include dashboard questions (metabase#56887)", () => {
-      const QUESTION_NAME = "Find me";
-
-      H.createDashboard({
-        name: "Test Dashboard",
-      }).then((dashboard) => {
-        H.createQuestionAndAddToDashboard(
-          {
-            name: QUESTION_NAME,
-            dashboard_id: dashboard.body.id,
-            query: {
-              "source-table": ORDERS_ID,
-            },
-          },
-          dashboard.body.id,
-        );
-      });
-
-      H.startNewQuestion();
+    it("should display databases by default", { tags: "@OSS" }, () => {
+      cy.visit("/");
+      cy.findByTestId("app-bar").findByText("New").click();
+      H.popover().findByTextEnsureVisible("Question").click();
+      cy.findByPlaceholderText("Search for tables and more...").should("exist");
 
       H.miniPickerBrowseAll().click();
-      H.entityPickerModalItem(1, "Test Dashboard").click();
-      H.entityPickerModalItem(2, QUESTION_NAME).should("exist");
+      H.entityPickerModal().within(() => {
+        // databases is selected already
+        H.entityPickerModalLevel(1).findByText("Sample Database").click();
+        assertDataPickerEntityNotSelected(2, "Accounts");
+        assertDataPickerEntityNotSelected(2, "Analytic Events");
+        assertDataPickerEntityNotSelected(2, "Feedback");
+        assertDataPickerEntityNotSelected(2, "Invoices");
+        assertDataPickerEntityNotSelected(2, "Orders");
+        assertDataPickerEntityNotSelected(2, "People");
+        assertDataPickerEntityNotSelected(2, "Products");
+        assertDataPickerEntityNotSelected(2, "Reviews");
+      });
     });
   });
 
@@ -94,11 +55,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(2).should("not.exist");
-        assertDataPickerEntitySelected(3, "Reviews");
-      });
+      assertDataPickerEntitySelected(2, "Reviews");
     });
 
     it("should correctly display the source data for a simple saved question", () => {
@@ -110,11 +67,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(2).should("not.exist");
-        assertDataPickerEntitySelected(3, "Orders");
-      });
+      assertDataPickerEntitySelected(2, "Orders");
     });
 
     it(
@@ -191,6 +144,84 @@ describe("scenarios > notebook > data source", () => {
       H.miniPicker().within(() => {
         H.miniPickerHeader().should("contain", "Sample Database");
         cy.findByText("Orders").should("exist");
+      });
+    });
+  });
+
+  describe("library table as a source", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.createLibrary();
+    });
+
+    it("should allow to pick a published table from the mini picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Orders").click();
+      H.join();
+      H.popover().findByText("Products").click();
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      cy.log("verify the picker when there is a selected item");
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().findByText("Products").click();
+      H.getNotebookStep("data").findByText("Products").should("be.visible");
+    });
+
+    it("should allow to pick a publish table from the data picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.join();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Products").click();
+      });
+
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().within(() => {
+        cy.findByText("Data").click();
+        cy.findByText("Browse all").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Library").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(1, "Data").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(2, "Orders").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
       });
     });
   });
@@ -365,6 +396,7 @@ describe("issue 28106", () => {
       H.entityPickerModal().within(() => {
         cy.findByText("Databases").click();
         cy.findByText("Writable Postgres12").click();
+        cy.findByText("Schema A").click();
 
         H.entityPickerModalLevel(2)
           .findByTestId("scroll-container")
@@ -375,11 +407,11 @@ describe("issue 28106", () => {
         cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
-        H.entityPickerModalItem(1, "Schema Z").should("be.visible");
+        H.entityPickerModalItem(2, "Schema Z").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
-          cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+          cy.get("@schemasList").realMouseWheel({ deltaY: -50 });
           cy.wait(100);
         }
 

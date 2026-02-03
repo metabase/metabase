@@ -13,7 +13,7 @@ describe("useTranslateContent (OSS)", () => {
       dictionary: [
         { locale: "es", msgid: "Hello World", msgstr: "Hola Mundo" },
       ],
-      hasEnterprisePlugins: false,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: false },
       staticallyEmbedded: false,
     });

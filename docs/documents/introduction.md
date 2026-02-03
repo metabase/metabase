@@ -5,8 +5,6 @@ summary: Create documents to combine text and charts for long-form analysis. Add
 
 # Documents
 
-{% include plans-blockquote.html feature="Documents" is_plural=true%}
-
 ![Document with comment](./images/document-with-comment.png)
 
 Documents let you tell a story with your data by combining text, charts, and other content.

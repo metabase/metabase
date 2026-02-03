@@ -1,17 +1,38 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import type { CollectionTreeItem } from "metabase/entities/collections";
+import type {
+  GitSyncSetupMenuItemProps,
+  SyncedCollectionsSidebarSectionProps,
+} from "metabase/plugins";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { State } from "metabase-types/store";
 
-import type { SyncedCollectionsSidebarSectionProps } from "../types";
+export type CollectionsNavTreeProps = {
+  collections: CollectionTreeItem[];
+  selectedId?: number | string;
+  onSelect?: (item: ITreeNodeItem) => void;
+};
+
+export interface GitSettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+  GitSyncAppBarControls: PluginPlaceholder as ComponentType,
+  GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
+  GitSyncSetupMenuItem: PluginPlaceholder,
+  CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
+  CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -20,13 +41,22 @@ const getDefaultPluginRemoteSync = () => ({
     message: "",
     progressModal: null,
   }),
+  useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
+  useHasLibraryDirtyChanges: () => false,
+  useHasTransformDirtyChanges: () => false,
+  getIsRemoteSyncReadOnly: () => false,
 });
 
 export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
-  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  GitSyncAppBarControls: ComponentType;
+  GitSettingsModal: ComponentType<GitSettingsModalProps>;
+  GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
+  CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
+  CollectionSyncStatusBadge: ComponentType | null;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
     taskType: any;
@@ -34,6 +64,13 @@ export const PLUGIN_REMOTE_SYNC: {
     message: string;
     progressModal: ReactNode;
   };
+  useGitSyncVisible: () => {
+    isVisible: boolean;
+    currentBranch: string | null | undefined;
+  };
+  useHasLibraryDirtyChanges: () => boolean;
+  useHasTransformDirtyChanges: () => boolean;
+  getIsRemoteSyncReadOnly: (state: State) => boolean;
 } = getDefaultPluginRemoteSync();
 
 /**

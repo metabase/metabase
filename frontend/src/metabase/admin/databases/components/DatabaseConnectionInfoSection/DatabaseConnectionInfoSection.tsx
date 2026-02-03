@@ -7,8 +7,8 @@ import {
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
-import Tables from "metabase/entities/tables";
+import { ActionButton } from "metabase/common/components/ActionButton";
+import { Tables } from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Button, Flex, Tooltip } from "metabase/ui";

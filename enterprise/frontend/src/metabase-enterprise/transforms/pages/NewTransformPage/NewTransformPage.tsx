@@ -1,14 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
+import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -16,12 +12,15 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center, Stack } from "metabase/ui";
+import { Box, Center } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -33,7 +32,7 @@ import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { getValidationResult, isNotDraftSource } from "../../utils";
+import { getValidationResult, isCompleteSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
@@ -51,12 +50,12 @@ type NewTransformPageProps = {
 
 function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   const {
-    data: databases,
-    isLoading,
-    error,
-  } = useListDatabasesQuery({ include_analytics: true });
+    transformsDatabases,
+    isLoadingDatabases: isLoading,
+    databasesError: error,
+  } = useTransformPermissions();
 
-  if (isLoading || error != null || databases == null) {
+  if (isLoading || error != null || transformsDatabases == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -67,7 +66,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   return (
     <NewTransformPageBody
       initialSource={initialSource}
-      databases={databases.data}
+      databases={transformsDatabases}
       route={route}
     />
   );
@@ -117,14 +116,7 @@ function NewTransformPageBody({
 
   return (
     <>
-      <Stack
-        pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
-        data-testid="transform-query-editor"
-        gap={0}
-      >
+      <PageContainer pos="relative" data-testid="transform-query-editor">
         <PaneHeader
           title={
             <PaneHeaderInput
@@ -144,34 +136,55 @@ function NewTransformPageBody({
               onCancel={handleCancel}
             />
           }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link key="transform-list" to={Urls.transformList()}>
+                {t`Transforms`}
+              </Link>
+              {t`New transform`}
+            </DataStudioBreadcrumbs>
+          }
+          showMetabotButton
         />
-        {source.type === "python" ? (
-          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "python" ? proposedSource : undefined
-            }
-            isDirty={isDirty}
-            onChangeSource={setSourceAndRejectProposed}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        ) : (
-          <TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "query" ? proposedSource : undefined
-            }
-            uiState={uiState}
-            databases={databases}
-            onChangeSource={setSourceAndRejectProposed}
-            onChangeUiState={setUiState}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        )}
-      </Stack>
-      {isModalOpened && isNotDraftSource(source) && (
+        <Box
+          w="100%"
+          bg="background-primary"
+          bdrs="md"
+          bd="1px solid var(--mb-color-border)"
+          flex={1}
+          style={{
+            overflow: "hidden",
+          }}
+        >
+          {source.type === "python" ? (
+            <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+              source={source}
+              proposedSource={
+                proposedSource?.type === "python" ? proposedSource : undefined
+              }
+              isEditMode
+              onChangeSource={setSourceAndRejectProposed}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+            />
+          ) : (
+            <TransformEditor
+              isEditMode
+              source={source}
+              proposedSource={
+                proposedSource?.type === "query" ? proposedSource : undefined
+              }
+              uiState={uiState}
+              databases={databases}
+              onChangeSource={setSourceAndRejectProposed}
+              onChangeUiState={setUiState}
+              onAcceptProposed={acceptProposed}
+              onRejectProposed={rejectProposed}
+            />
+          )}
+        </Box>
+      </PageContainer>
+      {isModalOpened && isCompleteSource(source) && (
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}

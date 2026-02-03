@@ -5,6 +5,7 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import {
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -16,13 +17,24 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
+import type {
+  ColorScheme,
+  ResolvedColorScheme,
+} from "metabase/lib/color-scheme";
+import {
+  getUserColorScheme,
+  isValidColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
+import type { ColorName } from "metabase/lib/colors/types";
+import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
-import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
@@ -38,16 +50,23 @@ interface ThemeProviderProps {
   theme?: MantineThemeOverride;
 
   displayTheme?: DisplayTheme | string;
+
+  initialColorScheme?: ColorScheme | undefined;
 }
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
   const { resolvedColorScheme } = useColorScheme();
-  const [themeCacheBuster, setThemeCacheBuster] = useState(1);
+
+  // We cannot use `useSetting` here due to circular dependencies,
+  // and `useSelector` throws as the redux provider is not always wrapped
+  const [whitelabelColors, setWhitelabelColors] = useState(
+    MetabaseSettings.applicationColors(),
+  );
 
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
     const theme = merge(
-      getThemeOverrides(resolvedColorScheme),
+      getThemeOverrides(resolvedColorScheme, whitelabelColors),
       props.theme,
     ) as MantineTheme;
 
@@ -55,47 +74,22 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
       ...theme,
       other: {
         ...theme.other,
-        updateColorSettings: (newValue) => {
-          mutateColors(newValue);
-          setThemeCacheBuster(themeCacheBuster + 1);
+        updateColorSettings: (nextWhitelabeledColors) => {
+          mutateColors(nextWhitelabeledColors);
+          setWhitelabelColors(nextWhitelabeledColors);
         },
       },
       fn: {
-        themeColor: (
-          color: string,
-          shade?: number,
-          primaryFallback: boolean = true,
-          useSplittedShade: boolean = true,
-        ) => {
-          if (typeof color === "string" && color.includes(".")) {
-            const [splitterColor, _splittedShade] = color.split(".");
-            const splittedShade = parseInt(_splittedShade, 10);
-
-            if (
-              splitterColor in theme.colors &&
-              splittedShade >= 0 &&
-              splittedShade < 10
-            ) {
-              return theme.colors[splitterColor][
-                typeof shade === "number" && !useSplittedShade
-                  ? shade
-                  : splittedShade
-              ];
-            }
-          }
-
-          const _shade =
-            typeof shade === "number" ? shade : (theme.primaryShade as number);
+        themeColor: (color: ColorName): string => {
+          const { primaryShade, primaryColor } = theme;
 
           return color in theme.colors
-            ? theme.colors[color][_shade]
-            : primaryFallback
-              ? theme.colors[theme.primaryColor][_shade]
-              : color;
+            ? theme.colors[color][primaryShade as number]
+            : theme.colors[primaryColor as ColorName][primaryShade as number];
         },
       },
     } as MantineTheme;
-  }, [props.theme, resolvedColorScheme, themeCacheBuster]);
+  }, [props.theme, resolvedColorScheme, whitelabelColors]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
@@ -124,6 +118,7 @@ const getColorSchemeFromDisplayTheme = (
   switch (displayTheme) {
     case "light":
     case "transparent":
+    case undefined:
       return "light";
     case "night":
     case "dark":
@@ -163,8 +158,39 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
+  const [colorSchemeFromSettings, setColorSchemeFromSettings] =
+    useState<ColorScheme>(() => getUserColorScheme() ?? "auto");
+
+  // FIXME: Not only does this use a deprecated API, it also adds a complementary
+  // method to the already deprecated method to remove the listener. This is just
+  // done provisionally for CI testing purposes.
+  useEffect(() => {
+    const updateSetting = (value: ColorScheme) => {
+      if (value && isValidColorScheme(value)) {
+        setColorSchemeFromSettings(value);
+      }
+    };
+
+    MetabaseSettings.on("color-scheme", updateSetting);
+
+    return () => MetabaseSettings.off("color-scheme", updateSetting);
+  }, [setColorSchemeFromSettings]);
+
+  const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
+    await PUT("/api/setting/:key")({
+      key: "color-scheme",
+      value: value,
+    });
+
+    setUserColorSchemeAfterUpdate(value);
+  }, []);
+
   return (
-    <ColorSchemeProvider forceColorScheme={forceColorScheme}>
+    <ColorSchemeProvider
+      defaultColorScheme={colorSchemeFromSettings ?? getUserColorScheme()}
+      forceColorScheme={forceColorScheme}
+      onUpdateColorScheme={handleUpdateColorScheme}
+    >
       <ThemeProviderInner {...props} />
     </ColorSchemeProvider>
   );

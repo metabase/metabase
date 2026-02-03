@@ -31,6 +31,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
     .optional()
     .noUnknown(),
   questionId: Yup.mixed().required(),
+  token: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
   targetDashboardId: Yup.mixed().optional(),
@@ -38,6 +39,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   width: Yup.mixed().optional(),
   withChartTypeSelector: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
+  withAlerts: Yup.mixed().optional(),
   withResetButton: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();

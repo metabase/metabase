@@ -2,20 +2,20 @@
   "Normalize MBQL 1-4 to MBQL 4."
   (:require
    #?@(:clj
-       ([potemkin :as p]))
+       ([metabase.legacy-mbql.schema.helpers :as helpers]
+        [potemkin :as p]))
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.util.malli :as mu]))
+
+#?(:clj (comment helpers/keep-me))
 
 ;; this is only for the sake of a few random namespaces that use this still
 #?(:clj
    (p/import-vars [helpers is-clause?]))
 
 (defn- infer-schema [x]
-  (or (when (sequential? x)
-        (when-let [tag (helpers/effective-clause-tag x)]
-          (keyword "metabase.legacy-mbql.schema" (name tag))))
+  (or (mbql.s/infer-mbql-clause-schema x)
       ::mbql.s/Query))
 
 (defn normalize

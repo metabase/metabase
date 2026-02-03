@@ -130,7 +130,7 @@ export function DateOffsetIntervalPicker({
           }}
         />
         <Button
-          c="text-medium"
+          c="text-secondary"
           variant="subtle"
           leftSection={<Icon name="close" />}
           aria-label={t`Remove offset`}
@@ -139,7 +139,7 @@ export function DateOffsetIntervalPicker({
       </Box>
       <Divider />
       <Group px="md" py="sm" gap="sm" justify="space-between">
-        <Group c="text-medium" gap="sm">
+        <Group c="text-secondary" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

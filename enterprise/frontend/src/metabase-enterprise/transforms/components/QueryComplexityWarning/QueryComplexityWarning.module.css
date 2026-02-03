@@ -1,0 +1,6 @@
+.bordered {
+  background: var(--mb-color-background-secondary);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border);
+}

@@ -28,6 +28,7 @@
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
    [metabase.session.core :as session]
+   [metabase.settings.core :as setting]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -94,17 +95,22 @@
 
 ;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
 ;; once rather than every time
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions?])} session-with-id-query
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants?])} session-with-id-query
   (memoize
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants?]
      (first
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      [[:core_session :session]]
-                :left-join [[:core_user :user] [:= :session.user_id :user.id]]
+                :left-join [[:core_user :user] [:= :session.user_id :user.id]
+                            [:tenant] [:= :tenant.id :user.tenant_id]]
                 :where     [:and
+                            (if enable-tenants?
+                              [:or [:= :tenant.id nil] :tenant.is_active]
+                              [:= :tenant.id nil])
                             [:= :user.is_active true]
                             [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
                             (let [oldest-allowed (case db-type
@@ -142,6 +148,7 @@
        (cond-> {:select    [[:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      :api_key
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
@@ -174,7 +181,9 @@
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
                                         (if (seq anti-csrf-token) :full-app-embed :normal)
-                                        (premium-features/enable-advanced-permissions?))
+                                        (premium-features/enable-advanced-permissions?)
+                                        (and (premium-features/enable-tenants?)
+                                             (setting/get :use-tenants)))
           params (concat [session-key (session/hash-session-key session-key)]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]

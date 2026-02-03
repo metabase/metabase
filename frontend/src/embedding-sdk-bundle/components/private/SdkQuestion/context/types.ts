@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import type { LoadQuestionHookResult } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
@@ -16,13 +17,14 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, DashboardId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { EntityToken } from "metabase-types/api/entity";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypes?: EmbeddingEntityType[];
+  entityTypes?: ModularEmbeddingEntityType[];
 
   /**
    * Whether to show the save button.
@@ -40,9 +42,14 @@ type SdkQuestionConfig = {
   hiddenParameters?: string[];
 
   /**
-   * Enables the ability to download results in the interactive question.
+   * Enables the ability to download results in the question.
    */
   withDownloads?: boolean;
+
+  /**
+   * Enables the ability to set up alerts on the question.
+   */
+  withAlerts?: boolean;
 
   /**
    * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
@@ -105,10 +112,18 @@ export type QuestionMockLocationParameters = {
   params: { slug?: string };
 };
 
+/**
+ * @inline
+ */
+export type SdkQuestionEntityInternalProps = {
+  questionId?: SdkQuestionId | null;
+  token?: SdkEntityToken | null;
+};
+
 export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
-    Omit<LoadSdkQuestionParams, "questionId"> & {
-      questionId: SdkQuestionId | null;
+    Omit<LoadSdkQuestionParams, "questionId"> &
+    SdkQuestionEntityInternalProps & {
       /**
        * @internal
        */
@@ -132,6 +147,7 @@ export type SdkQuestionContextType = Omit<
     | "isSaveEnabled"
     | "targetCollection"
     | "withDownloads"
+    | "withAlerts"
     | "backToDashboard"
     | "hiddenParameters"
     | "onVisualizationChange"
@@ -139,6 +155,7 @@ export type SdkQuestionContextType = Omit<
     plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: QueryClickActionsMode | Mode | null | undefined;
     originalId: SdkQuestionId | null;
+    token: EntityToken | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;

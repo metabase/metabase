@@ -9,15 +9,15 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListPersistedInfoQuery } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
-import EmptyState from "metabase/common/components/EmptyState";
-import Link from "metabase/common/components/Link";
+import { DateTime } from "metabase/common/components/DateTime";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import PersistedModels from "metabase/entities/persisted-models";
+import { PersistedModels } from "metabase/entities/persisted-models";
 import { capitalize } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -112,7 +112,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function _ModelCacheRefreshJobs({ onRefresh }: Props) {
+function ModelCacheRefreshJobsInner({ onRefresh }: Props) {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
   const { data, error, isFetching } = useListPersistedInfoQuery({
     limit: PAGE_SIZE,
@@ -188,7 +188,7 @@ function _ModelCacheRefreshJobs({ onRefresh }: Props) {
 export const ModelCacheRefreshJobs = connect(
   null,
   mapDispatchToProps,
-)(_ModelCacheRefreshJobs);
+)(ModelCacheRefreshJobsInner);
 
 export function ModelCachePage({ children }: { children?: React.ReactNode }) {
   return (

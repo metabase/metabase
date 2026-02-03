@@ -5,6 +5,7 @@
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
@@ -109,23 +110,43 @@
                        "question" :model/Card)
                      id)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Return cache configuration."
+  "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,
+   and sorting via `sort_column` and `sort_direction`."
   [_route-params
-   {:keys [model collection id]}
-   :- [:map
-       [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
-                                                 {:description "Type of model"})]
-       [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
-                                              {:description "Collection id to filter results. Returns everything if not supplied."})]
-       [:id         {:optional true} (mu/with [:maybe ms/PositiveInt]
-                                              {:description "Model id to get configuration for."})]]]
+   {:keys [model collection id] :as params}
+   :- [:merge
+       [:map
+        [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+                                                  {:description "Type of model"})]
+        [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
+                                               {:description "Collection id to filter results. Returns everything if not supplied."})]
+        [:id         {:optional true} (mu/with [:maybe ms/PositiveInt]
+                                               {:description "Model id to get configuration for."})]]
+       cache-config/SortParams]]
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
   (check-cache-access (first model) id)
-  {:data (cache-config/get-list model collection id)})
+  (let [sort-params (select-keys params [:sort_column :sort_direction])
+        limit       (request/limit)
+        offset      (request/offset)
+        data        (cache-config/get-list model collection id limit offset sort-params)]
+    (if limit
+      {:data   data
+       :total  (cache-config/get-list-total model collection id)
+       :limit  limit
+       :offset offset}
+      {:data data})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/"
   "Store cache configuration."
   [_route-params
@@ -138,6 +159,10 @@
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/"
   "Delete cache configurations."
   [_route-params
@@ -150,6 +175,10 @@
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/invalidate"
   "Invalidate cache entries.
 

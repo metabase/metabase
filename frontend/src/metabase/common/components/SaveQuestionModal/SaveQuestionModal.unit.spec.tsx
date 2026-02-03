@@ -2,12 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import type { CollectionEndpoints } from "__support__/server-mocks";
 import {
+  type CollectionEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupDatabasesEndpoints,
   setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
@@ -121,6 +122,7 @@ const setup = async (
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
   setupLibraryEndpoints();
+  setupDatabasesEndpoints([]);
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
@@ -886,11 +888,6 @@ describe("SaveQuestionModal", () => {
     const questionModalTitle = () =>
       screen.getByRole("heading", { name: /new question/i });
 
-    const newDashBtn = () =>
-      screen.getByRole("button", {
-        name: /new dashboard/i,
-      });
-
     const COLLECTION = {
       USER: BOBBY_TEST_COLLECTION,
       ROOT: createMockCollection({
@@ -959,7 +956,7 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(saveLocDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
         await userEvent.click(newCollBtn());
-        await screen.findByText("Give it a name");
+        await screen.findByText(/Give it a name/);
         await userEvent.click(newCollCancelButton());
         await userEvent.click(selectCollCancelButton());
         await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
@@ -995,65 +992,6 @@ describe("SaveQuestionModal", () => {
             expect(
               await screen.findByRole("heading", {
                 name: "Create a new collection",
-              }),
-            ).toBeInTheDocument();
-          });
-        });
-      });
-    });
-
-    describe("new dashboard modal", () => {
-      it("should have a new dashboard button in the collection picker", async () => {
-        await setup(getQuestion());
-        await userEvent.click(saveLocDropdown());
-        await waitFor(() => {
-          expect(newDashBtn()).toBeInTheDocument();
-        });
-      });
-
-      it("should open new dashboard modal and return to dashboard modal when clicking close", async () => {
-        await setup(getQuestion());
-        await userEvent.click(saveLocDropdown());
-        await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
-        await userEvent.click(newDashBtn());
-        await screen.findByText("Give it a name");
-        await within(
-          await screen.findByTestId("create-dashboard-on-the-go"),
-        ).findByRole("button", { name: /cancel/i });
-        await userEvent.click(selectCollCancelButton());
-        await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
-      });
-
-      describe("new dashboard location", () => {
-        beforeEach(async () => {
-          await setup(getQuestion(), null, {
-            collectionEndpoints: {
-              collections: Object.values(COLLECTION),
-              rootCollection: COLLECTION.ROOT,
-            },
-          });
-        });
-
-        it("should create dashboard inside nested folder", async () => {
-          await userEvent.click(saveLocDropdown());
-          await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
-          await userEvent.click(
-            await screen.findByRole("link", {
-              name: new RegExp(BOBBY_TEST_COLLECTION.name),
-            }),
-          );
-          await userEvent.click(newDashBtn());
-          await screen.findByText("Give it a name");
-        });
-
-        it("should create dashboard inside root folder", async () => {
-          await userEvent.click(saveLocDropdown());
-          await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
-          await userEvent.click(newDashBtn());
-          await waitFor(async () => {
-            expect(
-              await screen.findByRole("heading", {
-                name: "Create a new dashboard",
               }),
             ).toBeInTheDocument();
           });

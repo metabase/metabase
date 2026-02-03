@@ -1,22 +1,25 @@
-import { memo, useContext, useState } from "react";
-import { Link } from "react-router";
+import { memo, useCallback, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
+import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
+import { TableFieldList } from "metabase/metadata/components/TableFieldList";
+import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { ResponsiveButton } from "metabase/metadata/pages/shared/ResponsiveButton";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Box,
@@ -25,51 +28,84 @@ import {
   Icon,
   Loader,
   Stack,
-  Text,
+  Tabs,
   Tooltip,
 } from "metabase/ui";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
+import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
+import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
-
+import { MeasureList } from "./MeasureList";
+import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
-import { TableFieldList } from "./TableFieldList";
+import { TableCollection } from "./TableCollection";
 import { TableMetadata } from "./TableMetadata";
-import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
-import { TableSortableFieldList } from "./TableSortableFieldList";
 
 interface Props {
   table: Table;
   activeFieldId?: FieldId;
+  activeTab: DataStudioTableMetadataTab;
+  canPublish: boolean;
+  hasLibrary: boolean;
   onSyncOptionsClick: () => void;
 }
+
+type TableModalType = "library" | "publish" | "unpublish";
 
 const TableSectionBase = ({
   table,
   activeFieldId,
+  activeTab,
+  canPublish,
+  hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
+  const [modalType, setModalType] = useState<TableModalType>();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const { baseUrl } = useContext(DataModelContext);
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const getFieldHref = (fieldId: FieldId) => {
-    return getUrl(baseUrl, {
+    return Urls.dataStudioData({
       databaseId: table.db_id,
       schemaName: table.schema,
       tableId: table.id,
+      tab: "field",
       fieldId,
     });
   };
+
+  const dispatch = useDispatch();
+
+  const handleTabChange = useCallback(
+    (tab: string | null) => {
+      if (!Urls.isDataStudioTableMetadataTab(tab)) {
+        return;
+      }
+
+      dispatch(
+        push(
+          Urls.dataStudioData({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+            tableId: table.id,
+            tab,
+          }),
+        ),
+      );
+    },
+    [dispatch, table.db_id, table.schema, table.id],
+  );
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -153,9 +189,21 @@ const TableSectionBase = ({
     }
   };
 
+  const handlePublishToggle = () => {
+    if (!hasLibrary) {
+      setModalType("library");
+    } else {
+      setModalType(table.is_published ? "unpublish" : "publish");
+    }
+  };
+
+  const handleCloseModal = () => {
+    setModalType(undefined);
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box className={S.header} bg="accent-gray-light" px="lg" mt="lg">
+      <Box className={S.header}>
         <NameDescriptionInput
           description={table.description ?? ""}
           descriptionPlaceholder={t`Give this table a description`}
@@ -168,142 +216,170 @@ const TableSectionBase = ({
         />
       </Box>
 
-      <Box px="lg">
-        <Group justify="stretch" gap="sm">
+      <Group justify="stretch" gap="sm">
+        {canPublish && !remoteSyncReadOnly && (
           <Button
             flex="1"
-            leftSection={<Icon name="settings" />}
-            onClick={onSyncOptionsClick}
-            style={{
-              width: "100%",
-            }}
-          >
-            {t`Sync settings`}
-          </Button>
-          <Button
-            flex="1"
-            onClick={() => setIsCreateModelsModalOpen(true)}
             p="sm"
-            leftSection={<Icon name="add_folder" />}
-            style={{
-              width: "100%",
-            }}
-          >{t`Publish`}</Button>
-          <Tooltip label={t`Dependency graph`}>
-            <Box /* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */
-            >
-              <Button
-                component={Link}
-                to={dependencyGraph({
-                  entry: { id: Number(table.id), type: "table" },
-                })}
-                p="sm"
-                leftSection={<Icon name="network" />}
-                style={{
-                  flexGrow: 0,
-                  width: 40,
-                }}
-                aria-label={t`Dependency graph`}
-              />
-            </Box>
-          </Tooltip>
-          <Box style={{ flexGrow: 0, width: 40 }}>
-            <TableLink table={table} />
-          </Box>
-        </Group>
-      </Box>
-
-      <Box px="lg">
-        <TableAttributesEditSingle table={table} />
-      </Box>
-
-      <Box px="lg">
-        <TableSectionGroup title={t`Metadata`}>
-          <TableMetadata table={table} />
-        </TableSectionGroup>
-      </Box>
-
-      {table.published_models != null && table.published_models.length > 0 && (
-        <TableModels table={table} />
-      )}
-
-      <Box px="lg">
-        <Stack gap={12}>
-          <Group
-            align="center"
-            gap="md"
-            justify="space-between"
-            miw={0}
-            wrap="nowrap"
-            h={36}
+            leftSection={
+              <Icon name={table.is_published ? "unpublish" : "publish"} />
+            }
+            onClick={handlePublishToggle}
           >
-            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+            {table.is_published ? t`Unpublish` : t`Publish`}
+          </Button>
+        )}
+        <Button
+          flex="1"
+          leftSection={<Icon name="settings" />}
+          onClick={onSyncOptionsClick}
+        >
+          {t`Sync settings`}
+        </Button>
+        <Tooltip label={t`Dependency graph`}>
+          <Button
+            component={ForwardRefLink}
+            to={dependencyGraph({
+              entry: { id: Number(table.id), type: "table" },
+            })}
+            p="sm"
+            leftSection={<Icon name="dependencies" />}
+            style={{
+              flexGrow: 0,
+              width: 40,
+            }}
+            aria-label={t`Dependency graph`}
+          />
+        </Tooltip>
+        <Box style={{ flexGrow: 0, width: 40 }}>
+          <TableLink table={table} />
+        </Box>
+      </Group>
 
-            <Group
-              flex="1"
-              gap="md"
-              justify="flex-end"
-              miw={0}
-              wrap="nowrap"
-              h="100%"
-            >
-              {isUpdatingSorting && (
-                <Loader data-testid="loading-indicator" size="xs" />
-              )}
+      <TableAttributesEditSingle table={table} />
 
-              {!isSorting && hasFields && (
-                <ResponsiveButton
-                  icon="sort_arrows"
-                  showLabel
-                  onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</ResponsiveButton>
-              )}
+      <TableSectionGroup title={t`Metadata`}>
+        <TableMetadata table={table} />
+      </TableSectionGroup>
 
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={handleFieldOrderTypeChange}
+      {table.is_published && <TableCollection table={table} />}
+
+      <Box>
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          <Tabs.List mb="md">
+            <Tabs.Tab
+              value="field"
+              leftSection={<Icon name="list" />}
+            >{t`Fields`}</Tabs.Tab>
+            <Tabs.Tab
+              value="segments"
+              leftSection={<Icon name="segment2" />}
+            >{t`Segments`}</Tabs.Tab>
+            <Tabs.Tab
+              value="measures"
+              leftSection={<Icon name="sum" />}
+            >{t`Measures`}</Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="field">
+            <Stack gap="md">
+              <Group gap="md" justify="flex-start" wrap="nowrap">
+                {isUpdatingSorting && (
+                  <Loader data-testid="loading-indicator" size="xs" />
+                )}
+
+                {!isSorting && hasFields && (
+                  <ResponsiveButton
+                    icon="sort_arrows"
+                    showLabel
+                    onClick={() => setIsSorting(true)}
+                  >{t`Sorting`}</ResponsiveButton>
+                )}
+
+                {isSorting && (
+                  <FieldOrderPicker
+                    value={table.field_order}
+                    onChange={handleFieldOrderTypeChange}
+                  />
+                )}
+
+                {isSorting && (
+                  <ResponsiveButton
+                    icon="check"
+                    showLabel
+                    onClick={() => setIsSorting(false)}
+                  >{t`Done`}</ResponsiveButton>
+                )}
+              </Group>
+
+              {!hasFields && (
+                <EmptyState
+                  className={S.EmptyState}
+                  message={t`This table has no fields`}
+                  spacing="sm"
                 />
               )}
 
-              {isSorting && (
-                <ResponsiveButton
-                  icon="check"
-                  showLabel
-                  onClick={() => setIsSorting(false)}
-                >{t`Done`}</ResponsiveButton>
-              )}
-            </Group>
-          </Group>
+              {hasFields && (
+                <>
+                  <Box
+                    style={{
+                      display: isSorting ? "block" : "none",
+                    }}
+                    aria-hidden={!isSorting}
+                  >
+                    <TableSortableFieldList
+                      activeFieldId={activeFieldId}
+                      table={table}
+                      onChange={handleCustomFieldOrderChange}
+                    />
+                  </Box>
 
-          {!hasFields && <EmptyState message={t`This table has no fields`} />}
-
-          {hasFields && (
-            <>
-              {isSorting && (
-                <TableSortableFieldList
-                  activeFieldId={activeFieldId}
-                  table={table}
-                  onChange={handleCustomFieldOrderChange}
-                />
+                  <Box
+                    style={{
+                      display: isSorting ? "none" : "block",
+                    }}
+                    aria-hidden={isSorting}
+                  >
+                    <TableFieldList
+                      table={table}
+                      activeFieldId={activeFieldId}
+                      getFieldHref={getFieldHref}
+                    />
+                  </Box>
+                </>
               )}
+            </Stack>
+          </Tabs.Panel>
 
-              {!isSorting && (
-                <TableFieldList
-                  table={table}
-                  activeFieldId={activeFieldId}
-                  getFieldHref={getFieldHref}
-                />
-              )}
-            </>
-          )}
-        </Stack>
+          <Tabs.Panel value="segments">
+            <SegmentList table={table} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="measures">
+            <MeasureList table={table} />
+          </Tabs.Panel>
+        </Tabs>
       </Box>
 
-      <PublishModelsModal
-        tables={new Set([table.id])}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
+      <CreateLibraryModal
+        title={t`First, let's create your Library`}
+        explanatorySentence={t`This is where published tables will go.`}
+        isOpened={modalType === "library"}
+        onCreate={() => setModalType("publish")}
+        onClose={handleCloseModal}
+      />
+      <PublishTablesModal
+        isOpened={modalType === "publish"}
+        tableIds={[table.id]}
+        onPublish={handleCloseModal}
+        onClose={handleCloseModal}
+      />
+      <UnpublishTablesModal
+        isOpened={modalType === "unpublish"}
+        tableIds={[table.id]}
+        onUnpublish={handleCloseModal}
+        onClose={handleCloseModal}
       />
     </Stack>
   );
@@ -320,18 +396,15 @@ function TableLink({ table }: { table: Table }) {
 
   return (
     <Tooltip label={t`Go to this table`} position="top">
-      <Box>
-        {/* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */}
-        <Button
-          component={Link}
-          to={url}
-          aria-label={t`Go to this table`}
-          leftSection={<Icon name="external" size={16} />}
-          style={{
-            width: "100%",
-          }}
-        />
-      </Box>
+      <Button
+        component={ForwardRefLink}
+        to={url}
+        aria-label={t`Go to this table`}
+        leftSection={<Icon name="external" size={16} />}
+        style={{
+          width: "100%",
+        }}
+      />
     </Tooltip>
   );
 }

@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
@@ -57,8 +56,6 @@ export const NativeQueryEditorActionButtons = (
 
   // Default to true if not explicitly set to false
   const showFormatButton = features.formatQuery !== false;
-  const showAiGeneration =
-    features.aiGeneration !== false && PLUGIN_METABOT.isEnabled();
 
   return (
     <Flex
@@ -95,7 +92,6 @@ export const NativeQueryEditorActionButtons = (
           />
         </Tooltip>
       )}
-      {showAiGeneration && <PLUGIN_METABOT.MetabotToggleButton />}
     </Flex>
   );
 };

@@ -1,23 +1,21 @@
-import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
+
+import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { databaseApi } from "metabase/api";
-import Questions from "metabase/entities/questions";
-import Snippets from "metabase/entities/snippets";
+import { Questions } from "metabase/entities/questions";
+import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
-  getIsNotebookNativePreviewShown,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser } from "metabase/selectors/user";
+import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -26,6 +24,7 @@ import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery"
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, SegmentId } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -94,6 +93,25 @@ function getCardForBlankQuestion(
   return question.card();
 }
 
+function getCardForBlankNativeQuestion(
+  metadata: Metadata,
+  options: BlankQueryOptions,
+) {
+  const databaseId = options.db ? parseInt(options.db) : undefined;
+
+  // TODO don't use DEPRECATED_RAW_MBQL_* as it'd be better to:
+  // 1° load the db first
+  // 2° use the lib to create a provider
+  // 3° then create a native query
+  const question = Question.create({
+    DEPRECATED_RAW_MBQL_type: "native",
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    metadata,
+  });
+
+  return question.card();
+}
+
 function filterBySegmentId(question: Question, segmentId: SegmentId) {
   const stageIndex = -1;
   const query = question.query();
@@ -117,11 +135,17 @@ export function deserializeCard(serializedCard: string) {
 }
 
 async function fetchAndPrepareSavedQuestionCards(
-  cardId: string | number,
+  {
+    cardId,
+    token,
+  }: {
+    cardId: string | number;
+    token?: EntityToken | null;
+  },
   dispatch: Dispatch,
   getState: GetState,
 ) {
-  const card = await loadCard(cardId, { dispatch, getState });
+  const card = await loadCard({ cardId, token }, { dispatch, getState });
   const originalCard = { ...card };
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -141,10 +165,13 @@ async function fetchAndPrepareAdHocQuestionCards(
     };
   }
 
-  const originalCard = await loadCard(deserializedCard.original_card_id, {
-    dispatch,
-    getState,
-  });
+  const originalCard = await loadCard(
+    { cardId: deserializedCard.original_card_id },
+    {
+      dispatch,
+      getState,
+    },
+  );
 
   if (cardIsEquivalent(deserializedCard, originalCard)) {
     return {
@@ -166,42 +193,38 @@ type ResolveCardsResult = {
 
 export async function resolveCards({
   cardId,
+  token,
   deserializedCard,
   options,
   dispatch,
   getState,
+  questionType,
 }: {
   cardId?: string | number;
+  token?: EntityToken | null;
   deserializedCard?: Card;
   options: BlankQueryOptions;
   dispatch: Dispatch;
   getState: GetState;
+  questionType?: "native" | "gui";
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
     const metadata = getMetadata(getState());
 
-    return {
-      card: getCardForBlankQuestion(metadata, options),
-    };
+    const card =
+      questionType === "native"
+        ? getCardForBlankNativeQuestion(metadata, options)
+        : getCardForBlankQuestion(metadata, options);
+
+    return { card };
   }
   return cardId
-    ? fetchAndPrepareSavedQuestionCards(cardId, dispatch, getState)
+    ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
     : fetchAndPrepareAdHocQuestionCards(
         deserializedCard as Card,
         dispatch,
         getState,
       );
-}
-
-async function loadDatabases(dispatch: any) {
-  const action = databaseApi.endpoints.listDatabases.initiate();
-  try {
-    const { data } = await dispatch(action).unwrap();
-    return data;
-  } catch (error) {
-    console.error("error loading databases", error);
-    return [];
-  }
 }
 
 export function parseHash(hash?: string) {
@@ -276,8 +299,7 @@ async function handleQBInit(
   const currentUser = getUser(getState());
 
   if (uiControls.queryBuilderMode === "notebook") {
-    const databases = await loadDatabases(dispatch);
-    if (!getHasDataAccess(databases)) {
+    if (!canUserCreateQueries(getState())) {
       dispatch(replace(Urls.unauthorized()));
       return;
     }
@@ -378,8 +400,6 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
 
-  uiControls.isShowingNotebookNativePreview =
-    getIsNotebookNativePreviewShown(getState());
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 

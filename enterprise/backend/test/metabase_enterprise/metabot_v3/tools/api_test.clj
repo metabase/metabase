@@ -5,23 +5,27 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.tools.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.dependencies-test :as metabot-v3.tools.dependencies-test]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.test-util :as tools.tu]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(defn- db-engine-name []
+  (-> (mt/db) :engine name))
 
 (def missing-value (symbol "nil #_\"key is not present.\""))
 
@@ -58,12 +62,12 @@
                                                                                :hour 15
                                                                                :day_of_month "middle-of-month"}}
                                               :conversation_id conversation-id})]
-          (is (= [{:dashboard-id 1
-                   :email        "user@example.com"
-                   :schedule     {:frequency :monthly
-                                  :hour 15
-                                  :day-of-month :middle-of-month}}]
-                 @tool-requests))
+          (is (=? [{:dashboard-id 1
+                    :email        "user@example.com"
+                    :schedule     {:frequency :monthly
+                                   :hour 15
+                                   :day-of-month :middle-of-month}}]
+                  @tool-requests))
           (is (=? {:output output
                    :conversation_id conversation-id}
                   response)))))))
@@ -80,7 +84,7 @@
                                                             :field_id    (-> table-id
                                                                              metabot-v3.tools.u/table-field-id-prefix
                                                                              (str 4)) ; name
-                                                            :limt        15}
+                                                            :limit       15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:statistics
                                    {:distinct_count 2499,
@@ -110,13 +114,13 @@
                                              :query-id query-id
                                              :query {}
                                              :result-columns []}})]
-          (let [filters [{:field_id "q2a/1", :operation "is-not-null"}
-                         {:field_id "q2a/2", :operation "equals", :value "3"}
-                         {:field_id "q2a/3", :operation "equals", :values ["3" "4"]}
-                         {:field_id "q2a/5", :operation "not-equals", :values [3 4]}
-                         {:field_id "q2a/6", :operation "month-equals", :values [4 5 9]}
-                         {:field_id "c2a/6", :bucket "week-of-year" :operation "not-equals", :values [14 15 19]}
-                         {:field_id "q2a/6", :operation "year-equals", :value 2008}]
+          (let [filters [{:field_id "q2a-1", :operation "is-not-null"}
+                         {:field_id "q2a-2", :operation "equals", :value "3"}
+                         {:field_id "q2a-3", :operation "equals", :values ["3" "4"]}
+                         {:field_id "q2a-5", :operation "not-equals", :values [3 4]}
+                         {:field_id "q2a-6", :operation "month-equals", :values [4 5 9]}
+                         {:field_id "c2a-6", :bucket "week-of-year" :operation "not-equals", :values [14 15 19]}
+                         {:field_id "q2a-6", :operation "year-equals", :value 2008}]
                 response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/filter-records"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                {:arguments       {:data_source data-source
@@ -132,11 +136,11 @@
                     response))))))))
 
 (deftest find-outliers-test
-  (doseq [data-source [{:query {:database 1}, :query_id "query ID", :result_field_id "q1233/2"}
-                       {:query {:database 1}, :result_field_id "q1233/2"}
+  (doseq [data-source [{:query {:database 1}, :query_id "query ID", :result_field_id "q1233-2"}
+                       {:query {:database 1}, :result_field_id "q1233-2"}
                        {:metric_id 1}
-                       {:report_id 1, :result_field_id "c131/3"}
-                       {:table_id "card__1", :result_field_id "t42/7"}]]
+                       {:report_id 1, :result_field_id "c131-3"}
+                       {:table_id "card__1", :result_field_id "t42-7"}]]
     (mt/with-premium-features #{:metabot-v3}
       (let [tool-requests (atom [])
             conversation-id (str (random-uuid))
@@ -194,15 +198,15 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
-                       {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
-                       {:field_id "c2/5", :operation "not-equals", :values [3 4]}
-                       {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
-                       {:field_id "c2/6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
-                       {:field_id "c2/6", :bucket "day-of-week" :operation "equals", :values [1 7]}
-                       {:field_id "c2/6", :operation "year-equals", :value 2008}]
-              breakouts [{:field_id "c2/4", :field_granularity "week"}
-                         {:field_id "c2/6", :field_granularity "day"}]
+        (let [filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+                       {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
+                       {:field_id "c2-5", :operation "not-equals", :values [3 4]}
+                       {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2-6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id "c2-6", :bucket "day-of-week" :operation "equals", :values [1 7]}
+                       {:field_id "c2-6", :operation "year-equals", :value 2008}]
+              breakouts [{:field_id "c2-4", :field_granularity "week"}
+                         {:field_id "c2-6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:metric_id 1
@@ -230,7 +234,7 @@
                        :dataset_query (lib/->legacy-MBQL source-query)
                        :type :metric}]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
-        (let [fid #(format "c%d/%d" metric-id %)
+        (let [fid #(format "c%d-%d" metric-id %)
               filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
                        {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
                        {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
@@ -246,40 +250,48 @@
                                                                 :filters   filters
                                                                 :group_by  breakouts}
                                               :conversation_id conversation-id})
-              query-id (-> response :structured_output :query_id)]
+              query-id (-> response :structured_output :query_id)
+              actual-query (-> response :structured_output :query lib-be/normalize-query)
+              id-col (lib.metadata/field mp (mt/id :products :id))
+              title-col (lib.metadata/field mp (mt/id :products :title))
+              rating-col (lib.metadata/field mp (mt/id :products :rating))
+              created-at-col (lib.metadata/field mp (mt/id :products :created_at))
+              expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/breakout (lib/with-temporal-bucket created-at-col :week))
+                                 (lib/breakout (lib/with-temporal-bucket created-at-col :day))
+                                 (lib/filter (lib/> id-col 50))
+                                 (lib/filter (lib/= title-col "3" "4"))
+                                 (lib/filter (lib/!= rating-col 3 4))
+                                 (lib/filter (lib/= (lib/get-month created-at-col) 4 5 9))
+                                 (lib/filter (lib/!= (lib/get-day created-at-col) 14 15 19))
+                                 (lib/filter (lib/= (lib/get-day-of-week created-at-col :iso) 1 7))
+                                 (lib/filter (lib/= (lib/get-year created-at-col) 2008)))]
           (is (=? {:structured_output
                    {:type "query"
                     :query_id string?
-                    :query (mt/mbql-query products
-                             {:aggregation [[:metric metric-id]]
-                              :breakout [!week.products.created_at !day.products.created_at]
-                              :filter [:and
-                                       [:> [:field %id {}] 50]
-                                       [:= [:field %title {}] "3" "4"]
-                                       [:!= [:field %rating {}] 3 4]
-                                       [:= [:get-month [:field %created_at {}]] 4 5 9]
-                                       [:!= [:get-day [:field %products.created_at {}]] 14 15 19]
-                                       [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
-                                       [:= [:get-year [:field %created_at {}]] 2008]]})
                     :result_columns
-                    [{:field_id (str "q" query-id "/0")
+                    [{:field_id (str "q" query-id "-0")
                       :name "CREATED_AT"
                       :display_name "Created At: Week"
                       :type "datetime"
+                      :database_type string?
                       :semantic_type "creation_timestamp"}
-                     {:field_id (str "q" query-id "/1")
+                     {:field_id (str "q" query-id "-1")
                       :name "CREATED_AT_2"
                       :display_name "Created At: Day"
                       :type "datetime"
+                      :database_type string?
                       :semantic_type "creation_timestamp"}
-                     {:field_id (str "q" query-id "/2")
+                     {:field_id (str "q" query-id "-2")
                       :name "avg"
                       :display_name "Metrica"
                       :type "number"
+                      :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
-                  (-> response
-                      (update-in [:structured_output :query] mbql.normalize/normalize)))))))))
+                  response))
+          (is (tools.tu/query= expected-query actual-query)))))))
 
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}
@@ -294,19 +306,19 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [fields [{:field_id "c2/8", :bucket "year-of-era"}
-                      {:field_id "c2/9"}]
-              filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
-                       {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
-                       {:field_id "c2/5", :operation "not-equals", :values [3 4]}
-                       {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
-                       {:field_id "c2/6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
-                       {:field_id "c2/6", :bucket "day-of-week" :operation "equals", :values [1 7]}
-                       {:field_id "c2/6", :operation "year-equals", :value 2008}]
-              aggregations [{:field_id "c2/10", :bucket "week", :function "count-distinct"}
-                            {:field_id "c2/11", :function "sum"}]
-              breakouts [{:field_id "c2/4", :field_granularity "week"}
-                         {:field_id "c2/6", :field_granularity "day"}]
+        (let [fields [{:field_id "c2-8", :bucket "year-of-era"}
+                      {:field_id "c2-9"}]
+              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+                       {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
+                       {:field_id "c2-5", :operation "not-equals", :values [3 4]}
+                       {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2-6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id "c2-6", :bucket "day-of-week" :operation "equals", :values [1 7]}
+                       {:field_id "c2-6", :operation "year-equals", :value 2008}]
+              aggregations [{:field_id "c2-10", :bucket "week", :function "count-distinct"}
+                            {:field_id "c2-11", :function "sum"}]
+              breakouts [{:field_id "c2-4", :field_granularity "week"}
+                         {:field_id "c2-6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
@@ -338,7 +350,7 @@
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
         (let [fields []
-              filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}]
+              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
@@ -387,7 +399,7 @@
                      :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)
                      :model/Metabot {metabot-eid :entity_id} {:name "Test Metabot"
                                                               :collection_id collection-id}]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [model-metric-base-query (lib/query mp (lib.metadata/card mp model-id))
                 rating-column (m/find-first (comp #{"RATING"} :name) (lib/visible-columns model-metric-base-query))
                 created-at-column (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns model-metric-base-query))
@@ -427,31 +439,32 @@
                                           (assoc :id metric-id
                                                  :type "metric"
                                                  :verified true
-                                                 :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                 :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                  :queryable_dimensions
-                                                 (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
+                                                 (map-indexed #(assoc %2 :field_id (format "c%d-%d" metric-id %1))
                                                               expected-fields)))
                                       (-> model-metric-data
                                           (select-keys [:name :description])
                                           (assoc :id model-metric-id
                                                  :type "metric"
-                                                 :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)
+                                                 :default_time_dimension_field_id (format "c%d-%d" model-metric-id 7)
                                                  :queryable_dimensions
-                                                 (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-metric-id %1))
+                                                 (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-metric-id %1))
                                                               expected-fields)))]
                             :models [(-> model-data
                                          (select-keys [:name :description :database_id])
                                          (assoc :id model-id
                                                 :type "model"
                                                 :verified true
+                                                :database_engine (db-engine-name)
                                                 :display_name "Model Model"
-                                                :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
+                                                :fields (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-id %1))
                                                                      expected-fields)
                                                 :metrics
                                                 [{:id model-metric-id
                                                   :name "Model metric"
                                                   :description "Model metric desc"
-                                                  :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)}]))]}
+                                                  :default_time_dimension_field_id (format "c%d-%d" model-metric-id 7)}]))]}
                            :conversation_id conversation-id}
                           response))))
               (testing "Minimal call"
@@ -483,6 +496,7 @@
                             :models [(-> model-data
                                          (select-keys [:name :description :database_id])
                                          (assoc :id model-id
+                                                :database_engine (db-engine-name)
                                                 :display_name "Model Model"
                                                 :verified true
                                                 :type "model"
@@ -511,7 +525,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [dash-data {:name "dashing dash", :description "dash description"}]
       (mt/with-temp [:model/Dashboard {dash-id :id} dash-data]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [conversation-id (str (random-uuid))
                 ai-token (ai-session-token)
                 response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-dashboard-details"
@@ -582,16 +596,16 @@
                                           {:arguments arguments
                                            :conversation_id conversation-id}))]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (testing "Normal call"
             (is (=? {:structured_output (-> metric-data
                                             (select-keys [:name :display_name :description])
                                             (assoc :id metric-id
                                                    :type "metric"
                                                    :verified true
-                                                   :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                   :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                    :queryable_dimensions
-                                                   (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
+                                                   (map-indexed #(assoc %2 :field_id (format "c%d-%d" metric-id %1))
                                                                 expected-fields)))
                      :conversation_id conversation-id}
                     (request {:metric_id metric-id}))))
@@ -601,10 +615,10 @@
                                             (assoc :id metric-id
                                                    :type "metric"
                                                    :verified true
-                                                   :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                   :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                    :queryable_dimensions
                                                    (map-indexed #(assoc %2
-                                                                        :field_id (format "c%d/%d" metric-id %1)
+                                                                        :field_id (format "c%d-%d" metric-id %1)
                                                                         :field_values missing-value)
                                                                 expected-fields)))
                      :conversation_id conversation-id}
@@ -616,7 +630,7 @@
                                             (assoc :id metric-id
                                                    :type "metric"
                                                    :verified true
-                                                   :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                   :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                    :queryable_dimensions missing-value))
                      :conversation_id conversation-id}
                     (request {:metric_id                 metric-id
@@ -653,8 +667,16 @@
                                    :query_id string?
                                    :query map?
                                    :result_columns
-                                   [{:field_id (str "q" generated-id "/0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
-                                    {:field_id (str "q" generated-id "/1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
+                                   [{:field_id (str "q" generated-id "-0"),
+                                     :name "CREATED_AT",
+                                     :display_name "Created At: Week",
+                                     :type "datetime"
+                                     :database_type string?}
+                                    {:field_id (str "q" generated-id "-1"),
+                                     :name "avg",
+                                     :display_name "Average of Rating",
+                                     :type "number"
+                                     :database_type missing-value}]}
                :conversation_id conversation-id}
               response))
       ;; Verify the query is normalized (supports both MBQL v4 and v5)
@@ -673,7 +695,7 @@
                          :dataset_query (lib/->legacy-MBQL source-query)
                          :type :question}]
       (mt/with-temp [:model/Card {question-id :id} question-data]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [conversation-id (str (random-uuid))
                 ai-token (ai-session-token)
                 arguments {:report_id question-id}
@@ -682,10 +704,22 @@
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
-                expected-fields [{:name "VENDOR" :display_name "Vendor", :type "string", :semantic_type "company"
+                expected-fields [{:name "VENDOR"
+                                  :display_name "Vendor"
+                                  :type "string"
+                                  :semantic_type "company"
+                                  :database_type string?
                                   :field_values string-sequence?}
-                                 {:name "CREATED_AT" :display_name "Created At: Week", :type "datetime", :semantic_type "creation_timestamp"}
-                                 {:name "avg" :display_name "Average of Rating", :type "number", :semantic_type "score"}]]
+                                 {:name "CREATED_AT"
+                                  :display_name "Created At: Week"
+                                  :type "datetime"
+                                  :semantic_type "creation_timestamp"
+                                  :database_type string?}
+                                 {:name "avg"
+                                  :display_name "Average of Rating"
+                                  :type "number"
+                                  :semantic_type "score"
+                                  :database_type missing-value}]]
             (testing "Normal call"
               (is (=? {:structured_output (-> question-data
                                               (select-keys [:name :description :database_id])
@@ -693,7 +727,7 @@
                                                      :type "question"
                                                      :verified true
                                                      :result_columns
-                                                     (map-indexed #(assoc %2 :field_id (format "c%d/%d" question-id %1))
+                                                     (map-indexed #(assoc %2 :field_id (format "c%d-%d" question-id %1))
                                                                   expected-fields)))
                        :conversation_id conversation-id}
                       (request arguments))))
@@ -704,7 +738,7 @@
                                                      :type "question"
                                                      :result_columns
                                                      (map-indexed #(assoc %2
-                                                                          :field_id (format "c%d/%d" question-id %1)
+                                                                          :field_id (format "c%d-%d" question-id %1)
                                                                           :field_values missing-value)
                                                                   expected-fields)))
                        :conversation_id conversation-id}
@@ -745,26 +779,12 @@
         ;; Related tables via FK (order matches what related-tables function returns)
         expected-related-tables
         [{:type "table"
-          :id (mt/id :products)
-          :name "PRODUCTS"
-          :display_name "Products"
-          :database_id (mt/id)
-          :database_schema "PUBLIC"
-          :fields
-          [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
-           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?}
-           {:name "TITLE", :display_name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
-           {:name "CATEGORY", :display_name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
-           {:name "VENDOR", :display_name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
-           {:name "PRICE", :display_name "Price", :type "number"}
-           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score"}
-           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}
-         {:type "table"
           :id (mt/id :people)
           :name "PEOPLE"
           :display_name "People"
           :database_id (mt/id)
           :database_schema "PUBLIC"
+          :related_by "USER_ID"
           :fields
           [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
            {:name "ADDRESS", :display_name "Address", :type "string"}
@@ -778,6 +798,22 @@
            {:name "BIRTH_DATE", :display_name "Birth Date", :type "date"}
            {:name "ZIP", :display_name "Zip", :type "string"}
            {:name "LATITUDE", :display_name "Latitude", :type "number", :semantic_type "latitude"}
+           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}
+         {:type "table"
+          :id (mt/id :products)
+          :name "PRODUCTS"
+          :display_name "Products"
+          :database_id (mt/id)
+          :database_schema "PUBLIC"
+          :related_by "PRODUCT_ID"
+          :fields
+          [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
+           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?}
+           {:name "TITLE", :display_name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
+           {:name "CATEGORY", :display_name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
+           {:name "VENDOR", :display_name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+           {:name "PRICE", :display_name "Price", :type "number"}
+           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score"}
            {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}]]
     {:model-data model-data
      :metric-data metric-data
@@ -802,7 +838,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -815,17 +851,23 @@
                                                 (select-keys [:name :description :database_id])
                                                 (assoc :id model-id
                                                        :type "model"
+                                                       :database_engine (db-engine-name)
                                                        :display_name "Model Model"
                                                        :verified true
-                                                       :fields (add-field-ids (format "c%d/%%d" model-id) expected-core-fields)
+                                                       :fields (add-field-ids (format "c%d-%%d" model-id) expected-core-fields)
                                                        :related_tables
-                                                       (map #(update % :fields
-                                                                     (partial add-field-ids (format "t%d/%%d" (:id %))))
-                                                            expected-related-tables)
+                                                       [(-> (first expected-related-tables)
+                                                            (update :fields (fn [fields]
+                                                                              (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-id (+ 9 %1)))
+                                                                                           fields))))
+                                                        (-> (second expected-related-tables)
+                                                            (update :fields (fn [fields]
+                                                                              (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-id (+ 22 %1)))
+                                                                                           fields))))]
                                                        :metrics [(assoc metric-data
                                                                         :id metric-id
                                                                         :type "metric"
-                                                                        :default_time_dimension_field_id (format "c%d/7" metric-id))]))
+                                                                        :default_time_dimension_field_id (format "c%d-7" metric-id))]))
                          :conversation_id conversation-id}
                         (request arguments)))))))))))
 
@@ -840,7 +882,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -852,21 +894,29 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields
-                                                     (add-field-ids (format "c%d/%%d" model-id) expected-core-fields
+                                                     (add-field-ids (format "c%d-%%d" model-id) expected-core-fields
                                                                     #(assoc % :field_values missing-value))
                                                      :related_tables
-                                                     (map (fn [table]
-                                                            (update table :fields
-                                                                    #(add-field-ids (format "t%d/%%d" (:id table)) %
-                                                                                    (fn [f] (assoc f :field_values missing-value)))))
-                                                          expected-related-tables)
+                                                     [(-> (first expected-related-tables)
+                                                          (update :fields (fn [fields]
+                                                                            (map-indexed #(assoc %2
+                                                                                                 :field_id (format "c%d-%d" model-id (+ 9 %1))
+                                                                                                 :field_values missing-value)
+                                                                                         fields))))
+                                                      (-> (second expected-related-tables)
+                                                          (update :fields (fn [fields]
+                                                                            (map-indexed #(assoc %2
+                                                                                                 :field_id (format "c%d-%d" model-id (+ 22 %1))
+                                                                                                 :field_values missing-value)
+                                                                                         fields))))]
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
-                                                                      :default_time_dimension_field_id (format "c%d/7" metric-id))]))
+                                                                      :default_time_dimension_field_id (format "c%d-7" metric-id))]))
                        :conversation_id conversation-id}
                       (request (assoc arguments :with_field_values false)))))))))))
 
@@ -881,7 +931,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -893,6 +943,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -901,7 +952,7 @@
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
-                                                                      :default_time_dimension_field_id (format "c%d/7" metric-id))]))
+                                                                      :default_time_dimension_field_id (format "c%d-7" metric-id))]))
                        :conversation_id conversation-id}
                       (request (assoc arguments :with_fields false)))))))))))
 
@@ -916,7 +967,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -928,6 +979,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -953,7 +1005,7 @@
                                                            {:source-table (str "card__" model-id)
                                                             :aggregation [[:count]]
                                                             :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -965,6 +1017,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -987,7 +1040,7 @@
                                                            {:source-table (str "card__" model-id)
                                                             :aggregation [[:count]]
                                                             :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -998,6 +1051,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -1023,7 +1077,7 @@
                                            :field_id    (-> table-id
                                                             metabot-v3.tools.u/table-field-id-prefix
                                                             (str 8)) ; quantity
-                                           :limt        15}
+                                           :limit       15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:values int-sequence?}
                :conversation_id conversation-id}
@@ -1046,40 +1100,7 @@
            {:name "TOTAL", :display_name "Total", :type "number"}
            {:name "DISCOUNT", :display_name "Discount", :type "number", :semantic_type "discount"}
            {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}
-           {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}
-           {:name "ID", :display_name "ID", :type "number", :semantic_type "pk", :table_reference "User"}
-           {:name "ADDRESS", :display_name "Address", :type "string", :table_reference "User"}
-           {:name "EMAIL", :display_name "Email", :type "string", :semantic_type "email", :table_reference "User"}
-           {:name "PASSWORD", :display_name "Password", :type "string", :table_reference "User"}
-           {:name "NAME", :display_name "Name", :type "string", :semantic_type "name", :table_reference "User"}
-           {:name "CITY", :display_name "City", :type "string", :semantic_type "city", :table_reference "User"}
-           {:name "LONGITUDE", :display_name "Longitude", :type "number", :semantic_type "longitude", :table_reference "User"}
-           {:name "STATE", :display_name "State", :type "string", :semantic_type "state", :table_reference "User"}
-           {:name "SOURCE", :display_name "Source", :type "string", :semantic_type "source", :table_reference "User"}
-           {:name "BIRTH_DATE", :display_name "Birth Date", :type "date", :table_reference "User"}
-           {:name "ZIP", :display_name "Zip", :type "string", :table_reference "User"}
-           {:name "LATITUDE", :display_name "Latitude", :type "number", :semantic_type "latitude", :table_reference "User"}
-           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "User"}
-           {:name "ID", :display_name "ID", :type "number", :semantic_type "pk", :table_reference "Product"}
-           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?, :table_reference "Product"}
-           {:name "TITLE", :display_name "Title"
-            :type "string"
-            :semantic_type "title"
-            :field_values string-sequence?
-            :table_reference "Product"}
-           {:name "CATEGORY", :display_name "Category"
-            :type "string"
-            :semantic_type "category"
-            :field_values string-sequence?
-            :table_reference "Product"}
-           {:name "VENDOR", :display_name "Vendor"
-            :type "string"
-            :semantic_type "company"
-            :field_values string-sequence?
-            :table_reference "Product"}
-           {:name "PRICE", :display_name "Price", :type "number", :table_reference "Product"}
-           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score", :table_reference "Product"}
-           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "Product"}]
+           {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}]
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -1095,15 +1116,16 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
-                                         :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))
+                                         :fields (map-indexed #(assoc %2 :field_id (format "t%d-%d" table-id %1))
                                                               expected-fields)
                                          :metrics [(assoc metric-data
                                                           :id metric-id
                                                           :type "metric"
-                                                          :default_time_dimension_field_id (format "c%d/7" metric-id))]}
+                                                          :default_time_dimension_field_id (format "c%d-7" metric-id))]}
                      :conversation_id conversation-id}
                     (request {:table_id arg-id})))))
         (let [arguments {:table_id table-id}]
@@ -1111,23 +1133,25 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
                                          :fields (map-indexed #(assoc %2
-                                                                      :field_id (format "t%d/%d" table-id %1)
+                                                                      :field_id (format "t%d-%d" table-id %1)
                                                                       :field_values missing-value)
                                                               expected-fields)
                                          :metrics [(assoc metric-data
                                                           :id metric-id
                                                           :type "metric"
-                                                          :default_time_dimension_field_id (format "c%d/7" metric-id))]}
+                                                          :default_time_dimension_field_id (format "c%d-7" metric-id))]}
                      :conversation_id conversation-id}
                     (request (assoc arguments :with_field_values false)))))
           (testing "Without fields"
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1135,13 +1159,14 @@
                                          :metrics [(assoc metric-data
                                                           :id metric-id
                                                           :type "metric"
-                                                          :default_time_dimension_field_id (format "c%d/7" metric-id))]}
+                                                          :default_time_dimension_field_id (format "c%d-7" metric-id))]}
                      :conversation_id conversation-id}
                     (request (assoc arguments :with_fields false)))))
           (testing "Without fields and metric default time dimension"
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1158,6 +1183,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1167,6 +1193,43 @@
                     (request (assoc arguments
                                     :with_fields false
                                     :with_metrics false))))))))))
+
+(deftest get-table-details-database-type-test
+  ;; get-table-details-test validates other metadata, this test focuses on :database_type.
+  (mt/with-premium-features #{:metabot-v3}
+    (let [table-id (mt/id :orders)
+          conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          expected-fields-with-h2-db-types
+          [{:name "ID",         :type "number",   :database_type "bigint"}
+           {:name "USER_ID",    :type "number",   :database_type "integer"}
+           {:name "PRODUCT_ID", :type "number",   :database_type "integer"}
+           {:name "SUBTOTAL",   :type "number",   :database_type "double_precision"}
+           {:name "TAX",        :type "number",   :database_type "double_precision"}
+           {:name "TOTAL",      :type "number",   :database_type "double_precision"}
+           {:name "DISCOUNT",   :type "number",   :database_type "double_precision"}
+           {:name "CREATED_AT", :type "datetime", :database_type "timestamp_with_time_zone"}
+           {:name "QUANTITY",   :type "number",   :database_type "integer"}]
+          request (fn [arguments]
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                          {:arguments arguments
+                                           :conversation_id conversation-id}))
+          expected-fields (cond->> expected-fields-with-h2-db-types
+                            ;; For non-h2 dbs, just verify we get some string?. We're sanity checking the result, not
+                            ;; exhaustively testing :database_type column metadata.
+                            (not= "h2" (db-engine-name)) (mapv #(assoc % :database_type string?)))]
+      (is (=? {:structured_output {:name "ORDERS"
+                                   :display_name "Orders"
+                                   :database_id (mt/id)
+                                   :database_engine (db-engine-name)
+                                   :database_schema "PUBLIC"
+                                   :id table-id
+                                   :type "table"
+                                   :fields (map-indexed #(assoc %2 :field_id (format "t%d-%d" table-id %1))
+                                                        expected-fields)}
+               :conversation_id conversation-id}
+              (request {:table_id table-id}))))))
 
 (deftest get-table-details-related-tables-test
   (mt/with-premium-features #{:metabot-v3}
@@ -1190,6 +1253,23 @@
                                 :with_related_tables false})
                       (get-in [:structured_output :related_tables]))))))))
 
+(deftest get-table-details-related-by-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "Related tables include related_by field indicating the FK field name"
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)
+            response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                           {:arguments {:table_id (mt/id :orders)}
+                                            :conversation_id conversation-id})
+            related-tables (get-in response [:structured_output :related_tables])
+            people-table (first (filter #(= (:id %) (mt/id :people)) related-tables))
+            products-table (first (filter #(= (:id %) (mt/id :products)) related-tables))]
+        (testing "People table is related by USER_ID FK"
+          (is (= "USER_ID" (:related_by people-table))))
+        (testing "Products table is related by PRODUCT_ID FK"
+          (is (= "PRODUCT_ID" (:related_by products-table))))))))
+
 (deftest get-transforms-test
   (mt/with-premium-features #{:metabot-v3 :transforms}
     (let [conversation-id (str (random-uuid))
@@ -1210,6 +1290,7 @@
                      :model/Transform t3 {:name "Python Transform"
                                           :description "Simple python transform"
                                           :source {:type "python"
+                                                   :source-database (mt/id)
                                                    :body "print('hello world')"
                                                    :source-tables {}}
                                           :target {:type "table"
@@ -1247,6 +1328,7 @@
                                           :description "Simple Python transform"
                                           :source {:type "python"
                                                    :body "print('hello world')"
+                                                   :source-database (mt/id)
                                                    :source-tables {}}
                                           :target {:type "table"
                                                    :name "t2_table"
@@ -1274,7 +1356,7 @@
                                              :conversation_id conversation-id}))))))))))
 
 (deftest get-transform-python-library-details-test
-  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

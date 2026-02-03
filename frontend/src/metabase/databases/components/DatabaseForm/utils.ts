@@ -1,6 +1,10 @@
+import { useContext } from "react";
+
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { useFormErrorMessage } from "metabase/forms";
 import type { DatabaseData, Engine } from "metabase-types/api";
+
+import { FormDirtyStateContext } from "./context";
 
 export const useHasConnectionError = () => {
   const errorMessage = useFormErrorMessage();
@@ -24,4 +28,8 @@ export const getEngineKey = (
   } else if (isAdvanced) {
     return getDefaultEngineKey(engines);
   }
+};
+
+export const useIsFormDirty = () => {
+  return useContext(FormDirtyStateContext);
 };

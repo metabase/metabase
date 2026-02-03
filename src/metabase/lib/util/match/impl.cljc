@@ -1,8 +1,8 @@
 (ns metabase.lib.util.match.impl
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv get-in])
   (:require
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv get-in]]))
 
 ;; have to do this at runtime because we don't know if a symbol is a class or pred or whatever when we compile the macro
 (defn match-with-pred-or-class
@@ -48,7 +48,7 @@
               [] form))))
 
 (defn replace-in-collection
-  "Inernal impl for `replace`. Recursively replace values in a collection using a `replace-fn`."
+  "Internal impl for `replace`. Recursively replace values in a collection using a `replace-fn`."
   [replace-fn clause-parents form]
   (cond
     (map? form)

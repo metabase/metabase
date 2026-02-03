@@ -31,12 +31,11 @@
 (def ^:private default-shutdown-timeout-ms (* 30 60 1000)) ;; 30 minutes
 
 (def ^:private default-retry-config
-  {:max-attempts            (if config/is-dev? 2 7)
+  {:max-retries             (if config/is-dev? 1 6)
    :initial-interval-millis 500
    :multiplier              2.0
-   :randomization-factor    0.1
-   :max-interval-millis     30000
-   :retry-on-exception-pred (comp not ::skip-retry? ex-data)})
+   :jitter-factor           0.1
+   :max-interval-millis     30000})
 
 (defn- unretriable-error?
   [error]
@@ -55,29 +54,12 @@
                          {:type (:channel_type handler)})
         channel-type (:type channel)]
     (try
-      (let [#_notification-id #_(:notification_id handler)
-            retry-config    default-retry-config
-            retry-errors    (volatile! [])
-            retry-report    (fn []
-                              {:attempted_retries (count @retry-errors)
-                               ;; we want the last retry to be the most recent
-                               :retry_errors       (reverse @retry-errors)})
-            send!           (fn []
-                              (try
-                                (channel/send! channel message)
-                                (catch Exception e
-                                  (let [skip-retry? (should-skip-retry? e (:type channel))
-                                        new-e       (ex-info (ex-message e)
-                                                             (assoc (ex-data e) ::skip-retry? skip-retry?)
-                                                             e)]
-                                    (if-not skip-retry?
-                                      (do
-                                        (vswap! retry-errors conj {:message   (u/strip-error e)
-                                                                   :timestamp (t/offset-date-time)})
-                                        (log/warn e "Failed to send,  retrying..."))
-                                      (log/warn e "Failed to send, not retrying"))
-                                    (throw new-e)))))
-            retrier         (retry/make retry-config)]
+      (let [retry-config default-retry-config
+            retry-errors (volatile! [])
+            retry-report (fn []
+                           {:attempted_retries (count @retry-errors)
+                            ;; we want the last retry to be the most recent
+                            :retry_errors      (reverse @retry-errors)})]
         (log/debug "Started sending")
         (task-history/with-task-history {:task            "channel-send"
                                          :on-success-info (fn [update-map _result]
@@ -93,7 +75,17 @@
                                                            :notification_id   notification-id
                                                            :notification_type payload-type
                                                            :recipient_ids     (map :id (:recipients handler))}}
-          (retrier send!)
+          (retry/with-retry (assoc retry-config
+                                   :retry-on Exception
+                                   :abort-if (fn [_ ex]
+                                               (should-skip-retry? ex (:type channel)))
+                                   :on-retry (fn [_ ex]
+                                               (vswap! retry-errors conj {:message   (u/strip-error ex)
+                                                                          :timestamp (t/offset-date-time)})
+                                               (log/warn ex "Failed to send, retrying..."))
+                                   :on-failure (fn [_ ex]
+                                                 (log/warn ex "Failed to send, not retrying")))
+            (channel/send! channel message))
           (log/debugf "Sent with %d retries" (count @retry-errors))
           (log/info "Sent successfully")))
       (prometheus/inc! :metabase-notification/channel-send-ok {:payload-type payload-type
@@ -175,7 +167,7 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))
+                          (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
@@ -184,7 +176,9 @@
           (prometheus/inc! :metabase-notification/send-error {:payload-type payload_type})
           (throw e))
         (finally
-          (prometheus/dec! :metabase-notification/concurrent-tasks)))
+          (prometheus/dec! :metabase-notification/concurrent-tasks)
+          (when-let [run-id (task-history/current-run-id)]
+            (task-history/complete-task-run! run-id))))
       (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
       (when-let [total-time (since-trigger-ms notification-info)]
         (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
@@ -370,7 +364,8 @@
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
                                                    (log/with-restored-context-from-meta notification
-                                                     (send-notification-sync! notification)))
+                                                     (task-history/with-restored-run-id notification
+                                                       (send-notification-sync! notification))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -386,7 +381,9 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue (log/with-context-meta notification))
+                          (put-notification! queue (-> notification
+                                                       log/with-context-meta
+                                                       task-history/with-run-id-meta))
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
@@ -437,17 +434,43 @@
   "The default options for sending a notification."
   {:notification/sync? false})
 
+(defn notification->task-run-info
+  "Extract task run info from a notification for use with [[metabase.task-history.core/with-task-run]].
+   - Card notifications (alerts): run_type :alert, entity_type :card
+   - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
+   - Returns nil for other notification types or if entity_id would be nil.
+   Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
+  [{:keys [payload_type payload payload_id]}]
+  (case payload_type
+    :notification/card      (when-let [card-id (or (:card_id payload)
+                                                   (some->> payload_id
+                                                            (t2/select-one-fn :card_id :model/NotificationCard :id)))]
+                              {:run_type    :alert
+                               :entity_type :card
+                               :entity_id   card-id})
+    :notification/dashboard (when-let [dashboard-id (or (:dashboard_id payload)
+                                                        (some->> payload_id
+                                                                 (t2/select-one-fn :dashboard_id :model/NotificationDashboard :id)))]
+                              {:run_type    :subscription
+                               :entity_type :dashboard
+                               :entity_id   dashboard-id})
+    nil))
+
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
   [notification & {:keys [] :as options} :- [:maybe Options]]
-  (log/with-context {:notification_id (:id notification)
-                     :payload_type    (:payload_type notification)}
-    (let [options      (merge *default-options* options)
-          notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-      (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
-      (if (:notification/sync? options)
-        (send-notification-sync! notification)
-        (send-notification-async! notification)))))
+  (let [options (merge *default-options* options)
+        sync?   (:notification/sync? options)]
+    ;; with-task-run is a no-op if already nested (e.g., from scheduler)
+    (task-history/with-task-run (some-> (notification->task-run-info notification)
+                                        (assoc :auto-complete sync?))
+      (log/with-context {:notification_id (:id notification)
+                         :payload_type    (:payload_type notification)}
+        (let [notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+          (log/debugf "Will be send %s" (if sync? "synchronously" "asynchronously"))
+          (if sync?
+            (send-notification-sync! notification)
+            (send-notification-async! notification)))))))
 
 (defn shutdown!
   "Shutdown all notification workers with wait up to [[timeout-ms]] milliseconds for each workers."

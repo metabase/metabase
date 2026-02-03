@@ -204,6 +204,21 @@
   ;; has 2 defenterprise-schemas, both to the same ns:
   (find-defenterprise-schemas "src/metabase/sso/ldap/default_implementation.clj"))
 
+(def ^:private ^String project-root (System/getProperty "user.dir"))
+
+(defn- file->path-relative-to-project-root
+  "Get the path of a file relative to the project (repo) root directory e.g.
+
+    (file->path-relative-to-project-root \"/home/cam/metabase/deps.edn\")
+    ;; =>
+    \"deps.edn\""
+  [file]
+  (let [file (io/file file)
+        path (.getAbsolutePath file)]
+    (if (str/starts-with? path project-root)
+      (subs path (inc (count project-root))) ; project root won't include trailing `/`
+      path)))
+
 (def ^:private ignored-dependencies
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
@@ -212,13 +227,16 @@
 
 (mu/defn- file-dependencies :- [:map
                                 [:namespace simple-symbol?]
+                                [:filename  string?] ; filename is relative to [[project-root]]
                                 [:module    symbol?]
                                 [:deps      [:sequential
                                              [:map
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
                                               [:dynamic {:optional true} :keyword]]]]]
-  [file]
+  [file :- [:or
+            string?
+            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
   (try
     (let [decl         (ns.file/read-file-ns-decl file)
           ns-symb      (ns.parse/name-from-ns-decl decl)
@@ -239,6 +257,7 @@
                               #_defenterprise-deps
                               #_defenterprise-schema-deps])]
       {:namespace ns-symb
+       :filename  (file->path-relative-to-project-root file)
        :module    (module ns-symb)
        :deps      (sort-by pr-str
                            (keep (fn [required-ns]
@@ -262,7 +281,10 @@
 
   (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
 
-(defn dependencies []
+(defn dependencies
+  "Calculate information about all the modules dependencies for all *SOURCE* files in the Metabase project by parsing
+  the files."
+  []
   (pmap file-dependencies (find-source-files)))
 
 (defn external-usages
@@ -291,13 +313,28 @@
                 [k (into (sorted-set) (map :namespace) v)]))
          (group-by :depends-on-namespace (external-usages deps module-symb)))))
 
-(defn externally-used-namespaces
-  "All namespaces from a module that are used outside that module."
-  ([module-symb]
-   (externally-used-namespaces (dependencies) module-symb))
+(defn module-friends
+  "`:friends` of the module from the Kondo config -- these are allowed to freely use all namespaces in the module, not
+  just `:api` ones.
 
-  ([deps module-symb]
-   (into (sorted-set) (map :depends-on-namespace) (external-usages deps module-symb))))
+    (module-friends (kondo-config) 'lib)
+    ;; => #{query-processor}"
+  [kondo-config module-symb]
+  (get-in kondo-config [module-symb :friends]))
+
+(declare kondo-config)
+
+(defn externally-used-namespaces-ignoring-friends
+  "All namespaces from a module that are used outside that module, excluding usages by `:friends` of the module."
+  ([module-symb]
+   (externally-used-namespaces-ignoring-friends (dependencies) (kondo-config) module-symb))
+
+  ([deps kondo-config module-symb]
+   (let [friends (module-friends kondo-config module-symb)]
+     (into (sorted-set)
+           (comp (remove #(contains? friends (:module %)))
+                 (map :depends-on-namespace))
+           (external-usages deps module-symb)))))
 
 (defn module-dependencies
   "Build a graph of module => set of modules it directly depends on."
@@ -390,12 +427,12 @@
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
   ([]
-   (generate-config (dependencies)))
+   (generate-config (dependencies) (kondo-config)))
 
-  ([deps]
+  ([deps kondo-config]
    (into (sorted-map)
          (map (fn [[module uses]]
-                [module {:api  (externally-used-namespaces deps module)
+                [module {:api  (externally-used-namespaces-ignoring-friends deps kondo-config module)
                          :uses uses}]))
          (module-dependencies deps))))
 
@@ -425,12 +462,13 @@
    (kondo-config-diff (dependencies)))
 
   ([deps]
-   (-> (ddiff/diff
-        (update-vals (kondo-config) #(dissoc % :team))
-        (generate-config deps))
-       ddiff/minimize
-       kondo-config-diff-ignore-any
-       ddiff/minimize)))
+   (let [kondo-config (kondo-config)]
+     (-> (ddiff/diff
+          (update-vals kondo-config #(dissoc % :team :friends))
+          (generate-config deps kondo-config))
+         ddiff/minimize
+         kondo-config-diff-ignore-any
+         ddiff/minimize))))
 
 (defn print-kondo-config-diff
   "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
@@ -518,14 +556,15 @@
 
 (defn leaf-modules
   "Modules that are leaf nodes in the module dependency tree -- nothing else depends on them."
-  []
-  (let [deps (dependencies)]
-    (into (sorted-set)
-          (comp (map :module)
-                (keep (fn [module]
-                        (when (zero? (count (external-usages deps module)))
-                          module))))
-          deps)))
+  ([]
+   (leaf-modules (dependencies)))
+  ([deps]
+   (into (sorted-set)
+         (comp (map :module)
+               (keep (fn [module]
+                       (when (zero? (count (external-usages deps module)))
+                         module))))
+         deps)))
 
 (defn non-dependencies
   "Modules that `module` does not depend on, either directly or indirectly -- changes to any of these modules should not
@@ -534,6 +573,7 @@
   (let [deps        (dependencies)
         all-modules (into (sorted-set) (map :module) deps)
         module-deps (set (keys (all-module-deps-paths deps module)))]
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (printf "Module %s depends on %d/%d (%.1f%%) other modules.\n"
             module
             (count module-deps)
@@ -550,7 +590,8 @@
    (for [dep deps]
      (-> dep
          (cond-> (= (:namespace dep) old-namespace)
-           (assoc :namespace new-namespace))
+           (assoc :namespace new-namespace
+                  :module (module new-namespace)))
          (update :deps (fn [deps]
                          (for [dep deps]
                            (if (= (:namespace dep) old-namespace)
@@ -575,3 +616,131 @@
         new-deps        (simulate-rename deps old-namespace->new-namespace)
         new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
     (set/difference old-module-deps new-module-deps)))
+
+(mu/defn- module->source-files :- [:set :string]
+  "Return the set of all *source* filenames (relative to the [[project-root]] directory) for a `module`."
+  [deps module]
+  (into
+   (sorted-set)
+   (comp (filter #(= (:module %) module))
+         (map :filename))
+   deps))
+
+(defn- file->namespace
+  "Infer the Clojure namespace from a core project filename.
+
+    (file->namespace \"/home/cam/metabase/enterprise/backend/src/metabase_enterprise/advanced_permissions/common.clj\")
+    ;; =>
+    metabase-enterprise.advanced-permissions.common"
+  [file]
+  (-> file
+      file->path-relative-to-project-root
+      (str/replace #"^enterprise/backend/" "")
+      (str/replace #"^(?:(?:src)|(?:test))/" "")
+      (str/replace #"\.clj[cs]?$" "")
+      (str/replace #"/" ".")
+      (str/replace #"_" "-")
+      symbol))
+
+(defn- module->all-deps [deps module]
+  (keys (all-module-deps-paths deps module)))
+
+(defn test-filenames->relevant-source-filenames
+  "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
+  that when changed should trigger these tests."
+  ([test-filenames]
+   (test-filenames->relevant-source-filenames (dependencies) test-filenames))
+  ([deps test-filenames]
+   (into
+    (sorted-set)
+    (comp (map file->namespace)
+          (map module)
+          (distinct)
+          (mapcat (fn [module]
+                    (into #{module} (module->all-deps deps module))))
+          (distinct)
+          (mapcat #(module->source-files deps %)))
+    test-filenames)))
+
+(comment
+  ;; should include source files for `settings-rest` itself as well as all modules used either directly or indirectly
+  ;; by `settings-rest` (currently this set is huge, 955 files as of 2025-11-26)
+  (test-filenames->relevant-source-filenames ["test/metabase/settings_rest/api_test.clj"]))
+
+(defn- direct-dependents
+  "Set of modules that directly depend on `module`."
+  [deps module]
+  (into (sorted-set)
+        (keep (fn [ns-info]
+                (when (some (fn [ns-deps]
+                              (= (:module ns-deps) module))
+                            (:deps ns-info))
+                  (:module ns-info))))
+        deps))
+
+(comment
+  (direct-dependents (dependencies) 'driver)
+  (direct-dependents (dependencies) 'settings-rest))
+
+(defn- indirect-dependents
+  "Set of modules that either directly or indirectly depend on `module`."
+  ([module]
+   (indirect-dependents (dependencies) module))
+  ([deps module]
+   (indirect-dependents deps module (sorted-set)))
+  ([deps module acc]
+   (let [module-deps (direct-dependents deps module)
+         new-deps    (set/difference module-deps acc)
+         acc         (into acc new-deps)]
+     (reduce
+      (fn [acc new-dep]
+        (indirect-dependents deps new-dep acc))
+      acc
+      new-deps))))
+
+(comment
+  (indirect-dependents (dependencies) 'settings-rest))
+
+(defn- module->dependents [deps module]
+  (into #{module}
+        (indirect-dependents deps module)))
+
+(comment
+  (module->dependents (dependencies) 'settings-rest))
+
+(defn- module->test-directory [module]
+  (let [parent-dir (case (namespace module)
+                     nil          "test/metabase/"
+                     "enterprise" "enterprise/backend/test/metabase_enterprise/")
+        module-dir (str/replace (name module) #"-" "_")]
+    (str parent-dir module-dir)))
+
+(mu/defn- module->test-files :- [:set :string]
+  "Return the set of test filenames associated with a `module`."
+  [module :- :symbol]
+  (let [test-dir       (module->test-directory module)
+        test-filenames (ns.find/find-sources-in-dir (io/file test-dir))]
+    (into
+     (sorted-set)
+     (map file->path-relative-to-project-root)
+     test-filenames)))
+
+(defn source-filenames->relevant-test-filenames
+  "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
+  that we should re-run when any of `source-filenames` change."
+  ([source-filenames]
+   (source-filenames->relevant-test-filenames (dependencies) source-filenames))
+  ([deps source-filenames]
+   (into
+    (sorted-set)
+    (comp (map file->namespace)
+          (map module)
+          (distinct)
+          (mapcat #(module->dependents deps %))
+          (mapcat module->test-files))
+    source-filenames)))
+
+(comment
+  ;; should only include tests for `settings-rest`, `api-routes`, `core`, and the handful of random modules that use
+  ;; `settings-rest` (21 files as of 2025-11-26)
+  (source-filenames->relevant-test-filenames ["src/metabase/settings_rest/api.clj"]))

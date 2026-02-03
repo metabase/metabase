@@ -1,11 +1,11 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 
 import { trackMetabotRequestSent } from "../analytics";
 import {
+  type MetabotAgentId,
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
   cancelInflightAgentRequests,
@@ -19,70 +19,30 @@ import {
   getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
-  getProfileOverride,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
 
-export const useMetabotAgent = () => {
-  const dispatch = useDispatch();
+import { useMetabotDispatch, useMetabotSelector } from "./use-metabot-store";
+
+export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
+  const dispatch = useMetabotDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
 
-  const isDoingScience = useSelector(getIsProcessing as any) as ReturnType<
-    typeof getIsProcessing
-  >;
-
-  // TODO: create an enterprise useSelector
-  const messages = useSelector(getMessages as any) as ReturnType<
-    typeof getMessages
-  >;
-
-  const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
-    typeof getAgentErrorMessages
-  >;
-
-  const isLongConversation = useSelector(
-    getIsLongMetabotConversation as any,
-  ) as ReturnType<typeof getIsLongMetabotConversation>;
-
-  const visible = useSelector(getMetabotVisible as any) as ReturnType<
-    typeof getMetabotVisible
-  >;
-
-  const metabotId = useSelector(getMetabotId as any) as ReturnType<
-    typeof getMetabotId
-  >;
-  const metabotRequestId = useSelector(
-    getMetabotRequestId as any,
-  ) as ReturnType<typeof getMetabotRequestId>;
-
-  const activeToolCalls = useSelector(getActiveToolCalls as any) as ReturnType<
-    typeof getActiveToolCalls
-  >;
-
-  const debugMode = useSelector(getDebugMode as any) as ReturnType<
-    typeof getDebugMode
-  >;
-
-  const setVisible = useCallback(
-    (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
-    [dispatch],
+  const metabotRequestId = useMetabotSelector((state) =>
+    getMetabotRequestId(state, agentId),
+  );
+  const visible = useMetabotSelector((state) =>
+    getMetabotVisible(state, agentId),
   );
 
-  const profileOverride = useSelector(getProfileOverride as any) as ReturnType<
-    typeof getProfileOverride
-  >;
-
-  const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
-    typeof getMetabotReactionsState
-  >;
-
-  const resetConversation = useCallback(
-    () => dispatch(resetConversationAction()),
-    [dispatch],
+  const setVisible = useCallback(
+    (visible: boolean) => dispatch(setVisibleAction({ agentId, visible })),
+    [dispatch, agentId],
   );
 
   const prepareRetryIfUnsuccesful = useCallback(
@@ -95,28 +55,41 @@ export const useMetabotAgent = () => {
     [promptInputRef, setPrompt],
   );
 
+  const setProfileOverride = useCallback(
+    (profile: string) => {
+      dispatch(setProfileOverrideAction({ agentId, profile }));
+    },
+    [dispatch, agentId],
+  );
+
   const submitInput = useCallback(
-    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
-      if (!visible) {
+    async (
+      prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
+      options?: {
+        profile?: string | undefined;
+        preventOpenSidebar?: boolean;
+        focusInput?: boolean;
+      },
+    ) => {
+      setPrompt("");
+
+      if (!visible && !options?.preventOpenSidebar) {
         setVisible(true);
       }
 
-      const context = await getChatContext();
+      if (options?.focusInput) {
+        promptInputRef?.current?.focus();
+      }
+
       const action = await dispatch(
-        submitInputAction(
-          typeof prompt === "string"
-            ? {
-                type: "text",
-                message: prompt,
-                context,
-                metabot_id: metabotRequestId,
-              }
-            : {
-                ...prompt,
-                context,
-                metabot_id: metabotRequestId,
-              },
-        ),
+        submitInputAction({
+          ...(typeof prompt === "string"
+            ? { type: "text", message: prompt }
+            : prompt),
+          context: await getChatContext(),
+          agentId,
+          metabot_id: metabotRequestId,
+        }),
       );
 
       trackMetabotRequestSent();
@@ -134,6 +107,9 @@ export const useMetabotAgent = () => {
       prepareRetryIfUnsuccesful,
       setVisible,
       visible,
+      agentId,
+      promptInputRef,
+      setPrompt,
     ],
   );
 
@@ -145,50 +121,56 @@ export const useMetabotAgent = () => {
           messageId,
           context,
           metabot_id: metabotRequestId,
+          agentId,
         }),
       );
       if (isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);
       }
     },
-    [dispatch, getChatContext, metabotRequestId, prepareRetryIfUnsuccesful],
+    [
+      dispatch,
+      getChatContext,
+      metabotRequestId,
+      prepareRetryIfUnsuccesful,
+      agentId,
+    ],
   );
 
   const cancelRequest = useCallback(() => {
-    dispatch(cancelInflightAgentRequests());
-  }, [dispatch]);
+    dispatch(cancelInflightAgentRequests(agentId));
+  }, [dispatch, agentId]);
 
-  const startNewConversation = useCallback(
-    async (message: string) => {
-      await resetConversation();
-      setVisible(true);
-      if (message) {
-        submitInput(message);
-      }
-      promptInputRef?.current?.focus();
-    },
-    [resetConversation, setVisible, promptInputRef, submitInput],
-  );
+  const resetConversation = useCallback(() => {
+    dispatch(resetConversationAction({ agentId }));
+  }, [agentId, dispatch]);
 
   return {
-    isDoingScience,
     prompt,
     setPrompt,
     promptInputRef,
-    metabotId,
     visible,
-    messages,
-    errorMessages,
-    isLongConversation,
-    resetConversation,
     setVisible,
-    startNewConversation,
+    setProfileOverride,
+    resetConversation,
     submitInput,
     retryMessage,
     cancelRequest,
-    activeToolCalls,
-    debugMode,
-    profileOverride,
-    reactions,
+    metabotId: useMetabotSelector(getMetabotId),
+    messages: useMetabotSelector((state) => getMessages(state, agentId)),
+    errorMessages: useMetabotSelector((state) =>
+      getAgentErrorMessages(state, agentId),
+    ),
+    isDoingScience: useMetabotSelector((state) =>
+      getIsProcessing(state, agentId),
+    ),
+    isLongConversation: useMetabotSelector((state) =>
+      getIsLongMetabotConversation(state, agentId),
+    ),
+    activeToolCalls: useMetabotSelector((state) =>
+      getActiveToolCalls(state, agentId),
+    ),
+    debugMode: useMetabotSelector(getDebugMode),
+    reactions: useMetabotSelector(getMetabotReactionsState),
   };
 };

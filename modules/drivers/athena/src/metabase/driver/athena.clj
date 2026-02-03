@@ -1,5 +1,5 @@
 (ns metabase.driver.athena
-  (:refer-clojure :exclude [some select-keys mapv empty? not-empty])
+  (:refer-clojure :exclude [some select-keys mapv empty? not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -19,7 +19,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some select-keys mapv empty? not-empty]])
+   [metabase.util.performance :refer [some select-keys mapv empty? not-empty get-in]])
   (:import
    (java.sql Connection DatabaseMetaData Date ResultSet Time Types)
    (java.time OffsetDateTime ZonedDateTime)
@@ -33,15 +33,16 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:datetime-diff                 true
-                              :nested-fields                 false
-                              :uuid-type                     true
-                              :connection/multiple-databases true
-                              :expression-literals           true
-                              :identifiers-with-spaces       false
-                              :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false
-                              :database-routing              true}]
+(doseq [[feature supported?] {:connection/multiple-databases    true
+                              :database-routing                 true
+                              :datetime-diff                    true
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/key-constraints         false
+                              :nested-fields                    false
+                              :regex/lookaheads-and-lookbehinds false
+                              :test/jvm-timezone-setting        false
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:athena :schemas]
@@ -406,7 +407,7 @@
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
 
-;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
+;; Not all tables in the Data Catalog are guaranteed to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
 
 (defn- table-has-nested-fields? [columns]
@@ -446,10 +447,10 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
+        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
         (throw e)))))
 
-;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
+;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog dbname]} :details, :as database} table]
@@ -538,3 +539,6 @@
   (assert (empty? (get-in query [:native :params]))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
+
+(defmethod driver/llm-sql-dialect-resource :athena [_]
+  "llm/prompts/dialects/athena.md")

@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+import type { Plan } from "metabase/common/utils/plan";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -70,16 +71,18 @@ export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
 
 export const openCheckoutInNewTab = (
-  checkoutUrl: string,
+  storeUrl: string,
+  plan: Plan,
   migration: CloudMigration,
 ) => {
-  const migrationUrl = getMigrationUrl(checkoutUrl, migration);
+  const migrationUrl = getMigrationUrl(storeUrl, plan, migration);
   window.open(migrationUrl, "_blank")?.focus();
 };
 
 export function getMigrationUrl(
-  checkoutUrl: string,
+  storeUrl: string,
+  plan: Plan,
   migration: CloudMigration,
 ) {
-  return `${checkoutUrl}?migration-id=${migration.external_id}`;
+  return `${storeUrl}?migration-source-plan=${plan}&migration-id=${migration.external_id}`;
 }

@@ -26,7 +26,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       cy.signInAsAdmin();
       H.visitQuestion(ORDERS_QUESTION_ID);
       cy.findByRole("button", { name: /Editor/ }).click();
-      cy.findByRole("button", { name: /View SQL/ }).click();
+      cy.findByLabelText("View SQL").click();
       cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
       H.openNavigationSidebar();
@@ -35,7 +35,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       cy.findByRole("link", { name: /Question views last week/i }).click();
 
       cy.findByRole("button", { name: /Editor/ }).click();
-      cy.findByRole("button", { name: /View SQL/ }).should("not.exist");
+      cy.findByLabelText("View SQL").should("not.exist");
       cy.findByTestId("native-query-preview-sidebar").should("not.exist");
     });
 
@@ -229,8 +229,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       });
 
       // it's important that we do this manually, as this will only reproduce if theres no page load
-      cy.findByTestId("app-bar").icon("gear").click();
-      H.popover().findByText("Admin settings").click();
+      H.goToAdmin();
       cy.findByLabelText("Navigation bar").findByText("Permissions").click();
       H.sidebar().findByText("Administrators").click();
       cy.findByTestId("permission-table")

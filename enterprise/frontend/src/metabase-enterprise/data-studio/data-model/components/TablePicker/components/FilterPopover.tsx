@@ -7,6 +7,10 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { Button, Checkbox, Group, Stack } from "metabase/ui";
+import {
+  trackDataStudioTablePickerFiltersApplied,
+  trackDataStudioTablePickerFiltersCleared,
+} from "metabase-enterprise/data-studio/analytics";
 
 import type { FilterState } from "../types";
 
@@ -19,6 +23,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
   const [form, setForm] = useState(filters);
 
   const handleReset = () => {
+    trackDataStudioTablePickerFiltersCleared();
     onSubmit({
       dataLayer: null,
       dataSource: null,
@@ -32,8 +37,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        trackDataStudioTablePickerFiltersApplied();
         onSubmit(form);
       }}
+      data-testid="table-picker-filter"
     >
       <Stack gap="xl" p="lg">
         <LayerInput
@@ -42,6 +49,11 @@ export function FilterPopover({ filters, onSubmit }: Props) {
           onChange={(dataLayer) => {
             setForm((form) => ({ ...form, dataLayer }));
           }}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
+          autoFocus
         />
 
         <UserInput
@@ -55,6 +67,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
           onUserIdChange={(ownerUserId) => {
             setForm((form) => ({ ...form, ownerEmail: null, ownerUserId }));
           }}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
 
         <DataSourceInput
@@ -63,6 +79,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
           value={form.dataSource}
           onChange={(dataSource) => {
             setForm((form) => ({ ...form, dataSource }));
+          }}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
           }}
         />
 

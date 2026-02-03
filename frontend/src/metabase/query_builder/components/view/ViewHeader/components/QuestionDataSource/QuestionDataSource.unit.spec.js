@@ -2,7 +2,10 @@
 import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { setupCardEndpoints } from "__support__/server-mocks/card";
+import {
+  setupCardEndpoints,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
@@ -24,6 +27,9 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -156,24 +162,29 @@ const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
 
 // Factories
 
+const ORDERS_TABLE = createOrdersTable();
+const PRODUCTS_TABLE = createProductsTable();
+const PEOPLE_TABLE = createPeopleTable();
+
+const MULTI_SCHEMA_TABLE1 = createMockTable({
+  id: MULTI_SCHEMA_TABLE1_ID,
+  db_id: MULTI_SCHEMA_DB_ID,
+  schema: "first_schema",
+});
+
+const MULTI_SCHEMA_TABLE2 = createMockTable({
+  id: MULTI_SCHEMA_TABLE2_ID,
+  db_id: MULTI_SCHEMA_DB_ID,
+  schema: "second_schema",
+});
+
 function getMetadata() {
   return createMockMetadata({
     databases: [
       createSampleDatabase(),
       createMockDatabase({
         id: MULTI_SCHEMA_DB_ID,
-        tables: [
-          createMockTable({
-            id: MULTI_SCHEMA_TABLE1_ID,
-            db_id: MULTI_SCHEMA_DB_ID,
-            schema: "first_schema",
-          }),
-          createMockTable({
-            id: MULTI_SCHEMA_TABLE2_ID,
-            db_id: MULTI_SCHEMA_DB_ID,
-            schema: "second_schema",
-          }),
-        ],
+        tables: [MULTI_SCHEMA_TABLE1, MULTI_SCHEMA_TABLE2],
       }),
     ],
   });
@@ -223,6 +234,11 @@ function setup({
   const originalQuestion = originalCard && new Question(originalCard, metadata);
 
   setupCardEndpoints(SOURCE_CARD);
+  setupTableEndpoints(ORDERS_TABLE);
+  setupTableEndpoints(PRODUCTS_TABLE);
+  setupTableEndpoints(PEOPLE_TABLE);
+  setupTableEndpoints(MULTI_SCHEMA_TABLE1);
+  setupTableEndpoints(MULTI_SCHEMA_TABLE2);
 
   const onError = jest.fn();
   renderWithProviders(
@@ -345,9 +361,11 @@ describe("QuestionDataSource", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays database name", () => {
+        it("displays database name", async () => {
           const { question } = setup({ card });
-          const node = screen.queryByText(question.database().displayName());
+          const node = await screen.findByText(
+            question.database().displayName(),
+          );
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
@@ -355,10 +373,10 @@ describe("QuestionDataSource", () => {
           );
         });
 
-        it("shows nothing if a user doesn't have data permissions", () => {
+        it("shows nothing if a user doesn't have data permissions", async () => {
           setup({ card, hasPermissions: false });
           expect(
-            screen.getByTestId("head-crumbs-container"),
+            await screen.findByTestId("head-crumbs-container"),
           ).toBeEmptyDOMElement();
         });
       });
@@ -370,37 +388,40 @@ describe("QuestionDataSource", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays table name", () => {
+        it("displays table name", async () => {
           const { question } = setup({ card });
-          const node = screen.queryByText(
-            new RegExp(question.legacyQueryTable().displayName()),
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(new RegExp(table.displayName()));
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).not.toBeInTheDocument();
         });
 
-        it("displays table link in subhead variant", () => {
+        it("displays table link in subhead variant", async () => {
           const { question } = setup({ card, subHead: true });
-          const node = screen.queryByText(
-            new RegExp(question.legacyQueryTable().displayName()),
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
+              ML_Urls.getUrl(table.newQuestion()),
             ),
           ).toBe(true);
         });
 
-        it("displays table link in object detail view", () => {
+        it("displays table link in object detail view", async () => {
           const { question } = setup({ card, isObjectDetail: true });
-          const node = screen.queryByText(
-            new RegExp(question.legacyQueryTable().displayName()),
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
+              ML_Urls.getUrl(table.newQuestion()),
             ),
           ).toBe(true);
         });
@@ -416,15 +437,16 @@ describe("QuestionDataSource", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays schema name", () => {
+        it("displays schema name", async () => {
           const { question } = setup({ card });
-          const node = screen.queryByText(
-            question.legacyQueryTable().schema_name,
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(table.schema_name);
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseSchema(question.legacyQueryTable()),
+            Urls.browseSchema(table),
           );
         });
       });
@@ -439,11 +461,11 @@ describe("QuestionDataSource", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays 2 joined tables (metabase#17961)", () => {
+        it("displays 2 joined tables (metabase#17961)", async () => {
           setup({ card, subHead: true });
 
-          const orders = screen.queryByText(/Orders/);
-          const products = screen.queryByText(/Products/);
+          const orders = await screen.findByText(/Orders/);
+          const products = await screen.findByText(/Products/);
 
           expect(orders).toBeInTheDocument();
           expect(
@@ -470,12 +492,12 @@ describe("QuestionDataSource", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays > 2 joined tables (metabase#17961)", () => {
+        it("displays > 2 joined tables (metabase#17961)", async () => {
           setup({ card, subHead: true });
 
-          const orders = screen.queryByText(/Orders/);
-          const products = screen.queryByText(/Products/);
-          const people = screen.queryByText(/People/);
+          const orders = await screen.findByText(/Orders/);
+          const products = await screen.findByText(/Products/);
+          const people = await screen.findByText(/People/);
 
           expect(orders).toBeInTheDocument();
           expect(
@@ -566,12 +588,12 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  it("should show info icon on an ad-hoc question header", () => {
+  it("should show info icon on an ad-hoc question header", async () => {
     setup({ card: SOURCE_CARD });
-    expect(screen.getByLabelText("More info")).toBeInTheDocument();
+    expect(await screen.findByLabelText("More info")).toBeInTheDocument();
   });
 
-  it("should show info icon on a subheader", () => {
+  it("should show info icon on a subheader", async () => {
     setup({ card: SOURCE_CARD, subHead: true });
     expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
   });

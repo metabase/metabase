@@ -1,6 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,20 +7,38 @@ import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  getTableMetadataQuery,
-  parseRouteParams,
-} from "metabase/metadata/pages/shared/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, rem } from "metabase/ui";
-
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { isCypressActive } from "metabase/env";
+import * as Urls from "metabase/lib/urls";
 import {
   FieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
+} from "metabase/metadata/components";
+import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  ScrollArea,
+  Stack,
+  rem,
+} from "metabase/ui";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { hasLibraryCollection } from "metabase-enterprise/data-studio/common/utils";
+
+import { trackMetadataChange } from "../../analytics";
+import {
   RouterTablePicker,
   SyncOptionsModal,
   TableSection,
@@ -32,19 +49,17 @@ import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
+import { parseRouteParams } from "./utils";
 
 interface Props {
   children?: ReactNode;
-  location: Location;
   params: RouteParams;
 }
 
-export const DataModel = ({ children, location, params }: Props) => {
+export const DataModel = ({ children, params }: Props) => {
   return (
     <SelectionProvider>
-      <DataModelContent location={location} params={params}>
-        {children}
-      </DataModelContent>
+      <DataModelContent params={params}>{children}</DataModelContent>
     </SelectionProvider>
   );
 };
@@ -55,15 +70,21 @@ function DataModelContent({ params }: Props) {
     hasOnlyOneTableSelected,
     selectedTables,
     hasSelectedMoreThanOneTable,
+    resetSelection,
   } = useSelection();
+  const parsedParams = parseRouteParams(params);
   const {
     databaseId,
     fieldId,
     schemaName,
+    tab: activeTab,
     tableId: queryTableId,
-  } = parseRouteParams(params);
-  const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+  } = parsedParams;
+  const {
+    data: databasesData,
+    error: databasesError,
+    isLoading: isLoadingDatabases,
+  } = useListDatabasesQuery();
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -82,7 +103,7 @@ function DataModelContent({ params }: Props) {
 
   const {
     data: table,
-    error,
+    error: tableError,
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const fieldsByName = useMemo(() => {
@@ -91,8 +112,21 @@ function DataModelContent({ params }: Props) {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
+
+  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const { data: libraryCollection, isLoading: isLoadingLibrary } =
+    useGetLibraryCollectionQuery(undefined, { skip: !hasLibraryFeature });
+
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
+  const error = databasesError ?? tableError;
+
+  const hasLibrary = hasLibraryCollection(libraryCollection);
+  const canPublish = hasLibraryFeature;
+
+  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
+    null,
+  );
 
   useWindowEvent(
     "keydown",
@@ -115,6 +149,13 @@ function DataModelContent({ params }: Props) {
     },
   );
 
+  const scrollToPanel = useCallback((el: HTMLDivElement | null) => {
+    el?.scrollIntoView({
+      behavior: isCypressActive ? "instant" : "smooth",
+      inline: "end",
+    });
+  }, []);
+
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
@@ -134,27 +175,31 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="accent-gray-light"
+      bg="background-secondary"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
     >
-      <Stack
-        bg="bg-white"
-        className={S.column}
-        flex={COLUMN_CONFIG.nav.flex}
-        gap={0}
-        h="100%"
+      <PageContainer
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
+        flex={COLUMN_CONFIG.nav.flex}
+        className={S.column}
+        gap={0}
       >
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Data structure`}</DataStudioBreadcrumbs>
+          }
+        />
         <RouterTablePicker
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={navigationTableId}
           params={params}
+          setOnUpdateCallback={setOnUpdateCallback}
         />
-      </Stack>
+      </PageContainer>
 
       <>
         {databaseId != null &&
@@ -180,7 +225,11 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk />
+            <TableAttributesEditBulk
+              canPublish={canPublish}
+              hasLibrary={hasLibrary}
+              onUpdate={() => onUpdateCallback?.()}
+            />
           </Stack>
         )}
 
@@ -192,27 +241,59 @@ function DataModelContent({ params }: Props) {
             justify={error ? "center" : undefined}
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
+            ref={scrollToPanel}
+            gap={0}
           >
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {table && (
-                <TableSection
-                  /**
-                   * Make sure internal component state is reset when changing tables.
-                   * This is to avoid state mix-up with optimistic updates.
-                   */
-                  key={table.id}
-                  table={table}
-                  activeFieldId={fieldId}
-                  onSyncOptionsClick={openSyncModal}
-                />
-              )}
-            </LoadingAndErrorWrapper>
+            <Group
+              justify="space-between"
+              w="100%"
+              data-testid="table-section-header"
+              py="lg"
+              bg="background-secondary"
+              className={S.header}
+              px="lg"
+            >
+              <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
+              <Button
+                component={ForwardRefLink}
+                to={Urls.dataStudioData({
+                  databaseId: table?.db_id,
+                  schemaName: table?.schema,
+                })}
+                leftSection={<Icon name="close" c="text-secondary" />}
+                variant="subtle"
+                p="sm"
+                size="compact-sm"
+                onClick={() => {
+                  closePreview();
+                  resetSelection();
+                }}
+              />
+            </Group>
+            <ScrollArea flex={1} px="lg" type="hover">
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {table && (
+                  <TableSection
+                    /**
+                     * Make sure internal component state is reset when changing tables.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={table.id}
+                    table={table}
+                    activeFieldId={fieldId}
+                    activeTab={activeTab}
+                    canPublish={canPublish}
+                    hasLibrary={hasLibrary}
+                    onSyncOptionsClick={openSyncModal}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </ScrollArea>
           </Stack>
         )}
 
         {showFieldDetails && (
           <Stack
-            bg="white"
             className={S.column}
             flex={COLUMN_CONFIG.field.flex}
             h="100%"
@@ -221,52 +302,78 @@ function DataModelContent({ params }: Props) {
             }
             maw={COLUMN_CONFIG.field.max}
             miw={COLUMN_CONFIG.field.min}
+            ref={scrollToPanel}
+            gap={0}
           >
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {field && table && databaseId != null && (
-                <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                  <FieldSection
-                    databaseId={databaseId}
-                    field={field}
-                    /**
-                     * Make sure internal component state is reset when changing fields.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={getRawTableFieldId(field)}
-                    parent={parentField}
-                    table={table}
-                    onFieldValuesClick={openFieldValuesModal}
-                    onPreviewClick={togglePreview}
-                  />
-                </Box>
-              )}
-            </LoadingAndErrorWrapper>
+            <Group
+              justify="space-between"
+              w="100%"
+              data-testid="field-section-header"
+              p="lg"
+              bg="background-secondary"
+              className={S.header}
+            >
+              <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
+              <Button
+                component={ForwardRefLink}
+                to={Urls.dataStudioData({
+                  databaseId: table?.db_id,
+                  schemaName: table?.schema,
+                  tableId: table?.id,
+                })}
+                leftSection={<Icon name="close" c="text-secondary" />}
+                variant="subtle"
+                size="compact-sm"
+                onClick={closePreview}
+              />
+            </Group>
+            <ScrollArea flex={1} px="lg" type="hover">
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {field && table && databaseId != null && (
+                  <>
+                    <FieldSection
+                      /**
+                       * Make sure internal component state is reset when changing fields.
+                       * This is to avoid state mix-up with optimistic updates.
+                       */
+                      key={getRawTableFieldId(field)}
+                      field={field}
+                      parent={parentField}
+                      table={table}
+                      getFieldHref={(fieldId) =>
+                        Urls.dataStudioData({ ...parsedParams, fieldId })
+                      }
+                      onTrackMetadataChange={trackMetadataChange}
+                      onFieldValuesClick={openFieldValuesModal}
+                      onPreviewClick={togglePreview}
+                    />
+                  </>
+                )}
+              </LoadingAndErrorWrapper>
 
-            {!isLoading && !error && !field && (
-              <LoadingAndErrorWrapper error={t`Not found.`} />
-            )}
+              {!isLoading && !error && !field && (
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              )}
+            </ScrollArea>
           </Stack>
         )}
 
         {showFieldPreview && databaseId != null && fieldId != null && (
           <Box
-            bg="accent-gray-light"
             flex={COLUMN_CONFIG.preview.flex}
             h="100%"
             p="lg"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
+            ref={scrollToPanel}
           >
             <PreviewSection
               className={S.preview}
-              databaseId={databaseId}
               field={field}
-              fieldId={fieldId}
-              previewType={previewType}
               table={table}
-              tableId={metadataTableId}
-              onClose={closePreview}
+              previewType={previewType}
               onPreviewTypeChange={setPreviewType}
+              onClose={closePreview}
             />
           </Box>
         )}

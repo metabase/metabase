@@ -7,24 +7,27 @@ describe("scenarios > data studio > snippets", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
+    // TODO: We likely shouldn't need to do this to access the data studio library page
+    H.createLibrary();
+
     cy.intercept("POST", "/api/native-query-snippet").as("createSnippet");
     cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
   });
 
   describe("creation", () => {
     it("should create a new snippet with proper validation", () => {
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.createSnippetButton().click();
-      H.popover().findByText("New snippet").click();
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Snippet").click();
 
       H.DataStudio.Snippets.newPage().should("be.visible");
       H.DataStudio.Snippets.saveButton().should("be.disabled");
 
       H.DataStudio.Snippets.editor.type("SELECT * FROM orders");
-      H.DataStudio.Snippets.saveButton().should("be.disabled");
+      H.DataStudio.Snippets.saveButton().should("be.enabled");
 
-      H.DataStudio.Snippets.nameInput().type("Test snippet");
+      H.DataStudio.Snippets.nameInput().clear().type("Test snippet");
       H.DataStudio.Snippets.saveButton().should("be.enabled");
 
       H.DataStudio.Snippets.descriptionInput().type(
@@ -45,11 +48,10 @@ describe("scenarios > data studio > snippets", () => {
         cy.findByText(/by Bobby Tables/).should("be.visible");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
+      H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
-        .should("be.visible")
-        .closest("[role='menuitem']")
-        .should("have.attr", "data-selected", "true");
+        .should("be.visible");
     });
   });
 
@@ -60,15 +62,9 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editPage().should("be.visible");
 
@@ -89,15 +85,9 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
@@ -116,19 +106,13 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
-      H.DataStudio.ModelingSidebar.glossaryLink().click();
+      H.DataStudio.nav().findByRole("link", { name: "Glossary" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?").should("be.visible");
@@ -136,6 +120,42 @@ describe("scenarios > data studio > snippets", () => {
       });
 
       H.DataStudio.Snippets.editPage().should("be.visible");
+    });
+
+    it("should preserve unsaved content changes when description or name is edited", () => {
+      cy.log("Navigate to a snippet and edit its content");
+      H.createSnippet({
+        name: "Test snippet",
+        content: "SELECT * FROM orders",
+      });
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
+      H.DataStudio.Snippets.editor.type("1");
+
+      cy.log("Edit its name");
+      cy.findByPlaceholderText("Name").type("1").blur();
+      H.undoToast().findByText("Snippet name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("Edit its description");
+      H.DataStudio.Snippets.descriptionInput().type("desc").blur();
+      H.undoToast()
+        .findByText("Snippet description updated")
+        .should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("Verify unsaved changes are preserved");
+      H.DataStudio.Snippets.editor
+        .value()
+        .should("eq", "SELECT * FROM orders1");
+
+      cy.log(
+        "Verify Save button saves the content without reverting the name and description changes",
+      );
+      H.DataStudio.Snippets.saveButton().click();
+      H.undoToast().findByText("Snippet content updated").should("be.visible");
+      cy.findByPlaceholderText("Name").should("have.value", "Test snippet1");
+      H.DataStudio.Snippets.editPage().findByText("desc").should("be.visible");
     });
   });
 
@@ -147,15 +167,9 @@ describe("scenarios > data studio > snippets", () => {
         description: "**Bold text** and *italic text*",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
       H.DataStudio.Snippets.editPage().within(() => {
         cy.findByText("Bold text").should("have.css", "font-weight", "700");
         cy.findByText("italic text").should("have.css", "font-style", "italic");
@@ -170,17 +184,13 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
+
+      cy.findByTestId("snippet-header")
+        .findByRole("button", { name: /Snippet menu options/ })
         .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
-
-      cy.findByTestId("snippet-header").findByRole("button").click();
       H.popover().findByText("Delete").click();
 
       H.modal().within(() => {
@@ -189,7 +199,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateSnippet");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("not.exist");
     });
@@ -203,10 +213,10 @@ describe("scenarios > data studio > snippets", () => {
     });
 
     it("should be able to create a folder and snippet inside it", () => {
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.createSnippetButton().click();
-      H.popover().findByText("New folder").click();
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Snippet folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Give your folder a name").type("Test Folder");
@@ -217,15 +227,14 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@createCollection");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .click()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("be.visible");
 
-      H.DataStudio.ModelingSidebar.createSnippetButton().click();
-      H.popover().findByText("New snippet").click();
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Snippet").click();
 
-      H.DataStudio.Snippets.nameInput().type("Folder snippet");
+      H.DataStudio.Snippets.nameInput().clear().type("Folder snippet");
       H.DataStudio.Snippets.editor.type("SELECT 1");
       H.DataStudio.Snippets.saveButton().click();
 
@@ -236,7 +245,8 @@ describe("scenarios > data studio > snippets", () => {
 
       cy.wait("@createSnippet");
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
+      H.DataStudio.Library.libraryPage()
         .findByText("Folder snippet")
         .should("be.visible");
     });
@@ -246,13 +256,9 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("SQL snippets").click();
-
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("Test Folder")
-        .findByLabelText("Collection options")
-        .click();
+      H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Edit folder details").click();
 
@@ -264,7 +270,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateCollection");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.Library.libraryPage()
         .findByText("Updated Folder")
         .should("be.visible");
     });
@@ -274,28 +280,168 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      visitModelingPage();
+      H.DataStudio.Library.visit();
 
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("SQL snippets").click();
-
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("Test Folder")
-        .findByLabelText("Collection options")
-        .click();
+      H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Archive").click();
 
       cy.wait("@updateCollection");
 
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("SQL snippets").click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("not.exist");
     });
   });
-});
 
-function visitModelingPage() {
-  cy.visit("/data-studio/modeling");
-  H.DataStudio.ModelingSidebar.root().should("be.visible");
-}
+  describe("breadcrumb folder expansion", () => {
+    it("should only expand the relevant folder path when navigating back via breadcrumbs", () => {
+      // Create nested folder structure: Parent Folder > Child Folder
+      H.createSnippetFolder({
+        name: "Parent Folder",
+      }).then(({ body: parentFolder }) => {
+        H.createSnippetFolder({
+          name: "Child Folder",
+          parent_id: Number(parentFolder.id),
+        }).then(({ body: childFolder }) => {
+          // Create a snippet in the child folder
+          H.createSnippet({
+            name: "Nested Snippet",
+            content: "SELECT * FROM orders",
+            collection_id: childFolder.id,
+          });
+        });
+      });
+
+      // Create a sibling folder with its own nested content
+      // This folder should be visible but NOT expanded (its children hidden)
+      H.createSnippetFolder({
+        name: "Sibling Folder",
+      }).then(({ body: siblingFolder }) => {
+        H.createSnippet({
+          name: "Sibling Snippet",
+          content: "SELECT 2",
+          collection_id: siblingFolder.id,
+        });
+      });
+
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify all folders and their contents are initially expanded");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Parent Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Child Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Nested Snippet")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Snippet")
+        .should("be.visible");
+
+      cy.log("Navigate to the nested snippet");
+      H.DataStudio.Library.libraryPage().findByText("Nested Snippet").click();
+      H.DataStudio.Snippets.editPage().should("be.visible");
+
+      cy.log("Click the Child Folder breadcrumb to go back to the library");
+      H.DataStudio.breadcrumbs()
+        .findByRole("link", { name: "Child Folder" })
+        .click();
+
+      cy.log(
+        "Verify the path to Child Folder is expanded, but sibling folder is collapsed",
+      );
+      H.DataStudio.Library.libraryPage()
+        .findByText("Parent Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Child Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Nested Snippet")
+        .should("be.visible");
+      // Sibling Folder is visible (it's a child of root which is expanded)
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Folder")
+        .should("be.visible");
+      // But Sibling Folder's contents should NOT be visible (folder is collapsed)
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Snippet")
+        .should("not.exist");
+    });
+
+    it("should expand all folders when navigating directly to library without expandedId params", () => {
+      // Create nested folder structure
+      H.createSnippetFolder({
+        name: "Folder A",
+      });
+      H.createSnippetFolder({
+        name: "Folder B",
+      });
+
+      cy.log("Navigate directly to library (no expandedId params)");
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify all folders are expanded by default");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Folder A")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Folder B")
+        .should("be.visible");
+    });
+
+    it("should expand parent folders when clicking a nested folder in breadcrumbs", () => {
+      // Create deeply nested structure: GrandParent > Parent > Child
+      H.createSnippetFolder({
+        name: "GrandParent Folder",
+      }).then(({ body: grandParentFolder }) => {
+        H.createSnippetFolder({
+          name: "Parent Folder",
+          parent_id: Number(grandParentFolder.id),
+        }).then(({ body: parentFolder }) => {
+          H.createSnippetFolder({
+            name: "Child Folder",
+            parent_id: Number(parentFolder.id),
+          }).then(({ body: childFolder }) => {
+            H.createSnippet({
+              name: "Deep Snippet",
+              content: "SELECT 1",
+              collection_id: childFolder.id,
+            });
+          });
+        });
+      });
+
+      H.DataStudio.Library.visit();
+
+      cy.log("Navigate to the deeply nested snippet");
+      H.DataStudio.Library.libraryPage().findByText("Deep Snippet").click();
+      H.DataStudio.Snippets.editPage().should("be.visible");
+
+      cy.log(
+        "Click the Parent Folder breadcrumb (middle of the path) to go back",
+      );
+      H.DataStudio.breadcrumbs()
+        .findByRole("link", { name: "Parent Folder" })
+        .click();
+
+      cy.log("Verify the path up to Parent Folder is expanded");
+      H.DataStudio.Library.libraryPage()
+        .findByText("GrandParent Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Parent Folder")
+        .should("be.visible");
+      // Child Folder should still be visible since it's inside Parent Folder
+      H.DataStudio.Library.libraryPage()
+        .findByText("Child Folder")
+        .should("be.visible");
+    });
+  });
+});

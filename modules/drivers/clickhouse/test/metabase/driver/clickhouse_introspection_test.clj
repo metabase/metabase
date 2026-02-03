@@ -1,11 +1,14 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.clickhouse]
+   [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- desc-table!
@@ -542,3 +545,43 @@
           ;; tables from `information_schema`
           (is (contains? tables tables-table))
           (is (contains? tables columns-table)))))))
+
+(deftest ^:synchronized clickhouse-parameterized-view-sync-resilience-test
+  (testing "Sync should continue past parameterized views that cannot be introspected (#66395)"
+    (mt/test-driver :clickhouse
+      (mt/dataset metabase_db_scan_test
+        (let [db (mt/db)
+              details (mt/dbdef->connection-details :clickhouse :db {:database-name "metabase_db_scan_test"})
+              db-name "metabase_db_scan_test"]
+          ;; Create a parameterized view that will fail during sync
+          (metabase.test.data.clickhouse/exec-statements
+           [(format "CREATE OR REPLACE VIEW %s.parameterized_view AS SELECT {returnString:String} as result" db-name)
+            (format "CREATE TABLE %s.table_after_view (id Int32, name String) ENGINE = Memory" db-name)
+            (format "INSERT INTO %s.table_after_view VALUES (1, 'test')" db-name)]
+           details)
+          (try
+            ;; Sync the database - this should not crash despite the parameterized view
+            (is (not= ::thrown
+                      (try
+                        (sync/sync-database! db)
+                        (catch Throwable _e
+                          ::thrown)))
+                "Sync should not throw an exception when encountering a parameterized view")
+
+            ;; Verify that the table AFTER the problematic view was still synced
+            (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
+              (is (some? table-after)
+                  "Table created after parameterized view should be synced")
+              (when table-after
+                (let [fields (t2/select :model/Field :table_id (:id table-after))]
+                  (is (= #{"id" "name"}
+                         (set (map :name fields)))
+                      "Fields in table after parameterized view should be synced"))))
+            (finally
+              ;; Clean up
+              (metabase.test.data.clickhouse/exec-statements
+               [(format "DROP VIEW IF EXISTS %s.parameterized_view" db-name)
+                (format "DROP TABLE IF EXISTS %s.table_after_view" db-name)]
+               details))))))))
+
+

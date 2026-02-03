@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_fields
+table_id: [Internal Metabase Database, public, v_fields]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_fields
+    source-table: [Internal Metabase Database, public, v_fields]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -36,17 +30,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - entity_id
+  - [Internal Metabase Database, public, v_fields, entity_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - entity_id
+  id: [Internal Metabase Database, public, v_fields, entity_id]
   name: entity_id
   semantic_type: type/PK
   settings: null
@@ -58,17 +45,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - entity_qualified_id
+  - [Internal Metabase Database, public, v_fields, entity_qualified_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - entity_qualified_id
+  id: [Internal Metabase Database, public, v_fields, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/PK
   settings: null
@@ -80,17 +60,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - created_at
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_fields, created_at]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - created_at
+  id: [Internal Metabase Database, public, v_fields, created_at]
   name: created_at
   semantic_type: type/CreationTimestamp
   settings: null
@@ -103,17 +76,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - updated_at
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_fields, updated_at]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - updated_at
+  id: [Internal Metabase Database, public, v_fields, updated_at]
   name: updated_at
   semantic_type: type/UpdatedTimestamp
   settings: null
@@ -126,17 +92,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - name
+  - [Internal Metabase Database, public, v_fields, name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - name
+  id: [Internal Metabase Database, public, v_fields, name]
   name: name
   semantic_type: type/Name
   settings: null
@@ -148,17 +107,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - display_name
+  - [Internal Metabase Database, public, v_fields, display_name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - display_name
+  id: [Internal Metabase Database, public, v_fields, display_name]
   name: display_name
   semantic_type: null
   settings: null
@@ -170,17 +122,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - description
+  - [Internal Metabase Database, public, v_fields, description]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - description
+  id: [Internal Metabase Database, public, v_fields, description]
   name: description
   semantic_type: type/Description
   settings: null
@@ -192,17 +137,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - base_type
+  - [Internal Metabase Database, public, v_fields, base_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - base_type
+  id: [Internal Metabase Database, public, v_fields, base_type]
   name: base_type
   semantic_type: type/Category
   settings: null
@@ -214,17 +152,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - visibility_type
+  - [Internal Metabase Database, public, v_fields, visibility_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - visibility_type
+  id: [Internal Metabase Database, public, v_fields, visibility_type]
   name: visibility_type
   semantic_type: type/Category
   settings: null
@@ -236,21 +167,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - fk_target_field_id
+  - [Internal Metabase Database, public, v_fields, fk_target_field_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - entity_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - fk_target_field_id
+  fk_target_field_id: [Internal Metabase Database, public, v_fields, entity_id]
+  id: [Internal Metabase Database, public, v_fields, fk_target_field_id]
   name: fk_target_field_id
   semantic_type: type/FK
   settings: null
@@ -262,17 +182,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - has_field_values
+  - [Internal Metabase Database, public, v_fields, has_field_values]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - has_field_values
+  id: [Internal Metabase Database, public, v_fields, has_field_values]
   name: has_field_values
   semantic_type: null
   settings: null
@@ -284,17 +197,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - active
+  - [Internal Metabase Database, public, v_fields, active]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - active
+  id: [Internal Metabase Database, public, v_fields, active]
   name: active
   semantic_type: type/Category
   settings: null
@@ -306,36 +212,21 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_fields
-    - table_id
+  - [Internal Metabase Database, public, v_fields, table_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - entity_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - table_id
+  fk_target_field_id: [Internal Metabase Database, public, v_tables, entity_id]
+  id: [Internal Metabase Database, public, v_fields, table_id]
   name: table_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: table_id
-  table.pivot_column: visibility_type
+visualization_settings: {column_settings: null, table.cell_column: table_id, table.pivot_column: visibility_type}
+card_schema: 23
 serdes/meta:
-- id: ZmDKwRQBuRwfXfGipg7-k
-  label: fields
-  model: Card
+- {id: ZmDKwRQBuRwfXfGipg7-k, label: fields, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: vUNKNOWN (0e09ac7)
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

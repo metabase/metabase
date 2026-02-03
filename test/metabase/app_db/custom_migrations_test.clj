@@ -109,6 +109,10 @@
                             :details       (json/encode {:channel "general"})
                             :schedule_type "daily"
                             :schedule_hour 15})
+      :metabase_table    (with-timestamped
+                           {:name (mt/random-name)
+                            :active true})
+      :permissions_group {:name (mt/random-name)}
       {})))
 
 (defn- new-instance-with-default
@@ -2696,3 +2700,28 @@
           (migrate! :down 56)
           ;; assert pre conditions
           (assert-pre-conditions))))))
+
+(deftest escape-existing-at-symbol-user-attributes-test
+  (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
+    (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
+      (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))
+            other-user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bang\"}"}))
+            database-id (:id (new-instance-with-default :metabase_database))
+            table-id (:id (new-instance-with-default :metabase_table {:db_id database-id}))
+            group-id (:id (new-instance-with-default :permissions_group))
+            sandbox-id (:id (new-instance-with-default :sandboxes {:attribute_remappings "{\"@foo\": \"bar\"}"
+                                                                   :table_id table-id
+                                                                   :group_id group-id}))
+            impersonation-id (:id (new-instance-with-default :connection_impersonations {:attribute "@foo"
+                                                                                         :db_id database-id
+                                                                                         :group_id group-id}))
+            db-router-id (:id (new-instance-with-default :db_router {:user_attribute "@foo" :database_id database-id}))]
+        (migrate!)
+        (is (= {"_@foo" "bar"}
+               (json/decode (:attribute_remappings (t2/select-one :sandboxes :id sandbox-id)))))
+        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations impersonation-id))))
+        (is (= "_@foo" (:user_attribute (t2/select-one :db_router db-router-id))))
+        (is (= {"_@foo" "bar"}
+               (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
+        (is (= {"_@foo" "bang"}
+               (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))

@@ -1,24 +1,23 @@
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
-  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { DataModel } from "e2e/support/helpers";
+import {
+  NODATA_USER_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } = H.DataModel;
 
-const { ALL_USERS_GROUP } = USER_GROUPS;
 const {
   FEEDBACK,
   FEEDBACK_ID,
   ORDERS,
   ORDERS_ID,
-  PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   REVIEWS,
@@ -27,16 +26,14 @@ const {
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
-const CUSTOM_MAPPING_ERROR =
-  "You need unrestricted data access on this table to map custom display values.";
-
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");
@@ -84,25 +81,33 @@ describe("scenarios > data studio > datamodel", () => {
       );
     });
 
-    it("should show 404 if field does not exist", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: 12345,
-        skipWaiting: true,
-      });
-      cy.wait("@databases");
-      cy.wait(100); // wait with assertions for React effects to kick in
+    it(
+      "should show 404 if field does not exist",
+      // We eliminate the flakiness by removing the need to scroll horizontally
+      { viewportWidth: 1600 },
+      () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: 12345, // we're force navigating to a fake field id
+          skipWaiting: true,
+        });
+        cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
 
-      TablePicker.getDatabases().should("have.length", 1);
-      TablePicker.getTables().should("have.length", 8);
-      H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should(
-        "eq",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
-      );
-    });
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 8);
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        );
+
+        H.DataModel.get().within(() => {
+          cy.findByText("Field details").should("be.visible");
+          cy.findByText("Not found.").should("be.visible");
+        });
+      },
+    );
 
     it(
       "should not show 404 error if database is not selected",
@@ -394,31 +399,6 @@ describe("scenarios > data studio > datamodel", () => {
               `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-
-          cy.log("databases, schemas, and tables should be links");
-          TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}`,
-            );
-          TablePicker.getSchema("Domestic")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
-            );
-          TablePicker.getTable("Orders")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-            );
         });
 
         it("should allow to search for tables", () => {
@@ -458,6 +438,7 @@ describe("scenarios > data studio > datamodel", () => {
             "aria-selected",
             "true",
           );
+
           TablePicker.getTable("Birds").find('input[type="checkbox"]').check();
           TablePicker.getTable("Birds").should(
             "not.have.attr",
@@ -472,95 +453,6 @@ describe("scenarios > data studio > datamodel", () => {
         });
       },
     );
-
-    describe("Search", () => {
-      beforeEach(() => {
-        H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-      });
-
-      it("should support prefix-based search", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getSearchInput().type("an");
-        TablePicker.getTables().should("have.length", 3);
-        TablePicker.getTable("Analytic Events").should("be.visible");
-        TablePicker.getTable("Animals").should("be.visible");
-      });
-
-      it("should support wildcard search with *", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getSearchInput().type("irds");
-        TablePicker.get().findByText("No tables found").should("be.visible");
-
-        TablePicker.getSearchInput().clear().type("*irds");
-        TablePicker.getTables().should("have.length", 1);
-        TablePicker.getTable("Birds").should("be.visible");
-      });
-
-      it("should allow using shift key to select multiple tables", () => {
-        H.DataModel.visitDataStudio();
-        TablePicker.getSearchInput().type("a");
-
-        TablePicker.getTables().should("have.length", 4);
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').click();
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .find('input[type="checkbox"]')
-          .click({ shiftKey: true });
-
-        cy.findByRole("heading", { name: /3 tables selected/i }).should(
-          "be.visible",
-        );
-      });
-
-      it("should remove the active highlight once tables are selected", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getSearchInput().type("an");
-        TablePicker.getTable("Animals").eq(0).should("be.visible").click();
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .should("have.attr", "aria-selected", "true");
-
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .find('input[type="checkbox"]')
-          .check();
-        TablePicker.getTable("Animals").eq(1).should("be.visible").click();
-
-        TablePicker.getTable("Animals")
-          .eq(0)
-          .should("not.have.attr", "aria-selected", "true");
-        TablePicker.getTable("Animals")
-          .eq(1)
-          .should("not.have.attr", "aria-selected", "true");
-      });
-
-      it("should select/deselect tables with clicking checkboxes", () => {
-        H.DataModel.visitDataStudio();
-        TablePicker.getSearchInput().type("a");
-        TablePicker.getTables().should("have.length", 4);
-        TablePicker.getTable("Accounts")
-          .find('input[type="checkbox"]')
-          .as("accountsCheckbox");
-        TablePicker.getTable("Analytic Events")
-          .find('input[type="checkbox"]')
-          .as("analyticEventsCheckbox");
-        cy.get("@accountsCheckbox").check();
-        cy.get("@analyticEventsCheckbox").check();
-        cy.findByRole("heading", { name: /2 tables selected/i }).should(
-          "be.visible",
-        );
-        cy.get("@accountsCheckbox").uncheck();
-        cy.findByRole("heading", { name: /2 table selected/i }).should(
-          "not.exist",
-        );
-      });
-    });
 
     describe("Extra info about tables", () => {
       const databaseName = "Writable Postgres12";
@@ -634,7 +526,8 @@ describe("scenarios > data studio > datamodel", () => {
       it("should indicate published tables", () => {
         getTableId({ databaseId: WRITABLE_DB_ID, name: domesticAnimalsTable })
           .then((tableId) => {
-            return publishTables([tableId]);
+            H.createLibrary();
+            publishTables([tableId]);
           })
           .as("publishedTableId");
 
@@ -669,15 +562,27 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
-        selectFilterOption("Visibility type", "Gold");
-        applyFilters();
+        TablePicker.openFilterPopover();
+
+        cy.log("Filter popover should close on click outside");
+        H.DataModel.TablePicker.getSearchInput().click();
+        H.DataModel.TablePicker.getFilterForm().should("not.exist");
+
+        TablePicker.openFilterPopover();
+        TablePicker.selectFilterOption("Visibility type", "Gold");
+        TablePicker.applyFilters();
+        H.expectUnstructuredSnowplowEvent({
+          event: "data_studio_table_picker_filters_applied",
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "data_studio_table_picker_search_performed",
+        });
 
         cy.get<TableId>("@goldTableId").then(expectTableVisible);
         cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
       });
 
-      it("should filter tables owned by no one", () => {
+      it("should filter tables owned by unspecified", () => {
         cy.request("GET", "/api/user/current")
           .its("body")
           .then(({ id }) => {
@@ -695,9 +600,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
-        selectFilterOption("Owner", "No one");
-        applyFilters();
+        TablePicker.openFilterPopover();
+        TablePicker.selectFilterOption("Owner", "Unspecified");
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@unownedTableId").then(expectTableVisible);
         cy.get<TableId>("@ownedTableId").then(expectTableNotVisible);
@@ -722,11 +627,11 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
         cy.get<string>("@ownerName").then((ownerName) => {
           selectOwnerByName(ownerName);
         });
-        applyFilters();
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@ownedTableId").then(expectTableVisible);
         cy.get<TableId>("@unownedTableId").then(expectTableNotVisible);
@@ -748,9 +653,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
         selectOwnerByEmail(OWNER_EMAIL);
-        applyFilters();
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@emailOwnedTableId").then(expectTableVisible);
         cy.get<TableId>("@otherTableId").then(expectTableNotVisible);
@@ -771,9 +676,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
-        selectFilterOption("Source", "Uploaded data");
-        applyFilters();
+        TablePicker.openFilterPopover();
+        TablePicker.selectFilterOption("Source", "Uploaded data");
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@uploadedTableId").then(expectTableVisible);
         cy.get<TableId>("@ingestedTableId").then(expectTableNotVisible);
@@ -806,9 +711,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
         toggleUnusedFilter(true);
-        applyFilters();
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@unusedTableId").then(expectTableVisible);
         cy.get<TableId>("@usedTableId").then(expectTableNotVisible);
@@ -845,30 +750,20 @@ describe("scenarios > data studio > datamodel", () => {
       const getSchemaCheckbox = (schemaName: string) =>
         TablePicker.getSchema(schemaName).find('input[type="checkbox"]');
       const getWpTableCheckbox = (schemaName: string, tableName: string) =>
-        getTableCheckbox(
-          WRITABLE_DB_ID,
-          `${WRITABLE_DB_ID}:${schemaName}`,
-          tableName,
-        );
+        getTableCheckbox(WRITABLE_DB_ID, schemaName, tableName);
       const getSampleTableCheckbox = (tableName: string) =>
-        getTableCheckbox(SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID, tableName);
+        getTableCheckbox(SAMPLE_DB_ID, "PUBLIC", tableName);
 
       function getTableCheckbox(
         databaseId: number,
-        schemaFragment: string,
+        schemaName: string,
         tableName: string,
       ) {
         return TablePicker.getTables()
-          .filter((_, element) => {
-            const href = element.getAttribute("href") ?? "";
-            const text = element.textContent ?? "";
-
-            return (
-              href.includes(`/database/${databaseId}/`) &&
-              href.includes(`/schema/${schemaFragment}`) &&
-              text.toLowerCase().includes(tableName.toLowerCase())
-            );
-          })
+          .filter(
+            `[data-database-id="${databaseId}"][data-schema-name="${schemaName}"]`,
+          )
+          .filter(`:contains("${tableName}")`)
           .find('input[type="checkbox"]');
       }
 
@@ -885,6 +780,7 @@ describe("scenarios > data studio > datamodel", () => {
       for (const tableName of domesticTables) {
         getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
       }
+
       for (const tableName of wildTables) {
         getWpTableCheckbox(wildSchema, tableName).should("be.checked");
       }
@@ -946,8 +842,7 @@ describe("scenarios > data studio > datamodel", () => {
       getSchemaCheckbox(wildSchema).should("not.be.checked");
       // partially selected now, so clicking twice to make it unchecked
       getDatabaseCheckbox().should("not.be.checked");
-
-      getDatabaseCheckbox().uncheck();
+      getDatabaseCheckbox().check();
       getDatabaseCheckbox().uncheck();
       for (const { schema, table } of tablesInDatabase) {
         getWpTableCheckbox(schema, table).should("not.be.checked");
@@ -1014,6 +909,10 @@ describe("scenarios > data studio > datamodel", () => {
       TablePicker.getTables().should("have.length", 8);
 
       TableSection.clickField("ID");
+
+      // Sometimes in CI this doesn't happen
+      FieldSection.get().scrollIntoView();
+
       FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "BIGINT");
@@ -1162,38 +1061,10 @@ describe("scenarios > data studio > datamodel", () => {
         );
 
         cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New description").should("be.visible");
-      });
-
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the table name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
-        setDataModelPermissions({ tableIds: [ORDERS_ID] });
-
-        cy.signIn("none");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getNameInput().clear().type("New orders").blur();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Table name updated");
-        TableSection.getNameInput().should("have.value", "New orders");
-        cy.signOut();
-
-        cy.signInAsNormalUser();
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText("Sample Database").click();
-          cy.findByText("People").should("be.visible");
-          cy.findByText("New orders").should("be.visible");
-        });
       });
 
       it("should allow clearing the table description", () => {
@@ -1209,10 +1080,80 @@ describe("scenarios > data studio > datamodel", () => {
         TableSection.getDescriptionInput().should("have.value", "");
 
         cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
+      });
+
+      it("should allow analysts to edit all table metadata even without data access", () => {
+        H.setUserAsAnalyst(NODATA_USER_ID);
+
+        cy.signIn("nodata");
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        cy.log("change table name");
+        TableSection.getNameInput().clear().type("Analyst Orders").blur();
+        cy.wait("@updateTable");
+        verifyAndCloseToast("Table name updated");
+        TableSection.getNameInput().should("have.value", "Analyst Orders");
+
+        cy.log("change table description");
+        TableSection.getDescriptionInput()
+          .clear()
+          .type("Description by analyst")
+          .blur();
+        cy.wait("@updateTable");
+        verifyAndCloseToast("Table description updated");
+        TableSection.getDescriptionInput().should(
+          "have.value",
+          "Description by analyst",
+        );
+
+        cy.log("change field name");
+        TableSection.getFieldNameInput("Tax")
+          .clear()
+          .type("Analyst Tax")
+          .blur();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Name of Tax updated");
+        TableSection.getFieldNameInput("Analyst Tax").should("be.visible");
+
+        cy.log("change field description");
+        TableSection.getFieldDescriptionInput("Total")
+          .clear()
+          .type("Total edited by analyst")
+          .blur();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Description of Total updated");
+
+        cy.log("verify changes in data reference as admin");
+        cy.signInAsAdmin();
+        cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+        cy.get("main").within(() => {
+          cy.findByText("Analyst Orders").should("be.visible");
+          cy.findByText("Description by analyst").should("be.visible");
+        });
+
+        cy.log("verify changes in question picker as normal user");
+        cy.signInAsNormalUser();
+        H.startNewQuestion();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("People").should("be.visible");
+          cy.findByText("Analyst Orders").should("be.visible");
+        });
+
+        cy.log("verify field changes in table visualization");
+        H.openOrdersTable();
+        H.tableHeaderColumn("Analyst Tax").should("be.visible");
+        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+          "not.exist",
+        );
       });
     });
 
@@ -1239,46 +1180,6 @@ describe("scenarios > data studio > datamodel", () => {
         verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
 
         cy.log("verify viz");
-        H.openOrdersTable();
-        H.tableHeaderColumn("New tax").should("be.visible");
-        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
-          "not.exist",
-        );
-      });
-
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
-        setDataModelPermissions({ tableIds: [ORDERS_ID] });
-        cy.signIn("none");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Name of Tax updated");
-        TableSection.getFieldNameInput("New tax").should("be.visible");
-        TableSection.getField("New tax").should("be.visible");
-
-        cy.log("verify preview");
-        TableSection.clickField("New tax");
-        FieldSection.getPreviewButton().click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-
-        cy.log("verify viz as normal user");
-        cy.signInAsNormalUser();
         H.openOrdersTable();
         H.tableHeaderColumn("New tax").should("be.visible");
         H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
@@ -1316,9 +1217,9 @@ describe("scenarios > data studio > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New description").should("be.visible");
       });
 
@@ -1347,10 +1248,87 @@ describe("scenarios > data studio > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
+      });
+
+      it("should allow analysts to edit field metadata but not preview data without data access", () => {
+        H.setUserAsAnalyst(NODATA_USER_ID);
+        cy.signIn("nodata");
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        cy.log("change field name from table section");
+        TableSection.getFieldNameInput("Tax")
+          .clear()
+          .type("Analyst Tax Field")
+          .blur();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Name of Tax updated");
+        TableSection.getFieldNameInput("Analyst Tax Field").should(
+          "be.visible",
+        );
+        TableSection.getField("Analyst Tax Field").should("be.visible");
+
+        cy.log("change field description from table section");
+        TableSection.getFieldDescriptionInput("Total")
+          .clear()
+          .type("Analyst total description")
+          .blur();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Description of Total updated");
+        TableSection.getFieldDescriptionInput("Total").should(
+          "have.value",
+          "Analyst total description",
+        );
+
+        cy.log("navigate to field detail and change semantic type");
+        TableSection.clickField("Discount");
+        FieldSection.getSemanticTypeInput()
+          .should("have.value", "Discount")
+          .click();
+        H.popover().findByText("Currency").click();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Semantic type of Discount updated");
+        FieldSection.getSemanticTypeInput().should("have.value", "Currency");
+
+        cy.log("verify table preview is blocked without data permissions");
+        FieldSection.getPreviewButton().click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify detail preview is also blocked");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify field changes in data reference as admin");
+        cy.signInAsAdmin();
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        cy.get("main").within(() => {
+          cy.findByText("Total").should("be.visible");
+          cy.findByText("Analyst total description").should("be.visible");
+        });
+
+        cy.log("verify field changes in table visualization as normal user");
+        cy.signInAsNormalUser();
+        H.openOrdersTable();
+        H.tableHeaderColumn("Analyst Tax Field").should("be.visible");
+        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+          "not.exist",
+        );
+        H.tableHeaderColumn("Discount ($)").should("be.visible");
       });
     });
 
@@ -1456,7 +1434,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1500,7 +1479,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1539,7 +1519,8 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1641,49 +1622,6 @@ describe("scenarios > data studio > datamodel", () => {
         );
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
-        setDataModelPermissions({ tableIds: [ORDERS_ID] });
-        cy.signIn("none");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.TOTAL,
-        });
-
-        FieldSection.getNameInput().clear().type("New total").blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Name of Total updated");
-        FieldSection.getNameInput().should("have.value", "New total");
-        TableSection.getFieldNameInput("New total")
-          .scrollIntoView()
-          .should("be.visible");
-
-        cy.log("verify preview");
-        TableSection.clickField("New total");
-        FieldSection.getPreviewButton().click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-
-        cy.log("verify viz as normal user");
-        cy.signInAsNormalUser();
-        H.openOrdersTable();
-        H.tableHeaderColumn("New total").should("be.visible");
-        H.tableHeaderColumn("Total", { scrollIntoView: false }).should(
-          "not.exist",
-        );
-      });
-
       it("should allow changing the field description", () => {
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
@@ -1715,9 +1653,9 @@ describe("scenarios > data studio > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New description").should("be.visible");
       });
 
@@ -1747,9 +1685,9 @@ describe("scenarios > data studio > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
       });
 
@@ -1856,7 +1794,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "type_casting",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Casting enabled for Rating");
 
@@ -1974,7 +1912,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "semantic_type_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -2048,6 +1986,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.wait(["@metadata", "@metadata"]);
 
           FieldSection.getSemanticTypeFkTarget()
+            .scrollIntoView() //This should not be necessary, but CI consistently fails to scroll into view on mount
             .should("be.visible")
             .and("have.value", "Products → ID");
         });
@@ -2088,90 +2027,6 @@ describe("scenarios > data studio > datamodel", () => {
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
-        });
-
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should allow to change the field foreign key target with no permissions to Reviews table", () => {
-          H.activateToken("pro-self-hosted");
-          setDataModelPermissions({
-            tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
-          });
-
-          cy.signIn("none");
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.USER_ID,
-          });
-          FieldSection.getSemanticTypeFkTarget()
-            .should("have.value", "People → ID")
-            .click();
-          H.popover().within(() => {
-            cy.findByText("Reviews → ID").should("not.exist");
-            cy.findByText("Products → ID").click();
-          });
-          cy.wait("@updateField");
-          H.undoToast().should(
-            "contain.text",
-            "Semantic type of User ID updated",
-          );
-          FieldSection.getSemanticTypeFkTarget().should(
-            "have.value",
-            "Products → ID",
-          );
-
-          cy.log("verify preview");
-          FieldSection.getPreviewButton().click();
-          cy.wait("@dataset");
-          PreviewSection.get()
-            .findByText("Sorry, you don’t have permission to see that.")
-            .should("be.visible");
-          PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-          cy.wait("@dataset");
-          PreviewSection.get()
-            .findByText("Sorry, you don’t have permission to see that.")
-            .should("be.visible");
-
-          cy.log("verify viz as normal user");
-          cy.signInAsNormalUser();
-          H.openTable({
-            database: SAMPLE_DB_ID,
-            table: ORDERS_ID,
-            mode: "notebook",
-          });
-          cy.icon("join_left_outer").click();
-          H.miniPicker().within(() => {
-            cy.findByText("Sample Database").click();
-            cy.findByText("Products").click();
-          });
-          cy.findByLabelText("Left column").should("contain.text", "User ID");
-        });
-
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should not allow setting foreign key target for inaccessible tables", () => {
-          H.activateToken("pro-self-hosted");
-          setDataModelPermissions({ tableIds: [REVIEWS_ID] });
-
-          cy.signIn("none");
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.PRODUCT_ID,
-          });
-          FieldSection.getDisplayValuesInput().click();
-
-          H.popover().within(() => {
-            cy.findByRole("option", { name: /Use original value/ })
-              .should("be.visible")
-              .and("not.have.attr", "data-combobox-disabled");
-            cy.findByRole("option", { name: /Use foreign key/ })
-              .should("be.visible")
-              .and("have.attr", "data-combobox-disabled", "true");
-          });
         });
 
         it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
@@ -2223,7 +2078,7 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("verify viz");
           H.openOrdersTable();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Tax (CA$)").should("be.visible");
         });
 
@@ -2353,6 +2208,56 @@ describe("scenarios > data studio > datamodel", () => {
           },
         );
       });
+
+      it("should allow analysts to change the foreign key target without data access", () => {
+        H.setUserAsAnalyst(NODATA_USER_ID);
+        cy.signIn("nodata");
+
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.USER_ID,
+        });
+
+        FieldSection.getSemanticTypeFkTarget()
+          .should("have.value", "People → ID")
+          .click();
+        H.popover().within(() => {
+          cy.findByText("Reviews → ID").should("be.visible");
+          cy.findByText("Products → ID").click();
+        });
+        cy.wait("@updateField");
+        H.undoToast().should(
+          "contain.text",
+          "Semantic type of User ID updated",
+        );
+        FieldSection.getSemanticTypeFkTarget().should(
+          "have.value",
+          "Products → ID",
+        );
+
+        cy.log("verify preview is blocked without data permissions");
+        FieldSection.getPreviewButton().click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify FK target change works in query builder as normal user");
+        cy.signInAsNormalUser();
+        H.openTable({
+          database: SAMPLE_DB_ID,
+          table: ORDERS_ID,
+          mode: "notebook",
+        });
+        cy.icon("join_left_outer").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Products").click();
+        });
+        cy.findByLabelText("Left column").should("contain.text", "User ID");
+      });
     });
 
     describe("Behavior", () => {
@@ -2376,7 +2281,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "visibility_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Visibility of Tax updated");
           FieldSection.getVisibilityInput().should("have.value", "Everywhere");
@@ -2569,7 +2474,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "filtering_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Filtering of Quantity updated");
 
@@ -2735,7 +2640,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "display_values",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -2768,37 +2673,6 @@ describe("scenarios > data studio > datamodel", () => {
             .and("have.value", "Title");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should allow to change foreign key target for accessible tables", () => {
-          H.activateToken("pro-self-hosted");
-          setDataModelPermissions({
-            tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
-          });
-
-          cy.signIn("none");
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.PRODUCT_ID,
-          });
-
-          FieldSection.getDisplayValuesInput().click();
-          H.popover().findByText("Use foreign key").click();
-          H.popover().findByText("Title").click();
-          cy.wait("@updateFieldDimension");
-          H.undoToast().should(
-            "contain.text",
-            "Display values of Product ID updated",
-          );
-
-          cy.signInAsNormalUser();
-          H.openReviewsTable({ limit: 1 });
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Rustic Paper Wallet").should("be.visible");
-        });
-
         it("should allow 'Custom mapping' null values", () => {
           const remappedNullValue = "nothin";
 
@@ -2829,7 +2703,7 @@ describe("scenarios > data studio > datamodel", () => {
                 H.expectUnstructuredSnowplowEvent({
                   event: "metadata_edited",
                   event_detail: "display_values",
-                  triggered_from: "admin",
+                  triggered_from: "data_studio",
                 });
                 H.undoToast().should(
                   "contain.text",
@@ -2910,9 +2784,9 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("Name of the product should be displayed instead of its ID");
           H.openOrdersTable();
-          cy.findByRole("gridcell", { name: "Awesome Concrete Shoes" }).should(
-            "be.visible",
-          );
+          cy.findByRole("gridcell", {
+            name: "Awesome Concrete Shoes",
+          }).should("be.visible");
         });
 
         it("should correctly apply and display custom remapping for numeric values", () => {
@@ -2984,57 +2858,6 @@ describe("scenarios > data studio > datamodel", () => {
               .scrollIntoView()
               .should("be.visible");
           });
-        });
-
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should show a proper error message when using custom mapping", () => {
-          H.activateToken("pro-self-hosted");
-          setDataModelPermissions({ tableIds: [REVIEWS_ID] });
-
-          cy.signIn("none");
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.RATING,
-          });
-          FieldSection.getDisplayValuesInput().click();
-
-          H.popover().within(() => {
-            cy.findByRole("option", { name: /Use original value/ })
-              .should("be.visible")
-              .and("not.have.attr", "data-combobox-disabled");
-            cy.findByRole("option", { name: /Custom mapping/ })
-              .should("be.visible")
-              .and("have.attr", "data-combobox-disabled", "true");
-          });
-
-          cy.signInAsAdmin();
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.RATING,
-          });
-          FieldSection.getDisplayValuesInput().click();
-          H.popover().findByText("Custom mapping").click();
-          cy.wait("@updateFieldDimension");
-          H.undoToast().should(
-            "contain.text",
-            "Display values of Rating updated",
-          );
-
-          cy.signIn("none");
-          H.DataModel.visitDataStudio({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.RATING,
-          });
-
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(CUSTOM_MAPPING_ERROR).should("exist");
         });
 
         it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
@@ -3130,6 +2953,105 @@ describe("scenarios > data studio > datamodel", () => {
             .eq(10) // 1st data row, 2nd column (User ID)
             .should("have.text", "2023-10-07T01:34:35.462-07:00");
         });
+
+        it("should allow analysts to change display values to use foreign key without data access", () => {
+          H.setUserAsAnalyst(NODATA_USER_ID);
+          cy.signIn("nodata");
+
+          H.DataModel.visitDataStudio({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.PRODUCT_ID,
+          });
+
+          FieldSection.getDisplayValuesInput().click();
+          H.popover().findByText("Use foreign key").click();
+          H.popover().findByText("Title").click();
+          cy.wait("@updateFieldDimension");
+          H.undoToast().should(
+            "contain.text",
+            "Display values of Product ID updated",
+          );
+
+          FieldSection.getDisplayValuesInput().should(
+            "have.value",
+            "Use foreign key",
+          );
+          FieldSection.getDisplayValuesFkTargetInput().should(
+            "have.value",
+            "Title",
+          );
+
+          cy.log("verify preview is blocked without data permissions");
+          FieldSection.getPreviewButton().click();
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findByText("Sorry, you don’t have permission to see that.")
+            .should("be.visible");
+
+          cy.log("verify display value change works as normal user");
+          cy.signInAsNormalUser();
+          H.openReviewsTable({ limit: 1 });
+          H.main().findByText("Rustic Paper Wallet").should("be.visible");
+        });
+
+        it("should disable custom mapping for analysts without data access", () => {
+          H.setUserAsAnalyst(NODATA_USER_ID);
+          cy.signIn("nodata");
+
+          H.DataModel.visitDataStudio({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+
+          cy.log("verify custom mapping is disabled without data access");
+          FieldSection.getDisplayValuesInput().click();
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Use original value/ })
+              .should("be.visible")
+              .and("not.have.attr", "data-combobox-disabled");
+            cy.findByRole("option", { name: /Custom mapping/ })
+              .should("be.visible")
+              .and("have.attr", "data-combobox-disabled", "true");
+          });
+
+          cy.log("verify admin can set up custom mapping");
+          cy.signInAsAdmin();
+          H.DataModel.visitDataStudio({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+          FieldSection.getDisplayValuesInput().click();
+          H.popover().findByText("Custom mapping").click();
+          cy.wait("@updateFieldValues");
+          H.undoToast().should(
+            "contain.text",
+            "Display values of Rating updated",
+          );
+          H.undoToast().icon("close").click({ force: true });
+
+          H.modal().within(() => {
+            cy.findByDisplayValue("1").click().clear().type("Terrible");
+            cy.findByDisplayValue("5").click().clear().type("Amazing");
+            cy.button("Save").click();
+          });
+          cy.wait("@updateFieldValues");
+          H.undoToast().should(
+            "contain.text",
+            "Display values of Rating updated",
+          );
+
+          cy.log("verify custom mapping works as normal user");
+          cy.signInAsNormalUser();
+          H.openReviewsTable();
+          H.main().findByText("Terrible").should("be.visible");
+          H.main().findAllByText("Amazing").should("be.visible");
+        });
       });
 
       describe("Unfold JSON", { tags: "@external" }, () => {
@@ -3195,7 +3117,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "json_unfolding",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -3321,7 +3243,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "metadata_edited",
           event_detail: "formatting",
-          triggered_from: "admin",
+          triggered_from: "data_studio",
         });
         verifyAndCloseToast("Formatting of Quantity updated");
 
@@ -3601,7 +3523,7 @@ describe("scenarios > data studio > datamodel", () => {
         fieldId: ORDERS.PRODUCT_ID,
       });
 
-      DataModel.TableSection.getVisibilityTypeInput().click();
+      H.DataModel.TableSection.getVisibilityTypeInput().click();
       H.popover().findByText("Copper").click();
       cy.wait("@updateTable");
 
@@ -3612,6 +3534,37 @@ describe("scenarios > data studio > datamodel", () => {
         .should("be.visible");
       H.main().findByText("Something’s gone wrong").should("not.exist");
     });
+  });
+
+  it("should allow you to close table and field details", () => {
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
+
+    FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+
+    PreviewSection.get().should("exist");
+
+    FieldSection.getCloseButton().click();
+
+    PreviewSection.get().should("not.exist");
+    FieldSection.get().should("not.exist");
+    TableSection.get().should("exist");
+
+    TableSection.getCloseButton().click();
+    TableSection.get().should("not.exist");
+
+    cy.log(
+      "ensure that preview opened state was cleared and does not re-appear",
+    );
+    TablePicker.getTable("Orders").click();
+    TableSection.clickField("Subtotal");
+    PreviewSection.get().should("not.exist");
+    FieldSection.get().should("exist");
+    TableSection.get().should("exist");
   });
 
   describe("Error handling", { tags: "@external" }, () => {
@@ -3663,7 +3616,8 @@ describe("scenarios > data studio > datamodel", () => {
       verifyAndCloseToast("Failed to update field order");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyAndCloseToast("Failed to update field order");
@@ -3809,7 +3763,8 @@ describe("scenarios > data studio > datamodel", () => {
         .should("be.checked");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyToastAndUndo("Field order updated");
@@ -3956,27 +3911,6 @@ function clickAway() {
   cy.get("body").click(0, 0);
 }
 
-const setDataModelPermissions = ({
-  tableIds = [],
-}: {
-  tableIds: TableId[];
-}) => {
-  const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
-
-  // @ts-expect-error invalid cy.updatePermissionsGraph typing
-  cy.updatePermissionsGraph({
-    [ALL_USERS_GROUP]: {
-      [SAMPLE_DB_ID]: {
-        "data-model": {
-          schemas: {
-            PUBLIC: permissions,
-          },
-        },
-      },
-    },
-  });
-};
-
 type TableSummary = {
   id: TableId;
   db_id: number;
@@ -3990,21 +3924,6 @@ type TableLookup = {
   displayName?: string;
   name?: string;
 };
-
-function openFilterPopover() {
-  cy.findByRole("button", { name: "Filter" }).click();
-  H.popover();
-}
-
-function applyFilters() {
-  cy.findByRole("button", { name: "Apply" }).click();
-  cy.wait("@listTables");
-}
-
-function selectFilterOption(fieldLabel: string, optionLabel: string) {
-  cy.findByRole("textbox", { name: fieldLabel }).click();
-  H.popover().contains(optionLabel).click();
-}
 
 function selectOwnerByName(ownerLabel: string) {
   cy.findByRole("textbox", { name: "Owner" }).click();
@@ -4033,11 +3952,7 @@ function expectTableNotVisible(tableId: TableId) {
 }
 
 function findSearchResultByTableId(tableId: TableId) {
-  return cy.findAllByTestId("tree-item").filter((_, element) => {
-    const href = element.getAttribute("href") ?? "";
-    const pattern = new RegExp(`/table/${tableId}(?:/|$)`);
-    return pattern.test(href);
-  });
+  return cy.findAllByTestId("tree-item").filter(`[data-table-id="${tableId}"]`);
 }
 
 function openWritableDomesticSchema(databaseName: string, schemaName: string) {
@@ -4101,9 +4016,8 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-model", {
+  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
     table_ids: tableIds,
-    target_collection_id: null,
   });
 }
 

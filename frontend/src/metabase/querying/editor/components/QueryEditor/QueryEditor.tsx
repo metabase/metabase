@@ -1,3 +1,5 @@
+import { useElementSize } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -25,6 +27,10 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onBlur?: () => void;
+  topBarInnerContent?: ReactNode;
+  height?: string | number;
+  extraEditorButton?: ReactNode;
 };
 
 export function QueryEditor({
@@ -36,6 +42,10 @@ export function QueryEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
+  topBarInnerContent,
+  height = "100%",
+  extraEditorButton,
 }: QueryEditorProps) {
   const {
     question,
@@ -71,9 +81,11 @@ export function QueryEditor({
     onChangeUiState,
   });
 
+  const { ref, height: availableHeight } = useElementSize();
+
   if (isLoading || error != null) {
     return (
-      <Center h="100%">
+      <Center h={height}>
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
@@ -81,9 +93,10 @@ export function QueryEditor({
 
   return (
     <>
-      <Flex flex={1} h="100%" mih={0}>
+      <Flex flex={1} h={height} mih={0} ref={ref}>
         <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
           <QueryEditorBody
+            availableHeight={availableHeight}
             question={question}
             proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
@@ -97,6 +110,7 @@ export function QueryEditor({
             isShowingSnippetSidebar={uiState.sidebarType === "snippet"}
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
+            shouldShowLibrary={uiOptions?.shouldShowLibrary}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
@@ -108,6 +122,9 @@ export function QueryEditor({
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
+            onBlur={onBlur}
+            topBarInnerContent={topBarInnerContent}
+            extraButton={extraEditorButton}
           />
           <QueryEditorVisualization
             question={question}
@@ -150,6 +167,7 @@ export function QueryEditor({
             convertToNativeTitle={uiOptions?.convertToNativeTitle}
             convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
+            readOnly={uiOptions?.readOnly}
           />
         )}
       </Flex>

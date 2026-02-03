@@ -4,13 +4,13 @@ import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { Group, Member, Membership } from "metabase-types/api";
 
@@ -20,7 +20,10 @@ const isApiKeyGroupMember = (member: Member) =>
   member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
-  !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
+  !isDefaultGroup(group) &&
+  !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
+  !PLUGIN_TENANTS.isTenantGroup(group) &&
+  PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
   group: Group;
@@ -59,6 +62,7 @@ export function GroupMembersTable({
       >
         {showAddUser && (
           <AddMemberRow
+            group={group}
             members={members}
             onCancel={onAddUserCancel}
             onDone={onAddUserDone}
@@ -116,7 +120,9 @@ const UserMemberRow = ({
   const currentUser = useSelector(getCurrentUser);
   const isCurrentUser = member.user_id === currentUser.id;
   const canRemove =
-    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser);
+    !isDefaultGroup(group) &&
+    !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
+    !(isAdminGroup(group) && isCurrentUser);
 
   const handleTypeUpdate = (isManager: boolean) => {
     onMembershipUpdate({ ...member, is_group_manager: isManager });
@@ -138,7 +144,7 @@ const UserMemberRow = ({
       {canRemove ? (
         <Box component="td" ta="right">
           <UnstyledButton onClick={() => onMembershipRemove(member)}>
-            <Icon name="close" c="text-light" size={16} />
+            <Icon name="close" c="text-tertiary" size={16} />
           </UnstyledButton>
         </Box>
       ) : null}
@@ -152,13 +158,13 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
       <Text fw="bold">{member.first_name}</Text>
     </td>
     <td>
-      <Text fw="bold" c="text-medium">{t`API Key`}</Text>
+      <Text fw="bold" c="text-secondary">{t`API Key`}</Text>
     </td>
     <td>{/* api keys don't have real emails */}</td>
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
         <Tooltip label={t`API keys`} position="left">
-          <Icon name="link" c="text-light" size={16} />
+          <Icon name="link" c="text-tertiary" size={16} />
         </Tooltip>
       </Link>
     </Box>

@@ -1,10 +1,9 @@
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 import { lighten } from "metabase/lib/colors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 
 import {
   ActionsList,
@@ -49,56 +48,56 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   warning,
   isHighlighted,
 }) {
-  const [toggleState, setToggleState] = useState(false);
+  const [toggleState, setToggleState] = useState(null);
+  const [opened, setOpened] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
     ? options
     : options.filter((option) => option !== selectedOption);
-
-  const selectedOptionValue = (
-    <PermissionsSelectRoot
-      isDisabled={isDisabled}
-      aria-haspopup="listbox"
-      data-testid="permissions-select"
-    >
-      {isDisabled ? (
-        <DisabledPermissionOption
-          {...selectedOption}
-          isHighlighted={isHighlighted}
-          hint={disabledTooltip}
-          iconColor="text-light"
-        />
-      ) : (
-        <SelectedOption {...selectedOption} />
-      )}
-
-      {warning && (
-        <Tooltip label={warning}>
-          <WarningIcon />
-        </Tooltip>
-      )}
-
-      <Icon
-        style={{ visibility: isDisabled ? "hidden" : "visible" }}
-        name="chevrondown"
-        size={16}
-        color={lighten("text-light", 0.15)}
-      />
-    </PermissionsSelectRoot>
-  );
+  const onToggleChange = (checked) => {
+    setToggleState(checked);
+    onChange(selectedOption.value, checked);
+  };
 
   const actionsForCurrentValue = actions?.[selectedOption?.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
-    <PopoverWithTrigger
-      disabled={isDisabled}
-      triggerElement={selectedOptionValue}
-      onClose={() => setToggleState(false)}
-      targetOffsetX={16}
-      targetOffsetY={8}
-    >
-      {({ onClose }) => (
+    <Popover opened={opened} onChange={setOpened} disabled={isDisabled}>
+      <Popover.Target>
+        <PermissionsSelectRoot
+          isDisabled={isDisabled}
+          aria-haspopup="listbox"
+          data-testid="permissions-select"
+          aria-disabled={isDisabled}
+          onClick={isDisabled ? undefined : () => setOpened((o) => !o)}
+        >
+          {isDisabled ? (
+            <DisabledPermissionOption
+              {...selectedOption}
+              isHighlighted={isHighlighted}
+              hint={disabledTooltip}
+              iconColor="text-tertiary"
+            />
+          ) : (
+            <SelectedOption {...selectedOption} />
+          )}
+
+          {warning && (
+            <Tooltip label={warning}>
+              <WarningIcon />
+            </Tooltip>
+          )}
+
+          <Icon
+            style={{ visibility: isDisabled ? "hidden" : "visible" }}
+            name="chevrondown"
+            size={16}
+            color={lighten("text-tertiary", 0.15)}
+          />
+        </PermissionsSelectRoot>
+      </Popover.Target>
+      <Popover.Dropdown>
         <Fragment>
           <OptionsList role="listbox">
             {selectableOptions.map((option) => (
@@ -106,7 +105,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 role="option"
                 key={option.value}
                 onClick={() => {
-                  onClose();
+                  setOpened(false);
                   onChange(option.value, toggleLabel ? toggleState : null);
                 }}
               >
@@ -121,7 +120,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                   key={index}
                   role="option"
                   onClick={() => {
-                    onClose();
+                    setOpened(false);
                     onAction(action);
                   }}
                 >
@@ -134,12 +133,16 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle small value={toggleState} onChange={setToggleState} />
+              <Toggle
+                small
+                value={toggleState || false}
+                onChange={onToggleChange}
+              />
             </ToggleContainer>
           )}
         </Fragment>
-      )}
-    </PopoverWithTrigger>
+      </Popover.Dropdown>
+    </Popover>
   );
 });
 

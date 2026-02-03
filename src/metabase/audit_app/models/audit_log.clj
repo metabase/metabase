@@ -82,11 +82,11 @@
     :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
-                                             :user_group_memberships])
+                                             :user_group_memberships :tenant_id])
     :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
-                                             :user_group_memberships])
+                                             :user_group_memberships :tenant_id])
     :password-reset-initiated  (select-keys entity [:token])
     :password-reset-successful (select-keys entity [:token])
     {}))

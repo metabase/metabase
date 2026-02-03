@@ -5,7 +5,6 @@ export const createMockAdminState = (
 ): AdminState => ({
   app: createMockAdminAppState(),
   permissions: createMockPermissionsState(),
-  settings: { settings: [] },
   databases: {
     deletionError: null,
     deletes: [],
@@ -28,6 +27,8 @@ export const createMockPermissionsState = (
     originalDataPermissions: {},
     collectionPermissions: {},
     originalCollectionPermissions: {},
+    tenantCollectionPermissions: {},
+    originalTenantCollectionPermissions: {},
     isHelpReferenceOpen: false,
     hasRevisionChanged: {
       revision: null,

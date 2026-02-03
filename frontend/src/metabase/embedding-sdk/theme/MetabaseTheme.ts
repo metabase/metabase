@@ -6,10 +6,17 @@ import type { DeepPartial } from "../types/utils";
 
 import type { MetabaseFontFamily } from "./fonts";
 
+export type MetabaseThemePreset = "light" | "dark";
+
 /**
  * Theme configuration for embedded Metabase components.
  */
 export interface MetabaseTheme {
+  /**
+   * Predefined theme preset to use as a base.
+   */
+  preset?: MetabaseThemePreset;
+
   /**
    * Base font size.
    * Supported units are px, em and rem.
@@ -20,7 +27,6 @@ export interface MetabaseTheme {
   /**
    * Font family that will be used for all text, it defaults to the instance's default font.
    **/
-  // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any string but keep autocomplete for the built-in ones
   fontFamily?: MetabaseFontFamily | (string & {});
 
   /** Base line height */

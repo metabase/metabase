@@ -3,10 +3,9 @@ import type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colorConfig, colors } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors";
+import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
-
-import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -17,23 +16,6 @@ import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
  */
 export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
-export type SemanticColorKey =
-  | "text-primary"
-  | "text-secondary"
-  | "text-tertiary"
-  | "text-selected"
-  | "text-brand"
-  | "text-white"
-  | "background"
-  | "background-hover"
-  | "background-selected"
-  | "background-disabled"
-  | "background-inverse"
-  | "background-light"
-  | "background-brand"
-  | "brand-light"
-  | "brand-lighter";
-
 /**
  * Mapping of SDK colors to main app colors.
  *
@@ -42,28 +24,28 @@ export type SemanticColorKey =
  */
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
-  (ColorName | SemanticColorKey)[]
+  ColorName[]
 > = {
   brand: ["brand"],
-  "brand-hover": ["brand-light"],
-  "brand-hover-light": ["brand-lighter"],
+  "brand-hover": ["background-hover"],
+  "brand-hover-light": ["background-hover"],
   border: ["border"],
   filter: ["filter"],
   summarize: ["summarize"],
-  "text-primary": ["text-dark", "text-primary"],
-  "text-secondary": ["text-medium", "text-secondary"],
-  "text-tertiary": ["text-light", "text-tertiary"],
-  background: ["bg-white", "bg-primary", "background"],
-  "background-hover": ["bg-light", "background-hover"],
-  "background-secondary": ["bg-medium", "bg-secondary"],
+  "text-primary": ["text-primary"],
+  "text-secondary": ["text-secondary"],
+  "text-tertiary": ["text-tertiary"],
+  background: ["background-primary"],
+  "background-secondary": ["background-secondary", "background-tertiary"],
+  "background-hover": [],
   "background-disabled": ["background-disabled"],
-  "background-light": ["background-light"],
+  "background-light": ["background-secondary"],
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
-  "text-white": ["text-white", "white"],
+  "text-white": ["text-primary-inverse", "white"],
   error: ["error"],
-  "background-error": ["bg-error"],
+  "background-error": ["background-error"],
   "text-hover": ["text-hover"],
   focus: ["focus"],
 };
@@ -82,9 +64,7 @@ export const SDK_MISSING_COLORS_FALLBACK: Partial<
  * These colors must never be changed.
  * For example, the blue Metabase brand color.
  **/
-export const SDK_UNCHANGEABLE_COLORS: (ColorName | SemanticColorKey)[] = [
-  "metabase-brand",
-];
+export const SDK_UNCHANGEABLE_COLORS: ColorName[] = ["metabase-brand"];
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof NonNullable<MetabaseComponentTheme["tooltip"]>,
@@ -121,7 +101,7 @@ export function getEmbeddingColorPalette(
   );
 
   const chartColors =
-    sdkColors.charts && getEmbeddingChartColors(sdkColors.charts);
+    sdkColors.charts && mapChartColorsToAccents(sdkColors.charts);
 
   return {
     ...originalColors,
@@ -145,12 +125,6 @@ export function setGlobalEmbeddingColors(
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
-  });
-
-  // Also set overrides on the color config, this way when we
-  // set up the mantine theme colors, we will grab apropriate app palette colors as well 🥺
-  Object.entries(combinedThemeColors).forEach(([key, value]) => {
-    colorConfig[key as ColorName] = { light: value, dark: value };
   });
 
   /**

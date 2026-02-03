@@ -36,20 +36,23 @@
   "Convert a JS object of *any* class to a ClojureScript object."
   ([xform obj]
    (obj->clj xform obj {}))
-  ([xform obj {:keys [use-plain-object?] :or {use-plain-object? true}}]
+  ([xform obj {:keys [use-plain-object? skip-keys]
+               :or   {use-plain-object? true
+                      skip-keys         #{}}}]
    (if (map? obj)
      ;; already a ClojureScript object.
-     (into {} xform obj)
+     (into {} xform (m/remove-keys skip-keys obj))
      ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
      (if-let [plain-object (when use-plain-object?
                              (some-> (object-get obj "_plainObject")
                                      js->clj
                                      not-empty))]
-       (into {} xform plain-object)
+       (into {} xform (m/remove-keys skip-keys plain-object))
        ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
        ;; arbitrary classes other than `Object`)
        (into {}
              (comp
+              (remove (set skip-keys))
               (map (fn [k]
                      [k (object-get obj k)]))
               ;; ignore values that are functions
@@ -299,13 +302,18 @@
       ;; land, and avoid the issue.
       :field-ref                        (to-array v)
       :lib/source                       (case v
+                                          ;; These are the legacy values from the "source" key
                                           "aggregation" :source/aggregations
                                           ;; TODO (Cam 7/1/25) -- if we wanted to be smarter we could use `source =
                                           ;; breakout` to populate `:lib/breakout?` but I don't really think that's
                                           ;; super necessary.
                                           "breakout"    nil
                                           "fields"      nil
-                                          (keyword "source" v))
+                                          ;; For other values: if already prefixed with "source/" (from the modern
+                                          ;; "lib/source" key), just keywordize it directly. Otherwise add the prefix.
+                                          (if (str/starts-with? v "source/")
+                                            (keyword v)
+                                            (keyword "source" v)))
       :metabase.lib.field/temporal-unit (keyword v)
       :inherited-temporal-unit          (keyword v)
       :semantic-type                    (keyword v)
@@ -319,9 +327,18 @@
 
 (defmethod parse-object-fn* :field
   [object-type opts]
-  (let [f ((get-method parse-object-fn* :default) object-type opts)]
+  (let [default-impl (get-method parse-object-fn* :default)]
     (fn [unparsed]
-      (let [{{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
+      (let [;; If the JS object has both "source" and "lib/source" keys, the default parsing would
+            ;; rename "source" -> :lib/source and process both, with last-one-wins semantics.
+            ;; Since the key ordering in the JS object is non-deterministic, this causes flaky behavior.
+            ;; When "lib/source" exists, we skip the legacy "source" key entirely.
+            ;; See issue #66721 for details. Will be resolved by QUE-1404.
+            opts (if (object-get unparsed "lib/source")
+                   (update opts :skip-keys (fnil conj #{}) "source")
+                   opts)
+            f (default-impl object-type opts)
+            {{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
         (-> (case dimension-type
               :metadata.column.remapping/external
               (assoc parsed :lib/external-remap dimension)
@@ -395,7 +412,7 @@
   (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
         parse-card (parse-object-fn :card)]
     ;; The question objects might not contain the fields so we merge them
-    ;; in from the table matadata.
+    ;; in from the table metadata.
     (merge
      (-> metadata
          (object-get "tables")
@@ -456,6 +473,23 @@
   [_object-type]
   "segments")
 
+(defmethod lib-type :measure
+  [_object-type]
+  :metadata/measure)
+
+(defmethod excluded-keys :measure
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :measure
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :measure
+  [_object-type]
+  "measures")
+
 (defmethod lib-type :snippet
   [_object-type]
   :metadata/native-query-snippet)
@@ -500,6 +534,7 @@
     :metadata/table                :tables
     :metadata/column               :fields
     :metadata/card                 :cards
+    :metadata/measure              :measures
     :metadata/metric               :metrics
     :metadata/segment              :segments
     :metadata/native-query-snippet :snippets))
@@ -511,6 +546,7 @@
      :fields    (parse-objects-delay :field    metadata)
      :snippets  (parse-objects-delay :snippet  metadata)
      :cards     delayed-cards
+     :measures  (parse-objects-delay :measure  metadata)
      :metrics   (delay (metric-cards delayed-cards))
      :segments  (parse-objects-delay :segment  metadata)}))
 

@@ -188,7 +188,7 @@
   (lib.util.match/replace expr
     [:does-not-contain opts whole & parts]
     (-> (lib.filter/not (-> (apply lib.filter/contains whole parts)
-                            ;; need to preserve stuff like `:case-sensitve`. Prefer values in each clause over `opts`
+                            ;; need to preserve stuff like `:case-sensitive`. Prefer values in each clause over `opts`
                             ;; so we don't get duplicate UUIDs
                             (lib.options/update-options #(merge opts %))))
         (merge-options opts))))
@@ -243,7 +243,7 @@
                                      (some (fn [arg]
                                              (lib.util.match/match-one arg [:relative-datetime _opts :current]))
                                            args)))]
-    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+    (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field {:temporal-unit temporal-unit} _]
                               temporal-unit)
                             :default)]

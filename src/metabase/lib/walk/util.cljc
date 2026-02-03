@@ -73,10 +73,41 @@
      (fn [_query _path-type _stage-or-join-path clause]
        (lib.util.match/match-lite clause
          [:metric _opts (id :guard pos-int?)]
-         (do
-           (vswap! metric-ids conj! id)
-           nil))))
+         (vswap! metric-ids conj! id)
+
+         _ nil)
+       nil))
     (not-empty (persistent! @metric-ids))))
+
+(mu/defn all-segment-ids :- [:maybe [:set {:min 1} ::lib.schema.id/segment]]
+  "Return a set of all segment IDs anywhere in the query."
+  [query]
+  (let [segment-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:segment _opts (id :guard pos-int?)]
+         (vswap! segment-ids conj! id)
+
+         _ nil)
+       nil))
+    (not-empty (persistent! @segment-ids))))
+
+(mu/defn all-measure-ids :- [:maybe [:set {:min 1} ::lib.schema.id/measure]]
+  "Return a set of all measure IDs anywhere in the query."
+  [query]
+  (let [measure-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:measure _opts (id :guard pos-int?)]
+         (vswap! measure-ids conj! id)
+
+         _ nil)
+       nil))
+    (not-empty (persistent! @measure-ids))))
 
 (defn- all-template-tag-card-ids [query]
   (not-empty
@@ -136,7 +167,9 @@
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause
                         [:field _opts (id :guard pos-int?)]
-                        (vswap! field-ids conj! id))
+                        (vswap! field-ids conj! id)
+
+                        _ nil)
                       nil)]
     (if (map? query-or-clause)
       (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _stage-or-join-path clause]
@@ -152,7 +185,9 @@
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause
                         [:field (opts :guard implicit-join-field-opt?) id]
-                        (vswap! joined-field-ids conj! id))
+                        (vswap! joined-field-ids conj! id)
+
+                        _ nil)
                       nil)]
     (if (map? query-or-clause)
       (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _path clause]

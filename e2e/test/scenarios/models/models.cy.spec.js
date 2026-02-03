@@ -272,9 +272,9 @@ describe("scenarios > models", () => {
     H.echartsContainer();
 
     turnIntoModel();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This is a model now.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
 
     H.echartsContainer();
@@ -294,12 +294,12 @@ describe("scenarios > models", () => {
 
     cy.wait("@cardUpdate");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This is a question now.");
     H.openQuestionActions();
     assertIsQuestion();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
     H.openQuestionActions();
@@ -322,8 +322,6 @@ describe("scenarios > models", () => {
     });
 
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
-
       cy.findByText(/Select a collection$/).should("exist"); // title should not have trailing "or dashboard"
       cy.findByText("Orders in a dashboard").should("not.exist"); // this dashboard would be present if dashboards were an allowed save target
       cy.findByText("First collection").should("exist").click();
@@ -340,7 +338,7 @@ describe("scenarios > models", () => {
 
   it("shows 404 when opening a question with a /dataset URL", () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/We're a little lost/i);
   });
 
@@ -375,21 +373,19 @@ describe("scenarios > models", () => {
         cy.findByText("Products").should("exist");
 
         H.entityPickerModalItem(0, "Databases").click();
+        H.entityPickerModalItem(1, "Sample Database").click();
 
-        H.entityPickerModalItem(1, "Orders").should("exist");
-        H.entityPickerModalItem(1, "People").should("exist");
-        H.entityPickerModalItem(1, "Products").should("exist");
-        H.entityPickerModalItem(1, "Reviews").should("exist");
+        H.entityPickerModalItem(2, "Orders").should("exist");
+        H.entityPickerModalItem(2, "People").should("exist");
+        H.entityPickerModalItem(2, "Products").should("exist");
+        H.entityPickerModalItem(2, "Reviews").should("exist");
 
         cy.findByText("Orders, Count").should("not.exist");
 
-        cy.findByPlaceholderText("Search this database or everywhere…").type(
-          "Ord",
-        );
+        cy.findByPlaceholderText("Search…").type("Ord");
         cy.wait("@search");
 
         getResults().should("have.length", 1);
-        cy.findByText("1 result").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "table")
@@ -397,7 +393,6 @@ describe("scenarios > models", () => {
 
         cy.findByText("Everywhere").click();
         getResults().should("have.length", 5);
-        cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
@@ -433,15 +428,16 @@ describe("scenarios > models", () => {
 
       cy.icon("join_left_outer").click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModalTab("Data").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(0, "Databases").click();
-        H.entityPickerModalItem(1, "Orders").should("exist");
-        H.entityPickerModalItem(1, "People").should("exist");
-        H.entityPickerModalItem(1, "Products").should("exist");
-        H.entityPickerModalItem(1, "Reviews").should("exist");
+        H.entityPickerModalItem(1, "Sample Database").click();
 
-        H.entityPickerModalItem(1, "Products").click();
+        H.entityPickerModalItem(2, "Orders").should("exist");
+        H.entityPickerModalItem(2, "People").should("exist");
+        H.entityPickerModalItem(2, "Products").should("exist");
+        H.entityPickerModalItem(2, "Reviews").should("exist");
+
+        H.entityPickerModalItem(2, "Products").click();
       });
 
       H.getNotebookStep("filter")
@@ -457,17 +453,17 @@ describe("scenarios > models", () => {
         cy.button("Add filter").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a function or metric").click();
       selectFromDropdown("Count of rows");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       selectFromDropdown("Created At");
 
       H.visualize();
       H.echartsContainer();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -487,6 +483,7 @@ describe("scenarios > models", () => {
       H.startNewQuestion();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(1, "Sample Database").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");
         cy.findByText("Products").should("exist");
@@ -584,7 +581,7 @@ describe("scenarios > models", () => {
       cy.wait("@updateCard");
 
       cy.findByDisplayValue("M1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("foo");
     });
   });
@@ -624,12 +621,12 @@ describe("scenarios > models", () => {
     H.closeQuestionActions();
 
     // Check card tags are supported by models
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     H.NativeEditor.focus().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click({ force: true });
 
     cy.findByTestId("save-question-modal").within((modal) => {
@@ -689,9 +686,9 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
 
     H.visitCollection("root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Useful data").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A model").should("not.exist");
   });
 

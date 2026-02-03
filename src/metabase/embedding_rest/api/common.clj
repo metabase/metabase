@@ -27,6 +27,17 @@
 
 (set! *warn-on-reflection* true)
 
+(def EncodedToken
+  "Malli schema for a JWT token"
+  [:string {:api/regex #"[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+=]*"}])
+
+(def SearchParams
+  "Malli schema for route params of search paths"
+  [:map
+   [:token EncodedToken]
+   [:param-key ms/NonBlankString]
+   [:prefix ms/NonBlankString]])
+
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
   ;; the benefit of tests
@@ -292,12 +303,23 @@
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         card-id      (eid-translation/->id :model/Card pre-card-id)
-        token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+        token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        resolved-embedding-params (or embedding-params
+                                      (t2/select-one-fn :embedding_params :model/Card :id card-id))]
     (-> (apply api.public/public-card :id card-id, constraints)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params (or embedding-params
-                                               (t2/select-one-fn :embedding_params :model/Card :id card-id))))))
+        (remove-locked-and-disabled-params resolved-embedding-params)
+        (assoc :embedding_params resolved-embedding-params))))
+
+(defn- get-embed-card-context
+  "If a certain export-format is given, return the correct embedded card context."
+  [export-format]
+  (case (keyword export-format)
+    :csv  :embedded-csv-download
+    :xlsx :embedded-xlsx-download
+    :json :embedded-json-download
+    :embedded-question))
 
 (defn process-query-for-card-with-params
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
@@ -310,7 +332,7 @@
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/process-query-for-card-with-id
               card-id export-format parameters
-              :context     :embedded-question
+              :context     (get-embed-card-context export-format)
               :constraints constraints
               :qp          qp
               options)))
@@ -430,7 +452,7 @@
       (catch Throwable e
         (let [e (ex-info (.getMessage e)
                          {:card-id (u/the-id card)
-                          :card-params (:parametres card)
+                          :card-params (:parameters card)
                           :allowed-param-slugs embedding-params
                           :slug->id            slug->id
                           :id->slug            id->slug
@@ -475,7 +497,7 @@
       (catch Throwable e
         (let [e (ex-info (.getMessage e)
                          {:card-id (u/the-id card)
-                          :card-params (:parametres card)
+                          :card-params (:parameters card)
                           :allowed-param-slugs embedding-params
                           :slug->id            slug->id
                           :id->slug            id->slug

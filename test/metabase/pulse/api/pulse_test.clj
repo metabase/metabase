@@ -18,7 +18,7 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -33,7 +33,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id :is_data_analyst]))
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :collection_id :name :description :display])
@@ -54,7 +54,7 @@
    (select-keys
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
-     :skip_if_empty :dashboard_id :parameters])
+     :skip_if_empty :dashboard_id :parameters :disable_links])
    {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -164,7 +164,8 @@
    :archived            false
    :dashboard_id        nil
    :entity_id           true
-   :parameters          []})
+   :parameters          []
+   :disable_links       false})
 
 (def ^:private daily-email-channel
   {:enabled       true

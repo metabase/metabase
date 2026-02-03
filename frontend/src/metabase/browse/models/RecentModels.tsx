@@ -31,7 +31,7 @@ export function RecentModels({
         id={skeleton ? undefined : headingId}
         fw="bold"
         fz={16}
-        color="text-dark"
+        color="text-primary"
         mb="lg"
         style={{ visibility: skeleton ? "hidden" : undefined }}
       >{t`Recents`}</Text>

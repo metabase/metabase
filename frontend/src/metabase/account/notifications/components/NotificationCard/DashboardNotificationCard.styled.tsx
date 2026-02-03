@@ -9,7 +9,7 @@ export const NotificationCardRoot = styled.div`
   padding: 1rem 1.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 
   &:not(:last-child) {
     margin-bottom: 1.25rem;
@@ -27,7 +27,7 @@ export const NotificationDescription = styled.div`
 `;
 
 export const NotificationMessage = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
   line-height: 0.875rem;
 
@@ -38,12 +38,12 @@ export const NotificationMessage = styled.span`
 `;
 
 export const NotificationIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   cursor: pointer;
   width: 1rem;
   height: 1rem;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;

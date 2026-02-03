@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
@@ -40,6 +40,7 @@ export const getTableUrl = (table, metadata) => {
   return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
     query: (state, props) => ({

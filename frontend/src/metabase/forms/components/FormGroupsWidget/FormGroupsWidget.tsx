@@ -4,13 +4,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
-import FormField from "metabase/common/components/FormField";
-import { useGroupListQuery } from "metabase/common/hooks";
+import { useListPermissionsGroupsQuery } from "metabase/api";
+import { FormField } from "metabase/common/components/FormField";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupId, Member } from "metabase-types/api";
 
 interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
+  external?: boolean;
 }
 
 export const FormGroupsWidget = ({
@@ -18,18 +20,24 @@ export const FormGroupsWidget = ({
   className,
   style,
   title = t`Groups`,
+  external,
 }: FormGroupsWidgetProps) => {
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
 
-  const { data: groups, isLoading } = useGroupListQuery();
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
+    tenancy: external ? "external" : "internal",
+  });
 
   if (isLoading || !groups) {
     return null;
   }
 
   const adminGroup = _.find(groups, isAdminGroup);
-  const defaultGroup = _.find(groups, isDefaultGroup);
+  const defaultGroup = _.find(
+    groups,
+    external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
+  );
 
   const value = formValue ?? [
     { id: defaultGroup?.id, is_group_manager: false },

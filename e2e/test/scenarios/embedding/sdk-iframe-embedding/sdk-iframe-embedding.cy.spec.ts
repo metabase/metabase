@@ -208,29 +208,26 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
           },
         },
       ],
-      onVisitPage: () => {
-        cy.window().then((win) => {
-          const element = win.document!.querySelector("metabase-question")!;
-          element.addEventListener("ready", () => {
-            win.document!.body.setAttribute(
-              "data-consumer-event-triggered",
-              "true",
-            );
-          });
+      onVisitPage: (win) => {
+        const element = win.document.querySelector("metabase-question")!;
+        element.addEventListener("ready", () => {
+          win.document.body.setAttribute(
+            "data-consumer-event-triggered",
+            "true",
+          );
         });
+
+        // assert that the attribute is not set at the start
+        const attrValue = win.document.body.getAttribute(
+          "data-consumer-event-triggered",
+        );
+        expect(attrValue).to.not.equal("true");
       },
     });
 
-    cy.log("ready event should not be fired before the page loads");
-    cy.get("body").should(
-      "not.have.attr",
-      "data-consumer-event-triggered",
-      "true",
-    );
-
     cy.wait("@getCardQuery");
 
-    cy.log("ready event should be fired after the page loads");
+    cy.log("ready event should be fired after the iframe is loaded");
     cy.get("iframe").should("be.visible");
     cy.get("body").should("have.attr", "data-consumer-event-triggered", "true");
 
@@ -310,7 +307,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 });
 
-describe("scenarios > embedding > embedded analytics JS", () => {
+describe("scenarios > embedding > Modular embedding", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.prepareSdkIframeEmbedTest({
@@ -320,7 +317,7 @@ describe("scenarios > embedding > embedded analytics JS", () => {
     H.enableTracking();
   });
 
-  it("should send an Embedded Analytics JS usage event", () => {
+  it("should send an modular embedding usage event", () => {
     cy.signOut();
     cy.visit("http://localhost:4000");
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -330,6 +327,7 @@ describe("scenarios > embedding > embedded analytics JS", () => {
           component: "metabase-dashboard",
           attributes: {
             dashboardId: ORDERS_DASHBOARD_ID,
+            "with-subscriptions": true,
           },
         },
         {
@@ -376,6 +374,10 @@ describe("scenarios > embedding > embedded analytics JS", () => {
           false: 0,
           true: 1,
         },
+        with_subscriptions: {
+          false: 0,
+          true: 1,
+        },
       },
       question: {
         drills: {
@@ -391,6 +393,10 @@ describe("scenarios > embedding > embedded analytics JS", () => {
           true: 1,
         },
         is_save_enabled: {
+          false: 1,
+          true: 0,
+        },
+        with_alerts: {
           false: 1,
           true: 0,
         },
@@ -410,10 +416,11 @@ describe("scenarios > embedding > embedded analytics JS", () => {
     });
   });
 
-  it("should not send an Embedded Analytics JS usage event in the preview", () => {
+  it("should not send an modular embedding usage event in the preview", () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
 
     H.waitForSimpleEmbedIframesToLoad();
     H.getSimpleEmbedIframeContent().within(() => {

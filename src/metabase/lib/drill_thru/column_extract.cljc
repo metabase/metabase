@@ -12,7 +12,7 @@
   Extra constraints:
 
   - MBQL stages only
-  - Database must support `:regex` feature for the URL and Email extractions to work."
+  - Database must support `:regex/lookaheads-and-lookbehinds` feature for the URL and Email extractions to work."
   (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [medley.core :as m]

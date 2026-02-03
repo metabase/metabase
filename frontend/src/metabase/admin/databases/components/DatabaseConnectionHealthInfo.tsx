@@ -30,7 +30,7 @@ export const DatabaseConnectionHealthInfo = ({
         () =>
           ({
             message: t`Loading...`,
-            color: "var(--mb-color-tooltip-text)",
+            color: "tooltip-text",
           }) as const,
       )
       .with(
@@ -42,7 +42,7 @@ export const DatabaseConnectionHealthInfo = ({
         () =>
           ({
             message: t`Failed to retrieve database health status.`,
-            color: "var(--mb-color-tooltip-text)",
+            color: "tooltip-text",
           }) as const,
       )
       .exhaustive();

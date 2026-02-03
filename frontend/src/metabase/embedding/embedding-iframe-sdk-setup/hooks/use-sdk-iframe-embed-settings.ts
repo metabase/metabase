@@ -2,46 +2,65 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import { useUserSetting } from "metabase/common/hooks";
-import {
-  EMBED_FALLBACK_DASHBOARD_ID,
-  USER_SETTINGS_DEBOUNCE_MS,
-} from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
+import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
-import { trackEmbedWizardOpened } from "../analytics";
+import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
 import {
   getDefaultSdkIframeEmbedSettings,
   getExperienceFromSettings,
   getResourceIdFromSettings,
 } from "../utils/get-default-sdk-iframe-embed-setting";
 
-const getSettingsToPersist = (
-  settings: Partial<SdkIframeEmbedSetupSettings>,
-) => {
-  return _.pick(settings, ["theme", "useExistingUserSession"]);
+const getSettingsToPersist = ({
+  isSimpleEmbedFeatureAvailable,
+  settings,
+}: {
+  isSimpleEmbedFeatureAvailable: boolean;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+}): Partial<Pick<SdkIframeEmbedSetupSettings, "theme">> => {
+  const keys = [];
+
+  // We don't allow theme change when `simple embedding` feature is not available.
+  if (isSimpleEmbedFeatureAvailable) {
+    keys.push("theme");
+  }
+
+  return _.pick(settings, keys);
 };
 
-const usePersistedSettings = () => {
+const usePersistedSettings = ({
+  isSimpleEmbedFeatureAvailable,
+}: {
+  isSimpleEmbedFeatureAvailable: boolean;
+}) => {
   const [rawPersisted, rawPersistSettings] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
     { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
   );
 
   const persistedSettings = useMemo(
-    () => getSettingsToPersist(rawPersisted || {}),
-    [rawPersisted],
+    () =>
+      getSettingsToPersist({
+        isSimpleEmbedFeatureAvailable,
+        settings: rawPersisted || {},
+      }),
+    [isSimpleEmbedFeatureAvailable, rawPersisted],
   );
 
   const persistSettings = useCallback(
     (settings: Partial<SdkIframeEmbedSetupSettings>) => {
-      rawPersistSettings(getSettingsToPersist(settings));
+      rawPersistSettings(
+        getSettingsToPersist({ isSimpleEmbedFeatureAvailable, settings }),
+      );
     },
-    [rawPersistSettings],
+    [isSimpleEmbedFeatureAvailable, rawPersistSettings],
   );
 
   return [persistedSettings, persistSettings] as const;
@@ -52,14 +71,24 @@ export const useSdkIframeEmbedSettings = ({
   recentDashboards,
   isRecentsLoading,
   modelCount,
+  isSimpleEmbedFeatureAvailable,
+  isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   isRecentsLoading: boolean;
   modelCount: number;
+  isSimpleEmbedFeatureAvailable: boolean;
+  isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
 }) => {
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
-  const [persistedSettings, persistSettings] = usePersistedSettings();
+  const [persistedSettings, persistSettings] = usePersistedSettings({
+    isSimpleEmbedFeatureAvailable,
+  });
+
+  const exampleDashboardId = useSetting("example-dashboard-id");
 
   const defaultSettings = useMemo(() => {
     return match(initialState)
@@ -69,6 +98,11 @@ export const useSdkIframeEmbedSettings = ({
           getDefaultSdkIframeEmbedSettings({
             experience: "dashboard",
             resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
+            isGuestEmbedsEnabled,
+            isSsoEnabledAndConfigured,
+            isGuest: !!initialState.isGuest,
+            useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
       .with(
@@ -77,15 +111,37 @@ export const useSdkIframeEmbedSettings = ({
           getDefaultSdkIframeEmbedSettings({
             experience: "chart",
             resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
+            isGuestEmbedsEnabled,
+            isSsoEnabledAndConfigured,
+            isGuest: !!initialState.isGuest,
+            useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
-      .otherwise(() =>
+      .otherwise((initialState) =>
         getDefaultSdkIframeEmbedSettings({
           experience: "dashboard",
-          resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+          resourceId: determineDashboardId({
+            isRecentsLoading,
+            recentDashboards,
+            exampleDashboardId,
+          }),
+          isSimpleEmbedFeatureAvailable,
+          isGuestEmbedsEnabled,
+          isSsoEnabledAndConfigured,
+          isGuest: !!initialState?.isGuest,
+          useExistingUserSession: !!initialState?.useExistingUserSession,
         }),
       );
-  }, [recentDashboards, initialState]);
+  }, [
+    initialState,
+    isSimpleEmbedFeatureAvailable,
+    isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
+    exampleDashboardId,
+    recentDashboards,
+    isRecentsLoading,
+  ]);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
@@ -118,11 +174,24 @@ export const useSdkIframeEmbedSettings = ({
           ...nextSettings,
         } as SdkIframeEmbedSetupSettings;
 
-        persistSettings(mergedSettings);
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          defaultSettings: defaultSettings,
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+          isGuestEmbedsEnabled,
+          isSsoEnabledAndConfigured,
+        });
 
-        return mergedSettings;
+        persistSettings(adjustedSettings);
+
+        return adjustedSettings;
       }),
-    [defaultSettings, persistSettings],
+    [
+      defaultSettings,
+      isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
+      persistSettings,
+    ],
   );
 
   const replaceSettings = useCallback(
@@ -137,20 +206,24 @@ export const useSdkIframeEmbedSettings = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({
-        ...settings,
-        ...persistedSettings,
+      setRawSettings((prevSettings) => {
+        const mergedSettings = {
+          ...settings,
+          ...persistedSettings,
+        };
 
-        // Override the persisted settings if `useExistingUserSession` is specified.
-        // This is used for Embedding Hub.
-        ...(initialState?.useExistingUserSession !== undefined && {
-          useExistingUserSession: initialState.useExistingUserSession,
-        }),
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          defaultSettings,
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+          isGuestEmbedsEnabled,
+          isSsoEnabledAndConfigured,
+        });
+
+        return adjustedSettings;
       });
 
       setEmbedSettingsLoaded(true);
-
-      trackEmbedWizardOpened();
     }
   }, [
     persistedSettings,
@@ -158,6 +231,9 @@ export const useSdkIframeEmbedSettings = ({
     settings,
     isRecentsLoading,
     initialState,
+    defaultSettings,
+    isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
   ]);
 
   return {

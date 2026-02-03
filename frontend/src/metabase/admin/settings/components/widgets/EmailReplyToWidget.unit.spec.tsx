@@ -74,7 +74,7 @@ describe("EmailReplyToWidget", () => {
     const input = await screen.findByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, "responses@metatest.com");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
 
     const inputChanged = await screen.findByRole("textbox");
     expect(inputChanged).toHaveValue("responses@metatest.com");

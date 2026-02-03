@@ -1,7 +1,10 @@
 import { createContext, useContext } from "react";
 
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { EmbeddingParametersValues } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingParametersValues,
+} from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
@@ -13,9 +16,27 @@ import type {
 } from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
+  // User features
+  isSimpleEmbedFeatureAvailable: boolean;
+
+  // User settings
+  isSimpleEmbeddingEnabled: boolean;
+  isSimpleEmbeddingTermsAccepted: boolean;
+
+  isGuestEmbedsEnabled: boolean;
+  isGuestEmbedsTermsAccepted: boolean;
+
+  isSsoEnabledAndConfigured: boolean;
+
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
+  handleNext: () => void;
+  handleBack: () => void;
+  canGoBack: boolean;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  allowPreviewAndNavigation: boolean;
 
   // Initial state
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
@@ -27,6 +48,7 @@ export interface SdkIframeEmbedSetupContextType {
   isError: boolean;
   isLoading: boolean;
   isFetching: boolean;
+  isRecentsLoading: boolean;
 
   // Embed settings
   settings: SdkIframeEmbedSetupSettings;
@@ -48,9 +70,22 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
+  initialEmbeddingParameters: EmbeddingParameters | null;
   parametersValuesById: EmbeddingParametersValues;
+  previewParameterValuesBySlug: EmbeddingParametersValues;
+  embeddingParameters: EmbeddingParameters;
+  onEmbeddingParametersChange: (
+    embeddingParameters: EmbeddingParameters,
+  ) => void;
 
   isEmbedSettingsLoaded: boolean;
+
+  // guest embed
+  guestEmbedSignedTokenForSnippet: string | null;
+  guestEmbedSignedTokenForPreview: string | null;
+
+  // modal handlers
+  onClose: () => void;
 }
 
 export const SdkIframeEmbedSetupContext =

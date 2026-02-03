@@ -1,19 +1,21 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
+import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
+import { useInitialParameterValues } from "../../hooks/use-initial-parameter-values";
+import { useParameterVisibility } from "../../hooks/use-parameter-visibility";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
-import { useHideParameter } from "./hooks/use-hide-parameter";
 
 export const ParameterSettings = () => {
   const {
@@ -22,39 +24,27 @@ export const ParameterSettings = () => {
     updateSettings,
     availableParameters,
     parametersValuesById,
+    embeddingParameters,
     isLoading,
+    onEmbeddingParametersChange,
   } = useSdkIframeEmbedSetupContext();
 
-  const { isParameterHidden, toggleParameterVisibility } = useHideParameter({
+  const { isHiddenParameter, toggleParameterVisibility } =
+    useParameterVisibility({
+      settings,
+      updateSettings,
+    });
+
+  const { updateInitialParameterValue, removeInitialParameterValue } =
+    useInitialParameterValues({
+      settings,
+      updateSettings,
+    });
+
+  const isGuestEmbed = !!settings.isGuest;
+  const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
+    experience,
     settings,
-    updateSettings,
-  });
-
-  const isQuestionOrDashboardEmbed =
-    !!settings.questionId || !!settings.dashboardId;
-
-  const updateInitialParameterValue = useDebouncedCallback(
-    useCallback(
-      (slug: string, value: ParameterValueOrArray | null | undefined) => {
-        if (settings.dashboardId) {
-          updateSettings({
-            initialParameters: {
-              ...settings.initialParameters,
-              [slug]: value,
-            },
-          });
-        } else if (settings.questionId) {
-          updateSettings({
-            initialSqlParameters: {
-              ...settings.initialSqlParameters,
-              [slug]: value,
-            },
-          });
-        }
-      },
-      [settings, updateSettings],
-    ),
-    SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
 
   const uiParameters = useMemo(
@@ -74,9 +64,37 @@ export const ParameterSettings = () => {
 
   if (isLoading) {
     return (
-      <Text size="sm" c="text-medium">
+      <Text size="sm" c="text-secondary">
         {t`Loading parameters...`}
       </Text>
+    );
+  }
+
+  if (isGuestEmbed) {
+    const lockedParameters = getLockedPreviewParameters(
+      availableParameters,
+      embeddingParameters,
+    );
+    const resourceType = getResourceTypeFromExperience(experience);
+
+    if (!resourceType) {
+      return null;
+    }
+
+    return (
+      <ParametersSettings
+        resourceType={resourceType}
+        resourceParameters={availableParameters}
+        embeddingParams={embeddingParameters}
+        lockedParameters={lockedParameters}
+        parameterValues={parametersValuesById}
+        withInitialValues
+        onChangeEmbeddingParameters={onEmbeddingParametersChange}
+        onChangeParameterValue={({ slug, value }) =>
+          updateInitialParameterValue(slug, value)
+        }
+        onRemoveParameterValue={({ slug }) => removeInitialParameterValue(slug)}
+      />
     );
   }
 
@@ -100,7 +118,7 @@ export const ParameterSettings = () => {
             <ParameterVisibilityToggle
               parameterName={parameter.slug}
               experience={experience}
-              isHidden={isParameterHidden(parameter.slug)}
+              isHidden={isHiddenParameter(parameter.slug)}
               onToggle={toggleParameterVisibility}
             />
           </Group>
@@ -110,7 +128,7 @@ export const ParameterSettings = () => {
   }
 
   return (
-    <Text size="sm" c="text-light">
+    <Text size="sm" c="text-tertiary">
       {t`Parameters are not available for this ${experience}.`}
     </Text>
   );

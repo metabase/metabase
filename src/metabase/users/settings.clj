@@ -47,13 +47,6 @@
   :default    false
   :audit      :never)
 
-(defsetting notebook-native-preview-shown
-  (deferred-tru "User preference for the state of the native query preview in the notebook.")
-  :user-local :only
-  :visibility :authenticated
-  :type       :boolean
-  :default    false)
-
 (defsetting notebook-native-preview-sidebar-width
   (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
   :user-local :only
@@ -108,6 +101,15 @@
   :visibility :authenticated
   :type       :boolean
   :default    true)
+
+(defsetting color-scheme
+  (deferred-tru "User preference for color scheme. Can be ''light'', ''dark'', or ''auto''.")
+  :user-local :only
+  :encryption :no
+  :export?    false
+  :visibility :authenticated
+  :type       :string
+  :default    "auto")
 
 (defsetting trial-banner-dismissal-timestamp
   (deferred-tru "The ISO8601 date when a user last dismissed the trial banner.")

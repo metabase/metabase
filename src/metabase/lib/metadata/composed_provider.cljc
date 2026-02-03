@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.composed-provider
-  (:refer-clojure :exclude [some empty? not-empty])
+  (:refer-clojure :exclude [empty? not-empty run! some])
   (:require
    #?(:clj [pretty.core :as pretty])
    [better-cond.core :as b]
@@ -9,7 +9,7 @@
    [medley.core :as m]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some empty? not-empty]]))
+   [metabase.util.performance :refer [empty? not-empty run! some]]))
 
 (mu/defn- cached-providers :- [:sequential ::metadata.protocols/cached-metadata-provider]
   [providers :- [:maybe [:sequential ::metadata.protocols/metadata-provider]]]
@@ -90,6 +90,11 @@
   (some metadata.protocols/has-cache?
         (cached-providers metadata-providers)))
 
+(defn- clear-cache! [metadata-providers]
+  (run! #(when (metadata.protocols/cached-metadata-provider? %)
+           (metadata.protocols/clear-cache! %))
+        metadata-providers))
+
 (defn- store-metadata! [metadata-providers metadata]
   (when-first [provider (cached-providers metadata-providers)]
     (metadata.protocols/store-metadata! provider metadata)))
@@ -119,6 +124,8 @@
     (cache-value! metadata-providers k v))
   (has-cache? [_this]
     (has-cache? metadata-providers))
+  (clear-cache! [_this]
+    (clear-cache! metadata-providers))
 
   metadata.protocols/InvocationTracker
   (invoked-ids [_this metadata-type]
@@ -144,4 +151,5 @@
   "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
   turn from left to right until one returns a truthy result."
   [& metadata-providers]
+  (clear-cache! metadata-providers)
   (->ComposedMetadataProvider metadata-providers))

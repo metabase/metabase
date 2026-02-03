@@ -8,5 +8,12 @@
   width: 100%;
   min-height: 17.5rem;
   background-image: var(--background-url);
-  color-scheme: normal; /* Prevents browsers from adding their own "canvas color" to the preview window */
+
+  /*
+  Preserves legacy transparent iframe behavior (metabase#66585).
+  For iframes to be transparent, the `color-scheme` of the iframe and embedded document must match.
+  https://www.w3.org/TR/css-color-adjust-1/#color-scheme-effect
+  Prior to v57, the app's color-scheme was treated as `light` since there were no native "color-scheme" settings defined.
+  */
+  color-scheme: light;
 }

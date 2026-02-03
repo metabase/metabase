@@ -18,38 +18,37 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotPurchasePage } from ".";
 
+const nonStoreUserPageRegex = /Please ask a Metabase Store Admin/;
+const storeUserTrialPageRegex =
+  /After 14 days of free trial an additional amount/;
+const storeUserNoTrialPageRegex = /An additional amount/;
+const errorPageRegex = /Error fetching information/;
 const expectNonStoreUserPage = async () => {
-  expect(
-    await screen.findByText(/Please ask a Metabase Store Admin/),
-  ).toBeVisible();
-  expect(
-    screen.queryByText(/Additional amount for the add-on/),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByText(/Error fetching information/),
-  ).not.toBeInTheDocument();
+  expect(await screen.findByText(nonStoreUserPageRegex)).toBeVisible();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
 };
 
-const expectStoreUserPage = async () => {
-  expect(
-    screen.queryByText(/Please ask a Metabase Store Admin/),
-  ).not.toBeInTheDocument();
-  expect(
-    await screen.findByText(/Additional amount for the add-on/),
-  ).toBeVisible();
-  expect(
-    screen.queryByText(/Error fetching information/),
-  ).not.toBeInTheDocument();
+const expectStoreUserTrialPage = async () => {
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(storeUserTrialPageRegex)).toBeVisible();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
+};
+
+const expectStoreUserNoTrialPage = async () => {
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(storeUserNoTrialPageRegex)).toBeVisible();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
 };
 
 const expectErrorPage = async () => {
-  expect(
-    screen.queryByText(/Please ask a Metabase Store Admin/),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByText(/Additional amount for the add-on/),
-  ).not.toBeInTheDocument();
-  expect(await screen.findByText(/Error fetching information/)).toBeVisible();
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(errorPageRegex)).toBeVisible();
 };
 
 const setupRefreshableProperties = ({
@@ -77,11 +76,13 @@ const setupRefreshableProperties = ({
 const setup = async ({
   current_user_matches_store_user,
   billing_period_months,
+  had_metabot,
   simulate_http_get_error,
   simulate_http_post_error,
 }: {
   current_user_matches_store_user: boolean;
   billing_period_months: number;
+  had_metabot: false | "trial" | "tiered";
   simulate_http_get_error: boolean;
   simulate_http_post_error: false | "error-no-quantity" | "error-no-connection";
 }) => {
@@ -92,7 +93,11 @@ const setup = async ({
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
 
-  setupStoreEEBillingEndpoint(billing_period_months, simulate_http_get_error);
+  setupStoreEEBillingEndpoint(
+    billing_period_months,
+    had_metabot,
+    simulate_http_get_error,
+  );
   setupStoreEECloudAddOnsEndpoint(
     billing_period_months,
     simulate_http_get_error,
@@ -115,6 +120,7 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: false,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
@@ -126,6 +132,7 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: true,
       simulate_http_post_error: false,
     });
@@ -137,6 +144,7 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: false,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: true,
       simulate_http_post_error: false,
     });
@@ -144,15 +152,40 @@ describe("MetabotPurchasePage", () => {
     await expectNonStoreUserPage();
   });
 
-  it("shows monthly tiers according to own billing period", async () => {
+  it("does not show trial page when metabot was trialed previously", async () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 1,
+      had_metabot: "trial",
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserNoTrialPage();
+  });
+
+  it("does not show trial page when metabot was purchased previously", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      billing_period_months: 1,
+      had_metabot: "tiered",
+      simulate_http_get_error: false,
+      simulate_http_post_error: false,
+    });
+
+    await expectStoreUserNoTrialPage();
+  });
+
+  it("shows monthly tiers according to own billing period", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      billing_period_months: 1,
+      had_metabot: false,
+      simulate_http_get_error: false,
+      simulate_http_post_error: false,
+    });
+
+    await expectStoreUserTrialPage();
 
     const metabase_ai_tier1 = screen.getByRole("radio", {
       name: /up to 1234 requests\/month/,
@@ -170,19 +203,20 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     const metabase_ai_tier3 = screen.getByRole("radio", {
-      name: /up to 3456 requests\/month/,
+      name: /up to 3456 requests\/year/,
     });
     expect(metabase_ai_tier3).toBeVisible();
     expect(metabase_ai_tier3).toHaveAccessibleName(/\$333\/year/);
     const metabase_ai_tier4 = screen.getByRole("radio", {
-      name: /up to 4567 requests\/month/,
+      name: /up to 4567 requests\/year/,
     });
     expect(metabase_ai_tier4).toBeVisible();
     expect(metabase_ai_tier4).toHaveAccessibleName(/\$444\/year/);
@@ -192,11 +226,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     // This add-on product tier has `is_default = true`:
     expect(
@@ -237,9 +272,9 @@ describe("MetabotPurchasePage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai-tiered$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.quantity).toEqual(4567);
-    expect(cloudAddOnsRequest?.body?.terms_of_service).toEqual(true);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.quantity).toEqual(4567);
+    expect(cloudAddOnsRequest!.body.terms_of_service).toEqual(true);
 
     setupRefreshableProperties({
       current_user_matches_store_user: true,
@@ -253,11 +288,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     await userEvent.click(
       screen.getByRole("radio", { name: /up to 3456 requests/ }),
@@ -277,19 +313,20 @@ describe("MetabotPurchasePage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai-tiered$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.quantity).toEqual(3456);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.quantity).toEqual(3456);
   });
 
   it("reports validation errors", async () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-quantity",
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
@@ -312,11 +349,12 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-connection",
     });
 
-    await expectStoreUserPage();
+    await expectStoreUserTrialPage();
 
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),

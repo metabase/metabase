@@ -3,86 +3,72 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.table :as api.table]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [without-library]]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
-(deftest publish-model-test
-  (mt/with-premium-features #{:data-studio}
-    (testing "POST /api/ee/data-studio/table/publish-model"
-      (testing "creates models for selected tables"
-        (mt/with-model-cleanup [:model/Card]
-          (mt/with-temp [:model/Collection {collection-id :id} {}]
-            (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-model"
-                                                 {:table_ids             [(mt/id :users) (mt/id :venues)]
-                                                  :target_collection_id  collection-id})]
-              (is (= 2 (:created_count response)))
-              (is (= 2 (count (:models response))))
-              (testing "models have correct attributes"
-                (doseq [model (:models response)]
-                  (is (= "model" (:type model)))
-                  (is (= collection-id (:collection_id model)))
-                  (is (int? (:published_table_id model)))))
-              (testing "the query should works"
-                (is (some? (mt/process-query (-> response :models first :dataset_query)))))
-              (testing "models are persisted in database"
-                (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model)))))))))))
-;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
+(use-fixtures :once (fixtures/initialize :db))
 
-(deftest published-as-model-test
-  (mt/with-premium-features #{:data-studio}
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection {collection-id :id} {}]
-        (let [{:keys [models]} (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-model"
-                                                     {:table_ids            [(mt/id :venues)]
-                                                      :target_collection_id collection-id})
-              [model] models
-              venues-schema              (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
-              schema-url                 (format "database/%d/schema/%s" (mt/id) venues-schema)
-              list-tables-via-table-api  (fn [] (->> (mt/user-http-request :crowberto :get 200 "table" :db-id (mt/id))
-                                                     (filter #(= (mt/id) (:db_id %)))))
-              list-tables-via-schema-api #(mt/user-http-request :crowberto :get 200 schema-url)]
-          (testing "list tables"
-            (let [list-response      (list-tables-via-table-api)
-                  published-as-model (u/index-by :id :published_as_model list-response)]
-              (is (true? (published-as-model (mt/id :venues))))
-              (is (false? (published-as-model (mt/id :users))))))
-          (testing "list tables via schema"
-            (let [list-response      (list-tables-via-schema-api)
-                  published-as-model (u/index-by :id :published_as_model list-response)]
-              (is (true? (published-as-model (mt/id :venues))))
-              (is (false? (published-as-model (mt/id :users))))))
-          (testing "archived tables are not returned"
-            (t2/update! :model/Card (:id model) {:archived true, :archived_directly false})
-            (is (not-any? :published_as_model (list-tables-via-table-api)))))))))
-
-(deftest published-models-perm-test
-  (mt/with-premium-features #{:data-studio}
-    ;; what I think would be reasonable permissions behaviour:
-    ;;  > if no permissions on model or its collection, model is filtered out
-    ;; what I have done:
-    ;;  > if not super-user we never give you the published models
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection {collection1 :id} {}
-                     :model/Collection {collection2 :id} {}]
-        (let [publish-venues        #(mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-model"
-                                                           {:table_ids            [(mt/id :venues)]
-                                                            :target_collection_id %})
-              {[{model1 :id}] :models} (publish-venues collection1)
-              {[{model2 :id}] :models} (publish-venues collection2)
-              query-meta-url        #(format "table/%d/query_metadata" %)
-              list-published-models #(:published_models (mt/user-http-request %1 :get 200 (query-meta-url %2)))]
-          (testing "admin sees both models"
-            (is (= #{model1 model2} (set (map :id (list-published-models :crowberto (mt/id :venues)))))))
-          (testing "no published models"
-            (is (nil? (list-published-models :crowberto (mt/id :users)))))
-          (testing "non admin does not see published models"
-            (is (nil? (list-published-models :rasta (mt/id :venues))))
-            (is (nil? (list-published-models :rasta (mt/id :users))))))))))
+(deftest publish-table-test
+  (mt/with-premium-features #{:data-studio :audit-app}
+    (without-library
+     (testing "POST /api/ee/data-studio/table/(un)publish-table"
+       (testing "publishes tables into the library-data collection"
+         (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
+           (testing "normal users are not allowed to publish"
+             (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-tables"
+                                   {:table_ids [(mt/id :users) (mt/id :venues)]}))
+           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                                {:table_ids [(mt/id :users) (mt/id :venues)]})]
+             (is (=? {:id collection-id} (:target_collection response)))
+             (testing "collection_id and is_published are set"
+               (is (=? [{:display_name "Users"
+                         :collection_id collection-id
+                         :is_published true}
+                        {:display_name "Venues"
+                         :collection_id collection-id
+                         :is_published true}]
+                       (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+             (testing "audit log entries are created for publish"
+               (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
+                       (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
+               (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :venues)}
+                       (mt/latest-audit-log-entry "table-publish" (mt/id :venues)))))
+             (testing "unpublishing"
+               (testing "normal users are not allowed"
+                 (mt/user-http-request :rasta :post 403 "ee/data-studio/table/unpublish-tables"
+                                       {:table_ids [(mt/id :venues)]}))
+               (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
+                                     {:table_ids [(mt/id :venues)]})
+               (is (=? {:display_name "Venues"
+                        :collection_id nil
+                        :is_published false}
+                       (t2/select-one :model/Table (mt/id :venues))))
+               (testing "audit log entry is created for unpublish"
+                 (is (=? {:topic :table-unpublish, :model "Table", :model_id (mt/id :venues)}
+                         (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues)))))))))
+       (testing "deleting the collection unpublishes"
+         (is (=? {:display_name "Users"
+                  :collection_id nil
+                  :is_published false}
+                 (t2/select-one :model/Table (mt/id :users))))))
+     (testing "returns 404 when no library-data collection exists"
+       (is (= "Not found."
+              (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
+                                    {:table_ids [(mt/id :users)]}))))
+     (testing "returns 409 when multiple library-data collections exist"
+       (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
+                      :model/Collection _ {:type collection/library-data-collection-type}]
+         (is (= "Multiple library-data collections found."
+                (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
+                                      {:table_ids [(mt/id :users)]}))))))))
 
 (deftest bulk-edit-visibility-sync-test
   (mt/with-premium-features #{:data-studio}
@@ -122,6 +108,59 @@
                                            {:table_ids  [(mt/id :users)]
                                             :data_layer "gold"}))))))
 
+(deftest data-analyst-can-access-endpoints-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
+      (let [data-analyst-group-id (:id (perms-group/data-analyst))]
+        (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
+                                                     :last_name "Analyst"
+                                                     :email "data-analyst@metabase.com"
+                                                     :is_data_analyst true}
+                       :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
+                       :model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id}
+                       :model/Collection _ {:type collection/library-data-collection-type}]
+          (testing "data analyst can edit tables"
+            (is (= {} (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/edit"
+                                            {:table_ids [table-id]
+                                             :data_layer "gold"}))))
+          (testing "data analyst can get selection info"
+            (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/selection"
+                                            {:table_ids [table-id]}))))
+          (testing "data analyst can publish tables"
+            (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
+                                            {:table_ids [table-id]}))))
+          (testing "data analyst can unpublish tables"
+            (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
+                                            {:table_ids [table-id]})))))))))
+
+(deftest regular-user-cannot-access-data-studio-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Regular"
+                                                :last_name "User"
+                                                :email "regular-user@metabase.com"}
+                     :model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}
+                     :model/Collection _ {:type collection/library-data-collection-type}]
+        (testing "regular user cannot edit tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/edit"
+                                       {:table_ids [table-id]
+                                        :data_layer "gold"}))))
+        (testing "regular user cannot get selection info"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/selection"
+                                       {:table_ids [table-id]}))))
+        (testing "regular user cannot publish tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/publish-tables"
+                                       {:table_ids [table-id]}))))
+        (testing "regular user cannot unpublish tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/unpublish-tables"
+                                       {:table_ids [table-id]}))))))))
+
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (mt/with-premium-features #{:data-studio}
     (testing "Non-admins should not be allowed to trigger sync"
@@ -145,7 +184,7 @@
                                            (swap! tables conj table)
                                            (.countDown latch)
                                            nil)]
-            (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/sync-schema" {:database_ids [d1],
+            (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/sync-schema" {:database_ids [d1],
                                                                                            :schema_ids   [(format "%d:FOO" d2)]
                                                                                            :table_ids    [t4]}))
           (testing "sync called?"
@@ -175,7 +214,7 @@
                                                               (swap! tables conj table)
                                                               (.countDown latch)
                                                               nil)]
-            (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/rescan-values" {:database_ids [d1],
+            (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/rescan-values" {:database_ids [d1],
                                                                                              :schema_ids   [(format "%d:FOO" d2)]
                                                                                              :table_ids    [t4]}))
           (testing "rescanned?"
@@ -226,9 +265,9 @@
             (testing "FieldValues should still exist"
               (is (= [v1 v2 v3 v4 v5 v6 v7] (get-field-values)))))
           (testing "Admins should be able to successfully delete them"
-            (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 url {:database_ids [d1],
-                                                                                  :schema_ids   [(format "%d:FOO" d2)]
-                                                                                  :table_ids    [t4]})))
+            (is (nil? (mt/user-http-request :crowberto :post 204 url {:database_ids [d1],
+                                                                      :schema_ids   [(format "%d:FOO" d2)]
+                                                                      :table_ids    [t4]})))
             (testing "Selected FieldValues should be gone"
               (is (= [v3] (get-field-values))))))))))
 
@@ -394,3 +433,356 @@
                   gc         nil
                   jit        nil}
                  (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]]))))))))
+
+;;; ------------------------------------------------- Selection Tests -------------------------------------------------
+
+(deftest selection-basic-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/selection"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table    {t1 :id} {:db_id db-id :name "orders" :schema "PUBLIC" :is_published false}
+                     :model/Table    {t2 :id} {:db_id db-id :name "products" :schema "PUBLIC" :is_published true}
+                     :model/Table    _        {:db_id db-id :name "people" :schema "PUBLIC" :is_published false}]
+        (testing "returns a published table in selection with all required fields"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t2]})]
+            (is (=? {:selected_table {:id           t2
+                                      :db_id        db-id
+                                      :name         "products"
+                                      :display_name "Products"
+                                      :schema       "PUBLIC"
+                                      :is_published true}}
+                    response))))
+        (testing "returns an unpublished table in selection with all required fields"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t1]})]
+            (is (=? {:selected_table {:id           t1
+                                      :db_id        db-id
+                                      :name         "orders"
+                                      :display_name "Orders"
+                                      :schema       "PUBLIC"
+                                      :is_published false}}
+                    response))))
+        (testing "returns nil for :selected_table when there are multiple selected tables"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t1 t2]})]
+            (is (=? {:selected_table nil}
+                    response))))
+        (testing "tables with no remapping should have empty upstream/downstream"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t2]})]
+            (is (=? {:published_downstream_tables []
+                     :unpublished_upstream_tables []}
+                    response))))))))
+
+(deftest selection-with-remapping-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/selection with remapping dependencies"
+      (mt/with-temp [:model/Database  {db-id :id}    {}
+                     ;; Orders table with FK to Products
+                     :model/Table     {orders-id :id}   {:db_id db-id :name "orders" :schema "PUBLIC" :is_published false}
+                     :model/Field     _                 {:table_id orders-id :name "id" :semantic_type :type/PK
+                                                         :base_type :type/Integer}
+                     :model/Field     {product-fk :id}  {:table_id orders-id :name "product_id" :semantic_type :type/FK
+                                                         :base_type :type/Integer}
+                     ;; Products table
+                     :model/Table     {products-id :id} {:db_id db-id :name "products" :schema "PUBLIC" :is_published false}
+                     :model/Field     _                 {:table_id products-id :name "id" :semantic_type :type/PK
+                                                         :base_type :type/Integer}
+                     :model/Field     {prod-name-f :id} {:table_id products-id :name "name" :semantic_type :type/Name
+                                                         :base_type :type/Text}
+                     ;; Dimension for FK remapping: product_id -> products.name
+                     :model/Dimension _                 {:field_id product-fk
+                                                         :human_readable_field_id prod-name-f
+                                                         :type :external}]
+        (testing "selecting orders returns products as upstream dependency"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [orders-id]})]
+            (is (=? {:selected_table               {:id           orders-id
+                                                    :db_id        db-id
+                                                    :name         "orders"
+                                                    :display_name "Orders"
+                                                    :schema       "PUBLIC"}
+                     :unpublished_upstream_tables [{:id           products-id
+                                                    :db_id        db-id
+                                                    :name         "products"
+                                                    :display_name "Products"
+                                                    :schema       "PUBLIC"}]}
+                    response))))
+
+        (testing "if products is already published, it appears in published_downstream when selecting it"
+          (t2/update! :model/Table products-id {:is_published true})
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [products-id]})]
+            (is (=? {:selected_table               {:id           products-id
+                                                    :db_id        db-id
+                                                    :name         "products"
+                                                    :display_name "Products"
+                                                    :schema       "PUBLIC"}
+                     :unpublished_upstream_tables []}
+                    response))
+            ;; orders is unpublished and depends on products
+            ;; when we want to unpublish products, orders would need to be unpublished too
+            ;; but orders is already unpublished, so published_downstream_tables should be empty
+            (is (= [] (:published_downstream_tables response)))))
+
+        (testing "when orders is published and we select products, orders appears in published_downstream"
+          (t2/update! :model/Table orders-id {:is_published true})
+          (t2/update! :model/Table products-id {:is_published true})
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [products-id]})]
+            (is (=? {:selected_table               {:id           products-id
+                                                    :db_id        db-id
+                                                    :name         "products"
+                                                    :display_name "Products"
+                                                    :schema       "PUBLIC"}
+                     :published_downstream_tables [{:id           orders-id
+                                                    :db_id        db-id
+                                                    :name         "orders"
+                                                    :display_name "Orders"
+                                                    :schema       "PUBLIC"}]}
+                    response))))))))
+
+(deftest selection-recursive-upstream-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/selection with recursive upstream dependencies"
+      ;; Chain: order_items -> orders -> customers
+      ;; order_items.order_id remaps to orders.name
+      ;; orders.customer_id remaps to customers.name
+      (mt/with-temp [:model/Database  {db-id :id}          {}
+                     ;; Customers table
+                     :model/Table     {customers-id :id}   {:db_id db-id :name "customers" :schema "PUBLIC"
+                                                            :is_published false}
+                     :model/Field     _                    {:table_id customers-id :name "id"
+                                                            :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field     {cust-name-f :id}    {:table_id customers-id :name "name"
+                                                            :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders table
+                     :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"
+                                                            :is_published false}
+                     :model/Field     _                    {:table_id orders-id :name "id"
+                                                            :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
+                                                            :semantic_type :type/Name :base_type :type/Text}
+                     :model/Field     {customer-fk :id}    {:table_id orders-id :name "customer_id"
+                                                            :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Order items table
+                     :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"
+                                                            :is_published false}
+                     :model/Field     _                    {:table_id items-id :name "id"
+                                                            :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
+                                                            :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Dimensions for FK remapping
+                     :model/Dimension _                    {:field_id customer-fk
+                                                            :human_readable_field_id cust-name-f
+                                                            :type :external}
+                     :model/Dimension _                    {:field_id order-fk
+                                                            :human_readable_field_id order-name-f
+                                                            :type :external}]
+        (testing "selecting order_items returns orders and customers as upstream (recursive)"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [items-id]})]
+            (is (=? {:selected_table               {:id           items-id
+                                                    :db_id        db-id
+                                                    :name         "order_items"
+                                                    :display_name "Order Items"
+                                                    :schema       "PUBLIC"}
+                     :unpublished_upstream_tables (mt/malli=? [:sequential {:min 2 :max 2} :map])}
+                    response))
+            (is (= #{orders-id customers-id}
+                   (set (map :id (:unpublished_upstream_tables response)))))
+            ;; Verify upstream tables have all required fields
+            (doseq [table (:unpublished_upstream_tables response)]
+              (are [k] (contains? table k)
+                :id :db_id :name :display_name :schema))))))))
+
+(deftest selection-recursive-downstream-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/selection with recursive downstream dependencies"
+      ;; Same chain: order_items -> orders -> customers
+      ;; If we unpublish customers, we need to unpublish orders and order_items too
+      (mt/with-temp [:model/Database  {db-id :id}          {}
+                     ;; Customers table (published)
+                     :model/Table     {customers-id :id}   {:db_id db-id :name "customers" :schema "PUBLIC"
+                                                            :is_published true}
+                     :model/Field     _                    {:table_id customers-id :name "id"
+                                                            :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field     {cust-name-f :id}    {:table_id customers-id :name "name"
+                                                            :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders table (published)
+                     :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"
+                                                            :is_published true}
+                     :model/Field     _                    {:table_id orders-id :name "id"
+                                                            :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
+                                                            :semantic_type :type/Name :base_type :type/Text}
+                     :model/Field     {customer-fk :id}    {:table_id orders-id :name "customer_id"
+                                                            :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Order items table (published)
+                     :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"
+                                                            :is_published true}
+                     :model/Field     _                    {:table_id items-id :name "id"
+                                                            :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
+                                                            :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Dimensions for FK remapping
+                     :model/Dimension _                    {:field_id customer-fk
+                                                            :human_readable_field_id cust-name-f
+                                                            :type :external}
+                     :model/Dimension _                    {:field_id order-fk
+                                                            :human_readable_field_id order-name-f
+                                                            :type :external}]
+        (testing "selecting customers returns orders and order_items as downstream (recursive)"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [customers-id]})]
+            (is (=? {:selected_table               {:id           customers-id
+                                                    :db_id        db-id
+                                                    :name         "customers"
+                                                    :display_name "Customers"
+                                                    :schema       "PUBLIC"}
+                     :published_downstream_tables (mt/malli=? [:sequential {:min 2 :max 2} :map])}
+                    response))
+            (is (= #{orders-id items-id}
+                   (set (map :id (:published_downstream_tables response)))))
+            ;; Verify downstream tables have all required fields
+            (doseq [table (:published_downstream_tables response)]
+              (are [k] (contains? table k)
+                :id :db_id :name :display_name :schema))))))))
+
+;;; ------------------------------------------ Publish/Unpublish with Dependencies ------------------------------------------
+
+(deftest publish-tables-with-upstream-dependencies-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/publish-tables publishes upstream dependencies"
+      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}          {}
+                     ;; Products table (upstream)
+                     :model/Table      {products-id :id}    {:db_id db-id :name "products" :is_published false}
+                     :model/Field      _                    {:table_id products-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {prod-name-f :id}    {:table_id products-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders table (depends on products)
+                     :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published false}
+                     :model/Field      _                    {:table_id orders-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {product-fk :id}     {:table_id orders-id :name "product_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Dimension for FK remapping
+                     :model/Dimension  _                    {:field_id product-fk
+                                                             :human_readable_field_id prod-name-f
+                                                             :type :external}]
+        (testing "publishing orders also publishes products (upstream dependency)"
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                {:table_ids [orders-id]})
+          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+            orders-id products-id))))))
+
+(deftest publish-tables-recursive-upstream-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/publish-tables publishes recursive upstream dependencies"
+      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}          {}
+                     ;; Customers table (upstream of orders)
+                     :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published false}
+                     :model/Field      _                    {:table_id customers-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {cust-name-f :id}    {:table_id customers-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders table (upstream of order_items, downstream of customers)
+                     :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published false}
+                     :model/Field      _                    {:table_id orders-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {order-name-f :id}   {:table_id orders-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     :model/Field      {customer-fk :id}    {:table_id orders-id :name "customer_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Order items table (downstream of orders)
+                     :model/Table      {items-id :id}       {:db_id db-id :name "order_items" :is_published false}
+                     :model/Field      _                    {:table_id items-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {order-fk :id}       {:table_id items-id :name "order_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Dimensions for FK remapping
+                     :model/Dimension  _                    {:field_id customer-fk
+                                                             :human_readable_field_id cust-name-f
+                                                             :type :external}
+                     :model/Dimension  _                    {:field_id order-fk
+                                                             :human_readable_field_id order-name-f
+                                                             :type :external}]
+        (testing "publishing order_items also publishes orders and customers (recursive upstream)"
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                {:table_ids [items-id]})
+          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+            items-id orders-id customers-id))))))
+
+(deftest unpublish-tables-with-downstream-dependents-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/unpublish-tables unpublishes downstream dependents"
+      (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}          {}
+                     ;; Products table (upstream, published)
+                     :model/Table      {products-id :id}    {:db_id db-id :name "products" :is_published true
+                                                             :collection_id coll-id}
+                     :model/Field      _                    {:table_id products-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {prod-name-f :id}    {:table_id products-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders table (depends on products, published)
+                     :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published true
+                                                             :collection_id coll-id}
+                     :model/Field      _                    {:table_id orders-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {product-fk :id}     {:table_id orders-id :name "product_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Dimension for FK remapping
+                     :model/Dimension  _                    {:field_id product-fk
+                                                             :human_readable_field_id prod-name-f
+                                                             :type :external}]
+        (testing "unpublishing products also unpublishes orders (downstream dependent)"
+          (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
+                                {:table_ids [products-id]})
+          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+            products-id orders-id))))))
+
+(deftest unpublish-tables-recursive-downstream-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/ee/data-studio/table/unpublish-tables unpublishes recursive downstream dependents"
+      (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}          {}
+                     ;; Customers table (upstream of orders, published)
+                     :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published true
+                                                             :collection_id coll-id}
+                     :model/Field      _                    {:table_id customers-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {cust-name-f :id}    {:table_id customers-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders table (downstream of customers, upstream of items, published)
+                     :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published true
+                                                             :collection_id coll-id}
+                     :model/Field      _                    {:table_id orders-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {order-name-f :id}   {:table_id orders-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     :model/Field      {customer-fk :id}    {:table_id orders-id :name "customer_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Order items table (downstream of orders, published)
+                     :model/Table      {items-id :id}       {:db_id db-id :name "order_items" :is_published true
+                                                             :collection_id coll-id}
+                     :model/Field      _                    {:table_id items-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {order-fk :id}       {:table_id items-id :name "order_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     ;; Dimensions for FK remapping
+                     :model/Dimension  _                    {:field_id customer-fk
+                                                             :human_readable_field_id cust-name-f
+                                                             :type :external}
+                     :model/Dimension  _                    {:field_id order-fk
+                                                             :human_readable_field_id order-name-f
+                                                             :type :external}]
+        (testing "unpublishing customers also unpublishes orders and order_items (recursive downstream)"
+          (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
+                                {:table_ids [customers-id]})
+          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+            customers-id orders-id items-id))))))

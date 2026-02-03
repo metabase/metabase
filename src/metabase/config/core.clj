@@ -163,7 +163,7 @@
           parse-long))
 
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
-                this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
+                this specific run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}
   local-process-uuid
   (str (random-uuid)))

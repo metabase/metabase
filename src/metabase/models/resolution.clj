@@ -13,6 +13,8 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
+    :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
+    :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
@@ -27,8 +29,8 @@
     :model/Collection                        metabase.collections.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
-    :model/Comment                           metabase-enterprise.comments.models.comment
-    :model/CommentReaction                   metabase-enterprise.comments.models.comment-reaction
+    :model/Comment                           metabase.comments.models.comment
+    :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/ContentTranslation                metabase.content-translation.models
     :model/Dashboard                         metabase.dashboards.models.dashboard
@@ -41,8 +43,8 @@
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/Dimension                         metabase.warehouse-schema.models.dimension
-    :model/Document                          metabase-enterprise.documents.models.document
-    :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
+    :model/Document                          metabase.documents.models.document
+    :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -51,6 +53,7 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/Measure                           metabase.measures.models.measure
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
     :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
     :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
@@ -94,6 +97,8 @@
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
+    :model/TaskRun                           metabase.task-history.models.task-run
+    :model/Tenant                            metabase-enterprise.tenants.model
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase-enterprise.transforms.models.transform

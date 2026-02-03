@@ -11,7 +11,8 @@
 (p/import-vars
  [metabase.revisions.models.revision
   serialize-instance
-  revert-to-revision!]
+  revert-to-revision!
+  revisions]
  [metabase.revisions.models.revision.last-edit
   MaybeAnnotated
   edit-information-for-user

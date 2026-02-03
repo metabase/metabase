@@ -7,11 +7,12 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.jwt :as jwt]
    [metabase-enterprise.sso.integrations.saml]
+   [metabase-enterprise.sso.integrations.slack-connect]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
-   [metabase.channel.urls :as urls]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -28,6 +29,11 @@
          metabase-enterprise.sso.integrations.saml/keep-me)
 
 ;; GET /auth/sso
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [_route-params _query-params _body request]
@@ -50,6 +56,11 @@
                                     :additionalData data}))})
 
 ;; POST /auth/sso
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
   [_route-params _query-params _body request]
@@ -66,6 +77,11 @@
   "/auth/sso/handle_slo")
 
 ;; POST /auth/sso/logout
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/logout"
   "Logout."
   [_route-params _query-params _body {cookies :cookies, :as _request}]
@@ -90,12 +106,17 @@
         :issuer (sso-settings/saml-application-name)
         :user-email email
         :relay-state (u/encode-base64
-                      (str (urls/site-url) metabase-slo-redirect-url))))}))
+                      (str (system/site-url) metabase-slo-redirect-url))))}))
 
 ;; POST /auth/sso/to_session
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/to_session"
   "If a user wants to simply convert a JWT to a session token (which they'll manage)
   this provides a path for them to do so."
@@ -111,7 +132,12 @@
 ;; POST /auth/sso/handle_slo
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [_route-params _query-params _body request]

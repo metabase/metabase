@@ -7,10 +7,19 @@ import type { IPageForNonStoreUserProps } from "./types";
 export const MetabotPurchasePageForNonStoreUser = ({
   anyStoreUserEmailAddress,
 }: IPageForNonStoreUserProps) => (
-  <Text fw="bold">
-    {
-      /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
-      t`Please ask a Metabase Store Admin${anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`} of your organization to enable this for you.`
-    }
-  </Text>
+  <>
+    <video controls aria-label={t`Demonstration of Metabot AI features`}>
+      <source
+        src="https://www.metabase.com/images/features/metabot.mp4"
+        type="video/mp4"
+      />
+      {t`Your browser does not support the video tag.`}
+    </video>
+    <Text fw="bold">
+      {
+        /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
+        t`Please ask a Metabase Store Admin${anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`} of your organization to enable this for you.`
+      }
+    </Text>
+  </>
 );

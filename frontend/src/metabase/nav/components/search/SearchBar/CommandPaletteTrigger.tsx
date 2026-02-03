@@ -16,7 +16,7 @@ export const CommandPaletteTrigger = ({
         tabIndex={-1}
         onClick={onClick}
         p="0.25rem"
-        bg="bg-light"
+        bg="background-secondary"
         fw={700}
         fz="8pt"
         lh="8pt"
@@ -29,7 +29,7 @@ export const CommandPaletteTrigger = ({
           root: {
             "&:active": { transform: "none" },
             "&:hover": {
-              color: color("text-dark"),
+              color: color("text-primary"),
             },
           },
         }}

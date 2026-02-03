@@ -5,10 +5,10 @@ import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
+import { maybeColor } from "metabase/ui/utils/colors";
 
 interface RawMaybeLinkProps {
   to?: string;
@@ -29,7 +29,7 @@ export function RawMaybeLink({
 
 const hoverStyle = (props: RawMaybeLinkProps) => css`
   cursor: pointer;
-  ${props.activeColor ? `color: ${color(props.activeColor)};` : ""}
+  ${props.activeColor ? `color: ${maybeColor(props.activeColor)};` : ""}
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -38,7 +38,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   font-size: 0.875em;
   font-weight: bold;
   ${(props) =>
-    props.inactiveColor ? `color: ${color(props.inactiveColor)};` : ""}
+    props.inactiveColor ? `color: ${maybeColor(props.inactiveColor)};` : ""}
   min-width: ${(props) => (props.isSingleLine ? 0 : "")};
 
   :hover {

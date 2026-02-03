@@ -241,7 +241,7 @@
       (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
 ;; These filters are really only supported by the :appdb engine as they require a search index.
-;; By building this no-op filter definition for the in-place engine we can atleast appropriately
+;; By building this no-op filter definition for the in-place engine we can at least appropriately
 ;; reduce the intended supported models that are searched. See PR 60912
 (doseq [model ["card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:non-temporal-dim-ids model]
@@ -284,8 +284,22 @@
                             [:= :collection.id collection-id]
                             [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
 
+(defmethod build-optional-filter-query [:collection "table"]
+  [_filter model query collection-id]
+  ;; Tables in collections are an EE feature (data-studio)
+  (if (premium-features/has-feature? :data-studio)
+    (let [collection-col (search.config/column-with-model-alias model :collection_id)
+          published-col  (search.config/column-with-model-alias model :is_published)]
+      (sql.helpers/where query [:and
+                                [:= published-col true]
+                                [:or
+                                 [:= collection-col collection-id]
+                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+    ;; OSS: tables don't belong to collections
+    (sql.helpers/where query false-clause)))
+
 ;; Things that don't belong to collections
-(doseq [model ["table" "database" "action" "indexed-entity"]]
+(doseq [model ["database" "action" "indexed-entity"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter _model query _collection-id]
     ;; These models don't have collection_id, so they never match
@@ -311,7 +325,7 @@
             (reduce (fn [acc [filter model]]
                       (update acc filter set/union #{model}))
                     {})))
-      (update :collection disj "table" "database")
+      (update :collection disj "database")
       (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;

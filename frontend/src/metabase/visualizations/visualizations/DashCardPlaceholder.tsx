@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
-  type QuestionPickerValueItem,
-} from "metabase/common/components/Pickers/QuestionPicker";
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
@@ -28,9 +29,13 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCard: QuestionPickerValueItem) => {
-    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
-    setQuestionPickerOpen(false);
+  const handleSelectQuestion = (nextCard: OmniPickerItem) => {
+    if (typeof nextCard.id === "number") {
+      dispatch(
+        replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }),
+      );
+      setQuestionPickerOpen(false);
+    }
   };
 
   if (!isDashboard) {
@@ -38,6 +43,20 @@ function DashCardPlaceholderInner({
   }
 
   const pointerEvents = isEditingParameter ? "none" : "all";
+
+  const shouldDisableItem = (item: OmniPickerItem) => {
+    // don't allow adding items that are already saved in a different dashboard
+    // proably only applicable to search and recents
+    if (!isInDbTree(item) && item.dashboard_id) {
+      if (item.dashboard_id !== dashboard.id) {
+        return true;
+      }
+    }
+    if (item.model === "dashboard" && item.id !== dashboard.id) {
+      return true;
+    }
+    return false;
+  };
 
   return (
     <>
@@ -73,9 +92,13 @@ function DashCardPlaceholderInner({
                 }
               : undefined
           }
-          models={["card", "dataset", "metric"]}
+          options={{ hasConfirmButtons: false }}
+          // TODO: account for restrictions on adding personal
+          // questions to public dashboards
+          models={["card", "dataset", "metric", "dashboard"]}
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
+          isDisabledItem={shouldDisableItem}
         />
       )}
     </>
@@ -91,7 +114,7 @@ function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
 export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
   getUiName: () => t`Empty card`,
   identifier: "placeholder",
-  iconName: "table_spaced", // TODO replace
+  iconName: "table",
 
   canSavePng: false,
   noHeader: true,

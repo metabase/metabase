@@ -23,12 +23,13 @@
 (deftest init-from-config-file-test
   (mt/with-temporary-setting-values [config-from-file-sync-databases true]
     (let [db-type     (mdb/db-type)
-          original-db (mt/with-driver db-type (mt/db))]
+          original-db (mt/with-driver db-type (mt/db))
+          config      {:version 1
+                       :config  {:databases [{:name    test-db-name
+                                              :engine  (name db-type)
+                                              :details (:details original-db)}]}}]
       (try
-        (binding [advanced-config.file/*config* {:version 1
-                                                 :config  {:databases [{:name    test-db-name
-                                                                        :engine  (name db-type)
-                                                                        :details (:details original-db)}]}}]
+        (binding [advanced-config.file/*config* config]
           (testing "Create a Database if it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
@@ -43,6 +44,27 @@
                 (is (= 1
                        (t2/count :model/Database :name test-db-name)))
                 (is (partial= {:engine db-type}
+                              (t2/select-one :model/Database :name test-db-name))))
+              (testing "updates db"
+                (is (= :ok
+                       (binding [advanced-config.file/*config*
+                                 (assoc-in config [:config :databases 0 :description] "foo")]
+                         (advanced-config.file/initialize!))))
+                (is (partial= {:description "foo"}
+                              (t2/select-one :model/Database :name test-db-name))))
+              (testing "does not re-set attached dwh db keys on update"
+                (is (= :ok
+                       (binding [advanced-config.file/*config*
+                                 (update-in config [:config :databases 0] merge
+                                            {:is_attached_dwh      true
+                                             :uploads_enabled      true
+                                             :uploads_schema_name  "db_123"
+                                             :uploads_table_prefix "upload_"})]
+                         (advanced-config.file/initialize!))))
+                (is (partial= {:is_attached_dwh      true
+                               :uploads_enabled      false
+                               :uploads_schema_name  nil
+                               :uploads_table_prefix nil}
                               (t2/select-one :model/Database :name test-db-name)))))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))

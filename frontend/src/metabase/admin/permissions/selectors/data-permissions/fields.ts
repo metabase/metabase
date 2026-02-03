@@ -18,8 +18,12 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type { PermissionSectionConfig, TableEntityId } from "../../types";
+import { Messages } from "../../constants/messages";
+import type {
+  PermissionSectionConfig,
+  SpecialGroupType,
+  TableEntityId,
+} from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -129,7 +133,9 @@ const buildAccessPermission = (
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
     isDisabled,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : null,
     isHighlighted: isAdmin,
     value,
     warning,
@@ -188,12 +194,14 @@ const buildNativePermission = (
 export const buildFieldsPermissions = (
   entityId: TableEntityId,
   groupId: number,
-  isAdmin: boolean,
+  groupType: SpecialGroupType,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ): PermissionSectionConfig[] => {
+  const isAdmin = groupType === "admin";
+
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,
@@ -222,7 +230,7 @@ export const buildFieldsPermissions = (
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
       groupId,
-      isAdmin,
+      groupType,
       permissions,
       accessPermission.value,
       defaultGroup,

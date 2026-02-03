@@ -11,7 +11,7 @@ const setupPremium = (opts?: SetupOpts) => {
   setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({ official_collections: true }),
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["collections"],
   });
 };
 
@@ -26,5 +26,12 @@ describe("CreateCollectionForm", () => {
   it("does not show authority level controls when the user is not an admin", () => {
     setupPremium({ user: createMockUser({ is_superuser: false }) });
     expect(screen.queryByText("Collection type")).not.toBeInTheDocument();
+  });
+
+  it("does not show authority level controls when showAuthorityLevelPicker is false", () => {
+    setupPremium({ showAuthorityLevelPicker: false });
+    expect(screen.queryByText("Collection type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Regular")).not.toBeInTheDocument();
+    expect(screen.queryByText("Official")).not.toBeInTheDocument();
   });
 });

@@ -38,7 +38,6 @@
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -82,21 +81,18 @@
   "Keywords representing entity types that can be returned as recent views."
   ;; n.b.: `:card`, `metric` and `:dataset` are stored in recent_views as "card", and a join with report_card is
   ;; needed to distinguish between them. `:dataset` is an alias for `:model/Card` with type "model".
-  (cond-> [:card :dataset :metric
-           :dashboard :table :collection]
-    config/ee-available? (conj :document)))
+  [:card :dataset :metric :dashboard :table :collection :document])
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (let [base-mapping {:dataset :model/Card
-                      :card       :model/Card
-                      :dashboard  :model/Dashboard
-                      :table      :model/Table
-                      :collection :model/Collection}
-        document-mapping (when config/ee-available?
-                           {:document :model/Document})]
-    (get (merge base-mapping document-mapping) rvm)))
+  (get {:dataset :model/Card
+        :card :model/Card
+        :dashboard :model/Dashboard
+        :table :model/Table
+        :collection :model/Collection
+        :document :model/Document}
+       rvm))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
@@ -460,14 +456,6 @@
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
- ;; ================== Recent Documents ==================
-
-(defenterprise select-documents-for-recents
-  "Returns empty when not running in enterprise mode."
-  metabase-enterprise.documents.recent-views
-  [_document-ids]
-  [])
-
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
     (when (and (not= "hidden" (:visibility_type table))
@@ -560,6 +548,30 @@
           (cond-> processed-item
             (not (:include-metadata? options)) (dissoc :result_metadata)))))))
 
+;; ================== Recent Documents ==================
+
+(defn- document-recents
+  "Query to select recent document data. Returns documents with their collection information
+  for use in recent views display."
+  [document-ids]
+  (if-not (seq document-ids)
+    []
+    (let [documents (t2/select :model/Document
+                               {:select [:d.id
+                                         :d.name
+                                         :d.archived
+                                         [:d.collection_id :entity-coll-id]
+                                         [:c.id :collection_id]
+                                         [:c.name :collection_name]
+                                         [:c.authority_level :collection_authority_level]]
+                                :from [[:document :d]]
+                                :where [:in :d.id document-ids]
+                                :left-join [[:collection :c]
+                                            [:and
+                                             [:= :c.id :d.collection_id]
+                                             [:= :c.archived false]]]})]
+      documents)))
+
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
          dashboard-ids  :dashboard
@@ -572,7 +584,7 @@
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))
-     :document   (m/index-by :id (select-documents-for-recents document-ids))}))
+     :document   (m/index-by :id (document-recents document-ids))}))
 
 (def ^:private ItemValidator (mr/validator Item))
 
@@ -592,7 +604,7 @@
 
   Returns: [:map [:recents [:sequential Item]]]
 
-  [[do-query]] can return nils, and we remove them here becuase there can be recent views for deleted entities, and we
+  [[do-query]] can return nils, and we remove them here because there can be recent views for deleted entities, and we
   don't want to show those in the recent views.
 
   Options:

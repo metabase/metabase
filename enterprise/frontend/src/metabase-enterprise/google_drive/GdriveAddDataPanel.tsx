@@ -57,7 +57,7 @@ const PanelWrapper = ({
         <Title order={2} size="h4" mb="sm">
           {title}
         </Title>
-        <Text c="text-medium">{subtitle}</Text>
+        <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {children}
     </Stack>
@@ -150,7 +150,7 @@ export const GdriveAddDataPanel = ({
   const folderUrl = folder?.url;
 
   const NO_STORAGE_SUBTITLE = t`To work with spreadsheets, you can add storage to your instance.`;
-  // eslint-disable-next-line no-literal-metabase-strings -- admin only
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
   const ERROR_MESSAGE = t`Please check that the folder is shared with the Metabase Service Account.`;
 
   if (!isAdmin) {
@@ -214,7 +214,7 @@ export const GdriveAddDataPanel = ({
     return (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
         <ErrorAlert
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
           error={t`Metabase Storage is full. Add more storage to continue syncing.`}
         >
           <Group gap="sm" mt="sm" align="center">
@@ -308,7 +308,7 @@ const ErrorAlert = ({
         },
         label: {
           fontSize: "var(--mantine-font-size-md)",
-          color: "var(--mb-color-text-dark)",
+          color: "var(--mb-color-text-primary)",
         },
       }}
     >

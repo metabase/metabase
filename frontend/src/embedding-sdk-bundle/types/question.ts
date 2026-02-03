@@ -7,15 +7,64 @@ import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card, ParameterValuesMap } from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
-import type { SdkEntityId } from "./entity";
+import type { SdkEntityId, SdkEntityToken } from "./entity";
 
 export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 
-export type SdkQuestionId = number | "new" | SdkEntityId;
+/**
+ * Represents the identifier for a question in the Metabase SDK.
+ *
+ * @example
+ * ```typescript
+ * // Numerical ID from question URL
+ * const questionId: SdkQuestionId = 123;
+ *
+ * // Entity ID string
+ * const questionId: SdkQuestionId = "abc123def456";
+ *
+ * // Create new notebook-style question
+ * const questionId: SdkQuestionId = "new";
+ *
+ * // Create new native SQL question
+ * const questionId: SdkQuestionId = "new-native";
+ * ```
+ */
+export type SdkQuestionId =
+  | number // Numerical question ID (e.g., 123)
+  | "new" // Create new notebook-style question
+  | "new-native" // Create new native SQL question
+  | SdkEntityId; // Entity ID string (e.g., "abc123def456")
+
+export type SdkQuestionEntityPublicProps =
+  | {
+      /**
+       * The ID of the question.
+       *  <br/>
+       * This is either:
+       *  <br/>
+       *  - the numerical ID when accessing a question link, i.e. `http://localhost:3000/question/1-my-question` where the ID is `1`
+       *  <br/>
+       *  - the string ID found in the `entity_id` key of the question object when using the API directly or using the SDK Collection Browser to return data
+       *  <br/>
+       *  - `new` to show the notebook editor for creating new questions
+       *  <br/>
+       *  - `new-native` to show the SQL editor for creating new native questions
+       */
+      questionId: SdkQuestionId | null;
+      token?: never;
+    }
+  | {
+      questionId?: never;
+      /**
+       * A valid JWT token for the guest embed.
+       */
+      token: SdkEntityToken | null;
+    };
 
 export interface SdkQuestionState {
   question?: InternalQuestion;
   originalQuestion?: InternalQuestion;
+  token?: SdkEntityToken | null;
   queryResults?: any[];
   parameterValues?: ParameterValuesMap;
 }

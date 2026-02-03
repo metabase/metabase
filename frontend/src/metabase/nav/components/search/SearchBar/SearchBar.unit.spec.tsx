@@ -36,7 +36,6 @@ const TEST_SEARCH_RESULTS: CollectionItem[] = [
   createMockCollectionItem({
     name,
     id: index + 1,
-    getUrl: () => "/",
   }),
 );
 

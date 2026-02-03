@@ -2,14 +2,12 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import * as Urls from "metabase/lib/urls";
-import { Group } from "metabase/ui";
-import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useSelector } from "metabase/lib/redux";
+import { getIsHosted } from "metabase/setup/selectors";
 
+import { TransformsUpsellPage } from "../../../upsells";
 import { SectionLayout } from "../../components/SectionLayout";
 
 type TransformsSectionLayoutProps = {
@@ -18,53 +16,17 @@ type TransformsSectionLayoutProps = {
 };
 
 export function TransformsSectionLayout({
-  location,
   children,
 }: TransformsSectionLayoutProps) {
   usePageTitle(t`Transforms`);
+  const isHosted = useSelector(getIsHosted);
+  const hasTransformsFeature = useHasTokenFeature("transforms");
 
-  return (
-    <SectionLayout tabs={<DataSectionTabs location={location} />}>
-      {children}
-    </SectionLayout>
-  );
-}
+  const shouldShowUpsell = isHosted && !hasTransformsFeature;
 
-type DataSectionTabsProps = {
-  location: Location;
-};
+  if (shouldShowUpsell) {
+    return <TransformsUpsellPage />;
+  }
 
-function DataSectionTabs({ location }: DataSectionTabsProps) {
-  return (
-    <Group>
-      <PaneHeaderTabs tabs={getTabs(location)} withBackground />
-    </Group>
-  );
-}
-
-function getTabs({ pathname }: Location): PaneHeaderTab[] {
-  const isTransforms = pathname.startsWith(Urls.transformList());
-  const isJobs = pathname.startsWith(Urls.transformJobList());
-  const isRuns = pathname.startsWith(Urls.transformRunList());
-
-  return [
-    {
-      label: t`Transforms`,
-      to: Urls.transformList(),
-      icon: "transform",
-      isSelected: isTransforms && !isJobs && !isRuns,
-    },
-    {
-      label: t`Jobs`,
-      to: Urls.transformJobList(),
-      icon: "clock",
-      isSelected: isJobs,
-    },
-    {
-      label: t`Runs`,
-      to: Urls.transformRunList(),
-      icon: "play",
-      isSelected: isRuns,
-    },
-  ];
+  return <SectionLayout>{children}</SectionLayout>;
 }

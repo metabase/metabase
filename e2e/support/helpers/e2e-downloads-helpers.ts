@@ -47,6 +47,8 @@ export const exportFromDashcard = (format: string) => {
     cy.findByText(format).click();
     cy.findByTestId("download-results-button").click();
   });
+
+  cy.findByTestId("status-root-container").should("contain", "Downloading");
 };
 
 /**

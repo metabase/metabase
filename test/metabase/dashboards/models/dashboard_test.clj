@@ -211,7 +211,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
+               #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Dashboard (assoc (mt/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
@@ -220,7 +220,7 @@
       (mt/with-temp [:model/Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
              (t2/update! :model/Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel validate-parameters-test

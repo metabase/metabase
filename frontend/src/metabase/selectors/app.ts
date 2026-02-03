@@ -7,7 +7,7 @@ import {
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import { getCurrentDocument } from "metabase/documents/selectors";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
@@ -71,7 +71,7 @@ export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
     getDashboard,
-    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+    getCurrentDocument,
     getRouterPath,
     getIsEmbeddingIframe,
     getEmbedOptions,
@@ -204,7 +204,7 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
-export const getIsProfileLinkVisible = createSelector(
+export const getIsAppSwitcherVisible = createSelector(
   [getIsEmbeddingIframe],
   (isEmbeddingIframe) => !isEmbeddingIframe,
 );
@@ -227,7 +227,7 @@ export const getCollectionId = createSelector(
     getQuestion,
     getDashboard,
     getDashboardId,
-    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+    getCurrentDocument,
     getDetailViewState,
   ],
   (question, dashboard, dashboardId, document, detailView) => {

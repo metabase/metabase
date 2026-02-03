@@ -33,12 +33,14 @@ export function modifyPermission(
             }
           });
       }
-      value && cy.findByText(value).click();
+      if (value) {
+        cy.findByText(value).click();
+      }
     });
 }
 
 export function selectPermissionRow(item, permissionIndex) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   getPermissionRowPermissions(item).eq(permissionIndex).click();
 }
 
@@ -80,25 +82,24 @@ export function assertPermissionForItem(
   permissionColumnIndex,
   permissionValue,
 ) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   getPermissionRowPermissions(item)
     .eq(permissionColumnIndex)
     .should("have.text", permissionValue);
 }
 
 /**
- * @param {string} index
+ * @param {string} row
+ * @param {number} index
  * @param {string} permission
  * @param {boolean} isDisabled
  */
-export function isPermissionDisabled(index, permission, isDisabled) {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy
-    .findAllByTestId("permissions-select")
+export function isPermissionDisabled(row, index, permission, isDisabled) {
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  return getPermissionRowPermissions(row)
     .eq(index)
-    .contains(permission)
-    .closest("a")
-    .should("have.attr", "aria-disabled", isDisabled.toString());
+    .should("have.attr", "aria-disabled", isDisabled.toString())
+    .contains(permission);
 }
 
 export const dismissSplitPermsModal = () => {
@@ -115,7 +116,7 @@ export function savePermissions() {
 
 export function selectImpersonatedAttribute(attribute) {
   cy.findByRole("dialog").within(() => {
-    cy.findByTestId("select-button").click();
+    cy.findByRole("textbox", { name: "User attribute" }).click();
   });
 
   popover().findByText(attribute).click();

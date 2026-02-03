@@ -2,7 +2,7 @@
   "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
   (`:segment` forms are expanded into filter clauses.)"
-  (:refer-clojure :exclude [mapv not-empty])
+  (:refer-clojure :exclude [mapv not-empty get-in])
   (:require
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv not-empty]]))
+   [metabase.util.performance :refer [mapv not-empty get-in]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro

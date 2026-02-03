@@ -1,15 +1,14 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv get-in])
   (:require
-   [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [clojure.xml :as xml]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -23,19 +22,23 @@
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv]])
+   [metabase.util.performance :as perf :refer [mapv get-in]])
+  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.schema Table)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
@@ -58,6 +61,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              :transforms/index-ddl                   true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -158,7 +162,7 @@
        ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
        :loginTimeout       10
        ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
-       ;; to specifying them seperately as with jTDS see also:
+       ;; to specifying them separately as with jTDS see also:
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
        :user               (str (when domain (str domain "\\"))
                                 user)
@@ -286,7 +290,7 @@
   [_driver _unit expr]
   (date-part :dayofyear expr))
 
-;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to orignal type
+;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to original type
 (defn- trunc-week
   [expr]
   (let [original-type (if (= "datetimeoffset" (h2x/type-info->db-type (h2x/type-info expr)))
@@ -420,7 +424,7 @@
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [parsed (-> (io/resource "timezones/windowsZones.xml")
-                   io/reader
+                   io/input-stream
                    xml/parse)
         sanitized (sanitize-contents parsed)
         data (-> sanitized :content second :content first :content)]
@@ -848,7 +852,7 @@
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
     (driver-api/replace inner-query
-      ;; remove order by and then recurse in case we need to do more tranformations at another level
+      ;; remove order by and then recurse in case we need to do more transformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))
 
@@ -980,7 +984,7 @@
 (defmethod sql.qp/->integer :sqlserver
   [driver value]
   ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
+  ;; if it's a float, conversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (h2x/maybe-cast (sql.qp/integer-dbtype driver)
                   [:round (sql.qp/->float driver value) 0]))
@@ -1022,13 +1026,21 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
+;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints/classes to be SQL parser-agnostic
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
-  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query query)
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (driver.u/parsed-query sql-query driver)
         ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query)]))
+    [(str parsed-query) sql-params]))
+
+(defmethod driver/compile-insert :sqlserver
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]
@@ -1062,3 +1074,13 @@
   [_driver]
   ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
   128)
+
+(defmethod sql-jdbc/drop-index-sql :sqlserver [_ schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :sqlserver)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name))
+            (if schema
+              (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
+              (quote-identifier (name table-name))))))
+
+(defmethod driver/llm-sql-dialect-resource :sqlserver [_]
+  "llm/prompts/dialects/sqlserver.md")

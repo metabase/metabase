@@ -49,9 +49,28 @@
                               :model    :model/Dashboard
                               :model-id (u/id object)})))
 
+(derive ::publicize ::event)
+(derive ::publicize-card ::publicize)
+(derive ::publicize-dashboard ::publicize)
+(derive :event/card-public-link-created ::publicize-card)
+(derive :event/card-public-link-deleted ::publicize-card)
+(derive :event/dashboard-public-link-created ::publicize-dashboard)
+(derive :event/dashboard-public-link-deleted ::publicize-dashboard)
+
+(methodical/defmethod events/publish-event! ::publicize
+  [topic {:keys [user-id object-id] :as _event}]
+  (audit-log/record-event! topic
+                           {:user-id  user-id
+                            :model    (if (isa? topic ::publicize-dashboard)
+                                        :model/Dashboard
+                                        :model/Card)
+                            :model-id object-id}))
+
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)
+(derive :event/table-publish ::table-event)
+(derive :event/table-unpublish ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
@@ -141,6 +160,17 @@
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
+  [topic {:keys [object user-id revision-message] :as _event}]
+  (audit-log/record-event! topic {:object  object
+                                  :user-id user-id
+                                  :details (when revision-message {:revision-message revision-message})}))
+
+(derive ::measure-event ::event)
+(derive :event/measure-create ::measure-event)
+(derive :event/measure-update ::measure-event)
+(derive :event/measure-delete ::measure-event)
+
+(methodical/defmethod events/publish-event! ::measure-event
   [topic {:keys [object user-id revision-message] :as _event}]
   (audit-log/record-event! topic {:object  object
                                   :user-id user-id
@@ -338,3 +368,11 @@
                   (get-in event [:details :scope :table_id]))]
       (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
       (audit-log/record-event! topic event))))
+
+(derive ::tenant-event ::event)
+(derive :event/tenant-create ::tenant-event)
+(derive :event/tenant-update ::tenant-event)
+
+(methodical/defmethod events/publish-event! ::tenant-event
+  [topic event]
+  (audit-log/record-event! topic event))

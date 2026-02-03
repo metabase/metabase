@@ -1,24 +1,31 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (defenterprise current-user-can-write-field?
-  "Enterprise version. Returns a boolean whether the current user can write the given field."
+  "Enterprise version. Returns a boolean whether the current user can write the given field.
+   Checks both that the user has manage-table-metadata permission and that the parent table
+   is editable (not in a remote-synced collection in read-only mode)."
   :feature :advanced-permissions
   [instance]
-  (let [db-id (or (get-in instance [:table :db_id])
-                  (database/table-id->database-id (:table_id instance)))]
-    (perms/user-has-permission-for-table?
-     api/*current-user-id*
-     :perms/manage-table-metadata
-     :yes
-     db-id
-     (:table_id instance))))
+  (let [table (or (:table instance)
+                  (t2/select-one :model/Table :id (:table_id instance)))]
+    (and (remote-sync/table-editable? table)
+         (let [db-id (or (:db_id table)
+                         (database/table-id->database-id (:table_id instance)))]
+           (perms/user-has-permission-for-table?
+            api/*current-user-id*
+            :perms/manage-table-metadata
+            :yes
+            db-id
+            (:table_id instance))))))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
@@ -43,28 +50,36 @@
    db-id))
 
 (defenterprise current-user-can-write-table?
-  "Enterprise version."
+  "Enterprise version. Checks both that the user has manage-table-metadata permission and
+   that the table is editable (not in a remote-synced collection in read-only mode)."
   :feature :advanced-permissions
   [table]
-  (perms/user-has-permission-for-table?
-   api/*current-user-id*
-   :perms/manage-table-metadata
-   :yes
-   (:db_id table)
-   (:id table)))
+  (and (remote-sync/table-editable? table)
+       (perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        (:db_id table)
+        (:id table))))
 
 (defn with-advanced-permissions
-  "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
-  This function is meant to be used for GET /api/user/current "
+  "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
+  This function is meant to be used for GET /api/user/current."
   [user]
-  (let [permissions-set @api/*current-user-permissions-set*]
-    (assoc user :permissions
-           {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
+  (let [permissions-set       @api/*current-user-permissions-set*
+        user-id               api/*current-user-id*
+        can-access-data-model (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)]
+    (update user :permissions assoc
+            :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
-            :can_access_data_model   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
-            :can_access_db_details   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
-            :is_group_manager        api/*is-group-manager?*})))
+            :can_access_data_model   can-access-data-model
+            :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
+            :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
+                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
+                                                                                                     :exclude-db-ids [audit/audit-db-id])))
+            :is_data_analyst         api/*is-data-analyst?*
+            :is_group_manager        api/*is-group-manager?*)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."

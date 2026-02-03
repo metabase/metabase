@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { Api } from "metabase/api";
-import Questions from "metabase/entities/questions";
-import Schemas from "metabase/entities/schemas";
+import { Questions } from "metabase/entities/questions";
+import { Schemas } from "metabase/entities/schemas";
 import {
   ROOT_COLLECTION_VIRTUAL_SCHEMA,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,

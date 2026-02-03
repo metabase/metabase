@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 
 import S from "./NewModelOption.module.css";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NewModelOption extends Component {
   state = {
     hover: false,
@@ -23,8 +24,8 @@ export default class NewModelOption extends Component {
         style={{
           boxSizing: "border-box",
           boxShadow: hover
-            ? "0 3px 8px 0 var(--mb-color-text-light)"
-            : "0 1px 3px 0 var(--mb-color-text-light)",
+            ? "0 3px 8px 0 var(--mb-color-text-tertiary)"
+            : "0 1px 3px 0 var(--mb-color-text-tertiary)",
           minHeight: 340,
         }}
         onMouseOver={() => this.setState({ hover: true })}
