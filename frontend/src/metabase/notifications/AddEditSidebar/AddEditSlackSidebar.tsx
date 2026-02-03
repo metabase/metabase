@@ -19,6 +19,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   Dashboard,
   DashboardSubscription,
   ScheduleSettings,
@@ -69,7 +70,10 @@ export const AddEditSlackSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
-  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const isValid = dashboardPulseIsValid(
+    pulse,
+    formInput.channels as ChannelSpecs,
+  );
 
   return (
     <Sidebar

@@ -1,7 +1,4 @@
-/* eslint "react/prop-types": "error" */
-
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -20,12 +17,35 @@ import { connect } from "metabase/lib/redux";
 import { formatFrame } from "metabase/lib/time-dayjs";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Button, Icon, Tooltip } from "metabase/ui";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Channel,
+  ChannelApiResponse,
+  ChannelType,
+  DashboardSubscription,
+} from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
-const mapStateToProps = (state, props) => {
+type PulsesListSidebarOwnProps = {
+  pulses: DashboardSubscription[];
+  formInput: ChannelApiResponse;
+  createSubscription: () => void;
+  onCancel: () => void;
+  editPulse: (pulse: DashboardSubscription, channelType: ChannelType) => void;
+};
+
+type PulsesListSidebarStateProps = {
+  parameters: UiParameter[];
+};
+
+type PulsesListSidebarProps = PulsesListSidebarOwnProps &
+  PulsesListSidebarStateProps;
+
+const mapStateToProps = (state: State): PulsesListSidebarStateProps => {
   return {
-    parameters: getParameters(state, props),
+    parameters: getParameters(state),
   };
 };
 
@@ -38,7 +58,7 @@ function _PulsesListSidebar({
   onCancel,
   editPulse,
   parameters,
-}) {
+}: PulsesListSidebarProps) {
   const createSubscriptionLabel = t`Set up a new schedule`;
   const closeSidebarLabel = t`Close`;
   return (
@@ -88,7 +108,8 @@ function _PulsesListSidebar({
               flat
               canEdit={canEdit}
               onClick={() =>
-                canEdit && editPulse(pulse, pulse.channels[0].channel_type)
+                canEdit &&
+                editPulse(pulse, pulse.channels[0].channel_type as ChannelType)
               }
             >
               <div
@@ -128,25 +149,21 @@ function _PulsesListSidebar({
   );
 }
 
-_PulsesListSidebar.propTypes = {
-  pulses: PropTypes.array.isRequired,
-  formInput: PropTypes.object.isRequired,
-  createSubscription: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  editPulse: PropTypes.func.isRequired,
-  parameters: PropTypes.array.isRequired,
-};
-
-function canEditPulse(pulse, formInput) {
+function canEditPulse(
+  pulse: DashboardSubscription,
+  formInput: ChannelApiResponse,
+): boolean {
   switch (pulse.channels[0].channel_type) {
     case "email":
       return formInput.channels.email != null;
     case "slack":
       return formInput.channels.slack != null;
+    default:
+      return false;
   }
 }
 
-function buildRecipientText(pulse) {
+function buildRecipientText(pulse: DashboardSubscription): string {
   const {
     channels: [firstChannel],
   } = pulse;
@@ -157,7 +174,7 @@ function buildRecipientText(pulse) {
     return "";
   }
 
-  const [firstRecipient, ...otherRecipients] = recipients;
+  const [firstRecipient, ...otherRecipients] = recipients!;
   const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
   return _.isEmpty(otherRecipients)
     ? firstRecipientText
@@ -168,7 +185,10 @@ function buildRecipientText(pulse) {
       )}`;
 }
 
-function buildFilterText(pulse, parameters) {
+function buildFilterText(
+  pulse: DashboardSubscription,
+  parameters: UiParameter[],
+): string {
   const activeParameters = getActivePulseParameters(pulse, parameters);
 
   if (_.isEmpty(activeParameters)) {
@@ -184,7 +204,7 @@ function buildFilterText(pulse, parameters) {
       ? firstParameter.value
       : [firstParameter.value];
     const formattedValues = values
-      .map((val) => formatDateValue(firstParameter, val))
+      .map((val: string) => formatDateValue(firstParameter, val))
       .filter(Boolean);
     if (formattedValues.length > 0) {
       formattedValue = conjunct(formattedValues, t`and`);
@@ -212,7 +232,12 @@ function buildFilterText(pulse, parameters) {
       )}`;
 }
 
-function PulseDetails({ pulse, parameters }) {
+type PulseDetailsProps = {
+  pulse: DashboardSubscription;
+  parameters: UiParameter[];
+};
+
+function PulseDetails({ pulse, parameters }: PulseDetailsProps) {
   const recipientText = buildRecipientText(pulse);
   const filterText = buildFilterText(pulse, parameters);
 
@@ -294,12 +319,7 @@ function PulseDetails({ pulse, parameters }) {
   );
 }
 
-PulseDetails.propTypes = {
-  pulse: PropTypes.object.isRequired,
-  parameters: PropTypes.array.isRequired,
-};
-
-function friendlySchedule(channel) {
+function friendlySchedule(channel: Channel): string {
   const {
     channel_type,
     details,
@@ -314,7 +334,7 @@ function friendlySchedule(channel) {
   if (channel_type === "email") {
     scheduleString += t`Emailed `;
   } else if (channel_type === "slack") {
-    scheduleString += t`Sent to ` + details.channel + " ";
+    scheduleString += t`Sent to ` + details?.channel + " ";
   } else {
     scheduleString += t`Sent `;
   }
@@ -324,22 +344,22 @@ function friendlySchedule(channel) {
       scheduleString += t`hourly`;
       break;
     case "daily": {
-      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
       scheduleString += t`daily at ${hour}`;
       break;
     }
     case "weekly": {
-      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
-      const day = formatDateTimeWithUnit(schedule_day, "day-of-week");
+      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
+      const day = formatDateTimeWithUnit(schedule_day ?? "mon", "day-of-week");
       scheduleString += t`${day} at ${hour}`;
       break;
     }
     case "monthly": {
-      const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
+      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
       const day = schedule_day
         ? formatDateTimeWithUnit(schedule_day, "day-of-week")
         : "calendar day";
-      const frame = formatFrame(schedule_frame);
+      const frame = formatFrame(schedule_frame ?? "first");
       scheduleString += t`monthly on the ${frame} ${day} at ${hour}`;
       break;
     }

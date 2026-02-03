@@ -12,6 +12,12 @@ import { createThunkAction } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { PulseApi } from "metabase/services";
+import type {
+  ChannelApiResponse,
+  ChannelSpec,
+  DashboardSubscription,
+  RegularCollectionId,
+} from "metabase-types/api";
 
 import { getEditingPulse, getPulseFormInput } from "./selectors";
 
@@ -30,7 +36,10 @@ export const FETCH_PULSE_LIST_BY_DASHBOARD_ID =
 
 export const setEditingPulse = createThunkAction(
   SET_EDITING_PULSE,
-  function (id, initialCollectionId = null) {
+  function (
+    id?: number,
+    initialCollectionId: RegularCollectionId | null = null,
+  ) {
     return async function (dispatch, getState) {
       if (id != null) {
         try {
@@ -44,9 +53,11 @@ export const setEditingPulse = createThunkAction(
       } else {
         // HACK: need a way to wait for form_input to finish loading
         const channels =
-          getPulseFormInput(getState()).channels ||
+          getPulseFormInput(getState())?.channels ||
           (await PulseApi.form_input()).channels;
-        const defaultChannelSpec = getDefaultChannel(channels);
+        const defaultChannelSpec = getDefaultChannel(channels) as
+          | ChannelSpec
+          | undefined;
         return {
           ...NEW_PULSE_TEMPLATE,
           channels: defaultChannelSpec
@@ -59,7 +70,8 @@ export const setEditingPulse = createThunkAction(
   },
 );
 
-export const updateEditingPulse = createAction(UPDATE_EDITING_PULSE);
+export const updateEditingPulse =
+  createAction<DashboardSubscription>(UPDATE_EDITING_PULSE);
 export const cancelEditingPulse = createAction(CANCEL_EDITING_PULSE);
 
 export const saveEditingPulse = createThunkAction(
@@ -98,16 +110,19 @@ export const saveEditingPulse = createThunkAction(
   },
 );
 
-export const testPulse = createThunkAction(TEST_PULSE, function (pulse) {
-  return async function (dispatch, getState) {
-    return await PulseApi.test(pulse);
-  };
-});
+export const testPulse = createThunkAction(
+  TEST_PULSE,
+  function (pulse: DashboardSubscription) {
+    return async function () {
+      return await PulseApi.test(pulse);
+    };
+  },
+);
 
 export const fetchPulseFormInput = createThunkAction(
   FETCH_PULSE_FORM_INPUT,
   function () {
-    return async function (dispatch, getState) {
+    return async function (): Promise<ChannelApiResponse> {
       return await PulseApi.form_input();
     };
   },
@@ -115,8 +130,8 @@ export const fetchPulseFormInput = createThunkAction(
 
 export const fetchPulseCardPreview = createThunkAction(
   FETCH_PULSE_CARD_PREVIEW,
-  function (id) {
-    return async function (dispatch, getState) {
+  function (id: number) {
+    return async function () {
       return await PulseApi.preview_card({ id: id });
     };
   },
@@ -124,8 +139,8 @@ export const fetchPulseCardPreview = createThunkAction(
 
 export const fetchPulsesByDashboardId = createThunkAction(
   FETCH_PULSE_LIST_BY_DASHBOARD_ID,
-  function (dashboard_id) {
-    return async function (dispatch, getState) {
+  function (dashboard_id: number) {
+    return async function () {
       return await PulseApi.list({ dashboard_id: dashboard_id });
     };
   },

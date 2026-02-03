@@ -37,7 +37,6 @@ export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
 export * from "./persist";
-export * from "./pulse";
 export * from "./query";
 export * from "./document";
 export * from "./remote-sync";
