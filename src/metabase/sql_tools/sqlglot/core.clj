@@ -155,15 +155,9 @@
 
 (defn- field->columns
   [namespaced-columns* [_catalog _schema table-name field-name :as _coords]]
-  (let [columns (or (if (= "*" field-name)
-                      (some-> (get namespaced-columns* table-name) vals)
-                      (some-> (get-in namespaced-columns* [table-name field-name]) vector))
-                    :missing)]
-    (if (= :missing columns)
-      (throw (ex-info "Referenced field not available."
-                      {:table-name table-name
-                       :field-name field-name}))
-      columns)))
+  (if (= "*" field-name)
+    (some-> (get namespaced-columns* table-name) vals)
+    (some-> (get-in namespaced-columns* [table-name field-name]) vector)))
 
 (defn referenced-columns
   "Given a driver and a native query, return the set of :metadata/columns referenced in the query.

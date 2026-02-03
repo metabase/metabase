@@ -178,7 +178,7 @@
                 {:table (mt/id :products)}}
               (#'sql-tools.sqlglot/referenced-tables driver/*driver* query))))))
 
-;;;; referenced-fields
+;;;; referenced-columns
 
 (deftest referenced-columns-single-column-test
   (mt/test-driver
@@ -213,30 +213,12 @@
     (let [mp (mt/metadata-provider)]
       (testing "Missing referenced table results in an error"
         (let [query (lib/native-query mp "select * from xix")]
-          (is (= :error (try
-                          (sql-tools.sqlglot/referenced-columns driver/*driver* query)
-                          :success
-                          (catch Exception e
-                            (is (instance? clojure.lang.ExceptionInfo e))
-                            (is (= "Referenced field not available."
-                                   (ex-message e)))
-                            (is (= {:table-name "xix"
-                                    :field-name "*"}
-                                   (ex-data e)))
-                            :error))))))
+          (is (= #{}
+                 (sql-tools.sqlglot/referenced-columns driver/*driver* query)))))
       (testing "Missing referenced field results in an error"
         (let [query (lib/native-query mp "select xix from orders")]
-          (is (= :error (try
-                          (sql-tools.sqlglot/referenced-columns driver/*driver* query)
-                          :success
-                          (catch Exception e
-                            (is (instance? clojure.lang.ExceptionInfo e))
-                            (is (= "Referenced field not available."
-                                   (ex-message e)))
-                            (is (= {:table-name "orders"
-                                    :field-name "xix"}
-                                   (ex-data e)))
-                            :error)))))))))
+          (is (= #{}
+                 (sql-tools.sqlglot/referenced-columns driver/*driver* query))))))))
 
 (deftest referenced-columns-select-multi-stars-test
   (mt/test-driver
