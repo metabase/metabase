@@ -121,7 +121,7 @@
     (is (= "UTC"
            (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
-(deftest ^:synchronized template-tag-timezone-test
+(deftest template-tag-timezone-test
   (mt/test-driver :presto-jdbc
     (testing "Make sure date params work correctly when report timezones are set (#10487)"
       (mt/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
