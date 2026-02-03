@@ -23,7 +23,6 @@ export function EmailSettingsPage() {
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
     "email_restrict_recipients",
   );
-
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
