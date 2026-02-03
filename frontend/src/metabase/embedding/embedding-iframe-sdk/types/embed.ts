@@ -74,6 +74,7 @@ export type DashboardEmbedOptions = StrictUnion<
   componentName: "metabase-dashboard";
 
   drills?: boolean;
+  autoRefreshInterval?: number;
   withTitle?: boolean;
   withDownloads?: boolean;
   withSubscriptions?: boolean;

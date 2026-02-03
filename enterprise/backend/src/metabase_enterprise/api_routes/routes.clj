@@ -16,6 +16,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
+   [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.data-studio.api]
@@ -40,6 +41,7 @@
    [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.upload-management.api]
+   [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -74,8 +76,9 @@
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
-   :support-users (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")})
+   :support-users              (deferred-tru "Support Users")
+   :transforms-python          (deferred-tru "Transforms Python")
+   :workspaces                 (deferred-tru "Workspaces")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -108,6 +111,7 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
+   "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :data-studio)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
@@ -133,7 +137,8 @@
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
+   "/workspace"                    (premium-handler metabase-enterprise.workspaces.api/routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

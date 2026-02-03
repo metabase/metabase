@@ -100,10 +100,7 @@
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
                  "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"
-                 "date-equals"  "date-not-equals"
-                 "date-before"  "date-on-or-before"
-                 "date-after"   "date-on-or-after"]]
+                 "less-than"    "less-than-or-equal"]]
     [:value [:or :string :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -125,7 +122,6 @@
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
-                 "string-equals"      "string-not-equals"
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:value :string]]
@@ -147,12 +143,9 @@
    [:map
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"              "not-equals"
-                 "greater-than"        "greater-than-or-equal"
-                 "less-than"           "less-than-or-equal"
-                 "number-equals"       "number-not-equals"
-                 "number-greater-than" "number-greater-than-or-equal"
-                 "number-less-than"    "number-less-than-or-equal"]]
+                 "equals"       "not-equals"
+                 "greater-than" "greater-than-or-equal"
+                 "less-than"    "less-than-or-equal"]]
     [:value [:or :int :double]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -161,8 +154,7 @@
    [:map
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"        "not-equals"
-                 "number-equals" "number-not-equals"]]
+                 "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -191,20 +183,26 @@
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
-(mr/def ::field-aggregation
-  "Aggregation using a field and function.
+(mr/def ::count-aggregation
+  "Count aggregation — counts rows, no field_id needed.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+  [:and
+   [:map
+    [:function [:= {:encode/tool-api-request keyword} "count"]]
+    [:bucket {:optional true} ::bucket]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
-   - field_id: Required. For 'count', any valid field_id can be provided (the value is ignored since count operates on rows).
-   - function: The aggregation function to apply.
-   - sort_order: Optional. Use this to order results by this aggregation ('asc' or 'desc').
-                 This is the correct way to sort by aggregation results - do NOT use order_by for aggregations."
+(mr/def ::field-aggregation
+  "Aggregation using a field and function. field_id is required.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
   [:and
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
-                "avg" "count" "count-distinct" "max" "min" "sum"]]]
+                "avg" "count-distinct" "max" "min" "sum"]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::measure-aggregation
@@ -216,8 +214,8 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::aggregation
-  "Aggregation - either field-based or measure-based."
-  [:or ::field-aggregation ::measure-aggregation])
+  "Aggregation — count (field optional), field-based (field required), or measure-based."
+  [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
 
 (mr/def ::field
   [:and
@@ -343,7 +341,7 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
-   [:database_engine :keyword]
+   [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:related_tables {:optional true} [:sequential [:ref ::table-result]]]

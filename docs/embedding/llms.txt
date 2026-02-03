@@ -1,0 +1,1264 @@
+# Metabase Modular Embedding Reference
+
+> Complete guide for embedding Metabase charts, dashboards, query builder, and AI chat into your applications.
+
+## Overview
+
+Metabase offers two primary ways to embed analytics:
+
+1. **Modular Embedding JS** - Embed individual components (dashboards, questions, query builder, AI chat) with full customization
+2. **Modular Embedding SDK** - React SDK for advanced embedding with custom layouts and plugins
+
+### When to Use Modular Embedding
+
+- **SSO Embeds**: Multi-tenant self-service analytics with drill-through, query builder, and AI chat. Requires JWT or SAML authentication.
+- **Guest Embeds**: Simple, secure charts and dashboards without SSO. View-only with locked parameters for data filtering.
+
+### Feature Comparison
+
+| Feature | SSO | Guest | SDK |
+|---------|-----|-------|-----|
+| Charts & Dashboards | ✅ | ✅ | ✅ |
+| Drill-through | ✅ | ❌ | ✅ |
+| Query Builder | ✅ | ❌ | ✅ |
+| AI Chat (Metabot) | ✅ | ❌ | ✅ |
+| Collection Browser | ✅ | ❌ | ✅ |
+| Advanced Theming | ✅ | ❌ | ✅ |
+| Custom Layouts | ❌ | ❌ | ✅ |
+| Plugins | ❌ | ❌ | ✅ |
+| Data Permissions | ✅ | ❌ | ✅ |
+
+---
+
+## Quick Start Paths
+
+### Path 1: Simple Web Components (No React Required)
+
+Best for: Adding analytics to any web app with minimal code.
+
+```html
+<!-- Load embedding library -->
+<script defer src="https://your-metabase-url/app/embed.js"></script>
+
+<script>
+  defineMetabaseConfig({
+    instanceUrl: "https://your-metabase-url",
+    apiKey: "mb_dev_api_key", // For local testing only
+    theme: {
+      colors: {
+        brand: "#9B5966",
+        background: "#FFFFFF"
+      }
+    }
+  });
+</script>
+
+<!-- Embed a dashboard -->
+<metabase-dashboard dashboard-id="1" with-title="true"></metabase-dashboard>
+
+<!-- Embed a question -->
+<metabase-question question-id="5"></metabase-question>
+```
+
+### Path 2: React SDK (Advanced)
+
+Best for: React apps needing custom layouts, plugins, and full control.
+
+```bash
+# Install (use dist-tag matching your Metabase version)
+npm install @metabase/embedding-sdk-react@58-stable
+```
+
+```tsx
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+
+function App() {
+  return (
+    <MetabaseProvider
+      authConfig={{
+        metabaseInstanceUrl: "https://your-metabase-url",
+        apiKey: "mb_dev_api_key" // For local testing only
+      }}
+    >
+      <StaticDashboard dashboardId={1} />
+    </MetabaseProvider>
+  );
+}
+```
+
+---
+
+## Authentication
+
+### Development: API Keys (localhost only)
+
+```javascript
+// Web components
+defineMetabaseConfig({
+  instanceUrl: "https://your-metabase-url",
+  apiKey: "mb_your_api_key"
+});
+
+// React SDK
+authConfig={{
+  metabaseInstanceUrl: "https://your-metabase-url",
+  apiKey: "mb_your_api_key"
+}}
+```
+
+**⚠️ API keys only work on localhost and should never be used in production.**
+
+### Production: JWT SSO (Requires Pro/Enterprise)
+
+**⚠️ Important:** The SDK automatically uses the JWT endpoint configured in Metabase Admin settings. You don't need `fetchRequestToken` unless you require custom headers/auth.
+
+#### Backend Setup (Node.js example)
+
+```javascript
+const jwt = require("jsonwebtoken");
+
+app.get("/sso/metabase", async (req, res) => {
+  const user = getCurrentUser(req);
+
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [user.group],
+      exp: Math.round(Date.now() / 1000) + 60 * 10 // 10 min expiration
+    },
+    METABASE_JWT_SHARED_SECRET
+  );
+
+  // For SDK requests (check for response=json query param)
+  if (req.query.response === "json") {
+    res.status(200).json({ jwt: token });
+  } else {
+    // For full app embedding
+    const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+    res.redirect(ssoUrl);
+  }
+});
+```
+
+#### Frontend Configuration
+
+```tsx
+// React SDK
+import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+
+// ✅ CORRECT - Default setup (works for most cases)
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase-url"
+  // SDK automatically uses JWT endpoint configured in Metabase admin
+  // No fetchRequestToken needed!
+});
+
+// ❌ DEPRECATED - DO NOT USE
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase-url",
+  authProviderUri: "..." // REMOVED - configure in Metabase admin instead
+});
+```
+
+### Production: SAML SSO (Requires Enterprise)
+
+```tsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase-url",
+  preferredAuthMethod: "saml"
+});
+```
+
+### Guest Embeds (No User Accounts Required)
+
+Backend generates signed JWT tokens containing resource ID and locked parameters:
+
+```javascript
+const jwt = require("jsonwebtoken");
+
+const payload = {
+  resource: { dashboard: 10 }, // or { question: 5 }
+  params: { category: ["Gizmo"] }, // Locked parameters
+  exp: Math.round(Date.now() / 1000) + 10 * 60
+};
+
+const token = jwt.sign(payload, METABASE_SECRET_KEY);
+```
+
+Frontend:
+
+```html
+<script>
+  defineMetabaseConfig({
+    isGuest: true,
+    instanceUrl: "https://your-metabase-url"
+  });
+</script>
+
+<metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
+```
+
+**⚠️ Never hardcode tokens in HTML. Fetch from your backend dynamically.**
+
+## ⚠️ Common Gotchas for Code Generation
+
+### 1. Deprecated Props (DO NOT USE)
+- ❌ `authProviderUri` - DEPRECATED, remove from all code
+- ❌ `jwtProviderUri` - DEPRECATED, remove from all code
+- ❌ `config` prop on MetabaseProvider - DEPRECATED, use `authConfig` instead
+
+### 2. fetchRequestToken Usually Not Needed
+**DON'T add `fetchRequestToken` unless explicitly needed for custom headers/auth.**
+
+The SDK automatically fetches tokens from the JWT endpoint configured in Metabase Admin settings. Adding `fetchRequestToken` unnecessarily can break backend code that handles legacy interactive embedding redirects, especially if you forget to pass `response=json` in the request.
+
+**Only use `fetchRequestToken` when:**
+- You need custom headers (e.g., `Authorization: Bearer ${token}`)
+- You need custom fetch logic beyond the default
+
+**Default behavior (works for most cases):**
+```tsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase-url"
+  // No fetchRequestToken needed - SDK uses admin-configured JWT endpoint
+});
+```
+
+**Custom fetchRequestToken (only when needed):**
+```tsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase-url",
+  fetchRequestToken: async () => {
+    const response = await fetch("https://your-backend/sso/metabase", {
+      headers: { "Authorization": `Bearer ${yourToken}` }
+      // SDK adds ?response=json automatically
+    });
+    return await response.json();
+  }
+});
+```
+
+### 3. Numeric IDs Must Be Integers, Not Strings
+**ALWAYS parse URL parameters and strings to integers using `parseInt()`.**
+
+```tsx
+// ❌ WRONG - String IDs will cause errors
+const dashboardId = searchParams.get("id"); // "123" (string)
+<StaticDashboard dashboardId={dashboardId} /> // ERROR!
+
+// ✅ CORRECT - Parse to integer
+const dashboardId = parseInt(searchParams.get("id"), 10); // 123 (number)
+<StaticDashboard dashboardId={dashboardId} /> // Works!
+
+// ✅ Also works with entity IDs (strings starting with letters)
+const dashboardId = searchParams.get("id"); // "abc123def"
+<StaticDashboard dashboardId={dashboardId} /> // Works!
+```
+
+**Rule of thumb:**
+- Numeric IDs (e.g., `123`): Must be `number` type → use `parseInt(value, 10)`
+- Entity IDs (e.g., `"abc123def"`): Must be `string` type → use as-is
+
+---
+
+## React SDK Components
+
+### Dashboards
+
+#### StaticDashboard
+Lightweight, view-only dashboard.
+
+```tsx
+import { StaticDashboard } from "@metabase/embedding-sdk-react";
+
+<StaticDashboard
+  dashboardId={123}
+  withTitle={true}
+  withDownloads={false}
+  initialParameters={{ productId: 42 }}
+  hiddenParameters={["category"]}
+/>
+```
+
+#### InteractiveDashboard
+Dashboard with drill-downs, click behaviors, and question navigation.
+
+```tsx
+import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
+
+<InteractiveDashboard
+  dashboardId={123}
+  withTitle={true}
+  withDownloads={true}
+  plugins={{
+    dashboardCardMenu: {
+      withDownloads: true,
+      withEditLink: false,
+      customItems: [
+        {
+          label: "Custom Action",
+          icon: "info",
+          action: (question) => console.log(question)
+        }
+      ]
+    }
+  }}
+/>
+```
+
+#### EditableDashboard
+Fully editable dashboard with add/edit/layout capabilities.
+
+```tsx
+import { EditableDashboard } from "@metabase/embedding-sdk-react";
+
+<EditableDashboard
+  dashboardId={123}
+  onSave={(dashboard) => console.log("Saved:", dashboard)}
+/>
+```
+
+### Questions
+
+#### StaticQuestion
+Lightweight, view-only question/chart.
+
+```tsx
+import { StaticQuestion } from "@metabase/embedding-sdk-react";
+
+<StaticQuestion
+  questionId={456}
+  height="400px"
+  initialSqlParameters={{ productId: 42 }} // For SQL questions only
+/>
+```
+
+#### InteractiveQuestion
+Question with filters, summarize, drill-through, and query builder.
+
+```tsx
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+
+// Default layout
+<InteractiveQuestion questionId={456} />
+
+// Custom layout with namespaced components
+<InteractiveQuestion questionId={456}>
+  <InteractiveQuestion.Title />
+  <InteractiveQuestion.Filter />
+  <InteractiveQuestion.Summarize />
+  <InteractiveQuestion.QuestionVisualization />
+  <InteractiveQuestion.SaveButton />
+</InteractiveQuestion>
+```
+
+#### Query Builder (New Question)
+
+```tsx
+<InteractiveQuestion questionId="new">
+  <InteractiveQuestion.Editor />
+  <InteractiveQuestion.QuestionVisualization />
+  <InteractiveQuestion.SaveButton />
+</InteractiveQuestion>
+```
+
+### AI Chat (Metabot)
+
+Embed AI-powered natural language querying.
+
+```tsx
+import { MetabotQuestion } from "@metabase/embedding-sdk-react";
+
+<MetabotQuestion
+  collectionId={7} // Scope AI to specific collection
+  layout="sidebar" // "auto" | "stacked" | "sidebar"
+/>
+```
+
+### Collection Browser
+
+Let users navigate and explore Metabase collections.
+
+```tsx
+import { CollectionBrowser } from "@metabase/embedding-sdk-react";
+
+<CollectionBrowser
+  initialCollectionId="root"
+  readOnly={false}
+  visibleEntityTypes={["dashboard", "question"]}
+/>
+```
+
+### Create Dashboard Modal
+
+```tsx
+import { CreateDashboardModal } from "@metabase/embedding-sdk-react";
+
+<CreateDashboardModal
+  collectionId={7}
+  onClose={() => setIsOpen(false)}
+  onCreate={(dashboard) => console.log("Created:", dashboard)}
+/>
+```
+
+---
+
+## Web Component Reference
+
+### Dashboard Component
+
+```html
+<metabase-dashboard
+  dashboard-id="1"              <!-- Required: ID or entity ID -->
+  with-title="true"             <!-- Show title (default: true) -->
+  with-downloads="false"        <!-- Enable downloads (default: false) -->
+  drills="true"                 <!-- Enable drill-through (default: true) -->
+  with-subscriptions="false"    <!-- Enable subscriptions -->
+  refresh="60"                  <!-- Auto-refresh in seconds -->
+  initial-parameters='{"productId": "42"}'
+  hidden-parameters='["category"]'
+></metabase-dashboard>
+```
+
+### Question Component
+
+```html
+<metabase-question
+  question-id="5"               <!-- Required: ID or entity ID, or "new" -->
+  with-title="true"             <!-- Show title (default: true) -->
+  with-downloads="false"        <!-- Enable downloads (default: false) -->
+  drills="true"                 <!-- Enable drill-through (default: true) -->
+  initial-sql-parameters='{"productId": "42"}' <!-- SQL questions only -->
+  is-save-enabled="false"       <!-- Allow saving -->
+  target-collection="personal"  <!-- Force save location -->
+></metabase-question>
+```
+
+### Browser Component
+
+```html
+<metabase-browser
+  initial-collection="root"     <!-- Required: collection ID or "root" -->
+  read-only="false"             <!-- Allow create/edit (default: true) -->
+></metabase-browser>
+```
+
+### AI Chat Component
+
+```html
+<metabase-metabot
+  layout="auto"                 <!-- "auto" | "stacked" | "sidebar" -->
+></metabase-metabot>
+```
+
+---
+
+## Theming and Appearance
+
+### Complete Theme Object
+
+```javascript
+{
+  fontFamily: "Lato", // or "Custom" for Metabase custom font
+  fontSize: "16px",
+  lineHeight: 1.5,
+
+  colors: {
+    // Primary colors
+    brand: "#9B5966",
+    "brand-hover": "#DDECFA",
+    "brand-hover-light": "#EEF6FC",
+
+    // Text colors
+    "text-primary": "#4C5773",
+    "text-secondary": "#696E7B",
+    "text-tertiary": "#949AAB",
+
+    // Background colors
+    background: "#FFFFFF",
+    "background-light": "#F0F2F5",
+    "background-secondary": "#EDF2F5",
+    "background-hover": "#F9FBFC",
+    "background-disabled": "#F3F5F7",
+
+    // UI elements
+    border: "#EEECEC",
+    filter: "#7172AD",
+    summarize: "#88BF4D",
+    positive: "#BADC58",
+    negative: "#FF7979",
+    focus: "#CAE1F7",
+    shadow: "rgba(0,0,0,0.08)",
+
+    // Chart colors (up to 8)
+    charts: [
+      "#9B59B6",
+      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" }
+    ]
+  },
+
+  components: {
+    dashboard: {
+      backgroundColor: "#2F3640",
+      gridBorderColor: "#EEECEC",
+      card: {
+        backgroundColor: "#2D2D30",
+        border: "1px solid #EEECEC"
+      }
+    },
+
+    question: {
+      backgroundColor: "#2E353B",
+      toolbar: {
+        backgroundColor: "#F3F5F7"
+      }
+    },
+
+    tooltip: {
+      textColor: "#FFFFFF",
+      secondaryTextColor: "#949AAB",
+      backgroundColor: "#2E353B",
+      focusedBackgroundColor: "#0A0E10"
+    },
+
+    table: {
+      cell: {
+        textColor: "#4C5773",
+        backgroundColor: "#FFFFFF",
+        fontSize: "12.5px"
+      },
+      idColumn: {
+        textColor: "#9B5966",
+        backgroundColor: "#F5E9EB"
+      }
+    },
+
+    number: {
+      value: {
+        fontSize: "24px",
+        lineHeight: "21px"
+      }
+    },
+
+    cartesian: {
+      padding: "4px 8px"
+    },
+
+    pivotTable: {
+      cell: { fontSize: "12px" },
+      rowToggle: {
+        textColor: "#FFFFFF",
+        backgroundColor: "#95A5A6"
+      }
+    },
+
+    popover: {
+      zIndex: 4
+    }
+  }
+}
+```
+
+### Applying Themes
+
+#### Web Components
+
+```html
+<script>
+  defineMetabaseConfig({
+    instanceUrl: "https://your-metabase-url",
+    theme: {
+      colors: {
+        brand: "#9B5966",
+        background: "#FFFFFF"
+      }
+    }
+  });
+</script>
+```
+
+#### React SDK
+
+```tsx
+import { defineMetabaseTheme } from "@metabase/embedding-sdk-react";
+
+const theme = defineMetabaseTheme({
+  colors: {
+    brand: "#9B5966",
+    background: "#FFFFFF"
+  }
+});
+
+<MetabaseProvider theme={theme} authConfig={authConfig}>
+  {/* Your components */}
+</MetabaseProvider>
+```
+
+---
+
+## Plugins (React SDK Only)
+
+### Global Plugins
+
+Applied to all components via `MetabaseProvider`:
+
+```tsx
+<MetabaseProvider
+  authConfig={authConfig}
+  pluginsConfig={{
+    mapQuestionClickActions: (clickActions, dataPoint) => {
+      // Return custom actions or default actions
+      return [
+        ...clickActions,
+        {
+          name: "custom-action",
+          title: "Custom Action",
+          icon: "info",
+          action: () => console.log(dataPoint)
+        }
+      ];
+    },
+
+    handleLink: (url) => {
+      console.log("Link clicked:", url);
+      return false; // Prevent default
+    },
+
+    getNoDataIllustration: () => "data:image/svg+xml;base64,...",
+    getNoObjectIllustration: () => "data:image/svg+xml;base64,..."
+  }}
+>
+  {/* Your components */}
+</MetabaseProvider>
+```
+
+### Component-Level Plugins
+
+Applied to individual components:
+
+```tsx
+<InteractiveQuestion
+  questionId={456}
+  plugins={{
+    mapQuestionClickActions: (clickActions, dataPoint) => {
+      // Custom behavior for this question only
+      if (dataPoint.column.name === "Plan") {
+        return [{
+          name: "alert",
+          title: "Show Alert",
+          action: () => alert(dataPoint.value)
+        }];
+      }
+      return clickActions; // Default for other columns
+    }
+  }}
+/>
+```
+
+### Dashboard Card Menu Plugin
+
+```tsx
+<InteractiveDashboard
+  dashboardId={123}
+  plugins={{
+    dashboardCardMenu: {
+      withDownloads: true,
+      withEditLink: false,
+      customItems: [
+        {
+          label: "Export to CSV",
+          icon: "download",
+          action: (question) => {
+            // Custom export logic
+            console.log("Exporting:", question);
+          }
+        }
+      ]
+    }
+  }}
+/>
+```
+
+Or replace the entire menu:
+
+```tsx
+<InteractiveDashboard
+  dashboardId={123}
+  plugins={{
+    dashboardCardMenu: (question) => (
+      <CustomMenu question={question} />
+    )
+  }}
+/>
+```
+
+---
+
+## Setup Checklist
+
+### Metabase Configuration
+
+1. **Enable Modular Embedding**
+   - Go to **Admin Settings > Embedding**
+   - Toggle **Enable modular embedding** (for web components) or **Modular embedding SDK** (for React)
+
+2. **Configure CORS**
+   - Add allowed origins: `https://*.example.com`
+   - `localhost` is automatically included for development
+
+3. **SameSite Cookie Setting** (if embedding on different domain)
+   - Go to **Admin Settings > Embedding > Security**
+   - Set **SameSite cookie** to **None** (requires HTTPS)
+
+4. **Authentication Setup**
+   - **Development**: Create API key at **Settings > Authentication > API keys**
+   - **Production (JWT)**: Configure at **Settings > Authentication > JWT**
+   - **Production (SAML)**: Configure at **Settings > Authentication > SAML**
+
+### Application Setup
+
+#### Web Components
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Embedded Analytics</title>
+</head>
+<body>
+  <!-- 1. Load embedding library -->
+  <script defer src="https://your-metabase-url/app/embed.js"></script>
+
+  <!-- 2. Configure -->
+  <script>
+    function defineMetabaseConfig(config) {
+      window.metabaseConfig = config;
+    }
+
+    defineMetabaseConfig({
+      instanceUrl: "https://your-metabase-url",
+      apiKey: "mb_dev_api_key" // For local testing
+    });
+  </script>
+
+  <!-- 3. Embed components -->
+  <metabase-dashboard dashboard-id="1"></metabase-dashboard>
+</body>
+</html>
+```
+
+#### React SDK
+
+```bash
+# 1. Install
+npm install @metabase/embedding-sdk-react@58-stable
+```
+
+```tsx
+// 2. Configure and embed
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+
+function App() {
+  return (
+    <MetabaseProvider
+      authConfig={{ // ✅ authConfig NOT config
+        metabaseInstanceUrl: "https://your-metabase-url",
+        apiKey: "mb_dev_api_key"
+      }}
+    >
+      <StaticDashboard dashboardId={1} /> {/* ✅ number type */}
+    </MetabaseProvider>
+  );
+}
+```
+
+---
+
+## Common Patterns
+
+### Multi-Tenant Analytics with Data Segregation
+
+```javascript
+// Backend: Sign JWT with user's group
+const token = jwt.sign(
+  {
+    email: user.email,
+    groups: [user.tenantId], // e.g., "tenant_123"
+    exp: Math.round(Date.now() / 1000) + 60 * 10
+  },
+  METABASE_JWT_SHARED_SECRET
+);
+```
+
+In Metabase, configure [data sandboxing](https://www.metabase.com/docs/latest/permissions/data-sandboxes) to filter data based on `groups`.
+
+### Custom JWT Fetch (Only When You Need Custom Headers)
+
+**⚠️ Only use this pattern if you need custom headers or auth. Most apps don't need this.**
+
+```tsx
+import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+
+// Only add fetchRequestToken if you need custom headers/auth
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase-url",
+  fetchRequestToken: async () => {
+    const response = await fetch("https://your-backend/sso/metabase", {
+      method: "GET",
+      credentials: "include", // For cookies
+      headers: {
+        "Authorization": `Bearer ${yourAuthToken}` // Custom header
+      }
+      // SDK automatically adds ?response=json query param
+    });
+    return await response.json(); // { jwt: "..." }
+  }
+});
+```
+
+### Dynamic Parameters
+
+```tsx
+const [productId, setProductId] = useState(42);
+
+<InteractiveDashboard
+  dashboardId={123} // ✅ number type
+  initialParameters={{ productId }} // ✅ values can be any type
+/>
+```
+
+### Parsing IDs from URL Parameters
+
+```tsx
+import { useSearchParams } from "react-router-dom";
+
+function DashboardPage() {
+  const [searchParams] = useSearchParams();
+
+  // ✅ CORRECT - Parse numeric IDs to integers
+  const dashboardId = parseInt(searchParams.get("id"), 10);
+
+  // ❌ WRONG - Don't pass string IDs for numeric dashboards
+  // const dashboardId = searchParams.get("id"); // "123" won't work!
+
+  return <InteractiveDashboard dashboardId={dashboardId} />;
+}
+```
+
+### Guest Embed with Locked Parameters
+
+```javascript
+// Backend: Lock parameters to prevent tampering
+const payload = {
+  resource: { dashboard: 10 },
+  params: {
+    // User can't change these
+    tenant_id: user.tenantId,
+    // User can change these
+    date_range: null
+  },
+  exp: Math.round(Date.now() / 1000) + 10 * 60
+};
+```
+
+### Checking Authentication Status
+
+```tsx
+import { useMetabaseAuthStatus } from "@metabase/embedding-sdk-react";
+
+function MyComponent() {
+  const { status, user } = useMetabaseAuthStatus();
+
+  if (status === "loading") return <Spinner />;
+  if (status === "error") return <Error />;
+  if (status === "success") return <Dashboard user={user} />;
+}
+```
+
+### Custom Loading and Error Components
+
+```tsx
+const CustomLoader = () => <div>Loading analytics...</div>;
+const CustomError = ({ error }) => <div>Error: {error.message}</div>;
+
+<MetabaseProvider
+  authConfig={authConfig}
+  loaderComponent={CustomLoader}
+  errorComponent={CustomError}
+>
+  {/* Your components */}
+</MetabaseProvider>
+```
+
+---
+
+## SDK Hooks
+
+### useMetabaseAuthStatus
+Get current authentication status.
+
+```tsx
+const { status, user } = useMetabaseAuthStatus();
+// status: "loading" | "success" | "error"
+// user: { id, email, first_name, last_name, groups }
+```
+
+### useCurrentUser
+Get current authenticated user.
+
+```tsx
+const user = useCurrentUser();
+// Returns: { id, email, first_name, last_name, groups }
+```
+
+### useCreateDashboardApi
+Programmatically create dashboards.
+
+```tsx
+const createDashboard = useCreateDashboardApi();
+
+const handleCreate = async () => {
+  const dashboard = await createDashboard({
+    name: "New Dashboard",
+    description: "Description",
+    collection_id: 7
+  });
+  console.log("Created:", dashboard);
+};
+```
+
+### useApplicationName
+Get Metabase instance name.
+
+```tsx
+const appName = useApplicationName();
+```
+
+### useAvailableFonts
+Get available fonts in Metabase.
+
+```tsx
+const fonts = useAvailableFonts();
+```
+
+---
+
+## Versioning
+
+**Critical**: Use npm dist-tag matching your Metabase version.
+
+| Metabase Version | npm Install Command |
+|------------------|---------------------|
+| 1.58.x | `npm install @metabase/embedding-sdk-react@58-stable` |
+| 1.57.x | `npm install @metabase/embedding-sdk-react@57-stable` |
+| 1.56.x | `npm install @metabase/embedding-sdk-react@56-stable` |
+| 1.55.x | `npm install @metabase/embedding-sdk-react@55-stable` |
+| 1.54.x | `npm install @metabase/embedding-sdk-react@54-stable` |
+
+Starting with Metabase 57, the SDK uses a two-part architecture:
+- **SDK Package**: Lightweight npm package (`@metabase/embedding-sdk-react`)
+- **SDK Bundle**: Full SDK code served from your Metabase instance
+
+This ensures version compatibility between SDK and Metabase.
+
+---
+
+## Limitations
+
+### SDK Limitations
+- No server-side rendering (SSR)
+- No verified content or official collections
+- No subscriptions or alerts in SDK components
+- No custom click behavior destinations to other Metabase items
+- Only one interactive dashboard per page (multiple static dashboards OK)
+- Leaflet 1.x compatibility issues (use Leaflet 2.x)
+
+### Guest Embed Limitations
+- No drill-through or click actions
+- No query builder
+- No AI chat
+- No row/column-level security (use locked parameters instead)
+- No usage analytics
+
+---
+
+## Security Best Practices
+
+1. **Never share Metabase accounts**
+   - Each end-user must have their own account (for SSO embeds)
+   - Session tokens can be used to access Metabase API directly
+
+2. **Never hardcode secrets**
+   - API keys and JWT secrets belong on backend only
+   - Fetch tokens dynamically from your server
+
+3. **Use data sandboxing**
+   - Configure [row-level permissions](https://www.metabase.com/docs/latest/permissions/data-sandboxes) in Metabase
+   - Map user groups to data filters
+
+4. **Validate JWT payloads**
+   - Always validate exp (expiration)
+   - Keep expiration short (10-15 minutes)
+
+5. **Secure CORS**
+   - Only allow specific origins
+   - Never use wildcard (`*`) in production
+
+6. **HTTPS required**
+   - SameSite=None cookies require HTTPS
+   - Use HTTPS for all production embeds
+
+---
+
+## Troubleshooting
+
+### "Failed to fetch" errors
+- Check CORS configuration in Metabase
+- Verify `instanceUrl` matches your Metabase domain exactly
+- Check browser console for specific CORS errors
+
+### Authentication failures
+- Verify JWT signature matches secret key
+- Check JWT expiration hasn't passed
+- Ensure user exists in Metabase with correct email
+- Check groups match Metabase group names
+
+### Components not rendering
+- Ensure `MetabaseProvider` wraps all SDK components
+- Check IDs are correct (numeric IDs must be `number` type, not strings)
+- Parse URL parameters with `parseInt(value, 10)` for numeric IDs
+- Verify user has permissions to view the item
+- Check browser console for errors
+
+### TypeScript errors about ID types
+```tsx
+// ❌ WRONG
+const id = "123"; // string
+<StaticDashboard dashboardId={id} /> // Type error!
+
+// ✅ CORRECT
+const id = 123; // number
+<StaticDashboard dashboardId={id} />
+
+// ✅ CORRECT - Parse from URL
+const id = parseInt(urlParams.get("id"), 10);
+<StaticDashboard dashboardId={id} />
+```
+
+### Theme not applying
+- Colors must be valid CSS color values
+- Component-level styles override global theme
+- Visualization settings in Metabase override theme
+
+### Cross-domain issues
+- Set SameSite=None in Metabase settings
+- Use HTTPS (required for SameSite=None)
+- Safari may require "Allow cross-site tracking"
+
+---
+
+## Resources
+
+- **Live Demo**: [Shoppy Demo App](https://metaba.se/sdk-demo)
+- **Sample Code**: [Shoppy Source](https://github.com/metabase/shoppy)
+- **Sample App**: [Embedding Sample](https://github.com/metabase/modular-embedding-sample-app)
+- **SDK on npm**: [metaba.se/sdk-npm](https://metaba.se/sdk-npm)
+- **Documentation**: [Metabase Embedding Docs](https://www.metabase.com/docs/latest/embedding/introduction)
+- **Bug Reports**: [GitHub Issues](https://github.com/metabase/metabase/issues)
+- **Community**: [Discourse Forums](https://discourse.metabase.com/)
+
+---
+
+## Architecture Notes
+
+### Web Components Architecture
+- Metabase serves `embed.js` from your instance
+- Custom elements: `<metabase-dashboard>`, `<metabase-question>`, etc.
+- Framework-agnostic (works with any web stack)
+
+### React SDK Architecture (v57+)
+- **SDK Package** (`@metabase/embedding-sdk-react`): Lightweight bootstrapper
+- **SDK Bundle**: Full code served from Metabase instance
+- Ensures SDK always matches Metabase version
+
+### Authentication Flow (JWT)
+1. User accesses your app
+2. Your app sends request to your backend
+3. Backend generates signed JWT with user info
+4. Backend returns `{ jwt: "..." }` to frontend
+5. SDK sends JWT to Metabase
+6. Metabase validates signature and creates session
+7. Session cookie enables subsequent API calls
+
+### Entity IDs vs Numeric IDs
+- **Numeric IDs**: `dashboardId={123}` - Changes when importing/exporting
+- **Entity IDs**: `dashboardId="abc123def"` - Stable across environments
+- Use Entity IDs for production embeds that sync across instances
+
+---
+
+## Quick Reference
+
+### ⚠️ Deprecated Fields - DO NOT USE
+```
+authProviderUri              - REMOVED: Configure JWT endpoint in Metabase admin instead
+jwtProviderUri               - REMOVED: Configure JWT endpoint in Metabase admin instead
+config (MetabaseProvider)    - REMOVED: Use authConfig prop instead
+```
+
+### Essential Web Component Attributes
+```
+dashboard-id, question-id    - Required: resource identifier
+with-title                   - Boolean: show/hide title
+with-downloads               - Boolean: enable/disable downloads
+drills                       - Boolean: enable/disable drill-through
+initial-parameters           - JSON: default filter values
+hidden-parameters            - Array: filters to hide
+token                        - String: JWT for guest embeds
+refresh                      - Number: auto-refresh interval (seconds)
+```
+
+### Essential SDK Props
+```
+dashboardId, questionId      - Required: number (not string!) or entity ID string
+                              ⚠️ Parse URL params: parseInt(value, 10)
+withTitle                    - Boolean: show/hide title
+withDownloads                - Boolean: enable/disable downloads
+initialParameters            - Object: default filter values
+hiddenParameters             - Array: filters to hide
+isSaveEnabled                - Boolean: allow saving
+targetCollection             - String/Number: force save location
+plugins                      - Object: plugin configuration
+```
+
+### Essential MetabaseProvider Props
+```
+authConfig                   - Required: authentication config (NOT "config")
+theme                        - Object: theme configuration
+pluginsConfig                - Object: global plugins
+loaderComponent              - Component: custom loader
+errorComponent               - Component: custom error display
+```
+
+**⚠️ DEPRECATED Props (DO NOT USE):**
+```
+config                       - DEPRECATED: Use authConfig instead
+```
+
+---
+
+## Entity ID Usage Pattern
+
+```tsx
+// Get entity ID from Metabase
+// Admin > Tools > Model Caching > Click info icon on any item
+
+// Use in embeds (stable across environments)
+<StaticDashboard dashboardId="abc123def456" />
+<StaticQuestion questionId="xyz789ghi012" />
+```
+
+---
+
+## Example: Complete Production Setup
+
+**⚠️ Note:** This example shows `fetchRequestToken` for demonstration, but most apps using cookie-based auth don't need it. Only add `fetchRequestToken` if you need custom headers.
+
+### Backend (Express.js)
+
+```javascript
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const cors = require("cors");
+
+const app = express();
+
+// CORS for SDK requests
+app.use(cors({
+  origin: "https://your-app.com",
+  credentials: true
+}));
+
+// JWT endpoint
+app.get("/sso/metabase", async (req, res) => {
+  const user = await getCurrentUser(req);
+
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [`tenant_${user.tenantId}`],
+      exp: Math.round(Date.now() / 1000) + 60 * 10
+    },
+    process.env.METABASE_JWT_SECRET
+  );
+
+  if (req.query.response === "json") {
+    res.json({ jwt: token });
+  } else {
+    res.redirect(`${process.env.METABASE_URL}/auth/sso?token=true&jwt=${token}`);
+  }
+});
+
+app.listen(3001);
+```
+
+### Frontend (React)
+
+```tsx
+import {
+  MetabaseProvider,
+  InteractiveDashboard,
+  defineMetabaseAuthConfig
+} from "@metabase/embedding-sdk-react";
+
+// ✅ CORRECT - Default (no fetchRequestToken needed for cookie-based auth)
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://metabase.company.com"
+});
+
+// Or if you need custom headers:
+// const authConfig = defineMetabaseAuthConfig({
+//   metabaseInstanceUrl: "https://metabase.company.com",
+//   fetchRequestToken: async () => {
+//     const response = await fetch("https://api.company.com/sso/metabase", {
+//       credentials: "include",
+//       headers: { "Authorization": `Bearer ${token}` }
+//     });
+//     return await response.json();
+//   }
+// });
+
+function Analytics() {
+  return (
+    <MetabaseProvider authConfig={authConfig}> {/* ✅ authConfig NOT config */}
+      <InteractiveDashboard dashboardId="abc123def" /> {/* ✅ Entity ID (string) */}
+    </MetabaseProvider>
+  );
+}
+```
+
+### Metabase Configuration
+
+1. **JWT Setup** (Admin > Authentication > JWT)
+   - JWT Identity Provider URI: `https://api.company.com/sso/metabase`
+   - String used by Metabase to encode: `[Copy shared secret from backend]`
+
+2. **Embedding** (Admin > Embedding)
+   - Enable modular embedding SDK: ✓
+   - Authorized origins: `https://your-app.com`
+
+3. **SameSite Cookie** (Admin > Embedding > Security)
+   - SameSite cookie setting: None
+
+4. **Data Permissions** (Admin > Permissions > Data)
+   - Create groups: `tenant_123`, `tenant_456`, etc.
+   - Configure data sandboxes per group
+
+---
+
+*Last Updated: December 2025*
+*Metabase Version: 1.58+*

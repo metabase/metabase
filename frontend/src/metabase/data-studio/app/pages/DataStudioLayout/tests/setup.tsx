@@ -8,9 +8,11 @@ import {
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
+  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,
   RemoteSyncEntity,
@@ -48,6 +50,14 @@ const createRemoteSyncSettings = ({
   "remote-sync-transforms": transforms,
 });
 
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+export const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
+
 const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
   tokenFeatures?: Partial<TokenFeatures>,
@@ -64,9 +74,11 @@ const setupRemoteSyncSettingsEndpoints = (
 const setupDirtyEndpoints = ({
   dirty = [],
   collections = [],
+  hasWorkspacesFeature = false,
 }: {
   dirty?: RemoteSyncEntity[];
   collections?: Collection[];
+  hasWorkspacesFeature?: boolean;
 } = {}) => {
   const changedCollections: Record<number, boolean> = {};
   for (const entity of dirty) {
@@ -82,6 +94,18 @@ const setupDirtyEndpoints = ({
   });
 
   setupCollectionsEndpoints({ collections });
+
+  mockHasPremiumFeature.mockImplementation((feature) => {
+    if (feature === "workspaces") {
+      return hasWorkspacesFeature;
+    }
+    // Allow other features to pass (e.g., remote_sync for git sync tests)
+    return true;
+  });
+
+  if (hasWorkspacesFeature) {
+    setupWorkspacesEndpoint([]);
+  }
 };
 
 const setupNavbarEndpoints = (isOpened = true) => {
@@ -134,6 +158,7 @@ interface SetupOpts {
   isNavbarOpened?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
+  hasWorkspacesFeature?: boolean;
 }
 
 export const setup = ({
@@ -146,6 +171,7 @@ export const setup = ({
   isNavbarOpened = true,
   enterprisePlugins,
   tokenFeatures,
+  hasWorkspacesFeature = false,
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -174,7 +200,7 @@ export const setup = ({
 
   setupSettingsEndpoints([]);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
-  setupDirtyEndpoints({ dirty, collections });
+  setupDirtyEndpoints({ dirty, collections, hasWorkspacesFeature });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
 
