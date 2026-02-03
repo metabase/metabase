@@ -271,9 +271,8 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (into #{}
-          (keep #(find-table-or-transform driver db-tables db-transforms %))
-          (parsed-table-refs driver query))))
+    (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
+                    (parsed-table-refs driver query)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
