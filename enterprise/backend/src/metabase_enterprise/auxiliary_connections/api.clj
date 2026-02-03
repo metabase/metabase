@@ -31,9 +31,13 @@
   (when-let [aux-db-id (t2/select-one-fn :write_database_id :model/Database :id db-id)]
     (t2/select-one :model/Database :id aux-db-id)))
 
-;; TODO(Timothy, 2026-01-29): I copied this from db routing but it should be fixed.
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/:type"
+(api.macros/defendpoint :get "/:id/:type" :- [:or
+                                              [:map [:configured [:= false]]]
+                                              [:map
+                                               [:configured [:= true]]
+                                               [:database_id ms/PositiveInt]
+                                               [:name ms/NonBlankString]
+                                               [:details ms/Map]]]
   "Get the auxiliary connection configuration for a database."
   [{:keys [id type]} :- [:map
                          [:id ms/PositiveInt]
@@ -50,9 +54,9 @@
        :details     (dissoc (:details aux-db) :password :tunnel-pass :ssl-key-value)}
       {:configured false})))
 
-;; TODO(Timothy, 2026-01-29): I copied this from db routing but it should be fixed.
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/:type"
+(api.macros/defendpoint :post "/:id/:type" :- [:map
+                                               [:database_id ms/PositiveInt]
+                                               [:status [:enum :created :updated]]]
   "Create or update an auxiliary connection for a database.
 
   The auxiliary database is stored as a hidden Database record with the same engine
@@ -77,7 +81,7 @@
                    "Cannot configure auxiliary connection for a write database")
     ;; Connection validation is opt-in, matching the DB Routing pattern
     ;; (see database_routing/api.clj POST /destination-database).
-    ;; It's not an invariant that all database details are always valid?
+    ;; It's not an invariant that all database details are always valid.
     (when check-connection-details
       (let [details-or-error (api.database/test-connection-details (clojure.core/name (:engine db)) details)]
         (when (= (:valid details-or-error) false)
@@ -111,9 +115,7 @@
             {:database_id (:id aux-db)
              :status      :created}))))))
 
-;; TODO(Timothy, 2026-01-29): I copied this from db routing but it should be fixed.
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/:type"
+(api.macros/defendpoint :delete "/:id/:type" :- [:map [:status [:= :deleted]]]
   "Remove the auxiliary connection for a database.
 
   This deletes the hidden auxiliary database record and removes the link."
