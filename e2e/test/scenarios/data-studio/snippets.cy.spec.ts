@@ -177,7 +177,7 @@ describe("scenarios > data studio > snippets", () => {
     });
   });
 
-  describe("archive", () => {
+  describe("archiving", () => {
     it("should be able to archive a snippet", () => {
       H.createSnippet({
         name: "Test snippet",
@@ -208,7 +208,9 @@ describe("scenarios > data studio > snippets", () => {
       H.createSnippet({
         name: "Test snippet",
         content: "SELECT * FROM orders",
-        archived: true,
+      }).then((response) => {
+        cy.log("Archive snippet");
+        return H.updateSnippet(response.body.id, { archived: true });
       });
 
       H.DataStudio.Library.visit();
