@@ -50,13 +50,15 @@
   ;; disabled linters
   ;;
 
-  :redundant-ignore {:level :off}    ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
+  :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
 
   ;;
   ;; globally-enabled custom linters
   ;;
   :metabase/check-defmulti-arglists                          {:level :warning}
+  :metabase/check-def-check-not-uppercase-name               {:level :warning}
+  :metabase/check-def-no-underscores                         {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
@@ -67,7 +69,6 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
   :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
@@ -519,7 +520,16 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/def                                                                                                          hooks.clojure.core.def/lint-def
+   clojure.core/definterface                                                                                                 hooks.clojure.core.def/lint-def
+   clojure.core/defmacro                                                                                                     hooks.clojure.core.defmacro/lint-defmacro
    clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
+   clojure.core/defn                                                                                                         hooks.clojure.core.defn/lint-defn
+   clojure.core/defn-                                                                                                        hooks.clojure.core.defn/lint-defn
+   clojure.core/defonce                                                                                                      hooks.clojure.core.def/lint-def
+   clojure.core/defprotocol                                                                                                  hooks.clojure.core.def/lint-def
+   clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
+   clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -769,22 +779,17 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def                              {:level :off}
-    :missing-docstring                       {:level :off}
-    :private-call                            {:level :off}
-    :metabase/defsetting-must-specify-export {:level :off}
-    :metabase/defsetting-namespace           {:level :off}
+   {:inline-def                                          {:level :off}
+    :missing-docstring                                   {:level :off}
+    :private-call                                        {:level :off}
+    :metabase/defsetting-must-specify-export             {:level :off}
+    :metabase/defsetting-namespace                       {:level :off}
+    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn
 
     :discouraged-var
     {metabase.driver/database-supports? {:level :off}
      metabase.lib.convert/->legacy-MBQL {:level :off}
-     metabase.lib.core/->legacy-MBQL    {:level :off}}}
-
-   :hooks
-   {:analyze-call
-    {clojure.core/defmacro hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn     hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn-    hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation}}}
+     metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
   source-namespaces
   {:linters
