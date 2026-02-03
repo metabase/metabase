@@ -2,16 +2,13 @@ import { useClickOutside } from "@mantine/hooks";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { dataStudioMetric, dataStudioPublishedTableMeasure } from "metabase/lib/urls/data-studio";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Flex, Icon, Loader, Paper, Pill, TextInput } from "metabase/ui";
-import type { BaseRecentItem, ConcreteTableId } from "metabase-types/api";
+import { Box, Flex, Paper, TextInput } from "metabase/ui";
+import type { BaseRecentItem, ConcreteTableId, RecentItem } from "metabase-types/api";
 
 type MetricSourceType = "metric" | "measure";
 
 import S from "./MetricSearchInput.module.css";
+import { MetricSwapPopover } from "./MetricSwapPopover";
 
 export type SelectedMetric = Pick<BaseRecentItem, "id" | "name"> & {
   sourceType: MetricSourceType;
@@ -23,8 +20,12 @@ export type SelectedMetric = Pick<BaseRecentItem, "id" | "name"> & {
 type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
   metricColors: Record<number, string>;
+  recents: RecentItem[];
+  selectedMetricIds: Set<number>;
+  selectedMeasureIds: Set<number>;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number) => void;
+  onSwapMetric: (oldMetricId: number, newMetric: SelectedMetric) => void;
   rightSection?: ReactNode;
   children: (props: {
     searchText: string;
@@ -36,34 +37,18 @@ type MetricSearchInputProps = {
 export function MetricSearchInput({
   selectedMetrics,
   metricColors,
+  recents,
+  selectedMetricIds,
+  selectedMeasureIds,
   onAddMetric,
   onRemoveMetric,
+  onSwapMetric,
   rightSection,
   children,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const canAccessDataStudio = useSelector(PLUGIN_DATA_STUDIO.canAccessDataStudio);
-
-  const getMetricUrl = useCallback(
-    (metric: SelectedMetric): string | null => {
-      if (metric.sourceType === "measure") {
-        // Measures only exist in data studio
-        // tableId is undefined while data is loading
-        if (!canAccessDataStudio || !metric.tableId) {
-          return null;
-        }
-        return dataStudioPublishedTableMeasure(metric.tableId, metric.id);
-      }
-      // Metrics
-      if (canAccessDataStudio) {
-        return dataStudioMetric(metric.id);
-      }
-      return Urls.metric({ id: metric.id, name: metric.name, type: "metric" });
-    },
-    [canAccessDataStudio],
-  );
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -110,51 +95,17 @@ export function MetricSearchInput({
       >
         <Flex align="center" gap="0.5rem" flex={1} wrap="wrap" mih={36}>
           {selectedMetrics.map((metric) => (
-            <Pill
+            <MetricSwapPopover
               key={metric.id}
-              className={S.metricPill}
-              withRemoveButton
-              onRemove={() => onRemoveMetric(metric.id)}
-              removeButtonProps={{
-                mr: 0,
-                "aria-label": metric.isLoading
-                  ? t`Remove metric`
-                  : t`Remove ${metric.name}`,
-              }}
-            >
-              <Flex align="center" gap="xs">
-                {metric.isLoading ? (
-                  <Loader size="xs" />
-                ) : (
-                  (() => {
-                    const url = getMetricUrl(metric);
-                    const content = (
-                      <>
-                        <Icon
-                          name={metric.sourceType === "measure" ? "sum" : "metric"}
-                          size={14}
-                          c={metricColors[metric.id] as Parameters<typeof Icon>[0]["c"]}
-                        />
-                        <span>{metric.name}</span>
-                      </>
-                    );
-                    return url ? (
-                      <a
-                        href={url}
-                        className={S.pillLink}
-                        onClick={(e) => e.stopPropagation()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {content}
-                      </a>
-                    ) : (
-                      content
-                    );
-                  })()
-                )}
-              </Flex>
-            </Pill>
+              metric={metric}
+              color={metricColors[metric.id]}
+              recents={recents}
+              selectedMetricIds={selectedMetricIds}
+              selectedMeasureIds={selectedMeasureIds}
+              onSwap={onSwapMetric}
+              onRemove={onRemoveMetric}
+              onOpen={handleClose}
+            />
           ))}
           <Box className={S.inputContainer}>
             <TextInput

@@ -6,7 +6,11 @@ import {
   withMeasure,
 } from "metabase-lib/metric-definition";
 import type { MeasureId } from "metabase-types/api";
-import type { ProjectionConfig, SourceData } from "metabase-types/store/metrics-explorer";
+import type {
+  DimensionTabType,
+  ProjectionConfig,
+  SourceData,
+} from "metabase-types/store/metrics-explorer";
 
 const STAGE_INDEX = -1;
 
@@ -26,6 +30,7 @@ export function columnExistsInQuery(
 
 /**
  * Apply a dimension override to a query by replacing the breakout column.
+ * Uses temporal bucket for time columns.
  */
 export function applyDimensionOverride(
   query: Lib.Query,
@@ -54,6 +59,34 @@ export function applyDimensionOverride(
   );
 
   return Lib.replaceClause(query, STAGE_INDEX, breakout, columnWithBucket);
+}
+
+/**
+ * Apply a non-temporal breakout by replacing with a raw column (no temporal bucket).
+ * Used for category and boolean dimensions.
+ */
+export function applyNonTemporalBreakout(
+  query: Lib.Query,
+  columnName: string,
+): Lib.Query {
+  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+  if (breakouts.length === 0) {
+    return query;
+  }
+  const breakout = breakouts[0];
+
+  const breakoutableColumns = Lib.breakoutableColumns(query, STAGE_INDEX);
+  const targetColumn = breakoutableColumns.find((col) => {
+    const info = Lib.displayInfo(query, STAGE_INDEX, col);
+    return info.name === columnName;
+  });
+
+  if (!targetColumn) {
+    return query;
+  }
+
+  // Use the column directly without any temporal bucket
+  return Lib.replaceClause(query, STAGE_INDEX, breakout, targetColumn);
 }
 
 /**
@@ -133,15 +166,27 @@ export function buildMeasureQuery(
 
 /**
  * Apply both dimension override and projection config to a query.
+ * For non-time tabs (category/boolean), applies a non-temporal breakout instead.
  */
 export function buildModifiedQuery(
   baseQuery: Lib.Query,
   projectionConfig: ProjectionConfig | null,
   dimensionOverride?: string,
+  tabType?: DimensionTabType,
+  tabColumnName?: string,
 ): Lib.Query {
   let query = baseQuery;
 
-  // Apply dimension override first (only if provided)
+  // For non-time tabs, apply non-temporal breakout
+  if (tabType && tabType !== "time" && tabColumnName) {
+    // Apply dimension override if provided, otherwise use the tab's column
+    const columnName = dimensionOverride ?? tabColumnName;
+    query = applyNonTemporalBreakout(query, columnName);
+    // Skip projection config for non-time tabs (no filter/unit controls)
+    return query;
+  }
+
+  // Time tab: apply dimension override first (only if provided)
   if (dimensionOverride !== undefined) {
     query = applyDimensionOverrideIfValid(query, dimensionOverride);
   }

@@ -7,21 +7,27 @@ import { useSelector } from "metabase/lib/redux";
 import { findBreakoutClause } from "metabase/querying/filters/components/TimeseriesChrome/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import type { TemporalUnit, TimeseriesDisplayType } from "metabase-types/api";
-import type { ProjectionConfig } from "metabase-types/store/metrics-explorer";
+import type { TemporalUnit } from "metabase-types/api";
+import type {
+  MetricsExplorerDisplayType,
+  ProjectionConfig,
+} from "metabase-types/store/metrics-explorer";
 
 import {
+  selectActiveTabType,
   selectDimensionItems,
   selectModifiedQueries,
   selectQuestionForControls,
   selectRawSeries,
 } from "../../selectors";
+import { isGeoColumn } from "../../utils/dimensions";
 import {
   cardIdToMeasureId,
   createMeasureSourceId,
   createMetricSourceId,
   isMeasureCardId,
 } from "../../utils/source-ids";
+import { supportsMultipleSeries } from "../../utils/visualization-settings";
 import { MetricControls } from "../MetricControls/MetricControls";
 
 import S from "./MetricVisualization.module.css";
@@ -30,12 +36,13 @@ const STAGE_INDEX = -1;
 
 type MetricVisualizationProps = {
   projectionConfig: ProjectionConfig;
-  displayType: TimeseriesDisplayType;
+  displayType: MetricsExplorerDisplayType;
   isLoading: boolean;
   error: string | null;
+  showTimeControls?: boolean;
   onProjectionConfigChange: (config: ProjectionConfig) => void;
   onDimensionOverrideChange: (cardId: number, columnName: string) => void;
-  onDisplayTypeChange: (displayType: TimeseriesDisplayType) => void;
+  onDisplayTypeChange: (displayType: MetricsExplorerDisplayType) => void;
 };
 
 export function MetricVisualization({
@@ -43,6 +50,7 @@ export function MetricVisualization({
   displayType,
   isLoading,
   error,
+  showTimeControls = true,
   onProjectionConfigChange,
   onDimensionOverrideChange,
   onDisplayTypeChange,
@@ -52,6 +60,7 @@ export function MetricVisualization({
   const dimensionItems = useSelector(selectDimensionItems);
   const questionForControls = useSelector(selectQuestionForControls);
   const modifiedQueries = useSelector(selectModifiedQueries);
+  const activeTabType = useSelector(selectActiveTabType);
 
   const handleDimensionChange = useCallback(
     (cardId: string | number, newColumn: Lib.ColumnMetadata) => {
@@ -59,7 +68,6 @@ export function MetricVisualization({
         return;
       }
 
-      // Find the query for this card/measure
       let query: Lib.Query | null = null;
 
       if (isMeasureCardId(cardId)) {
@@ -105,35 +113,58 @@ export function MetricVisualization({
     [onProjectionConfigChange],
   );
 
+  // Get column filter based on active tab type
+  const columnFilter = getColumnFilterForTabType(activeTabType);
+
   if (isLoading || error || rawSeries.length === 0) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const renderMultipleCharts = !supportsMultipleSeries(displayType);
+
   return (
     <div className={S.root}>
-      <DebouncedFrame className={S.visualizationWrapper}>
-        <Visualization
-          className={S.visualization}
-          rawSeries={rawSeries}
-          isQueryBuilder={false}
-          showTitle={false}
-          hideLegend
-          // Prevent clicks from setting internal clicked state which disables tooltips
-          handleVisualizationClick={() => {}}
-        />
-      </DebouncedFrame>
+      {renderMultipleCharts ? (
+        <div className={S.chartGrid}>
+          {rawSeries.map((series, index) => (
+            <DebouncedFrame key={series.card.id ?? index} className={S.chartGridItem}>
+              <Visualization
+                className={S.visualization}
+                rawSeries={[series]}
+                isQueryBuilder={false}
+                showTitle
+                hideLegend
+                handleVisualizationClick={() => {}}
+              />
+            </DebouncedFrame>
+          ))}
+        </div>
+      ) : (
+        <DebouncedFrame className={S.visualizationWrapper}>
+          <Visualization
+            className={S.visualization}
+            rawSeries={rawSeries}
+            isQueryBuilder={false}
+            showTitle={false}
+            hideLegend
+            handleVisualizationClick={() => {}}
+          />
+        </DebouncedFrame>
+      )}
       {dimensionItems.length > 0 && (
         <DimensionPillBar
           items={dimensionItems}
-          columnFilter={Lib.isDateOrDateTime}
+          columnFilter={columnFilter}
           onDimensionChange={handleDimensionChange}
         />
       )}
-      {questionForControls && (
+      {questionForControls && activeTabType !== "geo" && (
         <div className={S.footer}>
           <MetricControls
             question={questionForControls}
             displayType={displayType}
+            tabType={activeTabType}
+            showTimeControls={showTimeControls}
             onDisplayTypeChange={onDisplayTypeChange}
             onQueryChange={handleQueryChange}
           />
@@ -141,4 +172,26 @@ export function MetricVisualization({
       )}
     </div>
   );
+}
+
+function getColumnFilterForTabType(
+  tabType: string | null,
+): ((col: Lib.ColumnMetadata) => boolean) | undefined {
+  switch (tabType) {
+    case "time":
+      return Lib.isDateOrDateTime;
+    case "geo":
+      return isGeoColumn;
+    case "boolean":
+      return Lib.isBoolean;
+    case "category":
+      return (col) =>
+        (Lib.isCategory(col) || Lib.isString(col)) &&
+        !Lib.isPrimaryKey(col) &&
+        !Lib.isForeignKey(col) &&
+        !Lib.isURL(col) &&
+        !isGeoColumn(col);
+    default:
+      return Lib.isDateOrDateTime;
+  }
 }

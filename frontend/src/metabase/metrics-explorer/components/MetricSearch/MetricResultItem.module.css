@@ -1,21 +1,53 @@
 .resultItem {
   cursor: pointer;
   border-radius: 0.5rem;
-  flex-grow: 1;
-  flex-basis: 0;
+  color: var(--mb-color-text-primary);
+  min-height: 36px;
+}
+
+.resultItem:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.resultItem[data-active] {
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
+}
+
+.resultItem[data-active]:hover {
+  background-color: var(--mb-color-brand);
 }
 
 .icon {
-  flex-basis: 16px;
   flex-shrink: 0;
+  color: var(--mb-color-text-tertiary);
 }
 
-.content {
+.resultItem[data-active] .icon {
+  color: var(--mb-color-text-white);
+}
+
+.name {
   overflow: hidden;
-}
-
-.description {
   text-overflow: ellipsis;
-  overflow: hidden;
   white-space: nowrap;
+}
+
+.slug {
+  flex-shrink: 0;
+  color: var(--mb-color-text-tertiary);
+}
+
+.resultItem[data-active] .slug {
+  color: var(--mb-color-text-white);
+  opacity: 0.7;
+}
+
+.selectedIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-text-tertiary);
+}
+
+.resultItem[data-active] .selectedIcon {
+  color: var(--mb-color-text-white);
 }

@@ -17,47 +17,106 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { TimeseriesDisplayType } from "metabase-types/api";
+import type { IconName } from "metabase/ui";
+import type {
+  DimensionTabType,
+  MetricsExplorerDisplayType,
+} from "metabase-types/store/metrics-explorer";
 
 import { BucketButton } from "./BucketButton";
 import S from "./MetricControls.module.css";
 
 const STAGE_INDEX = -1;
 
-const CHART_TYPES: { type: TimeseriesDisplayType; icon: TimeseriesDisplayType }[] = [
+interface ChartTypeOption {
+  type: MetricsExplorerDisplayType;
+  icon: IconName;
+}
+
+const TIME_CHART_TYPES: ChartTypeOption[] = [
   { type: "line", icon: "line" },
   { type: "area", icon: "area" },
   { type: "bar", icon: "bar" },
 ];
 
-function isTimeseriesDisplayType(value: unknown): value is TimeseriesDisplayType {
-  return value === "line" || value === "area" || value === "bar";
+const GEO_CHART_TYPES: ChartTypeOption[] = [
+  { type: "map", icon: "pinmap" },
+];
+
+const CATEGORY_CHART_TYPES: ChartTypeOption[] = [
+  { type: "line", icon: "line" },
+  { type: "area", icon: "area" },
+  { type: "bar", icon: "bar" },
+  { type: "pie", icon: "pie" },
+];
+
+function getChartTypesForTab(tabType: DimensionTabType | null): ChartTypeOption[] {
+  switch (tabType) {
+    case "geo":
+      return GEO_CHART_TYPES;
+    case "category":
+    case "boolean":
+      return CATEGORY_CHART_TYPES;
+    case "time":
+    default:
+      return TIME_CHART_TYPES;
+  }
+}
+
+function getDefaultDisplayTypeForTab(
+  tabType: DimensionTabType | null,
+): MetricsExplorerDisplayType {
+  switch (tabType) {
+    case "geo":
+      return "map";
+    case "category":
+    case "boolean":
+    case "time":
+    default:
+      return "line";
+  }
+}
+
+function isValidDisplayTypeForTab(
+  displayType: MetricsExplorerDisplayType,
+  tabType: DimensionTabType | null,
+): boolean {
+  const validTypes = getChartTypesForTab(tabType);
+  return validTypes.some((t) => t.type === displayType);
 }
 
 interface MetricControlsProps {
   question: Question;
-  displayType: TimeseriesDisplayType;
-  onDisplayTypeChange: (displayType: TimeseriesDisplayType) => void;
+  displayType: MetricsExplorerDisplayType;
+  tabType: DimensionTabType | null;
+  showTimeControls?: boolean;
+  onDisplayTypeChange: (displayType: MetricsExplorerDisplayType) => void;
   onQueryChange: (query: Lib.Query) => void;
 }
 
 export function MetricControls({
   question,
   displayType,
+  tabType,
+  showTimeControls = true,
   onDisplayTypeChange,
   onQueryChange,
 }: MetricControlsProps) {
   const query = question.query();
   const timeseriesInfo = useTimeseriesInfo(query);
   const hasTimeseriesControls =
-    timeseriesInfo.breakout && timeseriesInfo.filterColumn;
+    showTimeControls && timeseriesInfo.breakout && timeseriesInfo.filterColumn;
 
-  const chartType = isTimeseriesDisplayType(displayType) ? displayType : "line";
+  const chartTypes = getChartTypesForTab(tabType);
+  const effectiveDisplayType = isValidDisplayTypeForTab(displayType, tabType)
+    ? displayType
+    : getDefaultDisplayTypeForTab(tabType);
 
   return (
     <Flex className={S.container} align="center" gap="xs">
       <ChartTypePicker
-        value={chartType}
+        chartTypes={chartTypes}
+        value={effectiveDisplayType}
         onChange={onDisplayTypeChange}
       />
       {hasTimeseriesControls && query && (
@@ -74,15 +133,18 @@ export function MetricControls({
   );
 }
 
+export { getDefaultDisplayTypeForTab, isValidDisplayTypeForTab };
+
 interface ChartTypePickerProps {
-  value: TimeseriesDisplayType;
-  onChange: (type: TimeseriesDisplayType) => void;
+  chartTypes: ChartTypeOption[];
+  value: MetricsExplorerDisplayType;
+  onChange: (type: MetricsExplorerDisplayType) => void;
 }
 
-function ChartTypePicker({ value, onChange }: ChartTypePickerProps) {
+function ChartTypePicker({ chartTypes, value, onChange }: ChartTypePickerProps) {
   return (
     <Flex gap="xs">
-      {CHART_TYPES.map(({ type, icon }) => (
+      {chartTypes.map(({ type, icon }) => (
         <ActionIcon
           key={type}
           variant={value === type ? "filled" : "subtle"}

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import type { CardId, ConcreteTableId, MeasureId, RecentItem } from "metabase-types/api";
+import type { ConcreteTableId, RecentItem } from "metabase-types/api";
 
 import { useMetricMeasureSearch } from "../../hooks/use-metric-measure-search";
 import { useMetricRecents } from "../../hooks/use-metric-recents";
@@ -16,6 +16,7 @@ type MetricSearchProps = {
   metricColors: Record<number, string>;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number) => void;
+  onSwapMetric?: (oldMetricId: number, newMetric: SelectedMetric) => void;
   rightSection?: ReactNode;
 };
 
@@ -24,6 +25,7 @@ export function MetricSearch({
   metricColors,
   onAddMetric,
   onRemoveMetric,
+  onSwapMetric,
   rightSection,
 }: MetricSearchProps) {
   const { metricRecents } = useMetricRecents();
@@ -46,12 +48,29 @@ export function MetricSearch({
     [selectedMetrics],
   );
 
+  const handleSwapMetric = useCallback(
+    (oldMetricId: number, newMetric: SelectedMetric) => {
+      if (onSwapMetric) {
+        onSwapMetric(oldMetricId, newMetric);
+      } else {
+        // Default behavior: remove old and add new
+        onRemoveMetric(oldMetricId);
+        onAddMetric(newMetric);
+      }
+    },
+    [onSwapMetric, onRemoveMetric, onAddMetric],
+  );
+
   return (
     <MetricSearchInput
       selectedMetrics={selectedMetrics}
       metricColors={metricColors}
+      recents={metricRecents}
+      selectedMetricIds={selectedMetricIds}
+      selectedMeasureIds={selectedMeasureIds}
       onAddMetric={onAddMetric}
       onRemoveMetric={onRemoveMetric}
+      onSwapMetric={handleSwapMetric}
       rightSection={rightSection}
     >
       {({ searchText, onSelect }) => {
@@ -91,40 +110,28 @@ function SearchDropdownContent({
   selectedMeasureIds,
   onSelect,
 }: SearchDropdownContentProps) {
-  const { metricResults, measureResults, isLoading, isSearching } =
-    useMetricMeasureSearch(searchText);
+  const { results, isLoading, isSearching } = useMetricMeasureSearch(searchText);
 
-  const filteredMetricResults = (metricResults ?? []).filter(
-    (r) => !selectedMetricIds.has(r.id),
-  );
-  const filteredMeasureResults = (measureResults ?? []).filter(
-    (r) => !selectedMeasureIds.has(r.id),
+  const filteredResults = (results ?? []).filter((r) =>
+    r.model === "metric"
+      ? !selectedMetricIds.has(r.id)
+      : !selectedMeasureIds.has(r.id),
   );
   const filteredRecents = recents.filter((r) => !selectedMetricIds.has(r.id));
 
-  const handleSelectMetric = useCallback(
-    (metricId: CardId) => {
-      const metric = metricResults.find((r) => r.id === metricId);
-      if (metric) {
-        onSelect({ id: metricId, name: metric.name, sourceType: "metric" });
-      }
-    },
-    [metricResults, onSelect],
-  );
-
-  const handleSelectMeasure = useCallback(
-    (measureId: MeasureId, tableId: ConcreteTableId) => {
-      const measure = measureResults.find((r) => r.id === measureId);
-      if (measure) {
+  const handleSelectResult = useCallback(
+    (id: number, tableId?: ConcreteTableId) => {
+      const result = results?.find((r) => r.id === id);
+      if (result) {
         onSelect({
-          id: measureId,
-          name: measure.name,
-          sourceType: "measure",
+          id,
+          name: result.name,
+          sourceType: result.model as "metric" | "measure",
           tableId,
         });
       }
     },
-    [measureResults, onSelect],
+    [results, onSelect],
   );
 
   const handleSelectFromRecents = useCallback(
@@ -140,11 +147,9 @@ function SearchDropdownContent({
   if (isSearching) {
     return (
       <MetricSearchResults
-        metricResults={filteredMetricResults}
-        measureResults={filteredMeasureResults}
+        results={filteredResults}
         isLoading={isLoading}
-        onSelectMetric={handleSelectMetric}
-        onSelectMeasure={handleSelectMeasure}
+        onSelectResult={handleSelectResult}
       />
     );
   }

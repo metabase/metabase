@@ -11,6 +11,23 @@
   width: 100%;
 }
 
+.chartGrid {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1;
+  min-height: 0;
+  gap: 1rem;
+}
+
+.chartGridItem {
+  width: calc(50% - 0.5rem);
+  min-height: 300px;
+}
+
+.chartGridItem:only-child {
+  width: 100%;
+}
+
 .visualization {
   background-color: var(--mb-color-background-primary);
   overflow: hidden;
