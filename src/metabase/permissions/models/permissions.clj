@@ -89,7 +89,7 @@
     User would otherwise have. See the `Determining query permissions` section below for more details. As with
     segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
 
-  * _Application permisisons_ -- are per-Group permissions that give non-admin users access to features like:
+  * _Application permissions_ -- are per-Group permissions that give non-admin users access to features like:
     change instance's Settings; access Audit, Tools, Troubleshooting ...
 
   ### Determining CRUD permissions in the REST API

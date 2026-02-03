@@ -33,7 +33,7 @@
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
-  com.clojure-goes-fast/jvm-alloc-rate-meter{:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
+  com.clojure-goes-fast/jvm-alloc-rate-meter {:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
@@ -42,7 +42,7 @@
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
-                                            {:mvn/version "4.3.1"}              ; templating engine
+  {:mvn/version "4.3.1"}              ; templating engine
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1350"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
@@ -50,12 +50,12 @@
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
-                                            {:mvn/version "2.1.214"}            ; embedded SQL database
+  {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
   com.mchange/c3p0                          {:mvn/version "0.11.2"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
-                                            {:mvn/version "1.0.1"}              ; Snowplow analytics
+  {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
                                             {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.158.0"}            ; Utilities library (used by Nippy)
@@ -893,8 +893,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-
-  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
+;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql

@@ -37,7 +37,6 @@ export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
 export * from "./persist";
-export * from "./pulse";
 export * from "./query";
 export * from "./document";
 export * from "./remote-sync";
@@ -50,6 +49,7 @@ export * from "./settings";
 export * from "./setup";
 export * from "./slack";
 export * from "./snippets";
+export * from "./sorting";
 export * from "./store";
 export * from "./subscription";
 export * from "./support-access-grants";
@@ -63,6 +63,7 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
+export * from "./workspace";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

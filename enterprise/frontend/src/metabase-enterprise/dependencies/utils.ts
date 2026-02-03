@@ -37,7 +37,10 @@ export function isSameNode(
   return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
-export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+export function getNodeId(
+  id: DependencyId | string,
+  type: DependencyType | string,
+): NodeId {
   return `${id}-${type}`;
 }
 
@@ -56,6 +59,7 @@ export function getNodeDescription(node: DependencyNode): string | null {
   switch (node.type) {
     case "document":
     case "sandbox":
+    case "workspace-transform":
       return null;
     default:
       return node.data.description ?? "";
@@ -97,6 +101,8 @@ export function getNodeIconWithType(
     case "table":
       return "table";
     case "transform":
+      return "transform";
+    case "workspace-transform":
       return "transform";
     case "snippet":
       return "snippet";
@@ -149,6 +155,17 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
+    case "workspace-transform": {
+      const workspaceId = node.data.workspace_id;
+      const refId = node.data.ref_id;
+      if (workspaceId == null) {
+        return null;
+      }
+      return {
+        label: t`View this workspace transform`,
+        url: Urls.dataStudioWorkspace(workspaceId, refId),
+      };
+    }
     case "dashboard":
       return {
         label: t`View this dashboard`,
@@ -328,6 +345,7 @@ export function getNodeLocationInfo(
       }
       return null;
     case "transform":
+    case "workspace-transform":
     case "sandbox":
       return null;
   }
@@ -445,11 +463,15 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
     case "transform":
     case "sandbox":
       return node.data.table?.fields ?? [];
+    case "workspace-transform":
+      return [];
     case "snippet":
     case "dashboard":
     case "document":
     case "segment":
     case "measure":
+      return null;
+    default:
       return null;
   }
 }
@@ -500,6 +522,8 @@ export function getDependencyGroupType(
       return "table";
     case "transform":
       return "transform";
+    case "workspace-transform":
+      return "workspace-transform";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -529,6 +553,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Table`, color: "brand" };
     case "transform":
       return { label: t`Transform`, color: "warning" };
+    case "workspace-transform":
+      return { label: t`Workspace transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
@@ -676,6 +702,8 @@ export function getDependentGroupLabel({
         `${count} measures`,
         count,
       );
+    default:
+      return ngettext(msgid`${count} entity`, `${count} entities`, count);
   }
 }
 
@@ -834,51 +862,6 @@ export function getDependentErrorNodesCount(
     );
   });
   return nodeIds.size;
-}
-
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function parseNumber(value: unknown): number | undefined {
-  if (typeof value === "string" && value.trim() !== "") {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : undefined;
-  }
-}
-
-export function parseBoolean(value: unknown): boolean | undefined {
-  switch (value) {
-    case "true":
-      return true;
-    case "false":
-      return false;
-    default:
-      return undefined;
-  }
-}
-
-export function parseEnum<T extends string>(
-  value: unknown,
-  items: readonly T[],
-): T | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const item = items.find((item) => item === value);
-  return item != null ? item : undefined;
-}
-
-export function parseList<T>(
-  value: unknown,
-  parseItem: (item: unknown) => T | undefined,
-): T[] | undefined {
-  if (value != null) {
-    const array = Array.isArray(value) ? value : [value];
-    return array.map(parseItem).filter((item) => item != null);
-  } else {
-    return undefined;
-  }
 }
 
 export function getSearchQuery(searchValue: string): string | undefined {
