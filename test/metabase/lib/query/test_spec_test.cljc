@@ -798,7 +798,7 @@
 
                             :limit 25}]})]
 
-      (is (= 3 (count (:stages query))) "Should have 3 stages")
+      (is (= 3 (lib/stage-count query)))
 
       ;; Stage 0
       (is (=? [{:strategy :left-join
@@ -848,6 +848,158 @@
 
       ;; Stage 2
       (is (=? [[:< {} [:field {} "doubled-count"] 500]]
+              (lib/filters query 2)))
+
+      (is (empty? (lib/fields query 2)))
+
+      (is (= 25 (lib/current-limit query 2))))))
+
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
+(deftest ^:parallel test-query-comprehensive-all-features-test-with-fields
+  (testing "test-query exercises all functionality in a comprehensive multi-stage query, with fields clause"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [;; Stage 0
+                           {:source {:type :table
+                                     :id   (meta/id :orders)}
+
+                            :joins [{:source   {:type :table
+                                                :id   (meta/id :products)}
+                                     :strategy :left-join}
+                                    {:source     {:type :table
+                                                  :id   (meta/id :people)}
+                                     :strategy   :inner-join
+                                     :conditions [{:operator :=
+                                                   :left     {:type :column
+                                                              :name "USER_ID"}
+                                                   :right    {:type :column
+                                                              :name "ID"}}]}]
+
+                            :expressions [{:name  "discounted-price"
+                                           :value {:type     :operator
+                                                   :operator :*
+                                                   :args     [{:type :column
+                                                               :name "PRICE"
+                                                               :source-name "PRODUCTS"}
+                                                              {:type  :literal
+                                                               :value 0.9}]}}
+                                          {:name  "double-discount"
+                                           :value {:type     :operator
+                                                   :operator :/
+                                                   :args     [{:type :column
+                                                               :name "discounted-price"}
+                                                              {:type  :literal
+                                                               :value 2}]}}]
+
+                            :filters [{:type     :operator
+                                       :operator :and
+                                       :args     [{:type     :operator
+                                                   :operator :>
+                                                   :args     [{:type :column
+                                                               :name "TOTAL"}
+                                                              {:type  :literal
+                                                               :value 50}]}
+                                                  {:type     :operator
+                                                   :operator :or
+                                                   :args     [{:type     :operator
+                                                               :operator :=
+                                                               :args     [{:type :column
+                                                                           :name "CATEGORY"
+                                                                           :source-name "PRODUCTS"}
+                                                                          {:type  :literal
+                                                                           :value "Widget"}]}
+                                                              {:type     :operator
+                                                               :operator :<
+                                                               :args     [{:type :column
+                                                                           :name "double-discount"}
+                                                                          {:type  :literal
+                                                                           :value 10}]}]}]}]
+
+                            :order-bys [{:type        :column
+                                         :name        "CREATED_AT"
+                                         :source-name "ORDERS"
+                                         :direction   :desc}]
+
+                            :fields [{:type :column
+                                      :name "TOTAL"}
+                                     {:type :column
+                                      :name "CATEGORY"
+                                      :source-name "PRODUCTS"}
+                                     {:type :column
+                                      :name "double-discount"}]}
+
+                           ;; Stage 1
+                           {:expressions [{:name  "half-discount"
+                                           :value {:type     :operator
+                                                   :operator :/
+                                                   :args     [{:type :column
+                                                               :name "double-discount"}
+                                                              {:type  :literal
+                                                               :value 4}]}}]
+
+                            :filters [{:type     :operator
+                                       :operator :>
+                                       :args     [{:type :column
+                                                   :name "half-discount"}
+                                                  {:type  :literal
+                                                   :value 1000}]}]}
+
+                           ;; Stage 2
+                           {:filters [{:type     :operator
+                                       :operator :<
+                                       :args     [{:type :column
+                                                   :name "half-discount"}
+                                                  {:type  :literal
+                                                   :value 500}]}]
+
+                            :limit 25}]})]
+
+      (is (= 3 (lib/stage-count query)))
+
+      ;; Stage 0
+      (is (=? [{:strategy :left-join
+                :alias "Products"}
+               {:strategy :inner-join
+                :alias "People - User"}]
+              (lib/joins query 0)))
+
+      (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} (meta/id :products :price)] 0.9]
+               [:/ {:lib/expression-name "double-discount"} [:expression {} "discounted-price"] 2]]
+              (lib/expressions query 0)))
+
+      (is (=? [[:field {} (meta/id :orders :total)]
+               [:field {:join-alias "Products"} (meta/id :products :category)]
+               [:expression {} "double-discount"]
+               [:expression {} "discounted-price"]]
+              (lib/fields query 0)))
+
+      (is (=? [[:and {}
+                [:> {} [:field {} (meta/id :orders :total)] 50]
+                [:or {}
+                 [:= {} [:field {:join-alias "Products"} (meta/id :products :category)] "Widget"]
+                 [:< {} [:expression {} "double-discount"] 10]]]]
+              (lib/filters query 0)))
+
+      (is (empty? (lib/aggregations query 0)))
+      (is (empty? (lib/breakouts query 0)))
+
+      (is (=? [[:desc {} [:field {} (meta/id :orders :created-at)]]]
+              (lib/order-bys query 0)))
+
+      ;; Stage 1
+      (is (=? [[:/ {:lib/expression-name "half-discount"}
+                [:field {} "double-discount"]
+                4]]
+              (lib/expressions query 1)))
+
+      (is (=? [[:> {} [:expression {} "half-discount"] 1000]]
+              (lib/filters query 1)))
+
+      (is (empty? (lib/order-bys query 1)))
+      (is (empty? (lib/fields query 1)))
+
+      ;; Stage 2
+      (is (=? [[:< {} [:field {} "half-discount"] 500]]
               (lib/filters query 2)))
 
       (is (empty? (lib/fields query 2)))
