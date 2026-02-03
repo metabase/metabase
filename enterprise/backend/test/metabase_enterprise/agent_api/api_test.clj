@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -349,16 +350,17 @@
   (with-agent-api-setup!
     (testing "Executed queries are recorded with :agent context"
       (mt/with-temp [:model/User {user-id :id email :email} {:is_superuser true}]
-        (let [table-id        (mt/id :orders)
-              headers         (auth-headers email)
-              construct-resp  (client/client :post 200 "agent/v1/construct-query"
-                                             {:request-options {:headers headers}}
-                                             {:table_id table-id :limit 5})
-              _               (client/client :post 202 "agent/v1/execute"
-                                             {:request-options {:headers headers}}
-                                             {:query (:query construct-resp)})
-              query-execution (t2/select-one :model/QueryExecution :executor_id user-id)]
-          (is (some? query-execution) "QueryExecution should be recorded")
+        (let [table-id       (mt/id :orders)
+              headers        (auth-headers email)
+              construct-resp (client/client :post 200 "agent/v1/construct-query"
+                                            {:request-options {:headers headers}}
+                                            {:table_id table-id :limit 5})
+              _              (client/client :post 202 "agent/v1/execute"
+                                            {:request-options {:headers headers}}
+                                            {:query (:query construct-resp)})
+              ;; QueryExecution is saved asynchronously, so poll for it
+              query-execution (tu/poll-until 2000
+                                             (t2/select-one :model/QueryExecution :executor_id user-id))]
           (is (= :agent (:context query-execution))))))))
 
 (deftest get-metric-field-values-test
