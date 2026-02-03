@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.native-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -100,6 +102,17 @@
           (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
                  (mt/rows (qp/process-query (mt/native-query query))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::case-branch-coercion]
+  [_driver _feature _database]
+  true)
+
+;; Don't test bigquery because it can't do the case with a default. It requires all
+;; case branches to return the same type while others will coerce if they can.
+;; The assertion above should be enough for BigQuery.
+(defmethod driver/database-supports? [:bigquery-cloud-sdk ::case-branch-coercion]
+  [_driver _feature _database]
+  false)
+
 (deftest convert-timezone-in-case-with-default-test
   (testing "convert-timezone inside case with a default value should not double-convert (#68712)"
     (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
@@ -112,17 +125,36 @@
                 convert-tz (fn [col]
                              (lib.options/ensure-uuid
                               [:convert-timezone {} col "Asia/Seoul"]))
-                with-default (lib/case [[(lib/= index-col 1) (convert-tz dt-tz-col)]]
-                               dt-tz-col)
                 without-default (lib/case [[(lib/= index-col 1) (convert-tz dt-tz-col)]])
                 q (-> query
-                      (lib/expression "with-default" with-default)
                       (lib/expression "without-default" without-default)
                       (lib/filter (lib/= index-col 1))
                       (as-> q (lib/with-fields q [index-col
-                                                  (lib/expression-ref q "with-default")
                                                   (lib/expression-ref q "without-default")])))
                 results (qp/process-query q)
-                [_idx with-default-val without-default-val] (first (mt/rows results))]
+                [_idx original-without-default-val] (first (mt/rows results))]
             (testing "MBQL: case with and without default should produce the same result for matching rows"
-              (is (= without-default-val with-default-val)))))))))
+              ;; Should not have a timezone
+              (is (not (str/ends-with? original-without-default-val "Z"))))
+            (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone ::case-branch-coercion)
+              (let [mp (mt/metadata-provider)
+                    query (lib/query mp (lib.metadata/table mp (mt/id :times)))
+                    dt-tz-col (lib.metadata/field mp (mt/id :times :dt_tz))
+                    index-col (lib.metadata/field mp (mt/id :times :index))
+                    convert-tz (fn [col]
+                                 (lib.options/ensure-uuid
+                                  [:convert-timezone {} col "Asia/Seoul"]))
+                    with-default (lib/case [[(lib/= index-col 1) (convert-tz dt-tz-col)]]
+                                   dt-tz-col)
+                    without-default (lib/case [[(lib/= index-col 1) (convert-tz dt-tz-col)]])
+                    q (-> query
+                          (lib/expression "with-default" with-default)
+                          (lib/expression "without-default" without-default)
+                          (lib/filter (lib/= index-col 1))
+                          (as-> q (lib/with-fields q [index-col
+                                                      (lib/expression-ref q "with-default")
+                                                      (lib/expression-ref q "without-default")])))
+                    results (qp/process-query q)
+                    [_idx with-default-val without-default-val] (first (mt/rows results))]
+                (testing "MBQL: case with and without default should produce the same result for matching rows"
+                  (is (= without-default-val with-default-val original-without-default-val)))))))))))
