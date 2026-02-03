@@ -338,7 +338,9 @@ describe("scenarios > data studio > workspaces", () => {
         .should("be.visible")
         .realHover();
       H.tooltip()
-        .findByText(/This transform cannot be edited/i)
+        .findByText(
+          "Transforms based on the query builder cannot be edited in a workspace.",
+        )
         .should("be.visible");
       Workspaces.getMainlandTransforms()
         .findByText("SQL transform")
