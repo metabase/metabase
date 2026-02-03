@@ -184,17 +184,18 @@ export const SdkQuestionProvider = ({
     async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
       // Use internal navigation (keeps question mounted, updates state internally)
       await navigateToNewCard?.(params);
-      // Only push virtual entry if last entry is NOT already virtual
-      // (prevents stacking multiple virtual entries on consecutive drills)
+      // Only push virtual entry if last entry is NOT already a question drill
+      // (prevents stacking multiple entries on consecutive drills from the same question)
       const currentEntry = navigation?.stack.at(-1);
-      if (!currentEntry?.type.startsWith("virtual")) {
+      if (currentEntry?.type !== "virtual-question-drill") {
         navigation?.push({
           type: "virtual-question-drill",
+          name: question?.displayName() ?? t`Question`,
           onPop: () => loadAndQueryQuestion(),
         });
       }
     },
-    [navigateToNewCard, navigation, loadAndQueryQuestion],
+    [navigateToNewCard, navigation, question, loadAndQueryQuestion],
   );
 
   const questionContext: SdkQuestionContextType = {

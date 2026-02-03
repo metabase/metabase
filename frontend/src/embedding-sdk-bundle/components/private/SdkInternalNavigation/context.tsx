@@ -23,13 +23,19 @@ export type SdkInternalNavigationEntry =
   | {
       /** Virtual entry for question drills - parent component handles rendering, this just tracks navigation depth */
       type: "virtual-question-drill";
+      name: string;
+      onPop?: () => void;
+    }
+  | {
+      /** Virtual entry for opening a card from dashboard (clicking card title or click behavior) */
+      type: "virtual-open-card";
+      name: string;
       onPop?: () => void;
     }
   | {
       /** Virtual entry for adhoc questions from dashboard drills */
       type: "virtual-adhoc-question";
       /** The URL path for the ad-hoc question (e.g., /question#... with serialized card) */
-      questionPath: string;
       name: string;
       onPop?: () => void;
     }

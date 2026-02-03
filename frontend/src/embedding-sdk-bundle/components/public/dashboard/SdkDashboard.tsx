@@ -11,6 +11,7 @@ import {
 import { useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import { isEqual } from "underscore";
 
 import {
   DashboardNotFoundError,
@@ -306,10 +307,30 @@ const SdkDashboardInner = ({
   const onNavigateToNewCardFromDashboard = useCallback(
     (opts: Parameters<typeof baseOnNavigateToNewCardFromDashboard>[0]) => {
       baseOnNavigateToNewCardFromDashboard(opts);
-      sdkNavigation?.push({
-        type: "virtual-question-drill",
-        onPop: () => onNavigateBackToDashboard(),
-      });
+
+      // If the id and query are the same, it means we're opening a card after having clicked its title
+      const isClickingOnCardTitle =
+        opts.nextCard.id === opts.previousCard.id &&
+        isEqual(opts.nextCard.dataset_query, opts.previousCard.dataset_query);
+
+      if (!isClickingOnCardTitle) {
+        // For drills, only push if not already a question drill
+        // One press of back button should undo all of them
+        const currentEntry = sdkNavigation?.stack.at(-1);
+        if (currentEntry?.type !== "virtual-question-drill") {
+          sdkNavigation?.push({
+            type: "virtual-question-drill",
+            name: opts.previousCard.name ?? t`Question`,
+            onPop: () => onNavigateBackToDashboard(),
+          });
+        }
+      } else {
+        sdkNavigation?.push({
+          type: "virtual-open-card",
+          name: opts.previousCard.name ?? t`Question`,
+          onPop: () => onNavigateBackToDashboard(),
+        });
+      }
     },
     [
       baseOnNavigateToNewCardFromDashboard,

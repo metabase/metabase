@@ -356,6 +356,114 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
+    it("should support go to  question -> drill -> drill -> back", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        // Step 1: Verify we start on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Step 2: Navigate to question by clicking on dashcard title
+        H.getDashboardCard()
+          .findByText("Orders for Dashboard A")
+          .should("be.visible")
+          .click();
+
+        // Verify we're now viewing the question
+        cy.findByTestId("visualization-root").should("be.visible");
+        cy.findByText("Back to Dashboard A").should("be.visible");
+
+        // Step 3: First drill - click on Product ID cell
+        H.tableInteractiveBody().findByRole("gridcell", { name: "14" }).click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        // Verify drill happened - back button should show the question name
+        cy.findByText("Back to Orders for Dashboard A").should("be.visible");
+
+        // Step 4: Second drill
+        H.tableInteractiveBody().findAllByText("2.07").first().click();
+        H.popover().findByText("<").click();
+
+        // Back button should still show the original question
+        cy.findByText("Back to Orders for Dashboard A").should("be.visible");
+
+        // Step 5: One back click should undo BOTH drills and return to the question
+        cy.findByText("Back to Orders for Dashboard A").click();
+
+        // Verify we're back on the original question (not drill result)
+        cy.findByTestId("visualization-root").should("be.visible");
+        cy.findByText("Back to Dashboard A").should("be.visible");
+
+        // Step 6: Another back click should return to the dashboard
+        cy.findByText("Back to Dashboard A").click();
+
+        // Verify we're back on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Verify no back button exists (we're at the root)
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should support dashboard -> drill -> drill -> back directly to dashboard", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        // Step 1: Verify we start on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Step 2: First drill directly from dashboard (click on User ID cell - no custom click behavior)
+        H.getDashboardCard()
+          .findByTestId("visualization-root")
+          .findAllByRole("gridcell", { name: "1" })
+          .first()
+          .click();
+
+        H.popover().findByText("View this User's Orders").click();
+
+        // Verify we're now on drilled question
+        cy.findByTestId("visualization-root").should("be.visible");
+        cy.findByText("Dashboard A").should("not.exist");
+        cy.findByText("Back to Dashboard A").should("be.visible");
+
+        // Step 3: Second drill on the drill result
+        H.tableInteractiveBody().findAllByText("2.07").first().click();
+        H.popover().findByText("<").click();
+
+        // Back button should still show Dashboard A (drills don't create navigation entries)
+        cy.findByText("Back to Dashboard A").should("be.visible");
+
+        // Step 4: One back click should go directly back to Dashboard A
+        cy.findByText("Back to Dashboard A").click();
+
+        // Verify we're back on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Verify no back button exists (we're at the root)
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
     it("should support nested navigations dashboard -> dashboard -> question -> multiple drills -> back through all", () => {
       cy.get<number>("@dashboardAId").then((dashboardAId) => {
         mountSdkContent(

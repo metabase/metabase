@@ -12,7 +12,6 @@ import { t } from "ttag";
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
-import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
@@ -84,7 +83,6 @@ const SdkInternalNavigationProviderInner = ({
     async (params: NavigateToNewCardParams) => {
       const { nextCard } = params;
       // Generate URL for the ad-hoc question
-      const url = Urls.question(null, { hash: nextCard });
       const currentEntry = stack.at(-1);
 
       // If we're already on a placeholder adhoc question, just update its path instead of pushing
@@ -94,7 +92,6 @@ const SdkInternalNavigationProviderInner = ({
           const updated = [...prev];
           updated[updated.length - 1] = {
             type: "virtual-adhoc-question",
-            questionPath: url,
             name: nextCard.name || t`Question`,
           };
           return updated;
@@ -102,7 +99,6 @@ const SdkInternalNavigationProviderInner = ({
       } else {
         push({
           type: "virtual-adhoc-question",
-          questionPath: url,
           name: nextCard.name || t`Question`,
         });
       }
@@ -163,7 +159,6 @@ const SdkInternalNavigationProviderInner = ({
       <SdkQuestion
         questionId={activeEntry.id}
         onNavigateBack={pop}
-        navigateToNewCard={navigateToNewCard}
         initialSqlParameters={activeEntry.parameters}
         {...drillThroughQuestionProps}
       >
