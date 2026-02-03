@@ -327,5 +327,24 @@ describe("scenarios - embedding hub", () => {
         .closest("a")
         .should("have.attr", "href", "/admin/people/tenants");
     });
+
+    it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Configure data permissions and enable tenants")
+        .click();
+
+      cy.url().should("include", "/admin/embedding/setup-guide/permissions");
+
+      H.main()
+        .findByText("Configure data permissions and enable tenants")
+        .scrollIntoView()
+        .should("be.visible");
+    });
   });
 });
