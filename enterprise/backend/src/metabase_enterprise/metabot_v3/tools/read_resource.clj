@@ -171,9 +171,9 @@
 
 (def ^:private resource-handlers
   "Map of resource type to handler function."
-  {"table" fetch-table-resource
-   "model" fetch-model-resource
-   "metric" fetch-metric-resource
+  {"table"     fetch-table-resource
+   "model"     fetch-model-resource
+   "metric"    fetch-metric-resource
    "transform" fetch-transform-resource
    "dashboard" fetch-dashboard-resource})
 
@@ -195,7 +195,9 @@
                         {:resource-type resource-type :supported (keys resource-handlers)})))
 
       (let [result (handler parsed)]
-        {:uri uri :content result}))
+        (if (= (:status-code result) 404)
+          {:error (:output result) :status-code (:status-code result)}
+          {:uri uri :content result})))
     (catch Exception e
       (log/error e "Error fetching resource" {:uri uri})
       {:uri uri :error (or (ex-message e) "Unknown error")})))

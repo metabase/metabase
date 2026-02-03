@@ -69,34 +69,26 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id :name "Test Table"}]
         (testing "fetches basic table info"
-          (let [result (read-resource/read-resource
-                        {:uris [(str "metabase://table/" table-id)]})
-                resources (:resources result)]
-            (is (= 1 (count resources)))
-            (is (contains? (first resources) :content))
-            (is (nil? (:error (first resources))))))
+          (is (=? {:resources [{:content map?}]}
+                  (read-resource/read-resource
+                   {:uris [(str "metabase://table/" table-id)]}))))
 
         (testing "fetches table with fields"
-          (let [result (read-resource/read-resource
-                        {:uris [(str "metabase://table/" table-id "/fields")]})
-                resources (:resources result)]
-            (is (= 1 (count resources)))
-            (is (contains? (first resources) :content))))
+          (is (=? {:resources [{:content map?}]}
+                  (read-resource/read-resource
+                   {:uris [(str "metabase://table/" table-id "/fields")]}))))
 
         (testing "handles multiple URIs"
-          (let [result (read-resource/read-resource
-                        {:uris [(str "metabase://table/" table-id)
-                                (str "metabase://table/" table-id "/fields")]})
-                resources (:resources result)]
-            (is (= 2 (count resources)))
-            (is (every? #(contains? % :content) resources))))
+          (is (=? {:resources [{:content map?}
+                               {:content map?}]}
+                  (read-resource/read-resource
+                   {:uris [(str "metabase://table/" table-id)
+                           (str "metabase://table/" table-id "/fields")]}))))
 
         (testing "returns errors for invalid URIs"
-          (let [result (read-resource/read-resource
-                        {:uris ["metabase://table/99999"]})
-                resources (:resources result)]
-            (is (= 1 (count resources)))
-            (is (contains? (first resources) :error))))))))
+          (is (=? {:resources [{:error string?}]}
+                  (read-resource/read-resource
+                   {:uris ["metabase://table/99999"]}))))))))
 
 (deftest format-resources-test
   (testing "formats resources with content"
