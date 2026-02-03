@@ -74,8 +74,14 @@ export function entityPickerModalLevel(level) {
  * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
-<<<<<<< HEAD
-  return entityPickerModalLevel(level).findByText(name).parents("a");
+  return (
+    entityPickerModalLevel(level)
+      // in the recents and search results, the items look like: [collection name] [parent collection name]
+      // which makes matching difficult as you may inadvertently match the parent collection name
+      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
+      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
+      .parents("a")
+  );
 }
 
 export function entityPickerModalTab(name) {
@@ -103,16 +109,6 @@ export function tabsShouldBe(selected, tabs) {
       entityPickerModalTab(tab).should("exist");
     }
   });
-=======
-  return (
-    entityPickerModalLevel(level)
-      // in the recents and search results, the items look like: [collection name] [parent collection name]
-      // which makes matching difficult as you may inadvertently match the parent collection name
-      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
-      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
-      .parents("a")
-  );
->>>>>>> master
 }
 
 export function collectionOnTheGoModal() {
