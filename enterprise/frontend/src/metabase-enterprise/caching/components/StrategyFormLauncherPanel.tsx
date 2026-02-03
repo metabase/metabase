@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
@@ -19,7 +19,6 @@ import {
 
 export const StrategyFormLauncherPanel = ({
   configs,
-  setConfigs,
   targetId,
   updateTargetId,
   databases,
@@ -27,7 +26,6 @@ export const StrategyFormLauncherPanel = ({
   shouldShowResetButton,
 }: {
   configs: CacheConfig[];
-  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
   targetId: number | null;
   updateTargetId: UpdateTargetId;
   databases: Database[];
@@ -40,8 +38,6 @@ export const StrategyFormLauncherPanel = ({
     handleSubmit: resetAllToDefault,
     versionNumber: resetFormVersionNumber,
   } = useResetToDefaultForm({
-    configs,
-    setConfigs,
     databaseIds,
     isFormVisible: targetId !== null,
   });
