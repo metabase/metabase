@@ -131,7 +131,7 @@ type DependencyGroupButtonProps = {
   onSelectionChange: (selection: GraphSelection) => void;
 };
 
-// TODO (@stasgavrylov 15/01/2026):
+// TODO (stasgavrylov 2026-01-15) --
 // Leave a simpler representation for rependency group right now, but will
 // probably return to this in
 function _DependencyGroupButton({

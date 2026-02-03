@@ -33,7 +33,7 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    // TODO: Is this correct way to grant querying permissions?
+    // TODO (Stas 2025-12-31) -- Is this correct way to grant querying permissions?
     cy.request("PUT", "/api/permissions/graph", {
       groups: {
         "1": {
@@ -1275,7 +1275,7 @@ describe("scenarios > data studio > workspaces", () => {
           "Preview (SQL transform)",
         ]);
         cy.findByText("Preview (SQL transform)").click();
-        // TODO: Is it expected that ad-hoc cols have lowercase names?
+        // TODO (Stas 2025-12-30) -- Is it expected that ad-hoc cols have lowercase names?
         H.assertTableData({
           columns: ["name", "score"],
           firstRows: [["Duck", "10"]],
@@ -1699,7 +1699,7 @@ describe("scenarios > data studio > workspaces", () => {
         cy.button("Save").click();
       });
 
-      // TODO: the tooltip assertions are flaky https://linear.app/metabase/issue/GDGT-1620
+      // TODO (Kamil 2026-02-02) -- the tooltip assertions are flaky https://linear.app/metabase/issue/GDGT-1620
       // cy.log("Verify Edit transform button is disabled");
       // cy.findByRole("button", { name: /Edit/ }).click();
       // cy.wait("@checkoutWorkspace");
@@ -1746,7 +1746,7 @@ describe("scenarios > data studio > workspaces", () => {
       // Frontend maps this to a user-friendly message via getCheckoutDisabledMessage()
       H.popover().contains("New workspace").should("be.disabled");
       H.popover().contains("New workspace").realHover();
-      // TODO: update tooltip text once backend is done
+      // TODO (Uladzimir 2026-01-30) -- update tooltip text once backend is done
       H.tooltip().should("contain.text", "cannot be edited in a workspace");
     });
   });

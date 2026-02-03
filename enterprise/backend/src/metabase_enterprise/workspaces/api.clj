@@ -56,7 +56,7 @@
    [:updated_at ms/TemporalInstant]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
-;; TODO: We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
+;; TODO (Chris 2026-02-02) -- We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
 
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}

@@ -1364,9 +1364,9 @@
                           (not include-workspace?) (conj [:or
                                                           [:= :schema nil]
                                                           [:not
-                                                          ;; TODO dislike coupling to a constant, at least until we have an e2e test
+                                                          ;; TODO (Chris 2025-12-09) -- dislike coupling to a constant, at least until we have an e2e test
                                                            [:like :schema "mb__isolation_%"]
-                                                          ;; TODO this might behave terribly without an index when there are lots of workspaces
+                                                          ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
                                                            #_[:exists {:select [1]
                                                                        :from   [[(t2/table-name :model/Workspace) :w]]
                                                                        :where  [:and
@@ -1423,7 +1423,7 @@
                         :include-hidden? include_hidden
                         :can-query?                   can-query
                         :can-write-metadata?          can-write-metadata
-                        ;; TODO: filtering out workspace schemas has a weird FE consequence - if you type one of those
+                        ;; TODO (Chris 2025-12-09) -- filtering out workspace schemas has a weird FE consequence - if you type one of those
                         ;;       schemas out manually in the targets, it will offer to create it for you.
                         ;;       this ends up being a no-op, so i guess it's harmless for now?
                         ;;       it will look very weird when we add validation to refuse saving that target.

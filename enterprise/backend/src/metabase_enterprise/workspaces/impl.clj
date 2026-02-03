@@ -66,7 +66,7 @@
   [{workspace-id :id :as workspace}]
   (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
     (if-not (:database_details workspace)
-      ;; TODO (chris 2025/12/15) this should throw, but we're cautious about racing with initialization
+      ;; TODO (Chris 2025-12-15) -- this should throw, but we're cautious about racing with initialization
       #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
       (log/warn "No database details, unable to grant read only access to the service account.")
       (when (seq ungranted-inputs)
@@ -514,7 +514,7 @@
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
-                                 ;; TODO (Chris 2026-01-26) 2N + 1 is really not great here...
+                                 ;; TODO (Chris 2026-01-26) -- 2N + 1 is really not great here...
                                  global-table-id   (t2/select-one-fn :id [:model/Table :id]
                                                                      :db_id database :schema schema :name name)
                                  isolated-table-id (t2/select-one-fn :id [:model/Table :id]

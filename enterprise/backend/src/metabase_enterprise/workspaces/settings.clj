@@ -14,7 +14,7 @@
                         (when-let [error (:error permission-status)]
                           [{:type    :error
                             :key     :workspaces/permissions-missing
-                            ;; TODO (Ngoc 2026-01-20) localize error message - GDGT-1552
+                            ;; TODO (Ngoc 2026-01-20) -- localize error message - GDGT-1552
                             :message error}])
                         [{:type    :error
                           :key     :workspaces/permissions-unchecked

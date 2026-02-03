@@ -243,7 +243,7 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
-              // todo: @uladzimirdev probably not the proper fix
+              // TODO (Uladzimir 2026-01-28) -- probably not the proper fix
               uiOptions={{ resizable: isEditMode && !readOnly }}
               isEditMode={isEditMode}
               databases={databases}

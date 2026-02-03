@@ -710,7 +710,7 @@
                        :global_id       nil?
                        :name            "New Transform"
                        :target_stale    true
-                       ;; TODO (chris 2026/01/07) this is now only populated lazily - is this OK?
+                       ;; TODO (Chris 2026-01-07) -- this is now only populated lazily - is this OK?
                        #_#_:target_isolated {:type     "table"
                                              :database pos-int?
                                              :schema   string?
@@ -846,7 +846,7 @@
                                     :table_id     int?}}]}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))))))))
 
-;; TODO write a test for /table that covers the shadowing
+;; TODO (Chris 2025-12-12) -- write a test for /table that covers the shadowing
 ;; e.g. have two transforms in a chain connecting 3 tables:  (A -> X1 -> B -> X2 -> C)
 ;; raw-inputs:      A (from X1) and B (from X2)
 ;; outputs:         B (from X1) and C (from X2)
@@ -899,7 +899,7 @@
                    (mt/user-http-request :crowberto :post 403 (ws-url (:id ws) "/transform/validate/target")
                                          {:db_id  (:db_id table)
                                           :target {:type   "table"
-                                                   ;; TODO the schema on the workspace is only set as part of adding tx
+                                                   ;; TODO (Chris 2026-01-05) -- the schema on the workspace is only set as part of adding tx
                                                    :schema "mb__isolation_blah" #_(:schema ws)
                                                    :name   (str "q_" (:name table))}})))))
 
@@ -1305,7 +1305,7 @@
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
 (defn- my-native-query [db-id sql & [card-mapping]]
-  ;; TODO (chris 2025/12/11) don't build MBQL manually
+  ;; TODO (Chris 2025-12-11) -- don't build MBQL manually
   ;; For some reason, when is use mt/native-query the transforms hook thinks this is MBQL.
   ;; It's probably a dialect version issue.
   {:database db-id
@@ -1391,9 +1391,9 @@
 (deftest tables-endpoint-fallback-global-table-id-test
   (testing "GET /api/ee/workspace/:id/table uses fallback for null global_table_id"
     (mt/with-premium-features #{:workspaces}
-      ;; TODO remove :schema workaround once this adds a transform properly, triggering async initialization
+      ;; TODO (Chris 2026-01-05) -- remove :schema workaround once this adds a transform properly, triggering async initialization
       (ws.tu/with-workspaces! [workspace {:name "Fallback Test WS"}]
-        ;; TODO (chris 2026/01/07) things fail because the workspace won't have been initialized yet.
+        ;; TODO (Chris 2026-01-07) -- things fail because the workspace won't have been initialized yet.
         ;;                         ... the correct thing to do would be for the relevant code to initialize it!
         (t2/update! :model/Workspace (:id workspace) {:schema "isolated_schema"})
         (mt/with-temp [:model/WorkspaceTransform ws-tx {:workspace_id (:id workspace)
@@ -1414,7 +1414,7 @@
                                                         :global_schema     "public"
                                                         :global_table      "fallback_test_table"
                                                         :global_table_id   nil
-                                                        ;; TODO another spot
+                                                        ;; TODO (Chris 2026-01-05) -- another spot
                                                         :isolated_schema   (or (:schema workspace) "workaround")
                                                         :isolated_table    "public__fallback_test_table"
                                                         :isolated_table_id nil}]

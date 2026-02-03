@@ -68,7 +68,7 @@
 (defn- remap-source [table-map field-map source-type source]
   (case source-type
     :mbql (remap-mbql-source table-map field-map source)
-    ;; TODO make sure it's actually a SQL dialect though..
+    ;; TODO (Chris 2025-12-12) -- make sure it's actually a SQL dialect though..
     :native (remap-sql-source table-map source)
     :python (remap-python-source table-map source)))
 

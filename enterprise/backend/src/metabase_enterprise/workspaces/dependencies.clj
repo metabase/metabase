@@ -47,7 +47,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+   ;; TODO (Chris 2025-12-17) -- I solemnly declare that we will clean up this coupling nightmare for table normalization
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
@@ -219,7 +219,7 @@
                                                   :schema (normalize-sql s)
                                                   :name (normalize-sql t))
                                 ;; Turns out transforms don't normalize the metadata they create
-                                ;; TODO (Chris 2026-01-26) This is getting really tangled and expensive, revisit
+                                ;; TODO (Chris 2026-01-26) -- This is getting really tangled and expensive, revisit
                                 (t2/select-one-fn :id [:model/Table :id]
                                                   :db_id db_id
                                                   :schema s

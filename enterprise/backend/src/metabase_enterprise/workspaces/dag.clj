@@ -11,7 +11,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
-;; TODO (chris 2025/12/15) Should we leverage data-authority table metadata to speed things up?
+;; TODO (Chris 2025-12-15) -- Should we leverage data-authority table metadata to speed things up?
 
 (defn- table-id->coord [id]
   (t2/select-one [:model/Table :id :schema [:name :table] [:db_id :db]] id))

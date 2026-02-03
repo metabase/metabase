@@ -113,7 +113,7 @@
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
     (let [ws (t2/select-one :model/Workspace (:id workspace))]
-      ;; TODO: Allow this to be fully async as part of BOT-746.
+      ;; TODO (Chris 2026-02-02) -- Allow this to be fully async as part of BOT-746.
       (try
         @(quick-task/submit-task! #(run-workspace-setup! ws database))
         (catch Exception e

@@ -378,7 +378,7 @@
         :else
         (let [output-manifest (read-output-manifest @shared-storage-ref)
               {:keys [fields]} output-manifest]
-          ;; TODO (Chris 2026-01-27) Disabled this check to match behavior in master, but *real* execution does it.
+          ;; TODO (Chris 2026-01-27) -- Disabled this check to match behavior in master, but *real* execution does it.
           ;;      It seems we added the check as part of DRY-ing up transforms code to reuse with workspaces.
           #_(if-not (seq fields)
               {:status  :failed

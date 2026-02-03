@@ -46,7 +46,7 @@
                 (when (u/poll {:thunk      #(t2/select-one :model/Table :name table-name :schema schema)
                                :done?      some?
                                :timeout-ms 1000})
-                   ;; TODO: the table is synced but there are no fields even though the table and fields exist in the db
+                   ;; TODO (Ngoc 2026-01-21) -- the table is synced but there are no fields even though the table and fields exist in the db
                    ;;       ... even force sync-ing it again doesn't seem to help ;_;
                   (sync/sync-table! (t2/select-one :model/Table :name table-name :schema schema))
                   #_(transforms.tu/wait-for-table (:name output-table) 1000))

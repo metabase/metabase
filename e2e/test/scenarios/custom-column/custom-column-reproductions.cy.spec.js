@@ -1075,7 +1075,7 @@ describe("issue 49882", () => {
       .should("not.exist");
   });
 
-  // TODO: https://linear.app/metabase/issue/GDGT-1658/unskip-metabase49882-2-metabase15892-repro
+  // TODO (Kamil 2026-02-02) -- https://linear.app/metabase/issue/GDGT-1658/unskip-metabase49882-2-metabase15892-repro
   it.skip("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
     // This test used to use keyboard shortcuts to cut and paste but this
     // seem impossible to emulate with CodeMirror in Cypress, so it's using
