@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
@@ -173,11 +174,18 @@ export const FieldInfoSection = ({
     [],
   );
 
+  const handleRowClick = useCallback((row: Row<FieldTreeNode>) => {
+    if (row.getCanExpand()) {
+      row.toggleExpanded();
+    }
+  }, []);
+
   const sourceInstance = useTreeTableInstance({
     data: sourceData,
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
+    defaultExpanded: {},
   });
 
   const targetInstance = useTreeTableInstance({
@@ -185,6 +193,7 @@ export const FieldInfoSection = ({
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
+    defaultExpanded: {},
   });
 
   return (
@@ -207,7 +216,10 @@ export const FieldInfoSection = ({
             <Stack gap="sm">
               <Title order={5}>{t`Input`}</Title>
               <Card p={0} shadow="none" withBorder>
-                <TreeTable instance={sourceInstance} />
+                <TreeTable
+                  instance={sourceInstance}
+                  onRowClick={handleRowClick}
+                />
               </Card>
             </Stack>
 
@@ -215,7 +227,10 @@ export const FieldInfoSection = ({
               <Title order={5}>{t`Output`}</Title>
               {target ? (
                 <Card p={0} shadow="none" withBorder>
-                  <TreeTable instance={targetInstance} />
+                  <TreeTable
+                    instance={targetInstance}
+                    onRowClick={handleRowClick}
+                  />
                 </Card>
               ) : (
                 <Text c="text-tertiary">{t`No output table`}</Text>
