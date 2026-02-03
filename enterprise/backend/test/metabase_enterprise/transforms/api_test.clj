@@ -245,7 +245,7 @@
                                                                :start_time   (parse-instant "2025-01-02T00:00:00")}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "start-time"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-id])]
@@ -263,7 +263,7 @@
                                                                :end_time     (parse-instant "2025-01-02T00:00:00")}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "end-time"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-id])]
@@ -280,7 +280,7 @@
                      :model/TransformRun {schedule-run-id :id} {:transform_id transform-id :run_method "cron"}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "run-method"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-id])]
@@ -302,7 +302,7 @@
                      :model/TransformRun {timeout-run-id :id}      {:transform_id transform-id :status "timeout"}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "status"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-id])]
@@ -328,7 +328,7 @@
                      :model/TransformRun          {run-b-id :id}       {:transform_id transform-b-id}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "transform-tags"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-a-id transform-b-id])]
@@ -385,7 +385,7 @@
                      {:transform_id transform-weekly-id}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "transform-tags"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-daily-id transform-hourly-id

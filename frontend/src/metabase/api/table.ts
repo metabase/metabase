@@ -10,7 +10,7 @@ import type {
   GetTableQueryMetadataRequest,
   GetTableRequest,
   RescanTablesValuesRequest,
-  SyncTablesSchemaRequest as SyncTablesSchemasRequest,
+  SyncTablesSchemaRequest,
   Table,
   TableData,
   TableId,
@@ -194,7 +194,7 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    syncTablesSchemas: builder.mutation<void, SyncTablesSchemasRequest>({
+    syncTablesSchemas: builder.mutation<void, SyncTablesSchemaRequest>({
       query: (body) => ({
         method: "POST",
         url: `/api/data-studio/table/sync-schema`,
