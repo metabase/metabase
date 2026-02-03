@@ -777,8 +777,9 @@
              (mt/formatted-rows [int 2.0] (qp/process-query query)))))))
 
 (defn- query-result-ids [query]
-  (->> (mt/formatted-rows [int] (qp/process-query query))
-       (map first)))
+  (into #{}
+        (map first)
+        (mt/formatted-rows [int] (qp/process-query query))))
 
 (defn- assert-table-param-query-selects-ids
   [mp ids template-tag-overrides]
@@ -787,7 +788,7 @@
         template-tag (get (lib/template-tags base-query) "table")
         query (lib/with-template-tags base-query
                 {"table" (merge template-tag {:type :table} template-tag-overrides)})]
-    (is (= ids (query-result-ids query)))))
+    (is (= (set ids) (query-result-ids query)))))
 
 (deftest ^:parallel basic-table-template-tag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
@@ -813,11 +814,13 @@
     (testing "can specify tables by name and schema"
       (let [mp (mt/metadata-provider)
             table (lib.metadata/table mp (mt/id :orders))]
-        (assert-table-param-query-selects-ids
-         mp
-         (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-         {:table-name (:name table)
-          :table-schema (:schema table)})))))
+        ;; if there's no schema, there's no point in trying to run this test
+        (when (:schema table)
+          (assert-table-param-query-selects-ids
+           mp
+           (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+           {:table-name (:name table)
+            :table-schema (:schema table)}))))))
 
 (deftest ^:parallel table-template-tag-with-start-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
