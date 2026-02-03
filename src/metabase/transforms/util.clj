@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -108,10 +109,11 @@
     (python-transform? transform) (transforms.gating/python-transforms-enabled?)
     :else false))
 
-(defn enabled-source-types
+(defn enabled-source-types-for-user
   "Returns set of enabled source types for WHERE clause filtering."
   []
-  (transforms.gating/enabled-source-types))
+  (when (api/is-data-analyst?)
+    (transforms.gating/enabled-source-types)))
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.

@@ -102,8 +102,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (check-is-data-analyst)
-  (let [enabled-types (transforms.util/enabled-source-types)]
+  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
     (api/check-404 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
                                                   :order-by [[:id :asc]]})]
