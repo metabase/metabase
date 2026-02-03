@@ -16,28 +16,20 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-<<<<<<< HEAD
-import { Box, Group } from "metabase/ui";
-=======
-import { Box, Center, Icon } from "metabase/ui";
->>>>>>> master
+import { Box, Center, Group, Icon } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-<<<<<<< HEAD
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type {
   Database,
   DatasetQuery,
   DraftTransformSource,
   Transform,
 } from "metabase-types/api";
-=======
-import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
-import type { Database, Transform } from "metabase-types/api";
->>>>>>> master
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import {
@@ -197,7 +189,6 @@ function TransformQueryPageBody({
         <TransformHeader
           transform={transform}
           actions={
-<<<<<<< HEAD
             <Group gap="sm">
               <TransformPaneHeaderActions
                 source={source}
@@ -206,22 +197,10 @@ function TransformQueryPageBody({
                 handleSave={handleSave}
                 handleCancel={handleCancel}
                 transform={transform}
-                transformId={transform.id}
+                readOnly={readOnly}
                 isEditMode={isEditMode}
               />
             </Group>
-=======
-            <TransformPaneHeaderActions
-              source={source}
-              isSaving={isSaving}
-              isDirty={isDirty}
-              handleSave={handleSave}
-              handleCancel={handleCancel}
-              transformId={transform.id}
-              isEditMode={isEditMode}
-              readOnly={readOnly}
-            />
->>>>>>> master
           }
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
@@ -250,7 +229,7 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              readOnly={readOnly}
+              uiOptions={{ readOnly }}
               isEditMode={isEditMode}
               transform={transform}
               onChangeSource={setSourceAndRejectProposed}
@@ -264,12 +243,8 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
-<<<<<<< HEAD
               // todo: @uladzimirdev probably not the proper fix
-              uiOptions={{ resizable: isEditMode }}
-=======
-              readOnly={readOnly}
->>>>>>> master
+              uiOptions={{ resizable: isEditMode, readOnly }}
               isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}
