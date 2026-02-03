@@ -1331,7 +1331,7 @@
                          :model/Transform          {xf2-id :id} {:name   "Checked out - 2"
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf3-id :id} {:name   "Not checked out - python"
-                                                                 :source {:type "python"}
+                                                                 :source {:type "python" :source-database db-1}
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf4-id :id} {:name   "Not checked out - mbql"
                                                                  :source {:type     :query
@@ -1353,7 +1353,7 @@
                                                                                        {"card" card-id})}
                                                                  :target      (random-target db-1)}
                          :model/Transform          {xf7-id :id} {:name   "Using another database"
-                                                                 :source {:type "python"}
+                                                                 :source {:type "python" :source-database db-1}
                                                                  :target (random-target db-2)}
                          ;; Workspace transforms (mirrored from global1 and global2)
                          :model/WorkspaceTransform _            {:global_id    xf1-id
@@ -1741,7 +1741,7 @@
 
     (testing "Python transforms can be checked out"
       (mt/with-temp [:model/Transform tx {:name        "Python Transform"
-                                          :source      {:type :python :code "print(1)"}
+                                          :source      {:type :python :code "print(1)" :source-database (mt/id)}
                                           :source_type :python
                                           :target      {:type     "table"
                                                         :database (mt/id)
@@ -1865,9 +1865,9 @@
 
 (deftest test-resources-custom-database-test
   (testing "POST /api/ee/workspace/test-resources with custom database_id"
-    (with-test-resources-cleanup!
-      (mt/with-temp [:model/Database {other-db-id :id} {:name "Other DB" :engine driver/*driver*}
-                     :model/Table    {table-id    :id} {:name "coffee", :db_id other-db-id}]
+    (mt/with-temp [:model/Database {other-db-id :id} {:name "Other DB" :engine driver/*driver*}
+                   :model/Table    {table-id    :id} {:name "coffee", :db_id other-db-id}]
+      (with-test-resources-cleanup!
         (let [result (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
                                            {:database_id other-db-id
                                             :global      {:x1 [:t1 "coffee"]}
@@ -1886,7 +1886,7 @@
                    (t2/select-one-fn :db_id :model/Table :id (:t2 (:global-map result))))))
           (testing "transform targets the specified database"
             (is (= other-db-id
-                   (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
+                   (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database]))))))))))
 
 ;;; ============================================ Authorization Test Matrix ============================================
 
