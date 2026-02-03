@@ -68,8 +68,7 @@ describe(
         cy.wait("@checkPermissions");
         cy.findByLabelText("Enable workspaces").should("be.checked");
 
-        cy.findByRole("link", { name: "Exit admin" }).click();
-        cy.button("Settings").click();
+        cy.findByLabelText("Settings").click();
         H.popover().findByText("Data studio").click();
         H.Workspaces.getNewWorkspaceButton().click();
         cy.findByPlaceholderText("Select a database").click();
@@ -78,12 +77,12 @@ describe(
           cy.findByText("Test DB").should("not.exist");
         });
 
-        cy.go(-3);
+        cy.go(-2);
         cy.findByLabelText("Enable workspaces").should("be.checked");
         cy.findByLabelText("Enable workspaces").parent().click();
         cy.findByLabelText("Enable workspaces").should("not.be.checked");
 
-        cy.go(3);
+        cy.go(2);
         cy.findByPlaceholderText("No database supports workspaces").should(
           "be.visible",
         );
