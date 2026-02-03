@@ -145,7 +145,7 @@
     runs
     (let [transform-ids (into #{} (keep :transform_id) runs)
           id->transform (when (seq transform-ids)
-                          (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in transform-ids]))]
+                          (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))]
       (for [run runs]
         (assoc run :transform
                (if-let [transform-id (:transform_id run)]

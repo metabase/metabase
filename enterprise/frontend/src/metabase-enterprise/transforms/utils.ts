@@ -4,7 +4,6 @@ import _ from "underscore";
 import { hasFeature } from "metabase/admin/databases/utils";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -13,6 +12,7 @@ import type {
   DatabaseId,
   DraftTransformSource,
   Transform,
+  TransformRun,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
@@ -89,48 +89,12 @@ export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
   return null;
 }
 
-export function parseList<T>(
-  value: unknown,
-  parseItem: (value: unknown) => T | undefined,
-): T[] | undefined {
-  if (typeof value === "string") {
-    const item = parseItem(value);
-    return item != null ? [item] : [];
-  }
-  if (Array.isArray(value)) {
-    return value.map(parseItem).filter(isNotNull);
-  }
-  return undefined;
+export function getTransformRunName(run: TransformRun): string {
+  return run.transform?.name ?? t`Unknown transform`;
 }
 
-export function parseInteger(value: unknown) {
-  return typeof value === "string" ? parseInt(value, 10) : undefined;
-}
-
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function parseRunStatus(value: unknown): TransformRunStatus | undefined {
-  switch (value) {
-    case "started":
-    case "succeeded":
-    case "failed":
-    case "timeout":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
-  switch (value) {
-    case "manual":
-    case "cron":
-      return value;
-    default:
-      return undefined;
-  }
+export function isErrorStatus(status: TransformRunStatus) {
+  return status === "failed" || status === "timeout";
 }
 
 export function isTransformRunning(transform: Transform) {

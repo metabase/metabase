@@ -35,7 +35,7 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api";
 
 import {
   Cell,
@@ -56,7 +56,7 @@ type MetricsTableProps = {
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "name",
-  sort_direction: SortDirection.Asc,
+  sort_direction: "asc",
 };
 
 export const itemsTableContainerName = "ItemsTableContainer";

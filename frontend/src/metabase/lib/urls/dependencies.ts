@@ -2,7 +2,7 @@ import type {
   DependencyEntry,
   DependencyGroupType,
   DependencySortColumn,
-  DependencySortDirection,
+  SortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -34,19 +34,19 @@ export function dependencyDiagnostics() {
 export type DependencyListParams = {
   page?: number;
   query?: string;
-  group_types?: DependencyGroupType[];
-  include_personal_collections?: boolean;
-  sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
+  groupTypes?: DependencyGroupType[];
+  includePersonalCollections?: boolean;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: SortDirection;
 };
 
 function dependencyListQueryString({
   page,
   query,
-  group_types,
-  include_personal_collections,
-  sort_column,
-  sort_direction,
+  groupTypes,
+  includePersonalCollections,
+  sortColumn,
+  sortDirection,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
 
@@ -56,22 +56,22 @@ function dependencyListQueryString({
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (group_types != null) {
-    group_types.forEach((groupType) => {
-      searchParams.append("group_types", groupType);
+  if (groupTypes != null) {
+    groupTypes.forEach((groupType) => {
+      searchParams.append("group-types", groupType);
     });
   }
-  if (include_personal_collections != null) {
+  if (includePersonalCollections != null) {
     searchParams.set(
-      "include_personal_collections",
-      String(include_personal_collections),
+      "include-personal-collections",
+      String(includePersonalCollections),
     );
   }
-  if (sort_column != null) {
-    searchParams.set("sort_column", sort_column);
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
   }
-  if (sort_direction != null) {
-    searchParams.set("sort_direction", sort_direction);
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();

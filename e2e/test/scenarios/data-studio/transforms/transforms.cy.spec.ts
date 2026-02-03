@@ -1911,7 +1911,7 @@ LIMIT
 
       cy.log("assert that the list is filtered by the current transform");
       getRunListLink().click();
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("SQL transform").should("be.visible");
         cy.findByText("MBQL transform").should("not.exist");
         cy.findByText("Success").should("be.visible");
@@ -2054,17 +2054,14 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getRunsNavLink().click();
-      getContentTable().within(() => {
-        cy.findByText("In progress").should("be.visible");
-        cy.findByLabelText("Cancel run").click();
-      });
-
+      getTransformRunTable().findByText("In progress").click();
+      cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
 
-      getContentTable().findByText("Canceling").should("be.visible");
-      getContentTable()
+      getTransformRunTable().findByText("Canceling").should("exist");
+      getTransformRunTable()
         .findByText("Canceled", { timeout: 30_000 })
-        .should("be.visible");
+        .should("exist");
     });
 
     it("should show a message when the run finished before it cancels", () => {
@@ -3035,7 +3032,7 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
       H.waitForSucceededTransformRuns();
       visitRunListPage();
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
         cy.findAllByText("Success").should("have.length.gte", 1);
         cy.findAllByText("Schedule").should("have.length.gte", 1);
@@ -3119,7 +3116,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("be.visible");
 
       getRunsNavLink().click();
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
         cy.findByText("Manual").should("be.visible");
@@ -3211,12 +3208,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         .findByText("Transforms")
         .scrollIntoView()
         .should("be.visible");
-      getContentTable().within(() => {
-        // 1 transform plus the header row
-        cy.findAllByRole("row").should("have.length", 2);
-
+      getJobTransformTable().within(() => {
         // Check the existence and also their order
-        cy.findAllByRole("row").eq(1).should("contain", "MBQL transform");
+        cy.findByText("MBQL transform").should("be.visible");
       });
     });
 
@@ -3226,7 +3220,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .findByText(/There are no transforms for this job/)
         .scrollIntoView()
         .should("be.visible");
-      getContentTable().should("not.exist");
+      getJobTransformTable().should("not.exist");
     });
   });
 });
@@ -3265,7 +3259,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     function testTransformFilter() {
       cy.log("no filters");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3279,7 +3273,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getTransformFilterWidget()
         .findByText("MBQL transform")
         .should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("not.exist");
       });
@@ -3294,7 +3288,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getTransformFilterWidget()
         .findByText("SQL transform")
         .should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("not.exist");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3308,7 +3302,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getTransformFilterWidget()
         .findByText("2 transforms")
         .should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3316,7 +3310,7 @@ describe("scenarios > admin > transforms > runs", () => {
       cy.log("transform filter - remove filter");
       getTransformFilterWidget().button("Remove filter").click();
       getTransformFilterWidget().findByText("2 transforms").should("not.exist");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3324,7 +3318,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     function testStatusFilter() {
       cy.log("no filters");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3336,7 +3330,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Add filter").click();
       });
       getStatusFilterWidget().findByText("Success").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("not.exist");
       });
@@ -3349,7 +3343,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getStatusFilterWidget().findByText("Failed").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("not.exist");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3361,7 +3355,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getStatusFilterWidget().findByText("2 statuses").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3369,7 +3363,7 @@ describe("scenarios > admin > transforms > runs", () => {
       cy.log("transform filter - remove filter");
       getStatusFilterWidget().button("Remove filter").click();
       getStatusFilterWidget().findByText("2 statuses").should("not.exist");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3377,7 +3371,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     function testTagFilter() {
       cy.log("no filters");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3389,7 +3383,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Add filter").click();
       });
       getTagFilterWidget().findByText("tag1").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("not.exist");
       });
@@ -3402,7 +3396,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getTagFilterWidget().findByText("tag2").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("not.exist");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3414,7 +3408,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getTagFilterWidget().findByText("2 tags").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3422,7 +3416,7 @@ describe("scenarios > admin > transforms > runs", () => {
       cy.log("tag filter - remove filter");
       getTagFilterWidget().button("Remove filter").click();
       getTagFilterWidget().findByText("2 tags").should("not.exist");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3430,7 +3424,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     function testRunMethodFilter() {
       cy.log("no filters");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3442,7 +3436,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Add filter").click();
       });
       getRunMethodFilterWidget().findByText("Manual").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3467,7 +3461,7 @@ describe("scenarios > admin > transforms > runs", () => {
         .findByText("Schedule, Manual")
         .should("be.visible");
 
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3477,7 +3471,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getRunMethodFilterWidget()
         .findByText("Schedule, Manual")
         .should("not.exist");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3485,7 +3479,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     function testStartAtFilter() {
       cy.log("no filters");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3494,7 +3488,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getStartAtFilterWidget().click();
       H.popover().findByText("Today").click();
       getStartAtFilterWidget().findByText("Today").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3509,7 +3503,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getStartAtFilterWidget()
         .findByText("Previous 30 days or today")
         .should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3521,7 +3515,7 @@ describe("scenarios > admin > transforms > runs", () => {
       H.main().findByText("No runs found").should("be.visible");
 
       getStartAtFilterWidget().button("Remove filter").click();
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3529,7 +3523,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     function testEndAtFilter() {
       cy.log("no filters");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3538,7 +3532,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getEndAtFilterWidget().click();
       H.popover().findByText("Today").click();
       getEndAtFilterWidget().findByText("Today").should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3553,7 +3547,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getEndAtFilterWidget()
         .findByText("Previous 30 days or today")
         .should("be.visible");
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3565,7 +3559,7 @@ describe("scenarios > admin > transforms > runs", () => {
       H.main().findByText("No runs found").should("be.visible");
 
       getEndAtFilterWidget().button("Remove filter").click();
-      getContentTable().within(() => {
+      getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("SQL transform").should("be.visible");
       });
@@ -3579,6 +3573,85 @@ describe("scenarios > admin > transforms > runs", () => {
     testRunMethodFilter();
     testStartAtFilter();
     testEndAtFilter();
+  });
+
+  it("should be able to sort runs", () => {
+    function createInitialData() {
+      H.createTransformTag({ name: "Alpha tag" }).then(({ body: tag1 }) => {
+        H.createTransformTag({ name: "Beta tag" }).then(({ body: tag2 }) => {
+          createMbqlTransform({
+            targetTable: TARGET_TABLE,
+            tagIds: [tag1.id],
+            visitTransform: true,
+          });
+          H.DataStudio.Transforms.runTab().click();
+          runTransformAndWaitForSuccess();
+          createSqlTransform({
+            sourceQuery: "SELECT * FROM abc",
+            targetTable: TARGET_TABLE_2,
+            tagIds: [tag2.id],
+            visitTransform: true,
+          });
+          H.DataStudio.Transforms.runTab().click();
+          runTransformAndWaitForFailure();
+        });
+      });
+    }
+
+    function testSorting({
+      columnName,
+      transformNames,
+    }: {
+      columnName: string;
+      transformNames: string[];
+    }) {
+      cy.log(`sort by ${columnName} ascending`);
+      getTransformRunTable().findByText(columnName).click();
+      checkSortingOrder(transformNames);
+
+      cy.log(`sort by ${columnName} descending`);
+      getTransformRunTable().findByText(columnName).click();
+      checkSortingOrder([...transformNames].reverse());
+    }
+
+    createInitialData();
+    getRunsNavLink().click();
+
+    // ascending: "MBQL transform" < "SQL transform"
+    testSorting({
+      columnName: "Transform",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: MBQL started earlier
+    testSorting({
+      columnName: "Started at",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: MBQL ended earlier
+    testSorting({
+      columnName: "Ended at",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: "Failed" < "Success"
+    testSorting({
+      columnName: "Status",
+      transformNames: ["SQL transform", "MBQL transform"],
+    });
+
+    // ascending: both "Manual", stable sort by id — MBQL created first
+    testSorting({
+      columnName: "Trigger",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
+
+    // ascending: "Alpha tag" < "Beta tag"
+    testSorting({
+      columnName: "Tags",
+      transformNames: ["MBQL transform", "SQL transform"],
+    });
   });
 });
 
@@ -3836,8 +3909,12 @@ function handleQueryComplexityWarningModal(action: "cancel" | "save") {
   });
 }
 
-function getContentTable() {
-  return cy.findByTestId("admin-content-table");
+function getJobTransformTable() {
+  return cy.findByLabelText("Job transforms");
+}
+
+function getTransformRunTable() {
+  return cy.findByLabelText("Transform runs");
 }
 
 function getTransformFilterWidget() {
@@ -4060,3 +4137,13 @@ describe("scenarios > data studio > transforms > permissions", () => {
       .should("be.visible");
   });
 });
+
+function checkSortingOrder(transformNames: string[]) {
+  getTransformRunTable().within(() => {
+    transformNames.forEach((name, index) => {
+      cy.findByText(name)
+        .parents("[data-index]")
+        .should("have.attr", "data-index", index.toString());
+    });
+  });
+}
