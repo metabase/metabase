@@ -1,5 +1,6 @@
 (ns mage.dev-repl
   (:require
+   [babashka.fs :as fs]
    [babashka.http-client :as http]
    [babashka.process :as p]
    [clojure.string :as str]
@@ -11,12 +12,48 @@
 
 (set! *warn-on-reflection* true)
 
-;; Port utilities
 (defn- find-free-port
-  "Find a free port by binding to port 0 and reading the assigned port."
+  "Finds a free port"
   []
   (with-open [socket (ServerSocket. 0)]
     (.getLocalPort socket)))
+
+(defn- port-in-use?
+  "Returns true if the port cannot be bound."
+  [port]
+  (try
+    (with-open [_socket (ServerSocket. port)]
+      false)
+    (catch Exception _ true)))
+
+(def ^:private backend-port-options [3000 3001 3002 3003 3004])
+
+(defn- format-port-option [port]
+  (str port (when (port-in-use? port) " [in use]")))
+
+(defn- parse-port [s]
+  (when-let [m (re-find #"\d+" (str s))]
+    (Integer/parseInt m)))
+
+;; Worktree / checkout helpers
+(defn- worktree-id
+  []
+  (let [path (.getCanonicalPath (java.io.File. u/project-root-directory))
+        digest (java.security.MessageDigest/getInstance "SHA-1")
+        hex (->> (.digest digest (.getBytes path "UTF-8"))
+                 (map #(format "%02x" (bit-and % 0xff)))
+                 (apply str))]
+    (subs hex 0 8)))
+
+(defn- h2-db-base-path [worktree-id]
+  (str "/tmp/metabase-h2/" worktree-id "/metabase"))
+
+(defn- ensure-h2-dir! [base-path]
+  (fs/create-dirs (fs/parent base-path)))
+
+(defn- delete-h2-files! [base-path]
+  (doseq [suffix ["" ".mv.db" ".trace.db" ".h2.db" ".lock.db"]]
+    (fs/delete-if-exists (str base-path suffix))))
 
 ;; Token env var mapping (expects MBDEV_*_TOKEN in env)
 (def token-env-vars
@@ -26,8 +63,8 @@
    :pro-self-hosted "MBDEV_PRO_SELF_HOSTED_TOKEN"})
 
 ;; Container management with dynamic ports and reuse
-(defn- container-name [db-type version]
-  (format "mb-dev-%s-%s" (name db-type) (name version)))
+(defn- container-name [worktree-id db-type version]
+  (format "mb-dev-%s-%s-%s" worktree-id (name db-type) (name version)))
 
 (defn- container-internal-port [db-type]
   (case db-type
@@ -94,8 +131,8 @@
    - If missing, create new with random port
 
    :stop-on-exit? is true if we created or started the container (so we should stop it on exit)"
-  [db-type db-version fresh?]
-  (let [name (container-name db-type db-version)
+  [worktree-id db-type db-version fresh?]
+  (let [name (container-name worktree-id db-type db-version)
         internal-port (container-internal-port db-type)
         running? (container-running? name)
         exists? (or running? (container-exists? name))]
@@ -195,14 +232,19 @@
 
 (defn- select-port [opts]
   (or (:port opts)
-      (let [;; become() replaces fzf with shell cmd - echo selection if exists, else query
-            input (u/fzf-select! ["3000" "3001" "3002" "3003" "3004"]
+      (let [options (mapv format-port-option backend-port-options)
+            ;; become() replaces fzf with shell cmd - echo selection if exists, else query
+            input (u/fzf-select! options
                                  (str fzf-opts " --prompt='Backend port: '"
                                       " --bind 'enter:become([ -n {} ] && echo {} || echo {q})'"))]
-        (Integer/parseInt (str/trim input)))))
+        (if-let [port (parse-port (str/trim input))]
+          port
+          (do
+            (println (c/red "Invalid port selection:") input)
+            (u/exit 1))))))
 
 ;; Build env map
-(defn- build-env [edition token config-file db-type db-port frontend-port backend-port]
+(defn- build-env [edition token config-file db-type db-port frontend-port backend-port h2-path]
   (cond-> {"MB_EDITION" (name edition)
            "MB_ENABLE_TEST_ENDPOINTS" "true"
            "MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE" "true"}
@@ -232,7 +274,7 @@
     ;; H2
     (= db-type :h2)
     (assoc "MB_DB_TYPE" "h2"
-           "MB_DB_FILE" (format "/tmp/metabase_%d" (System/currentTimeMillis)))))
+           "MB_DB_FILE" h2-path)))
 
 ;; Frontend dev server
 (defn- start-frontend!
@@ -269,6 +311,9 @@
         fresh?     (:fresh options)
         no-frontend? (:no-frontend options)
         backend-port (select-port options)
+        worktree-id (worktree-id)
+        _          (when (port-in-use? backend-port)
+                     (println (c/yellow "WARNING:") "Port" backend-port "appears to be in use; startup may fail."))
 
         ;; Start frontend dev server (unless --no-frontend)
         frontend (when-not no-frontend?
@@ -276,59 +321,66 @@
         frontend-port (:port frontend)
         frontend-log (:log-file frontend)
 
+        h2-path    (when (= db-type :h2)
+                     (h2-db-base-path worktree-id))
+        _          (when h2-path
+                     (ensure-h2-dir! h2-path))
+        _          (when (and h2-path fresh?)
+                     (delete-h2-files! h2-path))
+
         ;; Ensure DB container (reuse if exists, unless --fresh)
         db-info    (when (not= db-type :h2)
-                     (ensure-db! db-type db-version fresh?))
+                     (ensure-db! worktree-id db-type db-version fresh?))
         db-port    (:port db-info)
 
-        env-map    (build-env edition token config db-type db-port frontend-port backend-port)
+        env-map    (build-env edition token config db-type db-port frontend-port backend-port h2-path)
         aliases    (build-aliases edition)
-        nrepl-port (find-free-port)
-        cmd        ["clojure" (str "-M" aliases) "-p" (str nrepl-port)]
         backend-log (str "/tmp/metabase-backend-" backend-port ".log")]
 
-    ;; Show config
-    (println)
-    (println (c/green "Starting Metabase:"))
-    (println (c/cyan "  Edition:") (name edition))
-    (when token (println (c/cyan "  Token:") (name token)))
-    (when config (println (c/cyan "  Config:") config))
-    (println (c/cyan "  Database:") (str (name db-type) (when db-port (str " on port " db-port))))
-    (println (c/cyan "  nREPL:") (str "port " nrepl-port " (cider-connect)"))
-    (println (c/cyan "  Aliases:") aliases)
-    (when frontend-port
-      (println (c/cyan "  Frontend:") (str "http://localhost:" frontend-port))
-      (println (c/cyan "  FE logs:") (str "tail -f " frontend-log)))
-    (println (c/cyan "  BE logs:") (str "tail -f " backend-log))
-    (println (c/cyan "  Backend:") (str "http://localhost:" backend-port))
-    (println)
-
-    ;; Launch backend (output to log file)
-    (let [log-file (java.io.File. backend-log)
-          proc (apply p/process {:dir u/project-root-directory
-                                 :out log-file
-                                 :err log-file
-                                 :extra-env env-map}
-                      cmd)
-          cleanup! (fn []
-                     (p/destroy-tree proc)
-                     (when (:stop-on-exit? db-info)
-                       (stop-container! (:name db-info))))]
-
-      ;; Register SIGINT handler for Ctrl+C cleanup
-      (sun.misc.Signal/handle
-       (sun.misc.Signal. "INT")
-       (reify sun.misc.SignalHandler
-         (handle [_ _]
-           (cleanup!)
-           (System/exit 0))))
-
+    (let [nrepl-port (find-free-port)
+          cmd ["clojure" (str "-M" aliases) "-p" (str nrepl-port)]]
+      ;; Show config
       (println)
-      (println (c/cyan "Press Ctrl+C to stop."))
+      (println (c/green "Starting Metabase:"))
+      (println (c/cyan "  Edition:") (name edition))
+      (when token (println (c/cyan "  Token:") (name token)))
+      (when config (println (c/cyan "  Config:") config))
+      (println (c/cyan "  Database:") (str (name db-type) (when db-port (str " on port " db-port))))
+      (println (c/cyan "  nREPL: ") nrepl-port)
+      (println (c/cyan "  Aliases:") aliases)
+      (when frontend-port
+        (println (c/cyan "  Frontend:") (str "http://localhost:" frontend-port))
+        (println (c/cyan "  FE logs:") (str "tail -f " frontend-log)))
+      (println (c/cyan "  BE logs:") (str "tail -f " backend-log))
+      (println (c/cyan "  Backend:") (str "http://localhost:" backend-port))
       (println)
-      ;; Poll health endpoint in background
-      (future (wait-for-backend! backend-port))
-      ;; Wait for backend process to exit
-      @proc
-      ;; Normal exit cleanup
-      (cleanup!))))
+
+      ;; Launch backend (output to log file)
+      (let [log-file (java.io.File. backend-log)
+            proc (apply p/process {:dir u/project-root-directory
+                                   :out log-file
+                                   :err log-file
+                                   :extra-env env-map}
+                        cmd)
+            cleanup! (fn []
+                       (p/destroy-tree proc)
+                       (when (:stop-on-exit? db-info)
+                         (stop-container! (:name db-info))))]
+
+        ;; Register SIGINT handler for Ctrl+C cleanup
+        (sun.misc.Signal/handle
+         (sun.misc.Signal. "INT")
+         (reify sun.misc.SignalHandler
+           (handle [_ _]
+             (cleanup!)
+             (System/exit 0))))
+
+        (println)
+        (println (c/cyan "Press Ctrl+C to stop."))
+        (println)
+        ;; Poll health endpoint in background
+        (future (wait-for-backend! backend-port))
+        ;; Wait for backend process to exit
+        @proc
+        ;; Normal exit cleanup
+        (cleanup!)))))
