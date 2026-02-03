@@ -180,7 +180,7 @@ describe("bulk table operations", () => {
       result: "success",
     });
 
-    H.selectHasValue("Visibility type", "").click();
+    H.selectHasValue("Visibility layer", "").click();
     H.selectDropdown().contains("Final").click();
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_bulk_attribute_updated",
@@ -304,7 +304,7 @@ describe("bulk table operations", () => {
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
 
-    H.selectHasValue("Visibility type", "").click();
+    H.selectHasValue("Visibility layer", "").click();
     H.selectDropdown().contains("Final").click();
 
     H.selectHasValue("Entity type", "").click();
@@ -348,7 +348,7 @@ describe("bulk table operations", () => {
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
 
-    H.selectHasValue("Visibility type", "").click();
+    H.selectHasValue("Visibility layer", "").click();
     H.selectDropdown().contains("Final").click();
 
     H.selectHasValue("Entity type", "").click();

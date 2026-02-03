@@ -87,9 +87,9 @@ export function TableAttributesEditSingle({ table }: Props) {
     });
 
     if (error) {
-      sendErrorToast(t`Failed to update table visibility type`);
+      sendErrorToast(t`Failed to update table visibility layer`);
     } else {
-      sendSuccessToast(t`Table visibility type updated`, async () => {
+      sendSuccessToast(t`Table visibility layer updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
           data_layer: table.data_layer,

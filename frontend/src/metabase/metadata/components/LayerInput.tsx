@@ -40,7 +40,7 @@ export const LayerInput = ({
         { value: "internal" as const, label: t`Internal` },
         { value: "final" as const, label: t`Final` },
       ]}
-      label={t`Visibility type`}
+      label={t`Visibility layer`}
       renderOption={(item) => {
         const selected = item.option.value === value;
 
@@ -54,7 +54,7 @@ export const LayerInput = ({
         );
       }}
       leftSection={value ? <VisibilityIcon value={value} /> : undefined}
-      placeholder={t`Select visibility type`}
+      placeholder={t`Select visibility layer`}
       value={value}
       onChange={(value) => onChange(value)}
       onFocus={handleFocus}

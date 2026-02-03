@@ -547,7 +547,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     describe("Filtering", () => {
-      it("should filter tables by visibility type", () => {
+      it("should filter tables by visibility layer", () => {
         updateTableAttributes({
           databaseId: SAMPLE_DB_ID,
           displayName: "Orders",
@@ -569,7 +569,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.TablePicker.getFilterForm().should("not.exist");
 
         TablePicker.openFilterPopover();
-        TablePicker.selectFilterOption("Visibility type", "Final");
+        TablePicker.selectFilterOption("Visibility layer", "Final");
         TablePicker.applyFilters();
         H.expectUnstructuredSnowplowEvent({
           event: "data_studio_table_picker_filters_applied",
