@@ -50,7 +50,7 @@ Once a table is published, you can view and manage its metadata, and more.
 - Overview
 - [Segments](../data-modeling/segments.md)
 - Measures
-- [Dependencies](./dependency-graph.md).
+- [Dependencies](./dependency-graph.md)
 
 To query a table from the Library in Data Studio:
 
