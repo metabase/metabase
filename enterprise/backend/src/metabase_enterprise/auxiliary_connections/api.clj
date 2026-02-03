@@ -51,8 +51,7 @@
       {:configured false})))
 
 ;; TODO(Timothy, 2026-01-29): I copied this from db routing but it should be fixed.
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/:type"
   "Create or update an auxiliary connection for a database.
 
@@ -62,8 +61,8 @@
   [{:keys [id type]} :- [:map
                          [:id ms/PositiveInt]
                          [:type ms/NonBlankString]]
-   {:keys [check_connection_details]} :- [:map
-                                          [:check_connection_details {:optional true} ms/MaybeBooleanValue]]
+   {:keys [check-connection-details]} :- [:map
+                                          [:check-connection-details {:optional true} ms/MaybeBooleanValue]]
    {:keys [name details]} :- [:map
                               [:name ms/NonBlankString]
                               [:details ms/Map]]]
@@ -79,7 +78,7 @@
     ;; Connection validation is opt-in, matching the DB Routing pattern
     ;; (see database_routing/api.clj POST /destination-database).
     ;; It's not an invariant that all database details are always valid?
-    (when check_connection_details
+    (when check-connection-details
       (let [details-or-error (api.database/test-connection-details (clojure.core/name (:engine db)) details)]
         (when (= (:valid details-or-error) false)
           (throw (ex-info "Auxiliary connection details are invalid"
