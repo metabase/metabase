@@ -411,7 +411,7 @@
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
-  [_ {:keys [query params name] :as param}]
+  [_ {:keys [query params name]}]
   {:prepared-statement-args params
    :replacement-snippet (if query
                           (sql.qp/make-nestable-sql query)
