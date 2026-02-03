@@ -1,6 +1,6 @@
 import { RuleTester } from "eslint";
 
-import jtagKey from "../eslint-rules/jtag-missing-key";
+import rule from "../eslint-plugin-metabase/rules/jtag-missing-key";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -95,7 +95,7 @@ const message = jt\`Fragment \${(<><Icon name="test" /><span>content</span></>)}
   },
 ];
 
-ruleTester.run("jtag-key", jtagKey, {
+ruleTester.run("jtag-key", rule, {
   valid: VALID_CASES,
   invalid: INVALID_CASES.map((invalidCase) => {
     const errorCount = invalidCase.errorCount || 1;
