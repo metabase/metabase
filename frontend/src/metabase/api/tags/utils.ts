@@ -11,6 +11,7 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Comment,
   Dashboard,
   DashboardQueryMetadata,
   DashboardSubscription,
@@ -24,6 +25,7 @@ import type {
   Group,
   GroupListQuery,
   LoggerPreset,
+  Measure,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -37,6 +39,7 @@ import type {
   Segment,
   Table,
   Task,
+  TaskRun,
   Timeline,
   TimelineEvent,
   UserInfo,
@@ -106,10 +109,15 @@ export function provideActivityItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
+export function provideAdhocDatasetTags(): TagDescription<TagType>[] {
+  return [tag("dataset")];
+}
+
 export function provideAdhocQueryMetadataTags(
   metadata: CardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [
+    ...provideAdhocDatasetTags(),
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
@@ -538,6 +546,21 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideMeasureListTags(
+  measures: Measure[],
+): TagDescription<TagType>[] {
+  return [listTag("measure"), ...measures.flatMap(provideMeasureTags)];
+}
+
+export function provideMeasureTags(
+  measure: Measure,
+): TagDescription<TagType>[] {
+  return [
+    idTag("measure", measure.id),
+    ...(measure.table ? provideTableTags(measure.table) : []),
+  ];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -582,6 +605,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }
@@ -596,6 +620,18 @@ export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
+}
+
+export function provideTaskRunListTags(
+  taskRuns: TaskRun[],
+): TagDescription<TagType>[] {
+  return [listTag("task-run"), ...taskRuns.flatMap(provideTaskRunTags)];
+}
+
+export function provideTaskRunTags(
+  taskRun: TaskRun,
+): TagDescription<TagType>[] {
+  return [idTag("task-run", taskRun.id)];
 }
 
 export function provideTimelineEventListTags(
@@ -649,4 +685,20 @@ export function provideUserKeyValueTags({
   key,
 }: GetUserKeyValueRequest) {
   return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<TagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<TagType>[] {
+  if (comment.creator) {
+    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
+  }
+
+  return [idTag("comment", comment.id)];
 }

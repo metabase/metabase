@@ -19,15 +19,7 @@ The Library helps you create a source of truth for analytics by providing a cent
 
 ![The Library in Data Studio](./images/library-in-data-studio.png)
 
-The Library is a special section in the navigation sidebar of the main Metabase app that you curate in [Data Studio](./overview.md) (and only in Data Studio).
-
-You can use the Library to curate:
-
-- Data: cleaned, pre-transformed data sources. Tables published to the Library appear first when people choose data sources, nudging them toward trusted data.
-- [Metrics](../data-modeling/metrics.md): standardized calculations that people can trust.
-- [SQL snippets](../questions/native-editor/snippets.md): reusable bits of code.
-
-Unlike collections, each folder in the Library restricts which type of content it contains (which helps keep the Library tidy). For example, the Library's Metrics folder can only contain metrics.
+The Library is a special section in the navigation sidebar of the main Metabase app that you curate in [Data Studio](./overview.md) (and only in Data Studio). Unlike regular collections, each folder in the Library restricts which type of content it contains (which helps keep the Library tidy).
 
 ## Adding items to the Library
 
@@ -35,17 +27,42 @@ Unlike collections, each folder in the Library restricts which type of content i
 2. Select **Data Studio**.
 3. In the **Library** tab, click **+ New**.
 
-You can add a metric or snippet, or publish a table. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. Tables people can use to get answers they can trust. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../data-modeling/transforms.md).
+You can:
 
-You can also publish tables directly from the table view in the [Data Structures](./data-structures.md) tab.
+- [Publish a table](#publishing-tables)
+- [Create a metric](#metrics)
+- [Create a SQL snippet or folder](#sql-snippets)
 
-In addition to being available for browsing in the library, published tables appear first when people pick data for new questions.
+## Publishing tables
+
+![Starting data](./images/starting-data.png)
+
+Tables published to the Library appear first in the Data section when people choose data sources, nudging them toward trusted data.
+
+You must explicitly publish tables to the Library. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../data-modeling/transforms.md).
+
+Tables published to the Library remain available via the data browser as well.
+
+### Managing tables
+
+Once a table is published, you can view and manage its metadata, and more.
+
+- Overview
+- [Segments](../data-modeling/segments.md)
+- Measures
+- [Dependencies](./dependency-graph.md)
+
+To query a table from the Library in Data Studio:
+
+1. Click the table.
+2. Click the three-dot menu.
+3. Select **View**.
 
 ### Published tables can't have dependencies outside of the Library
 
-Tables published to the Library can't depend on any tables outside of the Library. If, for example, you want to publish at table that includes data from another table, such as a [foreign-key remapping](../questions/visualizations/table.md#foreign-key-remapping), Metabase will publish those tables as well.
+Tables published to the Library can't depend on any tables outside of the Library. If, for example, you want to publish a table that includes data from another table, such as a [foreign-key remapping](../questions/visualizations/table.md#foreign-key-remapping), Metabase will publish those tables as well.
 
-## Unpublishing tables
+### Unpublishing tables
 
 To unpublish a table from the Library:
 
@@ -55,35 +72,21 @@ To unpublish a table from the Library:
 
 If other tables depend on the table you want to unpublish, Metabase will unpublish those tables as well. You'll get a confirmation message explaining which tables Metabase would unpublish.
 
-## Managing tables
+Unpublishing a table just removes the table from the Library. That table will still be available via the data browser and data pickers.
 
-Once a table is published, you can view and manage its metadata, and more.
+## Metrics
 
-- Overview
-- [Fields](./data-editing.md)
-- [Segments](/docs/data-modeling/segments.md)
-- Measures
-- [Dependencies](./dependency-graph.md).
+[Metrics](../data-modeling/metrics.md) are standardized calculations that people can trust. Only the metrics you save directly to the Library are included.
 
-To query a table from the Library in Data Studio:
+## SQL snippets
 
-1. Click on the table.
-2. Click the three-dot menu.
-3. Select **View**.
-
-## Metrics in the Library
-
-For how Metrics work, see [Metrics](../data-modeling/metrics.md).
-
-## Snippets in the Library
-
-For how snippets work, see [SQL snippets](../questions/native-editor/snippets.md).
+[SQL snippets](../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase. You can also create snippet folders in the Library.
 
 ## Versioning the Library
 
 You can [sync Library content to version control](../installation-and-operation/remote-sync.md), giving you change history and the ability to publish content across environments.
 
-## Permissions
+## Library permissions
 
 ![Library collection permissions](./images/library-permissions.png)
 

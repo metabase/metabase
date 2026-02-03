@@ -11,6 +11,7 @@ import type {
 
 import { Api } from "./api";
 import {
+  provideAdhocDatasetTags,
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
@@ -40,6 +41,7 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      providesTags: () => provideAdhocDatasetTags(),
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
@@ -57,6 +59,7 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      providesTags: () => provideAdhocDatasetTags(),
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({

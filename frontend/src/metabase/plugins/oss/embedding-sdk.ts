@@ -1,7 +1,12 @@
+import type { OnBeforeRequestHandlerData } from "metabase/plugins/oss/api";
+
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
   onBeforeRequestHandlers: {
     getOrRefreshSessionHandler: async () => {},
+    overrideRequestsForGuestEmbeds: async (
+      _data: OnBeforeRequestHandlerData,
+    ): Promise<OnBeforeRequestHandlerData | void> => {},
   },
 });
 

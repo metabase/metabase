@@ -6,6 +6,7 @@ import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
@@ -20,11 +21,14 @@ import type {
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
+  NormalizedMeasure,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+
+import type { EntitiesState } from "../../metabase-types/store/entities";
 
 import { getSettings } from "./settings";
 
@@ -38,13 +42,18 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
-const getNormalizedSchemas = (state: State) => state.entities.schemas;
+const getNormalizedDatabases = (state: StateWithEntities) =>
+  state.entities.databases;
+const getNormalizedSchemas = (state: StateWithEntities) =>
+  state.entities.schemas;
 
-const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
+const getNormalizedTablesUnfiltered = (state: StateWithEntities) =>
+  state.entities.tables;
 
-const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
-  !!props?.includeHiddenTables;
+const getIncludeHiddenTables = (
+  _state: StateWithEntities,
+  props?: TableSelectorOpts,
+) => !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
@@ -58,9 +67,12 @@ const getNormalizedTables = createSelector(
         ),
 );
 
-const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
-const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
-  !!props?.includeSensitiveFields;
+const getNormalizedFieldsUnfiltered = (state: StateWithEntities) =>
+  state.entities.fields;
+const getIncludeSensitiveFields = (
+  _state: StateWithEntities,
+  props?: FieldSelectorOpts,
+) => !!props?.includeSensitiveFields;
 
 const getNormalizedFields = createSelector(
   [
@@ -85,17 +97,27 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedQuestions = (state: State) => state.entities.questions;
-const getNormalizedSnippets = (state: State) => state.entities.snippets;
+const getNormalizedSegments = (state: StateWithEntities) =>
+  state.entities.segments;
+const getNormalizedMeasures = (state: StateWithEntities) =>
+  state.entities.measures ?? {};
+const getNormalizedQuestions = (state: StateWithEntities) =>
+  state.entities.questions;
+const getNormalizedSnippets = (state: StateWithEntities) =>
+  state.entities.snippets;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
+export const getShallowMeasures = getNormalizedMeasures;
 
-export const getMetadata: (
-  state: State,
+type StateWithEntities = {
+  entities: EntitiesState;
+};
+
+export const getMetadataWithoutSettings: (
+  state: StateWithEntities,
   props?: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
@@ -104,9 +126,9 @@ export const getMetadata: (
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
+    getNormalizedMeasures,
     getNormalizedQuestions,
     getNormalizedSnippets,
-    getSettings,
   ],
   (
     databases,
@@ -114,11 +136,11 @@ export const getMetadata: (
     tables,
     fields,
     segments,
+    measures,
     questions,
     snippets,
-    settings,
   ) => {
-    const metadata = new Metadata({ settings });
+    const metadata = new Metadata({});
 
     metadata.databases = Object.fromEntries(
       Object.values(databases).map((d) => [d.id, createDatabase(d, metadata)]),
@@ -136,6 +158,9 @@ export const getMetadata: (
     );
     metadata.segments = Object.fromEntries(
       Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
+    );
+    metadata.measures = Object.fromEntries(
+      Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
@@ -156,6 +181,7 @@ export const getMetadata: (
       table.fields = hydrateTableFields(table, metadata);
       table.fks = hydrateTableForeignKeys(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
+      table.measures = hydrateTableMeasures(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
     });
     Object.values(metadata.databases).forEach((database) => {
@@ -167,6 +193,9 @@ export const getMetadata: (
     Object.values(metadata.segments).forEach((segment) => {
       segment.table = hydrateSegmentTable(segment, metadata);
     });
+    Object.values(metadata.measures).forEach((measure) => {
+      measure.table = hydrateMeasureTable(measure, metadata);
+    });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
     });
@@ -174,6 +203,17 @@ export const getMetadata: (
       table.fields?.forEach((field) => hydrateField(field, metadata));
     });
 
+    return metadata;
+  },
+);
+
+export const getMetadata: (
+  state: State,
+  props?: MetadataSelectorOpts,
+) => Metadata = createSelector(
+  [getMetadataWithoutSettings, getSettings],
+  (metadata, settings) => {
+    metadata.settings = settings;
     return metadata;
   },
 );
@@ -244,6 +284,15 @@ function createSegment(
   metadata: Metadata,
 ): Segment {
   const instance = new Segment(segment);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createMeasure(
+  measure: NormalizedMeasure,
+  metadata: Metadata,
+): Measure {
+  const instance = new Measure(measure);
   instance.metadata = metadata;
   return instance;
 }
@@ -360,6 +409,11 @@ function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
 }
 
+function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
+  const measureIds = table.getPlainObject().measures ?? [];
+  return measureIds.map((id) => metadata.measure(id)).filter(isNotNull);
+}
+
 function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
   const metricIds = table.getPlainObject().metrics ?? [];
   return metricIds.map((id) => metadata.question(id)).filter(isNotNull);
@@ -391,4 +445,11 @@ function hydrateSegmentTable(
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(segment.table_id) ?? undefined;
+}
+
+function hydrateMeasureTable(
+  measure: Measure,
+  metadata: Metadata,
+): Table | undefined {
+  return metadata.table(measure.table_id) ?? undefined;
 }

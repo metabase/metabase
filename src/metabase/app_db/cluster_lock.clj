@@ -24,16 +24,13 @@
   (or (instance? SQLIntegrityConstraintViolationException e)
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
-      (str/includes? (ex-message e) "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\"")
+      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
-  {:max-attempts 5
-   :multiplier 1.0
-   :randomization-factor 0.1
-   :initial-interval-millis 1000
-   :max-interval-millis 1000
-   :retry-on-exception-pred retryable?})
+  {:max-retries 4
+   :delay-ms 1000 ;; Constant delay between retries.
+   :retry-if (fn [_ e] (retryable? e))})
 
 (defn- prepare-statement
   "Create a prepared statement to query cache"
@@ -82,20 +79,19 @@
     (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
     :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
                 lock-name-str (str (namespace lock-name) "/" (name lock-name))
-                do-with-cluster-lock** (fn [] (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
-                config (merge default-retry-config retry-config)
-                retrier (retry/make config)]
+                config (merge default-retry-config retry-config)]
             (try
-              (retrier do-with-cluster-lock**)
+              (retry/with-retry config
+                (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
               (catch Throwable e
                 (if (retryable? e)
                   (throw (ex-info "Failed to run statement with cluster lock"
-                                  {:retries (:max-attempts config)}
+                                  {:retries (:max-retries config)}
                                   e))
                   (throw e)))))))
 
 (defmacro with-cluster-lock
-  "Run `body` in a tranactions that tries to take a lock from the metabase_cluster_lock table of
+  "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
   the specified name to coordinate concurrency with other metabase instances sharing the appdb."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))

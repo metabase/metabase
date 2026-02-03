@@ -1,8 +1,10 @@
 import type {
   DatabaseId,
+  ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
   TransformJob,
+  TransformOwner,
   TransformRun,
   TransformSource,
   TransformTag,
@@ -11,6 +13,18 @@ import type {
 } from "metabase-types/api";
 
 import { createMockStructuredDatasetQuery } from "./query";
+
+export function createMockTransformOwner(
+  opts?: Partial<TransformOwner>,
+): TransformOwner {
+  return {
+    id: 1,
+    email: "owner@example.com",
+    first_name: "Test",
+    last_name: "Owner",
+    ...opts,
+  };
+}
 
 export function createMockTransformSource(): TransformSource {
   return {
@@ -39,12 +53,28 @@ export function createMockPythonTransformSource({
 export function createMockTransformTarget(
   opts?: Partial<TransformTarget>,
 ): TransformTarget {
-  return {
-    type: "table",
+  const base = {
+    type: "table" as const,
     name: "Table",
     schema: null,
     database: 1,
+  };
+
+  if (opts?.type === "table-incremental") {
+    return {
+      ...base,
+      ...opts,
+      type: "table-incremental",
+      "target-incremental-strategy": opts["target-incremental-strategy"] ?? {
+        type: "append",
+      },
+    };
+  }
+
+  return {
+    ...base,
     ...opts,
+    type: "table",
   };
 }
 
@@ -55,8 +85,10 @@ export function createMockTransform(opts?: Partial<Transform>): Transform {
     description: null,
     source: createMockTransformSource(),
     target: createMockTransformTarget(),
+    collection_id: null,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    source_readable: true,
     ...opts,
   };
 }
@@ -75,6 +107,18 @@ export function createMockTransformRun(
   };
 }
 
+export function createMockListTransformRunsResponse(
+  opts?: Partial<ListTransformRunsResponse>,
+): ListTransformRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
 export function createMockTransformTag(
   opts?: Partial<TransformTag>,
 ): TransformTag {
@@ -83,6 +127,7 @@ export function createMockTransformTag(
     name: "Tag",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    can_run: true,
     ...opts,
   };
 }

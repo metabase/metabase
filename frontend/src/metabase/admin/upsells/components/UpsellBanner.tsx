@@ -50,7 +50,7 @@ export type UpsellBannerProps =
   | (UpsellBannerPropsBase & CardLinkProps)
   | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
 
-export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
+export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -82,7 +82,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
     <Box
       className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
-      bg="bg-white"
+      bg="background-primary"
       {...domProps}
     >
       <Flex align="flex-start" gap="sm" wrap="nowrap">
@@ -124,5 +124,5 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
 };
 
 export const UpsellBanner = UpsellWrapperDismissible(
-  UpsellWrapper(_UpsellBanner),
+  UpsellWrapper(UpsellBannerInner),
 );

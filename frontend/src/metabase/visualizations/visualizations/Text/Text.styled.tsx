@@ -81,7 +81,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     isEmpty &&
     css`
       border: 1px solid var(--mb-color-brand);
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     `}
 
   ${({ isSingleRow, isPreviewing, isEmpty, isMobile, isFixedWidth }) => {
@@ -271,17 +271,17 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown tr {
-    border-bottom: 1px solid var(--mb-color-border-alpha-30);
+    border-bottom: 1px solid var(--mb-color-border);
   }
 
   .text-card-markdown tr:nth-of-type(even) {
-    background-color: ${() => alpha("bg-black", 0.05)};
+    background-color: ${() => alpha("background-primary-inverse", 0.05)};
   }
 
   .text-card-markdown th,
   .text-card-markdown td {
     padding: 0.75em;
-    border: 1px solid var(--mb-color-border-alpha-30);
+    border: 1px solid var(--mb-color-border);
   }
 
   .text-card-markdown code {
@@ -289,7 +289,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-size: 12.64px;
     line-height: 20px;
     padding: 0 0.25em;
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
     border-radius: 8px;
   }
 
@@ -300,7 +300,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown blockquote {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
     border-left: 5px solid var(--mb-color-border);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
@@ -331,7 +331,7 @@ export const TextInput = styled.textarea<TextAreaProps>`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border: none;
   border-radius: 8px;
   box-shadow: none;

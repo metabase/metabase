@@ -48,7 +48,7 @@
               (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
       (secret-key->hash secret-key))))
 
-;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
+;; apparently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 ;;
 ;; TODO -- we should probably put a watch on `env/env` so if it changes this gets recaclulated as needed... or just make

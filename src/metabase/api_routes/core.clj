@@ -1,5 +1,6 @@
 (ns metabase.api-routes.core
   (:require
+   [metabase.api-routes.events]
    [metabase.api-routes.routes]
    [potemkin :as p]))
 

@@ -7,7 +7,9 @@
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
   about how the cache backends themselves."
+  (:refer-clojure :exclude [get-in])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core :as cache]
@@ -21,7 +23,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -220,10 +223,38 @@
               (fn [metadata]
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
-  (and (cache/enable-query-caching)
-       (some? cache-strategy)
-       (not= (:type cache-strategy) :nocache)))
+(defn- caching-enabled? []
+  (cache/enable-query-caching))
+
+(defn- has-cache-strategy? [cache-strategy]
+  (some? cache-strategy))
+
+(defn- strategy-not-nocache? [cache-strategy]
+  (not= (:type cache-strategy) :nocache))
+
+(defn- is-cacheable?
+  "Returns true if query caching is enabled and the query has a valid cache strategy."
+  [{:keys [cache-strategy], :as _query}]
+  (let [enabled?    (caching-enabled?)
+        has-strat?  (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)]
+    (and enabled? has-strat? not-nocache?)))
+
+(defn- get-cache-eligibility-description
+  "Returns a descriptive string explaining why a query is or isn't cacheable."
+  [{:keys [cache-strategy], :as _query}]
+  (let [enabled?    (caching-enabled?)
+        has-strat?  (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)]
+    (if (and enabled? has-strat? not-nocache?)
+      (str "query caching is enabled; "
+           "cache strategy provided: " (pr-str cache-strategy) "; "
+           "cache strategy type is not :nocache")
+      (str/join ", "
+                (cond-> []
+                  (not enabled?)     (conj "query caching is disabled")
+                  (not has-strat?)   (conj "no cache strategy provided")
+                  (not not-nocache?) (conj "cache strategy is :nocache"))))))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
@@ -239,8 +270,9 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
-    (let [cacheable? (is-cacheable? query)]
-      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
+    (let [cacheable? (is-cacheable? query)
+          description (get-cache-eligibility-description query)]
+      (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") description)
       (if cacheable?
         (run-query-with-cache qp query rff)
         (qp query rff)))))

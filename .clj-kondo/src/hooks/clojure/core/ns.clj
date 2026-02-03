@@ -99,12 +99,48 @@
                                      :message "Metabase namespaces should have the form metabase[-enterprise].<module>.* [:metabase/namespace-name]"
                                      :type    :metabase/namespace-name)))))))
 
+(defn- ns-form-node->import-node [ns-form-node]
+  (some (fn [node]
+          (when (and (hooks/list-node? node)
+                     (let [first-child (first (:children node))]
+                       (and (hooks/keyword-node? first-child)
+                            (= (hooks/sexpr first-child) :import))))
+            node))
+        (:children ns-form-node)))
+
+(defn- jsqlparser-import?
+  "Check if a symbol or string represents a jsqlparser import."
+  [s]
+  (str/starts-with? (str s) "net.sf.jsqlparser"))
+
+(defn- lint-jsqlparser-imports [ns-form-node]
+  (when-let [import-node (ns-form-node->import-node ns-form-node)]
+    (doseq [node (rest (:children import-node))
+            :when (not (contains? (hooks.common/ignored-linters node) :metabase/no-jsqlparser-imports))]
+      (cond
+        ;; Handle (net.sf.jsqlparser.foo Bar Baz) form
+        (hooks/list-node? node)
+        (let [package-node (first (:children node))
+              package-name (when package-node (str (hooks/sexpr package-node)))]
+          (when (jsqlparser-import? package-name)
+            (hooks/reg-finding! (assoc (meta node)
+                                       :message "Don't import net.sf.jsqlparser classes directly. This code should be agnostic to the parsing library. [:metabase/no-jsqlparser-imports]"
+                                       :type    :metabase/no-jsqlparser-imports))))
+
+        ;; Handle net.sf.jsqlparser.foo.Bar form (single class import)
+        (hooks/token-node? node)
+        (when (jsqlparser-import? (hooks/sexpr node))
+          (hooks/reg-finding! (assoc (meta node)
+                                     :message "Don't import net.sf.jsqlparser classes directly. This code should be agnostic to the parsing library. [:metabase/no-jsqlparser-imports]"
+                                     :type    :metabase/no-jsqlparser-imports)))))))
+
 (defn lint-ns [x]
   (doto (:node x)
     lint-require-shapes
     lint-requires-on-new-lines
     (lint-modules (modules/config x))
-    lint-namespace-name)
+    lint-namespace-name
+    lint-jsqlparser-imports)
   x)
 
 (comment

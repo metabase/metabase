@@ -54,7 +54,7 @@ The token validation request includes:
 - Count of internal users
 - Count of email domains
 - Count of embedded dashboards and questions
-- Types of embedding (static, interactive, Embedded analytics SDK, Embedded analytics JS)
+- Types of embedding (modular, guest, SDK, full app)
 - Site UUID (just an identifier for your Metabase)
 - Metabase version
 - Query execution timestamp (last UTC day)

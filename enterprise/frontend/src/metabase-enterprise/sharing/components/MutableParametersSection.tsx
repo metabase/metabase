@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
@@ -14,7 +14,12 @@ import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardSubscription,
+  Parameter,
+  ParameterId,
+} from "metabase-types/api";
 
 import { getSortedParameters } from "./utils";
 
@@ -22,7 +27,7 @@ export type MutableParametersSectionProps = {
   className?: string;
   parameters: UiParameter[];
   dashboard: Dashboard;
-  pulse: Pulse;
+  pulse: DashboardSubscription;
   setPulseParameters: (parameters: UiParameter[]) => void;
   hiddenParameters?: string;
 };
@@ -40,7 +45,9 @@ export const MutableParametersSection = ({
   }, [parameters, dashboard]);
 
   const pulseParameters = getPulseParameters(pulse);
-  const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
+  const pulseParamValuesById = pulseParameters.reduce<
+    Record<string, Parameter["value"]>
+  >((map, parameter) => {
     map[parameter.id] = parameter.value;
     return map;
   }, {});
@@ -50,20 +57,24 @@ export const MutableParametersSection = ({
     pulseParamValuesById,
   );
 
-  const setParameterValue = (id: ParameterId, value: any) => {
+  const setParameterValue = (id: ParameterId, value: Parameter["value"]) => {
     const parameter = sortedParameters.find((parameter) => parameter.id === id);
-    const operator = parameter && deriveFieldOperatorFromParameter(parameter);
+    if (!parameter) {
+      return;
+    }
+    const operator = deriveFieldOperatorFromParameter(parameter);
     const filteredParameters = pulseParameters.filter(
       (parameter) => parameter.id !== id,
     );
+    const newParameter: Parameter = {
+      ...parameter,
+      value: value,
+      options: operator?.optionsDefaults,
+    };
     const newParameters =
       value === PULSE_PARAM_USE_DEFAULT
         ? filteredParameters
-        : filteredParameters.concat({
-            ...parameter,
-            value,
-            options: operator?.optionsDefaults,
-          });
+        : filteredParameters.concat(newParameter);
 
     setPulseParameters(newParameters);
   };

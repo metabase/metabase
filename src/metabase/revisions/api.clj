@@ -6,13 +6,16 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (def ^:private entity->model
   {"card"      :model/Card
    "dashboard" :model/Dashboard
    "document"  :model/Document
-   "segment"   :model/Segment})
+   "measure"   :model/Measure
+   "segment"   :model/Segment
+   "transform" :model/Transform})
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -23,8 +26,14 @@
 (defn- model-and-instance [entity-name id]
   (let [model (entity->model entity-name)]
     (assert (keyword? model))
+    ;; Ensure the model namespace is loaded before using it
+    (t2.model/resolve-model model)
     [model (t2/select-one model :id id)]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get revisions of an object."
   [_route-params
@@ -35,6 +44,10 @@
     (when (api/read-check instance)
       (revision/revisions+details model id))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/revert"
   "Revert an object to a prior revision."
   [_route-params
@@ -58,6 +71,10 @@
       :user-id     api/*current-user-id*
       :revision-id revision-id})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:id"
   "Fetch `Revisions` for an object with ID."
   [{:keys [id entity]} :- [:map
@@ -65,5 +82,7 @@
                            [:id     ms/PositiveInt]]]
   (let [model (entity->model entity)]
     (assert (keyword? model))
+    ;; Ensure the model namespace is loaded before using it
+    (t2.model/resolve-model model)
     (api/read-check model id)
     (revision/revisions+details model id)))

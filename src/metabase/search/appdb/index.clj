@@ -36,12 +36,6 @@
 
 (def ^:private sync-tracking-period (long (* 5 #_minutes 60e9)))
 
-; The version ID MUST be updated whenever there is an incompatible change to the schema OR content the index table
-; The id can be any string, but a simple incrementing number is normally easiest to manage while giving some semantic meaning.
-; When this version changes, on startup metabase will not use the existing index table and instead reindex everything to a new table marked with the new version.
-; It is dynamic to allow tests to override it
-(defonce ^:dynamic ^:private *index-version-id* "2")
-
 (defonce ^:private next-sync-at (atom nil))
 
 (defonce ^:dynamic ^:private ^{:doc "This atom is often reset! in threads, so modifications should be done only when locking it first."}
@@ -61,7 +55,7 @@
   ;; Locks the indexes so the reset! doesn't lose data written to the db by a different thread between the read and write
   (locking *indexes*
     (let [indexes (into {}
-                        (for [[status table-name] (search-index-metadata/indexes :appdb *index-version-id*)]
+                        (for [[status table-name] (search-index-metadata/indexes :appdb (search.spec/index-version-hash))]
                           (if (exists? table-name)
                             [status (keyword table-name)]
                             ;; For debugging, make it clear why we are not tracking the given metadata.
@@ -134,7 +128,7 @@
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
-  (search-index-metadata/delete-obsolete! *index-version-id*)
+  (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
   ;; Drop any indexes that are no longer referenced.
   (let [dropped (volatile! [])]
     (doseq [table (orphan-indexes)]
@@ -212,7 +206,7 @@
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
-              (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
+              (when (search-index-metadata/create-pending! :appdb (search.spec/index-version-hash) table-name)
                 (try
                   (create-table! table-name)
                   (catch Exception e
@@ -240,7 +234,7 @@
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (log/infof "Activating pending index %s" pending)
         (when pending
-          (let [active (keyword (search-index-metadata/active-pending! :appdb *index-version-id*))]
+          (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
             (reset! *indexes* {:pending nil :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
@@ -297,32 +291,35 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [active-table (active-table)
-        entries (map document->entry documents)
-        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated? (when-not (and active-table (pending-table) (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
-        pending-updated? (safe-batch-upsert! (pending-table) entries)]
-    (when (or active-updated? pending-updated?)
-      (u/prog1 (->> entries (map :model) frequencies)
-        (when (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-          (t2/query ["commit"]))
-        (log/trace "indexed documents for " <>)
-        (when active-updated?
-          (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
+  (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+        do-writes   (fn []
+                      (let [active-table    (active-table)
+                            entries          (map document->entry documents)
+                            ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
+                            active-updated?  (when-not (and active-table (pending-table) reindexing?)
+                                               (safe-batch-upsert! active-table entries))
+                            pending-updated? (safe-batch-upsert! (pending-table) entries)]
+                        (when (or active-updated? pending-updated?)
+                          (u/prog1 (->> entries (map :model) frequencies)
+                            (when reindexing?
+                              (t2/query ["commit"]))
+                            (log/trace "indexed documents for " <>)
+                            (when active-updated?
+                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))]
+    (if reindexing?
+      ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
+      (t2/with-connection [_conn (mdb/data-source)]
+        (do-writes))
+      (do-writes))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
-  ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
-  (letfn [(do-index []
-            (transduce (comp (partition-all insert-batch-size)
-                             (map (partial batch-update! context)))
-                       (partial merge-with +)
-                       document-reducible))]
-    (if (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-      (t2/with-connection [_conn (mdb/data-source)] (do-index))
-      (do-index))))
+  (transduce (comp (partition-all insert-batch-size)
+                   (map (partial batch-update! context)))
+             (partial merge-with +)
+             document-reducible))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))
@@ -353,7 +350,7 @@
   (t2/select-one-fn :created_at
                     :model/SearchIndexMetadata
                     :engine :appdb
-                    :version *index-version-id*
+                    :version (search.spec/index-version-hash)
                     :lang_code (i18n/site-locale-string)
                     :status :active
                     {:order-by [[:created_at :desc]]}))
@@ -375,13 +372,13 @@
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []
-  (log/infof "Resetting appdb index for version %s, active table: %s" *index-version-id*
+  (log/infof "Resetting appdb index for version %s, active table: %s" (search.spec/index-version-hash)
              (pr-str (active-table)))
   (letfn [(reset-logic []
               ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-index! :appdb *index-version-id* table-name)]
+                (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
                   (when (pos? deleted)
                     (log/infof "Deleted %d pending indices" deleted))))
               (swap! *indexes* assoc :pending nil))

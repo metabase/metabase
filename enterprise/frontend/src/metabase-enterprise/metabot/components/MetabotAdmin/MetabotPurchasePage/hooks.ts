@@ -4,11 +4,17 @@ import {
 } from "metabase-enterprise/api";
 import type { ICloudAddOnProductTier } from "metabase-types/api";
 
+const METABASE_AI_PRODUCT_TYPES = [
+  "metabase-ai",
+  "metabase-ai-tiered",
+] as const;
+
 export function useAddOnsBilling(): {
   error: unknown;
   isLoading: boolean;
   billingPeriodMonths: number | undefined;
   defaultQuantity: number | undefined;
+  hadMetabot: boolean;
   tiers: ICloudAddOnProductTier[];
 } {
   const {
@@ -25,6 +31,13 @@ export function useAddOnsBilling(): {
 
   const billingPeriodMonths =
     billingInfo?.data?.billing_period_months ?? undefined;
+  const hadMetabot =
+    billingInfo?.data?.previous_add_ons?.some(
+      ({ product_type, self_service }) =>
+        METABASE_AI_PRODUCT_TYPES.includes(
+          product_type as (typeof METABASE_AI_PRODUCT_TYPES)[number],
+        ) && self_service,
+    ) ?? false;
   const tiers =
     addOns?.find(
       ({ active, billing_period_months, product_type, self_service }) =>
@@ -42,5 +55,6 @@ export function useAddOnsBilling(): {
     billingPeriodMonths,
     defaultQuantity,
     tiers,
+    hadMetabot,
   };
 }

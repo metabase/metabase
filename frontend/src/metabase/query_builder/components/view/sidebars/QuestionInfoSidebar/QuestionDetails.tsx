@@ -4,8 +4,8 @@ import { c, t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
-import Link from "metabase/common/components/Link";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
 import { QuestionPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
@@ -61,10 +61,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         )}
       </SidesheetCardSection>
       <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="top" color="var(--mb-color-brand)">
+        <Flex gap="sm" align="top" c="brand">
           <Icon
             name={isDashboardQuestion ? "dashboard" : "folder"}
-            color="var(--mb-color-brand)"
+            c="brand"
             className={SidebarStyles.IconMargin}
           />
           <Text>
@@ -109,7 +109,7 @@ function SharingDisplay({ question }: { question: Question }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <Icon name="globe" color="var(--mb-color-brand)" />
+          <Icon name="globe" c="brand" />
           <Text>{t`Shared publicly`}</Text>
 
           <QuestionPublicLinkPopover

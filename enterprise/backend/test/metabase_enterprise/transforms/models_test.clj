@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -271,3 +273,113 @@
             (is (=? (assoc user2-data :id user2-id)
                     (:creator (second hydrated)))
                 "Second hydrated should match the second user's data")))))))
+
+(deftest python-transform-source-table-resolution-on-save-test
+  (testing "Python transform source-tables with name refs get table_id resolved on save"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id  db-id
+                                                :name   "existing_table"
+                                                :schema "public"}]
+      (testing "table_id is populated when table exists"
+        (mt/with-temp [:model/Transform transform {:name   "Transform with ref"
+                                                   :source {:type            "python"
+                                                            :body            "def transform(): pass"
+                                                            :source-database db-id
+                                                            :source-tables   {"input" {:database_id db-id
+                                                                                       :schema      "public"
+                                                                                       :table       "existing_table"}}}
+                                                   :target {:type     "table"
+                                                            :schema   "public"
+                                                            :name     "output"
+                                                            :database db-id}}]
+          (let [saved        (t2/select-one :model/Transform :id (:id transform))
+                source-table (get-in saved [:source :source-tables "input"])]
+            (is (= table-id (:table_id source-table))
+                "table_id should be resolved from database lookup"))))
+
+      (testing "table_id remains nil when table doesn't exist"
+        (mt/with-temp [:model/Transform transform {:name   "Transform with missing ref"
+                                                   :source {:type            "python"
+                                                            :body            "def transform(): pass"
+                                                            :source-database db-id
+                                                            :source-tables   {"input" {:database_id db-id
+                                                                                       :schema      "public"
+                                                                                       :table       "nonexistent_table"}}}
+                                                   :target {:type     "table"
+                                                            :schema   "public"
+                                                            :name     "output"
+                                                            :database db-id}}]
+          (let [saved        (t2/select-one :model/Transform :id (:id transform))
+                source-table (get-in saved [:source :source-tables "input"])]
+            (is (nil? (:table_id source-table))
+                "table_id should be nil for non-existent table"))))
+
+      (testing "existing table_id is preserved"
+        (mt/with-temp [:model/Transform transform {:name   "Transform with explicit table_id"
+                                                   :source {:type            "python"
+                                                            :body            "def transform(): pass"
+                                                            :source-database db-id
+                                                            :source-tables   {"input" {:database_id db-id
+                                                                                       :schema      "public"
+                                                                                       :table       "existing_table"
+                                                                                       :table_id    999}}}
+                                                   :target {:type     "table"
+                                                            :schema   "public"
+                                                            :name     "output"
+                                                            :database db-id}}]
+          (let [saved        (t2/select-one :model/Transform :id (:id transform))
+                source-table (get-in saved [:source :source-tables "input"])]
+            (is (= 999 (:table_id source-table))
+                "explicit table_id should be preserved")))))))
+
+(deftest check-allowed-content-transforms
+  (mt/with-premium-features #{:data-studio}
+    (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
+                   :model/Collection regular-col {:name "Test Regular"}]
+      (mt/with-model-cleanup [:model/Transform :model/Card]
+        (testing "Can only add allowed content types"
+          (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the.*"
+                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
+                                (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))
+
+(deftest deleted-transform-preserves-runs-test
+  (testing "Deleting a transform sets transform_id to NULL but preserves the run"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform {transform-id :id
+                                       transform-name :name
+                                       entity-id :entity_id} {}
+                     :model/TransformRun {run-id :id} {:transform_id transform-id
+                                                       :transform_name transform-name
+                                                       :transform_entity_id entity-id
+                                                       :status "succeeded"
+                                                       :run_method "manual"}]
+        (t2/delete! :model/Transform :id transform-id)
+
+        (let [run (t2/select-one :model/TransformRun :id run-id)]
+          (is (some? run))
+          (is (nil? (:transform_id run)))
+          (is (= transform-name (:transform_name run)))
+          (is (= entity-id (:transform_entity_id run))))))))
+
+(deftest orphaned-run-hydration-test
+  (testing "Hydrating :transform on orphaned runs returns {:name ... :deleted true}"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/TransformRun run {:transform_id nil
+                                              :transform_name "Deleted Transform"
+                                              :transform_entity_id "test-entity-id-123"
+                                              :status "succeeded"
+                                              :run_method "manual"}]
+        (let [hydrated (t2/hydrate run :transform)]
+          (is (= {:name "Deleted Transform" :deleted true} (:transform hydrated))))))))
+
+(deftest start-run-captures-transform-info-test
+  (testing "start-run! captures transform_name and transform_entity_id"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform {transform-id :id
+                                       transform-name :name
+                                       entity-id :entity_id} {}]
+        (let [run (transform-run/start-run! transform-id {:run_method "manual"})]
+          (is (= transform-name (:transform_name run)))
+          (is (= entity-id (:transform_entity_id run))))))))

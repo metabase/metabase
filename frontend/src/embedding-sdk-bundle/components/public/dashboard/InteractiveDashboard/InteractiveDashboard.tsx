@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -43,9 +44,10 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) => {
-        return downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [];
-      }}
+      dashboardActions={[
+        DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        DASHBOARD_ACTION.DOWNLOAD_PDF,
+      ]}
       dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
         isQuestionCard(dashcard.card) &&
@@ -58,6 +60,11 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   );
 };
 
-export const InteractiveDashboard = Object.assign(InteractiveDashboardInner, {
-  schema: interactiveDashboardSchema,
-});
+export const InteractiveDashboard = Object.assign(
+  withPublicComponentWrapper(InteractiveDashboardInner, {
+    supportsGuestEmbed: false,
+  }),
+  {
+    schema: interactiveDashboardSchema,
+  },
+);

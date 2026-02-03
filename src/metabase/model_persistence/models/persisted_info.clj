@@ -117,7 +117,7 @@
   "Marks PersistedInfo as `deletable` or `off`, these will at some point be cleaned up by the PersistPrune task.
 
    `deletable` will wipe out all trace of persisted-info and allow them to be turned back on by automatic processes
-     use when you are disabling peristence at a high level.
+     use when you are disabling persistence at a high level.
    `off` will ensure automatic processes do not pick up these up and re-enable."
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))

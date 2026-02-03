@@ -1,7 +1,7 @@
 (ns metabase.lib.field.resolution
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
-  (:refer-clojure :exclude [not-empty some select-keys #?(:clj empty?)])
+  (:refer-clojure :exclude [not-empty some select-keys get-in #?(:clj empty?)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -26,7 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [not-empty some select-keys #?(:clj empty?)]]))
+   [metabase.util.performance :refer [not-empty some select-keys get-in #?(:clj empty?)]]))
 
 (mr/def ::id-or-name
   [:or :string ::lib.schema.id/field])
@@ -166,7 +166,7 @@
    :name                    :lib/ref-name})
 
 (defn- opts-fn-inherited-temporal-unit
-  "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+  "`:inherited-temporal-unit` is transferred from `:temporal-unit` ref option only when
   the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
 
   TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works. (Other documentation here was not mine.)
@@ -422,7 +422,7 @@
            :fk-field-id source-field-id)))
 
 ;;; See for
-;;; example [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
+;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
 ;;; if we have a field ref to an implicit join but the implicit join in a previous stage but that column is not
 ;;; propagated to the stage we're resolving for the query almost certainly won't work, but we can at least return
 ;;; somewhat more helpful metadata than the base fallback metadata that would give you a confusing error message.
@@ -546,7 +546,7 @@
 
     ;; we maybe have incorrectly used a field name ref when we should have used a field ID ref.
     ;;
-    ;; TODO (Cam 8/15/25) -- what happpens if this field is marked inactive? It won't come back from
+    ;; TODO (Cam 8/15/25) -- what happens if this field is marked inactive? It won't come back from
     ;; `returned-columns`... we'd get fallback metadata, right?
     (and source-table-id
          (string? id-or-name))
@@ -671,9 +671,9 @@
                 (resolve-in-join query stage-number join-alias source-field id-or-name))
               (when source-field
                 (resolve-in-implicit-join query stage-number source-field id-or-name))
-              (resolve-from-previous-stage-or-source query stage-number id-or-name)
               (merge
-               (or (fallback-metadata-for-field query stage-number id-or-name)
+               (or (resolve-from-previous-stage-or-source query stage-number id-or-name)
+                   (fallback-metadata-for-field query stage-number id-or-name)
                    (fallback-metadata id-or-name))
                (when (and join-alias
                           (contains? (into #{}

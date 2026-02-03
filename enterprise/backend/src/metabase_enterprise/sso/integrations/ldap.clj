@@ -12,7 +12,7 @@
 
 (def ^:private EEUserInfo
   [:merge sso/LDAPUserInfo
-   [:map [:attributes [:maybe [:map-of :keyword :any]]]]])
+   [:map [:attributes [:maybe [:map-of :string :any]]]]])
 
 (defn- syncable-user-attributes [m]
   (when (ee.sso.settings/ldap-sync-user-attributes)
@@ -30,7 +30,7 @@
                           result
                           settings
                           (ee.sso.settings/ldap-group-membership-filter))]
-      (assoc user-info :attributes (syncable-user-attributes result)))))
+      (assoc user-info :attributes (some-> (syncable-user-attributes result) (update-keys name))))))
 
 (defenterprise check-provision-ldap
   "Throw if creating new users from ldap is disallowed."

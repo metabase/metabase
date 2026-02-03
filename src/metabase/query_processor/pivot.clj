@@ -3,7 +3,7 @@
   warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
-  (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty])
+  (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
@@ -31,7 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys empty? not-empty]]))
+   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys empty? not-empty get-in]]))
 
 (set! *warn-on-reflection* true)
 

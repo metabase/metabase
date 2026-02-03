@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { Databases } from "metabase/entities/databases";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 
 import {
   NodeListItemIcon,
@@ -13,7 +13,7 @@ import {
   NodeListItemName,
 } from "./NodeList";
 
-const MainPane = ({ databases, onClose, onItemClick, onBack }) => (
+const MainPaneInner = ({ databases, onClose, onItemClick, onBack }) => (
   <SidebarContent title={t`Data Reference`} onClose={onClose} onBack={onBack}>
     <SidebarContent.Pane>
       <p className={cx(CS.mt2, CS.mb3, CS.textSpaced)}>
@@ -36,11 +36,11 @@ const MainPane = ({ databases, onClose, onItemClick, onBack }) => (
   </SidebarContent>
 );
 
-MainPane.propTypes = {
+MainPaneInner.propTypes = {
   databases: PropTypes.array,
   onClose: PropTypes.func,
   onBack: PropTypes.func,
   onItemClick: PropTypes.func.isRequired,
 };
 
-export default Databases.loadList()(MainPane);
+export const MainPane = Databases.loadList()(MainPaneInner);

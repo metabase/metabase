@@ -3,8 +3,8 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
-import Link from "metabase/common/components/Link";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
 import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
@@ -65,7 +65,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
             <FixedSizeIcon
               name="folder"
               className={SidebarStyles.IconMargin}
-              color="var(--mb-color-brand)"
+              c="brand"
             />
             <div>
               <Text>
@@ -95,7 +95,7 @@ function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <FixedSizeIcon name="globe" color="var(--mb-color-brand)" />
+          <FixedSizeIcon name="globe" c="brand" />
           <Text>{t`Shared publicly`}</Text>
 
           <DashboardPublicLinkPopover

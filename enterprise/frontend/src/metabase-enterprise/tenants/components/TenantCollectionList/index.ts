@@ -1,0 +1,1 @@
+export { TenantCollectionList } from "./TenantCollectionList";

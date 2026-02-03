@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import { entityForObject } from "metabase/lib/schema";
-import type { IconName } from "metabase/ui";
-import type { RecentItem, SearchResult } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type {
+  RecentItem,
+  SearchResult,
+  SortingOptions,
+} from "metabase-types/api";
 
 import type { ModelResult, RecentModel, SortColumn } from "./types";
 
@@ -56,7 +57,7 @@ export function sortModels(
       result = compare(a2, b2);
     }
 
-    return sort_direction === SortDirection.Asc ? result : -result;
+    return sort_direction === "asc" ? result : -result;
   });
 }
 
@@ -74,9 +75,4 @@ export const getMaxRecentModelCount = (
     return 4;
   }
   return 0;
-};
-
-export const getIcon = (item: unknown): { name: IconName; color: string } => {
-  const entity = entityForObject(item);
-  return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
 };

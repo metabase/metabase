@@ -13,11 +13,12 @@ import {
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type { GroupsPermissions } from "metabase-types/api";
 
-// permission that do not have a nested shemas/native key
+// permission that do not have a nested schemas/native key
 const flatPermissions = new Set([
   DataPermission.DETAILS,
   DataPermission.VIEW_DATA,
   DataPermission.CREATE_QUERIES,
+  DataPermission.TRANSFORMS,
 ]);
 
 // util to ease migration of perms attributes into a flatter structure
@@ -42,6 +43,7 @@ const omittedDefaultValues: Record<DataPermission, DataPermissionValue> = {
   [DataPermission.DOWNLOAD]: DataPermissionValue.NONE,
   [DataPermission.DATA_MODEL]: DataPermissionValue.NONE,
   [DataPermission.DETAILS]: DataPermissionValue.NO,
+  [DataPermission.TRANSFORMS]: DataPermissionValue.NO,
 };
 
 function getOmittedPermissionValue(

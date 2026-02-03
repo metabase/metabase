@@ -8,15 +8,17 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
+// we import the equivalent of embed.js so that we don't add extra loading time
+// by appending the script
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
-// we import the equivalent of embed.js so that we don't add extra loading time
-// by appending the script
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
@@ -33,8 +35,13 @@ declare global {
   }
 }
 
-export const SdkIframeEmbedPreview = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
+const SdkIframeEmbedPreviewInner = () => {
+  const {
+    isSimpleEmbedFeatureAvailable,
+    experience,
+    settings,
+    guestEmbedSignedTokenForPreview,
+  } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
 
   const instanceUrl = useSetting("site-url");
@@ -58,7 +65,11 @@ export const SdkIframeEmbedPreview = () => {
     }
   }, []);
 
-  const derivedTheme = useMemo(() => {
+  const theme = useMemo(() => {
+    if (settings.theme?.preset) {
+      return applyThemePreset(settings.theme);
+    }
+
     // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
     // some color will not be reset to the default (e.g. text color, CSS variables).
     // We can remove this block once EMB-696 is fixed.
@@ -72,19 +83,23 @@ export const SdkIframeEmbedPreview = () => {
       ),
     };
 
-    return getDerivedDefaultColorsForEmbedFlow(
-      settings.theme ?? defaultTheme,
-      applicationColors ?? undefined,
-    );
-  }, [applicationColors, settings.theme]);
+    const derivedTheme = getDerivedDefaultColorsForEmbedFlow({
+      isSimpleEmbedFeatureAvailable,
+      theme: settings.theme ?? defaultTheme,
+      applicationColors: applicationColors ?? undefined,
+    });
+
+    return derivedTheme;
+  }, [isSimpleEmbedFeatureAvailable, applicationColors, settings.theme]);
 
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
-      theme: derivedTheme,
+      theme,
       useExistingUserSession: true,
+      isGuest: settings.isGuest,
     }),
-    [instanceUrl, derivedTheme],
+    [instanceUrl, theme, settings.isGuest],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -121,11 +136,18 @@ export const SdkIframeEmbedPreview = () => {
     }
   }, [settings.componentName]);
 
+  const attributes = buildEmbedAttributes({
+    experience,
+    settings,
+    token: guestEmbedSignedTokenForPreview,
+    wrapWithQuotes: false,
+  });
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
-      bg={settings.theme?.colors?.background}
+      style={{ backgroundColor: theme?.colors?.background }}
       h="100%"
       ref={containerRef}
       pos="relative"
@@ -133,67 +155,42 @@ export const SdkIframeEmbedPreview = () => {
       {match(settings)
         .with(
           { componentName: "metabase-question", template: "exploration" },
-          (s) =>
-            createElement("metabase-question", {
-              "question-id": "new",
-              "is-save-enabled": s.isSaveEnabled,
-              "target-collection": s.targetCollection,
-              "entity-types": s.entityTypes
-                ? JSON.stringify(s.entityTypes)
-                : undefined,
-            }),
+          () => createElement("metabase-question", attributes),
         )
-        .with({ componentName: "metabase-question" }, (s) =>
-          createElement("metabase-question", {
-            "question-id": s.questionId,
-            drills: s.drills,
-            "with-title": s.withTitle,
-            "with-downloads": s.withDownloads,
-            "is-save-enabled": s.isSaveEnabled,
-            "target-collection": s.targetCollection,
-            "entity-types": s.entityTypes
-              ? JSON.stringify(s.entityTypes)
-              : undefined,
-            "initial-sql-parameters": s.initialSqlParameters
-              ? JSON.stringify(s.initialSqlParameters)
-              : undefined,
-            "hidden-parameters": s.hiddenParameters
-              ? JSON.stringify(s.hiddenParameters)
-              : undefined,
-          }),
+        .with({ componentName: "metabase-question" }, () =>
+          createElement("metabase-question", attributes),
         )
-        .with({ componentName: "metabase-dashboard" }, (s) =>
-          createElement("metabase-dashboard", {
-            "dashboard-id": s.dashboardId,
-            drills: s.drills,
-            "with-title": s.withTitle,
-            "with-downloads": s.withDownloads,
-            "initial-parameters": s.initialParameters
-              ? JSON.stringify(s.initialParameters)
-              : undefined,
-            "hidden-parameters": s.hiddenParameters
-              ? JSON.stringify(s.hiddenParameters)
-              : undefined,
-          }),
+        .with({ componentName: "metabase-dashboard" }, () =>
+          createElement("metabase-dashboard", attributes),
         )
-        .with({ componentName: "metabase-browser" }, (s) =>
-          createElement("metabase-browser", {
-            "read-only": s.readOnly,
-            "initial-collection": s.initialCollection,
-            "collection-visible-columns": s.collectionVisibleColumns
-              ? JSON.stringify(s.collectionVisibleColumns)
-              : undefined,
-          }),
+        .with({ componentName: "metabase-browser" }, () =>
+          createElement("metabase-browser", attributes),
         )
-        .with({ componentName: "metabase-metabot" }, (s) =>
-          createElement("metabase-metabot", { layout: s.layout }),
+        .with({ componentName: "metabase-metabot" }, () =>
+          createElement("metabase-metabot", attributes),
         )
         .exhaustive()}
 
       <EmbedPreviewLoadingOverlay
         isVisible={isLoading}
-        bg={settings.theme?.colors?.background}
+        bg={theme?.colors?.background}
       />
     </Card>
   );
+};
+
+export const SdkIframeEmbedPreview = () => {
+  const { settings } = useSdkIframeEmbedSetupContext();
+
+  const remountKey = useMemo(
+    () =>
+      JSON.stringify({
+        // We must re-mount preview when `isGuest` setting is changed
+        // to force its change for embed.js
+        isGuest: settings.isGuest,
+      }),
+    [settings.isGuest],
+  );
+
+  return <SdkIframeEmbedPreviewInner key={remountKey} />;
 };

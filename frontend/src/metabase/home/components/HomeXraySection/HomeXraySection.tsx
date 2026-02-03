@@ -9,7 +9,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Select from "metabase/common/components/Select";
+import { Select } from "metabase/common/components/Select";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";

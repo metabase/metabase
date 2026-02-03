@@ -4,6 +4,7 @@ import type {
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -13,7 +14,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { DocumentId } from "./document";
+import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -23,15 +24,19 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "./parameters";
+import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-export type CardType = "model" | "question" | "metric";
+
+export const CARD_TYPES = ["model", "question", "metric"] as const;
+export type CardType = (typeof CARD_TYPES)[number];
 
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
+export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -60,7 +65,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection_position: number | null;
   dashboard: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
-  document_id?: DocumentId;
+  document_id?: DocumentId | null;
+  document?: CardDocumentInfo | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
 
@@ -80,6 +86,9 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
+  view_count?: number;
+
+  download_perms?: DownloadPermission;
 }
 
 export interface PublicCard {
@@ -261,6 +270,7 @@ export type VisualizationSettings = {
     | "rotate-90";
 
   // Y-axis
+  "graph.y_axis.auto_range"?: boolean;
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
   "graph.y_axis.axis_enabled"?: boolean;
@@ -281,7 +291,7 @@ export type VisualizationSettings = {
   "graph.metrics"?: string[];
 
   // Series settings
-  series_settings?: Record<string, SeriesSettings>;
+  series_settings?: Record<string, SeriesSettings | undefined>;
 
   "graph.series_order"?: SeriesOrderSetting[];
 
@@ -306,6 +316,7 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
+  "scalar.segments"?: ScalarSegment[];
 
   // Pie Settings
   "pie.dimension"?: string | string[];
@@ -474,7 +485,8 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id: CardId;
+  card_id?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };
@@ -483,4 +495,11 @@ export type ListViewColumns = {
   left: string[];
   right: string[];
   image?: string;
+};
+
+export type ScalarSegment = {
+  min: number;
+  max: number;
+  color: string;
+  label?: string;
 };

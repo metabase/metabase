@@ -13,11 +13,11 @@ const DASHBOARD_TITLE = '"My test dash"';
 const setupPremium = async (opts?: Partial<SetupOpts>) => {
   return await setup({
     ...opts,
+    enterprisePlugins: ["whitelabel", "resource_downloads"],
     tokenFeatures: createMockTokenFeatures({
       // the `whitelabel` feature is needed to test #downloads=false
       whitelabel: true,
     }),
-    hasEnterprisePlugins: true,
     dashboardTitle: DASHBOARD_TITLE,
   });
 };

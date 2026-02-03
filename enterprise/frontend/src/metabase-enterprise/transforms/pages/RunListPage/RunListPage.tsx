@@ -1,23 +1,42 @@
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
 import type { Location } from "history";
-import { useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type * as Urls from "metabase/lib/urls";
-import { Box, Center, Stack } from "metabase/ui";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { Center, Flex, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
-import type { TransformRun } from "metabase-types/api";
+import type { TransformRun, TransformRunId } from "metabase-types/api";
 
-import { RunFilterList } from "./RunFilterList";
-import { RunList } from "./RunList";
+import { RunFilterBar } from "./RunFilterBar";
 import S from "./RunListPage.module.css";
+import { RunPagination } from "./RunPagination";
+import { RunSidebar } from "./RunSidebar/RunSidebar";
+import { RunTable } from "./RunTable";
 import { PAGE_SIZE } from "./constants";
-import { getParsedParams } from "./utils";
+import type {
+  TransformRunFilterOptions,
+  TransformRunSortOptions,
+} from "./types";
+import {
+  getFilterOptions,
+  getParsedParams,
+  getSortOptions,
+  hasFilterOptions,
+} from "./utils";
+
+const EMPTY_RUNS: TransformRun[] = [];
 
 type RunListPageProps = {
   location: Location;
@@ -25,31 +44,15 @@ type RunListPageProps = {
 
 export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
-
-  return (
-    <Stack className={S.body} p="lg" h="100%" bg="bg-light">
-      <Box>{t`A list of when each transform ran.`}</Box>
-      <RunListPageBody params={params} />
-    </Stack>
-  );
-}
-
-type RunListPageBodyProps = {
-  params: Urls.TransformRunListParams;
-};
-
-function RunListPageBody({ params }: RunListPageBodyProps) {
-  const {
-    page = 0,
-    statuses,
-    transformIds,
-    transformTagIds,
-    startTime,
-    endTime,
-    runMethods,
-  } = params;
-
+  const { page = 0 } = params;
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+  const [selectedRunId, setSelectedRunId] = useState<
+    TransformRunId | undefined
+  >();
   const [isPolling, setIsPolling] = useState(false);
+  const dispatch = useDispatch();
 
   const {
     data,
@@ -59,27 +62,32 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     {
       offset: page * PAGE_SIZE,
       limit: PAGE_SIZE,
-      statuses,
-      transform_ids: transformIds,
-      transform_tag_ids: transformTagIds,
-      start_time: startTime,
-      end_time: endTime,
-      run_methods: runMethods,
+      statuses: params.statuses,
+      transform_ids: params.transformIds,
+      transform_tag_ids: params.transformTagIds,
+      start_time: params.startTime,
+      end_time: params.endTime,
+      run_methods: params.runMethods,
+      sort_column: params.sortColumn,
+      sort_direction: params.sortDirection,
     },
     {
       pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
     },
   );
+
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
     error: transformsError,
   } = useListTransformsQuery({});
+
   const {
     data: tags = [],
     isLoading: isLoadingTags,
     error: tagsError,
   } = useListTransformTagsQuery();
+
   const isLoading = isLoadingRuns || isLoadingTransforms || isLoadingTags;
   const error = runsError ?? transformsError ?? tagsError;
 
@@ -87,24 +95,112 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     setIsPolling(isPollingNeeded(data?.data));
   }
 
-  if (!data || isLoading || error != null) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Center>
-    );
-  }
+  const runs = data?.data ?? EMPTY_RUNS;
+
+  const selectedRun = useMemo(
+    () =>
+      selectedRunId != null
+        ? runs.find((run) => run.id === selectedRunId)
+        : undefined,
+    [selectedRunId, runs],
+  );
+
+  useLayoutEffect(() => {
+    if (selectedRunId != null && selectedRun == null) {
+      setSelectedRunId(undefined);
+    }
+  }, [selectedRunId, selectedRun]);
+
+  const handleParamsChange = useCallback(
+    (newParams: Urls.TransformRunListParams) => {
+      dispatch(replace(Urls.transformRunList(newParams)));
+    },
+    [dispatch],
+  );
+
+  const handleFilterOptionsChange = useCallback(
+    (filterOptions: TransformRunFilterOptions) => {
+      handleParamsChange({ ...params, ...filterOptions, page: undefined });
+    },
+    [params, handleParamsChange],
+  );
+
+  const handleSortOptionsChange = useCallback(
+    (sortOptions: TransformRunSortOptions | undefined) => {
+      handleParamsChange({
+        ...params,
+        sortColumn: sortOptions?.column,
+        sortDirection: sortOptions?.direction,
+        page: undefined,
+      });
+    },
+    [params, handleParamsChange],
+  );
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      handleParamsChange({ ...params, page });
+    },
+    [params, handleParamsChange],
+  );
+
+  const handleSelect = useCallback((runId: TransformRunId) => {
+    setSelectedRunId(runId);
+  }, []);
 
   return (
-    <Stack data-testid="run-list-page">
-      <RunFilterList params={params} transforms={transforms} tags={tags} />
-      <RunList
-        runs={data.data}
-        totalCount={data.total}
-        params={params}
-        tags={tags}
-      />
-    </Stack>
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={containerRef}
+      h="100%"
+      wrap="nowrap"
+      data-testid="transforms-run-list"
+    >
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
+        <PaneHeader
+          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+          py={0}
+          showMetabotButton
+        />
+        {!data || isLoading || error != null ? (
+          <Center h="100%">
+            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Center>
+        ) : (
+          <Stack flex="0 1 auto" mih={0} gap="lg">
+            <RunFilterBar
+              filterOptions={getFilterOptions(params)}
+              transforms={transforms}
+              tags={tags}
+              onFilterOptionsChange={handleFilterOptionsChange}
+            />
+            <RunTable
+              runs={runs}
+              tags={tags}
+              hasFilters={hasFilterOptions(getFilterOptions(params))}
+              sortOptions={getSortOptions(params)}
+              onSortOptionsChange={handleSortOptionsChange}
+              onSelect={handleSelect}
+            />
+            <RunPagination
+              page={page}
+              itemsLength={runs.length}
+              totalCount={data.total}
+              onPageChange={handlePageChange}
+            />
+          </Stack>
+        )}
+      </Stack>
+      {selectedRun != null && (
+        <RunSidebar
+          run={selectedRun}
+          containerWidth={containerWidth}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
+          onClose={() => setSelectedRunId(undefined)}
+        />
+      )}
+    </Flex>
   );
 }
 

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
@@ -33,7 +33,7 @@ export type UpsellBigCardProps = React.PropsWithChildren<{
       }
   );
 
-export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
+export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -66,7 +66,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     <Box
       data-testid="upsell-big-card"
       className={S.UpsellBigCardComponent}
-      bg="bg-white"
+      bg="background-primary"
       {...props}
     >
       <Flex px="xl" py="md">
@@ -111,4 +111,4 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   );
 };
 
-export const UpsellBigCard = UpsellWrapper(_UpsellBigCard);
+export const UpsellBigCard = UpsellWrapper(UpsellBigCardInner);

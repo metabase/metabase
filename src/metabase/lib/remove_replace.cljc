@@ -1,5 +1,5 @@
 (ns metabase.lib.remove-replace
-  (:refer-clojure :exclude [every? mapv run! some empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [every? mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- stage-paths
   [query stage-number]
@@ -163,10 +163,7 @@
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
-        (q :guard (and (vector? q)
-                       (or (= q [:breakout])
-                           (= q [:fields])
-                           (and (= (nth q 0) :joins) (= (nth q 2) :fields) (= (count q) 3)))))
+        (:or [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
@@ -181,7 +178,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite-recursive clause
+                                    (lib.util.match/match-lite clause
                                       [(op :guard (= op target-op))
                                        (opts :guard (or (empty? target-opts)
                                                         (set/subset? (set target-opts) (set opts))))

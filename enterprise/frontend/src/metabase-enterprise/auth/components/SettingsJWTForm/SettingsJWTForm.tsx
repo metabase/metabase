@@ -143,6 +143,15 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-groups"],
                     )}
                   />
+                  {settingValues["use-tenants"] && (
+                    <FormTextInput
+                      name="jwt-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["jwt-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
               <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
@@ -183,6 +192,7 @@ const getFormValues = (
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
     "jwt-attribute-groups",
+    "jwt-attribute-tenant",
   ]);
 
   if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {

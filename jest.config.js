@@ -1,31 +1,6 @@
 // @ts-check
-
-const esmPackages = [
-  "ccount",
-  "character-entities-html4",
-  "comma-separated-tokens",
-  "d3-*",
-  "d3",
-  "devlop",
-  "echarts",
-  "fetch-mock",
-  "hast.*",
-  "html-void-elements",
-  "is-absolute-url",
-  "jose",
-  "property-information",
-  "rehype-external-links",
-  "space-separated-tokens",
-  "stringify-entities",
-  "unist-util-visit-parents",
-  "unist-util-visit",
-  "vfile-location",
-  "vfile-message",
-  "vfile",
-  "web-namespaces",
-  "zrender",
-  "zwitch",
-];
+/** eslint-disable-next-line import/no-commonjs */
+const esmPackages = require("./jest.esm-packages.js");
 
 const baseConfig = {
   moduleNameMapper: {
@@ -35,8 +10,6 @@ const baseConfig = {
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
-    "react-markdown":
-      "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
     "csv-parse/browser/esm/sync":
@@ -152,10 +125,16 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/frontend/lint/tests",
       ],
+    },
+    {
+      displayName: "lint-rules",
+      testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
+      testEnvironment: "node",
+      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],
 };
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = config;

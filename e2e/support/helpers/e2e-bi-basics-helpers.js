@@ -79,21 +79,7 @@ export function assertQueryBuilderRowCount(count) {
  * @param {string} lhsSampleColumn join's LHS sample column name
  * @param {string} rhsSampleColumn join's RHS sample column name
  */
-export function assertJoinValid({
-  lhsTable,
-  rhsTable,
-  lhsSampleColumn,
-  rhsSampleColumn,
-}) {
-  // Ensure the QB shows `${lhsTable} + ${rhsTable}` in the header
-  // The check is optional for cases when a table name isn't clear (e.g. a multi-stage ad-hoc question)
-  if (lhsTable && rhsTable) {
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText(lhsTable).should("be.visible");
-      cy.findByText(rhsTable).should("be.visible");
-    });
-  }
-
+export function assertJoinValid({ lhsSampleColumn, rhsSampleColumn }) {
   // Ensure the results have columns from both tables
   queryBuilderMain().within(() => {
     tableHeaderColumn(lhsSampleColumn).should("be.visible");

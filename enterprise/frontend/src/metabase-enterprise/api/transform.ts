@@ -1,9 +1,13 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
+  CheckQueryComplexityRequest,
   CreateTransformRequest,
+  ExtractColumnsFromQueryRequest,
+  ExtractColumnsFromQueryResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
+  QueryComplexity,
   RunTransformResponse,
   Transform,
   TransformId,
@@ -68,7 +72,11 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), tag("table")]),
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("table"),
+          listTag("transform-run"),
+        ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
@@ -155,8 +163,17 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+      invalidatesTags: (_, error, { id, collection_id }) => {
+        const tags = [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("revision"),
+        ];
+        if (collection_id != null) {
+          tags.push(idTag("collection", collection_id));
+        }
+        return invalidateTags(error, tags);
+      },
       onQueryStarted: async (
         { id, ...patch },
         { dispatch, queryFulfilled },
@@ -178,8 +195,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/transform/${id}`,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform")]),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
     }),
     deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({
@@ -188,6 +205,26 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
+    }),
+    extractColumnsFromQuery: builder.mutation<
+      ExtractColumnsFromQueryResponse,
+      ExtractColumnsFromQueryRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform/extract-columns",
+        body,
+      }),
+    }),
+    checkQueryComplexity: builder.query<
+      QueryComplexity,
+      CheckQueryComplexityRequest
+    >({
+      query: (queryString) => ({
+        method: "POST",
+        url: "/api/ee/transform/is-simple-query",
+        body: { query: queryString },
+      }),
     }),
   }),
 });
@@ -204,4 +241,6 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useExtractColumnsFromQueryMutation,
+  useLazyCheckQueryComplexityQuery,
 } = transformApi;

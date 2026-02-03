@@ -71,10 +71,12 @@
       (thunk))))
 
 (defenterprise batch-fetch-table-query-metadatas
-  "Returns the query metadata used to power the Query Builder for the tables specified by`ids`."
+  "Returns the query metadata used to power the Query Builder for the tables specified by`ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   :feature :sandboxes
-  [ids]
-  (for [table (schema.table/batch-fetch-query-metadatas* ids)]
+  [ids opts]
+  (for [table (schema.table/batch-fetch-query-metadatas* ids opts)]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
@@ -90,11 +92,16 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
+                      :metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
-  that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
+  that only gives them access to a subset of columns for a given table, those inaccessible columns should also be
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."

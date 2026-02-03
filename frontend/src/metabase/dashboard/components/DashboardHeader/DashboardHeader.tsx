@@ -35,9 +35,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
+  const { isGuestEmbed } = useDashboardContext();
 
   useMount(() => {
-    dispatch(fetchPulseFormInput());
+    if (!isGuestEmbed) {
+      dispatch(fetchPulseFormInput());
+    }
   });
 
   const isEditing = useSelector(getIsEditing);
@@ -54,7 +57,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   );
 
   const { data: collection, isLoading: isLoadingCollection } =
-    useGetCollectionQuery({ id: dashboard.collection_id || "root" });
+    useGetCollectionQuery(
+      { id: dashboard.collection_id || "root" },
+      {
+        skip: isGuestEmbed,
+      },
+    );
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
@@ -103,12 +111,15 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
     ];
   };
 
-  if (isLoadingCollection || !collection) {
-    return (
-      <Flex justify="center" py="1.5rem">
-        <Loader size={29} />
-      </Flex>
-    );
+  // We don't fetch collection info for static embedding
+  if (!isGuestEmbed) {
+    if (isLoadingCollection || !collection) {
+      return (
+        <Flex justify="center" py="1.5rem">
+          <Loader size={29} />
+        </Flex>
+      );
+    }
   }
 
   const hasLastEditInfo = dashboard["last-edit-info"] != null;

@@ -12,7 +12,7 @@ import { PublicComponentWrapper } from "./PublicComponentWrapper";
 const setup = (status: LoginStatus = { status: "uninitialized" }) => {
   const state = createMockState({
     sdk: createMockSdkState({
-      loginStatus: createMockLoginStatusState(status),
+      initStatus: createMockLoginStatusState(status),
     }),
   });
 

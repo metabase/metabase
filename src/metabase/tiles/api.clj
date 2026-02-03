@@ -225,6 +225,11 @@
 ;; string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
 ;; appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
 ;; parallel.
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
   [{:keys [zoom x y]} :- [:map
@@ -296,6 +301,10 @@
                     (json/decode+kw s)))}
    ::parameters.schema/parameters])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
   [{:keys [card-id zoom x y]}
@@ -311,6 +320,10 @@
        [:lonField ::legacy-ref]]]
   (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
   [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}

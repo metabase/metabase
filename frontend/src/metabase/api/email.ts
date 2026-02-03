@@ -1,7 +1,11 @@
 import type { EmailSMTPSettings } from "metabase-types/api";
 
 import { Api } from "./api";
-import { invalidateTags, tag } from "./tags";
+import {
+  invalidateTags,
+  provideSubscriptionChannelListTags,
+  tag,
+} from "./tags";
 
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -18,7 +22,10 @@ export const settingsApi = Api.injectEndpoints({
         body: emailSettings,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+        invalidateTags(error, [
+          tag("session-properties"),
+          ...provideSubscriptionChannelListTags(),
+        ]),
     }),
     deleteEmailSMTPSettings: builder.mutation<void, void>({
       query: () => ({
@@ -26,7 +33,10 @@ export const settingsApi = Api.injectEndpoints({
         url: `/api/email`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+        invalidateTags(error, [
+          tag("session-properties"),
+          ...provideSubscriptionChannelListTags(),
+        ]),
     }),
   }),
 });

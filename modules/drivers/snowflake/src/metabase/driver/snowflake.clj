@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty])
+  (:refer-clojure :exclude [select-keys not-empty get-in])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -32,7 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys not-empty]]
+   [metabase.util.performance :refer [select-keys not-empty get-in]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -76,6 +76,7 @@
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :regex/lookaheads-and-lookbehinds       false
                               :transforms/python                      true
                               :transforms/table                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
@@ -241,8 +242,10 @@
                                                          (str account ".snowflakecomputing.com/"))]
                                           (str "//" base-url)))))
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
-                   ;; of `db`. If we run across `dbname`, correct our behavior
-                   (set/rename-keys {:dbname :db})
+                   ;; of `db`. If we run across `dbname` without a `db`, correct our behavior
+                   (as-> dtls (if (contains? dtls :db)
+                                (dissoc dtls :dbname)
+                                (set/rename-keys dtls {:dbname :db})))
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (update :db quote-name)
                    (cond-> use-password
@@ -447,7 +450,7 @@
   "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
   [unit x y]
   (let [milliseconds [:datediff [:raw "milliseconds"] x y]]
-    ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
+    ;; milliseconds needs to be cast to float because division rounds incorrectly with large integers
     [:trunc (h2x// (h2x/cast :float milliseconds)
                    (case unit :hour 3600000 :minute 60000 :second 1000))]))
 
@@ -956,3 +959,6 @@
 (defmethod sql.qp/->honeysql [:snowflake :ends-with]
   [driver [_ field arg options]]
   (string-filter driver :endswith field arg options))
+
+(defmethod driver/llm-sql-dialect-resource :snowflake [_]
+  "llm/prompts/dialects/snowflake.md")

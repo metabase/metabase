@@ -9,13 +9,18 @@
 
 (p/import-vars
  [metabase.collections.models.collection
-  remote-synced-collection
-  remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
-  library-collection
   create-library-collection!
-  moving-into-remote-synced?
+  descendant-ids
+  library-collection
+  library-data-collection-type
+  location-path
   moving-from-remote-synced?
-  non-remote-synced-dependencies])
+  moving-into-remote-synced?
+  non-remote-synced-dependencies
+  remote-synced-collection
+  remote-synced-collection?
+  shared-tenant-collection?
+  transforms-ns])

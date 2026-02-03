@@ -1,13 +1,13 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 
-import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
   CollectionType,
+  LibraryCollection,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -19,7 +19,7 @@ export type NavbarLibrarySectionProps = {
   onItemSelect: () => void;
 };
 
-export type LibraryCollectionType = "root" | "models" | "metrics";
+export type LibraryCollectionType = "root" | "data" | "metrics";
 
 export type DataStudioToolbarButtonProps = {
   question: Question;
@@ -55,7 +55,11 @@ type DataStudioPlugin = {
     type: CollectionType;
   }) => CollectionItem | undefined;
   useGetLibraryCollection: (props?: { skip?: boolean }) => {
-    data: undefined | MiniPickerCollectionItem;
+    data: undefined | LibraryCollection;
+    isLoading: boolean;
+  };
+  useGetResolvedLibraryCollection: (props?: { skip?: boolean }) => {
+    data: undefined | LibraryCollection | CollectionItem;
     isLoading: boolean;
   };
 };
@@ -72,6 +76,10 @@ const getDefaultPluginDataStudio = (): DataStudioPlugin => ({
   useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
     undefined,
   useGetLibraryCollection: (_props) => ({ data: undefined, isLoading: false }),
+  useGetResolvedLibraryCollection: (_props) => ({
+    data: undefined,
+    isLoading: false,
+  }),
 });
 
 export const PLUGIN_DATA_STUDIO = getDefaultPluginDataStudio();

@@ -8,7 +8,7 @@
   in [[metabase.query-processor.parameters.dates]], we should remove the version here to encourage migration to that
   namespace."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [every? some])
+  (:refer-clojure :exclude [every? some get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -19,7 +19,7 @@
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every?]]
+   [metabase.util.performance :refer [every? get-in]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -33,7 +33,7 @@
 
 ;; For parsing date strings and producing either a date range (for raw SQL parameter substitution) or a MBQL clause
 
-;; Decorders consist of:
+;; Decoders consist of:
 ;; 1) Parser which tries to parse the date parameter string
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference

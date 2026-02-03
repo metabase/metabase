@@ -1,15 +1,15 @@
 .MetabotLogo {
   --metabot-face: var(--mb-color-brand);
-  --metabot-face-bg: var(--mb-color-brand-lighter);
-  --metabot-buttons-bg: var(--mb-color-brand-light);
+  --metabot-face-bg: var(--mb-color-illustration-brand-tertiary);
+  --metabot-buttons-bg: var(--mb-color-illustration-brand-secondary);
   --metabot-outline: var(--mb-color-brand);
-  --metabot-body: var(--mb-color-brand-light);
+  --metabot-body: var(--mb-color-illustration-brand-secondary);
   --metabot-frames: var(--metabot-face);
 
   [data-mantine-color-scheme="dark"] & {
-    --metabot-face: var(--mb-color-bg-light);
+    --metabot-face: var(--mb-color-background-secondary);
     --metabot-face-bg: var(--mb-color-brand);
-    --metabot-buttons-bg: var(--mb-color-brand-light);
-    --metabot-frames: var(--mb-color-bg-white);
+    --metabot-buttons-bg: var(--mb-color-illustration-brand-secondary);
+    --metabot-frames: var(--mb-color-background-primary);
   }
 }

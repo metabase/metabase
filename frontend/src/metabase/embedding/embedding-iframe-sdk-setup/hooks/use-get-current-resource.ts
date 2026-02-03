@@ -3,12 +3,9 @@ import { useAsync } from "react-use";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
 const getResource = ({
   experience,
@@ -32,26 +29,28 @@ const getResource = ({
 
 export const useGetCurrentResource = ({
   experience,
-  settings,
+  dashboardId,
+  questionId,
 }: {
   experience: SdkIframeEmbedSetupExperience;
-  settings: SdkIframeEmbedSetupSettings;
+  dashboardId?: DashboardId | null;
+  questionId?: string | number | null;
 }) => {
   const dispatch = useDispatch();
 
   const { loading: isDashboardLoading, error: dashboardLoadingError } =
     useAsync(async () => {
-      if (!settings.dashboardId) {
+      if (!dashboardId) {
         return;
       }
 
       await dispatch(
         fetchDashboard({
-          dashId: settings.dashboardId as number,
+          dashId: dashboardId as number,
           queryParams: {},
         }),
       );
-    }, [settings.dashboardId, dispatch]);
+    }, [dashboardId, dispatch]);
   const dashboard = useSelector(getDashboardComplete);
 
   const {
@@ -59,9 +58,9 @@ export const useGetCurrentResource = ({
     error: cardLoadingError,
     isLoading: isCardLoading,
     isFetching: isCardFetching,
-  } = useGetCardQuery(
-    settings.questionId ? { id: settings.questionId as number } : skipToken,
-  );
+  } = useGetCardQuery(questionId ? { id: questionId as number } : skipToken, {
+    refetchOnMountOrArgChange: true,
+  });
 
   const isLoading = isDashboardLoading || isCardLoading;
   const isFetching = isCardFetching;

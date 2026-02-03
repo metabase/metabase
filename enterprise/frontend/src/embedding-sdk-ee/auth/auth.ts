@@ -23,7 +23,10 @@ import type {
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import {
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
+  isEmbeddingEajs,
+} from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import api from "metabase/lib/api";
@@ -40,14 +43,16 @@ let refreshTokenPromise: ReturnType<
 
 // Side effect happening here.
 PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
-  {
-    metabaseInstanceUrl,
-    preferredAuthMethod,
-    apiKey,
-    isLocalHost,
-  }: MetabaseAuthConfig & { isLocalHost?: boolean },
+  authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
+  const { metabaseInstanceUrl, preferredAuthMethod, apiKey, isLocalHost } =
+    authConfig;
+
+  // This is needed because of how MetabaseAuthConfig is typed
+  const jwtProviderUri =
+    "jwtProviderUri" in authConfig ? authConfig.jwtProviderUri : undefined;
+
   // remove any stale tokens that might be there from a previous session=
   samlTokenStorage.remove();
 
@@ -69,6 +74,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           getOrRefreshSession({
             metabaseInstanceUrl,
             preferredAuthMethod,
+            jwtProviderUri,
           }),
         ).unwrap();
         if (session?.id) {
@@ -81,12 +87,13 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         getOrRefreshSession({
           metabaseInstanceUrl,
           preferredAuthMethod,
+          jwtProviderUri,
         }),
       ).unwrap();
     } catch (e) {
       // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.
-      // eslint-disable-next-line no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
       if ((e as Error).name === "MetabaseError") {
         throw e;
       }
@@ -116,12 +123,17 @@ const refreshTokenImpl = async (
   {
     metabaseInstanceUrl,
     preferredAuthMethod,
-  }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+    jwtProviderUri,
+  }: {
+    metabaseInstanceUrl: string;
+    preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+    jwtProviderUri?: string;
+  },
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
 
-  if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
+  if (isEmbeddingEajs()) {
     return requestSessionTokenFromEmbedJs();
   }
 
@@ -130,6 +142,7 @@ const refreshTokenImpl = async (
   const session = await getRefreshToken({
     metabaseInstanceUrl,
     preferredAuthMethod,
+    jwtProviderUri,
     fetchRequestToken: customGetRefreshToken,
   });
   validateSession(session);
@@ -149,10 +162,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
-    authConfig: Pick<
-      MetabaseAuthConfig,
-      "metabaseInstanceUrl" | "preferredAuthMethod"
-    >,
+    authConfig: {
+      metabaseInstanceUrl: string;
+      preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+      jwtProviderUri?: string;
+    },
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user
@@ -169,6 +183,7 @@ export const getOrRefreshSession = createAsyncThunk(
     const shouldRefreshToken =
       !session ||
       (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
+
     if (!shouldRefreshToken) {
       return session;
     }
@@ -189,15 +204,23 @@ export const getOrRefreshSession = createAsyncThunk(
 const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
+  jwtProviderUri,
   fetchRequestToken: customGetRequestToken,
-}: Pick<
-  MetabaseAuthConfig,
-  "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
->) => {
-  const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
-    preferredAuthMethod,
-    headers: getSdkRequestHeaders(),
-  });
+}: {
+  metabaseInstanceUrl: string;
+  preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+  jwtProviderUri?: string;
+  fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
+}) => {
+  const shouldSkipSsoDiscovery = jwtProviderUri !== undefined;
+
+  const urlResponseJson = shouldSkipSsoDiscovery
+    ? { method: "jwt", url: jwtProviderUri }
+    : await connectToInstanceAuthSso(metabaseInstanceUrl, {
+        preferredAuthMethod,
+        headers: getSdkRequestHeaders(),
+      });
+
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     const token = await openSamlLoginPopup(responseUrl);
@@ -205,7 +228,7 @@ const getRefreshToken = async ({
 
     return token;
   }
-  if (method === "jwt") {
+  if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,
@@ -218,13 +241,13 @@ const getRefreshToken = async ({
 
 function getSdkRequestHeaders(hash?: string): Record<string, string> {
   return {
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client": "embedding-sdk-react",
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
       getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
       EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
 }

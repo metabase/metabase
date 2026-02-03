@@ -2,13 +2,9 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
-import type {
-  GroupIds,
-  UserGroupType,
-  UserGroupsType,
-} from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import Select from "metabase/common/components/Select";
+import type { GroupIds, UserGroupType } from "metabase/admin/types";
+import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
+import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,
@@ -19,16 +15,17 @@ import {
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/ui";
+import type { GroupInfo } from "metabase-types/api";
 
 type GroupSelectProps = {
-  groups: UserGroupsType;
+  groups: GroupInfo[];
   selectedGroupIds: GroupIds;
   onGroupChange: (group: UserGroupType, selected: boolean) => void;
   isCurrentUser?: boolean;
   emptyListMessage?: string;
 };
 
-function getSections(groups: UserGroupsType) {
+function getSections(groups: GroupInfo[]) {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
   const topGroups = [defaultGroup, adminGroup].filter((g) => g != null);
@@ -92,12 +89,12 @@ export const GroupSelect = ({
           )
           .forEach((group) => onGroupChange(group, value.includes(group.id)));
       }}
-      optionDisabledFn={(group: UserGroupType) =>
+      optionDisabledFn={(group: GroupInfo) =>
         (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group)
       }
-      optionValueFn={(group: UserGroupType) => group.id}
+      optionValueFn={(group: GroupInfo) => group.id}
       optionNameFn={getGroupNameLocalized}
-      optionStylesFn={(group: UserGroupType) => ({
+      optionStylesFn={(group: GroupInfo) => ({
         color: getGroupColor(group),
       })}
       value={selectedGroupIds}

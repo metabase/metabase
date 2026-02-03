@@ -5,6 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -17,6 +18,7 @@
 ;; Register JWT provider
 (derive :provider/jwt :metabase.auth-identity.provider/provider)
 (derive :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
+(derive :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time.
 ;; 3 minutes is the time used by Zendesk for their JWT SSO
@@ -34,6 +36,9 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-groups
   (comp keyword sso-settings/jwt-attribute-groups))
 
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant
+  (comp keyword sso-settings/jwt-attribute-tenant))
+
 (def ^:private registered-claims
   "Registered claims in the JWT standard which we should not interpret as login attributes."
   [:iss :iat :sub :aud :exp :nbf :jti])
@@ -45,8 +50,10 @@
                               [(jwt-attribute-email)
                                (jwt-attribute-firstname)
                                (jwt-attribute-lastname)
-                               (jwt-attribute-groups)])]
-    (sso-utils/filter-non-stringable-attributes (apply dissoc jwt-data excluded-keys))))
+                               (jwt-attribute-groups)]
+                              (when (setting/get :use-tenants)
+                                [(jwt-attribute-tenant)]))]
+    (sso-utils/stringify-valid-attributes (apply dissoc jwt-data excluded-keys))))
 
 (defn- decode-and-verify-jwt
   "Decode and verify a JWT token. Returns the JWT data if valid, throws on error."
@@ -78,18 +85,27 @@
             email (get jwt-data (jwt-attribute-email))
             first-name (get jwt-data (jwt-attribute-firstname))
             last-name (get jwt-data (jwt-attribute-lastname))
+            tenant-slug (u/prog1 (get jwt-data (jwt-attribute-tenant))
+                          (when-not (or (nil? <>)
+                                        (string? <>)
+                                        (integer? <>))
+                            (throw (ex-info "Value of `@tenant` must be a string" {:status-code 400
+                                                                                   :error :invalid-tenant}))))
             user-attributes (jwt-data->user-attributes jwt-data)]
         (when-not email
-          (throw (ex-info (str (tru "JWT token missing email claim"))
+          (throw (ex-info (tru "JWT token missing email claim")
                           {:status-code 400
                            :error :missing-email})))
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
-         :user-data {:email email
-                     :first_name first-name
-                     :last_name last-name
-                     :sso_source :jwt
-                     :jwt_attributes user-attributes}
+         :tenant-slug (some-> tenant-slug str)
+         :user-data (->> {:email email
+                          :first_name first-name
+                          :last_name last-name
+                          :sso_source :jwt
+                          :jwt_attributes user-attributes}
+                         (remove #(nil? (val %)))
+                         (into {}))
          :jwt-data jwt-data
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
@@ -118,10 +134,14 @@
     ;; Authentication succeeded - check account creation policy
     ;; TODO(edpaget): 2025/11/11 this should return an error condition instead of throwing
     :else
-    (do (when-not (and (:user request) (get-in request [:user :is_active]))
-          (sso-utils/check-user-provisioning :jwt))
-        ;; If the user was deactivated but user provisioning is allowed reactive the user
-        (next-method provider (assoc-in request [:user-data :is_active] true)))))
+    (let [provisioning-enabled? (sso-settings/jwt-user-provisioning-enabled?)]
+      (when-not (and (:user request) (get-in request [:user :is_active]))
+        (sso-utils/check-user-provisioning :jwt))
+      ;; If the user was deactivated but user provisioning is allowed reactive the user
+      ;; Pass provisioning status for tenant reactivation logic
+      (next-method provider (-> request
+                                (assoc-in [:user-data :is_active] true)
+                                (assoc :user-provisioning-enabled? provisioning-enabled?))))))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"

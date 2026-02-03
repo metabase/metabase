@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -229,3 +230,51 @@
           (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
             (backfill-dependencies-single-trigger!))
           (is (t2/exists? :model/Card :id card-id :dependency_analysis_version current-version)))))))
+
+(deftest backfill-card-does-not-cause-revision-test
+  (testing "backfilling a card does not create a new revision or audit log entry"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies :audit-app}
+      (mt/with-temp [:model/Card {card-id :id
+                                  dep-version :dependency_analysis_version}
+                     {:dependency_analysis_version 0, :dataset_query (mt/mbql-query orders)}]
+        (let [revision-count-before (t2/count :model/Revision :model "Card" :model_id card-id)
+              deps-before (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
+          (is (= 0 dep-version))
+          (is (= 0 revision-count-before))
+          (is (= 0 deps-before))
+          (backfill-dependencies-single-trigger!)
+          (let [revision-count-after (t2/count :model/Revision :model "Card" :model_id card-id)
+                dep-version-after (t2/select-one-fn :dependency_analysis_version :model/Card :id card-id)
+                deps-after (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
+            (is (= 0 revision-count-after))
+            (is (= dependencies.model/current-dependency-analysis-version dep-version-after))
+            (is (= 1 deps-after))))))))
+
+(deftest ^:sequential backfill-dependencies-on-serdes-load-test
+  (testing "Test that serdes load correctly updates the dependency_analysis_version"
+    (backfill-all-existing-entities!)
+    (let [query (mt/mbql-query orders)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card1-id :id} {:dependency_analysis_version 0, :dataset_query query}
+                       :model/Card {card2-id :id} {:dependency_analysis_version 0, :dataset_query query}
+                       :model/Card {card3-id :id} {:dependency_analysis_version 0, :dataset_query query}]
+          (let [card-count (fn [& args]
+                             (apply t2/count :model/Card :id [:in [card1-id card2-id card3-id]] args))
+                current-version dependencies.model/current-dependency-analysis-version]
+            (events/publish-event! :event/serdes-load {})
+            (is (= 3 (card-count :dependency_analysis_version current-version)))))))))
+
+(deftest ^:sequential backfill-dependencies-on-token-update-test
+  (testing "Test that token update correctly updates the dependency_analysis_version"
+    (backfill-all-existing-entities!)
+    (let [query (mt/mbql-query orders)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card1-id :id} {:dependency_analysis_version 0, :dataset_query query}
+                       :model/Card {card2-id :id} {:dependency_analysis_version 0, :dataset_query query}
+                       :model/Card {card3-id :id} {:dependency_analysis_version 0, :dataset_query query}]
+          (let [card-count (fn [& args]
+                             (apply t2/count :model/Card :id [:in [card1-id card2-id card3-id]] args))
+                current-version dependencies.model/current-dependency-analysis-version]
+            (events/publish-event! :event/set-premium-embedding-token {})
+            (is (= 3 (card-count :dependency_analysis_version current-version)))))))))

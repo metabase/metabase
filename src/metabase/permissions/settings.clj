@@ -2,9 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,28 +53,24 @@
   :type       :boolean
   :audit      :never)
 
-(defn- turn-off-tenants! []
-  ;; TODO: when we have `:model/Tenant`, make sure none exist
-  (when (t2/exists? :model/User :tenant_id [:not= nil])
-    (throw (ex-info (tru "Tenants cannot be turned off, a tenant user exists") {})))
-  (perms-group/delete-all-external-users!))
-
-(defn- turn-on-tenants! []
-  (perms-group/create-all-external-users!))
-
-(defn- -use-tenants! [new-value]
-  (if new-value
-    (turn-on-tenants!)
-    (turn-off-tenants!))
-  (setting/set-value-of-type! :boolean :use-tenants new-value))
+(defn- update-use-tenants! [new-val]
+  (when-not new-val
+    ;; deactivate all tenants
+    (t2/query {:update :tenant
+               :set {:is_active false}})
+    ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
+    (t2/update! :model/User :tenant_id [:not= nil]
+                :is_active true
+                {:is_active false :deactivated_with_tenant true}))
+  (setting/set-value-of-type! :boolean :use-tenants new-val))
 
 (defsetting use-tenants
   (deferred-tru
    "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
   :type               :boolean
-  :visibility         :admin
+  :visibility         :authenticated
   :export?            false
+  :setter             update-use-tenants!
   :default            false
   :feature            :tenants
-  :can-read-from-env? false
-  :setter             #'-use-tenants!)
+  :can-read-from-env? false)

@@ -73,7 +73,9 @@ export const buildStructuredEntries = (
         disabled: frozen,
         revert:
           original ||
-          (source === "jwt" ? { value, source, frozen: false } : undefined),
+          (source === "jwt" || source === "tenant"
+            ? { value, source, frozen: false }
+            : undefined),
       },
     }))
     .sort((a, b) =>
@@ -103,6 +105,7 @@ export const LoginAttributeMappingEditor = ({
   );
 
   useEffect(() => {
+    // structuredAttributes can change if a different tenant is selected
     if (structuredAttributes) {
       setEntries((previousEntries) => [
         ...buildStructuredEntries(structuredAttributes),
@@ -246,7 +249,6 @@ const ValueInput = ({
         <Button
           leftSection={<Icon name="close" />}
           onClick={onDelete}
-          color={"text"}
           data-testid="remove-mapping"
         />
       )}
@@ -257,7 +259,6 @@ const ValueInput = ({
           <Button
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
-            color={"text"}
             data-testid="revert-mapping"
           />
         </Tooltip>
@@ -266,22 +267,28 @@ const ValueInput = ({
   );
 };
 
-const infoText = (source?: "system" | "jwt" | "user"): string => {
+const infoText = (source?: "system" | "jwt" | "user" | "tenant"): string => {
   switch (source) {
     case "system":
       return t`This attribute is system defined`;
     case "jwt":
       return t`This attribute was set by the login token, but you can override its value`;
+    case "tenant":
+      return t`This attribute is inherited from the tenant, but you can override its value`;
     default:
       return "";
   }
 };
 
-const InfoCard = ({ source }: { source?: "system" | "user" | "jwt" }) =>
-  !["system", "jwt"].includes(source ?? "") ? null : (
+const InfoCard = ({
+  source,
+}: {
+  source?: "tenant" | "system" | "user" | "jwt";
+}) =>
+  !["tenant", "system", "jwt"].includes(source ?? "") ? null : (
     <HoverCard>
       <HoverCard.Target>
-        <Icon name="info" c="text-light" />
+        <Icon name="info" c="text-tertiary" />
       </HoverCard.Target>
       <HoverCard.Dropdown maw="20rem">
         <Text p="sm" maw="20rem">

@@ -28,7 +28,11 @@ tokens.forEach((token) => {
       const defaultDownloadsValue =
         token === "pro-self-hosted" ? true : undefined;
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: ORDERS_DASHBOARD_ID,
+        acceptTerms: false,
+      });
 
       H.modal().within(() => {
         cy.findByText(
@@ -62,7 +66,7 @@ tokens.forEach((token) => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       codeBlock().last().should("have.text", IFRAME_CODE);
 
       H.modal()
@@ -127,7 +131,11 @@ tokens.forEach((token) => {
       const defaultDownloadsValue =
         token === "pro-self-hosted" ? true : undefined;
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: ORDERS_QUESTION_ID,
+        acceptTerms: false,
+      });
 
       H.modal().within(() => {
         cy.findByText(

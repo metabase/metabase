@@ -10,10 +10,12 @@ import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
+import { getIcon } from "metabase/lib/icon";
+import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Group, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -77,7 +79,7 @@ const PinnedQuestionCard = ({
 
   return (
     <CardRoot
-      to={item.getUrl()}
+      to={modelToUrl(item)}
       isPreview={isPreview}
       className={cx(CS.hoverChild, CS.hoverVisibility)}
     >
@@ -96,7 +98,7 @@ const PinnedQuestionCard = ({
                 <Icon
                   className={cx(CS.hoverChild, CS.hoverChildSmooth)}
                   name="info"
-                  color="text-light"
+                  c="text-tertiary"
                   tooltip={item.description}
                 />
               )}
@@ -137,7 +139,7 @@ const PinnedQuestionCard = ({
               description={
                 item.description || DEFAULT_DESCRIPTION[item.model] || ""
               }
-              icon={item.getIcon() as unknown as { name: IconName }}
+              icon={getIcon(item)}
               tooltip={getSkeletonTooltip(item)}
             />
           )}

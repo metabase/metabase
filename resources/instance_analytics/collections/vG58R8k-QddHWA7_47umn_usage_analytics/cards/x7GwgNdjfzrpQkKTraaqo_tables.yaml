@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 18
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_tables
+table_id: [Internal Metabase Database, public, v_tables]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,271 +20,439 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_tables
+    source-table: [Internal Metabase Database, public, v_tables]
   type: query
 result_metadata:
-- base_type: type/Integer
-  coercion_strategy: null
-  description: null
+- active: true
+  base_type: type/Integer
+  database_type: int4
   display_name: Entity ID
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - entity_id
+  - [Internal Metabase Database, public, v_tables, entity_id]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - entity_id
+  id: [Internal Metabase Database, public, v_tables, entity_id]
   name: entity_id
+  position: 0
   semantic_type: type/PK
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: entity_id
+  lib/original-display-name: Entity ID
+  lib/original-name: entity_id
+  lib/source: source/table-defaults
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
   display_name: Entity Qualified ID
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - entity_qualified_id
+  - [Internal Metabase Database, public, v_tables, entity_qualified_id]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - entity_qualified_id
+  id: [Internal Metabase Database, public, v_tables, entity_qualified_id]
   name: entity_qualified_id
+  position: 1
   semantic_type: type/PK
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/DateTimeWithLocalTZ
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: entity_qualified_id
+  lib/desired-column-alias: entity_qualified_id
+  lib/original-display-name: Entity Qualified ID
+  lib/original-name: entity_qualified_id
+  lib/source: source/table-defaults
+  lib/source-column-alias: entity_qualified_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
   display_name: Created At
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - created_at
-  - temporal-unit: default
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - created_at
+  - [Internal Metabase Database, public, v_tables, created_at]
+  - null
+  id: [Internal Metabase Database, public, v_tables, created_at]
   name: created_at
+  position: 2
   semantic_type: type/CreationTimestamp
-  settings: null
-  unit: default
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/DateTimeWithLocalTZ
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/table-defaults
+  lib/source-column-alias: created_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
   display_name: Updated At
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - updated_at
-  - temporal-unit: default
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - updated_at
+  - [Internal Metabase Database, public, v_tables, updated_at]
+  - null
+  id: [Internal Metabase Database, public, v_tables, updated_at]
   name: updated_at
+  position: 3
   semantic_type: type/UpdatedTimestamp
-  settings: null
-  unit: default
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: updated_at
+  lib/desired-column-alias: updated_at
+  lib/original-display-name: Updated At
+  lib/original-name: updated_at
+  lib/source: source/table-defaults
+  lib/source-column-alias: updated_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
   display_name: Name
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - name
+  - [Internal Metabase Database, public, v_tables, name]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - name
+  id: [Internal Metabase Database, public, v_tables, name]
   name: name
+  position: 4
   semantic_type: type/Name
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: name
+  lib/desired-column-alias: name
+  lib/original-display-name: Name
+  lib/original-name: name
+  lib/source: source/table-defaults
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
   display_name: Display Name
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - display_name
+  - [Internal Metabase Database, public, v_tables, display_name]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - display_name
+  id: [Internal Metabase Database, public, v_tables, display_name]
   name: display_name
+  position: 5
   semantic_type: type/Name
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: display_name
+  lib/desired-column-alias: display_name
+  lib/original-display-name: Display Name
+  lib/original-name: display_name
+  lib/source: source/table-defaults
+  lib/source-column-alias: display_name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
   display_name: Description
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - description
+  - [Internal Metabase Database, public, v_tables, description]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - description
+  id: [Internal Metabase Database, public, v_tables, description]
   name: description
+  position: 6
   semantic_type: type/Description
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Boolean
-  coercion_strategy: null
+  lib/deduplicated-name: description
+  lib/desired-column-alias: description
+  lib/original-display-name: Description
+  lib/original-name: description
+  lib/source: source/table-defaults
+  lib/source-column-alias: description
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Boolean
+  database_type: bool
   description: True if table is available in the data source. False if it not found in sync anymore.
   display_name: Active
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - active
+  - [Internal Metabase Database, public, v_tables, active]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - active
+  id: [Internal Metabase Database, public, v_tables, active]
   name: active
+  position: 7
   semantic_type: type/Category
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Integer
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: active
+  lib/desired-column-alias: active
+  lib/original-display-name: Active
+  lib/original-name: active
+  lib/source: source/table-defaults
+  lib/source-column-alias: active
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
   display_name: Database ID
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - database_id
+  - [Internal Metabase Database, public, v_tables, database_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - entity_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - database_id
+  fk_target_field_id: [Internal Metabase Database, public, v_databases, entity_id]
+  id: [Internal Metabase Database, public, v_tables, database_id]
   name: database_id
+  options: {metabase.query-processor.middleware.add-remaps/original-field-dimension-id: 39}
+  position: 8
+  remapped_to: name_2
   semantic_type: type/FK
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: database_id
+  lib/desired-column-alias: database_id
+  lib/external-remap: {field-id: 1342, id: 39, name: Database ID, lib/type: metadata.column.remapping/external}
+  lib/original-display-name: Database ID
+  lib/original-name: database_id
+  lib/source: source/table-defaults
+  lib/source-column-alias: database_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
   display_name: Schema
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - schema
+  - [Internal Metabase Database, public, v_tables, schema]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - schema
+  id: [Internal Metabase Database, public, v_tables, schema]
   name: schema
-  semantic_type: null
-  settings: null
+  position: 9
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-- base_type: type/Boolean
-  coercion_strategy: null
-  description: null
+  lib/deduplicated-name: schema
+  lib/desired-column-alias: schema
+  lib/original-display-name: Schema
+  lib/original-name: schema
+  lib/source: source/table-defaults
+  lib/source-column-alias: schema
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Boolean
+  database_type: bool
   display_name: Is Upload
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tables
-    - is_upload
+  - [Internal Metabase Database, public, v_tables, is_upload]
   - null
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tables
-  - is_upload
+  id: [Internal Metabase Database, public, v_tables, is_upload]
   name: is_upload
+  position: 10
   semantic_type: type/Category
-  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: schema
-  table.pivot_column: is_upload
+  lib/deduplicated-name: is_upload
+  lib/desired-column-alias: is_upload
+  lib/original-display-name: Is Upload
+  lib/original-name: is_upload
+  lib/source: source/table-defaults
+  lib/source-column-alias: is_upload
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Entity Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tables, entity_type]
+  - null
+  id: [Internal Metabase Database, public, v_tables, entity_type]
+  name: entity_type
+  position: 11
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
+  visibility_type: normal
+  lib/deduplicated-name: entity_type
+  lib/desired-column-alias: entity_type
+  lib/original-display-name: Entity Type
+  lib/original-name: entity_type
+  lib/source: source/table-defaults
+  lib/source-column-alias: entity_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Visibility Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tables, visibility_type]
+  - null
+  id: [Internal Metabase Database, public, v_tables, visibility_type]
+  name: visibility_type
+  position: 12
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
+  visibility_type: normal
+  lib/deduplicated-name: visibility_type
+  lib/desired-column-alias: visibility_type
+  lib/original-display-name: Visibility Type
+  lib/original-name: visibility_type
+  lib/source: source/table-defaults
+  lib/source-column-alias: visibility_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/BigInteger
+  database_type: int8
+  display_name: Estimated Row Count
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tables, estimated_row_count]
+  - null
+  id: [Internal Metabase Database, public, v_tables, estimated_row_count]
+  name: estimated_row_count
+  position: 13
+  semantic_type: type/Quantity
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
+  visibility_type: normal
+  lib/deduplicated-name: estimated_row_count
+  lib/desired-column-alias: estimated_row_count
+  lib/original-display-name: Estimated Row Count
+  lib/original-name: estimated_row_count
+  lib/source: source/table-defaults
+  lib/source-column-alias: estimated_row_count
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: View Count
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tables, view_count]
+  - null
+  id: [Internal Metabase Database, public, v_tables, view_count]
+  name: view_count
+  position: 14
+  semantic_type: type/Quantity
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
+  visibility_type: normal
+  lib/deduplicated-name: view_count
+  lib/desired-column-alias: view_count
+  lib/original-display-name: View Count
+  lib/original-name: view_count
+  lib/source: source/table-defaults
+  lib/source-column-alias: view_count
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Owner Email
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tables, owner_email]
+  - null
+  id: [Internal Metabase Database, public, v_tables, owner_email]
+  name: owner_email
+  position: 15
+  semantic_type: type/Owner
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
+  visibility_type: normal
+  lib/deduplicated-name: owner_email
+  lib/desired-column-alias: owner_email
+  lib/original-display-name: Owner Email
+  lib/original-name: owner_email
+  lib/source: source/table-defaults
+  lib/source-column-alias: owner_email
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Owner User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tables, owner_user_id]
+  - null
+  id: [Internal Metabase Database, public, v_tables, owner_user_id]
+  name: owner_user_id
+  position: 16
+  semantic_type: type/Owner
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tables]
+  visibility_type: normal
+  lib/deduplicated-name: owner_user_id
+  lib/desired-column-alias: owner_user_id
+  lib/original-display-name: Owner User ID
+  lib/original-name: owner_user_id
+  lib/source: source/table-defaults
+  lib/source-column-alias: owner_user_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Database ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_databases, name]
+  - source-field: [Internal Metabase Database, public, v_tables, database_id]
+  fk_field_id: 1410
+  id: [Internal Metabase Database, public, v_databases, name]
+  name: name_2
+  options: {metabase.query-processor.middleware.add-remaps/new-field-dimension-id: 39}
+  position: 4
+  remapped_from: database_id
+  semantic_type: type/Name
+  source: fields
+  table_id: [Internal Metabase Database, public, v_databases]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/deduplicated-name: name_2
+  lib/desired-column-alias: v_databases__via__database_id__name
+  lib/original-display-name: Name
+  lib/original-name: name
+  lib/source: source/implicitly-joinable
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+visualization_settings: {column_settings: null, table.cell_column: schema, table.pivot_column: is_upload}
+card_schema: 23
 serdes/meta:
-- id: x7GwgNdjfzrpQkKTraaqo
-  label: tables
-  model: Card
+- {id: x7GwgNdjfzrpQkKTraaqo, label: tables, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: vUNKNOWN (0e09ac7)
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

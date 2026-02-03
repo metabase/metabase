@@ -25,7 +25,7 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
-const isCI = process.env["CYPRESS_CI"] === "true";
+const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
@@ -42,6 +42,67 @@ const assetsResolverPlugin = {
           args.path,
         ),
       };
+    });
+  },
+};
+
+// Plugin to allow loading the ClojureScript bundle only when it exists
+// on the filesystem. This is to avoid breaking the build when the bundle
+// is not present.
+//
+// If the bundle is not present, tests relying on it will fail, but the Cypress
+// process will be allowed to start.
+//
+// The error will look like this:
+//
+//   Dynamic require of "cljs/metabase.types.core" is not supported
+//
+// This allows us to avoid building the ClojureScript bundle when we don't need to (like in certain CI tasks).
+const virtualClojureScriptPlugin = {
+  name: "virtualClojureScriptBundle",
+  setup(build) {
+    let cljsDir = null;
+
+    async function isDirectory(path) {
+      try {
+        const stat = await fs.promises.stat(path);
+        return stat.isDirectory();
+      } catch (e) {
+        return false;
+      }
+    }
+
+    build.onStart(async () => {
+      const baseDir = path.join(__dirname, "../../target");
+      const devDir = path.join(baseDir, "cljs_dev");
+      const prodDir = path.join(baseDir, "cljs_prod");
+
+      const [devDirExists, prodDirExists] = await Promise.all([
+        isDirectory(devDir),
+        isDirectory(prodDir),
+      ]);
+
+      if (prodDirExists) {
+        console.log("ClojureScript production bundle found");
+        cljsDir = prodDir;
+      } else if (devDirExists) {
+        console.log("ClojureScript development bundle found");
+        cljsDir = devDir;
+      } else {
+        console.log("No ClojureScript bundle found, not loading bundle");
+        cljsDir = null;
+      }
+    });
+
+    build.onResolve({ filter: /^cljs\// }, async (args) => {
+      if (cljsDir === null) {
+        return {
+          path: args.path,
+          external: true,
+        };
+      }
+      const unnested = args.path.split(path.sep).slice(1).join(path.sep);
+      return { path: path.join(cljsDir, unnested + ".js") };
     });
   },
 };
@@ -75,7 +136,11 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
+        plugins: [
+          NodeModulesPolyfillPlugin(),
+          assetsResolverPlugin,
+          virtualClojureScriptPlugin,
+        ],
         sourcemap: "inline",
       }),
     );
@@ -88,6 +153,7 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+        launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
@@ -155,6 +221,9 @@ const defaultConfig = {
   },
   baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
+  env: {
+    CI: isCI,
+  },
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,

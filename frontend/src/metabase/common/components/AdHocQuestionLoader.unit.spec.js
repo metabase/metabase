@@ -5,7 +5,7 @@ import { SAMPLE_METADATA, createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
-import { AdHocQuestionLoader } from "./AdHocQuestionLoader";
+import { AdHocQuestionLoaderView } from "./AdHocQuestionLoader";
 
 describe("AdHocQuestionLoader", () => {
   let loadQuestionSpy, loadMetadataSpy, mockChild;
@@ -16,7 +16,7 @@ describe("AdHocQuestionLoader", () => {
     mockChild = jest.fn().mockReturnValue(<div />);
     loadMetadataSpy = jest.fn();
     loadQuestionSpy = jest.spyOn(
-      AdHocQuestionLoader.prototype,
+      AdHocQuestionLoaderView.prototype,
       "_loadQuestion",
     );
   });
@@ -28,12 +28,12 @@ describe("AdHocQuestionLoader", () => {
     const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)[1];
 
     render(
-      <AdHocQuestionLoader
+      <AdHocQuestionLoaderView
         questionHash={questionHash}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
-      </AdHocQuestionLoader>,
+      </AdHocQuestionLoaderView>,
     );
     expect(mockChild.mock.calls[0][0].loading).toEqual(true);
     expect(mockChild.mock.calls[0][0].error).toEqual(null);
@@ -51,18 +51,18 @@ describe("AdHocQuestionLoader", () => {
   });
 
   it("should load a new question if the question hash changes", () => {
-    // create some junk strigs, real question hashes are more ludicrous but this
+    // create some junk strings, real question hashes are more ludicrous but this
     // is easier to verify
     const originalQuestionHash = "#abc123";
     const newQuestionHash = "#def456";
 
     const { rerender } = render(
-      <AdHocQuestionLoader
+      <AdHocQuestionLoaderView
         questionHash={originalQuestionHash}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
-      </AdHocQuestionLoader>,
+      </AdHocQuestionLoaderView>,
     );
 
     expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionHash);
@@ -70,12 +70,12 @@ describe("AdHocQuestionLoader", () => {
     // update the question hash, a new location.hash in the url would most
     // likely do this
     rerender(
-      <AdHocQuestionLoader
+      <AdHocQuestionLoaderView
         questionHash={newQuestionHash}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
-      </AdHocQuestionLoader>,
+      </AdHocQuestionLoaderView>,
     );
 
     // question loading should begin with the new ID

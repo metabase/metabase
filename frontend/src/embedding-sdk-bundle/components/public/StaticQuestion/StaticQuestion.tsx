@@ -1,6 +1,7 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useRef } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   Breakout,
   BreakoutDropdown,
@@ -26,9 +27,15 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
-import { Box, Stack } from "metabase/ui";
+import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
+import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
+import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
+import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
@@ -42,7 +49,6 @@ import { staticQuestionSchema } from "./StaticQuestion.schema";
 export type StaticQuestionProps = PropsWithChildren<
   Pick<
     SdkQuestionProps,
-    | "questionId"
     | "withChartTypeSelector"
     | "height"
     | "width"
@@ -51,9 +57,11 @@ export type StaticQuestionProps = PropsWithChildren<
     | "initialSqlParameters"
     | "hiddenParameters"
     | "withDownloads"
+    | "withAlerts"
     | "title"
   >
->;
+> &
+  SdkQuestionEntityPublicProps;
 
 /**
  * @interface
@@ -74,22 +82,35 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
   SqlParametersList: typeof SqlParametersList;
 };
 
-const StaticQuestionInner = ({
-  questionId,
-  withChartTypeSelector,
-  height,
-  width,
-  className,
-  style,
-  initialSqlParameters,
-  hiddenParameters,
-  withDownloads,
-  title = false, // Hidden by default for backwards-compatibility.
-  children,
-}: StaticQuestionProps): JSX.Element | null => {
+const StaticQuestionInner = (
+  props: StaticQuestionProps,
+): JSX.Element | null => {
+  // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
+  const normalizedProps =
+    useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
+
+  const {
+    questionId,
+    token,
+    withChartTypeSelector,
+    height,
+    width,
+    className,
+    style,
+    initialSqlParameters,
+    hiddenParameters,
+    withDownloads,
+    withAlerts,
+    title = false, // Hidden by default for backwards-compatibility.
+    children,
+  } = normalizedProps;
+
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+
   const getClickActionMode: ClickActionModeGetter = ({
     question,
   }: {
@@ -99,21 +120,24 @@ const StaticQuestionInner = ({
       question &&
       getEmbeddingMode({
         question,
-        queryMode: StaticQuestionSdkMode,
+        queryMode: EmbeddingSdkStaticMode,
       })
     );
   };
 
-  const hasTopBar = Boolean(title || withChartTypeSelector || withDownloads);
+  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
+  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
 
   return (
     <SdkQuestion
-      questionId={questionId}
+      questionId={questionId ?? null}
+      token={token}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
+      withAlerts={withAlerts}
     >
       {children ?? (
         <FlexibleSizeComponent
@@ -127,19 +151,27 @@ const StaticQuestionInner = ({
             w="100%"
             h="100%"
             gap="xs"
+            ref={hideEmptyParentRef}
           >
-            {hasTopBar && (
-              <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-                {title && <DefaultViewTitle title={title} />}
+            <Stack
+              className={InteractiveQuestionS.TopBar}
+              gap="sm"
+              p="md"
+              data-hide-empty
+              data-testid="static-question-top-bar"
+            >
+              {title && <DefaultViewTitle title={title} />}
+              <ResultToolbar data-hide-empty data-testid="result-toolbar">
+                {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                {/* This container is always shown on the right */}
+                <Group gap="sm" ml="auto" data-hide-empty>
+                  <SdkQuestion.DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </Group>
+              </ResultToolbar>
 
-                {(withChartTypeSelector || withDownloads) && (
-                  <ResultToolbar>
-                    {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                    {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-                  </ResultToolbar>
-                )}
-              </Stack>
-            )}
+              {isGuestEmbed && <SdkQuestion.SqlParametersList />}
+            </Stack>
 
             <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
               <Box className={InteractiveQuestionS.Content}>
@@ -174,11 +206,14 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   SqlParametersList: SqlParametersList,
 };
 
 export const StaticQuestion = Object.assign(
-  StaticQuestionInner,
+  withPublicComponentWrapper(StaticQuestionInner, {
+    supportsGuestEmbed: true,
+  }),
   subComponents,
   { schema: staticQuestionSchema },
 );

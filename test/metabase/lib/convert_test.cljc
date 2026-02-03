@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
@@ -635,6 +636,14 @@
                :source-table 1}
     :type     :query}))
 
+;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
+(deftest ^:parallel round-trip-aggregation-with-measure-test
+  (test-round-trip
+   {:database 1
+    :query    {:aggregation  [[:+ [:measure 82] 1]]
+               :source-table 1}
+    :type     :query}))
+
 (deftest ^:parallel unclean-stage-round-trip-test
   (binding [lib.convert/*clean-query* false]
     (doseq [query
@@ -1209,6 +1218,26 @@
   (is (=? [:datetime {:lib/uuid string?} ""]
           (lib.convert/->pMBQL [:datetime ""]))))
 
+(deftest ^:parallel ->pMBQL-relative-datetime-test
+  (testing "Convert legacy relative-datetime with string unit to pMBQL with keyword unit"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :quarter]
+            (lib.convert/->pMBQL [:relative-datetime -1 "quarter"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :month]
+            (lib.convert/->pMBQL [:relative-datetime -1 "month"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} 0 :day]
+            (lib.convert/->pMBQL [:relative-datetime 0 "day"]))))
+  (testing "Convert legacy relative-datetime with keyword unit to pMBQL"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :quarter]
+            (lib.convert/->pMBQL [:relative-datetime -1 :quarter]))))
+  (testing "Convert legacy relative-datetime without unit to pMBQL"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1]
+            (lib.convert/->pMBQL [:relative-datetime -1]))))
+  (testing "Convert legacy relative-datetime with :current amount"
+    (is (=? [:relative-datetime {:lib/uuid string?} :current :month]
+            (lib.convert/->pMBQL [:relative-datetime :current "month"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} :current]
+            (lib.convert/->pMBQL [:relative-datetime :current])))))
+
 (deftest ^:parallel ->legacy-MBQL-test
   (is (= [:datetime 10 {:mode :unix-seconds}]
          (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
@@ -1634,3 +1663,14 @@
                           :expressions  {"TestColumn" [:+ 1 1]}}}]
     (is (= query
            (lib.convert/->legacy-MBQL query)))))
+
+(deftest ^:parallel case-schema-aggregation-test
+  (is (= [:aggregation-options
+          [:case
+           [[[:< [:aggregation 0 {:base-type :type/Float}] 0.591] "60%"]]]
+          {:name "A", :display-name "B"}]
+         (mbql.normalize/normalize :metabase.legacy-mbql.schema/aggregation-options
+                                   ["aggregation-options"
+                                    ["case"
+                                     [[["<" ["aggregation" 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
+                                    {"name" "A", "display-name" "B"}]))))

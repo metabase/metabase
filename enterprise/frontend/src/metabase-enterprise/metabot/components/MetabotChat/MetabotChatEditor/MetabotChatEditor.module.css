@@ -58,7 +58,7 @@
 }
 
 .sendIcon {
-  color: var(--mb-color-bg-white);
+  color: var(--mb-color-background-primary);
   width: 0.8rem;
   transition: color 150ms ease;
 }
@@ -74,54 +74,4 @@
   flex: 1;
   min-width: 0;
   width: 100%;
-}
-
-.content :global(.ProseMirror) {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  padding: 0.5rem 0;
-  line-height: 1.7;
-  color: var(--mb-color-text-dark);
-  font-size: var(--mantine-font-size-md);
-  min-height: 1.7em;
-  white-space: pre-wrap;
-  word-break: break-word;
-
-  &:focus {
-    outline: none;
-  }
-}
-
-.content :global(.ProseMirror p) {
-  margin: 0;
-}
-
-.content :global(.is-empty:first-child:before) {
-  color: var(--mb-color-text-light);
-  content: attr(data-placeholder);
-  height: 0;
-  pointer-events: none;
-  position: absolute;
-}
-
-.content.disabled :global(.ProseMirror) {
-  opacity: 1;
-  background: transparent;
-  cursor: not-allowed;
-}
-
-.smartLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.25rem;
-  background: var(--mb-color-background-hover);
-  border-radius: 0.25rem;
-  color: var(--mb-color-brand);
-  text-decoration: none;
-  font-weight: 500;
-  vertical-align: baseline;
 }

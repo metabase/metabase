@@ -1,4 +1,6 @@
-import ExternalLink from "metabase/common/components/ExternalLink";
+import type { PropsWithChildren } from "react";
+
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   Alert,
   Box,
@@ -11,51 +13,51 @@ import {
 } from "metabase/ui";
 
 import S from "./EmbeddingSettings.module.css";
-import { EmbeddingToggle } from "./EmbeddingToggle";
+import { type EmbeddingSettingKey, EmbeddingToggle } from "./EmbeddingToggle";
 
 type LinkItem = { icon: IconName; title: string; href: string };
 
 export function EmbeddingSettingsCard({
+  children,
   title,
   description,
   settingKey,
+  dependentSettingKeys,
   isFeatureEnabled = true,
   links,
   rightSideContent,
   alertInfoText,
   actionButton,
   testId,
-}: {
+}: PropsWithChildren<{
   title: string;
   description: string;
-  settingKey:
-    | "enable-embedding-sdk"
-    | "enable-embedding-simple"
-    | "enable-embedding-static"
-    | "enable-embedding-interactive";
+  settingKey: EmbeddingSettingKey;
+  dependentSettingKeys?: EmbeddingSettingKey[];
   isFeatureEnabled?: boolean;
   links?: LinkItem[];
   rightSideContent?: React.ReactNode;
   alertInfoText?: React.ReactNode;
   actionButton?: React.ReactNode;
   testId?: string;
-}) {
+}>) {
   const hasLinksContent = links && links.length > 0;
 
   return (
     <Flex direction="column" className={S.SectionCard} data-testid={testId}>
       <Stack gap="xs" px="xl" py="lg">
-        <Text fw={600} c="text-dark" fz="h4">
+        <Text fw={600} c="text-primary" fz="h4">
           {title}
         </Text>
 
-        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="md" maw="38rem">
+        <Text c="text-secondary" lh="lg" mb="md" maw="38rem">
           {description}
         </Text>
 
         <Group justify="space-between" align="center">
           <EmbeddingToggle
             settingKey={settingKey}
+            dependentSettingKeys={dependentSettingKeys}
             labelPosition="right"
             disabled={!isFeatureEnabled}
             aria-label={`${title} toggle`}
@@ -67,16 +69,12 @@ export function EmbeddingSettingsCard({
           <Alert
             data-testid="sdk-settings-alert-info"
             mt="md"
-            bg="bg-light"
+            bg="background-secondary"
             bd="1px solid var(--mb-color-border)"
           >
             <Flex gap="sm">
               <Box>
-                <Icon
-                  color="var(--mb-color-text-secondary)"
-                  name="info"
-                  mt="2px"
-                />
+                <Icon c="text-secondary" name="info" mt="2px" />
               </Box>
 
               <Text c="text-primary" lh="lg">
@@ -86,6 +84,8 @@ export function EmbeddingSettingsCard({
           </Alert>
         )}
       </Stack>
+
+      {children}
 
       {(hasLinksContent || actionButton) && (
         <Group

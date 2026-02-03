@@ -2,18 +2,13 @@ import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { useSetting } from "metabase/common/hooks";
-import {
-  Button,
-  Card,
-  CopyButton,
-  Flex,
-  HoverCard,
-  Icon,
-  Radio,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
+import { MetabaseAccountSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/MetabaseAccountSection";
+import { CopyCodeSnippetButton } from "metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton";
+import { PublishQuestionEmptyState } from "metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState";
+import { useSdkIframeEmbedServerSnippet } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-sdk-iframe-embed-server-snippet";
+import { EmbedServerSnippetLanguageSelect } from "metabase/public/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
+import { Card, Flex, Stack, Text } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../analytics";
@@ -21,26 +16,25 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet";
 
 export const GetCodeStep = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { experience, resource, settings } = useSdkIframeEmbedSetupContext();
   const [updateInstanceSettings] = useUpdateSettingsMutation();
 
-  const isJwtEnabled = useSetting("jwt-enabled");
-  const isSamlEnabled = useSetting("saml-enabled");
-  const isJwtConfigured = useSetting("jwt-configured");
-  const isSamlConfigured = useSetting("saml-configured");
+  const isGuestEmbed = !!settings.isGuest;
 
-  const isSsoEnabledAndConfigured =
-    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
-
+  const serverSnippetData = useSdkIframeEmbedServerSnippet();
   const snippet = useSdkIframeEmbedSnippet();
 
-  const authType = settings.useExistingUserSession ? "user-session" : "sso";
+  const trackSnippetCopied = (snippetType: "frontend" | "server") => {
+    trackEmbedWizardCodeCopied({
+      experience,
+      resource,
+      snippetType,
+      settings,
+    });
+  };
 
-  const handleCodeSnippetCopied = () => {
-    // Embed Flow: track code copied
-    trackEmbedWizardCodeCopied(
-      settings.useExistingUserSession ? "user_session" : "sso",
-    );
+  const handleFrontendSnippetCopied = () => {
+    trackSnippetCopied("frontend");
 
     // Embedding Hub: track step completion
     const settingKey: SettingKey = settings.useExistingUserSession
@@ -50,99 +44,71 @@ export const GetCodeStep = () => {
     updateInstanceSettings({ [settingKey]: true });
   };
 
+  const handleServerSnippetCopied = () => trackSnippetCopied("server");
+
   return (
-    <Stack gap="md">
-      <Card p="md">
-        <Stack gap="md" p="xs">
-          <Text size="lg" fw="bold">
-            {t`Authentication`}
-          </Text>
+    <Stack gap="md" flex={1}>
+      {!isGuestEmbed && <MetabaseAccountSection />}
 
-          <Text size="sm" c="text-medium">
-            {t`Choose the authentication method for embedding:`}
-          </Text>
+      {!isGuestEmbed || resource?.enable_embedding ? (
+        <>
+          <Card p="md">
+            <Text size="lg" fw="bold" mb="md">
+              {t`Embed code`}
+            </Text>
 
-          <Radio.Group
-            value={authType}
-            onChange={(value) =>
-              updateSettings({
-                useExistingUserSession: value === "user-session",
-              })
-            }
-          >
             <Stack gap="sm">
-              <Radio
-                value="user-session"
-                label={
-                  <Flex align="center" gap="xs">
-                    {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-                    <Text>{t`Existing Metabase session`}</Text>
-                    <HoverCard position="bottom">
-                      <HoverCard.Target>
-                        <Icon
-                          name="info"
-                          size={14}
-                          c="text-medium"
-                          cursor="pointer"
-                        />
-                      </HoverCard.Target>
-                      <HoverCard.Dropdown>
-                        <Text lh="md" p="md" style={{ width: 300 }}>
-                          {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-                          {t`This option lets you test Embedded Analytics JS locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox. We recommend testing this in Chrome.`}
-                        </Text>
-                      </HoverCard.Dropdown>
-                    </HoverCard>
-                  </Flex>
-                }
-              />
+              <div onCopy={handleFrontendSnippetCopied}>
+                <CodeEditor
+                  language="html"
+                  value={snippet}
+                  readOnly
+                  lineNumbers={false}
+                />
+              </div>
 
-              <Radio
-                value="sso"
-                label={t`Single sign-on (SSO)`}
-                disabled={!isSsoEnabledAndConfigured}
+              <CopyCodeSnippetButton
+                snippet={snippet}
+                onCopy={handleFrontendSnippetCopied}
               />
             </Stack>
-          </Radio.Group>
+          </Card>
 
-          {authType === "sso" && (
-            <Text size="sm" c="text-medium">
-              {t`Select this option if you have already set up SSO. This option relies on SSO to sign in your application users into the embedded iframe, and groups and permissions to enforce limits on what users can access. `}
-            </Text>
+          {!!serverSnippetData && (
+            <Card p="md">
+              <Flex align="baseline" justify="space-between">
+                <Text size="lg" fw="bold" mb="md">
+                  {t`Server code`}
+                </Text>
+
+                <EmbedServerSnippetLanguageSelect
+                  languageOptions={serverSnippetData.serverSnippetOptions}
+                  selectedOptionId={serverSnippetData.selectedServerSnippetId}
+                  onChangeOption={serverSnippetData.setSelectedServerSnippetId}
+                />
+              </Flex>
+
+              <Stack gap="sm">
+                <CodeEditor
+                  language={serverSnippetData.serverSnippetOption.language}
+                  value={serverSnippetData.serverSnippetOption.source}
+                  readOnly
+                  lineNumbers={false}
+                />
+
+                <CopyCodeSnippetButton
+                  snippet={serverSnippetData.serverSnippetOption.source}
+                  onCopy={handleServerSnippetCopied}
+                />
+
+                <MoreServerSnippetExamplesLink />
+              </Stack>
+            </Card>
           )}
-        </Stack>
-      </Card>
-
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="md">
-          {t`Embed code`}
-        </Text>
-
-        <Stack gap="sm">
-          <div onCopy={handleCodeSnippetCopied}>
-            <CodeEditor
-              language="html"
-              value={snippet}
-              readOnly
-              lineNumbers={false}
-            />
-          </div>
-
-          <CopyButton value={snippet}>
-            {({ copied, copy }: { copied: boolean; copy: () => void }) => (
-              <Button
-                leftSection={<Icon name="copy" size={16} />}
-                onClick={() => {
-                  copy();
-                  handleCodeSnippetCopied();
-                }}
-              >
-                {copied ? t`Copied!` : t`Copy code`}
-              </Button>
-            )}
-          </CopyButton>
-        </Stack>
-      </Card>
+        </>
+      ) : (
+        <PublishQuestionEmptyState />
+      )}
     </Stack>
   );
 };

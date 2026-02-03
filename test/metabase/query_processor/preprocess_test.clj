@@ -236,7 +236,7 @@
                {:display_name "Sum of Total"}]
               (qp.preprocess/query->expected-cols query))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 ;;; and [[metabase.lib.card-test/preserve-edited-metadata-test]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
@@ -441,7 +441,7 @@
                                                       [:field "ID" {:base-type :type/BigInteger}]
                                                       [:field (meta/id :checkins :id)
                                                        {:base-type :type/BigInteger, :join-alias "CH"}]]}
-                                      {:source-table        (meta/id :venues)
+                                      {:source-query        {:source-table (meta/id :venues)}
                                        :qp/is-implicit-join true
                                        :fk-join-alias       "CH"
                                        :alias               "VENUES__via__VENUE_ID__via__CH"
@@ -543,7 +543,7 @@
               (map #(select-keys % [:lib/desired-column-alias :field_ref])
                    expected-cols))))))
 
-;;; adapted from [[metabase.query-processor-test.explicit-joins-test/test-31769]]
+;;; adapted from [[metabase.query-processor.explicit-joins-test/test-31769]]
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [mp    (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id)

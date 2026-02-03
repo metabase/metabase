@@ -152,6 +152,7 @@ const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 interface SavePdfProps {
+  fileName: string;
   selector: string;
   dashboardName: string;
   includeBranding: boolean;
@@ -170,16 +171,11 @@ async function isValidColor(str: string) {
 }
 
 export const saveDashboardPdf = async ({
+  fileName,
   selector,
   dashboardName,
   includeBranding,
 }: SavePdfProps) => {
-  const originalFileName = `${dashboardName}.pdf`;
-  const fileName = includeBranding
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
-      `Metabase - ${originalFileName}`
-    : originalFileName;
-
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
@@ -236,6 +232,14 @@ export const saveDashboardPdf = async ({
     useCORS: true,
     backgroundColor,
     scale: window.devicePixelRatio || 1,
+    /**
+     * html2canvas-pro creates inline <style> elements that can be blocked by
+     * CSP (observed from Firefox). We created a temporary patch to support
+     * nonce until the library officially implements it.
+     *
+     * @see https://github.com/metabase/metabase/issues/66234
+     */
+    nonce: window.MetabaseNonce,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;

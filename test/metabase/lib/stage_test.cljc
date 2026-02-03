@@ -753,7 +753,7 @@
                     "Price"]
                    (map :display-name (lib/returned-columns query))))))))))
 
-;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
+;;; adapted from [[metabase.query-processor.explicit-joins-test/join-against-saved-question-with-sort-test]]
 (deftest ^:parallel join-against-same-table-returned-columns-test
   (testing "Joining against a query that ultimately have the same source table SHOULD result in 'duplicate' columns being included."
     (let [query (lib/query

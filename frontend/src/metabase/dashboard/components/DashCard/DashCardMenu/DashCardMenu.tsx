@@ -106,9 +106,10 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
-          onDownload={(opts) => {
+          onDownload={async (opts) => {
             close();
-            handleDownload(opts);
+
+            await handleDownload(opts);
           }}
         />
       );

@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 11
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_query_log
+table_id: [Internal Metabase Database, public, v_query_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_query_log
+    source-table: [Internal Metabase Database, public, v_query_log]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -36,17 +30,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - entity_id
+  - [Internal Metabase Database, public, v_query_log, entity_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - entity_id
+  id: [Internal Metabase Database, public, v_query_log, entity_id]
   name: entity_id
   semantic_type: type/PK
   settings: null
@@ -58,17 +45,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - started_at
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - started_at
+  id: [Internal Metabase Database, public, v_query_log, started_at]
   name: started_at
   semantic_type: type/CreationTimestamp
   settings: null
@@ -81,17 +61,10 @@ result_metadata:
   effective_type: type/Float
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - running_time_seconds
+  - [Internal Metabase Database, public, v_query_log, running_time_seconds]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - running_time_seconds
+  id: [Internal Metabase Database, public, v_query_log, running_time_seconds]
   name: running_time_seconds
   semantic_type: null
   settings: null
@@ -103,17 +76,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - result_rows
+  - [Internal Metabase Database, public, v_query_log, result_rows]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - result_rows
+  id: [Internal Metabase Database, public, v_query_log, result_rows]
   name: result_rows
   semantic_type: null
   settings: null
@@ -125,17 +91,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - is_native
+  - [Internal Metabase Database, public, v_query_log, is_native]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - is_native
+  id: [Internal Metabase Database, public, v_query_log, is_native]
   name: is_native
   semantic_type: type/Category
   settings: null
@@ -147,17 +106,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - query_source
+  - [Internal Metabase Database, public, v_query_log, query_source]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - query_source
+  id: [Internal Metabase Database, public, v_query_log, query_source]
   name: query_source
   semantic_type: type/Source
   settings: null
@@ -169,17 +121,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - error
+  - [Internal Metabase Database, public, v_query_log, error]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - error
+  id: [Internal Metabase Database, public, v_query_log, error]
   name: error
   semantic_type: null
   settings: null
@@ -191,21 +136,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - user_id
+  - [Internal Metabase Database, public, v_query_log, user_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - user_id
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_query_log, user_id]
   name: user_id
   semantic_type: type/FK
   settings: null
@@ -217,17 +151,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - card_id
+  - [Internal Metabase Database, public, v_query_log, card_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - card_id
+  id: [Internal Metabase Database, public, v_query_log, card_id]
   name: card_id
   semantic_type: null
   settings: null
@@ -239,21 +166,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - card_qualified_id
+  - [Internal Metabase Database, public, v_query_log, card_qualified_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - card_qualified_id
+  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, card_qualified_id]
   name: card_qualified_id
   semantic_type: type/FK
   settings: null
@@ -265,17 +181,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - dashboard_id
+  - [Internal Metabase Database, public, v_query_log, dashboard_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - dashboard_id
+  id: [Internal Metabase Database, public, v_query_log, dashboard_id]
   name: dashboard_id
   semantic_type: null
   settings: null
@@ -287,21 +196,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - dashboard_qualified_id
+  - [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - dashboard_qualified_id
+  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
   name: dashboard_qualified_id
   semantic_type: type/FK
   settings: null
@@ -313,17 +211,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - pulse_id
+  - [Internal Metabase Database, public, v_query_log, pulse_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - pulse_id
+  id: [Internal Metabase Database, public, v_query_log, pulse_id]
   name: pulse_id
   semantic_type: null
   settings: null
@@ -335,17 +226,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - database_id
+  - [Internal Metabase Database, public, v_query_log, database_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - database_id
+  id: [Internal Metabase Database, public, v_query_log, database_id]
   name: database_id
   semantic_type: null
   settings: null
@@ -357,21 +241,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - database_qualified_id
+  - [Internal Metabase Database, public, v_query_log, database_qualified_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - database_qualified_id
+  fk_target_field_id: [Internal Metabase Database, public, v_databases, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, database_qualified_id]
   name: database_qualified_id
   semantic_type: type/FK
   settings: null
@@ -383,17 +256,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - cache_hit
+  - [Internal Metabase Database, public, v_query_log, cache_hit]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - cache_hit
+  id: [Internal Metabase Database, public, v_query_log, cache_hit]
   name: cache_hit
   semantic_type: type/Category
   settings: null
@@ -405,17 +271,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - action_id
+  - [Internal Metabase Database, public, v_query_log, action_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - action_id
+  id: [Internal Metabase Database, public, v_query_log, action_id]
   name: action_id
   semantic_type: null
   settings: null
@@ -427,21 +286,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - action_qualified_id
+  - [Internal Metabase Database, public, v_query_log, action_qualified_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - action_qualified_id
+  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, action_qualified_id]
   name: action_qualified_id
   semantic_type: type/FK
   settings: null
@@ -453,17 +301,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - query
+  - [Internal Metabase Database, public, v_query_log, query]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - query
+  id: [Internal Metabase Database, public, v_query_log, query]
   name: query
   semantic_type: type/SerializedJSON
   settings: null
@@ -472,52 +313,32 @@ visualization_settings:
   column_settings: null
   table.cell_column: running_time_seconds
   table.columns:
-  - enabled: true
-    name: entity_id
-  - enabled: true
-    name: started_at
-  - enabled: true
-    name: running_time_seconds
-  - enabled: true
-    name: result_rows
-  - enabled: true
-    name: is_native
-  - enabled: true
-    name: query_source
-  - enabled: true
-    name: error
-  - enabled: true
-    name: user_id
-  - enabled: true
-    name: card_id
-  - enabled: true
-    name: card_qualified_id
-  - enabled: true
-    name: dashboard_id
-  - enabled: true
-    name: dashboard_qualified_id
-  - enabled: true
-    name: pulse_id
-  - enabled: true
-    name: database_id
-  - enabled: true
-    name: database_qualified_id
-  - enabled: true
-    name: cache_hit
-  - enabled: true
-    name: action_id
-  - enabled: true
-    name: action_qualified_id
-  - enabled: true
-    name: query
+  - {enabled: true, name: entity_id}
+  - {enabled: true, name: started_at}
+  - {enabled: true, name: running_time_seconds}
+  - {enabled: true, name: result_rows}
+  - {enabled: true, name: is_native}
+  - {enabled: true, name: query_source}
+  - {enabled: true, name: error}
+  - {enabled: true, name: user_id}
+  - {enabled: true, name: card_id}
+  - {enabled: true, name: card_qualified_id}
+  - {enabled: true, name: dashboard_id}
+  - {enabled: true, name: dashboard_qualified_id}
+  - {enabled: true, name: pulse_id}
+  - {enabled: true, name: database_id}
+  - {enabled: true, name: database_qualified_id}
+  - {enabled: true, name: cache_hit}
+  - {enabled: true, name: action_id}
+  - {enabled: true, name: action_qualified_id}
+  - {enabled: true, name: query}
   table.pivot_column: error
+card_schema: 23
 serdes/meta:
-- id: QOtZaiTLf2FDD4AT6Oinb
-  label: query_log
-  model: Card
+- {id: QOtZaiTLf2FDD4AT6Oinb, label: query_log, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: vUNKNOWN (0e09ac7)
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

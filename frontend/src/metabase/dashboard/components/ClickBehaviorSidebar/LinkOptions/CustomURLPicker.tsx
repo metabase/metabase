@@ -3,10 +3,16 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import InputBlurChange from "metabase/common/components/InputBlurChange";
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import { Button, Flex, Icon, Modal, Text } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  Text,
+  TextInputBlurChange,
+} from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 import type {
@@ -100,7 +106,7 @@ export function CustomURLPicker({
           <Text>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
           </Text>
-          <InputBlurChange
+          <TextInputBlurChange
             autoFocus
             value={url}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}

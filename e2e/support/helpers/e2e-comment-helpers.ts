@@ -7,6 +7,8 @@ export const Comments = {
   getCommentInput,
   getCommentInputs,
   getCommentByText,
+  getAllComments,
+  getMentionDialog,
   getPlaceholder,
   getEmojiPicker,
   resolveCommentByText,
@@ -63,6 +65,10 @@ function getCommentByText(text: string | RegExp) {
   return cy.findByText(text).closest("[data-testid='discussion-comment']");
 }
 
+function getAllComments() {
+  return cy.findAllByTestId("discussion-comment");
+}
+
 function openAllComments() {
   cy.findByRole("link", { name: "Show all comments" }).click();
   getSidebar().should("contain.text", "All comments");
@@ -114,4 +120,8 @@ function getSidebar() {
 
 function closeSidebar() {
   cy.icon("close").click();
+}
+
+function getMentionDialog() {
+  return cy.findByRole("dialog", { name: "Mention Dialog" });
 }

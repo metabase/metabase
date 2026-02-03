@@ -18,7 +18,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import type {
   MetabotAgentEditSuggestionChatMessage,
   MetabotSuggestedTransform,
-} from "../../state/reducer";
+} from "../../state/types";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 

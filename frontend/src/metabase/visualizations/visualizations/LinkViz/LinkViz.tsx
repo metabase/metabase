@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { getUrlTarget } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { modelToUrl } from "metabase/lib/urls";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
@@ -34,7 +35,6 @@ import {
   StyledRecentsList,
 } from "./LinkViz.styled";
 import { settings } from "./LinkVizSettings";
-import type { WrappedUnrestrictedLinkEntity } from "./types";
 import { isUrlString } from "./utils";
 
 const MODELS_TO_SEARCH: SearchModel[] = [
@@ -123,7 +123,7 @@ function LinkVizInner({
       );
     }
 
-    const wrappedEntity: WrappedUnrestrictedLinkEntity = Search.wrapEntity({
+    const wrappedEntity: UnrestrictedLinkEntity = Search.wrapEntity({
       ...entity,
       database_id: entity.db_id ?? entity.database_id,
       table_id: entity.model === "table" ? entity.id : undefined,
@@ -142,7 +142,7 @@ function LinkVizInner({
       <DisplayLinkCardWrapper>
         <CardLink
           data-testid="entity-view-display-link"
-          to={wrappedEntity.getUrl()}
+          to={modelToUrl(wrappedEntity)}
           rel="noreferrer"
           role="link"
         >

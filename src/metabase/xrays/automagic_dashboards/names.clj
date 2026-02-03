@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -13,12 +15,10 @@
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
-;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
-;; here so make sure to do a *thorough* find and replace on this.
 (def ^:private op->name
   {:sum       (deferred-tru "sum")
    :avg       (deferred-tru "average")
-   :min       (deferred-tru "minumum")
+   :min       (deferred-tru "minimum")
    :max       (deferred-tru "maximum")
    :count     (deferred-tru "number")
    :distinct  (deferred-tru "distinct count")
@@ -28,8 +28,18 @@
 
 (mu/defn metric-name :- ::ads/string-or-18n-string
   "Return the name of the metric or name by describing it."
-  [[tag :as metric] :- vector?]
+  [database-id           :- [:maybe :int]
+   [tag opts :as metric] :- vector?]
   (cond
+    (lib/clause-of-type? metric :measure)
+    (or (:display-name opts)
+        (when-let [measure-id (when (int? (nth metric 2 nil))
+                                (nth metric 2))]
+          (when database-id
+            (let [mp (lib-be/application-database-metadata-provider database-id)]
+              (some-> (lib.metadata/measure mp measure-id) :name))))
+        (tru "[Unknown Measure]"))
+
     (magic.util/adhoc-metric? metric)
     (-> tag keyword op->name)
 
@@ -57,17 +67,18 @@
    aggregation-clause :- [:or
                           ::lib.schema.aggregation/aggregation
                           ::lib.schema.aggregation/aggregations]]
-  (join-enumeration
-   (for [metric (if (sequential? (first aggregation-clause))
-                  aggregation-clause
-                  [aggregation-clause])]
-     (if (magic.util/adhoc-metric? metric)
-       (tru "{0} of {1}" (metric-name metric) (or (when (> (count metric) 2)
-                                                    (->> (nth metric 2) ; icky
-                                                         (magic.util/->field root)
-                                                         :display_name))
-                                                  (source-name root)))
-       (metric-name metric)))))
+  (let [database-id (:database root)]
+    (join-enumeration
+     (for [metric (if (sequential? (first aggregation-clause))
+                    aggregation-clause
+                    [aggregation-clause])]
+       (if (magic.util/adhoc-metric? metric)
+         (tru "{0} of {1}" (metric-name database-id metric) (or (when (> (count metric) 2)
+                                                                  (->> (nth metric 2) ; icky
+                                                                       (magic.util/->field root)
+                                                                       :display_name))
+                                                                (source-name root)))
+         (metric-name database-id metric))))))
 
 (mu/defn question-description
   "Generate a description for the question."

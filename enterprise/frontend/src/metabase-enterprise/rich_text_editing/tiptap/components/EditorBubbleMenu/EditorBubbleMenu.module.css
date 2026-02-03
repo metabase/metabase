@@ -1,6 +1,0 @@
-.bubbleMenu {
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-sm);
-  box-shadow: 0 2px 12px var(--mb-color-shadow);
-  background: var(--mb-color-background);
-}

@@ -12,9 +12,9 @@ import {
   getEntityTypeFromCardType,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { MoveModal } from "metabase/common/components/MoveModal";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
-import Dashboards from "metabase/entities/dashboards";
+import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
+import { MoveModal } from "metabase/common/components/Pickers";
+import { Dashboards } from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -250,25 +250,35 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
     );
   }
 
-  const recentAndSearchFilter = (item: CollectionPickerItem) => {
+  const shouldDisable = (item: OmniPickerCollectionItem) => {
     const dashboardId = card.dashboard_id;
 
     if (dashboardId) {
+      // it's already in the dashboard
       return item.model === "dashboard" && item.id === dashboardId;
-    } else {
-      return item.model === "collection" && item.id === card.collection_id;
     }
+
+    return false;
   };
 
   return (
     <MoveModal
       title={t`Where do you want to save this?`}
-      initialCollectionId={card.collection_id ?? "root"}
       onClose={onClose}
       onMove={handleChooseMoveLocation}
       canMoveToDashboard={card.type === "question"}
-      entityType={getEntityTypeFromCardType(card.type)}
-      recentAndSearchFilter={recentAndSearchFilter}
+      movingItem={{
+        ...card,
+        collection: {
+          // parent collection info
+          id: card.collection_id ?? "root",
+          name: "",
+          namespace: card.collection?.namespace,
+        },
+        model: getEntityTypeFromCardType(card.type),
+        dashboard_id: card.dashboard_id ?? undefined,
+      }}
+      isDisabledItem={shouldDisable}
     />
   );
 };

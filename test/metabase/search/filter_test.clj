@@ -8,10 +8,13 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.test-util :as search.tu]))
+   [metabase.search.test-util :as search.tu]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available (thunk)))))
+                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))
@@ -63,8 +66,7 @@
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
-    (is (= (cond-> #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
-             config/ee-available? (conj "document"))
+    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
 
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
@@ -121,8 +123,8 @@
             :from   :somewhere
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
-                      [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}
-                                                 config/ee-available? (conj "document" "transform"))]
+                      [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "measure" "collection" "database" "action" "indexed-entity" "metric" "card" "document"}
+                                                 config/ee-available? (conj "transform"))]
                       [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]
@@ -141,6 +143,7 @@
                       [:= :search_index.non_temporal_dim_ids "[1]"]
                       [:= :search_index.has_temporal_dim true]
                       [:in :search_index.display_type ["line"]]
-                      [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]}}
+                      [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
+                      [:not= :search_index.model [:inline "table"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

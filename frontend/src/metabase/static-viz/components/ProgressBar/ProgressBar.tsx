@@ -140,7 +140,7 @@ export const ProgressBar = ({
             <>
               <CheckMarkIcon
                 size={layout.iconSize}
-                // eslint-disable-next-line no-color-literals
+                // eslint-disable-next-line metabase/no-color-literals
                 color="#ffffff"
                 x={10}
                 y={(layout.barHeight - layout.iconSize) / 2}
@@ -151,7 +151,7 @@ export const ProgressBar = ({
                 x={layout.iconSize + 16}
                 y={layout.barHeight / 2}
                 verticalAnchor="middle"
-                // eslint-disable-next-line no-color-literals
+                // eslint-disable-next-line metabase/no-color-literals
                 fill="#ffffff"
               >
                 {barMessage}
@@ -197,6 +197,8 @@ export const ProgressBar = ({
           height={layout.height}
           width={layout.width}
           preserveAspectRatio="xMidYMid slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

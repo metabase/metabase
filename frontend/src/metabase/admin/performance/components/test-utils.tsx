@@ -1,4 +1,9 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { Route } from "react-router";
+
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupDatabasesEndpoints,
   setupTokenStatusEndpoint,
@@ -23,12 +28,12 @@ import { createMockState } from "metabase-types/store/mocks";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 export interface SetupOpts {
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 export const setupStrategyEditorForDatabases = ({
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
@@ -40,10 +45,14 @@ export const setupStrategyEditorForDatabases = ({
     ),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    if (enterprisePlugins === "*") {
+      setupEnterprisePlugins();
+    } else {
+      enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+    }
   }
-  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
+  setupTokenStatusEndpoint({ valid: !!enterprisePlugins });
 
   const cacheConfigs = [
     createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
@@ -67,9 +76,15 @@ export const setupStrategyEditorForDatabases = ({
   );
   setupDatabasesEndpoints(databases);
 
-  return renderWithProviders(<StrategyEditorForDatabases />, {
-    storeInitialState,
-  });
+  const TestStrategyEditorForDatabases = () => <StrategyEditorForDatabases />;
+
+  return renderWithProviders(
+    <Route path="*" component={TestStrategyEditorForDatabases} />,
+    {
+      storeInitialState,
+      withRouter: true,
+    },
+  );
 };
 
 export const getSaveButton = async () =>

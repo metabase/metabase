@@ -7,7 +7,7 @@
 
 .QueryBuilderViewHeaderContainer {
   flex-shrink: 0;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   position: relative;
   z-index: 3;
 }

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { inflect } from "inflection";
 import { jt, t } from "ttag";
 
-import IconBorder from "metabase/common/components/IconBorder";
+import { IconBorder } from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { Icon, Loader } from "metabase/ui";

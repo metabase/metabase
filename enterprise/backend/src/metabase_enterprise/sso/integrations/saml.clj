@@ -38,7 +38,6 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.channel.urls :as urls]
    [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -221,6 +220,6 @@
       (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
           (t2/delete! :model/Session {:where [:or [:= (session/hash-session-key metabase-session-key) :key_hashed] [:= metabase-session-key :id]]})
-          (request/clear-session-cookie (response/redirect (urls/site-url))))
+          (request/clear-session-cookie (response/redirect (system/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

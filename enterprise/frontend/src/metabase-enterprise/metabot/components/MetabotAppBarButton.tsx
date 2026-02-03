@@ -14,7 +14,7 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent("omnibot");
 
   const handleClick = () => {
     if (!metabot.visible) {
@@ -31,7 +31,7 @@ export function MetabotAppBarButton({
       <ActionIcon
         className={className}
         variant="subtle"
-        c="var(--mb-color-text-primary)"
+        c="text-primary"
         bd="1px solid var(--mb-color-border)"
         p="sm"
         h="2.25rem"

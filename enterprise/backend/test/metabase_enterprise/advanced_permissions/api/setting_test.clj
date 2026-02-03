@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.setting-test
-  "Permisisons tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
+  "Permissions tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email :as email]

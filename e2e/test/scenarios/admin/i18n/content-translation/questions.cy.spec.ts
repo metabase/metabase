@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 
 import { germanFieldNames } from "./constants";
-import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-describe("scenarios > content translation > static embedding > questions", () => {
+describe("scenarios > content translation > guest embeds > questions", () => {
   describe("ee", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(

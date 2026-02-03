@@ -1,5 +1,3 @@
-
-## MAGE (Metabase Automation Genius Engine) [auto-installed]
 export MB_DIR="{{mb-dir}}"
 # alias:
 mage() {
@@ -13,4 +11,3 @@ _bb_tasks() {
     _files # autocomplete filenames as well
 }
 compdef _bb_tasks mage
-## END MAGE [auto-installed]

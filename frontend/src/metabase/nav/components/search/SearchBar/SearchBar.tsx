@@ -16,6 +16,7 @@ import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -98,7 +99,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       if (isSameModel && result.model === "indexed-entity") {
         dispatch(zoomInRow({ objectId: result.id }));
       } else {
-        onChangeLocation(result.getUrl());
+        onChangeLocation(modelToUrl(result));
       }
     },
     [dispatch, onChangeLocation, location?.state?.cardId],

@@ -1,3 +1,4 @@
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   BackButton,
   Breakout,
@@ -27,6 +28,8 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 
+import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
+
 import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
 
 /**
@@ -36,7 +39,7 @@ import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
  */
 export type InteractiveQuestionProps = Omit<
   SdkQuestionProps,
-  "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
+  "token" | "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
 
 /**
@@ -68,6 +71,7 @@ export type InteractiveQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
   SqlParametersList: typeof SqlParametersList;
 };
 
@@ -98,12 +102,15 @@ const subComponents: InteractiveQuestionComponents = {
   ChartTypeDropdown: ChartTypeDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   VisualizationButton: VisualizationButton,
   SqlParametersList: SqlParametersList,
 };
 
 export const InteractiveQuestion = Object.assign(
-  _InteractiveQuestion,
+  withPublicComponentWrapper(_InteractiveQuestion, {
+    supportsGuestEmbed: false,
+  }),
   subComponents,
   { schema: interactiveQuestionSchema },
 );

@@ -5,13 +5,12 @@ import { useRef, useState } from "react";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { Text, Tooltip } from "metabase/ui";
+import { Flex, Text, Tooltip } from "metabase/ui";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 
 import {
   ColumnName,
-  EntityName,
   EntityNameLink,
   HintIcon,
   PermissionTableHeaderCell,
@@ -88,7 +87,11 @@ export function PermissionsTable({
                   <ColumnName>
                     {name}{" "}
                     {hint && (
-                      <Tooltip position="right" label={hint}>
+                      <Tooltip
+                        label={hint}
+                        closeDelay={100}
+                        classNames={{ tooltip: CS.pointerEventsAuto }}
+                      >
                         <HintIcon />
                       </Tooltip>
                     )}
@@ -104,21 +107,27 @@ export function PermissionsTable({
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
                 {typeof entity.hint === "string" && (
-                  <Tooltip tooltip={entity.hint}>
+                  <Tooltip label={entity.hint}>
                     <HintIcon />
                   </Tooltip>
                 )}
               </span>
             );
             return (
-              <PermissionsTableRow key={entity.id}>
+              <PermissionsTableRow
+                key={entity.id}
+                aria-label={`${entity.name} permissions`}
+              >
                 <PermissionsTableCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>
                       {entityName}
                     </EntityNameLink>
                   ) : (
-                    <EntityName>{entityName}</EntityName>
+                    <Flex gap="xs" fw="bold">
+                      {entityName}
+                      {entity.icon}
+                    </Flex>
                   )}
                   {entity.callout && (
                     <Text c="text-secondary">{entity.callout}</Text>

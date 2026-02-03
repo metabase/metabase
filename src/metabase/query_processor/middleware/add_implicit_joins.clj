@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
   "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
   in the options and adds `:join-alias` info to those `:field` clauses."
-  (:refer-clojure :exclude [alias mapv some empty? not-empty])
+  (:refer-clojure :exclude [alias mapv some empty? not-empty get-in])
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv some empty? not-empty]]))
+   [metabase.util.performance :refer [mapv some empty? not-empty get-in]]))
 
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.
@@ -115,6 +115,14 @@
                                    source-field-name)
                   :fk-join-alias source-field-join-alias)))
 
+(defn- rename-join [{join-alias :alias, :as join} new-alias]
+  (-> join
+      (assoc :alias new-alias)
+      (update :conditions lib.walk/walk-clauses* (fn [clause]
+                                                   (lib.util.match/match-one clause
+                                                     [:field (_opts :guard #(= (:join-alias %) join-alias)) _id-or-name]
+                                                     (lib/update-options &match assoc :join-alias new-alias))))))
+
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
@@ -125,10 +133,17 @@
                                       [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
-                            not-empty)]
-    (into []
-          (distinct)
-          (fk-field-infos->joins metadata-providerable fk-field-infos))))
+                            not-empty)
+        joins          (into []
+                             (distinct)
+                             (fk-field-infos->joins metadata-providerable fk-field-infos))
+        unique-name-fn (lib/non-truncating-unique-name-generator)]
+    (mapv (fn [{join-alias :alias, :as join}]
+            (let [deduplicated-alias (unique-name-fn join-alias)]
+              (cond-> join
+                (not= join-alias deduplicated-alias)
+                (rename-join deduplicated-alias))))
+          joins)))
 
 (mu/defn- visible-joins :- [:sequential ::lib.schema.join/join]
   "Set of all joins that are visible in the current level of the query or in a nested source query."

@@ -16,7 +16,6 @@
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
-   [metabase.util.retry-test :as rt]
    [postal.core :as postal]
    [postal.message :as message]
    [throttle.core :as throttle])
@@ -153,7 +152,9 @@
   [user-or-email regex]
   (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
-    (boolean (some #(re-find regex %) (map (comp :content first :body) emails)))))
+    (boolean (some #(re-find regex %) (map #(if (string? (:body %))
+                                              (:body %)
+                                              (-> % :body first :content)) emails)))))
 
 (deftest regex-email-bodies-test
   (letfn [(email [body] {:to #{"mail"}
@@ -295,20 +296,16 @@
         (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
         (is (= 0.0 (tu/metric-value system :metabase-email/message-errors)))))
     (testing "error metrics collection"
-      (let [retry-config (assoc (#'retry/retry-configuration)
-                                :max-attempts 1
-                                :initial-interval-millis 1)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (tu/with-prometheus-system! [_ system]
-          (with-redefs [retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                        email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+      (tu/with-prometheus-system! [_ system]
+        (binding [retry/*test-time-config-hook* #(assoc % :max-retries 0)]
+          (with-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
              :recipients   ["test@test.com"]
              :message-type :html
-             :message      "101. Metabase will make you a better person"))
-          (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
-          (is (= 1.0 (tu/metric-value system :metabase-email/message-errors))))))
+             :message      "101. Metabase will make you a better person")))
+        (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
+        (is (= 1.0 (tu/metric-value system :metabase-email/message-errors)))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

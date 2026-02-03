@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useDeepCompareEffect, useLatest } from "react-use";
+import { useLatest } from "react-use";
 import _ from "underscore";
 
 import {
@@ -13,15 +13,15 @@ import type { DatabaseId, SchemaName } from "metabase-types/api";
 import { UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
   DatabaseNode,
+  RootNode,
   SchemaNode,
   TableNode,
-  TreeNode,
   TreePath,
 } from "../types";
 import { merge, node, rootNode, toKey } from "../utils";
 
 /**
- * For the currently view path, fetches the database, schema and table (or any subset that applies to the path).
+ * Provides a function that fetches for a specific path the database, schema and table (or any subset that applies to the path).
  *
  * This state is managed at the top-level so we can generate a flat list of all nodes in the tree,
  * which makes virtualization possible.
@@ -31,7 +31,7 @@ import { merge, node, rootNode, toKey } from "../utils";
  *
  * This works by fetching the data and then recursively merging the results into the tree of data that was already fetched.
  */
-export function useTableLoader(path: TreePath) {
+export function useTableLoader() {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
@@ -39,13 +39,11 @@ export function useTableLoader(path: TreePath) {
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
 
-  const [tree, setTree] = useState<TreeNode>(rootNode());
+  const [tree, setTree] = useState<RootNode>(rootNode());
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases(
-      { include_editable_data_model: true },
-      true,
-    );
+    const response = await fetchDatabases({}, true);
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
       // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -76,7 +74,6 @@ export function useTableLoader(path: TreePath) {
         id: databaseId,
         schema: schemaName,
         include_hidden: true,
-        include_editable_data_model: true,
       };
 
       if (
@@ -114,7 +111,6 @@ export function useTableLoader(path: TreePath) {
       const newArgs = {
         id: databaseId,
         include_hidden: true,
-        include_editable_data_model: true,
       };
 
       if (
@@ -170,7 +166,7 @@ export function useTableLoader(path: TreePath) {
         getTables(path.databaseId, path.schemaName),
       ]);
 
-      const newTree: TreeNode = rootNode(
+      const newTree = rootNode(
         databases.map((database) => ({
           ...database,
           children:
@@ -190,6 +186,7 @@ export function useTableLoader(path: TreePath) {
           const merged = merge(current, newTree);
           return _.isEqual(current, merged) ? current : merged;
         });
+        setIsInitialLoading(false);
       } finally {
         pendingPathsRef.current.delete(key);
       }
@@ -197,16 +194,5 @@ export function useTableLoader(path: TreePath) {
     [getDatabases, getSchemas, getTables],
   );
 
-  useDeepCompareEffect(() => {
-    load(path);
-  }, [
-    load,
-    path,
-    // When a table is modified, e.g. we change display_name with PUT /api/table/:id
-    // we need to manually call the lazy RTK hooks, so that the the updated table
-    // is refetched here. We detect this modification with tables.isFetching.
-    tables.isFetching,
-  ]);
-
-  return { tree, reload: load };
+  return { tree, reload: load, isLoading: isInitialLoading };
 }

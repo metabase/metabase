@@ -55,7 +55,7 @@
 
   That requires:
 
-  - Removal of traling comments (after the semicolon).
+  - Removal of trailing comments (after the semicolon).
   - Removing the semicolon(s).
   - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
     comments were preceding semicolon.
@@ -243,7 +243,7 @@
   Used in implementations of ->integer."
   [driver value]
   ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
+  ;; if it's a float, conversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (->> value
        (->float driver)
@@ -269,7 +269,7 @@
     (inline-value driver/*driver* x)
     (honey.sql.protocols/sqlize x)))
 
-;;; Replace the implentation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
+;;; Replace the implementation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
 ;;; bound. This way we can have driver-specific inline behavior. Monkey-patching private functions like this is a little
 ;;; questionable for sure but I think it's justified here since there is on other way to consistently guarantee that we
 ;;; hand off to [[sqlize-value]] when compiling something inline.
@@ -332,7 +332,7 @@
 
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
-  ;; Some DBs truncate when doing integer division, therefore force float arithmetics
+  ;; Some DBs truncate when doing integer division, therefore force float arithmetic
   (->honeysql driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))]))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
@@ -351,7 +351,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defn- days-till-start-of-first-full-week
-  "Takes a datetime expession, return a HoneySQL form
+  "Takes a datetime expression, return a HoneySQL form
   that calculate how many days from the Jan 1st till the start of `first full week`.
 
   A full week is a week that contains 7 days in the same year.
@@ -1314,7 +1314,7 @@
     [:offset (options :guard :name) _expr _n]
     (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-    ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
+    ;; for everything else just use the name of the aggregation as an identifier, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
@@ -1385,7 +1385,7 @@
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
 (mu/defn field-clause->alias :- some?
-  "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
+  "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
 
@@ -1788,7 +1788,7 @@
 
 (defn- apply-joins-honey-sql-2
   "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).
-  See [[metabase.query-processor-test.explicit-joins-test/join-order-test]]."
+  See [[metabase.query-processor.explicit-joins-test/join-order-test]]."
   [driver honeysql-form joins]
   (letfn [(append-joins [join-by]
             (into (vec join-by)
@@ -2067,9 +2067,18 @@
 
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-table]}]
-  (format-honeysql driver
-                   {:create-table-as [(keyword output-table)]
-                    :raw query}))
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver
+                             {:create-table-as [(keyword output-table)]
+                              :raw sql-query}))
+     sql-params]))
+
+(defmethod driver/compile-insert :sql
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver
+                             {:insert-into [(keyword output-table) {:raw sql-query}]}))
+     sql-params]))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]

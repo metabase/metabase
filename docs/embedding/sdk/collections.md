@@ -1,10 +1,11 @@
 ---
-title: Embedded analytics SDK - collections
+title: Modular embedding SDK - collections
+summary: Embed Metabase collection browser in your application using the MetabaseProvider SDK component.
 ---
 
-# Embedded analytics SDK - collections
+# Modular embedding SDK - collections
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 ## Embedding a collection browser
 

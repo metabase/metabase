@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useAsync } from "react-use";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -36,7 +36,7 @@ import Question from "metabase-lib/v1/Question";
  *
  * @example
  */
-const SavedQuestionLoader = ({
+const SavedQuestionLoaderInner = ({
   children,
   question: loadedQuestion,
   error,
@@ -73,9 +73,9 @@ const SavedQuestionLoader = ({
   );
 };
 
-export default _.compose(
+export const SavedQuestionLoader = _.compose(
   Questions.load({
     id: (_state, props) => props.questionId,
     loadingAndErrorWrapper: false,
   }),
-)(SavedQuestionLoader);
+)(SavedQuestionLoaderInner);

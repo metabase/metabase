@@ -12,25 +12,42 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- database-routing-error-ex-data [^Throwable e]
+  (when e
+    (if (:database-routing-enabled (ex-data e))
+      (ex-data e)
+      (recur (.getCause e)))))
+
 (defmethod transforms.i/table-dependencies :query
-  [transform]
-  (let [query (-> (get-in transform [:source :query])
-                  transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)
-        driver (-> query
-                   lib.metadata/database
-                   :engine)]
-    (if (lib/native-only-query? query)
-      (driver/native-query-deps driver query)
-      (into #{}
-            (map (fn [table-id]
-                   {:table table-id}))
-            (lib/all-source-table-ids query)))))
+  [{:keys [source] :as transform}]
+  (try
+    (let [query (-> (:query source)
+                    transforms.util/massage-sql-query
+                    qp.preprocess/preprocess)
+          driver (-> query
+                     lib.metadata/database
+                     :engine)]
+      (if (lib/native-only-query? query)
+        (driver/native-query-deps driver query)
+        (into #{}
+              (map (fn [table-id]
+                     {:table table-id}))
+              (lib/all-source-table-ids query))))
+    (catch clojure.lang.ExceptionInfo e
+      (if-some [data (database-routing-error-ex-data e)]
+        (let [message (i18n/trs "Failed to run transform because the database {0} has database routing turned on. Running transforms on databases with db routing enabled is not supported." (:database-name data))]
+          (throw (ex-info message
+                          {:metabase-enterprise.transforms.jobs/transform-failure true
+                           :metabase-enterprise.transforms.jobs/failures [{:metabase-enterprise.transforms.jobs/transform transform
+                                                                           :metabase-enterprise.transforms.jobs/message message}]}
+                          e)))
+        (throw e)))))
 
 (defn- dependency-map [transforms]
   (into {}
@@ -50,6 +67,24 @@
                     [output-table (:id transform)])))
           transforms)))
 
+(defn- target-ref-map
+  "Build a map from [database_id schema table_name] -> transform_id for all transforms."
+  [transforms]
+  (into {}
+        (map (fn [{:keys [id target]}]
+               [[(:database target) (:schema target) (:name target)] id]))
+        transforms))
+
+(defn- resolve-dependency
+  "Resolve a single dependency to a transform id, or nil if not resolvable.
+  Used to map table/transform/table-ref dependencies to actual transform ids."
+  [{:keys [table transform table-ref]} output-tables transform-ids target-refs]
+  (or (output-tables table)
+      (transform-ids transform)
+      (when table-ref
+        (let [{:keys [database_id schema table]} table-ref]
+          (target-refs [database_id schema table])))))
+
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
 
@@ -63,19 +98,19 @@
                                      (let [db-id (transforms.i/target-db-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
-        transform-ids (into #{} (map :id) transforms)
-        {:keys [output-tables dependencies]} (->> transforms-by-db
-                                                  (map (mu/fn [[db-id db-transforms] :- [:tuple
-                                                                                         [:maybe ::lib.schema.id/database]
-                                                                                         [:maybe [:sequential :any]]]]
-                                                         (let [mp (lib-be/application-database-metadata-provider db-id)]
-                                                           {:output-tables (output-table-map mp db-transforms)
-                                                            :dependencies  (dependency-map db-transforms)})))
-                                                  (apply merge-with merge))]
+        transform-ids    (into #{} (map :id) transforms)
+        target-refs      (target-ref-map transforms)
+        {:keys [output-tables
+                dependencies]} (->> transforms-by-db
+                                    (map (mu/fn [[db-id db-transforms] :- [:tuple
+                                                                           [:maybe ::lib.schema.id/database]
+                                                                           [:maybe [:sequential :any]]]]
+                                           (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                             {:output-tables (output-table-map mp db-transforms)
+                                              :dependencies  (dependency-map db-transforms)})))
+                                    (apply merge-with merge))]
     (update-vals dependencies #(into #{}
-                                     (keep (fn [{:keys [table transform]}]
-                                             (or (output-tables table)
-                                                 (transform-ids transform))))
+                                     (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs)))
                                      %))))
 
 (defn find-cycle
@@ -125,9 +160,9 @@
         db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
-        node->children   #(->> % transforms-by-id transforms.i/table-dependencies (keep (fn [{:keys [table transform]}]
-                                                                                          (or (output-tables table)
-                                                                                              (transform-ids transform)))))
+        target-refs      (target-ref-map transforms)
+        node->children   #(->> % transforms-by-id transforms.i/table-dependencies
+                               (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]
     (when cycle

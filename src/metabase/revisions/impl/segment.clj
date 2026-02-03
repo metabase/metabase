@@ -4,9 +4,12 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.revisions.models.revision :as revision]))
 
+(def ^:private excluded-columns-for-segment-revision
+  #{:created_at :updated_at :dependency_analysis_version})
+
 (defmethod revision/serialize-instance :model/Segment
   [_model _id instance]
-  (dissoc instance :created_at :updated_at))
+  (apply dissoc instance excluded-columns-for-segment-revision))
 
 (defn- normalize-segment
   [segment]

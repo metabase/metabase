@@ -1,5 +1,4 @@
 import { memo, useEffect, useId, useMemo } from "react";
-// eslint-disable-next-line no-external-references-for-sdk-package-code
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
@@ -107,8 +106,8 @@ export const MetabaseProvider = memo(function MetabaseProvider({
         groupId="metabase-provider"
         instanceId={ensureSingleInstanceId}
         multipleRegisteredInstancesWarningMessage={
-          // eslint-disable-next-line no-literal-metabase-strings -- Warning message
-          "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Warning message
+          "Multiple instances of MetabaseProvider detected. Metabase modular embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time."
         }
       >
         <MetabaseProviderInner {...props} />

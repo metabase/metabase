@@ -1,5 +1,95 @@
 const { H } = cy;
 
+function executeCreateGlossaryTermFlow() {
+  cy.intercept("POST", "/api/glossary", (req) => {
+    expect(req.body).to.deep.equal({
+      term: "Boat",
+      definition: "A small vessel for traveling on water.",
+    });
+  }).as("createGlossary");
+
+  cy.findByRole("button", { name: /new term/i }).click();
+
+  cy.findByPlaceholderText(/boat/i).type("  Boat  ");
+  cy.findByPlaceholderText(/a small vessel.*/i).type(
+    "  A small vessel for traveling on water.  ",
+  );
+
+  cy.findByLabelText("Save").click();
+
+  cy.wait("@createGlossary");
+
+  cy.get("table").within(() => {
+    cy.findByText("Boat").should("be.visible");
+    cy.findByText("A small vessel for traveling on water.").should(
+      "be.visible",
+    );
+  });
+}
+
+function executeUpdateGlossaryTermFlow(visitPageFn: VoidFunction) {
+  cy.request("POST", "/api/glossary", {
+    term: "Cat",
+    definition: "Meows",
+  }).then(({ body }) => {
+    const { id } = body;
+
+    cy.intercept("PUT", `/api/glossary/${id}`, (req) => {
+      expect(req.body).to.deep.equal({
+        term: "Kitten",
+        definition: "Young cat",
+      });
+    }).as("updateGlossary");
+
+    visitPageFn();
+
+    cy.get("table").within(() => {
+      cy.findByText("Cat").click();
+    });
+
+    cy.findByPlaceholderText(/boat/i).clear().type("Kitten");
+    cy.findByPlaceholderText(/a small vessel.*/i)
+      .clear()
+      .type("Young cat");
+
+    cy.findByRole("button", { name: /save/i }).click();
+
+    cy.wait("@updateGlossary");
+
+    cy.get("table").within(() => {
+      cy.findByText("Kitten").should("be.visible");
+      cy.findByText("Young cat").should("be.visible");
+    });
+  });
+}
+
+function executeDeleteGlossaryTermFlow(visitPageFn: VoidFunction) {
+  cy.request("POST", "/api/glossary", {
+    term: "DeleteMe",
+    definition: "To be removed",
+  }).then(({ body }) => {
+    const { id } = body;
+    cy.intercept("DELETE", `/api/glossary/${id}`).as("deleteGlossary");
+
+    visitPageFn();
+
+    cy.get("table").within(() => {
+      cy.findByText("DeleteMe").should("be.visible").realHover();
+      cy.findByRole("button", { name: /delete/i }).click();
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByRole("button", { name: /delete/i }).click();
+    });
+
+    cy.wait("@deleteGlossary");
+
+    cy.get("table").within(() => {
+      cy.findByText("DeleteMe").should("not.exist");
+    });
+  });
+}
+
 describe("data reference > glossary", () => {
   beforeEach(() => {
     H.restore();
@@ -31,92 +121,52 @@ describe("data reference > glossary", () => {
   });
 
   it("creates a new definition and makes POST /api/glossary with trimmed values", () => {
-    cy.intercept("POST", "/api/glossary", (req) => {
-      expect(req.body).to.deep.equal({
-        term: "Bird",
-        definition: "A thing with wings.",
-      });
-    }).as("createGlossary");
-
     visitGlossary();
-
-    cy.findByRole("button", { name: /new term/i }).click();
-
-    cy.findByPlaceholderText(/bird/i).type("  Bird  ");
-    cy.findByPlaceholderText(/a warm-blooded.*/i).type(
-      "  A thing with wings.  ",
-    );
-
-    cy.findByLabelText("Save").click();
-
-    cy.wait("@createGlossary");
-
-    cy.get("table").within(() => {
-      cy.findByText("Bird").should("be.visible");
-      cy.findByText("A thing with wings.").should("be.visible");
-    });
+    executeCreateGlossaryTermFlow();
   });
 
   it("updates an existing definition and makes PUT /api/glossary/:id", () => {
-    cy.request("POST", "/api/glossary", {
-      term: "Cat",
-      definition: "Meows",
-    }).then(({ body }) => {
-      const { id } = body;
-
-      cy.intercept("PUT", `/api/glossary/${id}`, (req) => {
-        expect(req.body).to.deep.equal({
-          term: "Kitten",
-          definition: "Young cat",
-        });
-      }).as("updateGlossary");
-
-      visitGlossary();
-
-      cy.get("table").within(() => {
-        cy.findByText("Cat").click();
-      });
-
-      cy.findByPlaceholderText(/bird/i).clear().type("Kitten");
-      cy.findByPlaceholderText(/a warm-blooded.*/i)
-        .clear()
-        .type("Young cat");
-
-      cy.findByRole("button", { name: /save/i }).click();
-
-      cy.wait("@updateGlossary");
-
-      cy.get("table").within(() => {
-        cy.findByText("Kitten").should("be.visible");
-        cy.findByText("Young cat").should("be.visible");
-      });
-    });
+    executeUpdateGlossaryTermFlow(visitGlossary);
   });
 
   it("deletes an existing definition and makes DELETE /api/glossary/:id", () => {
-    cy.request("POST", "/api/glossary", {
-      term: "DeleteMe",
-      definition: "To be removed",
-    }).then(({ body }) => {
-      const { id } = body;
-      cy.intercept("DELETE", `/api/glossary/${id}`).as("deleteGlossary");
+    executeDeleteGlossaryTermFlow(visitGlossary);
+  });
+});
 
-      visitGlossary();
+describe("data studio > glossary", () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
 
-      cy.get("table").within(() => {
-        cy.findByText("DeleteMe").should("be.visible").realHover();
-        cy.findByRole("button", { name: /delete/i }).click();
-      });
+  function visitDataStudioGlossary() {
+    H.DataModel.visitDataStudio();
+    H.DataStudio.nav().findByLabelText("Glossary").click();
+    cy.findByRole("heading", { name: "Glossary" }).should("be.visible");
+  }
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByRole("button", { name: /delete/i }).click();
-      });
+  it("should allow creating a new definition and trigger tracking event", () => {
+    visitDataStudioGlossary();
+    executeCreateGlossaryTermFlow();
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_glossary_term_created",
+    });
+  });
 
-      cy.wait("@deleteGlossary");
+  it("should allow updating an existing definition and trigger tracking event", () => {
+    executeUpdateGlossaryTermFlow(visitDataStudioGlossary);
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_glossary_term_updated",
+    });
+  });
 
-      cy.get("table").within(() => {
-        cy.findByText("DeleteMe").should("not.exist");
-      });
+  it("should allow deleting an existing definition and trigger tracking event", () => {
+    executeDeleteGlossaryTermFlow(visitDataStudioGlossary);
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_glossary_term_deleted",
     });
   });
 });

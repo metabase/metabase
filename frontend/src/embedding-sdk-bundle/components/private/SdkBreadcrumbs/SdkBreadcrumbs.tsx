@@ -7,6 +7,7 @@ import type {
   SdkBreadcrumbItemType,
 } from "embedding-sdk-bundle/types/breadcrumb";
 import { Badge } from "metabase/common/components/Badge";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, type IconName } from "metabase/ui";
 
 import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
@@ -25,6 +26,7 @@ export const SdkBreadcrumbs = ({
   onBreadcrumbClick,
 }: SdkBreadcrumbProps) => {
   const { breadcrumbs, navigateTo } = useSdkBreadcrumbs();
+  const tc = useTranslateContent();
 
   if (breadcrumbs.length === 0) {
     return null;
@@ -37,14 +39,14 @@ export const SdkBreadcrumbs = ({
           <Fragment key={breadcrumb.id}>
             <Badge
               icon={getBreadcrumbIcon(breadcrumb.type)}
-              inactiveColor="text-light"
+              inactiveColor="text-tertiary"
               isSingleLine
               onClick={() => {
                 navigateTo(breadcrumb);
                 onBreadcrumbClick?.(breadcrumb);
               }}
             >
-              {breadcrumb.name}
+              {tc(breadcrumb.name)}
             </Badge>
 
             {index < breadcrumbs.length - 1 && (

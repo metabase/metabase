@@ -70,7 +70,7 @@
 
 (defmethod analytics/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
-  (if (= engine (name (search.impl/default-engine))) 1 0))
+  (if (= engine (name (search.engine/default-engine))) 1 0))
 
 (defmethod analytics/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]

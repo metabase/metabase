@@ -11,7 +11,7 @@ export const TokenFieldItem = styled.li<{
   height: 46px;
   border-radius: 0.5rem;
   color: ${({ isValid }) =>
-    isValid ? `var(--mb-color-text-white)` : `var(--mb-color-error)`};
+    isValid ? `var(--mb-color-text-primary-inverse)` : `var(--mb-color-error)`};
 
   background-color: var(--mb-color-brand);
 `;

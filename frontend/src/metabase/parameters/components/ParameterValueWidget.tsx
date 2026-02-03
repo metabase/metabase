@@ -253,6 +253,7 @@ export const ParameterValueWidget = ({
       position="bottom-start"
       trapFocus
       middlewares={{ flip: true, shift: true }}
+      clickOutsideEvents={["mousedown", "touchstart", "pointerdown"]}
       {...popoverProps}
     >
       <Popover.Target>
@@ -260,6 +261,7 @@ export const ParameterValueWidget = ({
           data-testid="parameter-value-widget-target"
           onClick={toggle}
           className={CS.cursorPointer}
+          maw="100%"
         >
           <Sortable
             id={parameter.id}
@@ -279,7 +281,12 @@ export const ParameterValueWidget = ({
               <div
                 className={CS.mr1}
                 style={
-                  isStringParameter(parameter) ? { maxWidth: "190px" } : {}
+                  isStringParameter(parameter)
+                    ? { maxWidth: "190px" }
+                    : {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }
                 }
               >
                 <FormattedParameterValue

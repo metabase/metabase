@@ -1,0 +1,44 @@
+name: Querying On-call PagerDuty Alert
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  notify-querying-on-call:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: |
+      (github.event.label.name == 'Priority:P0' || github.event.label.name == 'Priority:P1' || github.event.label.name == '.Escalation') &&
+      contains(github.event.issue.labels.*.name, '.Team/Querying')
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v7
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Trigger PagerDuty Incident
+        run: |
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "routing_key": "${{ secrets.QUERYING_PAGERDUTY_INTEGRATION_KEY }}",
+              "event_action": "trigger",
+              "dedup_key": "github-issue-${{ github.event.issue.number }}",
+              "payload": {
+                "summary": "[${{ github.event.label.name }}] ${{ steps.vars.outputs.issue_title }}",
+                "source": "GitHub Issues - ${{ github.repository }}",
+                "severity": "critical",
+                "custom_details": {
+                  "Labels": "${{ join(github.event.issue.labels.*.name, ', ') }}"
+                }
+              },
+              "links": [
+                {
+                  "href": "${{ github.event.issue.html_url }}",
+                  "text": "View GitHub Issue"
+                }
+              ]
+            }'

@@ -7,12 +7,14 @@ export type EmbeddedAnalyticsJsEventSchema = {
     drills: BOOLEAN_COUNT;
     with_downloads: BOOLEAN_COUNT;
     with_title: BOOLEAN_COUNT;
+    with_subscriptions: BOOLEAN_COUNT;
   };
   question?: {
     drills: BOOLEAN_COUNT;
     with_downloads: BOOLEAN_COUNT;
     with_title: BOOLEAN_COUNT;
     is_save_enabled: BOOLEAN_COUNT;
+    with_alerts: BOOLEAN_COUNT;
   };
   exploration?: {
     is_save_enabled: BOOLEAN_COUNT;
@@ -30,7 +32,7 @@ type EVENTS = "setup";
 /**
  * Authentication method used for the Embedded Analytics JS.
  */
-export type AUTH_TYPES = "session" | "api_key" | "sso";
+export type AUTH_TYPES = "session" | "api_key" | "sso" | "guest";
 
 type BOOLEAN_COUNT = {
   true: number;
@@ -70,12 +72,14 @@ type EmbeddedAnalyticsJsSetupEvent = ValidateEvent<{
     drills: BOOLEAN_COUNT;
     with_downloads: BOOLEAN_COUNT;
     with_title: BOOLEAN_COUNT;
+    with_subscriptions: BOOLEAN_COUNT;
   };
   question?: {
     drills: BOOLEAN_COUNT;
     with_downloads: BOOLEAN_COUNT;
     with_title: BOOLEAN_COUNT;
     is_save_enabled: BOOLEAN_COUNT;
+    with_alerts: BOOLEAN_COUNT;
   };
   exploration?: {
     is_save_enabled: BOOLEAN_COUNT;

@@ -2,11 +2,11 @@
 import { Component } from "react";
 import _ from "underscore";
 
-import Segments from "metabase/entities/segments";
-import Tables from "metabase/entities/tables";
+import { Segments } from "metabase/entities/segments";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 
-import RevisionHistory from "../components/revisions/RevisionHistory";
+import { RevisionHistory } from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";
 import { getCurrentUser, getRevisions } from "../selectors";
 
@@ -18,7 +18,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = { fetchSegmentRevisions };
 
-class RevisionHistoryApp extends Component {
+class RevisionHistoryAppInner extends Component {
   componentDidMount() {
     const { id } = this.props;
     this.props.fetchSegmentRevisions(id);
@@ -29,7 +29,10 @@ class RevisionHistoryApp extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
+export const RevisionHistoryApp = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(RevisionHistoryAppInner);
 
 class SegmentRevisionHistoryInner extends Component {
   render() {

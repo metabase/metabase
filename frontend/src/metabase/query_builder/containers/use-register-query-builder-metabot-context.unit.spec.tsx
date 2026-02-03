@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderHook } from "__support__/ui";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -101,7 +101,8 @@ describe("registerQueryBuilderMetabotContextFn", () => {
         }),
       }),
     );
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("metabot");
+    setupEnterpriseOnlyPlugin("ai-entity-analysis");
   });
 
   beforeEach(() => {

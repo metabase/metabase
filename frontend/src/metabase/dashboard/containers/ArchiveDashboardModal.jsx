@@ -8,8 +8,8 @@ import _ from "underscore";
 
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
-import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
+import { Collections } from "metabase/entities/collections";
+import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 

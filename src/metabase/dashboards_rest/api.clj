@@ -67,6 +67,10 @@
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.
   It only exists for backwards compatibility and may be removed in the future.
@@ -116,6 +120,10 @@
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
         true (apply t2/hydrate dashboard)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
   [_route-params
@@ -290,6 +298,26 @@
 ;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
 ;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
 
+(defn- set-download-perms-on-dashcards
+  "Set each dashcard's nested :card map :download_perms based on the current user's actual permissions."
+  [dashboard]
+  (update dashboard :dashcards
+          (fn [dashcards]
+            (vec (for [dashcard dashcards]
+                   (update dashcard :card
+                           (fn [card]
+                             (when card
+                               (let [dataset-query (or (:dataset_query card)
+                                                       (t2/select-one-fn :dataset_query :model/Card :id (:id card)))
+                                     download-level (when dataset-query
+                                                      (perms/download-perms-level dataset-query api/*current-user-id*))]
+                                 (assoc card :download_perms (case download-level
+                                                               :no :none
+                                                               :ten-thousand-rows :limited
+                                                               :one-million-rows :full
+                                                               :full :full
+                                                               :none)))))))))))
+
 ;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
   "Get Dashboard with ID."
@@ -303,7 +331,8 @@
         collection.root/hydrate-root-collection
         hide-unreadable-cards
         add-query-average-durations
-        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
+        (api/present-in-trash-if-archived-directly (collection/trash-collection-id))
+        set-download-perms-on-dashcards)))
 
 (def ^:private get-dashboard-fn
   (memoize/ttl (fn [dashboard-load-id]
@@ -484,6 +513,10 @@
                                           update-colvalmap-setting id->new-card)))))
           dashcards)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
   "Copy a Dashboard."
   [{:keys [from-dashboard-id]} :- [:map
@@ -549,6 +582,10 @@
 
 ;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
@@ -557,6 +594,10 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
@@ -567,6 +608,10 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
   [{:keys [id]} :- [:map
@@ -578,6 +623,10 @@
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/items"
   "Get Dashboard with ID."
   [{:keys [id]} :- [:map
@@ -631,6 +680,10 @@
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
@@ -959,11 +1012,18 @@
              (let [{current-dashcards :dashcards
                     current-tabs      :tabs
                     :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
-                   _                                         (when (and (seq current-tabs)
+                   new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+                   dashcards                                 (if (= 1 (count new-tabs))
+                                                               (let [single-tab-id (-> new-tabs first :id)]
+                                                                 (mapv #(if (nil? (:dashboard_tab_id %))
+                                                                          (assoc % :dashboard_tab_id single-tab-id)
+                                                                          %)
+                                                                       dashcards))
+                                                               dashcards)
+                   _                                         (when (and (seq new-tabs)
                                                                         (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
                                                                (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                                                                                {:status-code 400})))
-                   new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                    {:keys [old->new-tab-id
                            deleted-tab-ids]
                     :as   tabs-changes-stats}                (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)
@@ -1017,6 +1077,10 @@
    [:dashcards               {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]]
    [:tabs                    {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
@@ -1026,6 +1090,10 @@
    dash-updates :- DashUpdates]
   (update-dashboard! id dash-updates))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/cards"
   "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)
    Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
@@ -1054,7 +1122,12 @@
      :tabs  (:tabs dashboard)}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [{:keys [id]} :- [:map
@@ -1069,7 +1142,12 @@
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -1079,14 +1157,24 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
-             (u/prog1 (str (random-uuid))
-               (t2/update! :model/Dashboard dashboard-id
-                           {:public_uuid       <>
-                            :made_public_by_id api/*current-user-id*})))})
+  (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
+        uuid (or existing-public-uuid
+                 (u/prog1 (str (random-uuid))
+                   (events/publish-event! :event/dashboard-public-link-created
+                                          {:object-id dashboard-id
+                                           :user-id api/*current-user-id*})
+                   (t2/update! :model/Dashboard dashboard-id
+                               {:public_uuid       <>
+                                :made_public_by_id api/*current-user-id*})))]
+    {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [dashboard-id]} :- [:map
@@ -1097,8 +1185,15 @@
   (t2/update! :model/Dashboard dashboard-id
               {:public_uuid       nil
                :made_public_by_id nil})
+  (events/publish-event! :event/dashboard-public-link-deleted
+                         {:object-id dashboard-id
+                          :user-id api/*current-user-id*})
   {:status 204, :body nil})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
@@ -1107,6 +1202,10 @@
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
   [{:keys [parent-collection-id]} :- [:map
@@ -1118,6 +1217,10 @@
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/save"
   "Save a denormalized description of dashboard."
   [_route-params
@@ -1134,6 +1237,10 @@
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
   restrict these values by passing query parameters like `other-parameter=value` e.g.
@@ -1141,7 +1248,8 @@
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [{:keys [id param-key]}      :- [:map
-                                   [:id ms/PositiveInt]]
+                                   [:id ms/PositiveInt]
+                                   [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
     (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
@@ -1149,6 +1257,10 @@
       (binding [qp.perms/*param-values-query* true]
         (parameters.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
@@ -1160,6 +1272,7 @@
   Currently limited to first 1000 results."
   [{:keys [id param-key query]} :- [:map
                                     [:id    ms/PositiveInt]
+                                    [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
@@ -1169,6 +1282,10 @@
                 chain-filter/*allow-implicit-uuid-field-remapping* false]
         (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
 
@@ -1176,12 +1293,16 @@
     GET /api/dashboard/1/params/abc/remapping?value=100"
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
-                              [:param-key :string]]
+                              [:param-key ms/NonBlankString]]
    {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
@@ -1227,6 +1348,10 @@
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [{:keys [dashboard-id dashcard-id]} :- [:map
@@ -1239,6 +1364,10 @@
    (api/check-404 (actions/dashcard->action dashcard-id))
    (json/decode parameters)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
@@ -1256,6 +1385,10 @@
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map
@@ -1274,6 +1407,10 @@
                 :card-id      card-id
                 :dashcard-id  dashcard-id}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
@@ -1316,6 +1453,10 @@
                              :pivot?                 pivot-results?
                              :js-int-to-string?      false}}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map

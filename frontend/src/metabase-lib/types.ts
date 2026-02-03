@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
@@ -42,12 +43,21 @@ export type MetricMetadata = unknown & {
   _opaque: typeof MetricMetadataSymbol;
 };
 
+declare const MeasureMetadataSymbol: unique symbol;
+export type MeasureMetadata = unknown & {
+  _opaque: typeof MeasureMetadataSymbol;
+};
+
 declare const AggregationClauseSymbol: unique symbol;
 export type AggregationClause = unknown & {
   _opaque: typeof AggregationClauseSymbol;
 };
 
-export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
+export type Aggregable =
+  | AggregationClause
+  | MetricMetadata
+  | MeasureMetadata
+  | ExpressionClause;
 
 declare const AggregationOperatorSymbol: unique symbol;
 export type AggregationOperator = unknown & {
@@ -243,6 +253,14 @@ export type MetricDisplayInfo = {
   aggregationPosition?: number;
 };
 
+export type MeasureDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  aggregationPositions?: number[];
+};
+
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
@@ -269,7 +287,8 @@ export type ExpressionArg =
   | string
   | ColumnMetadata
   | SegmentMetadata
-  | MetricMetadata;
+  | MetricMetadata
+  | MeasureMetadata;
 
 export type ExpressionParts = {
   operator: ExpressionOperator;
@@ -673,3 +692,5 @@ export type FieldItem = {
 };
 
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
+
+export type ValidationError = { message: string };

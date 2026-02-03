@@ -1,4 +1,5 @@
 (ns metabase.driver.druid.client
+  (:refer-clojure :exclude [get-in])
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
@@ -7,7 +8,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [get-in]]))
 
 (set! *warn-on-reflection* true)
 

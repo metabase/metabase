@@ -20,7 +20,7 @@ inputs:
     required: true
   variant:
     required: false
-    default: ''
+    default: ""
 
 runs:
   using: "composite"
@@ -56,3 +56,4 @@ runs:
         org-slug: metabase
         dry-run: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }} # quarantine, but do not upload results
         token: ${{ inputs.trunk-api-token }}
+        use-cache: true

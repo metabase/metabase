@@ -62,7 +62,7 @@ To the right of each completed step is a **Preview** button (looks like a Play b
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), a table from a database, or a saved question.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), a table from a database, or a saved question. You can search by typing, or browse your databases and collections.
 
 ![data picker](../images/data-picker.png)
 

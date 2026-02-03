@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
@@ -49,6 +49,7 @@ const FilteredToUrlTable = (propName) => (ComposedComponent) =>
     },
   );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FilteredToUrlTable;
 
 class TableSelectorInner extends Component {

@@ -10,9 +10,8 @@ personal_owner_id: null
 namespace: analytics
 authority_level: null
 serdes/meta:
-- id: okNLSZKdSxaoG58JSQY54
-  label: custom_reports
-  model: Collection
+- {id: okNLSZKdSxaoG58JSQY54, label: custom_reports, model: Collection}
 archive_operation_id: null
 archived_directly: null
+is_remote_synced: false
 is_sample: false

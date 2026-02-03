@@ -2,18 +2,23 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
+import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  CollectionNamespace,
   Database,
   DatabaseId,
   DraftTransformSource,
   Transform,
+  TransformRun,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
 } from "metabase-types/api";
+
+import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
 
 export function parseTimestampWithTimezone(
   timestamp: string,
@@ -82,48 +87,12 @@ export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
   return null;
 }
 
-export function parseList<T>(
-  value: unknown,
-  parseItem: (value: unknown) => T | undefined,
-): T[] | undefined {
-  if (typeof value === "string") {
-    const item = parseItem(value);
-    return item != null ? [item] : [];
-  }
-  if (Array.isArray(value)) {
-    return value.map(parseItem).filter(isNotNull);
-  }
-  return undefined;
+export function getTransformRunName(run: TransformRun): string {
+  return run.transform?.name ?? t`Unknown transform`;
 }
 
-export function parseInteger(value: unknown) {
-  return typeof value === "string" ? parseInt(value, 10) : undefined;
-}
-
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function parseRunStatus(value: unknown): TransformRunStatus | undefined {
-  switch (value) {
-    case "started":
-    case "succeeded":
-    case "failed":
-    case "timeout":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
-  switch (value) {
-    case "manual":
-    case "cron":
-      return value;
-    default:
-      return undefined;
-  }
+export function isErrorStatus(status: TransformRunStatus) {
+  return status === "failed" || status === "timeout";
 }
 
 export function isTransformRunning(transform: Transform) {
@@ -168,11 +137,13 @@ export function isSameSource(
   return false;
 }
 
-export function isNotDraftSource(
+export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
   return source.type !== "python" || source["source-database"] != null;
 }
+
+const ALLOWED_TRANSFORM_VARIABLES = [CHECKPOINT_TEMPLATE_TAG];
 
 export type ValidationResult = {
   isValid: boolean;
@@ -183,7 +154,14 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    if (tags.some((t) => t.type !== "card" && t.type !== "snippet")) {
+    // Allow snippets, cards, and the special transform variables ({checkpoint})
+    const hasInvalidTags = tags.some(
+      (t) =>
+        t.type !== "card" &&
+        t.type !== "snippet" &&
+        !ALLOWED_TRANSFORM_VARIABLES.includes(t.name),
+    );
+    if (hasInvalidTags) {
       return {
         isValid: false,
         errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
@@ -193,3 +171,44 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
 
   return { isValid: Lib.canSave(query, "question") };
 }
+
+export const getLibQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  if (source.type !== "query") {
+    return null;
+  }
+  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+};
+
+// Check if this is an MBQL query (not native SQL or Python)
+export const isMbqlQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  const query = getLibQuery(source, metadata);
+  if (!query) {
+    return false;
+  }
+  return !Lib.queryDisplayInfo(query).isNative;
+};
+
+export const getRootCollectionItem = ({
+  namespace,
+}: {
+  namespace: CollectionNamespace;
+}): OmniPickerCollectionItem | null => {
+  if (namespace === "transforms") {
+    return {
+      model: "collection",
+      id: "root",
+      namespace: "transforms",
+      location: "/",
+      name: t`Transforms`,
+      here: ["collection"],
+      below: ["table", "metric"],
+    };
+  }
+  return null;
+};

@@ -4,31 +4,29 @@ import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import {
+  FieldEmptyState,
   FieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
-} from "../shared";
-
-import S from "./DataModel.module.css";
-import {
-  RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
   TableSection,
-} from "./components";
+} from "../../components";
+import { trackMetadataChange } from "../shared";
+
+import S from "./DataModel.module.css";
+import { RouterTablePicker, SegmentsLink } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
@@ -40,9 +38,10 @@ interface Props {
 }
 
 export const DataModelV1 = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const parsedParams = parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+    useListDatabasesQuery({ "can-write-metadata": true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -87,7 +86,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
       }
     },
     {
-      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
       capture: true,
     },
   );
@@ -97,9 +96,9 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
+    <Flex bg="background-secondary" data-testid="data-model" h="100%">
       <Stack
-        bg="bg-white"
+        bg="background-primary"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}
@@ -153,8 +152,12 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={table.id}
-                    params={params}
                     table={table}
+                    fieldId={fieldId}
+                    withName
+                    getFieldHref={(fieldId) =>
+                      Urls.dataModel({ ...parsedParams, fieldId })
+                    }
                     onSyncOptionsClick={openSyncModal}
                   />
                 )}
@@ -175,19 +178,22 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && (
-                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max} p="lg">
                     <FieldSection
-                      databaseId={databaseId}
-                      field={field}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
                       key={getRawTableFieldId(field)}
-                      parent={parentField}
+                      field={field}
                       table={table}
-                      onFieldValuesClick={openFieldValuesModal}
+                      parent={parentField}
+                      getFieldHref={(fieldId) =>
+                        Urls.dataModel({ ...parsedParams, fieldId })
+                      }
                       onPreviewClick={togglePreview}
+                      onFieldValuesClick={openFieldValuesModal}
+                      onTrackMetadataChange={trackMetadataChange}
                     />
                   </Box>
                 )}
@@ -210,14 +216,11 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
             >
               <PreviewSection
                 className={S.preview}
-                databaseId={databaseId}
                 field={field}
-                fieldId={fieldId}
-                previewType={previewType}
                 table={table}
-                tableId={tableId}
-                onClose={closePreview}
+                previewType={previewType}
                 onPreviewTypeChange={setPreviewType}
+                onClose={closePreview}
               />
             </Box>
           )}
@@ -229,21 +232,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
               justify="center"
               miw={rem(EMPTY_STATE_MIN_WIDTH)}
             >
-              <Box maw={rem(320)} p="xl">
-                <EmptyState
-                  illustrationElement={<img src={EmptyDashboardBot} />}
-                  title={
-                    table
-                      ? t`Edit the table and fields`
-                      : t`Start by selecting data to model`
-                  }
-                  message={
-                    table
-                      ? t`Select a field to edit its name, description, formatting, and more.`
-                      : t`Browse your databases to find the table you’d like to edit.`
-                  }
-                />
-              </Box>
+              <FieldEmptyState hasTable={table != null} />
             </Flex>
           )}
         </>

@@ -1,6 +1,6 @@
 import { createAction } from "redux-actions";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,7 +23,7 @@ import {
 } from "../selectors";
 
 import { updateQuestion } from "./core/updateQuestion";
-import { SET_UI_CONTROLS } from "./ui";
+import { setUIControls } from "./ui";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
@@ -91,10 +91,24 @@ export const setIsShowingSnippetSidebar = (
   isShowingSnippetSidebar,
 });
 
-export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
-  type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen, isShowingDataReference: isNativeEditorOpen },
-});
+export const SET_IS_NATIVE_EDITOR_OPEN =
+  "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN";
+export const setIsNativeEditorOpen = createThunkAction(
+  SET_IS_NATIVE_EDITOR_OPEN,
+  (isNativeEditorOpen: boolean, toggleDataReference?: boolean) =>
+    (dispatch) => {
+      if (toggleDataReference) {
+        dispatch(
+          setUIControls({
+            isNativeEditorOpen,
+            isShowingDataReference: isNativeEditorOpen,
+          }),
+        );
+      } else {
+        dispatch(setUIControls({ isNativeEditorOpen }));
+      }
+    },
+);
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";

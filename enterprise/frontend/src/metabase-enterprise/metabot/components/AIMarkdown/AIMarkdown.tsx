@@ -3,10 +3,11 @@
 import cx from "classnames";
 import { memo, useMemo } from "react";
 
-import Markdown, {
+import {
+  Markdown,
   type MarkdownProps,
 } from "metabase/common/components/Markdown";
-import { parseMetabaseProtocolLink } from "metabase-enterprise/metabot/utils/links";
+import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
 
 import S from "./AIMarkdown.module.css";
 import { InternalLink } from "./components/InternalLink";

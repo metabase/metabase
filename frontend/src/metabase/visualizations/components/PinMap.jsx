@@ -12,10 +12,10 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
-import LeafletGridHeatMap from "./LeafletGridHeatMap";
-import LeafletHeatMap from "./LeafletHeatMap";
-import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
-import LeafletTilePinMap from "./LeafletTilePinMap";
+import { LeafletGridHeatMap } from "./LeafletGridHeatMap";
+import { LeafletHeatMap } from "./LeafletHeatMap";
+import { LeafletMarkerPinMap } from "./LeafletMarkerPinMap";
+import { LeafletTilePinMap } from "./LeafletTilePinMap";
 import S from "./PinMap.module.css";
 
 const WORLD_BOUNDS = [
@@ -30,7 +30,7 @@ const MAP_COMPONENTS_BY_TYPE = {
   grid: LeafletGridHeatMap,
 };
 
-export default class PinMap extends Component {
+export class PinMap extends Component {
   static getUiName = () => t`Pin Map`;
   static identifier = "pin_map";
   static iconName = "pinmap";
@@ -179,8 +179,11 @@ export default class PinMap extends Component {
   }
 
   render() {
-    const { className, settings, isEditing, isDashboard } = this.props;
+    const { className, settings, isEditing, isDashboard, token } = this.props;
     const { lat, lng, zoom } = this.state;
+
+    const isStaticEmbedding = !!token;
+
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
@@ -189,6 +192,10 @@ export default class PinMap extends Component {
 
     const mapProps = { ...this.props };
     mapProps.series[0].data.rows = rows;
+
+    // For static embedding we hide the button
+    const shouldShowDefaultViewChangeButton =
+      !isStaticEmbedding && (isEditing || !isDashboard);
 
     return (
       <div
@@ -226,7 +233,7 @@ export default class PinMap extends Component {
             binWidth={binWidth}
             binHeight={binHeight}
             onFiltering={(filtering) => this.setState({ filtering })}
-            zoomControl={!isEditing}
+            zoomControl={!(isDashboard && isEditing)}
             onHoverChange={
               isDashboard && isEditing ? null : mapProps.onHoverChange
             }
@@ -247,7 +254,7 @@ export default class PinMap extends Component {
             CS.hoverChild,
           )}
         >
-          {isEditing || !isDashboard ? (
+          {shouldShowDefaultViewChangeButton ? (
             <div
               className={cx(
                 "PinMapUpdateButton",

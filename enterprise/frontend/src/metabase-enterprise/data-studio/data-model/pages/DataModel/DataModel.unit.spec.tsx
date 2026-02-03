@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Route } from "react-router";
+import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
   setupCardDataset,
   setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
   setupFieldsValuesEndpoints,
+  setupLibraryEndpoints,
   setupTableEndpoints,
   setupTableSearchEndpoint,
   setupTablesBulkEndpoints,
@@ -24,7 +25,7 @@ import {
   within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
+import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
@@ -37,7 +38,9 @@ import {
   createMockField,
   createMockFieldDimension,
   createMockFieldValues,
+  createMockSegment,
   createMockTable,
+  createMockUser,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import {
@@ -64,6 +67,7 @@ const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
   schemaName: undefined,
   tableId: undefined,
+  tab: "field",
   fieldId: undefined,
 };
 
@@ -166,6 +170,37 @@ const JSON_DB = createMockDatabase({
   features: ["nested-field-columns"],
 });
 
+const TEST_SEGMENT_1 = createMockSegment({
+  id: 1,
+  name: "High Value Orders",
+  description: "Orders with total over 100",
+  table_id: ORDERS_TABLE.id,
+  definition_description: "Filtered by Total is greater than 100",
+});
+
+const TEST_SEGMENT_2 = createMockSegment({
+  id: 2,
+  name: "Recent Orders",
+  description: "Orders from the last 30 days",
+  table_id: ORDERS_TABLE.id,
+  definition_description: "Filtered by Created At is in the previous 30 days",
+});
+
+const ORDERS_TABLE_WITH_SEGMENTS = createOrdersTable({
+  fields: [
+    ORDERS_ID_FIELD,
+    ORDERS_PRODUCT_ID_FIELD,
+    ORDERS_USER_ID_FIELD,
+    ORDERS_DISCOUNT_FIELD,
+    ORDERS_QUANTITY_FIELD,
+  ],
+  segments: [TEST_SEGMENT_1, TEST_SEGMENT_2],
+});
+
+const SAMPLE_DB_WITH_SEGMENTS = createSampleDatabase({
+  tables: [ORDERS_TABLE_WITH_SEGMENTS, PRODUCTS_TABLE],
+});
+
 interface SetupOpts {
   databases?: Database[];
   fieldValues?: GetFieldValuesResponse[];
@@ -181,12 +216,10 @@ const OtherComponent = () => {
   return (
     <>
       <span>Another route</span>
-      <Link to="admin/datamodel">Link to Data Model</Link>
+      <Link to="data-studio/data">Link to Data Model</Link>
     </>
   );
 };
-
-const BASE_URL = "/admin/datamodel";
 
 async function setup({
   databases = [SAMPLE_DB],
@@ -203,9 +236,10 @@ async function setup({
   setupTablesBulkEndpoints();
   setupUsersEndpoints([createMockUserListResult()]);
   setupUserAcknowledgementEndpoints({
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: false,
   });
+  setupLibraryEndpoints();
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -220,8 +254,8 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
-      <Route path="admin/datamodel">
+      <Route path="notData" component={OtherComponent} />
+      <Route path="data-studio/data">
         <IndexRedirect to="database" />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
@@ -229,19 +263,27 @@ async function setup({
           path="database/:databaseId/schema/:schemaId"
           component={DataModel}
         />
+        <Redirect
+          from="database/:databaseId/schema/:schemaId/table/:tableId"
+          to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+        />
         <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
           component={DataModel}
         />
         <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
           component={DataModel}
         />
       </Route>
+      <Route path="data-studio/library/segments/new" />
     </>,
     {
       withRouter: true,
-      initialRoute: initialRoute ?? getUrl(BASE_URL, params),
+      initialRoute: initialRoute ?? Urls.dataStudioData(params),
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
     },
   );
 
@@ -307,6 +349,13 @@ describe("DataModel", () => {
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
       await userEvent.type(getTableSearchInput(), searchValue);
+
+      await waitFor(() => {
+        const path = "path:/api/table?term*";
+        expect(
+          fetchMock.callHistory.called(path, { method: "GET" }),
+        ).toBeTruthy();
+      });
 
       expect(
         await findTablePickerTable(ORDERS_TABLE.display_name),
@@ -393,12 +442,7 @@ describe("DataModel", () => {
       const disabledTable = await findTablePickerTable(
         ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
       );
-      expect(disabledTable).toHaveStyle({ pointerEvents: "none" });
-
-      // This click should not cause a change, as the table should be disabled
-      await expect(userEvent.click(disabledTable)).rejects.toThrow(
-        /pointer-events: none/,
-      );
+      expect(disabledTable).toHaveAttribute("data-disabled", "true");
 
       expect(screen.queryByTestId("table-section")).not.toBeInTheDocument();
     });
@@ -647,7 +691,7 @@ describe("DataModel", () => {
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
         const { history } = await setup({
-          initialRoute: "notAdmin",
+          initialRoute: "notData",
           waitForDatabase: false,
           waitForTable: false,
         });
@@ -744,6 +788,7 @@ describe("DataModel", () => {
           databaseId: JSON_DB.id,
           schemaName: JSON_TABLE.schema,
           tableId: JSON_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(JSON_FIELD_ROOT),
         },
       });
@@ -757,6 +802,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
         },
       });
@@ -770,6 +816,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
         },
       });
@@ -789,6 +836,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
         },
       });
@@ -817,6 +865,7 @@ describe("DataModel", () => {
           databaseId: database.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_PRODUCT_ID_FIELD),
         },
         unauthorizedField: PRODUCTS_ID_FIELD,
@@ -843,6 +892,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
         },
       });
@@ -869,6 +919,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
         },
         hasFieldValuesAccess: false,
@@ -892,6 +943,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
         },
       });
@@ -917,6 +969,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
         },
       });
@@ -934,6 +987,67 @@ describe("DataModel", () => {
           fetchMock.callHistory.called(path, { method: "POST" }),
         ).toBeTruthy();
       });
+    });
+  });
+
+  describe("segments tab", () => {
+    it("should show empty state when no segments exist", async () => {
+      await setup();
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+
+      expect(screen.getByText("No segments yet")).toBeInTheDocument();
+      expect(
+        screen.getByText("Create a segment to filter rows in this table."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /New segment/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should display segments when they exist", async () => {
+      await setup({ databases: [SAMPLE_DB_WITH_SEGMENTS] });
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE_WITH_SEGMENTS.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+
+      expect(
+        screen.getByRole("listitem", { name: TEST_SEGMENT_1.name }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("listitem", { name: TEST_SEGMENT_2.name }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(TEST_SEGMENT_1.definition_description),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(TEST_SEGMENT_2.definition_description),
+      ).toBeInTheDocument();
+    });
+
+    it("should navigate to new segment page when clicking New segment", async () => {
+      const { history } = await setup();
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+      await userEvent.click(screen.getByRole("link", { name: /New segment/i }));
+
+      expect(history?.getCurrentLocation().pathname).toBe(
+        `/data-studio/data/database/${ORDERS_TABLE.db_id}/schema/${ORDERS_TABLE.db_id}:${ORDERS_TABLE.schema}/table/${ORDERS_TABLE.id}/segments/new`,
+      );
     });
   });
 });
@@ -988,7 +1102,7 @@ function getTableSection() {
 }
 
 function getTableSectionField(name: string) {
-  return within(getTableSection()).getByLabelText(name);
+  return within(getTableSection()).getByRole("listitem", { name });
 }
 
 function getTableSectionFieldNameInput(name: string) {

@@ -18,6 +18,7 @@
    :model-ancestors?            false
    :current-user-id             1
    :is-superuser?               true
+   :is-data-analyst?            false
    :current-user-perms          #{"/"}
    :calculate-available-models? false})
 
@@ -38,8 +39,7 @@
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= (cond-> #{"dashboard" "dataset" "action" "card" "metric"}
-               config/ee-available? (conj "document"))
+      (is (= #{"dashboard" "dataset" "document" "action" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -51,8 +51,8 @@
                       :created-by #{1}})))))
 
     (testing "created at"
-      (is (= (cond-> #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               config/ee-available? (conj "document" "transform"))
+      (is (= (cond-> #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric"}
+               config/ee-available? (conj "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))

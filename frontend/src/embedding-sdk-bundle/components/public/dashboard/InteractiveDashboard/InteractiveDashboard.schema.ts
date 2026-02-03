@@ -8,6 +8,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
   dashboardId: Yup.mixed().required(),
+  token: Yup.mixed().optional(),
   dataPickerProps: Yup.object({
     entityTypes: Yup.mixed().optional(),
   })
@@ -51,6 +52,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   style: Yup.mixed().optional(),
   withCardTitle: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
+  withSubscriptions: Yup.mixed().optional(),
   withTitle: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();

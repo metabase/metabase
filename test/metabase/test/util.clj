@@ -209,6 +209,13 @@
             :ip_address "0:0:0:0:0:0:0:1"
             :timestamp (t/zoned-date-time)})
 
+   :model/Measure
+   (fn [_] (default-timestamped
+            {:creator_id (rasta-id)
+             :definition {}
+             :name "Mock Measure"
+             :table_id (data/id :checkins)}))
+
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
@@ -353,6 +360,11 @@
    (fn [_]
      (default-timestamped
       {:name (str "test-tag-" (u/generate-nano-id))}))
+
+   :model/Tenant
+   (fn [_]
+     {:slug (u/lower-case-en (u.random/random-name))
+      :name (u.random/random-name)})
 
    :model/User
    (fn [_] {:first_name (u.random/random-name)
@@ -1113,7 +1125,9 @@
     (finally
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
+                                            :id [:not= (u/the-id (perms/admin-group))]
+                                            :is_tenant_group false)]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1585,6 +1599,19 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
+
+(defn all-entries-for
+  "Return all audit log entries for a particular object. If you omit the topic, will get all audit logs. You must
+  provide a model so we can disambiguate dash 4 from card 4."
+  [topic model model-id]
+  (assert (int? model-id) "Must provide an integer id for the model")
+  (assert (isa? model :metabase/model))
+  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+             {:order-by [[:id :desc]]
+              :where [:and
+                      [:= :model (name model)]
+                      [:= :model_id model-id]
+                      (when topic [:= :topic (name topic)])]}))
 
 (defn repeat-concurrently
   "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."

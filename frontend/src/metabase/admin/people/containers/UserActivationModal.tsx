@@ -20,7 +20,10 @@ export const UserActivationModal = ({
   onClose,
 }: UserActivationModalInnerProps) => {
   const userId = parseInt(params.userId, 10);
-  const { data } = useListUsersQuery({ include_deactivated: true });
+  const { data } = useListUsersQuery({
+    include_deactivated: true,
+    tenancy: "all",
+  });
 
   const user = useMemo(() => {
     const users = data?.data ?? [];

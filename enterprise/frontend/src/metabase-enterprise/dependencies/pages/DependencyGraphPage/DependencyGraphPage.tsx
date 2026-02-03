@@ -2,11 +2,14 @@ import type { Location } from "history";
 import { useContext } from "react";
 
 import * as Urls from "metabase/lib/urls";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Stack } from "metabase/ui";
 
 import { DependencyGraph } from "../../components/DependencyGraph";
-import { isSameNode } from "../../components/DependencyGraph/utils";
+import { isSameNode } from "../../utils";
 
+import S from "./DependencyGraphPage.module.css";
 import { parseDependencyEntry } from "./utils";
 
 export type DependencyGraphPageQuery = {
@@ -27,10 +30,13 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
     defaultEntry == null || (entry != null && !isSameNode(entry, defaultEntry));
 
   return (
-    <DependencyGraph
-      entry={entry ?? defaultEntry}
-      getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
-      withEntryPicker={withEntryPicker}
-    />
+    <Stack h="100%">
+      <DependencyGraph
+        entry={entry ?? defaultEntry}
+        getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
+        withEntryPicker={withEntryPicker}
+      />
+      <AppSwitcher className={S.ProfileLink} />
+    </Stack>
   );
 }

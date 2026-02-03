@@ -7,12 +7,12 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import Search from "metabase/entities/search";
+import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
 import type {
@@ -39,7 +39,7 @@ interface CleanupCollectionModalProps {
   params: { slug: string };
 }
 
-const _CleanupCollectionModal = ({
+const CleanupCollectionModalInner = ({
   onClose: handleClose,
   params: { slug },
 }: CleanupCollectionModalProps) => {
@@ -57,7 +57,7 @@ const _CleanupCollectionModal = ({
     SortingOptions<ListStaleCollectionItemsSortColumn>
   >({
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   });
 
   const handleSortingChange = (
@@ -224,4 +224,4 @@ const _CleanupCollectionModal = ({
   );
 };
 
-export const CleanupCollectionModal = withRouter(_CleanupCollectionModal);
+export const CleanupCollectionModal = withRouter(CleanupCollectionModalInner);

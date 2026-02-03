@@ -5,8 +5,6 @@
 
  ;; Test field definitions
 
-(defn requried [field] (assoc field :database_required true))
-
 (def float-field
   {:name "price" :base_type :type/Float :database_required false})
 

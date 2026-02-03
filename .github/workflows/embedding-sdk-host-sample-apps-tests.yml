@@ -3,6 +3,14 @@ name: "[NOT REQUIRED] SDK Compatibility tests"
 on:
   workflow_call:
 
+env:
+  DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+  MB_EDITION: ee
 jobs:
   get-sample-apps-data:
     runs-on: ubuntu-22.04
@@ -100,15 +108,9 @@ jobs:
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
       MB_EDITION: ee
-      DISPLAY: ""
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
@@ -116,6 +118,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/maximize-disk-space
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
@@ -187,6 +191,12 @@ jobs:
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
 
+      - name: Prune build cache
+        run: docker builder prune -af
+
+      - name: Log free disk space
+        run: df -h /
+
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
@@ -231,16 +241,7 @@ jobs:
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
-      MB_EDITION: ee
-      DISPLAY: ""
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      MB_RUN_MODE: e2e
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
@@ -263,22 +264,20 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
-
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Prepare and launch Host App
         run: npx tsx ./e2e/runner/embedding-sdk/host-apps/start-ci.ts ${{ matrix.test_suite }}

@@ -5,8 +5,8 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
@@ -20,6 +20,8 @@ export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
+  const hasHostingFeature = useHasTokenFeature("hosting");
+  const enableAnonymousTracking = !hasHostingFeature;
 
   return (
     <SettingsPageWrapper title={t`General`}>
@@ -43,14 +45,16 @@ export function GeneralSettingsPage() {
         <PLUGIN_LANDING_PAGE.LandingPageWidget />
       </SettingsSection>
 
-      <SettingsSection title={t`Email and tracking`}>
+      <SettingsSection
+        title={enableAnonymousTracking ? t`Email and tracking` : t`Email`}
+      >
         <AdminSettingInput
           name="admin-email"
           title={t`Email address for help requests`}
           inputType="text"
         />
 
-        <AnonymousTrackingInput />
+        {enableAnonymousTracking && <AnonymousTrackingInput />}
       </SettingsSection>
 
       <SettingsSection title={t`Tables, X-Rays and domains`}>

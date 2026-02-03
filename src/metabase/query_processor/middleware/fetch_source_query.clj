@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.fetch-source-query
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some get-in])
   (:require
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -20,7 +20,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]
+   [metabase.util.performance :refer [some get-in]]
    [weavejester.dependency :as dep]))
 
 ;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would
@@ -120,8 +120,12 @@
                        (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
-    (let [card         (card query (:source-card stage))
-          card-stages  (get-in card [:dataset-query :stages])
+    (let [card          (card query (:source-card stage))
+          card-stages   (get-in card [:dataset-query :stages])
+          model?        (= (:type card) :model)
+          native-model? (when model?
+                          (-> (lib.card/card->underlying-query query card)
+                              (lib.util/native-stage? -1)))
           ;; TODO this information WAS used
           ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
           ;; -- do we still need it? -- Cam
@@ -130,7 +134,8 @@
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model))
+                                   :source-query/model? model?)
+                            (cond-> model? (assoc :source-query/native-model? native-model?))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 

@@ -3,7 +3,7 @@ import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import getAdminRoutes from "metabase/admin/routes";
+import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
@@ -21,7 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
@@ -30,6 +30,8 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
+import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -39,10 +41,10 @@ import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_STUDIO,
-  PLUGIN_DOCUMENTS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -154,7 +156,17 @@ export const getRoutes = (store) => {
           <Redirect from="archive" to="trash" replace />
           <Route path="trash" component={TrashCollectionLanding} />
 
-          {PLUGIN_DOCUMENTS.getRoutes()}
+          <Route path="document/:entityId" component={DocumentPageOuter}>
+            <ModalRoute
+              path="comments/:childTargetId"
+              modal={CommentsSidesheet}
+              noWrap
+              modalProps={{
+                enableTransition: false,
+                closeOnClickOutside: false,
+              }}
+            />
+          </Route>
 
           <Route
             path="collection/entity/:entity_id(**)"
@@ -171,6 +183,18 @@ export const getRoutes = (store) => {
 
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
+          </Route>
+
+          <Route path="collection/tenant-specific" component={IsAdmin}>
+            <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
+          </Route>
+
+          <Route path="collection/tenant-users" component={IsAdmin}>
+            <IndexRoute component={PLUGIN_TENANTS.TenantUsersList} />
+            <Route
+              path=":tenantId"
+              component={PLUGIN_TENANTS.TenantUsersPersonalCollectionList}
+            />
           </Route>
 
           <Route path="collection/:slug" component={CollectionLanding}>
@@ -235,6 +259,7 @@ export const getRoutes = (store) => {
               })}
             />
             <IndexRoute component={QueryBuilder} />
+            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />

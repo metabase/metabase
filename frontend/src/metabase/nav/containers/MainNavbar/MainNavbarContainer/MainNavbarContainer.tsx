@@ -12,19 +12,24 @@ import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import Modal from "metabase/common/components/Modal";
-import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
+import { Modal } from "metabase/common/components/Modal";
+import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
-import Collections, {
+import {
+  Collections,
   ROOT_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import Databases from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
+import { Databases } from "metabase/entities/databases";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getHasDataAccess } from "metabase/selectors/data";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -40,8 +45,7 @@ type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
-    isAdmin: getUserIsAdmin(state),
-    hasDataAccess: getHasDataAccess(databases),
+    hasDataAccess: databases.length > 0,
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -52,7 +56,6 @@ const mapDispatchToProps = {
 };
 
 interface Props extends MainNavbarProps {
-  isAdmin: boolean;
   currentUser: User;
   databases: Database[];
   selectedItems: SelectedItem[];
@@ -72,7 +75,6 @@ interface DatabaseProps {
 
 function MainNavbarContainer({
   bookmarks,
-  isAdmin,
   selectedItems,
   isOpen,
   currentUser,
@@ -88,18 +90,31 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const isTenantUser = useSelector(getIsTenantUser);
 
   const {
     data: trashCollection,
     isLoading,
     error,
-  } = useGetCollectionQuery({ id: "trash" });
+  } = useGetCollectionQuery(
+    {
+      id: "trash",
+    },
+    { skip: !canWriteToCollections },
+  );
 
   const { data: collections = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
     "exclude-archived": true,
     "include-library": true,
   });
+
+  const {
+    canCreateSharedCollection,
+    showExternalCollectionsSection,
+    sharedTenantCollections,
+  } = PLUGIN_TENANTS.useTenantMainNavbarData();
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -114,12 +129,12 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...displayableCollections);
 
-    const tree = buildCollectionTree(preparedCollections);
+    const tree = buildCollectionTree(preparedCollections, { isTenantUser });
     if (trashCollection) {
       const trash: CollectionTreeItem = {
         ...trashCollection,
         id: "trash",
-        icon: getCollectionIcon(trashCollection),
+        icon: getCollectionIcon(trashCollection, { isTenantUser }),
         children: [],
       };
       tree.push(trash);
@@ -128,14 +143,14 @@ function MainNavbarContainer({
     if (rootCollection) {
       const root: CollectionTreeItem = {
         ...rootCollection,
-        icon: getCollectionIcon(rootCollection),
+        icon: getCollectionIcon(rootCollection, { isTenantUser }),
         children: [],
       };
       return [root, ...tree];
     } else {
       return tree;
     }
-  }, [rootCollection, trashCollection, collections, currentUser]);
+  }, [rootCollection, trashCollection, collections, currentUser, isTenantUser]);
 
   const reorderBookmarks = useCallback(
     async ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
@@ -186,7 +201,6 @@ function MainNavbarContainer({
       <MainNavbarView
         {...props}
         bookmarks={bookmarks}
-        isAdmin={isAdmin}
         isOpen={isOpen}
         collections={collectionTree}
         selectedItems={selectedItems}
@@ -195,6 +209,9 @@ function MainNavbarContainer({
         handleCreateNewCollection={onCreateNewCollection}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
+        sharedTenantCollections={sharedTenantCollections}
+        canCreateSharedCollection={canCreateSharedCollection}
+        showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
