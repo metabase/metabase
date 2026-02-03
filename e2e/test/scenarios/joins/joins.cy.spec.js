@@ -76,7 +76,6 @@ describe("scenarios > question > joined questions", () => {
       .findByLabelText(/Where do you want to save this/)
       .click();
     H.pickEntity({
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.entityPickerModal().button("Select this collection").click();

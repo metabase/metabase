@@ -50,7 +50,7 @@ export type UpsellBannerProps =
   | (UpsellBannerPropsBase & CardLinkProps)
   | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
 
-export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
+export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -127,5 +127,5 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
 };
 
 export const UpsellBanner = UpsellWrapperDismissible(
-  UpsellWrapper(_UpsellBanner),
+  UpsellWrapper(UpsellBannerInner),
 );

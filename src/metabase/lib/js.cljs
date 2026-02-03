@@ -1163,7 +1163,7 @@
     (let [{:keys [operator column values with-time?]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))
+           :values   (to-array (map u.time/dayjs-utc->local-date values))
            :hasTime  with-time?})))
 
 (defn ^:export relative-date-filter-clause

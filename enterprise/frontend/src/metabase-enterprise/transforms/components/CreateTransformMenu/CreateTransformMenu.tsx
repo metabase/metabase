@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -115,12 +115,10 @@ export const CreateTransformMenu = () => {
         <QuestionPickerModal
           title={t`Pick a question or a model`}
           models={["card", "dataset"]}
-          shouldDisableItem={(item) => shouldDisableItem(item, databases?.data)}
+          isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            if (item.model === "card") {
-              dispatch(push(Urls.newTransformFromCard(item.id)));
-              closePicker();
-            }
+            dispatch(push(Urls.newTransformFromCard(item.id)));
+            closePicker();
           }}
           onClose={closePicker}
         />

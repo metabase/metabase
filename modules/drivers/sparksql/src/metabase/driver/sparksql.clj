@@ -265,3 +265,6 @@
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (.getObject rs i)))
+
+(defmethod driver/llm-sql-dialect-resource :sparksql [_]
+  "llm/prompts/dialects/databricks.md")

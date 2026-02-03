@@ -1,13 +1,13 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 
-import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
   CollectionType,
+  LibraryCollection,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -55,11 +55,11 @@ type DataStudioPlugin = {
     type: CollectionType;
   }) => CollectionItem | undefined;
   useGetLibraryCollection: (props?: { skip?: boolean }) => {
-    data: undefined | MiniPickerCollectionItem;
+    data: undefined | LibraryCollection;
     isLoading: boolean;
   };
   useGetResolvedLibraryCollection: (props?: { skip?: boolean }) => {
-    data: undefined | MiniPickerCollectionItem;
+    data: undefined | LibraryCollection | CollectionItem;
     isLoading: boolean;
   };
 };

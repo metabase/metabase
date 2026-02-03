@@ -164,7 +164,7 @@ describe(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
-      cy.findByText("Dashboards").click();
+      cy.findByText("Our analytics").click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
     });
 
@@ -194,7 +194,7 @@ describe(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a chart").should("be.visible");
-      cy.findByText("Questions").click();
+      cy.findByText("Our analytics").click();
       cy.findByText(FIRST_QUESTION_NAME).click();
     });
 

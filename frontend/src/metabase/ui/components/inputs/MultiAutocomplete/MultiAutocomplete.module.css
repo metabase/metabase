@@ -2,7 +2,7 @@
   cursor: default;
 
   &:hover {
-    background-color: var(--mb-color-brand-alpha-88);
+    background-color: var(--mb-color-background-hover);
   }
 }
 

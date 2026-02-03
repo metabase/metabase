@@ -8,9 +8,13 @@ import type { Transform } from "metabase-types/api";
 
 type TransformNameInputProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-export const TransformNameInput = ({ transform }: TransformNameInputProps) => {
+export const TransformNameInput = ({
+  transform,
+  readOnly,
+}: TransformNameInputProps) => {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -32,6 +36,7 @@ export const TransformNameInput = ({ transform }: TransformNameInputProps) => {
       initialValue={transform.name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
+      readOnly={readOnly}
     />
   );
 };

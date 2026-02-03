@@ -20,6 +20,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -38,10 +40,6 @@
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:const transform-temp-table-prefix
-  "Prefix used for temporary tables created during transform execution."
-  "mb_transform_temp_table")
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -110,6 +108,65 @@
     (and (premium-features/has-feature? :transforms)
          (premium-features/has-feature? :transforms-python))
     (premium-features/has-feature? :transforms)))
+
+(defenterprise has-db-transforms-permission?
+  "Returns true if the given user has the transforms permission for the given source db."
+  :feature :transforms
+  [user-id database-id]
+  (or (perms/is-superuser? user-id)
+      (perms/user-has-permission-for-database? user-id
+                                               :perms/transforms
+                                               :yes
+                                               database-id)))
+
+(defenterprise has-any-transforms-permission?
+  "Returns true if the current user has the transforms permission for _any_ source db."
+  :feature :transforms
+  [user-id]
+  (or (perms/is-superuser? user-id)
+      (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
+
+(defn source-tables-readable?
+  "Check if the source tables/database in a transform are readable by the current user.
+  Returns true if the user can query all source tables (for python transforms) or the
+  source database (for query transforms)."
+  [transform]
+  (let [source (:source transform)]
+    (case (keyword (:type source))
+      :query
+      (if-let [db-id (get-in source [:query :database])]
+        (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
+        false)
+
+      :python
+      (let [source-tables (:source-tables source)]
+        (if (empty? source-tables)
+          true
+          (let [table-ids (into []
+                                (comp (map val)
+                                      (map #(cond
+                                              (int? %) %
+                                              (map? %) (:table_id %)
+                                              :else nil))
+                                      (filter some?))
+                                source-tables)]
+            (and (seq table-ids)
+                 (every? (fn [table-id]
+                           (when-let [table (t2/select-one :model/Table table-id)]
+                             (mi/can-query? table)))
+                         table-ids)))))
+
+      (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
+
+(defn add-source-readable
+  "Add :source_readable field to a transform or collection of transforms.
+  The field indicates whether the current user can read the source tables/database
+  referenced by the transform."
+  [transform-or-transforms]
+  (if (sequential? transform-or-transforms)
+    (mapv #(assoc % :source_readable (source-tables-readable? %))
+          transform-or-transforms)
+    (assoc transform-or-transforms :source_readable (source-tables-readable? transform-or-transforms))))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running.
@@ -438,21 +495,6 @@
   (log/infof "Dropping table %s" table-name)
   (driver/drop-table! driver database-id table-name))
 
-(defn temp-table-name
-  "Generate a temporary table name with current timestamp in milliseconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
-  [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (keyword schema table-name)))
-
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
    This is a simpler, composable operation that only handles renaming."
@@ -465,7 +507,7 @@
   :feature :transforms
   [table]
   (when-let [table-name (:name table)]
-    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
+    (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix)))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"

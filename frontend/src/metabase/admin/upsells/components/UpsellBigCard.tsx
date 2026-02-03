@@ -32,7 +32,7 @@ export type UpsellBigCardProps = React.PropsWithChildren<{
       }
   );
 
-export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
+export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -112,4 +112,4 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   );
 };
 
-export const UpsellBigCard = UpsellWrapper(_UpsellBigCard);
+export const UpsellBigCard = UpsellWrapper(UpsellBigCardInner);

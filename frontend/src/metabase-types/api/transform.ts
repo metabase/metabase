@@ -3,6 +3,7 @@ import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
+import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
 
@@ -25,6 +26,10 @@ export type Transform = {
   collection_id: number | null;
   created_at: string;
   updated_at: string;
+  source_readable: boolean;
+
+  // true when transform was deleted but still referenced by runs
+  deleted?: boolean;
 
   // creator fields
   creator_id?: UserId;
@@ -123,21 +128,36 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus =
-  | "started"
-  | "succeeded"
-  | "failed"
-  | "timeout"
-  | "canceling"
-  | "canceled";
+export const TRANSFORM_RUN_STATUSES = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
+  "canceling",
+  "canceled",
+] as const;
+export type TransformRunStatus = (typeof TRANSFORM_RUN_STATUSES)[number];
 
-export type TransformRunMethod = "manual" | "cron";
+export const TRANSFORM_RUN_METHODS = ["manual", "cron"] as const;
+export type TransformRunMethod = (typeof TRANSFORM_RUN_METHODS)[number];
+
+export const TRANSFORM_RUN_SORT_COLUMNS = [
+  "transform-name",
+  "start-time",
+  "end-time",
+  "status",
+  "run-method",
+  "transform-tags",
+] as const;
+export type TransformRunSortColumn =
+  (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
 
 export type TransformTag = {
   id: TransformTagId;
   name: string;
   created_at: string;
   updated_at: string;
+  can_run: boolean;
 };
 
 export type TransformJob = {
@@ -229,6 +249,8 @@ export type ListTransformRunsRequest = {
   start_time?: string;
   end_time?: string;
   run_methods?: TransformRunMethod[];
+  sort_column?: TransformRunSortColumn;
+  sort_direction?: SortDirection;
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {

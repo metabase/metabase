@@ -1,11 +1,20 @@
 import { PLUGIN_ENTITIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { useGetTransformQuery } from "metabase-enterprise/api";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { transformApi, useGetTransformQuery } from "metabase-enterprise/api";
 import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { State } from "metabase-types/store";
 
-import { TransformPicker } from "./components/TransformPicker";
 import { getDataStudioTransformRoutes } from "./routes";
+import { getRootCollectionItem } from "./utils";
+
+const canAccessTransforms = (state: State): boolean => {
+  if (getUserIsAdmin(state)) {
+    return true;
+  }
+  const user = getUser(state);
+  return user?.permissions?.can_access_transforms ?? false;
+};
 
 /**
  * Initialize transforms plugin features.
@@ -21,10 +30,12 @@ export function initializePlugin() {
   if (shouldEnable) {
     PLUGIN_TRANSFORMS.isEnabled = true;
     PLUGIN_ENTITIES.entities["transforms"] = Transforms;
-    PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
+    PLUGIN_TRANSFORMS.canAccessTransforms = canAccessTransforms;
     PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
       getDataStudioTransformRoutes;
-    PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
     PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
+    PLUGIN_TRANSFORMS.getRootCollectionItem = getRootCollectionItem;
+    // @ts-expect-error - FIXME: this is a nightmare to type, and it's moving to OSS anyway
+    PLUGIN_TRANSFORMS.transformApi = transformApi;
   }
 }

@@ -694,3 +694,6 @@
   ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
+
+(defmethod driver/llm-sql-dialect-resource :redshift [_]
+  "llm/prompts/dialects/redshift.md")

@@ -1,10 +1,13 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
   "Tests for transform utility functions."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]))
 
@@ -16,17 +19,16 @@
       (let [driver driver/*driver*]
 
         (testing "Basic table name generation"
-          (let [result (transforms.util/temp-table-name driver nil)
+          (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
-            (is (str/starts-with? table-name "mb_transform_temp_table_"))
-            (is (re-matches #"mb_transform_temp_table_\d+" table-name))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
 
         (testing "Table name preserves namespace when present"
-          (let [result (transforms.util/temp-table-name driver "schema")]
+          (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
-            (is (str/starts-with? (name result) "mb_transform_temp_table_"))))))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" (name result)))))))))
 
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
@@ -34,7 +36,7 @@
       (let [driver driver/*driver*
             db-id (mt/id)
 
-            table-name (transforms.util/temp-table-name driver nil)
+            table-name (driver.u/temp-table-name driver :test_table)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
@@ -55,9 +57,9 @@
                   nil)))))))))
 
 (deftest is-temp-transform-tables-test
-  (testing "tables with shcema"
-    (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
-          table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
+  (testing "tables with schema"
+    (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
+          table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
       (mt/with-premium-features #{}
         (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
         (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
@@ -212,3 +214,72 @@
                              "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
           (is (= {"t1" (:id t1) "t2" (:id t2)}
                  (transforms.util/resolve-source-tables source-tables))))))))
+
+(deftest source-tables-readable?-test
+  (testing "source-tables-readable? function"
+    (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
+                       :model/Table {table-id :id} {:db_id db-id :name "test_table"}]
+          (binding [api/*current-user-id* (mt/user->id :lucky)]
+            (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :unrestricted
+              (testing "returns true for query transform when user can read database"
+                (let [transform {:source {:type :query
+                                          :query {:database db-id}}}]
+                  (is (true? (transforms.util/source-tables-readable? transform)))))
+
+              (testing "returns true for python transform when user can read all source tables"
+                (let [transform {:source {:type :python
+                                          :source-tables {"t1" table-id}}}]
+                  (is (true? (transforms.util/source-tables-readable? transform)))))
+
+              (testing "handles source tables with table_id in map format"
+                (let [transform {:source {:type :python
+                                          :source-tables {"t1" {:table_id table-id}}}}]
+                  (is (true? (transforms.util/source-tables-readable? transform))))))))))))
+
+(deftest source-tables-readable-permissions-test
+  (testing "source-tables-readable? with various permission levels"
+    (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
+                       :model/Table {table1-id :id} {:db_id db-id :name "test_table_1"}
+                       :model/Table {table2-id :id} {:db_id db-id :name "test_table_2"}]
+
+          (testing "Query transforms - blocked database access"
+            (let [transform {:source {:type  :query
+                                      :query {:database db-id}}}]
+              (mt/with-user-in-groups [group {:name "Blocked Group"}
+                                       user [group]]
+                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
+                  (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
+                    (binding [api/*current-user-id* (:id user)]
+                      (is (false? (transforms.util/source-tables-readable? transform))
+                          "User with blocked database access should not be able to read source database")))))))
+
+          (testing "Python transforms - blocked database access"
+            (let [transform {:source {:type          :python
+                                      :source-tables {"t1" table1-id}}}]
+              (mt/with-user-in-groups [group {:name "Blocked Group"}
+                                       user [group]]
+                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
+                  (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
+                    (binding [api/*current-user-id* (:id user)]
+                      (is (false? (transforms.util/source-tables-readable? transform))
+                          "User with blocked database access should not be able to read source tables")))))))
+
+          (testing "Python transforms - granular access but missing some tables"
+            (let [transform {:source {:type          :python
+                                      :source-tables {"t1" table1-id
+                                                      "t2" table2-id}}}]
+              (mt/with-user-in-groups [group {:name "Limited Granular Group"}
+                                       user [group]]
+                ;; Block all-users from viewing data at database level, then grant specific access via test group
+                (mt/with-no-data-perms-for-all-users!
+                  (mt/with-db-perm-for-group! group db-id :perms/view-data :unrestricted
+                    (mt/with-db-perm-for-group! group db-id :perms/create-queries :query-builder-and-native
+                      ;; Block table2 for the test group only
+                      (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
+                      (binding [api/*current-user-id* (:id user)]
+                        (is (false? (transforms.util/source-tables-readable? transform))
+                            "User who cannot read all source tables should have source_readable=false")))))))))))))

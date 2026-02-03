@@ -498,6 +498,49 @@
   [_ _]
   false)
 
+(defmulti batch-check-eligibility
+  "Batch version of check-eligibility. Returns a map of instance-id -> eligible? boolean."
+  {:arglists '([spec instances])}
+  (fn [spec _instances] (get-in spec [:eligibility :type])))
+
+(defmethod batch-check-eligibility :library-synced
+  [_spec instances]
+  (let [eligible? (rs-settings/library-is-remote-synced?)]
+    (into {} (map (fn [inst] [(:id inst) eligible?])) instances)))
+
+(defmethod batch-check-eligibility :default
+  [spec instances]
+  (into {} (map (fn [inst] [(:id inst) (check-eligibility spec inst)])) instances))
+
+;;; -------------------------------------------- Editability Checking ------------------------------------------------
+
+(defn model-editable?
+  "Determines if a model instance is editable based on remote sync configuration.
+
+   Returns false if:
+   - The model has a spec in remote-sync-specs AND
+   - The instance is eligible for sync (via check-eligibility) AND
+   - remote-sync-type is :read-only
+
+   For models with global eligibility (e.g., :library-synced, :setting), the instance
+   argument can be nil or an empty map since eligibility doesn't depend on instance data."
+  [model-key instance]
+  (if-let [spec (spec-for-model-key model-key)]
+    (or (= (rs-settings/remote-sync-type) :read-write)
+        (not (check-eligibility spec instance)))
+    ;; Model not in spec, always editable
+    true))
+
+(defn batch-model-editable?
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  [model-key instances]
+  (if-let [spec (spec-for-model-key model-key)]
+    (if (= (rs-settings/remote-sync-type) :read-write)
+      (into {} (map (fn [inst] [(:id inst) true])) instances)
+      (let [eligibility-map (batch-check-eligibility spec instances)]
+        (into {} (map (fn [[id eligible?]] [id (not eligible?)])) eligibility-map)))
+    (into {} (map (fn [inst] [(:id inst) true])) instances)))
+
 ;;; ---------------------------------------------------- Hydration -----------------------------------------------------
 
 (defn hydrate-model-details
@@ -558,6 +601,67 @@
   ;; Hybrid uses both entity_id and path context
   {:entity-id (:entity_id instance)
    :path      (select-keys instance path-keys)})
+
+;;; ----------------------------------------- Serdes Path Identity Extraction ------------------------------------------
+
+(def ^:private serdes-path-identity-hierarchy
+  "Hierarchy for extract-identity-from-serdes-path dispatch. Both :entity-id and :hybrid models
+   extract identity the same way (entity_id from last path element)."
+  (-> (make-hierarchy)
+      (derive :entity-id ::entity-id-extractor)
+      (derive :hybrid ::entity-id-extractor)))
+
+(defmulti extract-identity-from-serdes-path
+  "Extracts identity data from a serdes path based on the spec's identity strategy. For entity-id
+   and hybrid models, returns the entity_id string from the last path element. For path-based models
+   like Table and Field, returns a map with database, schema, and table/field names that can be used
+   to look up the entity."
+  {:arglists '([spec serdes-path])}
+  (fn [spec _path] (:identity spec))
+  :hierarchy #'serdes-path-identity-hierarchy)
+
+(defmethod extract-identity-from-serdes-path ::entity-id-extractor
+  [_ serdes-path]
+  (:id (last serdes-path)))
+
+(defmethod extract-identity-from-serdes-path :path
+  [_ serdes-path]
+  (let [path-map (into {} (map (fn [elem] [(keyword (u/lower-case-en (:model elem))) (:id elem)]) serdes-path))]
+    (cond-> {}
+      (contains? path-map :database) (assoc :db_name (:database path-map))
+      (contains? path-map :schema)   (assoc :schema (:schema path-map))
+      (contains? path-map :table)    (assoc :table_name (:table path-map))
+      (contains? path-map :field)    (assoc :field_name (:field path-map)))))
+
+(defmethod extract-identity-from-serdes-path :default
+  [_ _]
+  nil)
+
+(defn extract-imported-entities
+  "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
+   Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
+   path lookup maps for models like Table and Field that use path-based identity."
+  [seen-paths]
+  (reduce
+   (fn [acc path]
+     (let [model-type (-> path last :model)]
+       (if-let [spec (spec-for-model-type model-type)]
+         (let [identity-type (:identity spec)
+               identity-data (extract-identity-from-serdes-path spec path)]
+           (if identity-data
+             (case identity-type
+               (:entity-id :hybrid)
+               (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
+
+               :path
+               (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+
+               acc)
+             acc))
+         acc)))
+   {:by-entity-id {}
+    :by-path {}}
+   seen-paths))
 
 ;;; --------------------------------------------- Export Path Construction ---------------------------------------------
 
@@ -799,25 +903,18 @@
   nil)
 
 (defn sync-all-entities!
-  "Syncs all entities based on specs. Takes:
-   - timestamp: The sync timestamp
-   - imported-entities-by-model: Map of model-type string -> set of entity_ids
-   - table-paths: Collection of table path maps
-   - field-paths: Collection of field path maps
-
-   Returns a sequence of all sync objects to insert."
-  [timestamp imported-entities-by-model table-paths field-paths]
+  "Builds RemoteSyncObject entries for all imported entities based on their specs. Iterates over enabled
+   specs and queries the database to hydrate the fields needed for each sync object. Returns a sequence
+   of maps ready for insertion into the RemoteSyncObject table."
+  [timestamp {:keys [by-entity-id by-path]}]
   (into []
         (for [[model-key spec] (enabled-specs)
               :let [identity-type (:identity spec)
                     model-type (:model-type spec)
                     data (case identity-type
-                           :entity-id (get imported-entities-by-model model-type)
-                           :path (case model-key
-                                   :model/Table table-paths
-                                   :model/Field field-paths
-                                   nil)
-                           :hybrid (get imported-entities-by-model model-type))]
+                           :entity-id (get by-entity-id model-type)
+                           :path (get by-path model-key)
+                           :hybrid (get by-entity-id model-type))]
               :when (seq data)
               entity (query-entities-for-sync spec data timestamp)]
           entity)))
@@ -835,7 +932,6 @@
   [{:keys [export-scope]}]
   (case (or export-scope :derived)
     :root-collections
-    ;; Collection model: query for root-level remote-synced + transforms-namespace + snippets-namespace collections
     ;; Excludes archived collections - their files are handled by the removal logic
     (concat
      (t2/select-fn-set (juxt (constantly "Collection") :id)
@@ -859,7 +955,6 @@
                                   [:= :location "/"]
                                   [:not :archived]]})))
     :derived
-    ;; Other collection-based models: no root query, derived from collection expansion
     nil))
 
 (defmethod query-export-roots :setting
@@ -867,27 +962,22 @@
   (when (spec-enabled? spec)
     (case export-scope
       :root-only
-      ;; Transform: root transforms (collection_id = nil)
       (t2/select-fn-set (juxt (constantly model-type) :id) model-key :collection_id nil)
       :all
-      ;; TransformTag: all instances
       (t2/select-fn-set (juxt (constantly model-type) :id) model-key)
-      ;; Default: no root query
       nil)))
 
-(defmethod query-export-roots :published-table [_] nil)  ; Derived via serdes/descendants
-(defmethod query-export-roots :parent-table [_] nil)     ; Derived via serdes/descendants
+(defmethod query-export-roots :published-table [_] nil)
+(defmethod query-export-roots :parent-table [_] nil)
 
 (defmethod query-export-roots :library-synced
   [{:keys [export-scope model-key model-type archived-key] :as spec}]
   (when (spec-enabled? spec)
     (case export-scope
       :all
-      ;; NativeQuerySnippet: all non-archived instances
       (if archived-key
         (t2/select-fn-set (juxt (constantly model-type) :id) model-key archived-key false)
         (t2/select-fn-set (juxt (constantly model-type) :id) model-key))
-      ;; Default: no root query
       nil)))
 
 (defmethod query-export-roots :default [_] nil)

@@ -108,7 +108,7 @@ describe("Remote Sync", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
@@ -125,7 +125,7 @@ describe("Remote Sync", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
@@ -454,7 +454,7 @@ describe("Remote Sync", () => {
         .should("exist");
 
       H.modal().should("not.exist");
-      cy.findByTestId("exit-admin").click();
+      H.goToMainApp();
 
       // Branch picker should appear in the app bar (doesn't require import)
       H.getGitSyncControls().should("contain.text", "main");
@@ -482,7 +482,7 @@ describe("Remote Sync", () => {
         .should("exist");
 
       H.modal().should("not.exist", { timeout: 10000 });
-      cy.findByTestId("exit-admin").click();
+      H.goToMainApp();
 
       // In read-only mode, git sync controls should not be visible in app bar
       H.getGitSyncControls().should("not.exist");
@@ -569,7 +569,7 @@ describe("Remote Sync", () => {
         .findByText("Enabled")
         .should("not.exist");
 
-      cy.findByTestId("exit-admin").click();
+      H.goToMainApp();
 
       ensureSyncedCollectionIsVisible();
     });

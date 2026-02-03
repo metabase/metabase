@@ -9,7 +9,7 @@ import S from "./UpsellPill.module.css";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 
-export function _UpsellPill({
+export function UpsellPillInner({
   children,
   link,
   campaign,
@@ -62,4 +62,4 @@ export function _UpsellPill({
   );
 }
 
-export const UpsellPill = UpsellWrapper(_UpsellPill);
+export const UpsellPill = UpsellWrapper(UpsellPillInner);
