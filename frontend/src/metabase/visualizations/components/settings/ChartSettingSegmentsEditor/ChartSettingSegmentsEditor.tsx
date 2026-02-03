@@ -1,3 +1,4 @@
+import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -133,10 +134,10 @@ export const ChartSettingSegmentsEditor = ({
 function getColorPalette() {
   return [
     ...getAccentColors(),
-    color("error"),
-    color("warning"),
-    color("success"),
-    color("background-tertiary"),
+    Color(color("error")).hex(),
+    Color(color("warning")).hex(),
+    Color(color("success")).hex(),
+    Color(color("background-tertiary")).hex(),
   ];
 }
 
