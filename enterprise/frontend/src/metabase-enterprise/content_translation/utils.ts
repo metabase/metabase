@@ -95,20 +95,19 @@ const COLUMN_DISPLAY_NAME_PATTERNS: ColumnDisplayNamePattern[] = [
   (value: string) => t`Variance of ${value}`,
 
   // Binning patterns (from metabase.lib.binning)
-  // Auto binned (default strategy)
-  (value: string) => t`${value}: Auto binned`,
-  // Numeric binning strategies: num-bins (10, 50, 100)
-  (value: string) => `${value}: 10 bins`,
-  (value: string) => `${value}: 50 bins`,
-  (value: string) => `${value}: 100 bins`,
-  // Coordinate binning strategies: bin-width with degree symbol
-  (value: string) => `${value}: 0.1°`,
-  (value: string) => `${value}: 1°`,
-  (value: string) => `${value}: 10°`,
-  (value: string) => `${value}: 20°`,
-  (value: string) => `${value}: 0.05°`,
-  (value: string) => `${value}: 0.01°`,
-  (value: string) => `${value}: 0.005°`,
+  // Generated dynamically from the same Lib functions the backend uses
+  // Numeric binning: uses displayName directly (e.g., "10 bins", "Auto binned")
+  ...Lib.numericBinningStrategies().map(
+    (strategy) => (value: string) => `${value}: ${strategy.displayName}`,
+  ),
+  // Coordinate binning: extract bin-width and format as "{width}°"
+  ...Lib.coordinateBinningStrategies()
+    .filter((strategy) => strategy.mbql?.binWidth != null)
+    .map(
+      (strategy) => (value: string) =>
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- filter ensures mbql.binWidth exists
+        `${value}: ${strategy.mbql!.binWidth}°`,
+    ),
 
   // Temporal bucket patterns (from metabase.lib.temporal_bucket)
   // Generated dynamically using the same Lib functions the backend uses,
