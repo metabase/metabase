@@ -1271,7 +1271,7 @@
       (mt/with-temp [:model/Transform x1 {:name   "Transform in WS1"
                                           :source {:type  "query"
                                                    :query (mt/native-query
-                                                           {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
+                                                           {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
                                           :target {:type     "table"
                                                    :database (mt/id)
                                                    :schema   "public"
