@@ -1886,7 +1886,7 @@
                    (t2/select-one-fn :db_id :model/Table :id (:t2 (:global-map result))))))
           (testing "transform targets the specified database"
             (is (= other-db-id
-                   (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database]))))))))))
+                   (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
 
 ;;; ============================================ Authorization Test Matrix ============================================
 
