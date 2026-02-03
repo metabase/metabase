@@ -776,6 +776,11 @@
            settings
            util}}
 
+  lib-metric
+  {:team "UX West"
+   :uses #{lib
+           util}}
+
   llm
   {:team "Metabot"
    :api  #{metabase.llm.api
