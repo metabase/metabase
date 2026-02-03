@@ -585,7 +585,8 @@
                          (h2x/is-of-type? hsql-form "timestamptz"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
-          [:convert_timezone target-timezone hsql-form]
+          [:to_timestamp_ntz
+           [:convert_timezone target-timezone hsql-form]]
           [:to_timestamp_ntz
            [:convert_timezone (or source-timezone (driver-api/results-timezone-id)) target-timezone hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
