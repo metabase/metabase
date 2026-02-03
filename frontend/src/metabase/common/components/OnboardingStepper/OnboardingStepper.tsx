@@ -10,6 +10,14 @@ export type {
   OnboardingStepperStepProps,
 } from "./types";
 
+/**
+ * A stepper component for onboarding flows.
+ *
+ * Shows a vertical list of steps that can be expanded.
+ *
+ * Automatically advances to the next incomplete
+ * step when a step is completed.
+ */
 const OnboardingStepperRoot = ({
   children,
   completedSteps,
@@ -22,10 +30,16 @@ const OnboardingStepperRoot = ({
     const stepIdToNumber: Record<string, number> = {};
 
     Children.forEach(children, (child) => {
-      if (isValidElement(child) && child.props.stepId) {
-        const stepId = child.props.stepId;
-        ids.push(stepId);
-        stepIdToNumber[stepId] = ids.length;
+      if (isValidElement(child)) {
+        if (child.type === OnboardingStepperStep && child.props.stepId) {
+          const stepId = child.props.stepId;
+          ids.push(stepId);
+          stepIdToNumber[stepId] = ids.length;
+        } else if (child.type !== OnboardingStepperStep) {
+          console.warn(
+            "OnboardingStepper: Only OnboardingStepper.Step components are allowed as children.",
+          );
+        }
       }
     });
 
@@ -41,15 +55,12 @@ const OnboardingStepperRoot = ({
     defaultActiveStep,
   );
 
-  // Scroll to the active step when the active step changes
-  const { stepRefs, handleStepChange } = useScrollStepIntoView(
-    stepIds,
-    onChange,
-  );
+  const { stepRefs, scrollStepIntoView } = useScrollStepIntoView(stepIds);
 
   const setActiveStep = (stepId: string | null) => {
     setActiveStepState(stepId);
-    handleStepChange(stepId);
+    scrollStepIntoView(stepId);
+    onChange?.(stepId);
   };
 
   // Move on to next incomplete step when completedSteps changes

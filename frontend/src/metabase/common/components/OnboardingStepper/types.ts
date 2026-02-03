@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import type { IconName } from "metabase/ui";
-
 export interface StepperContextValue {
   activeStep: string | null;
   completedSteps: Record<string, boolean>;
@@ -9,11 +7,6 @@ export interface StepperContextValue {
   stepNumbers: Record<string, number>;
   stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
   setActiveStep: (stepId: string | null) => void;
-}
-
-export interface ItemContextValue {
-  stepId: string;
-  icon?: IconName;
 }
 
 export interface OnboardingStepperProps {
@@ -35,9 +28,6 @@ export interface OnboardingStepperStepProps {
 
   /** Title displayed in the step header */
   title: string;
-
-  /** Optional icon for inactive state (defaults to showing the step number) */
-  icon?: IconName;
 
   /** Content to show when the step is active */
   children: ReactNode;

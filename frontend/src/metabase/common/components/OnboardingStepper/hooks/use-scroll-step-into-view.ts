@@ -2,12 +2,15 @@ import { createRef, useCallback, useMemo } from "react";
 
 interface UseScrollStepIntoViewResult {
   stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
-  handleStepChange: (value: string | null) => void;
+  scrollStepIntoView: (stepId: string | null) => void;
 }
 
+/**
+ * Creates refs for each step and provides a function to scroll a step into view.
+ * Used to smoothly scroll the active step into the viewport when it changes.
+ */
 export function useScrollStepIntoView(
   stepIds: string[],
-  onChange?: (value: string | null) => void,
 ): UseScrollStepIntoViewResult {
   const stepRefs = useMemo(() => {
     return stepIds.reduce(
@@ -19,7 +22,7 @@ export function useScrollStepIntoView(
     );
   }, [stepIds]);
 
-  const scrollIntoView = useCallback(
+  const scrollStepIntoView = useCallback(
     (stepId: string | null) => {
       if (stepId && stepRefs[stepId]) {
         stepRefs[stepId].current?.scrollIntoView({
@@ -31,13 +34,5 @@ export function useScrollStepIntoView(
     [stepRefs],
   );
 
-  const handleStepChange = useCallback(
-    (newValue: string | null) => {
-      scrollIntoView(newValue);
-      onChange?.(newValue);
-    },
-    [scrollIntoView, onChange],
-  );
-
-  return { stepRefs, handleStepChange };
+  return { stepRefs, scrollStepIntoView };
 }
