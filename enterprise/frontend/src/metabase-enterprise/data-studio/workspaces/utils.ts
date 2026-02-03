@@ -22,9 +22,9 @@ export function getCheckoutDisabledMessage(
 ): string | undefined {
   switch (reason) {
     case "mbql":
-      return t`This transform cannot be edited in a workspace because it uses MBQL.`;
+      return t`Transforms based on the query builder cannot be edited in a workspace.`;
     case "card-reference":
-      return t`This transform cannot be edited in a workspace because it references other questions.`;
+      return t`Transforms referencing other questions cannot be edited in a workspace.`;
     case null:
     case undefined:
       return undefined;

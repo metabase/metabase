@@ -191,7 +191,7 @@ describe("EditTransformMenu", () => {
       await waitFor(() => {
         expect(
           screen.getByText(
-            "This transform cannot be edited in a workspace because it uses MBQL.",
+            "Transforms based on the query builder cannot be edited in a workspace.",
           ),
         ).toBeInTheDocument();
       });
@@ -221,7 +221,7 @@ describe("EditTransformMenu", () => {
       await waitFor(() => {
         expect(
           screen.getByText(
-            "This transform cannot be edited in a workspace because it references other questions.",
+            "Transforms referencing other questions cannot be edited in a workspace.",
           ),
         ).toBeInTheDocument();
       });

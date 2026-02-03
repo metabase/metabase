@@ -1705,7 +1705,7 @@ describe("scenarios > data studio > workspaces", () => {
       // H.popover().contains("New workspace").realHover();
       // H.tooltip().should(
       //   "contain.text",
-      //   "This transform cannot be edited in a workspace because it references other questions.",
+      //   "Transforms referencing other questions cannot be edited in a workspace.",
       // );
       // cy.log("Close tooltip");
       // cy.get("body").click();
