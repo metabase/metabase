@@ -67,14 +67,13 @@ export const translateContentString: TranslateContentStringFunction = (
 
 export type ColumnDisplayNamePattern = (value: string) => string;
 
-// Cache the aggregation patterns since they're expensive to compute and don't change
-const AGGREGATION_PATTERNS = Lib.aggregationDisplayNamePatterns();
+// Patterns are locale-dependent (via i18n/tru), so fetch fresh each time
+const getAggregationPatterns = () => Lib.aggregationDisplayNamePatterns();
 
-// Check if a display name might have a pattern that needs parsing
 const mightHavePattern = (displayName: string): boolean =>
   displayName.includes(": ") ||
   displayName.includes(" → ") ||
-  AGGREGATION_PATTERNS.some((p) => displayName.startsWith(p.prefix));
+  getAggregationPatterns().some((p) => displayName.startsWith(p.prefix));
 
 /**
  * Translates a column display name by parsing it into parts and translating the translatable ones.
@@ -113,7 +112,7 @@ export const translateColumnDisplayName = (
   // Get parts from CLJ - it handles all the parsing complexity
   const parts = Lib.parseColumnDisplayNameParts(
     displayName,
-    AGGREGATION_PATTERNS,
+    getAggregationPatterns(),
   );
 
   let anyChanged = false;
