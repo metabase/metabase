@@ -381,13 +381,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "snippet":
     case "transform":
       return node.data.created_at;
-<<<<<<< HEAD
-    case "table":
-    case "workspace-transform":
-    case "sandbox":
-=======
     default:
->>>>>>> master
       return null;
   }
 }
@@ -402,13 +396,7 @@ export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
     case "snippet":
     case "transform":
       return node.data.creator ?? null;
-<<<<<<< HEAD
-    case "table":
-    case "workspace-transform":
-    case "sandbox":
-=======
     default:
->>>>>>> master
       return null;
   }
 }
@@ -417,20 +405,8 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
     case "dashboard":
-<<<<<<< HEAD
-      return node.data["last-edit-info"]?.timestamp || null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
-=======
       return node.data["last-edit-info"]?.timestamp ?? null;
     default:
->>>>>>> master
       return null;
   }
 }
@@ -440,18 +416,7 @@ export function getNodeLastEditedBy(node: DependencyNode): NamedUser | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"] ?? null;
-<<<<<<< HEAD
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
-=======
     default:
->>>>>>> master
       return null;
   }
 }
@@ -462,17 +427,7 @@ export function canNodeHaveViewCount(type: DependencyType): boolean {
     case "dashboard":
     case "document":
       return true;
-<<<<<<< HEAD
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
-    case "measure":
-=======
     default:
->>>>>>> master
       return false;
   }
 }
@@ -482,19 +437,8 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "card":
     case "dashboard":
     case "document":
-<<<<<<< HEAD
-      return node.data.view_count ?? null;
-    case "table":
-    case "measure":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
-=======
       return node.data.view_count ?? 0;
     default:
->>>>>>> master
       return null;
   }
 }
@@ -524,6 +468,8 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
     case "document":
     case "segment":
     case "measure":
+      return null;
+    default:
       return null;
   }
 }
