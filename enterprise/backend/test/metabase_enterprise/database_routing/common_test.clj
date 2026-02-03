@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.test :as mt]))
 
-;; Tests for database routing functionality, specifically verifying that guest embedding 
+;; Tests for database routing functionality, specifically verifying that guest embedding
 ;; works correctly with database routing by allowing anonymous users to use the router database.
 ;; This enables guest embeds to work with databases that have routing enabled.
 
