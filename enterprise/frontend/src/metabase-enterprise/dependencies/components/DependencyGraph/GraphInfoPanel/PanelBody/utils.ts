@@ -49,33 +49,3 @@ export function getNodeTableInfo(
       : null,
   };
 }
-<<<<<<< HEAD
-
-export function getNodeFields(node: DependencyNode): Field[] {
-  switch (node.type) {
-    case "card":
-      return node.data.result_metadata ?? [];
-    case "table":
-      return node.data.fields ?? [];
-    case "transform":
-    case "sandbox":
-      return node.data.table?.fields ?? [];
-    case "workspace-transform":
-    case "snippet":
-    case "dashboard":
-    case "document":
-    case "segment":
-    case "measure":
-      return [];
-  }
-}
-
-export function getNodeFieldsLabel(fieldCount: number) {
-  return ngettext(
-    msgid`${fieldCount} field`,
-    `${fieldCount} fields`,
-    fieldCount,
-  );
-}
-=======
->>>>>>> master
