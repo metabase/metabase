@@ -209,6 +209,29 @@
         (.execute ^Value (object-array [sql table-name dialect]))
         .asString)))
 
+(defn replace-names
+  "Replace schema, table, and column names in SQL.
+
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil
+   - sql: The SQL query string
+   - replacements: A map with optional keys:
+     - :schemas - map of old-schema-name -> new-schema-name
+     - :tables - seq of [[{:schema s :table t} new-name] ...]
+     - :columns - seq of [[{:schema s :table t :column c} new-name] ...]
+
+   Returns modified SQL string.
+
+   Examples:
+   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[[{:table \"people\"} \"users\"]]})
+   => \"SELECT * FROM users\""
+  [dialect sql replacements]
+  (with-open [^Closeable ctx (python.pool/python-context)]
+    (common/eval-python ctx "import sql_tools")
+    (-> ^Value (common/eval-python ctx "sql_tools.replace_names")
+        (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
+        .asString)))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 

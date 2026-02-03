@@ -665,3 +665,115 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_
         dependencies.append((select, is_pure_select, tuple(leaves), ))
 
     return json.dumps(dependencies)
+
+
+def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
+    """
+    Replace schema, table, and column names in a SQL query.
+
+    Args:
+        sql: SQL query string
+        replacements_json: JSON-encoded map with keys:
+            - schemas: {old_schema: new_schema}
+            - tables: list of [[{schema?, table}, new_name], ...]
+            - columns: list of [[{schema?, table?, column}, new_name], ...]
+        dialect: SQL dialect string
+
+    Returns:
+        Modified SQL string with replacements applied.
+
+    Examples:
+        replace_names("SELECT * FROM people", '{"tables": [[{"table": "people"}, "users"]]}', "postgres")
+        => 'SELECT * FROM users'
+
+        replace_names("SELECT id FROM orders", '{"columns": [[{"table": "orders", "column": "id"}, "user_id"]]}')
+        => 'SELECT user_id FROM orders'
+    """
+    replacements = json.loads(replacements_json)
+    schemas = replacements.get("schemas") or {}
+    tables = replacements.get("tables") or []  # List of [key, value] pairs
+    columns = replacements.get("columns") or []  # List of [key, value] pairs
+
+    # Convert list-of-pairs to lookup dicts for O(1) matching
+    # Tables: (schema, table) -> new_name
+    table_map = {}
+    for item in tables:
+        key, new_name = item
+        schema = key.get("schema")  # may be None
+        table = key["table"]
+        table_map[(schema, table)] = new_name
+
+    # Columns: (schema, table, column) -> new_name
+    column_map = {}
+    for item in columns:
+        key, new_name = item
+        schema = key.get("schema")
+        table = key.get("table")  # may be None for unqualified
+        column = key["column"]
+        column_map[(schema, table, column)] = new_name
+
+    ast = sqlglot.parse_one(sql, read=dialect)
+
+    def rename_fn(node):
+        # Schema rename (appears in Table.db)
+        if isinstance(node, exp.Table):
+            # Capture original values BEFORE any modifications (important for lookup)
+            original_schema = node.db
+            original_table = node.name
+
+            # Rename schema if present
+            if original_schema and original_schema in schemas:
+                node.set("db", exp.Identifier(this=schemas[original_schema]))
+
+            # Rename table - try exact match first (with original schema), then without schema
+            new_table = (table_map.get((original_schema, original_table)) or
+                         table_map.get((None, original_table)))
+            if new_table:
+                if isinstance(new_table, dict):
+                    # New format: {schema: x, table: y}
+                    if new_table.get("schema"):
+                        node.set("db", exp.Identifier(this=new_table["schema"]))
+                    if new_table.get("table"):
+                        node.set("this", exp.Identifier(this=new_table["table"]))
+                else:
+                    # String: just the table name
+                    node.set("this", exp.Identifier(this=new_table))
+
+        # Column rename
+        elif isinstance(node, exp.Column):
+            col_name = node.name
+            col_table = node.table  # May be None if column is unqualified (e.g., "SELECT id" not "SELECT t.id")
+
+            # Try to find a matching column rename.
+            # The challenge: replacement key might be {:table "orders" :column "id"}
+            # but the SQL column ref might just be "id" (unqualified).
+            # We need to match flexibly:
+            # - Exact match: (schema, table, column) all match
+            # - Table match: column and table match, schema is None in key
+            # - Column-only match: just column matches (when no table qualifier in SQL)
+            new_col = None
+
+            # Iterate through all column mappings and find best match
+            for (key_schema, key_table, key_col), new_name in column_map.items():
+                if key_col != col_name:
+                    continue
+                # Column name matches, now check table qualifier
+                # Note: SQLGlot uses empty string (not None) for missing table qualifier
+                if col_table:
+                    # SQL has table qualifier - match if tables are equal
+                    if key_table == col_table:
+                        new_col = new_name
+                        break
+                else:
+                    # SQL has no table qualifier - accept any table in key
+                    # (this is the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"})
+                    new_col = new_name
+                    break
+
+            if new_col:
+                node.set("this", exp.Identifier(this=new_col))
+
+        return node
+
+    transformed = ast.transform(rename_fn)
+    return transformed.sql(dialect=dialect)

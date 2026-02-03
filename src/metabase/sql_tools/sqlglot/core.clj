@@ -294,3 +294,12 @@
 (defmethod sql-tools/add-into-clause-impl :sqlglot
   [_parser driver sql table-name]
   (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
+
+(defmethod sql-tools/replace-names-impl :sqlglot
+  [_parser driver sql-string replacements _opts]
+  ;; Convert map keys to list-of-pairs for JSON serialization
+  ;; {:tables {{:table "a"} "b"}} -> {:tables [[{:table "a"} "b"]]}
+  (let [replacements' (-> replacements
+                          (update :tables #(when % (vec %)))
+                          (update :columns #(when % (vec %))))]
+    (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
