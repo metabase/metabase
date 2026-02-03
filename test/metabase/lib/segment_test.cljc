@@ -190,18 +190,18 @@
            (lib/check-segment-overwrite 1 segment-1-def))))))
 
 (deftest ^:parallel check-segment-overwrite-cycle-ex-data-test
-    (testing "Cycle exception includes segment-id and cycle-path in ex-data"
-      (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
-            segment-1-def (segment-definition-referencing mp 1)
-            ex            (try
-                            (lib/check-segment-overwrite 1 segment-1-def)
-                            (catch #?(:clj Exception :cljs js/Error) e e))
-            data          (ex-data ex)]
-        (is (= 1 (:segment-id data)))
-        (is (contains? data :cycle-path))
-        (is (vector? (:cycle-path data)))
-        (is (some #{1} (:cycle-path data)))
-        (is (re-find #"1" (ex-message ex))))))
+  (testing "Cycle exception includes segment-id and cycle-path in ex-data"
+    (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          segment-1-def (segment-definition-referencing mp 1)
+          ex            (try
+                          (lib/check-segment-overwrite 1 segment-1-def)
+                          (catch #?(:clj Exception :cljs js/Error) e e))
+          data          (ex-data ex)]
+      (is (= 1 (:segment-id data)))
+      (is (contains? data :cycle-path))
+      (is (vector? (:cycle-path data)))
+      (is (some #{1} (:cycle-path data)))
+      (is (re-find #"1" (ex-message ex))))))
 
 (deftest ^:parallel check-segment-overwrite-self-reference-in-mp-test
   (testing "Segment referencing itself (segment exists in mp) - should throw cycle"
