@@ -312,6 +312,13 @@
     (mock-metadata-provider
      {:cards [card]}))))
 
+(defn metadata-provider-with-mock-transform
+  ([transform]
+   (lib/composed-metadata-provider
+    meta/metadata-provider
+    (mock-metadata-provider
+     {:transforms [transform]}))))
+
 (defn metadata-provider-with-card-from-query
   "A metadata provider with a card created from query and given id."
   ([id query]

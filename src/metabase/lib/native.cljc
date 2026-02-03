@@ -451,3 +451,36 @@
     (if (and template-tags-map raw-native-query-string)
       (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
       true)))
+
+(defn- find-table-or-transform-for-tag
+  "Given a table template tag, find a matching table or transform."
+  [tables transforms {:keys [table-id table-name table-schema] :as tag}]
+  (let [matches? (fn [name schema]
+                   (and (= name table-name)
+                        (or (not table-schema)
+                            (= schema table-schema))))]
+    (cond
+      table-id {:table table-id}
+      table-name (or (some (fn [{:keys [name schema id]}]
+                             (when (matches? name schema)
+                               {:table id}))
+                           tables)
+                     (some (fn [{:keys [id] {:keys [name schema]} :target}]
+                             (when (matches? name schema)
+                               {:transform id}))
+                           transforms))
+      :else (throw (ex-info "Table tag missing both table-id and table-name"
+                            {:tag tag})))))
+
+(mu/defn native-query-table-references :- [:set [:or
+                                                 [:map [:table ::lib.schema.id/table]]
+                                                 [:map [:transform ::lib.schema.id/transform]]]]
+  "Given a native query, find any tables or transforms referenced by `:table` template tags"
+  [query]
+  (let [tags (->> (lib.walk.util/all-template-tags query)
+                  (filter #(= (:type %) :table)))
+        tables (lib.metadata/tables query)
+        transforms (lib.metadata/transforms query)]
+    (into #{}
+          (keep #(find-table-or-transform-for-tag tables transforms %))
+          tags)))

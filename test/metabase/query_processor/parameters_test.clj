@@ -786,7 +786,7 @@
         base-query (lib/native-query mp sql)
         template-tag (get (lib/template-tags base-query) "table")
         query (lib/with-template-tags base-query
-                {"table" (merge template-tag template-tag-overrides)})]
+                {"table" (merge template-tag {:type :table} template-tag-overrides)})]
     (is (= ids (query-result-ids query)))))
 
 (deftest ^:parallel basic-table-template-tag-test
@@ -796,8 +796,7 @@
         (assert-table-param-query-selects-ids
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-         {:type :table
-          :table-id (mt/id :orders)})))))
+         {:table-id (mt/id :orders)})))))
 
 (deftest ^:parallel name-table-template-tag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
@@ -807,8 +806,7 @@
         (assert-table-param-query-selects-ids
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-         {:type :table
-          :table-name (:name table)})))))
+         {:table-name (:name table)})))))
 
 (deftest ^:parallel name-schema-table-template-tag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
@@ -818,8 +816,7 @@
         (assert-table-param-query-selects-ids
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-         {:type :table
-          :table-name (:name table)
+         {:table-name (:name table)
           :table-schema (:schema table)})))))
 
 (deftest ^:parallel table-template-tag-with-start-test
@@ -830,8 +827,7 @@
          mp
          (->> (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
               (filter #(>= % 5)))
-         {:type :table
-          :table-id (mt/id :orders)
+         {:table-id (mt/id :orders)
           :field-id (mt/id :orders :id)
           :start 5})))))
 
@@ -842,8 +838,7 @@
         (assert-table-param-query-selects-ids
          mp
          [1 2 3 4]
-         {:type :table
-          :table-id (mt/id :orders)
+         {:table-id (mt/id :orders)
           :field-id (mt/id :orders :id)
           :stop 5})))))
 
@@ -854,8 +849,7 @@
         (assert-table-param-query-selects-ids
          mp
          [2 3 4]
-         {:type :table
-          :table-id (mt/id :orders)
+         {:table-id (mt/id :orders)
           :field-id (mt/id :orders :id)
           :start 2
           :stop 5})))))

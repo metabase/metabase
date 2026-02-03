@@ -259,8 +259,9 @@
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
-        (->> (into #{} (keep #(->> (normalize-table-spec driver %)
-                                   (find-table-or-transform driver db-tables db-transforms))))))))
+        (->> (into (driver-api/native-query-table-references query)
+                   (keep #(->> (normalize-table-spec driver %)
+                               (find-table-or-transform driver db-tables db-transforms))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
