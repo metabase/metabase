@@ -884,7 +884,7 @@ describe("Remote Sync", () => {
       });
 
       // Add collection to remote repository
-      H.copySyncedCollectionFixture();
+      H.copySyncedTransformsCollectionFixture();
       H.commitToRepo();
 
       // Set up in read-write mode without marking anything as synced and pull changes
