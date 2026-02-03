@@ -38,8 +38,8 @@
         json/decode
         vec)))
 
-;; TODO: remove (not removing directly in merge in case anything broke)
-#_(defn validate-sql-query
+;; TODO: remove in favor of validate-query implemented later in this ns (when done with impl).
+(defn validate-sql-query
   "Validate a SQL query using sqlglot's parser.
 
    Returns a map with validation results:
