@@ -290,3 +290,7 @@
     (catch Exception e
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
+
+(defmethod sql-tools/add-into-clause-impl :sqlglot
+  [_parser driver sql table-name]
+  (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))

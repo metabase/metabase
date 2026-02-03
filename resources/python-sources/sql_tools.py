@@ -569,6 +569,41 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
+def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
+    """
+    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
+
+    Transforms: SELECT * FROM products
+    Into:       SELECT * INTO "new_table" FROM products
+
+    Used by SQL Server transforms which require SELECT INTO syntax
+    instead of CREATE TABLE AS SELECT.
+
+    :param sql: The SELECT SQL query string
+    :param table_name: The target table name (already formatted/quoted)
+    :param dialect: SQL dialect (e.g., "tsql" for SQL Server)
+    :return: Modified SQL string with INTO clause
+
+    Examples:
+        add_into_clause("SELECT * FROM products", '"PRODUCTS_COPY"', "tsql")
+        => 'SELECT * INTO "PRODUCTS_COPY" FROM products'
+    """
+    ast = sqlglot.parse_one(sql, read=dialect)
+
+    if not isinstance(ast, exp.Select):
+        raise ValueError("SQL must be a SELECT statement")
+
+    # Create the Into expression with the table identifier
+    # The table_name is pre-formatted, so parse it to preserve quotes
+    into = exp.Into(this=exp.to_table(table_name))
+
+    # Set the into clause on the select
+    ast.set("into", into)
+
+    # Generate SQL in the target dialect
+    return ast.sql(dialect=dialect)
+
+
 def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
     """
     Extract column lineage from SQL query.

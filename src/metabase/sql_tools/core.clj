@@ -77,3 +77,22 @@
   - `:reason` - string explaining why query is not simple (when false)"
   [sql-string]
   (simple-query?-impl (sql-tools.settings/sql-tools-parser-backend) sql-string))
+
+(defmulti add-into-clause-impl
+  "Parser specific implementation of [[add-into-clause]]. Do not use directly.
+
+  Transforms a SELECT statement to include an INTO clause for SQL Server style
+  SELECT INTO syntax."
+  {:arglists '([parser driver sql table-name])}
+  parser-dispatch)
+
+(defn add-into-clause
+  "Add an INTO clause to a SELECT statement.
+
+  Transforms: 'SELECT * FROM products'
+  Into:       'SELECT * INTO \"TABLE\" FROM products'
+
+  Used by SQL Server compile-transform which requires SELECT INTO syntax
+  instead of CREATE TABLE AS SELECT."
+  [driver sql table-name]
+  (add-into-clause-impl (sql-tools.settings/sql-tools-parser-backend) driver sql table-name))

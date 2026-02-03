@@ -202,3 +202,10 @@
     (catch Exception e
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
+
+(defmethod sql-tools/add-into-clause-impl :macaw
+  [_parser driver sql table-name]
+  (let [^net.sf.jsqlparser.statement.select.Select parsed-query (driver.u/parsed-query sql driver)
+        ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
+    (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. table-name)])
+    (str parsed-query)))

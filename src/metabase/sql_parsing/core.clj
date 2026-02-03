@@ -187,6 +187,28 @@
         .asString
         json/decode+kw)))
 
+(defn add-into-clause
+  "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
+
+   Transforms: 'SELECT * FROM products'
+   Into:       'SELECT * INTO \"TABLE\" FROM products'
+
+   Used by SQL Server compile-transform which requires SELECT INTO syntax
+   instead of CREATE TABLE AS SELECT.
+
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"tsql\" for SQL Server)
+   - sql: The SELECT SQL query string
+   - table-name: The target table name (already formatted/quoted)
+
+   Returns: Modified SQL string with INTO clause"
+  [dialect sql table-name]
+  (with-open [^Closeable ctx (python.pool/python-context)]
+    (common/eval-python ctx "import sql_tools")
+    (-> ^Value (common/eval-python ctx "sql_tools.add_into_clause")
+        (.execute ^Value (object-array [sql table-name dialect]))
+        .asString)))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
@@ -283,5 +305,4 @@
 (comment
 
   (validate-sql-query "postgres" "select * FROM no_table")
-  (referenced-tables "postgres" "select * FROM no_table")
-  )
+  (referenced-tables "postgres" "select * FROM no_table"))
