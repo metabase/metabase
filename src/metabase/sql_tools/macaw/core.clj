@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [macaw.core :as macaw]
-   [metabase.driver.util :as driver.u]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
@@ -11,6 +11,72 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+;;;; Macaw options and parsing
+
+(def ^:private considered-drivers
+  "The set of drivers for which we configure non-trivial macaw options."
+  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+
+(defn- macaw-options
+  "Generate the options expected by Macaw based on the nature of the given driver."
+  [driver]
+  (merge
+   ;; If this isn't a driver we've considered, fallback to Macaw's conservative defaults.
+   (when (contains? considered-drivers driver)
+     {;; According to the SQL-92 specification, non-quoted identifiers should be case-insensitive, and the majority of
+      ;; engines are implemented this way.
+      ;;
+      ;; In practice there are exceptions, notably MySQL and SQL Server, where case sensitivity is a property of the
+      ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
+      ;; reference is quoted.
+      ;;
+      ;; For MySQL the case sensitivity of databases and tables depends on both the underlying file system, and a system
+      ;; variable used to initialize the database. For SQL Server it depends on the collation settings of the collection
+      ;; where the corresponding schema element is defined.
+      ;;
+      ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
+      ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
+      ;;
+      ;; In future, Macaw may support discriminating on the identifier type, in which case we could be more precise for
+      ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
+      ;; which is likely a step too far in complexity.
+      ;;
+      ;; Currently, we go with :agnostic, as it is the most relaxed semantics (the case of both the identifiers and the
+      ;; underlying schema is totally ignored, and correspondence is non-deterministic), but Macaw supports more nuanced
+      ;; :lower and :upper configuration values which coerce the query identifiers to a given case then do an exact
+      ;; comparison with the schema.
+      :case-insensitive      :agnostic
+      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
+      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
+      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
+                              :square-bracket-quotes  (= :sqlserver driver)
+                              :unsupported-statements false
+                              :backslash-escape-char  true
+                              ;; This will slow things down, but until we measure the difference, opt for correctness.
+                              :complex-parsing        true}
+      ;; 10 seconds
+      :timeout               10000})
+   {;; There is no plan to be exhaustive yet.
+    ;; Note that while an allowed list would be more conservative, at the time of writing only 1 of the bundled
+    ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
+    ;; In the future, we will use multimethods to define this explicitly per driver, or even discover it automatically
+    ;; through the JDBC connection, where possible.
+    :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
+                                                :final)]))}))
+
+(defn- parsed-query
+  "Parse SQL using Macaw with driver-specific options."
+  [sql driver & {:as opts}]
+  (let [result (macaw/parsed-query sql (merge (macaw-options driver) opts))]
+    ;; TODO (lbrdnk 2026-01-23): In follow-up work we should ensure that failure to parse is not silently swallowed.
+    ;;                           I'm leaving that off at the moment to avoid potential log flooding.
+    #_(when (and (map? result) (some? (:error result)))
+        (throw (ex-info "SQL parsing failed."
+                        {:macaw-error (:error result)}
+                        (-> result :context :cause))))
+    result))
 
 ;;;; referenced-tables
 
@@ -26,7 +92,7 @@
         db-transforms (lib.metadata/transforms query)]
     (-> query
         lib/raw-native-query
-        (driver.u/parsed-query driver)
+        (parsed-query driver)
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
@@ -140,7 +206,7 @@
   [driver native-query]
   (let [{:keys [returned-fields]} (-> native-query
                                       lib/raw-native-query
-                                      (driver.u/parsed-query driver)
+                                      (parsed-query driver)
                                       macaw/->ast
                                       (->> (sql-tools.macaw.references/field-references driver)))]
     (mapcat #(->> (resolve-field driver native-query %)
@@ -156,7 +222,7 @@
   [driver native-query]
   (let [{:keys [used-fields returned-fields errors]} (-> native-query
                                                          lib/raw-native-query
-                                                         (driver.u/parsed-query driver)
+                                                         (parsed-query driver)
                                                          macaw/->ast
                                                          (->> (sql-tools.macaw.references/field-references driver)))
         check-fields #(mapcat (fn [col-spec]
@@ -179,7 +245,7 @@
   [_parser sql-string]
   (try
     ;; BEWARE: No driver available, so we pass nil. This means macaw-options will be minimal.
-    (let [^net.sf.jsqlparser.statement.select.PlainSelect parsed (driver.u/parsed-query sql-string nil)]
+    (let [^net.sf.jsqlparser.statement.select.PlainSelect parsed (parsed-query sql-string nil)]
       (cond
         (not (instance? net.sf.jsqlparser.statement.select.PlainSelect parsed))
         {:is_simple false
@@ -205,7 +271,7 @@
 
 (defmethod sql-tools/add-into-clause-impl :macaw
   [_parser driver sql table-name]
-  (let [^net.sf.jsqlparser.statement.select.Select parsed-query (driver.u/parsed-query sql driver)
+  (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
         ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. table-name)])
     (str parsed-query)))
