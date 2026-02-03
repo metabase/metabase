@@ -348,8 +348,8 @@
   [{query :dataset_query, :as card}]
   (merge
    card
-   (when-let [source-id (source-card-id query)]
-     {:source_card_id source-id})
+   ;; Always set source_card_id, even to nil, to clear stale values (e.g., when converting to native SQL). See #68080.
+   {:source_card_id (source-card-id query)}
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from

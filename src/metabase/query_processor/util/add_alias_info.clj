@@ -494,9 +494,18 @@
   [inner-query     :- :map
    unique-alias-fn :- fn?
    field-clause    :- mbql.s/field]
-  (let [expensive-info (expensive-field-info inner-query field-clause)]
+  (let [expensive-info (expensive-field-info inner-query field-clause)
+        join-alias (get-in field-clause [2 :join-alias])
+        ;; For implicit joins, ::source-table will be a string (join alias) rather than an
+        ;; integer table ID. We need to explicitly enable coercion since the SQL QP checks
+        ;; for (pos-int? ::source-table) to determine if coercion should be applied. This
+        ;; follows the same pattern used by the SparkSQL driver. See #67704.
+        implicit-join? (when join-alias
+                         (:qp/is-implicit-join (join-with-alias inner-query join-alias)))]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
+           (when implicit-join?
+             {:qp/allow-coercion-for-columns-without-integer-qp.add.source-table true})
            (when-let [nfc-path (:nfc-path expensive-info)]
              {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
