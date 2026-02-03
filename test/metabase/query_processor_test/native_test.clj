@@ -6,7 +6,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.date-time-zone-functions-test :as dt-fn-test]
+   [metabase.query-processor-test.date-time-zone-functions-test :as dt-fn-test]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
