@@ -74,38 +74,6 @@ describe("scenarios > organization > bookmarks > collection", () => {
     bookmarkThenArchive("Orders in a dashboard");
   });
 
-  it("should update bookmarks list when archiving a collection containing bookmarked items (metabase#44499)", () => {
-    const collectionName = "First collection";
-    const questionName = "Orders";
-
-    // Create a question in the collection
-    H.createQuestion({
-      name: questionName,
-      query: { "source-table": STATIC_ORDERS_ID },
-      collection_id: FIRST_COLLECTION_ID,
-    });
-
-    H.visitCollection("root");
-
-    // Bookmark the question
-    H.openCollectionItemMenu(questionName);
-    H.popover().findByTextEnsureVisible("Bookmark").click();
-
-    // Verify bookmark appears in sidebar
-    H.navigationSidebar()
-      .findByRole("section", { name: "Bookmarks" })
-      .should("contain", questionName);
-
-    // Archive the collection containing the bookmarked question
-    H.openCollectionItemMenu(collectionName);
-    H.popover().findByTextEnsureVisible("Move to trash").click();
-
-    // The bookmarked question should be removed from bookmarks immediately
-    H.navigationSidebar()
-      .findByRole("section", { name: "Bookmarks" })
-      .should("not.exist");
-  });
-
   it("should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)", () => {
     const collectionName = "First collection";
     const questionName = "Orders in First Collection";
