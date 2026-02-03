@@ -82,6 +82,35 @@
     (:mysql :mariadb) ["-e" "MYSQL_DATABASE=metabase_test"
                        "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"]))
 
+(defn- db-shell-command
+  "Return a shell command to connect to the DB, or nil if unavailable."
+  [db-type db-info h2-path]
+  (case db-type
+    :postgres (when-let [name (:name db-info)]
+                (format "docker exec -it %s psql -U metabase -d metabase" name))
+    :mysql (when-let [name (:name db-info)]
+             (format "docker exec -it %s mysql -uroot metabase_test" name))
+    :mariadb (when-let [name (:name db-info)]
+               (format "docker exec -it %s mariadb -uroot metabase_test" name))
+    :h2 (when h2-path
+          (format "MB_DB_FILE=%s clojure -X:dev:h2" h2-path))
+    nil))
+
+(defn- label-width
+  "Compute max label width (including trailing colon) plus one space for alignment."
+  [labels]
+  (inc (apply max (map #(count (str % ":")) labels))))
+
+(defn- format-section-line
+  "Format a section line with aligned label/value and optional coloring."
+  [label value width label-color value-color]
+  (let [label-text (str label ":")
+        pad-count  (max 0 (- width (count label-text)))
+        padding    (apply str (repeat pad-count " "))
+        label-str  (if label-color (label-color label-text) label-text)
+        value-str  (if value-color (value-color (str value)) (str value))]
+    (str "  " label-str padding value-str)))
+
 (defn- container-running? [name]
   (let [output (u/sh "docker" "ps" "-q" "--filter" (str "name=^" name "$"))]
     (not (str/blank? output))))
@@ -174,11 +203,9 @@
   (shell/sh* {:quiet? true} "docker" "stop" name))
 
 (defn- wait-for-backend!
-  "Poll the health endpoint until the backend is ready."
+  "Poll the health endpoint until the backend is ready. Prints progress dots."
   [port]
   (let [url (str "http://localhost:" port "/api/health")]
-    (print (c/cyan "Waiting for backend to start..."))
-    (flush)
     (loop [attempts 0]
       (Thread/sleep 2000)
       (let [healthy? (try
@@ -187,7 +214,7 @@
                               (str/includes? (:body resp) "\"status\":\"ok\"")))
                        (catch Exception _ false))]
         (if healthy?
-          (println (c/green " ready!"))
+          (println (c/green " healthy!"))
           (do
             (print ".")
             (flush)
@@ -281,9 +308,6 @@
   "Start the frontend dev server in the background. Returns {:port :log-file}."
   [edition port]
   (let [log-file (str "/tmp/metabase-frontend-" port ".log")]
-    (println (c/green "Starting frontend dev server on port") (c/cyan port))
-    (println (c/cyan "  Log file:") log-file)
-    (println (c/cyan "  Tail with:") (str "tail -f " log-file))
     (let [log (java.io.File. log-file)]
       (p/process {:dir u/project-root-directory
                   :out log
@@ -340,20 +364,30 @@
     (let [nrepl-port (find-free-port)
           cmd ["clojure" (str "-M" aliases) "-p" (str nrepl-port)]]
       ;; Show config
-      (println)
-      (println (c/green "Starting Metabase:"))
-      (println (c/cyan "  Edition:") (name edition))
-      (when token (println (c/cyan "  Token:") (name token)))
-      (when config (println (c/cyan "  Config:") config))
-      (println (c/cyan "  Database:") (str (name db-type) (when db-port (str " on port " db-port))))
-      (println (c/cyan "  nREPL: ") nrepl-port)
-      (println (c/cyan "  Aliases:") aliases)
-      (when frontend-port
-        (println (c/cyan "  Frontend:") (str "http://localhost:" frontend-port))
-        (println (c/cyan "  FE logs:") (str "tail -f " frontend-log)))
-      (println (c/cyan "  BE logs:") (str "tail -f " backend-log))
-      (println (c/cyan "  Backend:") (str "http://localhost:" backend-port))
-      (println)
+      (let [info-width (label-width ["Edition" "Token" "Config" "Database" "Aliases"])
+            logs-width (label-width ["FE" "BE"])
+            conn-width (label-width ["nREPL" "DB"])
+            db-shell   (db-shell-command db-type db-info h2-path)]
+        (println)
+        (println (c/bold "Starting Metabase Dev REPL (Press Ctrl-C to Stop):"))
+        (println (format-section-line "Edition" (name edition) info-width c/cyan nil))
+        (when token
+          (println (format-section-line "Token" (name token) info-width c/cyan nil)))
+        (when config
+          (println (format-section-line "Config" config info-width c/cyan nil)))
+        (println (format-section-line "Database" (name db-type) info-width c/cyan nil))
+        (println (format-section-line "Aliases" aliases info-width c/cyan nil))
+        (println)
+        (println (c/bold "Logs:"))
+        (when frontend-log
+          (println (format-section-line "FE" (str "tail -f " frontend-log) logs-width c/yellow c/yellow)))
+        (println (format-section-line "BE" (str "tail -f " backend-log) logs-width c/yellow c/yellow))
+        (println)
+        (println (c/bold "Connectivity:"))
+        (println (format-section-line "nREPL" (str nrepl-port) conn-width c/green c/green))
+        (when db-shell
+          (println (format-section-line "DB" db-shell conn-width c/green c/green)))
+        (println))
 
       ;; Launch backend (output to log file)
       (let [log-file (java.io.File. backend-log)
@@ -375,9 +409,9 @@
              (cleanup!)
              (System/exit 0))))
 
-        (println)
-        (println (c/cyan "Press Ctrl+C to stop."))
-        (println)
+        (print (c/bold (format (str (c/green "Starting Metabase server (" (c/red "http://localhost:%s") (c/green "), waiting for healthy status"))) backend-port)))
+        (print ".......")
+        (flush)
         ;; Poll health endpoint in background
         (future (wait-for-backend! backend-port))
         ;; Wait for backend process to exit
