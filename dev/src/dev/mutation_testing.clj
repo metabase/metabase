@@ -72,10 +72,11 @@
    - :name        — project name (required)
    - :description — short project description, ≤255 chars (optional)
    - :content     — long-form project content as markdown (optional)
+   - :status-id   — project status ID (optional)
 
    Returns a map with :project-id.
    Also updates config with the new project-id."
-  [{:keys [name description content]}]
+  [{:keys [name description content status-id]}]
   (let [query "mutation($input: ProjectCreateInput!) {
                      projectCreate(input: $input) {
                        success
@@ -85,7 +86,8 @@
         variables {:input (cond-> {:name name
                                    :teamIds [(team-id)]}
                             description (assoc :description description)
-                            content (assoc :content content))}
+                            content (assoc :content content)
+                            status-id (assoc :statusId status-id))}
         result (graphql-request query variables)
         project (get-in result [:data :projectCreate :project])]
     (set-config! {:project-id (:id project)})
@@ -241,16 +243,21 @@
 
    Options:
    - :target-ns         — the namespace under test
-   - :fn-name           — the function name
+   - :fn-name           — the function name (used for PR title)
+   - :fn-names          — seq of function name strings (used in PR body)
    - :linear-identifier — Linear issue identifier (e.g., \"QUE-1234\")
+   - :mutations-before  — number of surviving mutations before this PR
+   - :tests-added       — number of new tests being added
    - :killed            — seq of mutation description strings
-   - :not-killed        — seq of {:description ... :rationale ...} maps"
+   - :not-killed        — seq of {:description ... :rationale ...} maps
+   - :suggested-changes — seq of short description strings"
   [{:keys [target-ns fn-name] :as opts}]
   (let [title (pr-title target-ns fn-name)
         body (pr-description opts)
         result (sh "gh" "pr" "create" "--draft"
                    "--title" title
-                   "--body" body)]
+                   "--body" body
+                   "--label" "no-backport")]
     (clojure.string/trim (:out result))))
 
 (defn add-pr-comment!
@@ -386,12 +393,14 @@
 (defn create-project-for-namespace!
   "Create a Linear project for mutation testing a specific namespace.
    Reads statistics from the baseline report file.
+   Sets status to 'In Progress'.
    Returns the project map and sets :project-id in config."
   [target-ns report-path]
   (let [stats (report-stats report-path)]
     (create-project! {:name (project-name target-ns)
                       :description (project-description target-ns stats)
-                      :content (project-content target-ns stats)})))
+                      :content (project-content target-ns stats)
+                      :status-id "29777ad8-950c-4c88-8e18-89a87dfc880f"})))
 
 (defn create-issue-for-function!
   "Create a Linear issue for mutation testing a specific function.
