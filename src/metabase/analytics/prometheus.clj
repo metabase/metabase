@@ -235,6 +235,10 @@
   [(prometheus/gauge :metabase-info/build
                      {:description "An info metric used to attach build info like version, which is high cardinality."
                       :labels [:tag :hash :date :version :major-version]})
+   (prometheus/gauge :metabase-startup/jvm-to-complete-millis
+                     {:description "Duration in milliseconds from JVM start to Metabase initialization complete."})
+   (prometheus/gauge :metabase-startup/init-duration-millis
+                     {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
@@ -352,6 +356,9 @@
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/counter :metabase-search/semantic-error-fallback
+                       {:description "Number of times semantic search failed with an error and fell back to another engine"
                         :labels [:fallback-engine]})
    (prometheus/histogram :metabase-search/semantic-results-before-fallback
                          {:description "Distribution of result counts from semantic search when fallback is triggered"

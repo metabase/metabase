@@ -3,6 +3,7 @@ import { useContext } from "react";
 
 import { skipToken } from "metabase/api";
 import * as Urls from "metabase/lib/urls";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
@@ -10,6 +11,7 @@ import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import { DependencyGraph } from "../../components/DependencyGraph";
 import { isSameNode } from "../../utils";
 
+import S from "./DependencyGraphPage.module.css";
 import { parseDependencyEntry } from "./utils";
 
 export type DependencyGraphPageQuery = {
@@ -45,6 +47,7 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
         getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
         withEntryPicker={withEntryPicker}
       />
+      <AppSwitcher className={S.ProfileLink} />
     </Stack>
   );
 }

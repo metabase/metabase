@@ -1,5 +1,7 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
+  setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
@@ -8,11 +10,15 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+<<<<<<< HEAD
 import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
 import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
 import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
+=======
+import { reinitialize } from "metabase/plugins";
+>>>>>>> master
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -35,6 +41,8 @@ const DEFAULT_TOKEN_FEATURES = createMockTokenFeatures({
   remote_sync: true,
   advanced_permissions: true,
   transforms: true,
+  data_studio: true,
+  dependencies: true,
 });
 
 interface RemoteSyncSettings {
@@ -151,32 +159,26 @@ const createStoreState = ({
 };
 
 // ============================================================================
-// Plugin Initialization
-// ============================================================================
-
-const initializePlugins = () => {
-  initializeRemoteSyncPlugin();
-  initializeFeatureLevelPermissionsPlugin();
-  initializeTransformsPlugin();
-  initializeDependenciesPlugin();
-};
-
-// ============================================================================
 // Render Helper
 // ============================================================================
 
 const renderDataStudioLayout = (storeOptions: StoreStateOptions = {}) => {
+  // Create store state first - this calls mockSettings() which sets up MetabaseSettings
+  const storeInitialState = createStoreState(storeOptions);
+
+  // Reinitialize plugins to default state, then setup enterprise plugins
+  reinitialize();
+  setupEnterprisePlugins();
+
   renderWithProviders(
     <DataStudioLayout>
       <div data-testid="content">{"Content"}</div>
     </DataStudioLayout>,
     {
-      storeInitialState: createStoreState(storeOptions),
+      storeInitialState,
       withRouter: false,
     },
   );
-
-  initializePlugins();
 };
 
 // ============================================================================
@@ -233,6 +235,7 @@ export const setup = ({
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
   setupDirtyEndpoints({ dirty, collections, hasWorkspacesFeature });
   setupNavbarEndpoints(isNavbarOpened);
+  setupLibraryEndpoints(false);
 
   renderDataStudioLayout({
     isAdmin,

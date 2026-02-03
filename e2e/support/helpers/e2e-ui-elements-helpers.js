@@ -74,6 +74,7 @@ export function entityPickerModalLevel(level) {
  * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
+<<<<<<< HEAD
   return entityPickerModalLevel(level).findByText(name).parents("a");
 }
 
@@ -102,6 +103,16 @@ export function tabsShouldBe(selected, tabs) {
       entityPickerModalTab(tab).should("exist");
     }
   });
+=======
+  return (
+    entityPickerModalLevel(level)
+      // in the recents and search results, the items look like: [collection name] [parent collection name]
+      // which makes matching difficult as you may inadvertently match the parent collection name
+      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
+      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
+      .parents("a")
+  );
+>>>>>>> master
 }
 
 export function collectionOnTheGoModal() {
@@ -325,6 +336,8 @@ export const moveDnDKitListElement = (
   { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
 ) => {
   const selector = new RegExp(dataTestId);
+  const getElement = () =>
+    cy.findAllByTestId(selector).should("have.length.gt", 1).eq(startIndex);
 
   const getCenter = ($el) => {
     const { x, y, width, height } = $el.getBoundingClientRect();
@@ -338,9 +351,7 @@ export const moveDnDKitListElement = (
     const dragPoint = getCenter(dragEl);
     const dropPoint = getCenter(dropEl);
 
-    cy.wrap(dragEl).as("dragElement");
-
-    moveDnDKitElementByAlias("@dragElement", {
+    moveDnDKitElementByGetter(getElement, {
       vertical: dropPoint.clientY - dragPoint.clientY,
       horizontal: dropPoint.clientX - dragPoint.clientX,
       onBeforeDragEnd,
@@ -357,29 +368,45 @@ export const moveDnDKitListElement = (
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
-export const moveDnDKitElementByAlias = (
-  alias,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
-) => {
+export const moveDnDKitElementByAlias = (alias, options) => {
   // This function queries alias before triggering every event to avoid running into "element was removed from the DOM"
   // error caused by node remounting https://on.cypress.io/element-has-detached-from-dom
-  cy.get(alias)
+  const getElement = () => cy.get(alias);
+  return moveDnDKitElementByGetter(getElement, options);
+};
+
+/**
+ * Moves a dnd-kit draggable element by a specified offset using a function that returns the element.
+ *
+ * @param {() => Cypress.Chainable} getElement - A function that returns the element to drag
+ * @param {Object} options
+ * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
+ * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
+ */
+const moveDnDKitElementByGetter = (
+  getElement,
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
+) => {
+  getElement()
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200);
+
   // This initial move needs to be greater than the activation constraint
   // of the pointer sensor
-  cy.get(alias)
+  getElement()
     .trigger("pointermove", 20, 20, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200);
-  cy.get(alias)
+
+  getElement()
     .trigger("pointermove", horizontal, vertical, {
       force: true,
       isPrimary: true,
@@ -670,4 +697,36 @@ export function ensureParameterColumnValue({ columnName, columnValue }) {
       cy.wrap(cell).should("have.text", columnValue);
     });
   });
+}
+
+export function getProfileLink() {
+  return cy.findByTestId("app-switcher-target");
+}
+
+export const mainAppLinkText = "Main app";
+export const dataStudioAppLinkText = "Data studio";
+export const adminAppLinkText = "Admin";
+
+export function goToMainApp() {
+  getProfileLink().click();
+  popover().findByText(mainAppLinkText).click();
+}
+
+export function goToAdmin() {
+  getProfileLink().click();
+  popover().findByText(adminAppLinkText).click();
+}
+
+export function goToDataStudio() {
+  getProfileLink().click();
+  popover().findByText(dataStudioAppLinkText).click();
+}
+
+export function goToProfile() {
+  getProfileLink().click();
+  popover().findByTestId("mode-switcher-profile-link").click();
+}
+
+export function getHelpSubmenu() {
+  return cy.findByTestId("help-submenu");
 }

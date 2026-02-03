@@ -13,5 +13,6 @@ export function DependencyDiagnosticsSectionLayout({
   children,
 }: DependencyDiagnosticsSectionLayoutProps) {
   usePageTitle(t`Dependency diagnostics`);
+
   return <SectionLayout>{children}</SectionLayout>;
 }

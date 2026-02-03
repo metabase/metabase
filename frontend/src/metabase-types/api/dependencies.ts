@@ -71,11 +71,16 @@ export type TableDependencyNodeData = Pick<
   | "db"
   | "fields"
   | "transform"
+<<<<<<< HEAD
 > & { table_id?: TableId };
+=======
+  | "owner"
+>;
+>>>>>>> master
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "created_at"
+  "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
 
 export type WorkspaceTransformDependencyNodeData = Pick<
@@ -272,7 +277,6 @@ export type ListNodeDependentsRequest = {
   dependent_types?: DependencyType[];
   dependent_card_types?: CardType[];
   query?: string;
-  broken?: boolean;
   include_personal_collections?: boolean;
   archived?: boolean;
   sort_column?: DependencySortColumn;
@@ -307,7 +311,7 @@ export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
 
-export type ListBrokenGraphNodesRequest = PaginationRequest & {
+export type ListBreakingGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
@@ -316,8 +320,18 @@ export type ListBrokenGraphNodesRequest = PaginationRequest & {
   sort_direction?: DependencySortDirection;
 };
 
-export type ListBrokenGraphNodesResponse = PaginationResponse & {
+export type ListBreakingGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type ListBrokenGraphNodesRequest = {
+  id: DependencyId;
+  type: DependencyType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
@@ -331,4 +345,11 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type DependencyListUserParams = {
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };

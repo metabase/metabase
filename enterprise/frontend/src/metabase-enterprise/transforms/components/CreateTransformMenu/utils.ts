@@ -1,14 +1,14 @@
-import type { QuestionPickerItem } from "metabase/common/components/Pickers/QuestionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { Database } from "metabase-types/api";
 
 import { doesDatabaseSupportTransforms } from "../../utils";
 
 export function shouldDisableItem(
-  item: QuestionPickerItem,
+  item: OmniPickerItem,
   databases?: Database[],
 ) {
   if (
-    // Disable questions based on unsuppported databases
+    // Disable questions based on unsupported databases
     item.model === "card" ||
     item.model === "dataset" ||
     item.model === "metric"
@@ -16,7 +16,10 @@ export function shouldDisableItem(
     const database = databases?.find(
       (database) => database.id === item.database_id,
     );
-    return !doesDatabaseSupportTransforms(database);
+    return (
+      database?.transforms_permissions !== "write" ||
+      !doesDatabaseSupportTransforms(database)
+    );
   }
 
   if (item.model === "dashboard") {

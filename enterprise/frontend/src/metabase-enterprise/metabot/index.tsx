@@ -1,29 +1,29 @@
-import { IndexRoute, Route } from "react-router";
-import { t } from "ttag";
+import { Route } from "react-router";
 
+<<<<<<< HEAD
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
+=======
+>>>>>>> master
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
-import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
+import { getAdminRoutes as getAdminUpsellRoutes } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
-import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
-import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
+import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
-import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
+import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
-
 /**
  * This is for Metabot in embedding
  *
@@ -43,6 +43,7 @@ PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
  */
 export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
+<<<<<<< HEAD
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
     PLUGIN_METABOT.MetabotChat = MetabotChat;
@@ -112,6 +113,32 @@ export function initializePlugin() {
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
+=======
+    Object.assign(PLUGIN_METABOT, {
+      // helpers
+      isEnabled: () => true,
+      getNewMenuItemAIExploration,
+      getMetabotVisible,
+      // routes
+      getAdminRoutes,
+      getMetabotRoutes: getMetabotQuickLinks,
+      getMetabotQueryBuilderRoute: () => (
+        <Route path="ask" component={MetabotQueryBuilder} />
+      ),
+      // components
+      Metabot,
+      MetabotAppBarButton,
+      MetabotDataStudioButton,
+      MetabotDataStudioSidebar,
+      MetabotThinkingStyles,
+      // hooks
+      useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,
+      useLazyMetabotGenerateContentQuery,
+    });
+  } else if (hasPremiumFeature("hosting")) {
+    Object.assign(PLUGIN_METABOT, {
+      getAdminRoutes: getAdminUpsellRoutes,
+    });
+>>>>>>> master
   }
-  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
 }

@@ -18,8 +18,13 @@
   python-transform?
   query-transform?
   transform-source-database
+<<<<<<< HEAD
   transform-source-type
   transform-type]
+=======
+  transform-type
+  has-db-transforms-permission?]
+>>>>>>> master
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!]
  [metabase-enterprise.transforms.models.transform

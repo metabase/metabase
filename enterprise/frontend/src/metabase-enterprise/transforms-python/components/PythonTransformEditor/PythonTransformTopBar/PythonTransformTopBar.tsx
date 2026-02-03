@@ -19,7 +19,12 @@ import S from "./PythonTransformTopBar.module.css";
 type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
   isEditMode?: boolean;
+<<<<<<< HEAD
   transform?: Transform;
+=======
+  readOnly?: boolean;
+  transformId?: TransformId;
+>>>>>>> master
   onDatabaseChange?: (databaseId: DatabaseId) => void;
   canChangeDatabase?: boolean;
 };
@@ -27,12 +32,22 @@ type PythonTransformTopBarProps = {
 export function PythonTransformTopBar({
   databaseId,
   isEditMode,
+<<<<<<< HEAD
   transform,
+=======
+  readOnly,
+  transformId,
+>>>>>>> master
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+<<<<<<< HEAD
   const showEditButton = !isEditMode && transform && !isRemoteSyncReadOnly;
+=======
+  const showEditDefinitionButton =
+    !isEditMode && transformId && !isRemoteSyncReadOnly && !readOnly;
+>>>>>>> master
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,

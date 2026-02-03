@@ -23,7 +23,7 @@ const setupEnterprise = async (
 ) => {
   return setupSdkDashboard({
     ...options,
-    enterprisePlugins: ["sdk_subscriptions", "embedding"],
+    enterprisePlugins: ["sdk_notifications", "embedding"],
     component: EditableDashboard,
   });
 };

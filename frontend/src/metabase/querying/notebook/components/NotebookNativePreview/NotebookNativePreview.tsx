@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
+import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
@@ -34,6 +34,7 @@ type NotebookNativePreviewProps = {
   title?: string;
   buttonTitle?: string;
   onConvertClick: (newQuestion: Question) => void;
+  readOnly?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -41,6 +42,7 @@ export const NotebookNativePreview = ({
   title,
   buttonTitle,
   onConvertClick,
+  readOnly,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
@@ -111,16 +113,18 @@ export const NotebookNativePreview = ({
         )}
         {showQuery && newQuery != null && <Editor query={newQuery} readOnly />}
       </Flex>
-      <Box ta="end" p="1.5rem">
-        <Button
-          variant="subtle"
-          p={0}
-          onClick={handleConvertClick}
-          disabled={!showQuery}
-        >
-          {buttonTitle ?? BUTTON_TITLE[engineType]}
-        </Button>
-      </Box>
+      {!readOnly && (
+        <Box ta="end" p="1.5rem">
+          <Button
+            variant="subtle"
+            p={0}
+            onClick={handleConvertClick}
+            disabled={!showQuery}
+          >
+            {buttonTitle ?? BUTTON_TITLE[engineType]}
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -177,6 +177,7 @@ export function QueryEditor({
             convertToNativeTitle={uiOptions?.convertToNativeTitle}
             convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
+            readOnly={uiOptions?.readOnly}
           />
         )}
       </Flex>

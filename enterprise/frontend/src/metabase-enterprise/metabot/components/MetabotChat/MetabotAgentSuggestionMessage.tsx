@@ -86,7 +86,9 @@ const useGetOldTransform = ({
 }: MetabotAgentEditSuggestionChatMessage["payload"]) => {
   const [trigger, result] = useLazyGetTransformQuery();
   useMount(() => {
-    !editorTransform && suggestedTransform.id && trigger(suggestedTransform.id);
+    if (!editorTransform && suggestedTransform.id) {
+      trigger(suggestedTransform.id);
+    }
   });
 
   if (editorTransform) {

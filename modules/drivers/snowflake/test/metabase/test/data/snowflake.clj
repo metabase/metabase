@@ -33,6 +33,8 @@
                               :type/Decimal        "DECIMAL"
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
+                              ;; :type/Number is used by tx/id-field-type for Snowflake PKs
+                              :type/Number         "NUMBER"
                               :type/Text           "TEXT"
                               ;; 3 = millisecond precision. Default is allegedly 9 (nanosecond precision) according to
                               ;; https://docs.snowflake.com/en/sql-reference/data-types-datetime#time, but it seems like
@@ -424,3 +426,91 @@
        (into [] (map (juxt :database_name :created)))))
 
 (defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")
+
+;;; ------------------------------------------------ Fake Sync Support ------------------------------------------------
+
+;; Enable fake sync for Snowflake on feature branches.
+;; Fake sync skips network calls to the database for metadata sync, which saves significant CI time.
+;; On master/release branches, use real sync to catch any sync regressions.
+(defmethod driver/database-supports? [:snowflake :test/use-fake-sync]
+  [_driver _feature _database]
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :snowflake
+  [_driver]
+  "PUBLIC")
+
+(defmethod tx/fake-sync-table-name :snowflake
+  [_driver _database-name table-name]
+  ;; Snowflake uses separate databases per dataset, so table names are NOT prefixed
+  ;; with the database name. Unlike Redshift (which uses test_data_venues), Snowflake
+  ;; tables are just "venues" within the sha_xxx_test_data database.
+  table-name)
+
+(defmethod tx/fake-sync-database-type :snowflake
+  [_driver base-type]
+  ;; Return the database_type as Snowflake's query processor expects it.
+  ;; The QP uses lowercase types without precision (e.g., "time" not "TIME(3)").
+  ;; Snowflake normalizes types: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
+  ;;
+  ;; For timezone columns: DDL uses TIMESTAMP_TZ, but DB reports as TIMESTAMPTZ
+  (case base-type
+    :type/Text                   "VARCHAR"
+    :type/Float                  "DOUBLE"
+    :type/Integer                "NUMBER"
+    :type/BigInteger             "NUMBER"
+    :type/Number                 "NUMBER"
+    :type/Boolean                "BOOLEAN"
+    :type/Date                   "date"
+    :type/DateTime               "timestampntz"
+    :type/DateTimeWithTZ         "timestamptz"   ; DDL: TIMESTAMP_TZ, reported as: TIMESTAMPTZ
+    :type/DateTimeWithLocalTZ    "timestamptz"
+    :type/DateTimeWithZoneID     "timestamptz"
+    :type/DateTimeWithZoneOffset "timestamptz"
+    :type/Time                   "time"
+    :type/TimeWithLocalTZ        "time"
+    :type/TimeWithZoneOffset     "time"
+    ;; For other types, use the creation type
+    (sql.tx/field-base-type->sql-type :snowflake base-type)))
+
+(defmethod tx/fake-sync-base-type :snowflake
+  [_driver base-type]
+  ;; Snowflake normalizes some types. Real sync maps them to specific base_types,
+  ;; so fake-sync must match what sync would produce:
+  ;; - INTEGER/BIGINT -> NUMBER -> :type/Number
+  ;; - TimeWithLocalTZ/TimeWithZoneOffset -> TIME -> :type/Time (Snowflake only has one TIME type)
+  ;; - DateTimeWithTZ/DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
+  ;;   (Note: :type/DateTimeWithTZ -> TIMESTAMP_TZ -> sync as TIMESTAMPTZ -> :type/DateTimeWithLocalTZ)
+  (case base-type
+    :type/Integer                :type/Number
+    :type/BigInteger             :type/Number
+    :type/TimeWithLocalTZ        :type/Time
+    :type/TimeWithZoneOffset     :type/Time
+    :type/DateTimeWithTZ         :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneID     :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneOffset :type/DateTimeWithLocalTZ
+    ;; Other types are unchanged
+    base-type))
+
+(defmethod tx/fake-sync-native-base-type :snowflake
+  [_driver native-type]
+  ;; Map native Snowflake type strings to their base_type.
+  ;; These must match what sql-jdbc.sync/database-type->base-type returns for Snowflake.
+  ;; See metabase.driver.snowflake for the full mapping.
+  (case (some-> native-type u/upper-case-en)
+    ;; Timestamp types
+    "TIMESTAMPTZ"  :type/DateTimeWithLocalTZ
+    "TIMESTAMPLTZ" :type/DateTimeWithTZ
+    "TIMESTAMPNTZ" :type/DateTime
+    "TIMESTAMP"    :type/DateTime
+    ;; Other common types
+    "VARCHAR"      :type/Text
+    "TEXT"         :type/Text
+    "NUMBER"       :type/Number
+    "FLOAT"        :type/Float
+    "DOUBLE"       :type/Float
+    "BOOLEAN"      :type/Boolean
+    "DATE"         :type/Date
+    "TIME"         :type/Time
+    ;; Default: unknown types get :type/*
+    :type/*))

@@ -95,6 +95,7 @@ export type QuestionEmbedOptions = StrictUnion<
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withAlerts?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
   isSaveEnabled?: boolean;
@@ -181,6 +182,7 @@ export type SdkIframeEmbedBaseSettings = {
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
+  jwtProviderUri?: string;
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */

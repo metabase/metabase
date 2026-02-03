@@ -81,9 +81,8 @@ describe("user > settings", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success");
 
-    cy.findByLabelText("gear icon").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign out").click();
+    H.getProfileLink().click();
+    H.popover().findByText("Sign out").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
@@ -131,8 +130,8 @@ describe("user > settings", () => {
     // Assert that the page reloaded with the new language
     cy.findByLabelText("Nama depan").should("exist");
 
-    // We need some UI element other than a string
-    cy.icon("gear").should("exist");
+    // We need some UI element other than a string, and cannot get by labels as they could be translated
+    H.getProfileLink().should("exist");
   });
 
   it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
@@ -146,7 +145,7 @@ describe("user > settings", () => {
             cy.request("PUT", `/api/user/${user.id}`, { locale });
             cy.visit("/");
             cy.wait("@getUser");
-            cy.icon("gear").should("exist");
+            H.getProfileLink().should("exist");
           });
         },
       );
@@ -166,7 +165,7 @@ describe("user > settings", () => {
     // should be redirected to new question page
     cy.wait("@getUser");
     H.miniPicker().findByText("Parcourir tout").click();
-    H.entityPickerModal().findByText("Orders Model").click();
+    H.pickEntity({ path: ["Nos analyses", "Orders Model"] });
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
       .should("not.exist");
@@ -302,8 +301,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
@@ -323,8 +322,7 @@ describe("user > settings", () => {
           });
       });
 
-      H.appBar().findByLabelText("Settings").click();
-      H.popover().findByText("Account settings").click();
+      H.goToProfile();
       cy.findByDisplayValue("Light").click();
       H.popover().findByText("Dark").click();
 
@@ -335,8 +333,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(

@@ -4,7 +4,8 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useListDatabasesQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
+import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -15,19 +16,28 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+<<<<<<< HEAD
 import { Box, Group } from "metabase/ui";
+=======
+import { Box, Center, Icon } from "metabase/ui";
+>>>>>>> master
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+<<<<<<< HEAD
 import type {
   Database,
   DatasetQuery,
   DraftTransformSource,
   Transform,
 } from "metabase-types/api";
+=======
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
+import type { Database, Transform } from "metabase-types/api";
+>>>>>>> master
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import {
@@ -57,11 +67,8 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     isLoading: isLoadingTransform,
     error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const {
-    data: databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useListDatabasesQuery({ include_analytics: true });
+  const { readOnly, transformsDatabases, isLoadingDatabases, databasesError } =
+    useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -69,15 +76,16 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (transform == null || databases == null) {
+  if (transform == null || transformsDatabases == null) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
   return (
     <TransformQueryPageBody
       transform={transform}
-      databases={databases.data}
+      databases={transformsDatabases}
       route={route}
+      readOnly={readOnly}
     />
   );
 }
@@ -86,12 +94,14 @@ type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
   route: RouteProps;
+  readOnly?: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
   route,
+  readOnly,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -111,7 +121,8 @@ function TransformQueryPageBody({
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !!route.path?.includes("/edit");
+  const isEditMode = !readOnly && !!route.path?.includes("/edit");
+
   useRegisterMetabotTransformContext(transform, source);
 
   const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
@@ -186,6 +197,7 @@ function TransformQueryPageBody({
         <TransformHeader
           transform={transform}
           actions={
+<<<<<<< HEAD
             <Group gap="sm">
               <TransformPaneHeaderActions
                 source={source}
@@ -198,9 +210,22 @@ function TransformQueryPageBody({
                 isEditMode={isEditMode}
               />
             </Group>
+=======
+            <TransformPaneHeaderActions
+              source={source}
+              isSaving={isSaving}
+              isDirty={isDirty}
+              handleSave={handleSave}
+              handleCancel={handleCancel}
+              transformId={transform.id}
+              isEditMode={isEditMode}
+              readOnly={readOnly}
+            />
+>>>>>>> master
           }
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
+          readOnly={readOnly}
         />
         <Box
           w="100%"
@@ -212,12 +237,20 @@ function TransformQueryPageBody({
             overflow: "hidden",
           }}
         >
-          {source.type === "python" ? (
+          {!transform.source_readable ? (
+            <Center h="100%">
+              <EmptyState
+                title={t`Sorry, you don't have permission to view this transform.`}
+                illustrationElement={<Icon name="key" size={100} />}
+              />
+            </Center>
+          ) : source.type === "python" ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
+              readOnly={readOnly}
               isEditMode={isEditMode}
               transform={transform}
               onChangeSource={setSourceAndRejectProposed}
@@ -231,8 +264,12 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
+<<<<<<< HEAD
               // todo: @uladzimirdev probably not the proper fix
               uiOptions={{ resizable: isEditMode }}
+=======
+              readOnly={readOnly}
+>>>>>>> master
               isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}

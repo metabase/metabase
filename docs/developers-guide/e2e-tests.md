@@ -138,6 +138,8 @@ Please note that some users experienced Mongo connection timeouts even with this
 
 ### Running tests that depend on Docker images
 
+Due to the requirement to use privileged ports for some tests in hosted environments, it is not possible to utilize **podman** or the **rootless Docker**. Stick to the classic Docker, or use OrbStack.
+
 A large portion of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. See `e2e/test/scenarios/docker-compose.yml` for up to date information. The default cypress command will spin up all necessary Docker containers for the tests to function properly. You can manually set up the e2e environment without them but be aware that you will run into test failures.
 
 ### Running tests with Snowplow involved

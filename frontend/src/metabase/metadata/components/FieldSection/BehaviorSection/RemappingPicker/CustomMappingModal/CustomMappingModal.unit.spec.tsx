@@ -101,7 +101,7 @@ describe("CustomMappingModal", () => {
     expect(input).toHaveValue("New One");
     expect(onChange).not.toHaveBeenCalled();
 
-    userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(

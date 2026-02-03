@@ -1821,6 +1821,7 @@
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
 
+<<<<<<< HEAD
 (define-migration BackfillTransformTargetDbId
   ;; Backfills the target_db_id column for existing transform records.
   ;;
@@ -1842,6 +1843,16 @@
                            (get target-map "database"))]
         (when (and db-id (existing-db-ids db-id))
           (t2/update! :transform id {:target_db_id db-id}))))))
+=======
+(define-migration SetTransformSourceDatabaseId
+  (doseq [transform (t2/select [:transform :id :source])]
+    (let [parsed-source (-> transform :source json/decode+kw)
+          db-id       (case (keyword (:type parsed-source))
+                        :query (get-in parsed-source [:query :database])
+                        :python (parsed-source :source-database)
+                        nil)]
+      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+>>>>>>> master
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))

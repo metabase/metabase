@@ -1,5 +1,4 @@
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("issue #68378", () => {
   beforeEach(() => {
@@ -7,14 +6,14 @@ describe("issue #68378", () => {
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
   });
 
-  it("should show empty schema's when picking a target schema (metabase#68378)", () => {
+  it("should show empty schemas when picking a target schema (metabase#68378)", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
-    H.NativeEditor.type("SELECT 42", { allowFastSet: true });
+    H.popover().findByText("Writable Postgres12").click();
+    H.NativeEditor.type("SELECT 42", { allowFastSet: true }).blur();
 
     cy.log("Save with empty_schema as target schema");
     getQueryEditor().button("Save").click();

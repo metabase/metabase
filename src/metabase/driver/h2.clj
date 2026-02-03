@@ -682,6 +682,7 @@
   [_]
   "PUBLIC")
 
+<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -744,3 +745,7 @@
                      ^String (format "GRANT SELECT ON \"%s\".\"%s\" TO \"%s\""
                                      (:schema table) (:name table) username)))
         (.executeBatch ^Statement stmt)))))
+=======
+(defmethod driver/llm-sql-dialect-resource :h2 [_]
+  "llm/prompts/dialects/h2.md")
+>>>>>>> master

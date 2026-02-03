@@ -7,6 +7,13 @@
   [transform]
   (-> transform :target :database))
 
+<<<<<<< HEAD
+=======
+(defmethod transforms.i/source-db-id :python
+  [transform]
+  (-> transform :source :source-database))
+
+>>>>>>> master
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :python
   [transform options]

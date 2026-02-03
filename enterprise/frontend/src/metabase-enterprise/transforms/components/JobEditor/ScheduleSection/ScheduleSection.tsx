@@ -20,6 +20,7 @@ import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
+  readOnly?: boolean;
   onScheduleChange: (
     schedule: string,
     uiDisplayType: ScheduleDisplayType,
@@ -28,6 +29,7 @@ type ScheduleSectionProps = {
 
 export function ScheduleSection({
   job,
+  readOnly,
   onScheduleChange,
 }: ScheduleSectionProps) {
   return (
@@ -36,7 +38,9 @@ export function ScheduleSection({
       description={t`Configure when this job should run.`}
     >
       <Box px="xl" py="lg">
-        <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
+        <Box display="contents" component="fieldset" disabled={readOnly}>
+          <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
+        </Box>
       </Box>
       <Divider />
       <Group px="xl" py="md" justify="space-between">
@@ -44,7 +48,7 @@ export function ScheduleSection({
           run={job?.last_run ?? null}
           neverRunMessage={t`This job hasn’t been run before.`}
         />
-        <RunButtonSection job={job} />
+        <RunButtonSection job={job} readOnly={readOnly} />
       </Group>
     </TitleSection>
   );
@@ -110,13 +114,23 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
 
 type RunButtonSectionProps = {
   job: TransformJobInfo;
+  readOnly?: boolean;
 };
 
-function RunButtonSection({ job }: RunButtonSectionProps) {
+function RunButtonSection({ job, readOnly }: RunButtonSectionProps) {
   const [runJob] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
+
+  const tooltipLabel = (() => {
+    if (!hasTags) {
+      return t`This job doesn't have tags to run.`;
+    }
+    if (readOnly) {
+      return t`Sorry, you don't have permission to run one or more of this job's transforms.`;
+    }
+  })();
 
   const handleRun = async () => {
     if (job.id == null) {
@@ -133,11 +147,11 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   };
 
   return (
-    <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
+    <Tooltip label={tooltipLabel} disabled={!tooltipLabel}>
       <RunButton
         id={job.id}
         run={job.last_run}
-        isDisabled={!isSaved || !hasTags}
+        isDisabled={!isSaved || !hasTags || readOnly}
         onRun={handleRun}
       />
     </Tooltip>

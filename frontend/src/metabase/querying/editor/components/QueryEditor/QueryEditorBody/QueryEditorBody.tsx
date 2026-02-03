@@ -3,8 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
-import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useSetting } from "metabase/common/hooks";
 import {
@@ -56,9 +55,7 @@ type QueryEditorBodyProps = {
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
+  shouldDisableItem?: (item: OmniPickerItem | RecentCollectionItem) => boolean;
   shouldShowLibrary?: boolean;
   onBlur?: () => void;
   onChange: (newQuestion: Question) => void;

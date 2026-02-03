@@ -21,7 +21,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
    (java.sql
@@ -62,10 +63,30 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
+(defn- remove-duplicate-fields
+  "Redshift views can have duplicate column names, but when these columns appear in a query
+   they produce an ambiguous column error. To avoid this remove all duplicate columns"
+  [fields]
+  (let [field-key      (fn [f] (perf/select-keys f [:table-schema :table-name :name]))
+        key-counts     (frequencies (map field-key fields))
+        duplicate-keys (into #{} (keep (fn [[k cnt]] (when (> cnt 1) k)) key-counts))]
+    (doseq [{:keys [table-schema table-name name]} duplicate-keys]
+      (log/warnf "Duplicate column '%s' in %s.%s - skipping all occurrences"
+                 name table-schema table-name))
+    (remove #(contains? duplicate-keys (field-key %)) fields)))
+
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
-  [driver database & args]
-  (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+  [_driver _db & _args]
+  (fn [rf]
+    (let [fields (volatile! (transient []))]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [filtered (remove-duplicate-fields (persistent! @fields))]
+           (rf (reduce rf result filtered))))
+        ([result field]
+         (vswap! fields conj! field)
+         result)))))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
 (defmethod driver/dynamic-database-types-lookup :redshift
@@ -676,6 +697,7 @@
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
 
+<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -732,3 +754,7 @@
           (.addBatch ^Statement stmt
                      ^String (format "DROP USER IF EXISTS \"%s\"" username))
           (.executeBatch ^Statement stmt))))))
+=======
+(defmethod driver/llm-sql-dialect-resource :redshift [_]
+  "llm/prompts/dialects/redshift.md")
+>>>>>>> master

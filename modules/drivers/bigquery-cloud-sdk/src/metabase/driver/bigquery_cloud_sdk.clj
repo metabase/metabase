@@ -804,6 +804,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
+                              :create-or-replace-table          true
                               :database-routing                 true
                               :datetime-diff                    true
                               :describe-fields                  true
@@ -1091,6 +1092,7 @@
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
 
+<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Workspace Isolation                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1502,3 +1504,7 @@
       {:success true}
       (finally
         (.close iam-client)))))
+=======
+(defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
+  "llm/prompts/dialects/bigquery.md")
+>>>>>>> master

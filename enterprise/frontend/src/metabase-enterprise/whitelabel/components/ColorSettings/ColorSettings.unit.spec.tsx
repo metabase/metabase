@@ -24,7 +24,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
@@ -48,7 +48,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
@@ -69,7 +69,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
@@ -88,7 +88,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
