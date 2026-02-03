@@ -81,7 +81,7 @@ export const useTransformValidation = ({
         .test(async (value, context) => {
           if (!value) {
             return context.createError({
-              message: "Target table name is required",
+              message: t`Target table name is required`,
             });
           }
 
