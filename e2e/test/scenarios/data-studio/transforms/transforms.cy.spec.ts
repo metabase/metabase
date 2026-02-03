@@ -3670,7 +3670,7 @@ describe(
         },
       );
 
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
 
       H.DataStudio.Transforms.pythonResults()
         .findByText("Done")

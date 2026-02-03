@@ -765,6 +765,7 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByText("2 fields").should("be.visible");
         cy.findByText("Name").should("be.visible");
         cy.findByText("Score").should("be.visible");
+        cy.findByLabelText("Close").click();
       });
 
       H.DependencyGraph.graph().findByLabelText("SQL transform").click();
@@ -1026,7 +1027,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       H.entityPickerModal().within(() => {
-        cy.findByText("Schema a").click();
+        cy.findByText("Schema A").click();
         cy.findByText("Animals").click();
       });
 
@@ -2006,7 +2007,7 @@ describe("scenarios > data studio > workspaces", () => {
             .click();
         });
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
         Workspaces.getWorkspaceContent().within(() => {
