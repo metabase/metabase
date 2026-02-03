@@ -1219,10 +1219,10 @@
               ;; Grant only manage-table-metadata permission for this table
               (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
               (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
-                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))))))
-        (testing "sync called?"
-          (is (true?
-               (deref sync-called? timeout :sync-never-called))))))))
+                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+                (testing "sync called?"
+                  (is (true?
+                       (deref sync-called? timeout :sync-never-called))))))))))))
 
 (deftest sync-schema-mirror-database-test
   (testing "POST /api/table/:id/sync_schema"
