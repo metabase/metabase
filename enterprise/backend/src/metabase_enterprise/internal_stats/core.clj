@@ -21,4 +21,5 @@
                                                       (setting/get-value-of-type :boolean :saml-enabled))))
    :enabled-embedding-simple      (boolean  (and  (setting/get-value-of-type :boolean :enable-embedding-simple)
                                                   (or (setting/get-value-of-type :boolean :jwt-enabled)
-                                                      (setting/get-value-of-type :boolean :saml-enabled))))})
+                                                      (setting/get-value-of-type :boolean :saml-enabled))))
+   :use-tenants                   (boolean (setting/get-value-of-type :boolean :use-tenants))})
