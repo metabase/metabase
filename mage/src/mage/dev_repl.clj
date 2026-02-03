@@ -84,7 +84,7 @@
 
 (defn- db-shell-command
   "Return a shell command to connect to the DB, or nil if unavailable."
-  [db-type db-info h2-path]
+  [db-type db-info h2-path h2-tcp-port]
   (case db-type
     :postgres (when-let [name (:name db-info)]
                 (format "docker exec -it %s psql -U metabase -d metabase" name))
@@ -92,8 +92,8 @@
              (format "docker exec -it %s mysql -uroot metabase_test" name))
     :mariadb (when-let [name (:name db-info)]
                (format "docker exec -it %s mariadb -uroot metabase_test" name))
-    :h2 (when h2-path
-          (format "MB_DB_FILE=%s clojure -X:dev:h2" h2-path))
+    :h2 (when (and h2-path h2-tcp-port)
+          (format "clojure -M:dev:connect-to-h2-tcp --port %s --db-file %s" h2-tcp-port h2-path))
     nil))
 
 (defn- label-width
@@ -347,6 +347,8 @@
 
         h2-path    (when (= db-type :h2)
                      (h2-db-base-path worktree-id))
+        h2-tcp-port (when (= db-type :h2)
+                      (find-free-port))
         _          (when h2-path
                      (ensure-h2-dir! h2-path))
         _          (when (and h2-path fresh?)
@@ -362,12 +364,13 @@
         backend-log (str "/tmp/metabase-backend-" backend-port ".log")]
 
     (let [nrepl-port (find-free-port)
-          cmd ["clojure" (str "-M" aliases) "-p" (str nrepl-port)]]
+          cmd (cond-> ["clojure" (str "-M" aliases) "-p" (str nrepl-port)]
+                h2-tcp-port (conj "--h2-tcp-port" (str h2-tcp-port)))]
       ;; Show config
       (let [info-width (label-width ["Edition" "Token" "Config" "Database" "Aliases"])
             logs-width (label-width ["FE" "BE"])
             conn-width (label-width ["nREPL" "DB"])
-            db-shell   (db-shell-command db-type db-info h2-path)]
+            db-shell   (db-shell-command db-type db-info h2-path h2-tcp-port)]
         (println)
         (println (c/bold "Starting Metabase Dev REPL (Press Ctrl-C to Stop):"))
         (println (format-section-line "Edition" (name edition) info-width c/cyan nil))
@@ -410,7 +413,7 @@
              (System/exit 0))))
 
         (print (c/bold (format (str (c/green "Starting Metabase server (" (c/red "http://localhost:%s") (c/green "), waiting for healthy status"))) backend-port)))
-        (print ".......")
+        (print "...")
         (flush)
         ;; Poll health endpoint in background
         (future (wait-for-backend! backend-port))

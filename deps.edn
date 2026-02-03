@@ -827,6 +827,12 @@
    :exec-fn     dev.h2/shell
    :jvm-opts    ["-Dfile.encoding=UTF-8"]}
 
+  ;; connect to an H2 TCP listener:
+  ;; clojure -M:connect-to-h2-tcp --port 9092 --db-file /path/to/metabase
+  :connect-to-h2-tcp
+  {:extra-paths ["dev/src"]
+   :main-opts   ["-m" "dev.h2"]}
+
   :generate-automagic-dashboards-pot
   {:main-opts ["-m" "metabase.xrays.automagic-dashboards.dashboard-templates"]}
 
