@@ -134,7 +134,17 @@
 ;;     :name         "orders"
 ;;     :display-name "Orders"
 ;;     :type         :table
-;;     :card-id      2}
+;;     :table-id     2
+;;     :table-name   nil
+;;     :table-schema nil
+;;     :field-id     5
+;;     :start        1
+;;     :stop         6}
+;;
+;; Notes:
+;;   Must have either a table id or a table name.  If you have both, the table id is preferred.
+;;   :start is inclusive, while :stop is exclusive.
+;;     If you are filtering on an integer field, {:start 1, :stop 5} accepts [1 2 3 4]
 (mr/def ::source-table
   [:and
    [:merge
