@@ -24,7 +24,7 @@ You can get a license by signing up for a free trial of the [Pro or Enterprise e
 
 ### Download the Enterprise edition
 
-- **Download Enterprise Edition**. You can download the latest Docker image or jar file from [Metabase releases](https://github.com/metabase/metabase/releases). Use the point version with the latest tag. We recommmend using Docker in production.
+- **Download Enterprise Edition**. You can download the latest Docker image or jar file from [Metabase releases](https://github.com/metabase/metabase/releases). Find the release with the latest badge. Download that specific point version. For example, `metabase/metabase-enterprise:v1.XX.X.x`. We recommend using Docker in production.
 - **Set up your application database**. You'll also need to set up a dedicated [application database](../installation-and-operation/configuring-application-database.md) to store your Metabase data.
 
 ### Activate your license
