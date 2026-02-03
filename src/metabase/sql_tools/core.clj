@@ -34,3 +34,17 @@
   "Validate native query."
   [driver native-query]
   (validate-query-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+
+;; TODO: Workspaces will be merged into master soon. They use `macaw/replace-names`.
+;; when that happens we should move their usage behind this API. Later we should
+;; implement the Sqlglot's version.
+(defmulti replace-names-impl
+  "Parser specific implementation of [[replace-names]]. Do not use directly."
+  {:arglists '([parser driver query replacements])}
+  #'parser-dispatch)
+
+(defn replace-names
+  "Replace names in a query."
+  [_driver _query _replacements]
+  (throw (java.lang.UnsupportedOperationException. "Not implemented."))
+  #_(replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver query))
