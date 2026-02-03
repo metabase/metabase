@@ -327,6 +327,7 @@ export const tokenFeatures = [
   "sso_jwt",
   "sso_ldap",
   "sso_saml",
+  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",
@@ -747,6 +748,8 @@ export interface EnterpriseSettings extends Settings {
   "llm-anthropic-model": string;
   "metabot-slack-bot-token"?: string | null;
   "metabot-slack-signing-secret"?: string | null;
+  "slack-connect-client-id"?: string | null;
+  "slack-connect-client-secret"?: string | null;
   /**
    * @deprecated
    */

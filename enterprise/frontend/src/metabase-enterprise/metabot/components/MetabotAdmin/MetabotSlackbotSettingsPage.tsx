@@ -9,7 +9,11 @@ import {
   ButtonLink,
   ExternalLink,
 } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import {
+  useDocsUrl,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import {
   Form,
   FormProvider,
@@ -24,6 +28,8 @@ import { MetabotNavPane } from "./MetabotNavPane";
 interface SlackbotFormValues {
   botToken: string;
   signingSecret: string;
+  clientId: string;
+  clientSecret: string;
 }
 
 export function MetabotSlackbotAdminPage() {
@@ -31,12 +37,18 @@ export function MetabotSlackbotAdminPage() {
   const { url: encryptionDocsUrl, showMetabaseLinks } = useDocsUrl(
     "operations-guide/encrypting-database-details-at-rest",
   );
+  const ssoSlackEnabled = useHasTokenFeature("sso_slack");
 
   const { value: botToken, updateSetting: updateBotToken } = useAdminSetting(
     "metabot-slack-bot-token",
   );
   const { value: signingSecret, updateSetting: updateSigningSecret } =
     useAdminSetting("metabot-slack-signing-secret");
+  const { value: clientId, updateSetting: updateClientId } = useAdminSetting(
+    "slack-connect-client-id",
+  );
+  const { value: clientSecret, updateSetting: updateClientSecret } =
+    useAdminSetting("slack-connect-client-secret");
 
   const { data: manifest } = useGetSlackbotManifestQuery();
 
@@ -62,9 +74,27 @@ export function MetabotSlackbotAdminPage() {
     const result2 = await updateSigningSecret({
       key: "metabot-slack-signing-secret",
       value: values.signingSecret,
+      toast: false,
     });
     if (result2.error) {
       throw result2.error;
+    }
+
+    const result3 = await updateClientId({
+      key: "slack-connect-client-id",
+      value: values.clientId,
+      toast: false,
+    });
+    if (result3.error) {
+      throw result3.error;
+    }
+
+    const result4 = await updateClientSecret({
+      key: "slack-connect-client-secret",
+      value: values.clientSecret,
+    });
+    if (result4.error) {
+      throw result4.error;
     }
   };
 
@@ -82,9 +112,13 @@ export function MetabotSlackbotAdminPage() {
               )}
             </Text>
 
+            <Text>
+              {t`1. SSO Slack enabled: ${String(ssoSlackEnabled)} (You might have to hack this until cloud updates our dev token to have it)`}
+            </Text>
+
             <Stack gap="sm">
               <Flex gap="sm">
-                <Text>{t`1. Create Slack app`}</Text>
+                <Text>{t`2. Create Slack app`}</Text>
                 <ButtonLink href={`https://api.slack.com${link}`}>
                   {t`Create Slack App`}
                 </ButtonLink>
@@ -93,14 +127,18 @@ export function MetabotSlackbotAdminPage() {
             </Stack>
 
             <Stack gap="sm">
-              <Flex gap="sm">
-                <Text>{t`2. Give us Slack info (viewing saved values is borked at the moment)`}</Text>
-              </Flex>
+              <Text>
+                {t`3. Give us Slack info`}
+                <br />
+                {t`⚠️ VIEWING SAVED VALUES IS BORKED AT THE MOMENT - they should set correctly though`}
+              </Text>
 
               <FormProvider<SlackbotFormValues>
                 initialValues={{
                   botToken: botToken ?? "",
                   signingSecret: signingSecret ?? "",
+                  clientId: clientId ?? "",
+                  clientSecret: clientSecret ?? "",
                 }}
                 onSubmit={handleSubmit}
                 enableReinitialize
@@ -108,16 +146,28 @@ export function MetabotSlackbotAdminPage() {
                 <Form>
                   <Stack gap="sm">
                     <FormTextInput
-                      name="botToken"
-                      label={t`Bot User OAuth Token`}
-                      description={t`Found in your Slack app settings under OAuth & Permissions. Starts with "xoxb-".`}
-                      placeholder="xoxb-..."
+                      name="clientId"
+                      label={t`Client ID`}
+                      description={t`Found in your Slack app settings under Basic Information.`}
+                      placeholder="123456789012.123456789012"
+                    />
+                    <FormTextInput
+                      name="clientSecret"
+                      label={t`Client Secret`}
+                      description={t`Found in your Slack app settings under Basic Information.`}
+                      placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                     />
                     <FormTextInput
                       name="signingSecret"
                       label={t`Signing Secret`}
-                      description={t`Found in your Slack app settings under Basic Information. Used to verify requests from Slack.`}
+                      description={t`Found in your Slack app settings under Basic Information.`}
                       placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    />
+                    <FormTextInput
+                      name="botToken"
+                      label={t`Bot User OAuth Token`}
+                      description={t`Found in your Slack app settings under OAuth & Permissions.`}
+                      placeholder="xoxb-..."
                     />
                     <Flex justify="flex-end" mt="md">
                       <FormSubmitButton label={t`Save`} variant="filled" />

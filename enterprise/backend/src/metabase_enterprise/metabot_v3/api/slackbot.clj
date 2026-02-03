@@ -237,7 +237,7 @@
                                   "description" "Issue a Metabot command"
                                   "should_escape" false}]}
 
-   "oauth_config" {"redirect_urls" [(str base-url "/api/ee/metabot-v3/slack/oauth_redirect")]
+   "oauth_config" {"redirect_urls" [(str base-url "/auth/sso")]
                    "scopes" {"bot" ["channels:history"
                                     "chat:write"
                                     "commands"
@@ -303,8 +303,7 @@
 
 (def ^:private slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
-  ;; TODO(appleby 2026-01-22) real URL
-  (str (system/site-url) "/account/metabot-slackbot"))
+  (str (system/site-url) "/auth/login?redirect=/auth/sso?preferred_method=slack-connect"))
 
 (defn- event->reply-context
   "Extract the necessary context for a reply from the given `event`"
