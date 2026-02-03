@@ -32,6 +32,7 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
           DASHBOARD_ACTION.EDIT_DASHBOARD,
           DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
           DASHBOARD_ACTION.DOWNLOAD_PDF,
+          DASHBOARD_ACTION.REFRESH_INDICATOR,
         ];
 
   const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] = ({

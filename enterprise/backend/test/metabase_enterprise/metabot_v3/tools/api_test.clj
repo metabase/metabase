@@ -198,7 +198,7 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+        (let [filters [{:field_id "c2-7", :operation "greater-than", :value 50}
                        {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2-5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
@@ -235,7 +235,7 @@
                        :type :metric}]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
         (let [fid #(format "c%d-%d" metric-id %)
-              filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
+              filters [{:field_id (fid 0), :operation "greater-than", :value 50} ; ID
                        {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
                        {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
                        {:field_id (fid 7), :operation "month-equals", :values [4 5 9]}  ; Created At
@@ -308,7 +308,7 @@
                                            :result-columns []}})]
         (let [fields [{:field_id "c2-8", :bucket "year-of-era"}
                       {:field_id "c2-9"}]
-              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+              filters [{:field_id "c2-7", :operation "greater-than", :value 50}
                        {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2-5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
@@ -350,7 +350,7 @@
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
         (let [fields []
-              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}]
+              filters [{:field_id "c2-7", :operation "greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1

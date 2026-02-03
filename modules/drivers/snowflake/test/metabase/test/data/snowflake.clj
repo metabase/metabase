@@ -16,7 +16,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.sql PreparedStatement ResultSet)))
+   (java.sql PreparedStatement ResultSet)
+   (java.time Instant)
+   (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,9 +61,7 @@
     :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
     :use-password false
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
-    ;; this lowercasing this value is part of testing the fix for
-    ;; https://github.com/metabase/metabase/issues/9511
-    :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
+    :warehouse           (tx/db-test-env-var-or-throw :snowflake :warehouse)
     ;;
     ;; SESSION parameters
     ;;
@@ -111,21 +111,48 @@
                 and created < dateadd(day, ?, current_timestamp()))"]
     (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago days-ago]))))
 
-(defn- delete-old-datasets!
-  "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
+(defn- old-isolation-schema-names
+  "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
+   along with their database names."
+  []
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? false}
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)
+                 rs (.executeQuery stmt "SHOW SCHEMAS LIKE 'mb__isolation_%' IN ACCOUNT")]
+       (let [three-hours-ago (-> (Instant/now)
+                                 (.minus 3 ChronoUnit/HOURS)
+                                 java.util.Date/from)]
+         (loop [results []]
+           (if (.next rs)
+             (let [schema-name (.getString rs "name")
+                   db-name (.getString rs "database_name")
+                   created-on (.getTimestamp rs "created_on")]
+               (if (and created-on (.before created-on three-hours-ago))
+                 (recur (conj results {:schema-name schema-name :database-name db-name}))
+                 (recur results)))
+             results)))))))
+
+(defn- delete-old-test-data!
+  "Delete old test data:
+   - Datasets (databases) prefixed by sha_ that are two days ago or older
+   - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old"
   []
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Cam
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "[Snowflake] deleting old datasets...")
-  (when-let [old-datasets (not-empty (old-dataset-names))]
-    (sql-jdbc.execute/do-with-connection-with-options
-     :snowflake
-     (no-db-connection-spec)
-     {:write? true}
-     (fn [^java.sql.Connection conn]
-       (with-open [stmt (.createStatement conn)]
+  (println "[Snowflake] deleting old test data...")
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       ;; Delete old datasets
+       (when-let [old-datasets (not-empty (old-dataset-names))]
          (doseq [dataset-name old-datasets]
            #_{:clj-kondo/ignore [:discouraged-var]}
            (println "[Snowflake] Deleting old dataset:" dataset-name)
@@ -139,16 +166,27 @@
              ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
              (catch Throwable e
                #_{:clj-kondo/ignore [:discouraged-var]}
-               (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))))))
+               (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))
+       ;; Delete old isolation schemas
+       (when-let [old-schemas (not-empty (old-isolation-schema-names))]
+         (doseq [{:keys [schema-name database-name]} old-schemas]
+           #_{:clj-kondo/ignore [:discouraged-var]}
+           (println "[Snowflake] Deleting old isolation schema:" database-name "." schema-name)
+           (try
+             (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\".\"%s\";"
+                                    database-name schema-name))
+             (catch Throwable e
+               #_{:clj-kondo/ignore [:discouraged-var]}
+               (println "[Snowflake] Error deleting old isolation schema:" (ex-message e))))))))))
 
-(defonce ^:private deleted-old-datasets?
+(defonce ^:private deleted-old-test-data?
   (atom false))
 
-(defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]], only if we haven't done so already."
+(defn- delete-old-test-data-if-needed!
+  "Call [[delete-old-test-data!]], only if we haven't done so already."
   []
-  (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)))
+  (when (compare-and-set! deleted-old-test-data? false true)
+    (delete-old-test-data!)))
 
 (defn- set-current-user-timezone!
   [timezone]
@@ -164,8 +202,8 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old datasets that should be deleted
-    (delete-old-datasets-if-needed!)
+    ;; clean up any old test data (datasets and isolation schemas)
+    (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.

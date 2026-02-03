@@ -23,7 +23,10 @@ import type {
 import type { State } from "metabase-types/store";
 
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<Record<string, never>>;
+  FixSqlQueryButton: ComponentType<{
+    rawSql?: string | null;
+    errorMessage?: string | null;
+  }>;
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -61,6 +64,9 @@ type PluginMetabotType = {
   isEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
+    config?: PluginMetabotConfig;
+  }) => React.ReactElement | null;
+  MetabotChat: (props: {
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
@@ -126,6 +132,8 @@ const getDefaultMetabotContextValue = (): MetabotContext => ({
   promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
+  suggestionActions: null,
+  setSuggestionActions: () => {},
 });
 
 const defaultMetabotContextValue: MetabotContext =
@@ -134,6 +142,8 @@ const defaultMetabotContextValue: MetabotContext =
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
   isEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
+    null as React.ReactElement | null,
+  MetabotChat: (_props: { config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),

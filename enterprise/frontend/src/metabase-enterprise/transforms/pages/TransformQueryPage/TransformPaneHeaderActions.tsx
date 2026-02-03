@@ -8,7 +8,7 @@ import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selecto
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { DraftTransformSource, TransformId } from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 type Props = {
   handleCancel: VoidFunction;
@@ -18,7 +18,7 @@ type Props = {
   isSaving: boolean;
   readOnly?: boolean;
   source: DraftTransformSource;
-  transformId: TransformId;
+  transform: Transform;
 };
 
 export const TransformPaneHeaderActions = (props: Props) => {
@@ -29,8 +29,8 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
+    transform,
     readOnly,
-    transformId,
   } = props;
   const metadata = useSelector(getMetadata);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -60,7 +60,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     !isEditMode &&
     !isRemoteSyncReadOnly
   ) {
-    return <EditDefinitionButton transformId={transformId} />;
+    return <EditDefinitionButton transformId={transform.id} />;
   }
 
   if (!isEditMode && isNative) {

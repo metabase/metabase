@@ -95,7 +95,7 @@ export function SdkPortalErrorWrapper({ children }: PropsWithChildren) {
 
 const FORCE_DARK_TEXT_COLOR = {
   // The Alert component has a light background, we need to force a dark text
-  // color. The sdk aliases text-dark to the primary color, which in dark themes
+  // color. The sdk aliases text-primary to the primary color, which in dark themes
   // is a light color, making the text un-readable
   "--mb-color-text-primary": color("text-primary"),
   "--mb-color-text-secondary": color("text-secondary"),

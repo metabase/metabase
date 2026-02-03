@@ -16,7 +16,7 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";
-import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
+import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { canAccessSettings } from "metabase/selectors/user";
@@ -28,7 +28,6 @@ import type {
   ChannelSpec,
   Dashboard,
   DashboardSubscription,
-  Pulse,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
@@ -57,7 +56,7 @@ interface AddEditEmailSidebarProps {
   ) => void;
   testPulse: () => void;
   toggleSkipIfEmpty: () => void;
-  setPulse: (pulse: Pulse) => void;
+  setPulse: (pulse: DashboardSubscription) => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
 }

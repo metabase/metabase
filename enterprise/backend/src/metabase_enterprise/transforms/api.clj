@@ -203,7 +203,8 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
   (get-transforms query-params))
 
 (defn- extract-all-columns-from-query
@@ -283,6 +284,35 @@
                                            checkpoint-filter
                                            (pr-str (:base_type column)))))))))))
 
+(defn create-transform!
+  "Create new transform in the appdb.
+   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+  ([body]
+   (create-transform! body nil))
+  ([body creator-id]
+   (let [creator-id (or creator-id api/*current-user-id*)
+         transform  (t2/with-transaction [_]
+                      (let [tag-ids       (:tag_ids body)
+                            ;; Set owner_user_id to current user if not explicitly provided
+                            owner-user-id (when-not (:owner_email body)
+                                            (or (:owner_user_id body) creator-id))
+                            transform     (t2/insert-returning-instance!
+                                           :model/Transform
+                                           (assoc (select-keys body [:name :description :source :target :run_trigger
+                                                                     :collection_id :owner_email])
+                                                  :creator_id creator-id
+                                                  :owner_user_id owner-user-id))]
+                        ;; Add tag associations if provided
+                        (when (seq tag-ids)
+                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                        ;; Return with hydrated tag_ids
+                        (t2/hydrate transform :transform_tag_ids :creator :owner)))]
+     (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
+     transform)))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
 (api.macros/defendpoint :post "/" :- TransformResponse
   "Create a new transform."
   [_route-params
@@ -305,25 +335,9 @@
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-  (let [transform (t2/with-transaction [_]
-                    (let [tag-ids (:tag_ids body)
-                          ;; Set owner_user_id to current user if not explicitly provided
-                          owner-user-id (when-not (:owner_email body)
-                                          (or (:owner_user_id body) api/*current-user-id*))
-                          transform (t2/insert-returning-instance!
-                                     :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id :owner_email])
-                                            :creator_id api/*current-user-id*
-                                            :owner_user_id owner-user-id))]
-                      ;; Add tag associations if provided
-                      (when (seq tag-ids)
-                        (transform.model/update-transform-tags! (:id transform) tag-ids))
-                      ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator :owner)))]
-    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    (-> transform
-        python-source-table-ref->table-id
-        transforms.util/add-source-readable)))
+  (-> (create-transform! body)
+      python-source-table-ref->table-id
+      transforms.util/add-source-readable))
 
 (defn get-transform
   "Get a specific transform."
@@ -356,6 +370,34 @@
          (mapv python-source-table-ref->table-id)
          transforms.util/add-source-readable)))
 
+(def ^:private MergeHistoryEntry
+  [:map
+   [:id ms/PositiveInt]
+   [:workspace_merge_id ms/PositiveInt]
+   [:commit_message :string]
+   [:workspace_id [:maybe ms/PositiveInt]]
+   [:workspace_name :string]
+   [:merging_user_id ms/PositiveInt]
+   [:created_at :any]])
+
+(api.macros/defendpoint :get "/:id/merge-history"
+  :- [:sequential MergeHistoryEntry]
+  "Get merge history for a transform. Returns all merge events that affected this transform,
+   ordered by created_at descending (newest first)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Transform id))
+  (t2/select [:model/WorkspaceMergeTransform
+              :id
+              :workspace_merge_id
+              :commit_message
+              :workspace_id
+              :workspace_name
+              :merging_user_id
+              :created_at]
+             {:where    [:= :transform_id id]
+              :order-by [[:created_at :desc]]}))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
@@ -382,22 +424,10 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
-(api.macros/defendpoint :put "/:id" :- TransformResponse
-  "Update a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
-            [:owner_email {:optional true} [:maybe :string]]]]
-  (api/write-check :model/Transform id)
+(defn update-transform!
+  "Update a transform. Validates features, database support, cycles, and target conflicts.
+   Returns the updated transform with hydrated associations."
+  [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -427,16 +457,38 @@
         python-source-table-ref->table-id
         transforms.util/add-source-readable)))
 
+(api.macros/defendpoint :put "/:id" :- TransformResponse
+  "Update a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
+            [:run_trigger {:optional true} ::run-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
+  (api/write-check :model/Transform id)
+  (update-transform! id body))
+
+(defn delete-transform!
+  "Delete a transform and publish the delete event."
+  [transform]
+  (t2/delete! :model/Transform (:id transform))
+  (events/publish-event! :event/transform-delete
+                         {:object transform
+                          :user-id api/*current-user-id*})
+  nil)
+
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [transform (api/write-check :model/Transform id)]
-    (t2/delete! :model/Transform id)
-    (events/publish-event! :event/transform-delete
-                           {:object transform
-                            :user-id api/*current-user-id*}))
-  nil)
+  (delete-transform! (api/write-check :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."
@@ -457,17 +509,12 @@
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 
-(api.macros/defendpoint :post "/:id/run" :- [:map
-                                             [:status [:= 202]]
-                                             [:body [:map {:closed true}
-                                                     [:message :any]
-                                                     [:run_id [:maybe pos-int?]]]]]
-  "Run a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [transform (api/write-check :model/Transform id)
-        _         (check-feature-enabled! transform)
-        start-promise (promise)]
+(defn run-transform!
+  "Run a transform. Returns a 202 response with run_id.
+   The transform must already be fetched and validated."
+  [transform]
+  (check-feature-enabled! transform)
+  (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
                                              :run-method :manual
@@ -481,7 +528,16 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
+(api.macros/defendpoint :post "/:id/run" :- [:map
+                                             [:status [:= 202]]
+                                             [:body [:map {:closed true}
+                                                     [:message :any]
+                                                     [:run_id [:maybe pos-int?]]]]]
+  "Run a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (run-transform! (api/write-check :model/Transform id)))
+
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]
@@ -489,6 +545,7 @@
     ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
     ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
     ;;         adding at least default :non-resserved-words.
+    ;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
     (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
       (cond
         (not (instance? PlainSelect parsed))

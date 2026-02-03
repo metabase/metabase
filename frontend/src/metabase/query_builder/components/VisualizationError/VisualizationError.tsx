@@ -46,6 +46,7 @@ export function VisualizationError({
   const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
+  const rawSql = isNative ? Lib.rawNativeQuery(query) : null;
 
   if (typeof error === "object" && error.status != null) {
     // Assume if the request took more than 15 seconds it was due to a timeout
@@ -113,7 +114,7 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = String(error);
+    let processedError = typeof error === "string" ? error : error.data;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
     if (typeof origSql === "string") {
       processedError = adjustPositions(error, origSql);
@@ -143,7 +144,12 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            {!isResultDirty && <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton />}
+            {!isResultDirty && (
+              <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton
+                rawSql={rawSql}
+                errorMessage={processedError}
+              />
+            )}
           </Flex>
         </Flex>
       </Box>
