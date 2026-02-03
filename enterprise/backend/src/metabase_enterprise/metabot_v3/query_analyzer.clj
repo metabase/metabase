@@ -9,8 +9,7 @@
    [metabase-enterprise.metabot-v3.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.sql-tools.sqlglot.core :as sqlglot]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -111,21 +110,16 @@
                           [:= :t.db_id db-id]
                           (into [:or] (map table-query tables))]}))))
 
-(defn- tables-via-sqlglot
+(defn- tables-via-sql-tools
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
+  ;; TODO (lbrdnk 2026-02-03): all code that may be providing mode (upper layers)
+  ;; should be investigated and refactored.
   [driver query & {:keys [_mode] :or {_mode :compound-select}}]
-  ;; We use sql-parsing directly (rather than sql-tools) because we need to do custom
-  ;; table matching via table-refs-for-query that handles Metabase parameter substitution
-  ;; and case-insensitive matching. sql-tools expects a metadata-provider-enabled query.
-  (let [db-id      (:database query)
-        dialect    (sqlglot/driver->dialect driver)
-        sql-string (:query (nqa.sub/replace-tags query))
-        ;; sql-parsing/referenced-tables returns [[schema table] ...]
-        ;; Convert to [{:schema ... :table ...} ...] for table-refs-for-query
-        table-tuples (sql-parsing/referenced-tables dialect sql-string)
-        tables (mapv (fn [[schema table]] {:schema schema :table table}) table-tuples)]
+  (let [db-id (:database query)
+        sql-str (:query (nqa.sub/replace-tags query))
+        tables (sql-tools/referenced-tables-raw driver sql-str)]
     {:tables (table-refs-for-query tables db-id)}))
 
 ;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
@@ -147,7 +141,7 @@
   [driver query opts]
   (if (or (:all-drivers-trusted? opts)
           (driver.u/trusted-for-table-permissions? driver))
-    (tables-via-sqlglot driver query opts)
+    (tables-via-sql-tools driver query opts)
     {:error :query-analysis.error/driver-not-supported}))
 
 (defn tables-for-native
