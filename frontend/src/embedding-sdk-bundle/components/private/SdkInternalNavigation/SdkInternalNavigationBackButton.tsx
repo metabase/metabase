@@ -10,8 +10,10 @@ import { useSdkInternalNavigationOptional } from "./context";
  */
 export const SdkInternalNavigationBackButton = ({
   style,
+  className,
 }: {
   style?: React.CSSProperties;
+  className?: string;
 }) => {
   const navigation = useSdkInternalNavigationOptional();
 
@@ -21,7 +23,6 @@ export const SdkInternalNavigationBackButton = ({
 
   const { previousEntry, pop } = navigation;
 
-  // Get the name from the previous entry (placeholder entries don't have names)
   const previousName =
     previousEntry && "name" in previousEntry ? previousEntry.name : undefined;
 
@@ -36,6 +37,7 @@ export const SdkInternalNavigationBackButton = ({
       onClick={pop}
       pl={0}
       style={style}
+      className={className}
       aria-label={label}
     >
       {label}

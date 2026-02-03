@@ -29,7 +29,6 @@ import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
  */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
-// Inner component that uses the navigation context
 export const InteractiveDashboardContent = (
   props: InteractiveDashboardProps,
 ) => {
@@ -54,8 +53,6 @@ export const InteractiveDashboardContent = (
     () => ({
       ...props,
       getClickActionMode,
-      // Don't pass navigateToNewCardFromDashboard - dashboard uses its own local state
-      // via useCommonDashboardParams (which also pushes to navigation for back button)
       dashboardActions: [
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
@@ -75,7 +72,6 @@ export const InteractiveDashboardContent = (
   return <SdkDashboard {...dashboardProps} />;
 };
 
-// Outer component that provides the navigation context
 const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   return (
     <SdkInternalNavigationProvider

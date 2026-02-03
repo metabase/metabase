@@ -178,14 +178,13 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
-  // Wrap navigateToNewCard to use virtual entry pattern (like dashboards)
-  // This keeps the question mounted while drill results are shown
+  // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
   const navigateToNewCardWithSdkInternalNavigation = useCallback(
     async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
-      // Use internal navigation (keeps question mounted, updates state internally)
+      // This actually changes what gets rendered
       await navigateToNewCard?.(params);
-      // Only push virtual entry if last entry is NOT already a question drill
-      // (prevents stacking multiple entries on consecutive drills from the same question)
+
+      // Push virtual entry if last entry is NOT already a question drill
       const currentEntry = navigation?.stack.at(-1);
       if (currentEntry?.type !== "virtual-question-drill") {
         navigation?.push({
@@ -211,9 +210,9 @@ export const SdkQuestionProvider = ({
     updateQuestion,
     updateParameterValues,
     navigateToNewCard:
-      userNavigateToNewCard === undefined
-        ? navigateToNewCardWithSdkInternalNavigation
-        : userNavigateToNewCard,
+      userNavigateToNewCard !== undefined
+        ? navigateToNewCard
+        : navigateToNewCardWithSdkInternalNavigation,
     plugins,
     question,
     originalQuestion,
@@ -240,8 +239,8 @@ export const SdkQuestionProvider = ({
     loadAndQueryQuestion();
   }, [loadAndQueryQuestion, tokenError]);
 
-  // Push question to navigation stack once loaded (similar to dashboard init)
-  // Only if stack is empty (i.e., this is the root question, not navigated to)
+  // Push the question name to the stack if the stack is empty (ie: this is the root question)
+  // We need to wait for the question to load to have the name
   useEffect(() => {
     if (
       question &&
@@ -255,7 +254,6 @@ export const SdkQuestionProvider = ({
         name: question.displayName() || t`Question`,
       });
     }
-    // Only run when question is first loaded
   }, [questionId, question, navigation]);
 
   const dispatch = useSdkDispatch();

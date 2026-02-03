@@ -247,9 +247,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByLabelText("Back to Orders in a dashboard").click();
           cy.findByText("Orders in a dashboard").should("be.visible");
-          cy.findByLabelText("Back to Orders in a dashboard").should(
-            "not.exist",
-          );
+          cy.findByText("Back to Orders in a dashboard").should("not.exist");
         });
       });
 
@@ -264,9 +262,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByLabelText("Back to Orders in a dashboard").click();
           cy.findByText("Orders in a dashboard").should("be.visible");
-          cy.findByLabelText("Back to Orders in a dashboard").should(
-            "not.exist",
-          );
+          cy.findByText("Back to Orders in a dashboard").should("not.exist");
         });
       });
     });

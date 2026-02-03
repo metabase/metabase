@@ -304,9 +304,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.button("Visualize").click();
 
           cy.log("test going back to the dashboard from the visualization");
-          cy.findByLabelText(`Back to ${DASHBOARD_NAME}`)
-            .should("be.visible")
-            .click();
+          cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
 
           cy.log("create a new question again");
           cy.button("New Question").should("be.visible").click();
@@ -397,7 +395,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.log(
             "go back to the dashboard should still land us in the edit mode with the dirty state saved",
           );
-          cy.findByLabelText(`Back to ${DASHBOARD_WITH_TABS_NAME}`).click();
+          cy.button(`Back to ${DASHBOARD_WITH_TABS_NAME}`).click();
           H.getDashboardCard()
             .findByText(ADDED_QUESTION_NAME)
             .should("be.visible");

@@ -79,7 +79,7 @@ describe("SdkDashboard", () => {
 
     expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Back to Test dashboard"));
+    await userEvent.click(screen.getByText("Back to previous results"));
 
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 

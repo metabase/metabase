@@ -36,11 +36,6 @@ type Props = {
   className?: string;
 };
 
-/**
- * Inner component that contains all hooks. This is rendered only when not nested.
- * Separating this from the outer component fixes the React hooks rules violation
- * where hooks were being called conditionally based on the nesting check.
- */
 const SdkInternalNavigationProviderInner = ({
   style,
   className,
@@ -58,7 +53,7 @@ const SdkInternalNavigationProviderInner = ({
   const pop = useCallback(() => {
     setStack((prev) => {
       const poppedEntry = prev.at(-1);
-      // Call onPop for placeholder entries (types starting with "virtual-")
+      // Call onPop for placeholder entries that require special logic
       if (poppedEntry && "onPop" in poppedEntry && poppedEntry.onPop) {
         poppedEntry.onPop();
       }
@@ -66,7 +61,7 @@ const SdkInternalNavigationProviderInner = ({
     });
   }, []);
 
-  // Initialize the stack with a dashboard entry (called by dashboard components)
+  // Initialize the stack with a dashboard entry (called by dashboard components when the dashboard loads and we have the name)
   const initWithDashboard = useCallback(
     (dashboard: { id: SdkDashboardId; name: string }) => {
       if (stack.length === 0) {
@@ -78,11 +73,9 @@ const SdkInternalNavigationProviderInner = ({
     [stack.length],
   );
 
-  // Navigate to a new card (used for drilling from questions)
   const navigateToNewCard = useCallback(
     async (params: NavigateToNewCardParams) => {
       const { nextCard } = params;
-      // Generate URL for the ad-hoc question
       const currentEntry = stack.at(-1);
 
       // If we're already on a placeholder adhoc question, just update its path instead of pushing
@@ -187,7 +180,8 @@ const SdkInternalNavigationProviderInner = ({
 /**
  * Outer component that handles the nesting check.
  * If already inside a navigation provider, just render children directly.
- * This pattern ensures hooks are always called consistently (not conditionally).
+ * This allows us to just wrap components with this and this will make sure to not
+ * re-render the actual context provider.
  */
 export const SdkInternalNavigationProvider = (props: Props) => {
   const isNested = useContext(SdkInternalNavigationContext);

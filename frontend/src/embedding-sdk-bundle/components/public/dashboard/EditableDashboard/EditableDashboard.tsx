@@ -26,7 +26,6 @@ import { editableDashboardSchema } from "./EditableDashboard.schema";
 export type EditableDashboardProps = SdkDashboardProps &
   EditableDashboardOwnProps;
 
-// Inner component that uses the navigation context
 const EditableDashboardContent = (props: EditableDashboardProps) => {
   const { push: pushNavigation } = useSdkInternalNavigation();
 
@@ -67,7 +66,6 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
   );
 };
 
-// Outer component that provides the navigation context
 export const EditableDashboardInner = (props: EditableDashboardProps) => {
   return (
     <SdkInternalNavigationProvider
