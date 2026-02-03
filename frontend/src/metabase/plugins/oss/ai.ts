@@ -110,22 +110,6 @@ type PluginMetabotType = {
   };
 };
 
-<<<<<<< HEAD
-const getDefaultMetabotContextValue = (): MetabotContext => ({
-  prompt: "",
-  setPrompt: () => {},
-  promptInputRef: undefined,
-  getChatContext: () => ({}) as any,
-  registerChatContextProvider: () => () => {},
-  suggestionActions: null,
-  setSuggestionActions: () => {},
-});
-
-const defaultMetabotContextValue: MetabotContext =
-  getDefaultMetabotContextValue();
-
-=======
->>>>>>> master
 const getDefaultPluginAiSqlFixer = (): PluginAiSqlFixer => ({
   FixSqlQueryButton: PluginPlaceholder,
 });
@@ -148,6 +132,8 @@ const getDefaultMetabotContextValue = (): MetabotContext => ({
   promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
+  suggestionActions: null,
+  setSuggestionActions: () => {},
 });
 
 const defaultMetabotContextValue: MetabotContext =
