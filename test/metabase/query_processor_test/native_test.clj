@@ -158,4 +158,3 @@
                     [_idx with-default-val without-default-val] (first (mt/rows results))]
                 (testing "MBQL: case with and without default should produce the same result for matching rows"
                   (is (= without-default-val with-default-val original-without-default-val)))))))))))
-
