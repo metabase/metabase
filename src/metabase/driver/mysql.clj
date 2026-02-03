@@ -143,6 +143,21 @@
   [conn :- (lib.schema.common/instance-of-class Connection)]
   (= (connection-flavor conn) "MariaDB"))
 
+(defn- singlestore-connection?
+  "Returns true if the database is SingleStore by checking for memsql_version variable."
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (try
+       (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'memsql_version';")
+             rset (.executeQuery stmt)]
+         (.next rset))
+       (catch Exception _
+         false)))))
+
 (defn- partial-revokes-enabled?
   [driver db]
   (sql-jdbc.execute/do-with-connection-with-options
@@ -165,6 +180,7 @@
   [driver _feat db]
   (and (= driver :mysql)
        (mysql? db)
+       (not (singlestore-connection? driver db))
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
@@ -225,7 +241,8 @@
   [_driver conn-spec & {:as _options}]
   ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
   ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (some-> conn-spec :connection mariadb-connection?)
+  (when-not (or (some-> conn-spec :connection mariadb-connection?)
+                (some-> conn-spec :connection singlestore-connection?))
     (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn-spec sql {:as-arrays? true})))
           db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
           table-names (map first (sql->tuples "SHOW TABLES"))]
