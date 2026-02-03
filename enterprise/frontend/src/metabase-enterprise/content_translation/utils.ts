@@ -70,6 +70,12 @@ export type ColumnDisplayNamePattern = (value: string) => string;
 // Cache the aggregation patterns since they're expensive to compute and don't change
 const AGGREGATION_PATTERNS = Lib.aggregationDisplayNamePatterns();
 
+// Check if a display name might have a pattern that needs parsing
+const mightHavePattern = (displayName: string): boolean =>
+  displayName.includes(": ") ||
+  displayName.includes(" → ") ||
+  AGGREGATION_PATTERNS.some((p) => displayName.startsWith(p.prefix));
+
 /**
  * Translates a column display name by parsing it into parts and translating the translatable ones.
  *
@@ -100,35 +106,37 @@ export const translateColumnDisplayName = (
     return translateColumnDisplayNameWithPatterns(displayName, tc, patterns);
   }
 
+  if (!mightHavePattern(displayName)) {
+    return tc(displayName);
+  }
+
   // Get parts from CLJ - it handles all the parsing complexity
   const parts = Lib.parseColumnDisplayNameParts(
     displayName,
     AGGREGATION_PATTERNS,
   );
 
-  // Translate translatable parts
-  const translatedParts = parts.map((part) => {
+  let anyChanged = false;
+  let result = "";
+
+  for (const part of parts) {
     if (part.type === "translatable") {
-      return { ...part, translated: tc(part.value) };
+      const translated = tc(part.value);
+
+      if (translated !== part.value) {
+        anyChanged = true;
+      }
+
+      result += translated;
+    } else {
+      result += part.value;
     }
-
-    return { ...part, translated: part.value };
-  });
-
-  // Check if any translatable part actually changed.
-  // If not, the parsing may have been wrong (e.g., "Note: Important" is a column name with a colon,
-  // not a column with a temporal bucket suffix). In that case, translate the whole string.
-  const anyTranslationApplied = translatedParts.some(
-    (part) => part.type === "translatable" && part.translated !== part.value,
-  );
-
-  if (!anyTranslationApplied) {
-    // No translation was applied to any part - try translating the whole string
-    return tc(displayName);
   }
 
-  // Concatenate all parts
-  return translatedParts.map((part) => part.translated).join("");
+  // If no translation was applied, the parsing may have been wrong
+  // (e.g., "Note: Important" is a column name with a colon, not a temporal bucket suffix).
+  // In that case, translate the whole string.
+  return anyChanged ? result : tc(displayName);
 };
 
 /**
