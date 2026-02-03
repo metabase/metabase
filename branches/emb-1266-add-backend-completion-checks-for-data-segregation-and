@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1265-add-configure-data-permissions-and-enable-tenants-skeleton",
-    "hash": "3900686ab435cc83f3d33a3295b86ad06201f903"
+    "hash": "de35be80f28c6afc74dcc8c0c7afcfd5085188ea"
   },
   "upstream": {
     "branch": "emb-1266-add-backend-completion-checks-for-data-segregation-and"
