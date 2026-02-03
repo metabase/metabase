@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import { findRequests } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 
 import { defaultUser, setup } from "./setup";
@@ -25,22 +25,19 @@ describe("Edit user modal", () => {
   it("should send name updates to the API", async () => {
     setup({ userData: defaultUser });
     const firstNameField = await screen.findByLabelText("First name");
-    const submitButton = await screen.findByText("Update");
 
     await userEvent.clear(firstNameField);
     await userEvent.type(firstNameField, "Misty");
 
+    const submitButton = await screen.findByRole("button", { name: /Update/ });
     expect(submitButton).toBeEnabled();
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
-      method: "PUT",
-    });
+    const puts = await findRequests("PUT");
+    const userPut = puts.find((p) => p.url.includes("/api/user/97"));
 
-    const req = await call?.request?.json();
-
-    expect(req).toEqual({
+    expect(userPut?.body).toEqual({
       first_name: "Misty",
       last_name: "Ketchum",
       email: "pikachuboy97@example.com",
@@ -61,18 +58,17 @@ describe("Edit user modal", () => {
       });
 
       const firstNameField = await screen.findByLabelText("First name");
-      const submitButton = await screen.findByText("Update");
 
       await userEvent.clear(firstNameField);
       await userEvent.type(firstNameField, "Madonna");
+
+      const submitButton = await screen.findByRole("button", { name: /Update/ });
       await userEvent.click(submitButton);
 
-      const call = fetchMock.callHistory.lastCall("path:/api/user/11", {
-        method: "PUT",
-      });
-      const req = await call?.request?.json();
+      const puts = await findRequests("PUT");
+      const userPut = puts.find((p) => p.url.includes("/api/user/11"));
 
-      expect(req).toEqual({
+      expect(userPut?.body).toEqual({
         first_name: "Madonna",
         last_name: null, // this null key must be present
         email: "name@example.com",
@@ -92,18 +88,17 @@ describe("Edit user modal", () => {
       });
 
       const emailField = await screen.findByLabelText("Email *");
-      const submitButton = await screen.findByText("Update");
 
       await userEvent.clear(emailField);
       await userEvent.type(emailField, "morpheus@example.com");
+
+      const submitButton = await screen.findByRole("button", { name: /Update/ });
       await userEvent.click(submitButton);
 
-      const call = fetchMock.callHistory.lastCall("path:/api/user/11", {
-        method: "PUT",
-      });
-      const req = await call?.request?.json();
+      const puts = await findRequests("PUT");
+      const userPut = puts.find((p) => p.url.includes("/api/user/11"));
 
-      expect(req).toEqual({
+      expect(userPut?.body).toEqual({
         first_name: null, // this null key must be present
         last_name: null, // this null key must be present
         email: "morpheus@example.com",
@@ -124,18 +119,17 @@ describe("Edit user modal", () => {
 
       const firstNameField = await screen.findByLabelText("First name");
       const lastNameField = await screen.findByLabelText("Last name");
-      const submitButton = await screen.findByText("Update");
 
       await userEvent.clear(firstNameField);
       await userEvent.clear(lastNameField);
+
+      const submitButton = await screen.findByRole("button", { name: /Update/ });
       await userEvent.click(submitButton);
 
-      const call = fetchMock.callHistory.lastCall("path:/api/user/11", {
-        method: "PUT",
-      });
-      const req = await call?.request?.json();
+      const puts = await findRequests("PUT");
+      const userPut = puts.find((p) => p.url.includes("/api/user/11"));
 
-      expect(req).toEqual({
+      expect(userPut?.body).toEqual({
         first_name: null, // this null key must be present
         last_name: null, // this null key must be present
         email: "s+g@example.com",

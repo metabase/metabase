@@ -6,7 +6,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import type { LdapSettings } from "./SettingsLdapForm";
@@ -32,6 +32,10 @@ const setup = async (settingValues?: Partial<LdapSettings>) => {
   renderWithProviders(<SettingsLdapForm />);
 
   await screen.findByText("Server settings");
+
+  // Wait for groups to load and component to fully render to avoid act() warnings
+  await screen.findByText("Synchronize Group Memberships");
+  await screen.findByText("New mapping");
 };
 
 describe("SettingsLdapForm", () => {
@@ -106,14 +110,14 @@ describe("SettingsLdapForm", () => {
   });
 
   it("should hide group membership fields on OSS", async () => {
-    setup({ "ldap-enabled": true });
+    await setup({ "ldap-enabled": true });
     expect(
       screen.queryByRole("textbox", { name: /Group membership filter/ }),
     ).not.toBeInTheDocument();
   });
 
   it("can remove a nullable field", async () => {
-    setup(ATTRS as Partial<LdapSettings>);
+    await setup(ATTRS as Partial<LdapSettings>);
 
     await userEvent.clear(await screen.findByLabelText(/First name attribute/));
     await userEvent.click(await screen.findByRole("button", { name: /Save/ }));

@@ -220,7 +220,7 @@ export function BasicAdminSettingInput({
       return (
         <Textarea
           id={name}
-          value={localValue}
+          value={localValue ?? ""}
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
           disabled={disabled}
@@ -233,7 +233,7 @@ export function BasicAdminSettingInput({
       return (
         <TextInput
           id={name}
-          value={localValue}
+          value={localValue ?? ""}
           placeholder={placeholder}
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}

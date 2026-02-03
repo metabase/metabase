@@ -85,5 +85,5 @@ const settingsReducer = handleActions(
 );
 
 export const settings = combineReducers({
-  settingsReducer,
+  settings: settingsReducer,
 });
