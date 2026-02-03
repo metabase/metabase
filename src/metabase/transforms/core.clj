@@ -19,7 +19,6 @@
   transform-source-database
   transform-source-type
   transform-type
-  enabled-source-types
   is-temp-transform-table?]
  [metabase.models.transforms.transform-run
   timeout-run!]

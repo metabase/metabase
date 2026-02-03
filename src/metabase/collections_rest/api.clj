@@ -26,7 +26,7 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
-   [metabase.transforms.core :as transforms]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.util]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
@@ -829,13 +829,13 @@
           #{})
 
         collections-containing-transforms
-        (if (seq (transforms/enabled-source-types))
+        (if (seq (transforms.gating/enabled-source-types))
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :transform
                             :where [:and
                                     [:in :collection_id descendant-collection-ids]
-                                    [:in :source_type (transforms/enabled-source-types)]]}))
+                                    [:in :source_type (transforms.gating/enabled-source-types)]]}))
                (map :collection_id)
                (into #{}))
           #{})
