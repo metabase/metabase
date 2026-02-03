@@ -10,15 +10,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-<<<<<<< HEAD
-import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
-import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
-import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
-=======
 import { reinitialize } from "metabase/plugins";
->>>>>>> master
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
