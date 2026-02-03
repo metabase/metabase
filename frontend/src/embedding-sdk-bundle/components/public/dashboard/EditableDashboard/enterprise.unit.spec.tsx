@@ -121,9 +121,9 @@ describe("EditableDashboard", () => {
 
     // We should be in the query builder
     expect(
-      await screen.findByText(/Back to Test dashboard/),
+      await screen.findByLabelText(/Back to Test dashboard/),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByText(/Back to Test dashboard/));
+    await userEvent.click(screen.getByLabelText(/Back to Test dashboard/));
 
     // We should be back in the dashboard
     expect(screen.getByText("Test dashboard")).toBeInTheDocument();

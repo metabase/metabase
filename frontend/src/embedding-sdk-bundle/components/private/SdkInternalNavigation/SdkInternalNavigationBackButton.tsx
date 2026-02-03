@@ -25,6 +25,8 @@ export const SdkInternalNavigationBackButton = ({
   const previousName =
     previousEntry && "name" in previousEntry ? previousEntry.name : undefined;
 
+  const label = previousName ? t`Back to ${previousName}` : t`Back`;
+
   return (
     <Button
       variant="subtle"
@@ -34,8 +36,9 @@ export const SdkInternalNavigationBackButton = ({
       onClick={pop}
       pl={0}
       style={style}
+      aria-label={label}
     >
-      {previousName ? t`Back to ${previousName}` : t`Back`}
+      {label}
     </Button>
   );
 };

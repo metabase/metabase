@@ -497,7 +497,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByTestId("visualization-root").should("be.visible");
 
         // Verify back button shows Dashboard B
-        // cy.findByText("Back to Dashboard B").should("be.visible");
+        cy.findByText("Back to Dashboard B").should("be.visible");
 
         // We'll later verify this will be hidden by the drill
         H.tableInteractiveBody().findByText("123").should("be.visible");
