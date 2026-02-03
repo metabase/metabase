@@ -16,6 +16,6 @@ describe("palette", () => {
   });
 
   it("should get a computed color", () => {
-    expect(color("brand-light")).toBeDefined();
+    expect(color("accent1-light")).toBeDefined();
   });
 });

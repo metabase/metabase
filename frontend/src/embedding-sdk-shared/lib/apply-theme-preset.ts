@@ -11,7 +11,6 @@ import { deriveFullMetabaseTheme } from "metabase/lib/colors";
 
 const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "background",
-  "background-hover",
   "background-disabled",
   "background-secondary",
   "text-primary",

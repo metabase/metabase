@@ -1,4 +1,6 @@
 import type { NodeViewProps } from "@tiptap/react";
+import { createMemoryHistory } from "history";
+import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -164,6 +166,69 @@ describe("SmartLink", () => {
       await waitFor(() => {
         expect(screen.getByText("My Document")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("link generation", () => {
+    it("should include subpath in link href when router has basename", async () => {
+      const dashboard = createMockDashboard({
+        id: 456,
+        name: "Subpath Dashboard",
+      });
+
+      setupDashboardEndpoints(dashboard);
+
+      const historyWithBasename = useRouterHistory(createMemoryHistory)({
+        basename: "/subpath",
+        entries: ["/"],
+      });
+
+      const props = createProps("dashboard", dashboard);
+      renderWithProviders(
+        <Router history={historyWithBasename}>
+          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+        </Router>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Subpath Dashboard")).toBeInTheDocument();
+      });
+
+      const link = screen.getByText("Subpath Dashboard").closest("a");
+      expect(link).toHaveAttribute(
+        "href",
+        "/subpath/dashboard/456-subpath-dashboard",
+      );
+    });
+
+    it("should work correctly without subpath", async () => {
+      const dashboard = createMockDashboard({
+        id: 789,
+        name: "No Subpath Dashboard",
+      });
+
+      setupDashboardEndpoints(dashboard);
+
+      const historyNoBasename = useRouterHistory(createMemoryHistory)({
+        entries: ["/"],
+      });
+
+      const props = createProps("dashboard", dashboard);
+      renderWithProviders(
+        <Router history={historyNoBasename}>
+          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+        </Router>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("No Subpath Dashboard")).toBeInTheDocument();
+      });
+
+      const link = screen.getByText("No Subpath Dashboard").closest("a");
+      expect(link).toHaveAttribute(
+        "href",
+        "/dashboard/789-no-subpath-dashboard",
+      );
     });
   });
 });
