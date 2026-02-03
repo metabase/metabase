@@ -299,11 +299,32 @@ export type TransformInspectFieldStats = {
   latest?: string;
 };
 
+export const TEMPORAL_BASE_TYPES = [
+  "type/DateTime",
+  "type/DateTimeWithLocalTZ",
+  "type/DateTimeWithTZ",
+  "type/DateTimeWithZoneID",
+  "type/DateTimeWithZoneOffset",
+  "type/Date",
+  "type/Time",
+  "type/TimeWithTZ",
+] as const;
+
+export const NUMERIC_BASE_TYPES = [
+  "type/Integer",
+  "type/BigInteger",
+  "type/Float",
+  "type/Decimal",
+  "type/Number",
+] as const;
+
 export type TransformInspectField = {
   id?: number;
   name: string;
   display_name?: string;
-  base_type?: string;
+  base_type?:
+    | (typeof TEMPORAL_BASE_TYPES)[number]
+    | (typeof NUMERIC_BASE_TYPES)[number];
   semantic_type?: string;
   stats?: TransformInspectFieldStats;
 };

@@ -19,6 +19,7 @@ import type {
   TransformInspectSource,
   TransformInspectTarget,
 } from "metabase-types/api";
+import { NUMERIC_BASE_TYPES, TEMPORAL_BASE_TYPES } from "metabase-types/api";
 
 import S from "./FieldInfoSection.module.css";
 
@@ -26,101 +27,6 @@ type FieldInfoSectionProps = {
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
 };
-
-const TEMPORAL_BASE_TYPES = new Set([
-  "type/DateTime",
-  "type/DateTimeWithLocalTZ",
-  "type/DateTimeWithTZ",
-  "type/DateTimeWithZoneID",
-  "type/DateTimeWithZoneOffset",
-  "type/Date",
-  "type/Time",
-  "type/TimeWithTZ",
-]);
-
-const NUMERIC_BASE_TYPES = new Set([
-  "type/Integer",
-  "type/BigInteger",
-  "type/Float",
-  "type/Decimal",
-  "type/Number",
-]);
-
-function isTemporalField(field: TransformInspectField): boolean {
-  return TEMPORAL_BASE_TYPES.has(field.base_type ?? "");
-}
-
-function isNumericField(field: TransformInspectField): boolean {
-  return NUMERIC_BASE_TYPES.has(field.base_type ?? "");
-}
-
-function formatType(field: TransformInspectField): string {
-  return field.base_type?.replace("type/", "") ?? "Unknown";
-}
-
-function formatNumber(value: number | undefined): string {
-  if (value === undefined) {
-    return "-";
-  }
-  if (Number.isInteger(value)) {
-    return value.toLocaleString();
-  }
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-function formatPercent(value: number | undefined): string {
-  if (value === undefined) {
-    return "-";
-  }
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function formatDate(value: string | undefined): string {
-  if (!value) {
-    return "-";
-  }
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return value;
-  }
-}
-
-function getFieldStats(field: TransformInspectField): string | null {
-  const stats = field.stats;
-  if (!stats) {
-    return null;
-  }
-
-  const parts: string[] = [];
-
-  if (stats.distinct_count !== undefined) {
-    parts.push(`${formatNumber(stats.distinct_count)} distinct`);
-  }
-  if (stats.nil_percent !== undefined && stats.nil_percent > 0) {
-    parts.push(`${formatPercent(stats.nil_percent)} null`);
-  }
-
-  if (isNumericField(field)) {
-    if (stats.min !== undefined && stats.max !== undefined) {
-      let range = `${formatNumber(stats.min)}–${formatNumber(stats.max)}`;
-      if (stats.avg !== undefined) {
-        range += ` (avg ${formatNumber(stats.avg)})`;
-      }
-      parts.push(range);
-    }
-  } else if (isTemporalField(field)) {
-    if (stats.earliest && stats.latest) {
-      parts.push(`${formatDate(stats.earliest)} → ${formatDate(stats.latest)}`);
-    }
-  }
-
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
 
 type FieldTreeNode = {
   id: string;
@@ -137,26 +43,6 @@ type TableWithFields = {
   table_id?: number | null;
   table_name: string;
   fields: TransformInspectField[];
-};
-
-const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
-  return tables.map((table) => {
-    const tableKey = table.table_id ?? table.table_name;
-    return {
-      id: `table-${tableKey}`,
-      type: "table" as const,
-      tableName: table.table_name,
-      fieldCount: table.fields.length,
-      children: table.fields.map((field) => ({
-        id: `field-${tableKey}-${field.name}`,
-        type: "field" as const,
-        tableName: table.table_name,
-        fieldName: field.display_name ?? field.name,
-        baseType: formatType(field),
-        stats: getFieldStats(field),
-      })),
-    };
-  });
 };
 
 export const FieldInfoSection = ({
@@ -243,6 +129,102 @@ export const FieldInfoSection = ({
   );
 };
 
+const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
+  return tables.map((table) => {
+    const tableKey = table.table_id ?? table.table_name;
+    return {
+      id: `table-${tableKey}`,
+      type: "table" as const,
+      tableName: table.table_name,
+      fieldCount: table.fields.length,
+      children: table.fields.map((field) => ({
+        id: `field-${tableKey}-${field.name}`,
+        type: "field" as const,
+        tableName: table.table_name,
+        fieldName: field.display_name ?? field.name,
+        baseType: formatType(field),
+        stats: getFieldStats(field),
+      })),
+    };
+  });
+};
+
+function isTemporalField(field: TransformInspectField): boolean {
+  return TEMPORAL_BASE_TYPES.some((type) => type === field.base_type);
+}
+
+function isNumericField(field: TransformInspectField): boolean {
+  return NUMERIC_BASE_TYPES.some((type) => type === field.base_type);
+}
+
+function formatType(field: TransformInspectField): string {
+  return field.base_type?.replace("type/", "") ?? "Unknown";
+}
+
+function formatNumber(value: number | undefined): string {
+  if (value === undefined) {
+    return "-";
+  }
+  if (Number.isInteger(value)) {
+    return value.toLocaleString();
+  }
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function formatPercent(value: number | undefined): string {
+  if (value === undefined) {
+    return "-";
+  }
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatDate(value: string | undefined): string {
+  if (!value) {
+    return "-";
+  }
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return value;
+  }
+}
+
+function getFieldStats(field: TransformInspectField): string | null {
+  const stats = field.stats;
+  if (!stats) {
+    return null;
+  }
+
+  const parts: string[] = [];
+
+  if (stats.distinct_count !== undefined) {
+    parts.push(`${formatNumber(stats.distinct_count)} distinct`);
+  }
+  if (stats.nil_percent !== undefined && stats.nil_percent > 0) {
+    parts.push(`${formatPercent(stats.nil_percent)} null`);
+  }
+
+  if (isNumericField(field)) {
+    if (stats.min !== undefined && stats.max !== undefined) {
+      let range = `${formatNumber(stats.min)}–${formatNumber(stats.max)}`;
+      if (stats.avg !== undefined) {
+        range += ` (avg ${formatNumber(stats.avg)})`;
+      }
+      parts.push(range);
+    }
+  } else if (isTemporalField(field)) {
+    if (stats.earliest && stats.latest) {
+      parts.push(`${formatDate(stats.earliest)} → ${formatDate(stats.latest)}`);
+    }
+  }
+
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
   return [
     {
@@ -271,11 +253,7 @@ function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "field") {
-          return (
-            <Text size="sm" fw={500}>
-              {node.fieldName}
-            </Text>
-          );
+          return <Text size="sm">{node.fieldName}</Text>;
         }
         return null;
       },
