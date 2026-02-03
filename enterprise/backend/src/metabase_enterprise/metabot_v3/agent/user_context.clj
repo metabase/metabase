@@ -98,8 +98,8 @@
    (field "Description" (:description entity))
    (field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
 
-(defmulti ^{:arglists '([entity])} format-entity "Format an entity for LLM representation."
-  (fn [entity] (normalize-context-type (:type entity))))
+(defn- dispatch-format-entity [entity] (normalize-context-type (:type entity)))
+(defmulti format-entity "Format an entity for LLM representation." {:arglists '([entity])} dispatch-format-entity)
 
 (defmethod format-entity :default [entity]
   (log/warn "Unknown viewing context type:" (:type entity))
