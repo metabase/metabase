@@ -478,11 +478,7 @@ describe("issue 54799", () => {
   });
 
   function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
-    const macOSX = Cypress.platform === "darwin";
-    el.dblclick(pos, {
-      metaKey: macOSX,
-      ctrlKey: !macOSX,
-    });
+    el.dblclick(pos, H.holdMetaKey);
   }
 
   it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
