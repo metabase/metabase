@@ -61,12 +61,12 @@
   transition: background-color 150ms ease;
 
   &:hover {
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-selected);
     color: var(--mb-color-brand);
   }
 
   &.selected {
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-selected);
     color: var(--mb-color-brand);
   }
 }
@@ -91,7 +91,7 @@
   }
 
   &.selected {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
     border-color: var(--mb-color-brand);
   }
 
