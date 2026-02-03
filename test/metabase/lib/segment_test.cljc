@@ -189,8 +189,6 @@
            #"[Cc]ycle"
            (lib/check-segment-overwrite 1 segment-1-def))))))
 
-(deftest ^:parallel check-segment-overwrite-self-reference-in-mp-test
-
   (deftest ^:parallel check-segment-overwrite-cycle-ex-data-test
     (testing "Cycle exception includes segment-id and cycle-path in ex-data"
       (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
@@ -204,6 +202,8 @@
         (is (vector? (:cycle-path data)))
         (is (some #{1} (:cycle-path data)))
         (is (re-find #"1" (ex-message ex))))))
+
+(deftest ^:parallel check-segment-overwrite-self-reference-in-mp-test
   (testing "Segment referencing itself (segment exists in mp) - should throw cycle"
     (let [simple-def (segment-definition-with-filter
                       meta/metadata-provider
