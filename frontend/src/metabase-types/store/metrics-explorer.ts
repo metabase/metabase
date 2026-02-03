@@ -1,6 +1,8 @@
+import type * as Lib from "metabase-lib";
 import type { DateFilterSpec } from "metabase-lib";
 import type {
   Card,
+  CardDisplayType,
   CardId,
   ConcreteTableId,
   Dataset,
@@ -9,14 +11,45 @@ import type {
   SingleSeries,
   Table,
   TemporalUnit,
-  TimeseriesDisplayType,
 } from "metabase-types/api";
+
+/**
+ * Display types supported in the metrics explorer.
+ */
+export type MetricsExplorerDisplayType = Extract<
+  CardDisplayType,
+  "line" | "area" | "bar" | "map" | "row" | "pie"
+>;
 
 /**
  * Composite source ID format: "metric:{cardId}" or "measure:{measureId}"
  * This unifies handling while preserving type info and avoiding ID collisions.
  */
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
+
+/**
+ * Dimension tab types for grouping metrics.
+ */
+export type DimensionTabType = "time" | "geo" | "category" | "boolean";
+
+/**
+ * Column info for a dimension tab, tracking which column from which source.
+ */
+export interface DimensionTabColumn {
+  sourceId: MetricSourceId;
+  column: Lib.ColumnMetadata;
+  columnName: string;
+}
+
+/**
+ * A dimension tab representing a groupable dimension across metrics.
+ */
+export interface DimensionTab {
+  id: string; // "time" or column name
+  type: DimensionTabType;
+  label: string; // Display name
+  columnsBySource: DimensionTabColumn[];
+}
 
 /**
  * Data for a metric source (saved metric card).
@@ -70,7 +103,8 @@ export interface MetricsExplorerState {
   sourceOrder: MetricSourceId[];
   projectionConfig: ProjectionConfig | null;
   dimensionOverrides: DimensionOverrides;
-  displayType: TimeseriesDisplayType;
+  displayType: MetricsExplorerDisplayType;
+  activeTabId: string; // "time" or column name, defaults to "time"
 
   // Data cache (not persisted to URL)
   sourceDataById: Record<MetricSourceId, SourceData>;
@@ -99,7 +133,8 @@ export interface SerializedExplorerState {
     filterSpec?: DateFilterSpec;
   };
   dimensions?: Record<number, string>;
-  display?: TimeseriesDisplayType;
+  display?: MetricsExplorerDisplayType;
+  activeTab?: string;
 }
 
 /**
@@ -146,7 +181,8 @@ export interface InitializeFromUrlPayload {
   sourceOrder: MetricSourceId[];
   projectionConfig: ProjectionConfig | null;
   dimensionOverrides: DimensionOverrides;
-  displayType: TimeseriesDisplayType;
+  displayType: MetricsExplorerDisplayType;
+  activeTabId: string;
 }
 
 /**

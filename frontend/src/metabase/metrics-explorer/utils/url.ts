@@ -1,10 +1,11 @@
 import type { DateFilterSpec } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
-import type { TemporalUnit, TimeseriesDisplayType } from "metabase-types/api";
+import type { TemporalUnit } from "metabase-types/api";
 import type {
   DimensionOverrides,
   MetricSourceId,
+  MetricsExplorerDisplayType,
   ProjectionConfig,
   SerializedExplorerState,
   SerializedSource,
@@ -26,10 +27,17 @@ function isTemporalUnit(value: unknown): value is TemporalUnit {
   );
 }
 
-function isTimeseriesDisplayType(
+function isMetricsExplorerDisplayType(
   value: unknown,
-): value is TimeseriesDisplayType {
-  return value === "line" || value === "area" || value === "bar";
+): value is MetricsExplorerDisplayType {
+  return (
+    value === "line" ||
+    value === "area" ||
+    value === "bar" ||
+    value === "map" ||
+    value === "row" ||
+    value === "pie"
+  );
 }
 
 function isValidFilterSpec(value: unknown): value is DateFilterSpec {
@@ -114,8 +122,12 @@ export function decodeState(hash: string): SerializedExplorerState {
       }
     }
 
-    if (isTimeseriesDisplayType(parsed.display)) {
+    if (isMetricsExplorerDisplayType(parsed.display)) {
       result.display = parsed.display;
+    }
+
+    if (typeof parsed.activeTab === "string" && parsed.activeTab.length > 0) {
+      result.activeTab = parsed.activeTab;
     }
 
     return result;
@@ -142,7 +154,8 @@ export function stateToSerializedState(
   sourceDataById: Record<MetricSourceId, SourceData>,
   projectionConfig: ProjectionConfig | null,
   dimensionOverrides: DimensionOverrides,
-  displayType: TimeseriesDisplayType,
+  displayType: MetricsExplorerDisplayType,
+  activeTabId: string,
 ): SerializedExplorerState {
   const state: SerializedExplorerState = { sources: [] };
 
@@ -199,6 +212,11 @@ export function stateToSerializedState(
     state.display = displayType;
   }
 
+  // Add active tab (only if not default "time")
+  if (activeTabId !== "time") {
+    state.activeTab = activeTabId;
+  }
+
   return state;
 }
 
@@ -211,7 +229,8 @@ export function serializedStateToReduxState(
   sourceOrder: MetricSourceId[];
   projectionConfig: ProjectionConfig | null;
   dimensionOverrides: DimensionOverrides;
-  displayType: TimeseriesDisplayType;
+  displayType: MetricsExplorerDisplayType;
+  activeTabId: string;
   serializedSources: SerializedSource[];
 } {
   const sourceOrder = serializedState.sources.map(serializedSourceToId);
@@ -240,12 +259,14 @@ export function serializedStateToReduxState(
   }
 
   const displayType = serializedState.display ?? "line";
+  const activeTabId = serializedState.activeTab ?? "time";
 
   return {
     sourceOrder,
     projectionConfig,
     dimensionOverrides,
     displayType,
+    activeTabId,
     serializedSources: serializedState.sources,
   };
 }

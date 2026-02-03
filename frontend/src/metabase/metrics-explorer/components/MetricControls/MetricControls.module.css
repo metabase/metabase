@@ -1,5 +1,6 @@
 .container {
   display: inline-flex;
+  min-height: 42px;
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;

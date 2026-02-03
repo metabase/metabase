@@ -10,15 +10,6 @@
   cursor: text;
 }
 
-.metricPill {
-  background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
-  border-radius: 0.5rem;
-  color: var(--mb-color-text-primary);
-  font-weight: normal;
-  padding: 0.25rem 0.5rem;
-}
-
 .inputContainer {
   position: relative;
   flex: 1;
@@ -60,16 +51,4 @@
   max-width: 400px;
   min-width: 300px;
   overflow-y: auto;
-}
-
-.pillLink {
-  display: flex;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
-  text-decoration: none;
-  color: inherit;
-}
-
-.pillLink:hover {
-  text-decoration: underline;
 }

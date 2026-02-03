@@ -1,0 +1,26 @@
+.metricPill {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+  font-weight: normal;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+
+.dropdown {
+  min-width: 300px;
+  max-width: 400px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.searchInputWrapper {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.resultsContainer {
+  overflow-y: auto;
+  flex: 1;
+}

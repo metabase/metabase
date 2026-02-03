@@ -2,15 +2,22 @@ import { useCallback } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { Flex, Stack } from "metabase/ui";
-import type { TimeseriesDisplayType } from "metabase-types/api";
-import type { ProjectionConfig } from "metabase-types/store/metrics-explorer";
+import type {
+  MetricsExplorerDisplayType,
+  ProjectionConfig,
+} from "metabase-types/store/metrics-explorer";
 
+import { DimensionTabs } from "../../components/DimensionTabs";
 import { MetricExplorerEmptyState } from "../../components/EmptyState/MetricExplorerEmptyState";
+import { getDefaultDisplayTypeForTab } from "../../components/MetricControls/MetricControls";
 import { MetricSearch } from "../../components/MetricSearch/MetricSearch";
 import type { SelectedMetric } from "../../components/MetricSearch/MetricSearchInput";
 import { MetricVisualization } from "../../components/MetricVisualization/MetricVisualization";
 import { useExplorerActions, useUrlSync } from "../../hooks/use-url-sync";
 import {
+  selectActiveTabId,
+  selectActiveTabType,
+  selectDimensionTabs,
   selectDisplayType,
   selectError,
   selectIsLoading,
@@ -45,6 +52,9 @@ export function MetricsExplorerPage({
   const displayType = useSelector(selectDisplayType);
   const isLoading = useSelector(selectIsLoading);
   const error = useSelector(selectError);
+  const activeTabId = useSelector(selectActiveTabId);
+  const activeTabType = useSelector(selectActiveTabType);
+  const dimensionTabs = useSelector(selectDimensionTabs);
 
   // Get actions
   const {
@@ -54,6 +64,7 @@ export function MetricsExplorerPage({
     setProjectionConfig,
     setDimensionOverride,
     setDisplayType,
+    setActiveTab,
   } = useExplorerActions();
 
   const handleAddMetric = useCallback(
@@ -109,10 +120,20 @@ export function MetricsExplorerPage({
   );
 
   const handleDisplayTypeChange = useCallback(
-    (newDisplayType: TimeseriesDisplayType) => {
+    (newDisplayType: MetricsExplorerDisplayType) => {
       setDisplayType(newDisplayType);
     },
     [setDisplayType],
+  );
+
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      const tab = dimensionTabs.find((t) => t.id === tabId);
+      const tabType = tab?.type ?? null;
+      const defaultDisplayType = getDefaultDisplayTypeForTab(tabType);
+      setActiveTab(tabId, defaultDisplayType);
+    },
+    [dimensionTabs, setActiveTab],
   );
 
   // Map selectedMetrics to SelectedMetric format (omit sourceId)
@@ -120,21 +141,33 @@ export function MetricsExplorerPage({
     ({ sourceId: _, ...rest }) => rest,
   );
 
+  // Show time controls only when on the time tab
+  const showTimeControls = activeTabType === "time" || activeTabType === null;
+
   return (
-    <Stack h="100%" p="lg" gap="lg" styles={{ root: { overflow: "hidden" } }}>
-      <MetricSearch
-        selectedMetrics={selectedMetricsForSearch}
-        metricColors={sourceColors}
-        onAddMetric={handleAddMetric}
-        onRemoveMetric={handleRemoveMetric}
-      />
-      <Flex flex={1} direction="column" mih={400}>
+    <Stack h="100%" p="lg" gap={0} styles={{ root: { overflow: "auto" } }}>
+      <Stack gap="sm" pb="sm" style={{ flexShrink: 0 }}>
+        <MetricSearch
+          selectedMetrics={selectedMetricsForSearch}
+          metricColors={sourceColors}
+          onAddMetric={handleAddMetric}
+          onRemoveMetric={handleRemoveMetric}
+        />
+        {sourceOrder.length > 0 && (
+          <DimensionTabs
+            activeTabId={activeTabId}
+            onTabChange={handleTabChange}
+          />
+        )}
+      </Stack>
+      <Flex flex="1 0 auto" direction="column">
         {sourceOrder.length > 0 ? (
           <MetricVisualization
             projectionConfig={projectionConfig ?? { unit: "month", filterSpec: null }}
             displayType={displayType}
             isLoading={isLoading || !projectionConfig}
             error={error}
+            showTimeControls={showTimeControls}
             onProjectionConfigChange={handleProjectionConfigChange}
             onDimensionOverrideChange={handleDimensionOverrideChange}
             onDisplayTypeChange={handleDisplayTypeChange}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { TimeseriesDisplayType } from "metabase-types/api";
+import type { MetricsExplorerDisplayType } from "metabase-types/store/metrics-explorer";
 import type {
   MetricSourceId,
   ProjectionConfig,
@@ -13,11 +13,13 @@ import {
   addMetricSource,
   initializeFromUrl,
   removeSource,
+  setActiveTab,
   setDimensionOverride,
   setDisplayType,
   setProjectionConfig,
 } from "../metrics-explorer.slice";
 import {
+  selectActiveTabId,
   selectDefaultProjectionConfig,
   selectDimensionOverrides,
   selectProjectionConfig,
@@ -54,6 +56,7 @@ export function useUrlSync(hash: string): void {
   const projectionConfig = useSelector(selectProjectionConfig);
   const dimensionOverrides = useSelector(selectDimensionOverrides);
   const defaultProjectionConfig = useSelector(selectDefaultProjectionConfig);
+  const activeTabId = useSelector(selectActiveTabId);
 
   // Track which sources have had fetch initiated to avoid double-fetching
   const fetchedSourcesRef = useRef<Set<MetricSourceId>>(new Set());
@@ -73,6 +76,7 @@ export function useUrlSync(hash: string): void {
       projectionConfig: newProjectionConfig,
       dimensionOverrides: newDimensionOverrides,
       displayType,
+      activeTabId,
       serializedSources,
     } = serializedStateToReduxState(serializedState);
 
@@ -83,6 +87,7 @@ export function useUrlSync(hash: string): void {
         projectionConfig: newProjectionConfig,
         dimensionOverrides: newDimensionOverrides,
         displayType,
+        activeTabId,
       }),
     );
 
@@ -135,14 +140,14 @@ export function useUrlSync(hash: string): void {
     }
   }, [sourceOrder.length, projectionConfig, defaultProjectionConfig, dispatch]);
 
-  // Fetch results when projection config or dimension overrides change, or when source data loads
+  // Fetch results when projection config, dimension overrides, or active tab change, or when source data loads
   const loadedSourceCount = Object.keys(sourceDataById).length;
 
   useEffect(() => {
     if (projectionConfig && loadedSourceCount > 0) {
       dispatch(fetchAllResults());
     }
-  }, [projectionConfig, dimensionOverrides, loadedSourceCount, dispatch]);
+  }, [projectionConfig, dimensionOverrides, activeTabId, loadedSourceCount, dispatch]);
 }
 
 /**
@@ -190,8 +195,15 @@ export function useExplorerActions() {
   );
 
   const handleSetDisplayType = useCallback(
-    (displayType: TimeseriesDisplayType) => {
+    (displayType: MetricsExplorerDisplayType) => {
       dispatch(setDisplayType(displayType));
+    },
+    [dispatch],
+  );
+
+  const handleSetActiveTab = useCallback(
+    (tabId: string, defaultDisplayType: MetricsExplorerDisplayType) => {
+      dispatch(setActiveTab({ tabId, defaultDisplayType }));
     },
     [dispatch],
   );
@@ -203,5 +215,6 @@ export function useExplorerActions() {
     setProjectionConfig: handleSetProjectionConfig,
     setDimensionOverride: handleSetDimensionOverride,
     setDisplayType: handleSetDisplayType,
+    setActiveTab: handleSetActiveTab,
   };
 }

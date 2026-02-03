@@ -1,0 +1,17 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tabs {
+  width: auto;
+}
+
+.tabsList {
+  justify-content: flex-start;
+}
+
+.tabsList :global(.mantine-Tabs-tab) {
+  padding-inline: 1.5rem;
+}

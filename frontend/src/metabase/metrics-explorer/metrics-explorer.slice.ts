@@ -1,7 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 
-import type { TimeseriesDisplayType } from "metabase-types/api";
+import type { MetricsExplorerDisplayType } from "metabase-types/store/metrics-explorer";
 import type {
   AddMeasureSourcePayload,
   AddMetricSourcePayload,
@@ -28,6 +28,7 @@ function getInitialState(): MetricsExplorerState {
     projectionConfig: null,
     dimensionOverrides: {},
     displayType: "line",
+    activeTabId: "time",
 
     // Data cache (not persisted)
     sourceDataById: {},
@@ -51,12 +52,18 @@ const metricsExplorerSlice = createSlice({
       state,
       action: PayloadAction<InitializeFromUrlPayload>,
     ) => {
-      const { sourceOrder, projectionConfig, dimensionOverrides, displayType } =
-        action.payload;
+      const {
+        sourceOrder,
+        projectionConfig,
+        dimensionOverrides,
+        displayType,
+        activeTabId,
+      } = action.payload;
       state.sourceOrder = sourceOrder;
       state.projectionConfig = projectionConfig;
       state.dimensionOverrides = dimensionOverrides;
       state.displayType = displayType;
+      state.activeTabId = activeTabId;
       // Clear any stale data for sources not in the new order
       const sourceSet = new Set(sourceOrder);
       for (const sourceId of Object.keys(state.sourceDataById)) {
@@ -111,6 +118,7 @@ const metricsExplorerSlice = createSlice({
       if (state.sourceOrder.length === 0) {
         state.projectionConfig = null;
         state.displayType = "line";
+        state.activeTabId = "time";
       }
     },
 
@@ -153,10 +161,31 @@ const metricsExplorerSlice = createSlice({
     },
 
     /**
-     * Set the display type (line/area/bar).
+     * Set the display type (line/area/bar/map/row).
      */
-    setDisplayType: (state, action: PayloadAction<TimeseriesDisplayType>) => {
+    setDisplayType: (
+      state,
+      action: PayloadAction<MetricsExplorerDisplayType>,
+    ) => {
       state.displayType = action.payload;
+    },
+
+    /**
+     * Set the active dimension tab and update display type if needed.
+     */
+    setActiveTab: (
+      state,
+      action: PayloadAction<{
+        tabId: string;
+        defaultDisplayType: MetricsExplorerDisplayType;
+      }>,
+    ) => {
+      const { tabId, defaultDisplayType } = action.payload;
+      state.activeTabId = tabId;
+      // Clear dimension overrides when switching tabs
+      state.dimensionOverrides = {};
+      // Update display type to appropriate default for this tab
+      state.displayType = defaultDisplayType;
     },
 
     /**
@@ -262,6 +291,7 @@ export const {
   setDimensionOverride,
   clearDimensionOverride,
   setDisplayType,
+  setActiveTab,
   setError,
   reset,
 } = metricsExplorerSlice.actions;

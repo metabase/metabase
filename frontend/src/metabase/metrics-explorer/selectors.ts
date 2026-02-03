@@ -2,15 +2,17 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/lib/colors/charts";
-import { findBreakoutClause } from "metabase/querying/filters/components/TimeseriesChrome/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Dataset, MeasureId, SingleSeries, TimeseriesDisplayType } from "metabase-types/api";
+import type { Dataset, MeasureId, SingleSeries } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type {
   DimensionOverrides,
+  DimensionTab,
+  DimensionTabType,
   MetricSourceId,
+  MetricsExplorerDisplayType,
   MetricsExplorerState,
   ProjectionConfig,
   SelectedMetricInfo,
@@ -18,6 +20,8 @@ import type {
   SourceData,
 } from "metabase-types/store/metrics-explorer";
 
+import { findCommonDimensionTabs } from "./utils/dimensions";
+import { getVisualizationSettings } from "./utils/visualization-settings";
 import {
   buildMeasureQuery,
   buildModifiedQuery,
@@ -56,7 +60,7 @@ export const selectProjectionConfig = (state: State): ProjectionConfig | null =>
 export const selectDimensionOverrides = (state: State): DimensionOverrides =>
   selectMetricsExplorerState(state).dimensionOverrides;
 
-export const selectDisplayType = (state: State): TimeseriesDisplayType =>
+export const selectDisplayType = (state: State): MetricsExplorerDisplayType =>
   selectMetricsExplorerState(state).displayType;
 
 export const selectLoadingSourceIds = (
@@ -71,6 +75,9 @@ export const selectLoadingResultIds = (
 
 export const selectError = (state: State): string | null =>
   selectMetricsExplorerState(state).error;
+
+export const selectActiveTabId = (state: State): string =>
+  selectMetricsExplorerState(state).activeTabId;
 
 // Derived selectors
 
@@ -215,16 +222,59 @@ export const selectBaseQueries = createSelector(
 );
 
 /**
+ * Select available dimension tabs based on common columns across all sources.
+ */
+export const selectDimensionTabs = createSelector(
+  [selectBaseQueries, selectSourceOrder],
+  (baseQueries, sourceOrder): DimensionTab[] => {
+    return findCommonDimensionTabs(baseQueries, sourceOrder);
+  },
+);
+
+/**
+ * Select the active dimension tab, falling back to the first tab if the active tab doesn't exist.
+ */
+export const selectActiveTab = createSelector(
+  [selectDimensionTabs, selectActiveTabId],
+  (dimensionTabs, activeTabId): DimensionTab | null => {
+    if (dimensionTabs.length === 0) {
+      return null;
+    }
+
+    const activeTab = dimensionTabs.find((tab) => tab.id === activeTabId);
+    return activeTab ?? dimensionTabs[0];
+  },
+);
+
+/**
+ * Get the tab type for the currently active tab.
+ */
+export const selectActiveTabType = createSelector(
+  [selectActiveTab],
+  (activeTab): DimensionTabType | null => {
+    return activeTab?.type ?? null;
+  },
+);
+
+/**
  * Select modified queries for all sources (with projection + dimension overrides).
+ * Takes into account the active tab type for appropriate breakout handling.
  */
 export const selectModifiedQueries = createSelector(
-  [selectBaseQueries, selectProjectionConfig, selectDimensionOverrides],
+  [
+    selectBaseQueries,
+    selectProjectionConfig,
+    selectDimensionOverrides,
+    selectActiveTab,
+  ],
   (
     baseQueries,
     projectionConfig,
     dimensionOverrides,
+    activeTab,
   ): Record<MetricSourceId, Lib.Query | null> => {
     const queries: Record<MetricSourceId, Lib.Query | null> = {};
+    const tabType = activeTab?.type;
 
     for (const [sourceId, baseQuery] of Object.entries(baseQueries)) {
       if (!baseQuery) {
@@ -233,10 +283,19 @@ export const selectModifiedQueries = createSelector(
       }
 
       const dimensionOverride = dimensionOverrides[sourceId as MetricSourceId];
+
+      // Find the column name for this source from the active tab
+      const tabColumn = activeTab?.columnsBySource.find(
+        (col) => col.sourceId === sourceId,
+      );
+      const tabColumnName = tabColumn?.columnName;
+
       queries[sourceId as MetricSourceId] = buildModifiedQuery(
         baseQuery,
         projectionConfig,
         dimensionOverride,
+        tabType,
+        tabColumnName,
       );
     }
 
@@ -257,7 +316,7 @@ export const selectModifiedQueryForSource = (
 
 /**
  * Select raw series for visualization.
- * Simple: use resultsById which contains the query results with projection config applied.
+ * Uses the first source to compute visualization settings, then applies them to all series.
  * Returns empty array when no valid series are available.
  */
 export const selectRawSeries = createSelector(
@@ -277,6 +336,9 @@ export const selectRawSeries = createSelector(
   ): SingleSeries[] => {
     const validSeries: SingleSeries[] = [];
 
+    // Compute visualization settings from the first valid source
+    let vizSettings: Record<string, unknown> | null = null;
+
     for (const sourceId of sourceOrder) {
       const sourceData = sourceDataById[sourceId];
       const query = modifiedQueries[sourceId];
@@ -287,9 +349,18 @@ export const selectRawSeries = createSelector(
         continue;
       }
 
-      const breakout = findBreakoutClause(query, STAGE_INDEX);
-      if (!breakout) {
+      // Check for any breakout (not just temporal)
+      const breakouts = Lib.breakouts(query, STAGE_INDEX);
+      if (breakouts.length === 0) {
         continue;
+      }
+
+      // Compute settings from the first valid source only
+      if (vizSettings === null) {
+        vizSettings = getVisualizationSettings(displayType, {
+          query,
+          resultData: result.data,
+        });
       }
 
       if (sourceData.type === "metric") {
@@ -301,8 +372,7 @@ export const selectRawSeries = createSelector(
             display: displayType,
             visualization_settings: {
               ...card.visualization_settings,
-              "graph.x_axis.labels_enabled": false,
-              "graph.y_axis.labels_enabled": false,
+              ...vizSettings,
             },
           },
           data: result.data,
@@ -313,10 +383,7 @@ export const selectRawSeries = createSelector(
           id: measureToCardId(id),
           name: sourceData.data.measure.name,
           display: displayType,
-          visualization_settings: {
-            "graph.x_axis.labels_enabled": false,
-            "graph.y_axis.labels_enabled": false,
-          },
+          visualization_settings: vizSettings,
         } as unknown as SingleSeries["card"];
 
         validSeries.push({
@@ -344,12 +411,12 @@ export const selectDimensionItems = createSelector(
         continue;
       }
 
-      const breakout = findBreakoutClause(query, STAGE_INDEX);
-      if (!breakout) {
+      const breakouts = Lib.breakouts(query, STAGE_INDEX);
+      if (breakouts.length === 0) {
         continue;
       }
 
-      const column = Lib.breakoutColumn(query, STAGE_INDEX, breakout);
+      const column = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
       if (!column) {
         continue;
       }
@@ -419,8 +486,8 @@ export const selectQuestionForControls = createSelector(
         continue;
       }
 
-      const breakout = findBreakoutClause(query, STAGE_INDEX);
-      if (!breakout) {
+      const breakouts = Lib.breakouts(query, STAGE_INDEX);
+      if (breakouts.length === 0) {
         continue;
       }
 
@@ -450,6 +517,7 @@ export const selectUrlState = createSelector(
     selectProjectionConfig,
     selectDimensionOverrides,
     selectDisplayType,
+    selectActiveTabId,
   ],
   (
     sourceOrder,
@@ -457,6 +525,7 @@ export const selectUrlState = createSelector(
     projectionConfig,
     dimensionOverrides,
     displayType,
+    activeTabId,
   ): SerializedExplorerState => {
     return stateToSerializedState(
       sourceOrder,
@@ -464,6 +533,7 @@ export const selectUrlState = createSelector(
       projectionConfig,
       dimensionOverrides,
       displayType,
+      activeTabId,
     );
   },
 );
