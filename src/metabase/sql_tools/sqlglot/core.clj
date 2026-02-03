@@ -1,4 +1,4 @@
-^{:clj-kondo/ignore [:metabase/modules]}
+^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: remove before merging
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [clojure.string :as str]
@@ -66,6 +66,13 @@
                     driver {:table table
                             :schema (or table-schema default-schema)}))))
           query-tables)))
+
+(comment
+  ;; REPL usage - requires test metadata:
+  (require '[metabase.lib.test-metadata :as meta])
+  (require '[metabase.lib.core :as lib])
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS")]
+    (referenced-tables :h2 query)))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [_parser driver query]

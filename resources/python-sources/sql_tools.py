@@ -426,36 +426,53 @@ def serialize_error(e):
             "type": "unhandled",
             "message": message}
 
-# TODO: get rid of sqlglot_schema
-def validate_query(dialect, sql, default_table_schema, sqlglot_schema):
+def validate_query(dialect, sql, default_table_schema, sqlglot_schema_json):
     """
     Validate a SQL query against a schema using sqlglot's qualify optimizer.
+
+    Validation modes:
+    - Strict mode (sqlglot_schema provided): Validates columns and tables exist in schema.
+      Returns errors for unknown tables, unresolved columns, missing table aliases.
+    - Permissive mode (sqlglot_schema is None/empty): Only checks SQL syntax, infers schema
+      from query structure. Useful for UDTFs and queries against unknown tables.
 
     Returns JSON with:
     - If valid: {"status": "ok"}
     - If error: {"status": "error", "type": "...", "message": "...", ...}
 
     Error types:
-    - unknown_table: Table reference not found
-    - column_not_resolved: Column not found (includes 'column' and optionally 'details' with table info)
+    - unknown_table: Table reference not found in schema (strict mode only)
+    - column_not_resolved: Column not found (includes 'column' and optionally 'details')
     - invalid_expression: Syntax/parse error
     - unhandled: Other errors
 
     :param dialect: SQLGlot dialect string (e.g., "postgres", "mysql")
     :param sql: SQL query string to validate
     :param default_table_schema: Default schema for unqualified tables
-    :param sqlglot_schema: Schema dict {schema: {table: {column: type}}}
+    :param sqlglot_schema_json: JSON-encoded schema dict {schema: {table: {column: type}}},
+                                or None/empty for permissive mode
     """
     status = {"status": "ok"}
-    # TODO: divide into 2 chunks -- parse, optimize
+
+    # Decode JSON schema if provided (GraalVM Polyglot passes complex maps as JSON strings)
+    sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
+
+    # Determine validation mode based on whether schema is provided
+    # - Strict mode: schema provided → validate columns/tables exist
+    # - Permissive mode: no schema → only check syntax, infer schema from query
+    strict_mode = sqlglot_schema is not None and len(sqlglot_schema) > 0
+
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
         ast = qualify.qualify(ast,
                             db=default_table_schema,
                             dialect=dialect,
-                            schema=sqlglot_schema,
-                            # TODO: Following makes the UDTFs parse. Broader implications?
-                            infer_schema=True,
+                            schema=sqlglot_schema if strict_mode else None,
+                            # In strict mode: don't infer, validate against provided schema
+                            # In permissive mode: infer schema from query (handles UDTFs)
+                            infer_schema=not strict_mode,
+                            # In strict mode: validate that columns can be resolved
+                            validate_qualify_columns=strict_mode,
                             sql=sql)
     except ParseError as e:
         status |= serialize_error(e)

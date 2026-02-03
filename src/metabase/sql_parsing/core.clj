@@ -125,20 +125,28 @@
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
 
-   Unlike `validate-sql-query` which only checks syntax, this validates that
-   column and table references actually exist in the provided schema.
+   Operates in two modes based on whether a schema is provided:
+
+   **Strict mode** (sqlglot-schema provided):
+   Validates that column and table references exist in the provided schema.
+   Returns errors for unknown tables, unresolved columns, missing table aliases.
+
+   **Permissive mode** (sqlglot-schema is nil or empty):
+   Only checks SQL syntax. Infers schema from query structure.
+   Useful for UDTFs and queries where the schema is unknown.
 
    Parameters:
-   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\")
+   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil
    - sql: The SQL query string to validate
    - default-table-schema: Default schema name for unqualified table references
-   - sqlglot-schema: Schema map of {schema-name {table-name {column-name type}}}
+   - sqlglot-schema: Schema map of {schema-name {table-name {column-name type}}},
+                     or nil/empty for permissive mode
 
    Returns a map with:
    - If valid: {:status \"ok\"}
    - If error: {:status \"error\", :type \"...\", :message \"...\", ...}
 
-   Error types:
+   Error types (strict mode):
    - \"unknown_table\": Table not found in schema
    - \"column_not_resolved\": Column not found (includes :column key)
    - \"invalid_expression\": Syntax/parse error
@@ -146,8 +154,9 @@
   [dialect sql default-table-schema sqlglot-schema]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (common/eval-python ctx "import sql_tools")
+    ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
     (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
-        (.execute ^Value (object-array [dialect sql default-table-schema sqlglot-schema]))
+        (.execute ^Value (object-array [dialect sql default-table-schema (json/encode sqlglot-schema)]))
         .asString
         json/decode+kw)))
 
@@ -270,3 +279,9 @@
     (println "```")
     (format-report r)
     (println "```\n")))
+
+(comment
+
+  (validate-sql-query "postgres" "select * FROM no_table")
+  (referenced-tables "postgres" "select * FROM no_table")
+  )

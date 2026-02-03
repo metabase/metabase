@@ -46,11 +46,11 @@
             "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active")))))
 
 (deftest ^:parallel cte-test
-    (testing "CTE (WITH clause) parsing"
-      (is (= [[nil nil "users"]]
-             (sql-parsing/referenced-tables
-              "postgres"
-              "WITH active_users AS (SELECT * FROM users WHERE active)
+  (testing "CTE (WITH clause) parsing"
+    (is (= [[nil nil "users"]]
+           (sql-parsing/referenced-tables
+            "postgres"
+            "WITH active_users AS (SELECT * FROM users WHERE active)
                              SELECT * FROM active_users")))))
 
 (deftest ^:parallel join-test
@@ -63,11 +63,11 @@
                              JOIN orders o ON u.id = o.user_id")))))
 
 (deftest ^:parallel subquery-test
-    (testing "Subquery table extraction"
-      (is (=? [[nil nil "users"]]
-              (sql-parsing/referenced-tables
-               "postgres"
-               "SELECT * FROM (SELECT id FROM users) AS sub")))))
+  (testing "Subquery table extraction"
+    (is (=? [[nil nil "users"]]
+            (sql-parsing/referenced-tables
+             "postgres"
+             "SELECT * FROM (SELECT id FROM users) AS sub")))))
 
 ;;; ---------------------------------------- Catalog/Schema Extraction Tests ----------------------------------------
 ;;; These tests verify the 3-tuple (tables) and 4-tuple (fields) API per the design doc:
@@ -299,6 +299,89 @@
           (is (= expected columns)
               (format "%s %s should return %s, got %s"
                       (name dialect) (name op-type) (pr-str expected) columns)))))))
+
+;;; -------------------------------------------- Schema Validation Tests (validate-query) ------------------------------------------------
+
+;; validate-query validates SQL against a provided schema, detecting:
+;; - Missing columns (column doesn't exist in any table)
+;; - Missing table aliases (table wildcard references non-existent source)
+;; - Unknown tables (table not in schema)
+
+(def ^:private test-schema
+  "Test schema for validation tests.
+   Structure: {schema-name {table-name {column-name type}}}"
+  {"PUBLIC" {"PRODUCTS" {"ID" "INT"
+                         "TITLE" "VARCHAR"
+                         "CATEGORY" "VARCHAR"
+                         "PRICE" "DECIMAL"}
+             "ORDERS" {"ID" "INT"
+                       "USER_ID" "INT"
+                       "PRODUCT_ID" "INT"
+                       "TOTAL" "DECIMAL"}
+             "USERS" {"ID" "INT"
+                      "NAME" "VARCHAR"
+                      "EMAIL" "VARCHAR"}}})
+
+(deftest ^:parallel validate-query-valid-queries-test
+  (testing "Valid queries against schema"
+    (testing "simple select with existing columns"
+      (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT id, title FROM products" "PUBLIC" test-schema)))))
+
+    (testing "wildcard select"
+      (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT * FROM products" "PUBLIC" test-schema)))))
+
+    (testing "table-qualified columns"
+      (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT products.id, products.title FROM products" "PUBLIC" test-schema)))))
+
+    (testing "join with valid columns"
+      (is (= "ok" (:status (sql-parsing/validate-query nil
+                                                       "SELECT o.id, p.title FROM orders o JOIN products p ON o.product_id = p.id"
+                                                       "PUBLIC" test-schema)))))
+
+    (testing "subquery"
+      (is (= "ok" (:status (sql-parsing/validate-query nil
+                                                       "SELECT * FROM (SELECT id, title FROM products) AS sub"
+                                                       "PUBLIC" test-schema)))))))
+
+(deftest ^:parallel validate-query-missing-column-test
+  (testing "Missing column errors"
+    (testing "non-existent column"
+      (let [result (sql-parsing/validate-query nil "SELECT bad_column FROM products" "PUBLIC" test-schema)]
+        (is (= "error" (:status result)))
+        (is (= "column_not_resolved" (:type result)))
+        (is (re-find #"(?i)bad_column" (:column result)))))
+
+    (testing "column from wrong table"
+      (let [result (sql-parsing/validate-query nil "SELECT email FROM products" "PUBLIC" test-schema)]
+        (is (= "error" (:status result)))
+        (is (= "column_not_resolved" (:type result)))))))
+
+(deftest ^:parallel validate-query-missing-table-alias-test
+  (testing "Missing table alias errors"
+    (testing "table wildcard with non-existent table"
+      (let [result (sql-parsing/validate-query nil "SELECT products.* FROM orders" "PUBLIC" test-schema)]
+        (is (= "error" (:status result)))
+        ;; SQLGlot reports this as unknown_table
+        (is (contains? #{"unknown_table" "column_not_resolved"} (:type result)))))
+
+    (testing "qualified column with non-existent alias"
+      (let [result (sql-parsing/validate-query nil "SELECT p.id FROM products" "PUBLIC" test-schema)]
+        (is (= "error" (:status result)))))))
+
+(deftest ^:parallel validate-query-unknown-table-test
+  ;; SQLGlot's qualify.qualify() does NOT detect unknown tables - it just doesn't qualify them.
+  ;; Unknown table detection happens at the sql-tools layer by matching referenced tables
+  ;; against Metabase's database metadata.
+  (testing "Unknown tables are not detected by SQLGlot (known limitation)"
+    (let [result (sql-parsing/validate-query nil "SELECT * FROM nonexistent" "PUBLIC" test-schema)]
+      (is (= "ok" (:status result))
+          "SQLGlot passes unknown tables through without error"))))
+
+(deftest ^:parallel validate-query-syntax-error-test
+  (testing "Syntax errors are caught"
+    (let [result (sql-parsing/validate-query nil "SELECT * FORM products" "PUBLIC" test-schema)]
+      (is (= "error" (:status result)))
+      (is (= "invalid_expression" (:type result))))))
 
 ;;; -------------------------------------------- SQL Validation Tests ------------------------------------------------
 
