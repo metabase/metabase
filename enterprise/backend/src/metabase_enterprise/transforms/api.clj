@@ -100,10 +100,9 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids type]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (check-is-data-analyst)
-  (let [where      (when type [:in :source_type (map #(if (= % "query") "mbql" %) type)])
-        transforms (t2/select :model/Transform {:where (or where true) :order-by [[:id :asc]]})]
+  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
                (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
@@ -129,8 +128,7 @@
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database_id {:optional true} [:maybe ms/PositiveInt]]
-    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
   (get-transforms query-params))
 
 (defn- extract-all-columns-from-query
