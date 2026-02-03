@@ -16,6 +16,7 @@ export const EditDefinitionButton = ({
   return (
     <Button
       component={Link}
+      data-testid="edit-definition-button"
       style={{ flexShrink: 0 }}
       to={transformEdit(transformId)}
       {...buttonProps}

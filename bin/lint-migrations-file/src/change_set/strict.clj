@@ -23,7 +23,7 @@
                     ;; new ids should conform this format
                     :id-with-timestamp ;; e.g: v49.2023-12-14T08:54:54
                     (s/and #(re-matches id-timestamp-format-re %))
-                    :id-with-old-verion-format ;; e.g: v49.00-008
+                    :id-with-old-version-format ;; e.g: v49.00-008
                     (s/and #(re-matches id-number-format-re %)
                            ;; the cut off id for this old format is v49.00-060
                            ;; see #36787 for context

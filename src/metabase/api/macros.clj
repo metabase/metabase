@@ -636,11 +636,18 @@
 
 (mr/def ::ns-endpoints [:map-of ::unique-key ::info])
 
+(mr/def ::route-metadata
+  "Metadata declared on a route via defendpoint, e.g. `{:access :workspace}`."
+  :map)
+
 (mr/def ::handler-map
-  [:map-of ::method [:sequential [:tuple (ms/InstanceOfClass clout.core.CompiledRoute) ::handler]]])
+  [:map-of ::method [:sequential [:tuple
+                                  (ms/InstanceOfClass clout.core.CompiledRoute)
+                                  ::handler
+                                  [:maybe ::route-metadata]]]])
 
 (mu/defn- ns-handler-map :- ::handler-map
-  "Build a map of method => [[clout-route handler]+] used to power the combined ns handler built
+  "Build a map of method => [[clout-route handler metadata]+] used to power the combined ns handler built
   by [[build-ns-handler]]."
   [endpoints :- ::ns-endpoints]
   (->> endpoints
@@ -650,7 +657,8 @@
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
                                                    (get-in route [:form :route :regexes] {}))
-                              (:handler route)])
+                              (:handler route)
+                              (get-in route [:form :metadata])])
                            routes)))))
 
 (defn- decode-route-params [route-params]
@@ -661,7 +669,7 @@
 
     [request' handler]
 
-  (Request is updated to include parsed Clout parameters.)"
+  (Request is updated to include parsed Clout parameters and route metadata.)"
   [handler-map :- ::handler-map
    request      :- ::request]
   (let [request-method (:request-method request)
@@ -670,9 +678,11 @@
         request        (cond-> request
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler]]
+    (some (fn [[route handler metadata]]
             (when-let [route-params (clout/route-matches route request)]
-              [(assoc request :route-params (decode-route-params route-params))
+              [(-> request
+                   (assoc :route-params (decode-route-params route-params))
+                   (assoc :route-metadata metadata))
                handler]))
           handlers)))
 
