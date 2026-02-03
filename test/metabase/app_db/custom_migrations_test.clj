@@ -2742,12 +2742,13 @@
             insert!       (fn [source-type source target]
                             (t2/insert-returning-pk!
                              :transform
-                             {:name        "t"
-                              :source      source
-                              :target      target
-                              :source_type source-type
-                              :created_at  :%now
-                              :updated_at  :%now}))
+                             {:name               "t"
+                              :source             source
+                              :target             target
+                              :source_type        source-type
+                              :source_database_id db-id
+                              :created_at         :%now
+                              :updated_at         :%now}))
             ;; source.query.database takes precedence over target.database
             both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
             ;; source.query.database used when target has no database
