@@ -189,7 +189,7 @@
            #"[Cc]ycle"
            (lib/check-segment-overwrite 1 segment-1-def))))))
 
-  (deftest ^:parallel check-segment-overwrite-cycle-ex-data-test
+(deftest ^:parallel check-segment-overwrite-cycle-ex-data-test
     (testing "Cycle exception includes segment-id and cycle-path in ex-data"
       (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
             segment-1-def (segment-definition-referencing mp 1)
