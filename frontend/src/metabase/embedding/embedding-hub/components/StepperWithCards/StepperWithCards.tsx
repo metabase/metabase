@@ -85,7 +85,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
     >
       {steps.map((step) => {
         const isDone = step.cards.every((card) => card.done || card.optional);
-        const hasOnlyOptionalCards = step.cards.every((card) => card.optional);
+        const hasOnlyOneCard = step.cards.length === 1;
 
         return (
           <Stepper.Step
@@ -103,15 +103,10 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                         : undefined;
 
                     const isNextCard = nextCard && nextCard.id === card.id;
-
-                    const getColSpan = () =>
-                      !card.optional || hasOnlyOptionalCards ? 8 : 4;
+                    const colSpan = !card.optional || hasOnlyOneCard ? 8 : 4;
 
                     return (
-                      <Grid.Col
-                        span={{ xs: 12, md: getColSpan() }}
-                        key={card.id}
-                      >
+                      <Grid.Col span={{ xs: 12, md: colSpan }} key={card.id}>
                         <CardAction card={card}>
                           <Card
                             h="100%"
@@ -130,7 +125,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                               <Stack gap="xs" h="100%">
                                 <Text
                                   size={
-                                    card.optional && !hasOnlyOptionalCards
+                                    card.optional && !hasOnlyOneCard
                                       ? "md"
                                       : "lg"
                                   }
