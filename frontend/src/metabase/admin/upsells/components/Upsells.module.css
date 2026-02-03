@@ -1,5 +1,3 @@
-@import "./Upsells.base.module.css";
-
 .SecondaryCTALink {
   display: inline;
   color: var(--mb-color-metabase-brand);
