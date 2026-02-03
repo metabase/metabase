@@ -71,12 +71,8 @@ export type TableDependencyNodeData = Pick<
   | "db"
   | "fields"
   | "transform"
-<<<<<<< HEAD
-> & { table_id?: TableId };
-=======
   | "owner"
->;
->>>>>>> master
+> & { table_id?: TableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
