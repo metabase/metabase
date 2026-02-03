@@ -25,6 +25,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -960,8 +961,16 @@
 
 (defmethod driver/insert-col->val [:mysql :jsonl-file]
   [_driver _ column-def v]
-  (if (and (string? v) (isa? (:type column-def) :type/DateTimeWithTZ))
-    (t/offset-date-time v)
+  (if (string? v)
+    (cond
+      (isa? (:type column-def) :type/DateTimeWithTZ)
+      (t/offset-date-time v)
+
+      (isa? (:type column-def) :type/DateTime)
+      (u.date/parse v)
+
+      :else
+      v)
     v))
 
 (defn- parse-grant
