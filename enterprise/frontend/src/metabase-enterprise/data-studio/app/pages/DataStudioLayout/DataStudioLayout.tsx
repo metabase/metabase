@@ -107,34 +107,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const currentTab = getCurrentTab(pathname);
 
   return (
-<<<<<<< HEAD
-    <Stack
-      className={cx(S.nav, { [S.opened]: isNavbarOpened })}
-      h="100%"
-      p="0.75rem"
-      justify="space-between"
-      data-testid="data-studio-nav"
-    >
-      <Stack gap="0.75rem" flex={1} mih={0}>
-        <DataStudioNavbarToggle
-          isNavbarOpened={isNavbarOpened}
-          onNavbarToggle={onNavbarToggle}
-        />
-        <DataStudioTab
-          label={t`Library`}
-          icon="repository"
-          to={Urls.dataStudioLibrary()}
-          isSelected={currentTab === "library"}
-          showLabel={isNavbarOpened}
-          rightSection={
-            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-            ) : null
-          }
-        />
-
-        {canAccessDataModel && (
-=======
     <>
       <Stack
         className={cx(S.nav, { [S.opened]: isNavbarOpened })}
@@ -143,12 +115,11 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         justify="space-between"
         data-testid="data-studio-nav"
       >
-        <Stack gap="0.75rem">
+        <Stack gap="0.75rem" flex={1} mih={0}>
           <DataStudioNavbarToggle
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}
           />
->>>>>>> master
           <DataStudioTab
             label={t`Library`}
             icon="repository"
@@ -212,6 +183,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
+          {(canAccessTransforms || isAdmin) &&
+            hasPremiumFeature("workspaces") && (
+              <WorkspacesSection showLabel={isNavbarOpened} />
+            )}
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (
@@ -248,54 +223,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
-<<<<<<< HEAD
-            label={t`Transforms`}
-            icon="transform"
-            to={Urls.transformList()}
-            isSelected={currentTab === "transforms"}
-            showLabel={isNavbarOpened}
-            rightSection={
-              hasTransformDirtyChanges &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              ) : null
-            }
-          />
-        )}
-        {canAccessTransforms && hasPremiumFeature("workspaces") && (
-          <WorkspacesSection showLabel={isNavbarOpened} />
-        )}
-      </Stack>
-      <Stack gap="0.75rem">
-        <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
-          isNavbarOpened={isNavbarOpened}
-          onClick={() => setIsGitSettingsOpen(true)}
-        />
-        {canAccessTransforms && (
-          <DataStudioTab
-            label={t`Jobs`}
-            icon="clock"
-            to={Urls.transformJobList()}
-            isSelected={currentTab === "jobs"}
-            showLabel={isNavbarOpened}
-          />
-        )}
-        {canAccessTransforms && (
-          <DataStudioTab
-            label={t`Runs`}
-            icon="play_outlined"
-            to={Urls.transformRunList()}
-            isSelected={currentTab === "runs"}
-            showLabel={isNavbarOpened}
-          />
-        )}
-
-        <DataStudioTab
-          label={t`Exit`}
-          icon="exit"
-          to={"/"}
-          showLabel={isNavbarOpened}
-=======
             label={t`Exit`}
             icon="exit"
             to={"/"}
@@ -305,7 +232,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
           isOpen={isGitSettingsOpen}
           onClose={() => setIsGitSettingsOpen(false)}
->>>>>>> master
         />
       </Stack>
     </>
