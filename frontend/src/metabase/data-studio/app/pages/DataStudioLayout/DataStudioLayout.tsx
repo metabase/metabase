@@ -144,6 +144,14 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
+            label={t`Schema viewer`}
+            icon="database"
+            to={Urls.dataStudioErdBase()}
+            isSelected={currentTab === "schema-viewer"}
+            showLabel={isNavbarOpened}
+            isGated={!hasDependenciesFeature}
+          />
+          <DataStudioTab
             label={t`Glossary`}
             icon="glossary"
             to={Urls.dataStudioGlossary()}
@@ -174,7 +182,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
             isGated={!hasDependenciesFeature}
           />
-          {canAccessTransforms && (
+          {(canAccessTransforms || isAdmin) && (
             <DataStudioTab
               label={t`Transforms`}
               icon="transform"

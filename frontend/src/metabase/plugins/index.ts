@@ -134,6 +134,7 @@ export {
   type CheckDependenciesModalProps,
   type UseCheckDependenciesProps,
   type UseCheckDependenciesResult,
+  type DatabaseSchemaViewerSectionProps,
 } from "./oss/transforms";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";

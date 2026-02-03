@@ -1,10 +1,10 @@
 .card {
-  min-width: 15rem;
-  max-width: 30rem;
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
+  min-width: 20rem;
+  max-width: 20rem;
+  border: 1px solid rgba(7, 23, 34, 0.14);
+  border-radius: 0.5rem;
   background: var(--mb-color-white);
-  box-shadow: var(--mantine-shadow-sm);
+  box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
@@ -13,7 +13,7 @@
 }
 
 .header {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid rgba(7, 23, 34, 0.14);
 }
 
 .focal .header {

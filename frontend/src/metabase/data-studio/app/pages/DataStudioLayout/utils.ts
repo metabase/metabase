@@ -9,7 +9,7 @@ type TabName =
   | "dependencies"
   | "workspace"
   | "dependency-diagnostics"
-  | "erd"
+  | "schema-viewer"
   | "glossary"
   | "git-sync";
 
@@ -26,7 +26,7 @@ export const getCurrentTab = (pathname: string): TabName => {
     case pathname.startsWith(Urls.dependencyDiagnostics()):
       return "dependency-diagnostics";
     case pathname.startsWith(Urls.dataStudioErdBase()):
-      return "erd";
+      return "schema-viewer";
     case pathname.startsWith(Urls.dataStudioLibrary()):
       return "library";
     case pathname.startsWith(Urls.transformRunList()):

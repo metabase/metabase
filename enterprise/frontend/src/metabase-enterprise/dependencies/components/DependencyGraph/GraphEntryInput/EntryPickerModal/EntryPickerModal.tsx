@@ -3,11 +3,10 @@ import { t } from "ttag";
 
 import {
   EntityPickerModal,
+  type EntityPickerProps,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
-
-import type { EntityPickerProps } from "metabase/common/components/Pickers";
 
 import {
   ENTITY_PICKER_OPTIONS,

@@ -5,7 +5,6 @@ import type { ErdField } from "metabase-types/api";
 
 import S from "./ErdFieldRow.module.css";
 import { ROW_HEIGHT } from "./constants";
-import { getFieldTypeBadge } from "./utils";
 
 interface ErdFieldRowProps {
   field: ErdField;
@@ -22,13 +21,9 @@ export function ErdFieldRow({
     field.semantic_type === "type/PK" || field.semantic_type === "PK";
   const isFK =
     field.semantic_type === "type/FK" || field.semantic_type === "FK";
-  const badge = getFieldTypeBadge(field.database_type, field.semantic_type);
 
   return (
     <Group className={S.row} gap="xs" wrap="nowrap" h={ROW_HEIGHT} px="lg">
-      <Box className={S.badge} fz="xs" fw="bold" style={{ color: badge.color }}>
-        {badge.label}
-      </Box>
       <Box
         className={S.name}
         fz="sm"
@@ -36,6 +31,9 @@ export function ErdFieldRow({
         style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}
       >
         {field.name}
+      </Box>
+      <Box fz="sm" c="text-tertiary" style={{ flexShrink: 0 }}>
+        {field.database_type}
       </Box>
       {isFK && isConnected && (
         <Handle

@@ -1,3 +1,5 @@
+import type { EdgeMarker } from "@xyflow/react";
+
 import type {
   ErdEdge,
   ErdNode,
@@ -32,7 +34,7 @@ function toFlowNode(
   };
 }
 
-function toFlowEdge(edge: ErdEdge): ErdFlowEdge {
+function toFlowEdge(edge: ErdEdge, markerEnd: EdgeMarker): ErdFlowEdge {
   const isSelfRef = edge.source_table_id === edge.target_table_id;
   return {
     id: `edge-${edge.source_field_id}-${edge.target_field_id}`,
@@ -43,18 +45,14 @@ function toFlowEdge(edge: ErdEdge): ErdFlowEdge {
       ? `field-${edge.target_field_id}-right`
       : `field-${edge.target_field_id}`,
     type: "erdEdge",
-    ...(isSelfRef && {
-      markerEnd: {
-        type: "arrowclosed" as const,
-        color: "var(--mb-color-border)",
-        width: 16,
-        height: 16,
-      },
-    }),
+    markerEnd,
   };
 }
 
-export function toFlowGraph(data: ErdResponse): {
+export function toFlowGraph(
+  data: ErdResponse,
+  markerEnd: EdgeMarker,
+): {
   nodes: ErdFlowNode[];
   edges: ErdFlowEdge[];
 } {
@@ -76,43 +74,6 @@ export function toFlowGraph(data: ErdResponse): {
     nodes: data.nodes.map((node) =>
       toFlowNode(node, connectedByTable.get(node.table_id) ?? emptySet),
     ),
-    edges: data.edges.map(toFlowEdge),
+    edges: data.edges.map((edge) => toFlowEdge(edge, markerEnd)),
   };
-}
-
-export function getFieldTypeBadge(
-  databaseType: string,
-  semanticType: string | null,
-): { label: string; color: string } {
-  if (semanticType === "type/PK" || semanticType === "PK") {
-    return { label: "PK", color: "var(--mb-color-warning)" };
-  }
-  if (semanticType === "type/FK" || semanticType === "FK") {
-    return { label: "FK", color: "var(--mb-color-focus)" };
-  }
-
-  const upper = databaseType.toUpperCase();
-  if (
-    upper.includes("INT") ||
-    upper.includes("DECIMAL") ||
-    upper.includes("FLOAT") ||
-    upper.includes("DOUBLE") ||
-    upper.includes("NUMERIC") ||
-    upper.includes("BIGINT") ||
-    upper.includes("REAL")
-  ) {
-    return { label: "123", color: "var(--mb-color-summarize)" };
-  }
-  if (
-    upper.includes("DATE") ||
-    upper.includes("TIME") ||
-    upper.includes("TIMESTAMP")
-  ) {
-    return { label: "⏰", color: "var(--mb-color-filter)" };
-  }
-  if (upper.includes("BOOL") || upper.includes("BIT")) {
-    return { label: "T/F", color: "var(--mb-color-accent4)" };
-  }
-
-  return { label: "A-Z", color: "var(--mb-color-brand)" };
 }

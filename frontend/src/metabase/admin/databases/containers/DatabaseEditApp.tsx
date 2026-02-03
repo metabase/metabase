@@ -18,6 +18,7 @@ import { connect, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
@@ -102,6 +103,10 @@ function DatabaseEditAppInner({
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
                   <DatabaseConnectionInfoSection database={database} />
+
+                  <PLUGIN_DEPENDENCIES.DatabaseSchemaViewerSection
+                    database={database}
+                  />
 
                   <DatabaseModelFeaturesSection
                     database={database}

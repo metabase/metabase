@@ -1,6 +1,7 @@
 import {
   Background,
   Controls,
+  MarkerType,
   Panel,
   ReactFlow,
   useEdgesState,
@@ -10,6 +11,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { usePalette } from "metabase/common/hooks/use-palette";
 import * as Urls from "metabase/lib/urls";
 import { Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
@@ -44,7 +46,7 @@ const PRO_OPTIONS = {
 };
 
 const ERD_SEARCH_MODELS: SearchModel[] = ["table", "dataset"];
-const ERD_PICKER_MODELS = ["table", "dataset"] as const;
+const ERD_PICKER_MODELS: ("table" | "dataset")[] = ["table", "dataset"];
 
 interface ErdProps {
   tableId: TableId | undefined;
@@ -72,14 +74,20 @@ export function Erd({ tableId, modelId }: ErdProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ErdFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ErdFlowEdge>([]);
   const { colorScheme } = useColorScheme();
+  const palette = usePalette();
   const hasEntry = tableId != null || modelId != null;
+
+  const markerEnd = useMemo(
+    () => ({ type: MarkerType.Arrow, strokeWidth: 2, color: palette.border }),
+    [palette.border],
+  );
 
   const graph = useMemo(() => {
     if (data == null) {
       return null;
     }
-    return toFlowGraph(data);
-  }, [data]);
+    return toFlowGraph(data, markerEnd);
+  }, [data, markerEnd]);
 
   useEffect(() => {
     if (graph != null) {
