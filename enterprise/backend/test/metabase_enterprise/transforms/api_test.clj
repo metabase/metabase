@@ -210,7 +210,7 @@
                      :model/TransformRun {run-a-id :id}       {:transform_id transform-a-id}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "transform-name"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-a-id transform-b-id])]
@@ -227,7 +227,7 @@
                      :model/TransformRun {run-2-id :id}       {:transform_id transform-2-id}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort_column "transform-name"
                                                  :sort_direction sort-direction
                                                  :transform_ids [transform-1-id transform-2-id])]
