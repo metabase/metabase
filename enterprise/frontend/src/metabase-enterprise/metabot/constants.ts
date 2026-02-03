@@ -20,6 +20,7 @@ export const FIXED_METABOT_ENTITY_IDS = {
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   SQL: "sql",
+  TRANSFORMS_CODEGEN: "transforms_codegen",
 };
 
 export const METABOT_ERR_MSG = {

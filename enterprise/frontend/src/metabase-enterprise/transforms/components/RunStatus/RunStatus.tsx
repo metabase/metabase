@@ -37,7 +37,7 @@ export function RunStatus({
   const endTimeText = endTime != null ? endTime.fromNow() : null;
 
   const errorInfo =
-    message != null ? (
+    message != null && status != null ? (
       <RunInfo
         status={status}
         message={message}

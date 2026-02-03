@@ -2,6 +2,7 @@
   "API namespace for the `metabase-enterprise.transform` module."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.transforms.models.transform]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.settings]
    [metabase-enterprise.transforms.util]
@@ -17,10 +18,13 @@
   python-transform?
   query-transform?
   transform-source-database
+  transform-source-type
   transform-type
   has-db-transforms-permission?]
  [metabase-enterprise.transforms.models.transform-run
-  timeout-run!])
+  timeout-run!]
+ [metabase-enterprise.transforms.models.transform
+  update-transform-tags!])
 
 (defenterprise transform-stats
   "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59.

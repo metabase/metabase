@@ -8,7 +8,7 @@ import {
 import { t } from "ttag";
 
 import type { ColorName } from "metabase/lib/colors/types";
-import { Button, Icon, Loader, Tooltip } from "metabase/ui";
+import { Button, type ButtonProps, Icon, Loader, Tooltip } from "metabase/ui";
 import type {
   TransformId,
   TransformJobId,
@@ -22,6 +22,7 @@ type RunButtonProps = {
   run: TransformRun | null | undefined;
   isDisabled?: boolean;
   allowCancellation?: boolean;
+  size?: ButtonProps["size"];
   onRun: () => void;
   onCancel?: () => void;
 };
@@ -32,6 +33,7 @@ export const RunButton = forwardRef(function RunButton(
     run,
     isDisabled: isExternallyDisabled = false,
     allowCancellation = false,
+    size = "md",
     onRun,
     onCancel,
   }: RunButtonProps,
@@ -63,6 +65,7 @@ export const RunButton = forwardRef(function RunButton(
         leftSection={leftSection}
         disabled={isDisabled}
         data-testid="run-button"
+        size={size}
         onClick={onRun}
       >
         {label}
