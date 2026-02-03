@@ -15,6 +15,7 @@
    [metabase.server.middleware.request-id :as mw.request-id]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.server.middleware.settings-cache :as mw.settings-cache]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -82,13 +83,14 @@
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.session/wrap-current-user-info          ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
+        #'mw.settings-cache/wrap-settings-cache-check ; check cookie to refresh settings cache if needed
         #'analytics/embedding-mw                     ; reads sdk client headers, binds them to *client* and *version*, and tracks sdk-response metrics
         #'mw.session/wrap-session-key                ; looks for a Metabase Session ID and assoc as :metabase-session-key
         #'mw.auth/wrap-static-api-key                ; looks for a static Metabase API Key on the request and assocs as :metabase-api-key
         #'wrap-cookies                               ; Parses cookies in the request map and assocs as :cookies
         #'mw.misc/add-version                        ; Adds a X-Metabase-Version header to the response
         #'mw.misc/add-content-type                   ; Adds a Content-Type header for any response that doesn't already have one
-        #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so ngnix doesn't buffer keepalive bytes
+        #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so nginx doesn't buffer keepalive bytes
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request

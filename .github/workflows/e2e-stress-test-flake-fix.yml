@@ -22,14 +22,10 @@ on:
         required: false
         default: "ee"
       qa_db:
-        description: "Select the type of Database you want to run your tests with"
-        type: choice
+        description: "Whether to set up and include external QA databases"
+        type: boolean
         required: true
-        default: "none"
-        options:
-          - none
-          - sql
-          - mongo
+        default: false
       enable_network_throttling:
         description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
         type: boolean
@@ -80,21 +76,15 @@ jobs:
     timeout-minutes: 60
     name: Stress test E2E flake fix
     env:
-      DISPLAY: ""
-      QA_DB_ENABLED: ${{ contains(fromJSON('["sql", "mongo"]'), inputs.qa_db) }}
-      CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == 'mongo' }}
-      MB_RUN_MODE: e2e
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+      TERM: xterm
+      TZ: US/Pacific # to make Node match the instance tz
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
-      TERM: xterm
-      TZ: US/Pacific # to make node match the instance tz
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,9 +99,9 @@ jobs:
           maildev: true
           openldap: true
           snowplow: true
-          postgres: ${{ inputs.qa_db == 'sql' }}
-          mysql: ${{ inputs.qa_db == 'sql' }}
-          mongo: ${{ inputs.qa_db == 'mongo' }}
+          postgres: ${{ inputs.qa_db }}
+          mysql: ${{ inputs.qa_db }}
+          mongo: ${{ inputs.qa_db }}
 
       - name: Download Metabase ${{ matrix.edition }} uberjar
         uses: ./.github/actions/e2e-download-uberjar
@@ -120,28 +110,33 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
       - name: Prepare back-end environment
-        if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
+
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         run: yarn build-embedding-sdk-package
 
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
-      - name: Generate database snapshots
-        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      - name: Generate default database snapshot
+        if: inputs.qa_db == false # true boolean, do not use string here!
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
+
+      - name: Generate all database snapshots
+        if: inputs.qa_db
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep

@@ -41,7 +41,7 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
 
       assertTableRowsCount(TOTAL_USERS);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
@@ -57,13 +57,13 @@ describe("scenarios > admin > people", () => {
       cy.log(
         "Dig into one of the user groups and make sure its members are listed",
       );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All Users").click();
       cy.findByTestId("admin-pane-page-title").contains("All Users");
 
       // The same list as for "People"
       assertTableRowsCount(TOTAL_USERS);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${TOTAL_USERS} members`);
 
       // We cannot add new users to the "All users" group directly
@@ -73,31 +73,31 @@ describe("scenarios > admin > people", () => {
       const GROUP = "collection";
 
       cy.findByTestId("admin-layout-sidebar").findByText("Groups").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(GROUP).closest("tr").contains("4");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(GROUP).click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4 members");
 
       cy.button("Add members").click();
       cy.focused().type(admin.first_name);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(adminUserName).click();
       cy.button("Add").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("5 members");
 
       removeUserFromGroup(adminUserName);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4 members");
 
       // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("2 members");
 
       cy.findByTestId("admin-layout-sidebar").findByText("People").click();
@@ -110,15 +110,15 @@ describe("scenarios > admin > people", () => {
 
       cy.findByRole("link", { name: /group/i }).click();
 
-      cy.findByRole("table").findByRole("link", { name: /data/i }).click();
+      cy.findByRole("table").findByRole("link", { name: /data$/i }).click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1 member");
 
       removeUserFromGroup(normalUserName);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("0 members");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("A group is only as good as its members.");
     });
 
@@ -136,14 +136,14 @@ describe("scenarios > admin > people", () => {
       clickButton("Create");
 
       // second modal
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${FULL_NAME} has been added`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(FULL_NAME);
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
@@ -159,14 +159,14 @@ describe("scenarios > admin > people", () => {
       clickButton("Create");
 
       // second modal
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${email} has been added`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(email);
     });
 
@@ -179,7 +179,7 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText("Last name").type(last_name + "New");
       cy.findByLabelText(/Email/).type(email.toUpperCase());
       clickButton("Create");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Email address already in use.");
     });
 
@@ -269,7 +269,7 @@ describe("scenarios > admin > people", () => {
 
       cy.visit("/admin/people");
       showUserOptions(normalUserName);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit user").click();
 
       H.modal().within(() => {
@@ -282,7 +282,7 @@ describe("scenarios > admin > people", () => {
         clickButton("Update", { timeout: 4000 });
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NEW_FULL_NAME);
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
@@ -292,14 +292,14 @@ describe("scenarios > admin > people", () => {
     it("should reset user password without SMTP set up", () => {
       cy.visit("/admin/people");
       showUserOptions(normalUserName);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Reset password").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Reset ${normalUserName}'s password?`);
       clickButton("Reset password");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${normalUserName}'s password has been reset`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
       cy.location().should((loc) =>
@@ -331,9 +331,9 @@ describe("scenarios > admin > people", () => {
 
         cy.visit("/admin/people");
         showUserOptions(normalUserName);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Reset password").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
         clickButton("Reset password");
 
@@ -344,11 +344,11 @@ describe("scenarios > admin > people", () => {
         });
 
         cy.log("Should not show temporary password modal");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${normalUserName}'s password has been reset`).should(
           "not.exist",
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/^temporary password$/i).should("not.exist");
 
         cy.log("Should close the modal");
@@ -461,7 +461,7 @@ describe("scenarios > admin > people", () => {
 
       cy.visit("/admin/people/groups");
       cy.findByTestId("admin-layout-content").scrollTo("bottom");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("readonly");
     });
 
@@ -486,16 +486,16 @@ describe("scenarios > admin > people", () => {
         clickButton("Create");
 
         // second modal
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${FULL_NAME} has been added`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.contains(
           `We’ve sent an invite to ${email} with instructions to set their password.`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(FULL_NAME);
       });
     });
@@ -517,11 +517,11 @@ describe("scenarios > admin > people", () => {
         cy.visit("/admin/people");
 
         // Total
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${NEW_TOTAL_USERS} people found`);
 
         // Page 1
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
@@ -539,7 +539,7 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Previous page").click();
 
         // Page 1
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
       });
@@ -549,17 +549,17 @@ describe("scenarios > admin > people", () => {
         cy.visit(`admin/people/groups/${ALL_USERS_GROUP}`);
 
         // Total
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${NEW_TOTAL_USERS} members`);
 
         // Page 1
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
 
         cy.findByLabelText("Next page").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 
         // Page 2
@@ -568,11 +568,11 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Next page").should("be.disabled");
 
         cy.findByLabelText("Previous page").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 
         // Page 1
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
       });
@@ -598,9 +598,9 @@ describe("scenarios > admin > people", () => {
     });
 
     cy.visit("/account/notifications");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Dashboard");
 
     cy.visit("/admin/people");
@@ -618,9 +618,9 @@ describe("scenarios > admin > people", () => {
 
     cy.visit("/account/notifications");
     cy.findByLabelText("bell icon");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Dashboard").should("not.exist");
   });
 
@@ -631,8 +631,8 @@ describe("scenarios > admin > people", () => {
 
     const { first_name, last_name, email } = TEST_USER;
     const FULL_NAME = `${first_name} ${last_name}`;
-    cy.visit("/admin/people");
 
+    cy.visit("/admin/people");
     clickButton("Invite someone");
 
     // first modal
@@ -642,25 +642,23 @@ describe("scenarios > admin > people", () => {
     clickButton("Create");
 
     // second modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${FULL_NAME} has been added`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(
-      `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
-    );
-    cy.url().then((url) => {
-      const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
-      const { userId } = URL_REGEX.exec(url).groups;
-      assertLinkMatchesUrl(
-        "reset their password.",
-        `/admin/people/${userId}/reset`,
+    H.modal().within(() => {
+      cy.findByText(`${FULL_NAME} has been added`);
+      cy.contains(
+        `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
       );
+      cy.url().then((url) => {
+        const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+        const { userId } = URL_REGEX.exec(url).groups;
+        assertLinkMatchesUrl(
+          "reset their password.",
+          `/admin/people/${userId}/reset`,
+        );
+      });
+      cy.button("Done").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(FULL_NAME);
+    cy.findByTestId("admin-people-list-table").should("contain", FULL_NAME);
   });
 });
 
@@ -683,10 +681,10 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
+    H.activateToken("bleeding-edge");
 
     cy.visit("/admin/people");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(normalUserName)
       .closest("tr")
       .findByText("2 other groups")
@@ -696,9 +694,7 @@ describe("scenarios > admin > people > group managers", () => {
 
     cy.signInAsNormalUser();
     cy.visit("/");
-    cy.icon("gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
+    H.goToAdmin();
   });
 
   describe("group managers", () => {
@@ -709,25 +705,25 @@ describe("scenarios > admin > people > group managers", () => {
 
       // Edit group name
       cy.icon("ellipsis").eq(0).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Name").click();
-      cy.get("input").type(" updated");
+      cy.findByDisplayValue("collection").type(" updated");
       cy.button("Done").click();
 
       // Click on the group with the new name
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("collection updated").click();
 
       // Add "No Collection" user as a member
       cy.button("Add members").click();
       cy.focused().type("No");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add").click();
 
       // Find user row
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName).closest("tr").as("userRow");
 
       // Promote to manager and demote back to member
@@ -745,11 +741,11 @@ describe("scenarios > admin > people > group managers", () => {
       cy.get("@userRow").within(() => {
         cy.icon("close").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName).should("not.exist");
 
       // Demote myself
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normalUserName)
         .closest("tr")
         .within(() => {
@@ -762,11 +758,11 @@ describe("scenarios > admin > people > group managers", () => {
       cy.url().should("match", /\/admin\/people\/groups$/);
 
       // Open another group
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("data").click();
 
       // Remove myself
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normalUserName)
         .closest("tr")
         .within(() => {
@@ -780,7 +776,7 @@ describe("scenarios > admin > people > group managers", () => {
 
     it("can manage members from the people page", () => {
       // Open membership select for a user
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)
         .closest("tr")
         .as("userRow")
@@ -811,7 +807,7 @@ describe("scenarios > admin > people > group managers", () => {
       });
 
       // Find own row
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normalUserName)
         .closest("tr")
         .within(() => {
@@ -866,7 +862,7 @@ describe("issue 23689", () => {
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3 members");
 
     findUserByFullName(normal);
@@ -879,7 +875,7 @@ describe("issue 23689", () => {
       .click({ force: true });
 
     // Sanity check instead of waiting for the PUT request
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Manager");
 
     cy.sandboxTable({
@@ -896,7 +892,7 @@ describe("issue 23689", () => {
   it("sandboxed group manager should see all other members (metabase#23689)", () => {
     visitGroupPermissionsPage(COLLECTION_GROUP);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3 members");
 
     findUserByFullName(sandboxed);
@@ -906,7 +902,7 @@ describe("issue 23689", () => {
     cy.visit("/admin/people");
     cy.wait("@membership");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${totalUsers} people found`);
     findUserByFullName(sandboxed);
     findUserByFullName(normal);

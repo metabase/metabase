@@ -29,6 +29,9 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 /** list of active embeds, used to know which embeds to update when the global config changes */
 const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
+/** counter used as a parameter in the iframe src to force parallel loading */
+let _iframeCounter = 0;
+
 // Setup a proxy to watch for changes to window.metabaseConfig and update all
 // active embeds when the config changes. It also setups a setter for
 // window.metabaseConfig to re-create the proxy if the whole object is replaced,
@@ -339,7 +342,10 @@ export abstract class MetabaseEmbedElement
       : null;
 
     this._iframe = document.createElement("iframe");
-    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}`;
+    // Random query param is needed to allow parallel EmbedJS iframes loading.
+    // Without it multiple EmbedJS iframes on a page loaded sequentially.
+    // We don't cache the iframe content, so random query parameter does not break caching.
+    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?v=${_iframeCounter++}`;
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";
@@ -370,7 +376,11 @@ export abstract class MetabaseEmbedElement
       console.error("unable to construct the URL:", error);
     }
 
-    return hostname === "localhost" || hostname === "127.0.0.1";
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
   }
 
   private _validateEmbedSettings(settings: SdkIframeEmbedElementSettings) {
@@ -486,8 +496,10 @@ function createCustomElement<Arr extends readonly string[]>(
 
 const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
+  "token",
   "with-title",
   "with-downloads",
+  "with-subscriptions",
   "drills",
   "initial-parameters",
   "hidden-parameters",
@@ -495,8 +507,10 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "question-id",
+  "token",
   "with-title",
   "with-downloads",
+  "with-alerts",
   "drills",
   "initial-sql-parameters",
   "hidden-parameters",

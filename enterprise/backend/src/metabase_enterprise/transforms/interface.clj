@@ -35,7 +35,14 @@
 
   - `:run-method`
      Expected to be either `:cron` (for scheduled runs) or `:manual` (for ad-hoc or test runs)
-     Used for instrumentation / metadata purposes."
+     Used for instrumentation / metadata purposes.
+
+  - `:user-id`
+     Optional user ID to attribute the run to. For manual runs, this should be the ID of the user who
+     triggered the run. For cron/scheduled runs, this is typically nil, and the run will be attributed
+     to the transform's owner (if set) or creator.
+
+  Do not use this directly. Use [[metabase-enterprise.transforms.execute/execute!]] instead."
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
     (transform->transform-type transform)))
@@ -45,12 +52,16 @@
   The transform execution system uses these dependencies to determine the correct order of execution
   and to detect circular dependencies.
 
-  Each dependency is represented as either:
+  Each dependency is represented as one of:
   - `{:table <table-id>}`
      A dependency on a table that exists and has been synced.
   - `{:transform <transform-id>}`
      A dependency on a table that does not yet exist, but is known to be the target of another transform.
      Represents a 'placeholder' table (as we no table id / metadata) for the same purposes.
+  - `{:table-ref {:database_id <db-id> :schema <schema> :table <name>}}`
+     A dependency on a table by name, for cases where the table_id may not exist yet (e.g., when
+     bulk importing transforms that depend on each other's outputs). The ordering system will
+     resolve these to transforms by matching against target table definitions.
 
   An empty set indicates no dependencies."
   {:added "0.57.0" :arglists '([transform])}

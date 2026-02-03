@@ -6,9 +6,15 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import * as Lib from "metabase-lib";
-import type { Database, QueryTransformSource } from "metabase-types/api";
+import type {
+  Database,
+  QueryTransformSource,
+  TransformId,
+} from "metabase-types/api";
 
+import { EditDefinitionButton } from "./EditDefinitionButton";
 import { getEditorOptions } from "./utils";
 
 type TransformEditorProps = {
@@ -20,6 +26,10 @@ type TransformEditorProps = {
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onBlur?: () => void;
+  isEditMode?: boolean;
+  readOnly?: boolean;
+  transformId?: TransformId;
 };
 
 export function TransformEditor({
@@ -31,6 +41,10 @@ export function TransformEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
+  isEditMode,
+  readOnly,
+  transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
   const query = useMemo(
@@ -44,10 +58,23 @@ export function TransformEditor({
         : undefined,
     [proposedSource, metadata],
   );
-  const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
+  const uiOptions = useMemo(
+    () => getEditorOptions(databases, !isEditMode),
+    [databases, isEditMode],
+  );
+
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditDefinitionButton =
+    !!transformId && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
-    onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
+    const newSource: QueryTransformSource = {
+      ...source,
+      type: "query",
+      query: Lib.toJsQuery(query),
+    };
+
+    onChangeSource(newSource);
   };
 
   return (
@@ -60,6 +87,19 @@ export function TransformEditor({
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onBlur={onBlur}
+      topBarInnerContent={
+        showEditDefinitionButton && (
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transformId}
+          />
+        )
+      }
     />
   );
 }

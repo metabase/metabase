@@ -1,16 +1,23 @@
 import type { Card, CardType } from "./card";
-import type { Collection } from "./collection";
+import type { Collection, CollectionId } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
+import type { Measure } from "./measure";
 import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
 export type TableId = ConcreteTableId | VirtualTableId;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
+
+export function isConcreteTableId(
+  id: TableId | undefined,
+): id is ConcreteTableId {
+  return typeof id === "number";
+}
 
 export type TableVisibilityType =
   | null
@@ -49,6 +56,7 @@ export type Table = {
   fks?: ForeignKey[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   metrics?: Card[];
   field_order: TableFieldOrder;
 
@@ -66,14 +74,21 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
+  owner?: TableOwner | null;
   estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   view_count: number;
   transform?: Transform;
 
-  published_models?: Card[] | null; // present in /api/table/:id/query_metadata
-  published_as_model?: boolean; // present in /api/database/:id/schemas/:schemaId
+  collection_id: CollectionId | null;
+  is_published: boolean;
+  collection?: Collection;
 };
+
+export type TableOwner = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+>;
 
 export type SchemaName = string;
 
@@ -101,6 +116,7 @@ export interface TableListQuery {
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields?: boolean;
+  "can-query"?: boolean;
 
   term?: string;
   "data-layer"?: TableDataLayer;
@@ -135,7 +151,7 @@ export interface UpdateTableRequest {
   id: TableId;
   display_name?: string;
   visibility_type?: TableVisibilityType;
-  description?: string;
+  description?: string | null;
   caveats?: string;
   points_of_interest?: string;
   show_in_getting_started?: boolean;
@@ -211,19 +227,6 @@ export interface GetTableDataRequest {
   tableId: TableId;
 }
 
-export interface PublishModelsRequest {
-  database_ids?: DatabaseId[];
-  schema_ids?: SchemaId[];
-  table_ids?: TableId[];
-  target_collection_id: number | "library" | null;
-}
-
-export interface PublishModelsResponse {
-  created_count: number;
-  models: Card[];
-  target_collection: Collection | null;
-}
-
 export type TableData = {
   data: DatasetData;
   database_id: DatabaseId;
@@ -244,3 +247,31 @@ export type TableData = {
   /** A date in ISO 8601 format */
   started_at?: string;
 };
+
+export interface BulkTableInfo {
+  id: TableId;
+  db_id: DatabaseId;
+  name: string;
+  display_name: string;
+  schema: string | null;
+  is_published: boolean;
+}
+
+export interface BulkTableSelection {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface BulkTableSelectionInfo {
+  // if only one table was selected, returns this table, otherwise null
+  selected_table: BulkTableInfo | null;
+  // tables outside the selection that use selected tables for remapping
+  published_downstream_tables: BulkTableInfo[];
+  // tables outside the selection that are used for remapping by selected tables
+  unpublished_upstream_tables: BulkTableInfo[];
+}
+
+export interface PublishTablesResponse {
+  target_collection: Collection | null;
+}

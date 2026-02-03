@@ -1,5 +1,5 @@
 (ns metabase.driver.sparksql
-  (:refer-clojure :exclude [select-keys every? empty? not-empty])
+  (:refer-clojure :exclude [select-keys every? empty? not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -18,7 +18,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.performance :refer [select-keys every? empty? not-empty]])
+   [metabase.util.performance :refer [select-keys every? empty? not-empty get-in]])
   (:import
    (java.sql Connection ResultSet Types)))
 
@@ -265,3 +265,6 @@
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (.getObject rs i)))
+
+(defmethod driver/llm-sql-dialect-resource :sparksql [_]
+  "llm/prompts/dialects/databricks.md")

@@ -2,20 +2,8 @@ import { getEngineNativeType } from "metabase/lib/engine";
 import type DatabaseEntity from "metabase-lib/v1/metadata/Database";
 import type { Database } from "metabase-types/api";
 
-export const getHasDataAccess = (
-  databases: Pick<Database | DatabaseEntity, "is_saved_questions">[],
-) => {
-  return databases.some((d) => !d.is_saved_questions);
-};
-
 export const getHasOwnDatabase = (databases: (Database | DatabaseEntity)[]) => {
   return databases.some((d) => !d.is_sample && !d.is_saved_questions);
-};
-
-export const getHasNativeWrite = (
-  databases: Pick<Database | DatabaseEntity, "native_permissions">[],
-) => {
-  return databases.some((d) => d.native_permissions === "write");
 };
 
 export const getHasDatabaseWithJsonEngine = (

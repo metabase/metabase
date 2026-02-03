@@ -28,7 +28,7 @@
 }
 
 .tbody {
-  background: var(--mb-color-bg-light);
+  background: var(--mb-color-background-secondary);
   overflow-y: auto;
   /* magic numbers:
    * 90dvh as modal has 5dvh padding on top/bottom

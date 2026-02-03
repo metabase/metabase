@@ -30,7 +30,7 @@ const ReferenceHeader = ({
         <Ellipsified
           key="1"
           className={!headerLink && CS.flexFull}
-          tooltipMaxWidth="auto"
+          tooltipProps={{ w: "auto" }}
         >
           {name}
         </Ellipsified>
@@ -63,4 +63,5 @@ ReferenceHeader.propTypes = {
   headerLink: PropTypes.string,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(ReferenceHeader);

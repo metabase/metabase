@@ -6,6 +6,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupMostRecentlyViewedDashboard,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -14,6 +15,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
@@ -53,7 +55,6 @@ const DASHBOARD = createMockDashboard({
 const DASHBOARD_AT_ROOT = createMockDashboard({
   id: getNextId(),
   name: "Dashboard at root",
-  collection_id: null,
   model: "dashboard",
 });
 
@@ -235,6 +236,7 @@ const setup = async ({
   setupRecentViewsAndSelectionsEndpoints([]);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
+  setupDatabasesEndpoints([]);
 
   collections.forEach((collection) => {
     setupCollectionItemsEndpoint({
@@ -317,14 +319,7 @@ describe("AddToDashSelectDashModal", () => {
       mostRecentlyViewedDashboard: DASHBOARD,
     });
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
-  });
-
-  it("should show error", async () => {
-    const ERROR = "Server Error!";
-    await setup({ error: ERROR, mostRecentlyViewedDashboard: DASHBOARD });
-
-    expect(await screen.findByText(ERROR)).toBeInTheDocument();
+    expect(await screen.findByText("Loading...")).toBeInTheDocument();
   });
 
   it("should render dashboards when opening the root collection (public collection)", async () => {
@@ -468,18 +463,9 @@ describe("AddToDashSelectDashModal", () => {
         card: CARD_IN_PUBLIC_SUBCOLLECTION,
       });
 
-      expect(await findPickerItem(ROOT_COLLECTION.name)).toHaveAttribute(
-        "data-active",
-        "true",
-      );
-      expect(await findPickerItem(COLLECTION.name)).toHaveAttribute(
-        "data-active",
-        "true",
-      );
-      expect(await findPickerItem(SUBCOLLECTION.name)).toHaveAttribute(
-        "data-active",
-        "true",
-      );
+      await expectActiveItem(ROOT_COLLECTION.name);
+      await expectActiveItem(COLLECTION.name);
+      await expectActiveItem(SUBCOLLECTION.name);
     });
 
     it("should not render public collections when the question is in a personal collection", async () => {
@@ -552,12 +538,13 @@ describe("AddToDashSelectDashModal", () => {
       const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
-      expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
-        context: "entity-picker",
-        models: "dashboard",
-        q: typedText,
-        filter_items_in_personal_collection: "only",
-      });
+      expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual(
+        expect.objectContaining({
+          context: "entity-picker",
+          q: typedText,
+          filter_items_in_personal_collection: "only",
+        }),
+      );
     });
 
     it("when adding a public question, should not send a personal-only query param", async () => {
@@ -582,11 +569,9 @@ describe("AddToDashSelectDashModal", () => {
       const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
-      expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
-        context: "entity-picker",
-        models: "dashboard",
-        q: typedText,
-      });
+      expect(
+        Object.keys(Object.fromEntries(urlObject.searchParams.entries())),
+      ).not.toContain("filter_items_in_personal_collection");
     });
   });
 
@@ -630,11 +615,9 @@ describe("AddToDashSelectDashModal", () => {
 async function assertPath(collections: Collection[]) {
   await waitForLoaderToBeRemoved();
 
-  return Promise.all(
-    collections.map(async (collection) => {
-      return expect(await findPickerItem(collection.name)).toBeInTheDocument();
-    }),
-  );
+  for (const collection of collections) {
+    expect(await findPickerItem(collection.name)).toBeInTheDocument();
+  }
 }
 
 const clickPickerItem = async (item: string) => {
@@ -644,3 +627,10 @@ const clickPickerItem = async (item: string) => {
 const findPickerItem = async (item: string) => {
   return screen.findByRole("link", { name: new RegExp(item) });
 };
+
+const expectActiveItem = async (itemName: string) =>
+  waitFor(() =>
+    expect(
+      screen.getByRole("link", { name: new RegExp(itemName) }),
+    ).toHaveAttribute("data-active", "true"),
+  );

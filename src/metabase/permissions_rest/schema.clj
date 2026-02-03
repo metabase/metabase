@@ -96,7 +96,8 @@
      [:data           {:optional true} [:ref ::strict-data-perms]]
      [:download       {:optional true} [:ref ::strict-data-perms]]
      [:data-model     {:optional true} [:ref ::strict-data-perms]]
-     [:details        {:optional true} [:enum :yes :no]]]
+     [:details        {:optional true} [:enum :yes :no]]
+     [:transforms     {:optional true} [:enum :yes :no]]]
     [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
      (fn [db-entry]
        (let [{:keys [create-queries view-data]} db-entry]

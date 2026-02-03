@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
@@ -12,19 +11,14 @@ import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
 // TODO: Move this to a more suitable location for sharing.
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import type {
-  Collection,
-  CollectionItem,
-  Dashboard,
-  Database,
-} from "metabase-types/api";
+import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
-  createMockDatabase,
   createMockSearchResult,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   createMockDashboardState,
@@ -33,27 +27,8 @@ import {
 
 import { AddCardSidebar } from "./AddCardSidebar";
 
-const CURRENT_USER = createMockUser({
-  id: 1,
-  personal_collection_id: 100,
-  is_superuser: true,
-});
-
-const DB_WITH_ONLY_DATA_ACCESS = createMockDatabase({
-  id: 1,
-  native_permissions: "none",
-});
-
-const DB_WITH_NATIVE_WRITE_ACCESS = createMockDatabase({
-  id: 1,
-  native_permissions: "write",
-});
-
-const DB_WITH_NO_WRITE_ACCESS = createMockDatabase({
-  id: 1,
-  is_saved_questions: true,
-  native_permissions: "none",
-});
+const CURRENT_USER_ID = 1;
+const PERSONAL_COLLECTION_ID = 100;
 
 const COLLECTION = createMockCollection({
   id: 1,
@@ -72,16 +47,16 @@ const SUBCOLLECTION = createMockCollection({
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: PERSONAL_COLLECTION_ID,
   name: "My personal collection",
-  personal_owner_id: CURRENT_USER.id,
+  personal_owner_id: CURRENT_USER_ID,
   can_write: true,
   is_personal: true,
   location: "/",
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
-  id: (CURRENT_USER.personal_collection_id as number) + 1,
+  id: PERSONAL_COLLECTION_ID + 1,
   name: "Nested personal collection",
   can_write: true,
   is_personal: true,
@@ -102,21 +77,22 @@ const COLLECTIONS = [
 ];
 
 interface SetupOpts {
-  databases?: Database[];
   collections: Collection[];
   collectionItems?: CollectionItem[];
   dashboard?: Dashboard;
+  canCreateQueries?: boolean;
+  canCreateNativeQueries?: boolean;
 }
 
 async function setup({
-  databases = [],
   collections,
   collectionItems = [],
   dashboard = createMockDashboard({
     collection: ROOT_COLLECTION,
   }),
+  canCreateQueries,
+  canCreateNativeQueries,
 }: SetupOpts) {
-  setupDatabasesEndpoints(databases);
   setupCollectionsEndpoints({
     collections,
   });
@@ -134,7 +110,14 @@ async function setup({
     </MockDashboardContext>,
     {
       storeInitialState: createMockState({
-        currentUser: CURRENT_USER,
+        currentUser: createMockUser({
+          id: CURRENT_USER_ID,
+          personal_collection_id: PERSONAL_COLLECTION_ID,
+          permissions: createMockUserPermissions({
+            can_create_queries: canCreateQueries,
+            can_create_native_queries: canCreateNativeQueries,
+          }),
+        }),
         dashboard: createMockDashboardState({
           dashboards: {
             [dashboard.id]: { ...dashboard, dashcards: [] },
@@ -430,7 +413,7 @@ describe("AddCardSideBar", () => {
     it("displays the 'New Question' button if the user has data access", async () => {
       await setup({
         collections: COLLECTIONS,
-        databases: [DB_WITH_ONLY_DATA_ACCESS],
+        canCreateQueries: true,
       });
       expect(await screen.findByText("New Question")).toBeInTheDocument();
       expect(screen.queryByText("New SQL query")).not.toBeInTheDocument();
@@ -439,7 +422,8 @@ describe("AddCardSideBar", () => {
     it("displays the 'New Question' and 'New SQL query' button if the user has native write access", async () => {
       await setup({
         collections: COLLECTIONS,
-        databases: [DB_WITH_NATIVE_WRITE_ACCESS],
+        canCreateQueries: true,
+        canCreateNativeQueries: true,
       });
       expect(await screen.findByTestId("new-button-bar")).toBeInTheDocument();
       expect(await screen.findByText("New Question")).toBeInTheDocument();
@@ -449,7 +433,8 @@ describe("AddCardSideBar", () => {
     it("does not display any buttons if the user has no access to either", async () => {
       await setup({
         collections: COLLECTIONS,
-        databases: [DB_WITH_NO_WRITE_ACCESS],
+        canCreateQueries: false,
+        canCreateNativeQueries: false,
       });
       expect(await screen.findByPlaceholderText(/Search/)).toBeInTheDocument();
       expect(screen.queryByText("New Question")).not.toBeInTheDocument();

@@ -15,8 +15,17 @@ export const trackCollectionBookmarked = () => {
   });
 };
 
-export const trackCollectionItemBookmarked = (item: CollectionItem) => {
-  if (item.model === "indexed-entity" || item.model === "snippet") {
+export const trackCollectionItemBookmarked = (
+  item: CollectionItem & {
+    model: CollectionItem["model"];
+  },
+) => {
+  if (
+    item.model === "indexed-entity" ||
+    item.model === "snippet" ||
+    item.model === "transform"
+  ) {
+    // can't bookmark these
     return;
   }
 
@@ -29,7 +38,8 @@ export const trackCollectionItemBookmarked = (item: CollectionItem) => {
       | "collection"
       | "dataset"
       | "document"
-      | "card",
+      | "card"
+      | "table",
   ) => {
     switch (analyticsModel) {
       case "card":

@@ -23,7 +23,7 @@ const Template: StoryFn<SdkUsageProblemBannerProps> = (args) => {
 };
 
 const MESSAGE =
-  "The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.";
+  "The modular embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.";
 
 export const Warning = {
   render: Template,

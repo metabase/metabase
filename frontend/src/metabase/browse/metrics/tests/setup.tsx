@@ -1,25 +1,24 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
-  setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Database, TokenFeatures } from "metabase-types/api";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockDatabase,
   createMockDataset,
   createMockSearchResult,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   createMockSetupState,
@@ -209,20 +208,18 @@ export type SetupOpts = {
   metricCount?: number;
   recentMetricCount?: number;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  databases?: Database[];
+  canCreateQueries?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
-
-const MOCK_DATABASE = createMockDatabase({ id: 1, name: "Database Name" });
 
 export function setup({
   metricCount = Infinity,
   recentMetricCount = 5,
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
-  databases = [MOCK_DATABASE],
+  canCreateQueries = true,
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const state = createMockState({
     setup: createMockSetupState({
@@ -232,12 +229,17 @@ export function setup({
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
-    currentUser: createMockUser({ id: 1 }),
+    currentUser: createMockUser({
+      id: 1,
+      permissions: createMockUserPermissions({
+        can_create_queries: canCreateQueries,
+      }),
+    }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
   const mockRecentMetrics = mockMetrics.map((metric) =>
@@ -247,7 +249,6 @@ export function setup({
   const metrics = mockMetricResults.slice(0, metricCount);
   const recentMetrics = mockRecentMetrics.slice(0, recentMetricCount);
 
-  setupDatabasesEndpoints(databases);
   setupSettingsEndpoints([]);
   setupSearchEndpoints(metrics.map(createMockSearchResult));
   setupRecentViewsEndpoints(recentMetrics);

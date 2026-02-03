@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit-app.settings
   (:require
+   [metabase.audit-app.core :as audit]
    [metabase.settings.core :refer [defsetting]]))
 
 (defsetting install-analytics-database
   "Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
   via environmment variable."
   :type       :boolean
-  :default    true
+  :default    (not (audit/analytics-dev-mode))
   :visibility :internal
   :setter     :none
   :audit      :never

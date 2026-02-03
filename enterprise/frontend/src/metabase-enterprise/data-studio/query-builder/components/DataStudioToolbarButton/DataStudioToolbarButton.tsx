@@ -11,17 +11,13 @@ export const DataStudioToolbarButton = ({
   question,
 }: DataStudioToolbarButtonProps) => {
   const dispatch = useDispatch();
-  const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
 
   const handleClick = useCallback(() => {
-    const url = isModel
-      ? Urls.dataStudioModel(question.id())
-      : Urls.dataStudioMetric(question.id());
-    dispatch(openUrl(url));
-  }, [isModel, question, dispatch]);
+    dispatch(openUrl(Urls.dataStudioMetric(question.id())));
+  }, [question, dispatch]);
 
-  if (!isModel && !isMetric) {
+  if (!isMetric) {
     return null;
   }
 

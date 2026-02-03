@@ -95,3 +95,42 @@
             [{:keys [id]} :- RouteParams]
             (neat))
     {:route {:path "/move/:id", :regexes {:id #"[abc]{4}"}}}))
+
+(deftest ^:parallel parse-args-metadata-test
+  (testing "metadata map is parsed correctly"
+    (are [args expected] (= expected
+                            (#'api.macros/parse-args args))
+      '(:get "/test"
+             "A test endpoint."
+             {:deprecated "0.57.0"}
+             []
+             (test))
+      '{:method :get
+        :route {:path "/test"}
+        :docstr "A test endpoint."
+        :metadata {:deprecated "0.57.0"}
+        :params {}
+        :body [(test)]}
+
+      '(:get "/test"
+             {:multipart true}
+             []
+             (test))
+      '{:method :get
+        :route {:path "/test"}
+        :metadata {:multipart true}
+        :params {}
+        :body [(test)]}
+
+      '(:post "/test"
+              "Deprecated endpoint."
+              {:deprecated "0.50.0", :multipart true}
+              [_route-params
+               _query-params]
+              (test))
+      '{:method :post
+        :route {:path "/test"}
+        :docstr "Deprecated endpoint."
+        :metadata {:deprecated "0.50.0", :multipart true}
+        :params {:route {:binding _route-params}, :query {:binding _query-params}}
+        :body [(test)]})))

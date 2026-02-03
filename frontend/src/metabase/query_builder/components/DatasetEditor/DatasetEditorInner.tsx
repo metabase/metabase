@@ -14,12 +14,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import Button from "metabase/common/components/Button";
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
-import EditBar from "metabase/common/components/EditBar";
+import { Button } from "metabase/common/components/Button";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
+import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
@@ -31,12 +32,12 @@ import {
   setUIControls,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
@@ -80,8 +81,8 @@ import {
   DatasetEditorSettingsSidebar,
   type ModelSettings,
 } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
+import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar";
+import { DatasetQueryEditor } from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
 type MetadataDiff = Record<string, Partial<Field>>;
@@ -290,7 +291,7 @@ function getComputedVisualizationSettings(
   ) as ComputedVisualizationSettings;
 }
 
-const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
+const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -371,9 +372,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
-    return calcInitialEditorHeight({
+    return getInitialEditorHeight({
       query: question.legacyNativeQuery(),
-      viewHeight: height ?? "full",
+      availableHeight: height ?? "full",
     });
   }, [question, height]);
 
@@ -418,10 +419,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (changes: { id: number } & Partial<DatasetColumn>) => {
       const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField);
+        mappedField && getWritableColumnProperties(mappedField, isNative);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
-    [metadata],
+    [metadata, isNative],
   );
 
   const onFieldMetadataChange = useCallback(
@@ -788,4 +789,4 @@ export const DatasetEditorInner = connect(
   mapDispatchToProps,
   null,
   { forwardRef: true },
-)(_DatasetEditorInner);
+)(DatasetEditorInnerView);

@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
@@ -12,6 +12,7 @@ import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -45,8 +46,16 @@ export const setup = async ({
   email = false,
   slack = false,
   collections = [],
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = {},
+}: {
+  dashboard?: typeof TEST_DASHBOARD;
+  isAdmin?: boolean;
+  email?: boolean;
+  slack?: boolean;
+  collections?: Collection[];
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  tokenFeatures?: Partial<TokenFeatures>;
 }) => {
   setupCollectionsEndpoints({ collections });
   setupCollectionByIdEndpoint({ collections });
@@ -56,8 +65,10 @@ export const setup = async ({
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   const channelData: {

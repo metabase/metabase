@@ -69,7 +69,8 @@
 (mr/def ::export-format
   "Schema for valid export formats for downloading query results."
   (into [:enum {:decode/json keyword
-                :api/regex   export-formats-regex}]
+               ;; :api/regex   export-formats-regex
+                }]
         export-formats))
 
 (mr/def ::result-metadata.column
@@ -79,3 +80,35 @@
 (mr/def ::result-metadata.columns
   "A sequence of result metadata columns as returned by the Query Processor."
   [:sequential ::result-metadata.column])
+
+;;; ------------------------------------------------ Query Results -------------------------------------------------
+
+(mr/def ::query-result.data
+  "Schema for the :data key of query results."
+  [:map
+   [:cols              [:sequential ::result-metadata.column]]
+   [:rows              [:sequential [:sequential :any]]]
+   [:native_form       {:optional true} :map]
+   [:results_timezone  {:optional true} :string]
+   [:results_metadata  {:optional true} [:map
+                                         [:columns [:sequential ::result-metadata.column]]]]
+   [:insights          {:optional true} [:sequential :map]]
+   [:download_perms    {:optional true} :string]
+   [:is_sandboxed      {:optional true} :boolean]
+   [:format-rows?      {:optional true} :boolean]])
+
+(mr/def ::query-result
+  "Schema for query execution results returned by the Query Processor."
+  [:map
+   [:status                 [:enum :completed :failed]]
+   [:row_count              :int]
+   [:data                   {:optional true} ::query-result.data]
+   [:running_time           {:optional true} :int]
+   [:started_at             {:optional true} :string]
+   [:database_id            {:optional true} ::lib.schema.id/database]
+   [:json_query             {:optional true} :map]
+   [:average_execution_time {:optional true} [:maybe :int]]
+   [:context                {:optional true} :any]
+   [:cached                 {:optional true} [:maybe :string]]
+   [:error                  {:optional true} :string]
+   [:error_type             {:optional true} :keyword]])

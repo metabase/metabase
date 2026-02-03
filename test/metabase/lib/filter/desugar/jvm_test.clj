@@ -14,7 +14,7 @@
     "geocities.jp"    "https://www.geocities.jp/some/path/Turbitt?search=foo"
     "jalbum.net"      "https://jalbum.net/some/path/Kirsz?search=foo"
     "usa.gov"         "https://usa.gov/some/path/Curdell?search=foo"
-       ;; Oops, this one captures a subdomain because it can't tell va.gov is supposed to be that short.
+    ;; Oops, this one captures a subdomain because it can't tell va.gov is supposed to be that short.
     "taxes.va.gov"    "http://taxes.va.gov/some/path/Marritt?search=foo"
     "gmpg.org"        "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
     "hatena.ne.jp"    "http://hatena.ne.jp/"

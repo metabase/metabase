@@ -100,6 +100,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "download",
     tooltip: "Download as PDF",
   },
+  DASHBOARD_SUBSCRIPTIONS: {
+    icon: "subscription",
+    tooltip: "Subscriptions",
+  },
 };
 
 const setup = ({

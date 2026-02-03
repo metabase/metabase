@@ -7,13 +7,13 @@ import _ from "underscore";
 import type {
   DeleteMappingModalValueType,
   GroupIds,
-  UserGroupsType,
 } from "metabase/admin/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
+import type { GroupInfo } from "metabase-types/api";
 
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
 import Selectbox from "../GroupSelect";
@@ -28,7 +28,7 @@ type OnDeleteMappingType = (arg: {
 
 type MappingRowProps = {
   name: string;
-  groups: UserGroupsType;
+  groups: GroupInfo[];
   selectedGroupIds: GroupIds;
   clearGroupMember: ({ id }: { id: number }) => void;
   deleteGroup: ({ id }: { id: number }) => void;

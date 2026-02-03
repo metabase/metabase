@@ -7,7 +7,7 @@
    SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]
@@ -23,7 +23,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]
+   [metabase.util.performance :refer [mapv empty?]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -89,7 +89,7 @@
 
 (defn the-driver
   "Like [[clojure.core/the-ns]]. Converts argument to a keyword, then loads and registers the driver if not already done,
-  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not neccessarily mean the
+  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not necessarily mean the
   driver is initialized (e.g., its full implementation and deps might not be loaded into memory) -- see also
   [[the-initialized-driver]].
 
@@ -151,7 +151,7 @@
   (the-initialized-driver driver))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Interface (Multimethod Defintions)                                       |
+;;; |                                       Interface (Multimethod Definitions)                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Methods a driver can implement. Not all of these are required; some have default implementations immediately below
@@ -164,7 +164,7 @@
 ;;    (driver/register-driver! :my-driver, :parent :sql-jdbc)
 ;;
 ;;    (defmethod driver/describe-table :my-driver [driver database table]
-;;      (-> ((get-method driver/describe-table :sql-jdbc) driver databse table)
+;;      (-> ((get-method driver/describe-table :sql-jdbc) driver database table)
 ;;          (update :tables add-materialized-views)))
 ;;
 ;; Make sure to pass along the `driver` parameter-as when you call other methods, rather than hardcoding the name of
@@ -181,8 +181,8 @@
   manifest file (which is supplied for lazy-loaded drivers). Methods that require connecting to a database dispatch
   off of [[the-initialized-driver]], which will initialize a driver if not already done so.
 
-  You will rarely need to write an implentation for this method yourself. A lazy-loaded driver (like most of the
-  Metabase drivers in v1.0 and above) are automatiaclly given an implentation of this method that performs the
+  You will rarely need to write an implementation for this method yourself. A lazy-loaded driver (like most of the
+  Metabase drivers in v1.0 and above) are automatically given an implementation of this method that performs the
   `init-steps` specified in the plugin manifest (such as loading namespaces in question).
 
   If you do need to implement this method yourself, you do not need to call parent implementations. We'll take care of
@@ -203,7 +203,7 @@
   implementation capitializes the name of the driver, e.g. `:oracle` becomes \"Oracle\".
 
   When writing a driver that you plan to ship as a separate, lazy-loading plugin (including core drivers packaged this
-  way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
+  way, like SQLite), you do not need to implement this method; instead, specify it in your plugin manifest, and
   `lazy-loaded-driver` will create an implementation for you. Probably best if we only have one place where we set
   values for this."
   {:added "0.32.0" :arglists '([driver])}
@@ -222,6 +222,15 @@
 (defmethod contact-info :default
   [_]
   nil)
+
+(defmulti llm-sql-dialect-resource
+  "Returns the resource path for dialect-specific LLM prompt instructions,
+   or nil if no dialect-specific instructions exist for this driver."
+  {:added "0.59.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod llm-sql-dialect-resource :default [_] nil)
 
 (defn dispatch-on-initialized-driver-safe-keys
   "Dispatch on initialized driver, except checks for `classname`,
@@ -279,7 +288,7 @@
 
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
-  model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+  model. It is expected that this function will be performant and avoid draining meaningful resources of the database.
   Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema.
   Multimethod for backwards compatibility, but should not be extended directly, should instead implement [[describe-database*]].
   Default impl invokes [[describe-database*]] wrapped in [[do-with-resilient-connection]]"
@@ -295,7 +304,7 @@
 (defmulti describe-table
   "Return a map containing a single field `:fields` that describes the fields in a `table`. `database` will be an
   instance of the `Database` model; and `table`, an instance of the `Table` model. It is expected that this function
-  will be peformant and avoid draining meaningful resources of the database. The value of `:fields` should be a set of
+  will be performant and avoid draining meaningful resources of the database. The value of `:fields` should be a set of
   values matching the [[metabase.sync.interface/TableMetadataField]] schema."
   {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
@@ -578,7 +587,7 @@
     :binning
 
     ;; Does this driver not let you specify whether or not our string search filter clauses (`:contains`,
-    ;; `:starts-with`, and `:ends-with`, collectively the equivalent of SQL `LIKE`) are case-senstive or not? This
+    ;; `:starts-with`, and `:ends-with`, collectively the equivalent of SQL `LIKE`) are case-sensitive or not? This
     ;; informs whether we should present you with the 'Case Sensitive' checkbox in the UI. At the time of this writing
     ;; SQLite, SQLServer, and MySQL do not support this -- `LIKE` clauses are always case-insensitive.
     ;;
@@ -592,6 +601,11 @@
     :full-join
 
     :regex
+
+    ;; Added in 57.x; whether the driver in question supports lookaheads and lookbehinds in regular expressions; by
+    ;; default this is true if the driver supports `:regex` but can be disabled for drivers where this is not true,
+    ;; like BigQuery.
+    :regex/lookaheads-and-lookbehinds
 
     ;; Does the driver support advanced math expressions such as log, power, ...
     :advanced-math-expressions
@@ -638,6 +652,9 @@
 
     ;; Does the driver support atomic multi-table renaming
     :atomic-renames
+
+    ;; Does the driver support CREATE OR REPLACE TABLE syntax
+    :create-or-replace-table
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
@@ -774,6 +791,11 @@
     ;; There are drivers that support uuids in queries, but not in create table as eg. Athena.
     :test/uuids-in-create-table-statements
 
+    ;; Use fake sync for slow drivers (e.g., Redshift). When enabled, the test infrastructure directly inserts
+    ;; Table/Field rows from the dbdef instead of calling sync-database!, which can take ~10 minutes for Redshift.
+    ;; Generally should be enabled for any driver where sync-database! takes longer than a few seconds.
+    :test/use-fake-sync
+
     ;; Does this driver support Metabase's database routing feature?
     :database-routing
 
@@ -838,6 +860,7 @@
                               :test/create-table-without-data         true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
+                              :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
                               :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
@@ -848,6 +871,11 @@
   [driver _feature database]
   (and (database-supports? driver :native-parameters database)
        (database-supports? driver :nested-queries database)))
+
+;; by default a driver supports `:regex/lookaheads-and-lookbehinds` if it also supports `:regex` and vice versa
+(defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
+  [driver _feature database]
+  (database-supports? driver :regex database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -917,14 +945,14 @@
 
   At the time of writing, this method acts as identity for nosql drivers. However, story with sql drivers is a bit
   different. To extend it for sql drivers, developers could use [[metabase.driver.sql.util/format-sql]]. Function
-  in question is implemented in a way, that developers, implemnting this multimethod can:
+  in question is implemented in a way, that developers, implementing this multimethod can:
   - Avoid implementing it completely, if their driver keyword representation corresponds to key in
     [[metabase.driver.sql.util/dialects]] (eg. `:postgres`).
   - Ignore implementing it, if it is sufficient to format their drivers native form with dialect corresponding
     to `:standardsql`'s value from the dialects map (eg `:h2`).
   - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
     representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
-  - Completly reimplement this method with their special formatting code."
+  - Completely reimplement this method with their special formatting code."
   {:added "0.47.0", :arglists '([driver native-form])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1001,7 +1029,7 @@
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
 
-  This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
+  This method is currently only used by the H2 driver to load the Sample Database, so it is not necessary for any other
   drivers to implement it at this time."
   {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
@@ -1045,7 +1073,7 @@
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
-  [[metabase.query-processor-test.parameters-test]] and other namespaces."
+  [[metabase.query-processor.parameters-test]] and other namespaces."
   {:added "0.34.0" :arglists '([driver inner-native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1167,8 +1195,14 @@
   :hierarchy #'hierarchy)
 
 (defmulti compile-transform
-  "Compiles the sql for a transform statement, given an inner sql query and a destination."
+  "Compiles the sql for a transform statement (CREATE TABLE AS), given a compiled inner sql query and a destination."
   {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-insert
+  "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
+  {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1210,6 +1244,10 @@
   (fn [driver _database transform-details]
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
+
+(defmethod drop-transform-target! [::driver :table-incremental]
+  [driver database target]
+  ((get-method drop-transform-target! [driver :table]) driver database target))
 
 (mr/def ::native-query-deps.table-dep
   [:map
@@ -1345,6 +1383,20 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti drop-index!
+  "Drops an index named `index-name` created by [[metabase.driver/create-index!]]. Throws if the index does not exist."
+  {:added "0.58.0", :arglists '([driver database-id schema table-name index-name & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti create-index!
+  "Create a (sorted/btree) index named `index-name`.
+  Should be assumed to block until the index is created.
+  Throws if the index already exists."
+  {:added "0.58.0", :arglists '([driver database-id schema table-name index-name column-names & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified
   by schema e.g.
@@ -1453,14 +1505,14 @@
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
   (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
+    (let [lines     (line-seq rdr)
           data-rows (map (fn [line]
                            (let [m (json/decode line)]
                              (mapv (fn [column]
                                      (let [raw-val (get m (:name column))]
                                        (insert-col->val driver :jsonl-file column raw-val)))
                                    columns)))
-                         lines)]
+                         (filter (comp not empty?) lines))]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!

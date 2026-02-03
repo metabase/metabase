@@ -40,15 +40,21 @@
      :permission-level          (if archived :write :read)}
     {:current-user-id current-user-id
      :is-superuser?   is-superuser?})
-   (perms/audit-namespace-clause :collection.namespace nil)])
+   ;; This is to allow the set of namespaces indexed by the search spec for appdb-based search to also apply to
+   ;; legacy search so it performs the same on MySQL
+   ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
+   ;; to different namespaces via parameters.
+   (perms/namespace-clause :collection.namespace nil true)])
 
 (mu/defn permitted-tables-clause
-  "Build the WHERE clause corresponding to which tables the given user has access to."
-  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
+  "Build the WHERE clause and optional CTEs for table permission filtering.
+   Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
+  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
   (mi/visible-filter-clause
    :model/Table
    table-id-col
    {:user-id current-user-id
-    :is-superuser? is-superuser?}
+    :is-superuser? is-superuser?
+    :is-data-analyst? is-data-analyst?}
    {:perms/view-data :unrestricted
     :perms/create-queries :query-builder}))

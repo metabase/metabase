@@ -1,23 +1,37 @@
-import { createSlice } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  isAnyOf,
+  isFulfilled,
+  isPending,
+  isRejected,
+} from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
+  Dashboard,
   DashboardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./downloads-analytics";
@@ -30,8 +44,8 @@ export interface DownloadQueryResultsOpts {
   enablePivot?: boolean;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
-  uuid?: string;
-  token?: string | null;
+  uuid?: EntityUuid | null;
+  token?: EntityToken | null;
   documentUuid?: string;
   documentId?: number;
   params?: Record<string, unknown>;
@@ -137,10 +151,75 @@ const getDownloadedResourceType = ({
   };
 };
 
+export const downloadToImage = createAsyncThunk(
+  "metabase/downloads/downloadToImage",
+  async (
+    {
+      opts: { question, dashcardId },
+      id,
+    }: { opts: DownloadQueryResultsOpts; id: number },
+    { getState },
+  ) => {
+    const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
+    const includeBranding = !isWhitelabeled;
+    const fileName = getChartFileName(question, includeBranding);
+
+    const chartSelector =
+      dashcardId != null
+        ? `[data-dashcard-key='${dashcardId}']`
+        : `[data-card-key='${getCardKey(question.id())}']`;
+
+    // Long-running main thread blocking operation incoming; wait until the loader is painted.
+    await waitUntilNextFramePainted();
+
+    await saveChartImage({
+      selector: chartSelector,
+      fileName,
+      includeBranding,
+    });
+
+    return { id, fileName };
+  },
+);
+
+export const downloadDashboardToPdf = createAsyncThunk(
+  "metabase/downloads/downloadDashboardToPdf",
+  async (
+    { dashboard, id }: { dashboard: Dashboard; id: number },
+    { getState },
+  ) => {
+    const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
+    const includeBranding = !isWhitelabeled;
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
+    const fileName = getDashboardPdfFileName(dashboard, includeBranding);
+
+    // Long-running main thread blocking operation incoming; wait until the loader is painted.
+    await waitUntilNextFramePainted();
+
+    await saveDashboardPdf({
+      fileName,
+      selector: cardNodeSelector,
+      dashboardName: dashboard.name,
+      includeBranding,
+    });
+
+    trackExportDashboardToPDF({
+      dashboardId: dashboard.id,
+      dashboardAccessedVia: getAccessedVia(
+        isUuid(dashboard.id),
+        isJWT(dashboard.id),
+      ),
+    });
+
+    return { id, fileName };
+  },
+);
+
 export const downloadQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
-  async (opts: DownloadQueryResultsOpts, { dispatch, getState }) => {
+  async (opts: DownloadQueryResultsOpts, { dispatch }) => {
     const { resourceType, accessedVia } = getDownloadedResourceType(opts);
+
     trackDownloadResults({
       resourceType,
       accessedVia,
@@ -148,45 +227,23 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
-      const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
-      const includeBranding = !isWhitelabeled;
-      downloadChart({ opts, includeBranding });
+      await dispatch(downloadToImage({ opts, id: Date.now() }));
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(downloadDataset({ opts, id: Date.now() }));
     }
   },
 );
-
-const downloadChart = async ({
-  opts,
-  includeBranding,
-}: {
-  opts: DownloadQueryResultsOpts;
-  includeBranding: boolean;
-}) => {
-  const { question, dashcardId } = opts;
-  const fileName = getChartFileName(question, includeBranding);
-  const chartSelector =
-    dashcardId != null
-      ? `[data-dashcard-key='${dashcardId}']`
-      : `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage({
-    selector: chartSelector,
-    fileName,
-    includeBranding,
-  });
-};
 
 export const downloadDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
   async ({ opts, id }: { opts: DownloadQueryResultsOpts; id: number }) => {
     const params = getDatasetParams(opts);
     const response = await getDatasetResponse(params);
-    const name = getDatasetFileName(response.headers, opts.type);
+    const fileName = getDatasetFileName(response.headers, opts.type);
     const fileContent = await response.blob();
-    openSaveDialog(name, fileContent);
+    openSaveDialog(fileName, fileContent);
 
-    return { id, name };
+    return { id, fileName };
   },
 );
 
@@ -219,7 +276,7 @@ const getPublicDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/public/document/${documentUuid}/card/${cardId}/${type}`,
+  url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
@@ -246,7 +303,7 @@ const getPublicQuestionParams = (
 };
 
 const getEmbedDashcardParams = (
-  token: string,
+  token: EntityToken,
   cardId: number,
   dashcardId: DashCardId,
   type: string,
@@ -262,7 +319,7 @@ const getEmbedDashcardParams = (
 });
 
 const getEmbedQuestionParams = (
-  token: string,
+  token: EntityToken,
   type: string,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
@@ -318,7 +375,7 @@ const getInternalDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/document/${documentId}/card/${cardId}/query/${type}`,
+  url: `/api/document/${documentId}/card/${cardId}/query/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
@@ -533,15 +590,35 @@ export const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
   const fileName = `${name}-${date}.png`;
-  // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
   return branded ? `Metabase-${fileName}` : fileName;
 };
 
-export const getDownloads = (state: State) => state.downloads;
-export const hasActiveDownloads = (state: State) =>
-  state.downloads.some((download) => download.status === "in-progress");
+export const getDashboardPdfFileName = (
+  dashboard: Dashboard,
+  branded: boolean,
+) => {
+  const originalFileName = `${dashboard.name}.pdf`;
+  const fileName = branded
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+      `Metabase - ${originalFileName}`
+    : originalFileName;
+  return fileName;
+};
 
-const initialState: DownloadsState = [];
+export const getDownloads = (state: State) => state.downloads.datasetRequests;
+export const hasActiveDownloads = (state: State) =>
+  state.downloads.datasetRequests.some(
+    (download) => download.status === "in-progress",
+  );
+
+export const getIsDownloadingToImage = (state: State) =>
+  state.downloads.isDownloadingToImage;
+
+const initialState: DownloadsState = {
+  isDownloadingToImage: false,
+  datasetRequests: [],
+};
 
 const downloads = createSlice({
   name: "metabase/downloads",
@@ -552,30 +629,68 @@ const downloads = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(downloadDataset.pending, (state, action) => {
-        const title = t`Results for ${
-          action.meta.arg.opts.question.card().name
-        }`;
-        state.push({
+        state.datasetRequests.push({
           id: action.meta.arg.id,
-          title,
+          title: t`Results for ${action.meta.arg.opts.question.card().name}`,
           status: "in-progress",
         });
       })
-      .addCase(downloadDataset.fulfilled, (state, action) => {
-        const download = state.find((item) => item.id === action.meta.arg.id);
-        if (download) {
-          download.status = "complete";
-          download.title = action.payload.name;
-        }
+      .addCase(downloadDashboardToPdf.pending, (state, action) => {
+        state.datasetRequests.push({
+          id: action.meta.arg.id,
+          title: t`Dashboard for ${action.meta.arg.dashboard.name}`,
+          status: "in-progress",
+        });
       })
-      .addCase(downloadDataset.rejected, (state, action) => {
-        const download = state.find((item) => item.id === action.meta.arg.id);
-        if (download) {
-          download.status = "error";
-          download.error =
-            action.error.message ?? t`Could not download the file`;
-        }
-      });
+      .addCase(downloadToImage.pending, (state, action) => {
+        state.datasetRequests.push({
+          id: action.meta.arg.id,
+          title: t`Image for ${action.meta.arg.opts.question.card().name}`,
+          status: "in-progress",
+        });
+      })
+      .addMatcher(
+        isFulfilled(downloadDataset, downloadDashboardToPdf, downloadToImage),
+        (state, action) => {
+          const download = state.datasetRequests.find(
+            (item) => item.id === action.meta.arg.id,
+          );
+          if (download) {
+            download.status = "complete";
+            download.title = action.payload.fileName;
+          }
+        },
+      )
+      .addMatcher(
+        isRejected(downloadDataset, downloadDashboardToPdf, downloadToImage),
+        (state, action) => {
+          const download = state.datasetRequests.find(
+            (item) => item.id === action.meta.arg.id,
+          );
+          if (download) {
+            download.status = "error";
+            download.error =
+              action.error.message ?? t`Could not download the file`;
+          }
+        },
+      );
+
+    builder
+      .addMatcher(
+        isPending(downloadDashboardToPdf, downloadToImage),
+        (state) => {
+          state.isDownloadingToImage = true;
+        },
+      )
+      .addMatcher(
+        isAnyOf(
+          isRejected(downloadDashboardToPdf, downloadToImage),
+          isFulfilled(downloadDashboardToPdf, downloadToImage),
+        ),
+        (state) => {
+          state.isDownloadingToImage = false;
+        },
+      );
   },
 });
 

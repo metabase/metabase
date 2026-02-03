@@ -25,9 +25,12 @@
 
 ;; GET /permissions/group
 ;; Should *not* include inactive users in the counts.
-(defn- fetch-groups []
-  (set (mt/user-http-request
-        :crowberto :get 200 "permissions/group")))
+(defn- fetch-groups
+  ([]
+   (fetch-groups {}))
+  ([& query-params]
+   (set (apply mt/user-http-request
+               :crowberto :get 200 "permissions/group" query-params))))
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group"
@@ -61,6 +64,14 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
+(deftest no-data-analyst-groups-test
+  (testing "GET /api/permissions/group"
+    (testing "in OSS, the data analyst group is hidden"
+      ;; note that this uses `config/ee-available?` instead of a feature to avoid hiding a group that may stil provide permissions!
+      (when-not config/ee-available?
+        (is (not (contains? (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))
+                            "Data Analysts")))))))
+
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
     (testing "Limit and offset pagination have defaults"
@@ -71,6 +82,60 @@
     (testing "Limit and offset pagination works for permissions list"
       (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
                     (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+
+(deftest fetch-groups-tenancy-filter-test
+  (testing "GET /api/permissions/group with tenancy filter"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}
+                       :model/PermissionsGroup tenant-group {:name "Tenant Group" :is_tenant_group true}]
+          (let [all-groups (fetch-groups)
+                internal-groups (fetch-groups :tenancy "internal")
+                external-groups (fetch-groups :tenancy "external")
+                regular-id (:id regular-group)
+                tenant-id (:id tenant-group)]
+
+            (testing "default behavior (no tenancy param) returns all groups"
+              (is (some #(= regular-id (:id %)) all-groups))
+              (is (some #(= tenant-id (:id %)) all-groups)))
+
+            (testing "tenancy=internal returns only non-tenant groups"
+              (is (some #(= regular-id (:id %)) internal-groups))
+              (is (not (some #(= tenant-id (:id %)) internal-groups))))
+
+            (testing "tenancy=external returns only tenant groups"
+              (is (not (some #(= regular-id (:id %)) external-groups)))
+              (is (some #(= tenant-id (:id %)) external-groups)))
+
+            (testing "magic groups are handled correctly"
+              (let [all-internal-users-id (:id (perms-group/all-users))
+                    find-group-by-type (fn [groups magic-type]
+                                         (some #(when (= magic-type (:magic_group_type %)) %) groups))]
+                (testing "all-internal-users appears in internal filter"
+                  (is (some #(= all-internal-users-id (:id %)) internal-groups)))
+                (testing "all-external-users appears in external filter when available"
+                  (when-let [external-users-group (find-group-by-type all-groups "all-external-users")]
+                    (is (some #(= (:id external-users-group) (:id %)) external-groups))))))))))
+
+    (testing "when tenants feature is disabled"
+      (mt/with-temporary-setting-values [use-tenants false]
+        (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}]
+          (let [all-groups (fetch-groups)
+                internal-groups (fetch-groups :tenancy "internal")
+                external-groups (fetch-groups :tenancy "external")
+                regular-id (:id regular-group)]
+
+            (testing "default behavior excludes tenant groups when tenants disabled"
+              (is (some #(= regular-id (:id %)) all-groups)))
+
+            (testing "tenancy=internal still works when tenants disabled"
+              (is (some #(= regular-id (:id %)) internal-groups)))
+
+            (testing "tenancy=external returns empty when tenants disabled"
+              (is (empty? external-groups)))))))
+
+    (testing "invalid tenancy value returns 400"
+      (:status (mt/user-http-request :crowberto :get 400 "permissions/group" :tenancy "invalid")))))
 
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
@@ -124,7 +189,35 @@
     (testing "group name is required"
       (is (= {:errors          {:name "value must be a non-blank string."},
               :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
-             (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
+             (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))
+
+    (testing "creates regular group by default"
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Regular Group"})
+        (let [group (t2/select-one :model/PermissionsGroup :name "Regular Group")]
+          (is (some? group))
+          (is (false? (:is_tenant_group group))))))
+
+    (testing "creates regular group when is_tenant_group is explicitly false"
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Explicit Regular Group" :is_tenant_group false})
+        (let [group (t2/select-one :model/PermissionsGroup :name "Explicit Regular Group")]
+          (is (some? group))
+          (is (false? (:is_tenant_group group))))))
+
+    (testing "creates regular group when is_tenant_group is nil"
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Nil Tenant Group" :is_tenant_group nil})
+        (let [group (t2/select-one :model/PermissionsGroup :name "Nil Tenant Group")]
+          (is (some? group))
+          (is (false? (:is_tenant_group group))))))))
+
+(deftest create-group-test-enterprise-features
+  (testing "POST /permissions/group enterprise feature enforcement"
+    (testing "throws ee-feature-error when trying to create tenant group without tenants feature"
+      (mt/with-premium-features #{}
+        (is (=? {:message "Tenants is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"}
+                (mt/user-http-request :crowberto :post 402 "permissions/group" {:name "Tenant Group" :is_tenant_group true})))))))
 
 (deftest delete-group-test
   (testing "DELETE /permissions/group/:id"
@@ -486,3 +579,27 @@
 
       (testing "Delete membership successfully"
         (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))
+
+(deftest enabling-tenants-changes-groups
+  (let [get-magic-group (fn [group-type]
+                          (->>
+                           (mt/user-http-request :crowberto :get 200 "/permissions/group")
+                           (filter #(= group-type (:magic_group_type %)))
+                           first))]
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants false]
+        (testing "When disabled, 'All Users' is 'All Users'"
+          (is (=? {:magic_group_type "all-internal-users"
+                   :name "All Users"}
+                  (get-magic-group "all-internal-users"))))
+        (testing "When disabled, 'All tenant users' is not visible"
+          (is (nil? (get-magic-group "all-external-users")))))
+      (mt/with-temporary-setting-values [use-tenants true]
+        (testing "When enabled, 'All Users' is 'All internal users'"
+          (is (=? {:magic_group_type "all-internal-users"
+                   :name "All internal users"}
+                  (get-magic-group "all-internal-users"))))
+        (testing "When enabled, 'All tenant users' is visible"
+          (is (=? {:magic_group_type "all-external-users"
+                   :name "All tenant users"}
+                  (get-magic-group "all-external-users"))))))))

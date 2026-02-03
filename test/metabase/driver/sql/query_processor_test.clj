@@ -982,7 +982,32 @@
                :from      [{:select    [PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID
                                         COUNT (*)                    AS count]
                             :from      [ORDERS]
-                            :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
+                            :left-join [{:select
+                                         [PRODUCTS.ID
+                                          AS
+                                          ID
+                                          PRODUCTS.EAN
+                                          AS
+                                          EAN
+                                          PRODUCTS.TITLE
+                                          AS
+                                          TITLE
+                                          PRODUCTS.CATEGORY
+                                          AS
+                                          CATEGORY
+                                          PRODUCTS.VENDOR
+                                          AS
+                                          VENDOR
+                                          PRODUCTS.PRICE
+                                          AS
+                                          PRICE
+                                          PRODUCTS.RATING
+                                          AS
+                                          RATING
+                                          PRODUCTS.CREATED_AT
+                                          AS
+                                          CREATED_AT],
+                                         :from [PRODUCTS]} AS PRODUCTS__via__PRODUCT_ID
                                         ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
                             :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
                             :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}
@@ -1526,7 +1551,7 @@
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
-;;; see also [[metabase.query-processor-test.order-by-test/order-by-aggregate-fields-test-6]]
+;;; see also [[metabase.query-processor.order-by-test/order-by-aggregate-fields-test-6]]
 (deftest ^:parallel order-by-aggregation-reference-test
   (testing "Should order by aggregation references correctly (#62885)"
     (let [mp    meta/metadata-provider

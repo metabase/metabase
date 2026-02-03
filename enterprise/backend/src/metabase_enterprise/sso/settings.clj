@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sso.settings
-  "Namesapce for defining settings used by the SSO backends. This is separate as both the functions needed to support
+  "Namespace for defining settings used by the SSO backends. This is separate as both the functions needed to support
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
@@ -120,6 +120,13 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :audit      :getter)
 
+(defsetting saml-attribute-tenant
+  (deferred-tru "SAML attribute for the user''s tenant slug")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :feature    :sso-saml
+  :audit      :getter)
+
 (defsetting saml-attribute-firstname
   (deferred-tru "SAML attribute for the user''s first name")
   :default    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
@@ -237,6 +244,14 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :feature    :sso-jwt
   :audit      :getter)
 
+(defsetting jwt-attribute-tenant
+  (deferred-tru "Key to retrieve the JWT user''s tenant")
+  :export?    false
+  :encryption :when-encryption-key-set
+  :default    "@tenant"
+  :feature    :sso-jwt
+  :audit      :getter)
+
 (defsetting jwt-attribute-groups
   (deferred-tru "Key to retrieve the JWT user''s groups")
   :default    "groups"
@@ -303,13 +318,6 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
   :setter (fn [send-emails] (setting/set-value-of-type! :boolean :send-new-sso-user-admin-email? send-emails)))
 
-(defsetting other-sso-enabled?
-  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
-  authorization rather than the normal login form or Google Auth button."
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled))))
-
 (defsetting ldap-sync-user-attributes
   (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
   :type    :boolean
@@ -329,3 +337,93 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :encryption :no
   :default    "(member={dn})"
   :audit      :getter)
+
+;;; ------------------------------------------------ Slack Connect ------------------------------------------------
+
+(defsetting slack-connect-client-id
+  (deferred-tru "Client ID for your Slack app. Get this from https://api.slack.com/apps")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :feature    :sso-slack
+  :audit      :getter)
+
+(defsetting slack-connect-client-secret
+  (deferred-tru "Client Secret for your Slack app")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :sensitive? true
+  :feature    :sso-slack
+  :audit      :no-value)
+
+(def slack-connect-auth-mode-sso
+  "Authentication mode for full SSO login."
+  "sso")
+
+(def slack-connect-auth-mode-link-only
+  "Authentication mode for account linking only (no session creation)."
+  "link-only")
+
+(defsetting slack-connect-authentication-mode
+  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" (default) or \"link-only\"")
+  :type       :string
+  :export?    false
+  :default    slack-connect-auth-mode-sso
+  :feature    :sso-slack
+  :audit      :getter
+  :encryption :no
+  :setter     (fn [new-value]
+                (when (and new-value
+                           (not (contains? #{slack-connect-auth-mode-sso slack-connect-auth-mode-link-only} new-value)))
+                  (throw (ex-info (tru "Invalid authentication mode. Must be \"sso\" or \"link-only\"")
+                                  {:status-code 400})))
+                (setting/set-value-of-type! :string :slack-connect-authentication-mode new-value)))
+
+(defsetting slack-connect-user-provisioning-enabled
+  (deferred-tru "When a user logs in via Slack Connect, create a Metabase account for them automatically if they don''t have one.")
+  :type    :boolean
+  :export? false
+  :default true
+  :feature :sso-slack
+  :getter  (fn []
+             (if (= (slack-connect-authentication-mode) slack-connect-auth-mode-link-only)
+               false
+               (setting/get-value-of-type :boolean :slack-connect-user-provisioning-enabled)))
+  :audit   :getter)
+
+(defsetting slack-connect-attribute-team-id
+  (deferred-tru "Slack OIDC claim for the team/workspace ID")
+  :default    "https://slack.com/team_id"
+  :export?    false
+  :feature    :sso-slack
+  :encryption :when-encryption-key-set
+  :audit      :getter)
+
+(defsetting slack-connect-configured
+  (deferred-tru "Are the mandatory Slack Connect settings configured?")
+  :type    :boolean
+  :export? false
+  :default false
+  :feature :sso-slack
+  :setter  :none
+  :getter  (fn [] (boolean
+                   (and (slack-connect-client-id)
+                        (slack-connect-client-secret)))))
+
+(defsetting slack-connect-enabled
+  (deferred-tru "Is Slack Connect authentication configured and enabled?")
+  :type    :boolean
+  :export? false
+  :default false
+  :feature :sso-slack
+  :audit   :getter
+  :getter  (fn []
+             (if (slack-connect-configured)
+               (setting/get-value-of-type :boolean :slack-connect-enabled)
+               false)))
+
+(defsetting other-sso-enabled?
+  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
+  authorization rather than the normal login form or Google Auth button."
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))

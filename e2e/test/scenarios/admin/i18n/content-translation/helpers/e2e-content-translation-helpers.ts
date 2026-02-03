@@ -1,15 +1,9 @@
 import { parse } from "csv-parse/browser/esm/sync";
 
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import { getCSVWithHeaderRow } from "e2e/support/helpers/e2e-content-translation-helpers";
 import type { DictionaryArray, DictionaryResponse } from "metabase-types/api";
 import { isDictionaryArray } from "metabase-types/guards/content-translation";
-
-export const getCSVWithHeaderRow = (dictionary: DictionaryArray) => {
-  const header = ["Language", "String", "Translation"];
-  return [header, ...dictionary]
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
-};
 
 export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
@@ -17,7 +11,7 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   );
   cy.intercept("GET", "/api/setting").as("getSettings");
   cy.signInAsAdmin();
-  cy.visit("/admin/embedding/static");
+  cy.visit("/admin/embedding");
   cy.wait("@getSettings");
 
   cy.findByTestId("content-localization-setting").findByText(
@@ -42,27 +36,6 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.findByRole("heading", {
     name: "Translate embedded dashboards and questions",
   }).scrollIntoView();
-};
-
-export const uploadTranslationDictionaryViaAPI = (rows: DictionaryArray) => {
-  cy.signInAsAdmin();
-  const csvString = getCSVWithHeaderRow(rows);
-  const fileBlob = new Blob([csvString], { type: "text/csv" });
-  const formData = new FormData();
-  formData.append("file", fileBlob, "dictionary.csv");
-
-  return cy
-    .request({
-      method: "POST",
-      url: "/api/ee/content-translation/upload-dictionary",
-      body: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
-    .then((response) => {
-      expect(response.status).to.equal(200);
-    });
 };
 
 export const assertOnlyTheseTranslationsAreStored = (

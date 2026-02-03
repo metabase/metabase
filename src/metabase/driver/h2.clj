@@ -674,3 +674,6 @@
 (defmethod sql/default-schema :h2
   [_]
   "PUBLIC")
+
+(defmethod driver/llm-sql-dialect-resource :h2 [_]
+  "llm/prompts/dialects/h2.md")

@@ -62,6 +62,10 @@
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
   (analytics/anon-tracking-enabled! true))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to set specific settings from the setup flow."

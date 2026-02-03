@@ -1,7 +1,7 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import { dataLayerColors } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
 import type { TableDataLayer } from "metabase-types/api";
 
@@ -58,7 +58,7 @@ export const LayerInput = ({
       leftSection={
         value ? <Icon c={getColor(value)} name="medallion" /> : undefined
       }
-      placeholder={t`Select a layer`}
+      placeholder={t`Select a visibility type`}
       value={value}
       onChange={(value) => onChange(value)}
       onFocus={handleFocus}
@@ -71,9 +71,9 @@ function isDataLayer(value: string): value is TableDataLayer {
   return dataLayers.some((layer) => layer === value);
 }
 
-function getColor(value: TableDataLayer | string): string {
+function getColor(value: TableDataLayer | string): ColorName {
   if (isDataLayer(value)) {
-    return dataLayerColors[value];
+    return value;
   }
-  return dataLayerColors.default;
+  return "copper";
 }

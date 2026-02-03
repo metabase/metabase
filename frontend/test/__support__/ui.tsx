@@ -12,20 +12,24 @@ import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
+import { useMemo } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Route, Router, useRouterHistory } from "react-router";
+import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import { HistoryProvider } from "metabase/history";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { RouterProvider } from "metabase/router";
+import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
-import { ThemeProvider } from "metabase/ui";
+import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -220,9 +224,17 @@ export function getTestStoreAndWrapper({
 
 /**
  * A minimal version of the GlobalStyles component, for use in Storybook stories.
- * Contains strictly only the base styles to act as CSS resets, without font files.
+ * Contains strictly only the base styles to act as CSS resets and css variables, without font files.
  **/
-const GlobalStylesForTest = () => <Global styles={baseStyle} />;
+const GlobalStylesForTest = () => {
+  const theme = useMantineTheme();
+
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
+
+  return <Global styles={[baseStyle, cssVariables]} />;
+};
 
 export function TestWrapper({
   children,
@@ -233,6 +245,7 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  displayTheme,
   withCssVariables = false,
 }: {
   children: React.ReactElement;
@@ -243,13 +256,14 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProviderContext.Provider value={{ withCssVariables }}>
-          <ThemeProvider theme={theme}>
+          <ThemeProvider theme={theme} displayTheme={displayTheme}>
             <GlobalStylesForTest />
 
             <MaybeKBar hasKBar={withKBar}>
@@ -274,11 +288,14 @@ function MaybeRouter({
   hasRouter: boolean;
   history?: History;
 }): JSX.Element {
-  if (!hasRouter) {
+  if (!hasRouter || !history) {
     return children;
   }
-
-  return <Router history={history}>{children}</Router>;
+  return (
+    <HistoryProvider history={history}>
+      <RouterProvider>{children}</RouterProvider>
+    </HistoryProvider>
+  );
 }
 
 function MaybeKBar({
@@ -375,7 +392,8 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 };
 
 /**
- * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
+ * with virtualization to work in tests, like the entity picker
  */
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest
@@ -445,8 +463,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

@@ -11,6 +11,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ColorName } from "metabase/lib/colors/types";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -100,6 +101,7 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent();
   const withCustomExpressions = onSelectExpression != null;
   const [isSearching, setIsSearching] = useState(false);
 
@@ -117,12 +119,12 @@ export function QueryColumnPicker({
           type: "column" as const,
           ...columnInfo,
           column,
-          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+          combinedDisplayName: `${tc(columnInfo.table?.displayName) ?? ""} ${tc(columnInfo.displayName)}`,
         };
       });
 
       return {
-        name: groupInfo.displayName,
+        name: tc(groupInfo.displayName),
         icon: getColumnGroupIcon(groupInfo),
         items,
       };
@@ -162,6 +164,7 @@ export function QueryColumnPicker({
     withCustomExpressions,
     expressionSectionIcon,
     isSearching,
+    tc,
   ]);
 
   const handleSelectSection = useCallback(
@@ -313,6 +316,11 @@ export function QueryColumnPicker({
     [checkIsColumnSelected],
   );
 
+  const renderItemName = useCallback(
+    (item: Item) => tc(item.displayName),
+    [tc],
+  );
+
   return (
     <DelayGroup>
       <AccordionList<Item, QueryColumnPickerSection>
@@ -360,10 +368,6 @@ function getColumnWithoutBucketing(
     return Lib.withBinning(column, null);
   }
   return column;
-}
-
-function renderItemName(item: Item) {
-  return item.displayName;
 }
 
 function renderItemWrapper(content: ReactNode) {

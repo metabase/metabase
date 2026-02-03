@@ -3,6 +3,7 @@ import {
   type ReactNode,
   type SetStateAction,
   createContext,
+  useCallback,
   useContext,
   useState,
 } from "react";
@@ -21,6 +22,7 @@ interface SelectionContextValue {
   selectedItemsCount: number;
   hasOnlyOneTableSelected: boolean;
   hasSelectedMoreThanOneTable: boolean;
+  filterSelectedTables: (tables: TableId[]) => void;
 }
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
@@ -34,11 +36,18 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     new Set(),
   );
 
-  const resetSelection = () => {
+  const resetSelection = useCallback(() => {
     setSelectedTables(new Set());
     setSelectedSchemas(new Set());
     setSelectedDatabases(new Set());
-  };
+  }, []);
+
+  const filterSelectedTables = useCallback((tables: TableId[]) => {
+    setSelectedTables(
+      (oldTables) =>
+        new Set([...oldTables].filter((tableId) => tables.includes(tableId))),
+    );
+  }, []);
 
   const hasSelectedItems =
     selectedTables.size > 0 ||
@@ -70,6 +79,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         selectedItemsCount,
         hasOnlyOneTableSelected,
         hasSelectedMoreThanOneTable,
+        filterSelectedTables,
       }}
     >
       {children}

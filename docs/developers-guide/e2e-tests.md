@@ -29,14 +29,14 @@ Our custom Cypress runner builds its own backend and creates a temporary H2 app 
 To run all Cypress tests headlessly in the terminal:
 
 ```sh
-OPEN_UI=false yarn run test-cypress
+CYPRESS_GUI=false yarn run test-cypress
 ```
 
 You can quickly test a single file only by using the official `--spec` flag.
 This flag can be used to run all specs within a folder, or to run multiple assorted specs. Consult [the official documentation](https://docs.cypress.io/app/references/command-line#cypress-run-spec-lt-spec-gt) for instructions.
 
 ```sh
-OPEN_UI=false yarn test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
+CYPRESS_GUI=false yarn test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
 
 You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/guides/guides/launching-browsers).
@@ -122,28 +122,29 @@ One great feature of Cypress is that you can use the Chrome inspector after each
 
 `yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct JavaScript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your JavaScript reflected even if you then start `yarn build-hot`.
 
-### Running Cypress on M1 machines
+### Running Cypress on Apple Silicon
 
-You might run into problems when running Cypress on M1 machine.
+You might run into problems when running Cypress on Apple Silicon processors.
+
 This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `esbuild` as a dependency. The error might look [like this](https://github.com/evanw/esbuild/issues/1819#issuecomment-1018771557). [The solution](https://github.com/evanw/esbuild/issues/1819#issuecomment-1080720203) is to install NodeJS using one of the Node version managers like [nvm](https://github.com/nvm-sh/nvm) or [n](https://github.com/tj/n).
 
-Another issue you will almost surely face is the inability to connect to our Mongo QA Database. You can solve it by providing the following env:
+Another issue you will almost surely face is the inability to connect to our Mongo QA Database. The supported Docker image is incompatible (AMD64). You can solve it by providing the following env:
 
 ```shell
 export EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
 ```
 
+Please note that some users experienced Mongo connection timeouts even with this env var set. If that happens, try using OrbStack instead of Docker Desktop.
+
 ### Running tests that depend on Docker images
 
-A subset of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. The default cypress command will spin up all necessary docker containers for these tests to function properly, but you can toggle them off if you want
+Due to the requirement to use privileged ports for some tests in hosted environments, it is not possible to utilize **podman** or the **rootless Docker**. Stick to the classic Docker, or use OrbStack.
 
-```sh
-START_CONTAINERS=false yarn test-cypress
-```
+A large portion of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. See `e2e/test/scenarios/docker-compose.yml` for up to date information. The default cypress command will spin up all necessary Docker containers for the tests to function properly. You can manually set up the e2e environment without them but be aware that you will run into test failures.
 
 ### Running tests with Snowplow involved
 
-Tests that depend on Snowplow expect a running server. This is enabled by default. You can manually enable them as well by spinning up the snowplow micro docker container and setting the appropriate environment variables:
+Tests that depend on Snowplow expect a running server. This is enabled by default. You can manually enable them as well by spinning up the Snowplow micro Docker container and setting the appropriate environment variables:
 
 ```
 docker-compose -f ./snowplow/docker-compose.yml up -d

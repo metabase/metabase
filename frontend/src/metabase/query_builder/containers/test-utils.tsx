@@ -24,6 +24,7 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -31,7 +32,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
@@ -52,6 +53,8 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -60,6 +63,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { RequestState, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryBuilder } from "./QueryBuilder";
 
@@ -305,6 +309,15 @@ export const setup = async ({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: true,
+            can_create_native_queries: true,
+          }),
+        }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
+      }),
     },
   );
 

@@ -141,7 +141,7 @@
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [deps     (dev.deps-graph/dependencies)
-          expected (dev.deps-graph/generate-config deps)
+          expected (dev.deps-graph/generate-config deps (dev.deps-graph/kondo-config))
           actual   (dev.deps-graph/kondo-config)
           modules  (set/union (set (keys expected))
                               (set (keys actual)))]

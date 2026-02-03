@@ -1,4 +1,7 @@
-(ns metabase.query-processor.middleware.pivot-export)
+(ns metabase.query-processor.middleware.pivot-export
+  (:refer-clojure :exclude [get-in])
+  (:require
+   [metabase.util.performance :refer [get-in]]))
 
 (defn add-data-for-pivot-export
   "Provide `:pivot-export-options` in the query metadata so that `qp.si/streaming-results-writer` implementations can

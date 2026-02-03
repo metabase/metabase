@@ -31,8 +31,8 @@
    [metabase.util.number :as u.number]
    [metabase.util.performance :as perf :refer [#?(:clj for)]]
    [metabase.util.polyfills]
-   [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
+   [taoensso.encore :as encore]
    [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.core.protocols CollReduce)
@@ -226,6 +226,36 @@
   [s n]
   (subs s 0 (min (count s) n)))
 
+#?(:clj
+   (defn https?
+     "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
+
+     In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
+     request handled by Jetty will be over HTTP."
+     [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
+       :keys                                                                                                [scheme]}]
+     (cond
+       ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
+       ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
+       (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
+       (= "https" (lower-case-en (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+
+       ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
+       ;; will be set to `on` if the original request was over HTTPS.
+       (or x-forwarded-ssl front-end-https)
+       (= "on" (lower-case-en (or x-forwarded-ssl front-end-https)))
+
+       ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
+       ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
+       ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
+       origin
+       (str/starts-with? (lower-case-en origin) "https")
+
+       ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
+       ;; front of us), we can look directly at the scheme of the request sent to Jetty.
+       scheme
+       (= scheme :https))))
+
 (defn regex->str
   "Returns the contents of a regex as a string.
 
@@ -402,7 +432,7 @@
 
 (defn maybe?
   "Returns `true` if X is `nil`, otherwise calls (F X).
-   This can be used to see something is either `nil` or statisfies a predicate function:
+   This can be used to see something is either `nil` or satisfies a predicate function:
 
      (string? nil)          -> false
      (string? \"A\")        -> true
@@ -650,7 +680,7 @@
     m))
 
 (defn index-of
-  "Return index of the first element in `coll` for which `pred` reutrns true."
+  "Return index of the first element in `coll` for which `pred` returns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
@@ -1213,11 +1243,7 @@
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]
-   (into {}
-         (comp (index-by kf)
-               (map (fn [[k v]]
-                      [k (vf v)])))
-         coll)))
+   (into {} (map (juxt kf vf)) coll)))
 
 (defn rfirst
   "Return first item from Reducible"
@@ -1266,17 +1292,14 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (nano-id/nano-id))
+  ([] (encore/nanoid))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)
-                  gen  (nano-id/custom
-                        "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                        21
-                        (fn [len]
-                          (let [ba (byte-array len)]
-                            (.nextBytes rnd ba)
-                            ba)))]
+                  gen  (encore/rand-id-fn {:rand-bytes-fn (fn [len]
+                                                            (let [ba (byte-array len)]
+                                                              (.nextBytes rnd ba)
+                                                              ba))})]
               (gen))
       :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
 

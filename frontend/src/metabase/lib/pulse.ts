@@ -15,8 +15,9 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
-  Pulse,
-  PulseParameter,
+  ChannelSpecs,
+  DashboardSubscription,
+  Parameter,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
@@ -28,9 +29,9 @@ export const NEW_PULSE_TEMPLATE = {
   skip_if_empty: false,
   collection_id: null,
   parameters: [],
-};
+} satisfies Partial<DashboardSubscription>;
 
-export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
+export function channelIsValid(channel: Channel, channelSpec?: ChannelSpec) {
   switch (channel.channel_type) {
     case "email":
       return (
@@ -79,7 +80,7 @@ export function scheduleIsValid(channel: Channel) {
   return true;
 }
 
-export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
+export function fieldsAreValid(channel: Channel, channelSpec?: ChannelSpec) {
   if (!channelSpec) {
     return false;
   }
@@ -93,7 +94,10 @@ export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
     .every((field) => Boolean(channel.details?.[field.name]));
 }
 
-function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
+function pulseChannelsAreValid(
+  pulse: DashboardSubscription,
+  channelSpecs: Partial<ChannelSpecs>,
+) {
   return (
     pulse.channels.filter((channel) =>
       channelIsValid(channel, channelSpecs?.[channel.channel_type]),
@@ -119,7 +123,10 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
   );
 }
 
-export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
+export function pulseIsValid(
+  pulse: DashboardSubscription,
+  channelSpecs: ChannelSpecs,
+) {
   return (
     (pulse.name &&
       pulse.cards.length > 0 &&
@@ -129,13 +136,13 @@ export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
 }
 
 export function dashboardPulseIsValid(
-  pulse: Pulse,
-  channelSpecs: ChannelSpecs,
+  pulse: DashboardSubscription,
+  channelSpecs: Partial<ChannelSpecs>,
 ) {
   return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
-export function emailIsEnabled(pulse: Pulse) {
+export function emailIsEnabled(pulse: DashboardSubscription) {
   return (
     pulse.channels.filter(
       (channel) => channel.channel_type === "email" && channel.enabled,
@@ -143,7 +150,10 @@ export function emailIsEnabled(pulse: Pulse) {
   );
 }
 
-export function cleanPulse(pulse: Pulse, channelSpecs: any) {
+export function cleanPulse(
+  pulse: DashboardSubscription,
+  channelSpecs: ChannelSpecs,
+) {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
@@ -151,13 +161,13 @@ export function cleanPulse(pulse: Pulse, channelSpecs: any) {
   };
 }
 
-function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
+function cleanPulseChannels(channels: Channel[], channelSpecs: ChannelSpecs) {
   return channels.filter((channel) =>
     channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
 }
 
-function cleanPulseParameters(parameters: PulseParameter[]) {
+function cleanPulseParameters(parameters: Parameter[]) {
   return parameters.map((parameter) => {
     const { default: defaultValue, name, slug, type, value, id } = parameter;
     const normalizedValue = normalizeParameterValue(type, value);
@@ -172,12 +182,6 @@ function cleanPulseParameters(parameters: PulseParameter[]) {
     };
   });
 }
-
-type ChannelSpecs = {
-  email?: {
-    configured: boolean;
-  };
-};
 
 export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   // email is the first choice
@@ -208,22 +212,24 @@ export function createChannel(
   };
 }
 
-export function getPulseParameters(pulse: Pulse) {
+export function getPulseParameters(pulse: DashboardSubscription) {
   return pulse?.parameters || [];
 }
 
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(
-  pulse: Pulse,
-  parameters: PulseParameter[],
+  pulse: DashboardSubscription,
+  parameters: Parameter[],
 ) {
-  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
+  const parameterValues = getPulseParameters(pulse).reduce<
+    Record<string, Parameter["value"]>
+  >((map, parameter) => {
     map[parameter.id] = parameter.value;
     return map;
   }, {});
   return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
-    (parameter: any) => parameter.value != null,
+    (parameter: Parameter) => parameter.value != null,
   );
 }
 

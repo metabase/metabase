@@ -99,7 +99,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", (error) => {
@@ -630,6 +630,110 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.wait("@questionDownload").then((interception) => {
       expect(interception.response?.statusCode).to.equal(200);
+    });
+  });
+
+  it("should stay in editor mode after adding a filter for the first time for an existing saved question (EMB-1077)", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Previous 7 days").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+    });
+  });
+
+  it("should close the editor after modifying and saving an existing question in-place", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionId} isSaveEnabled />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().findByText("Product ID").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText(/Replace original question/).click();
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("not.exist");
+      cy.findByTestId("visualization-root").should("be.visible");
+    });
+  });
+
+  it("should close the editor after modifying and saving an existing question as a new question", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionId} isSaveEnabled />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().findByText("Product ID").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Save as new question").click();
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("Orders Copy");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("not.exist");
+      cy.findByTestId("visualization-root").should("be.visible");
     });
   });
 });

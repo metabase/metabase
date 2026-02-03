@@ -4,7 +4,7 @@ import { Component } from "react";
 import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import CS from "metabase/css/core/index.css";
 
-export default class QueryDiff extends Component {
+export class QueryDiff extends Component {
   static propTypes = {
     diff: PropTypes.object.isRequired,
     tableId: PropTypes.number.isRequired,

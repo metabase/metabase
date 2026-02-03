@@ -10,7 +10,7 @@ export const BrowseHeaderContent = styled.div`
 export const BrowseHeaderIconContainer = styled.div`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-brand);

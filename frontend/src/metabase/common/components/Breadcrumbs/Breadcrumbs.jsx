@@ -8,9 +8,7 @@ import { Icon } from "metabase/ui";
 
 import S from "./Breadcrumbs.module.css";
 
-// TODO: merge with BrowserCrumbs
-
-export default class Breadcrumbs extends Component {
+export class Breadcrumbs extends Component {
   static propTypes = {
     className: PropTypes.string,
     // each "crumb" is an array, the first index being the string title, the
@@ -51,7 +49,7 @@ export default class Breadcrumbs extends Component {
               <Ellipsified
                 key={index}
                 tooltip={breadcrumb[0]}
-                tooltipMaxWidth="auto"
+                tooltipProps={{ w: "auto" }}
                 className={cx(
                   breadcrumbClass,
                   breadcrumb.length > 1 ? S.breadcrumbPath : S.breadcrumbPage,

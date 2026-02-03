@@ -1,23 +1,35 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import type { GroupProps, IconName } from "metabase/ui";
-import { Box, Button, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  type IconName,
+  Stack,
+  type StackProps,
+  Tooltip,
+} from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
-interface PaneHeaderProps extends Omit<GroupProps, "title"> {
-  title: ReactNode;
+export interface PaneHeaderProps extends Omit<StackProps, "title"> {
+  title?: ReactNode;
   icon?: IconName;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
+  breadcrumbs: ReactNode;
+  showMetabotButton?: boolean;
 }
 
 export const PaneHeader = ({
@@ -27,28 +39,39 @@ export const PaneHeader = ({
   menu,
   tabs,
   actions,
+  breadcrumbs,
+  showMetabotButton,
   ...rest
 }: PaneHeaderProps) => {
   return (
-    <Group
-      className={cx(S.header, className)}
-      px="lg"
-      py="md"
-      justify="space-between"
-      gap="sm"
-      wrap="nowrap"
-      {...rest}
-    >
-      <Stack gap="sm">
-        <Group align="center" gap="xs" wrap="nowrap">
-          {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
-          {title}
-          {menu}
+    <Stack gap={0} pt="xs" {...rest}>
+      <Flex mb="lg" mt="md" w="100%">
+        {breadcrumbs}
+
+        <Group ml="auto" gap="md">
+          {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
+          <AppSwitcher className={S.ProfileLink} />
         </Group>
-        {tabs}
-      </Stack>
-      {actions}
-    </Group>
+      </Flex>
+      <Group
+        className={className}
+        gap="sm"
+        justify="space-between"
+        wrap="nowrap"
+      >
+        <Stack gap="md">
+          {title && (
+            <Group align="center" gap="sm" wrap="nowrap">
+              {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
+              {title}
+              {menu}
+            </Group>
+          )}
+          {tabs}
+        </Stack>
+        {actions}
+      </Group>
+    </Stack>
   );
 };
 
@@ -69,6 +92,8 @@ type PaneHeaderInputProps = {
   placeholder?: string;
   maxLength?: number;
   isOptional?: boolean;
+  readOnly?: boolean;
+  "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
 };
@@ -77,7 +102,9 @@ export function PaneHeaderInput({
   initialValue,
   placeholder = t`Name`,
   maxLength,
+  "data-testid": dataTestId,
   isOptional,
+  readOnly = false,
   onChange,
   onContentChange,
 }: PaneHeaderInputProps) {
@@ -93,6 +120,8 @@ export function PaneHeaderInput({
       px={isOptional ? "xs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
       isOptional={isOptional}
+      isDisabled={readOnly}
+      data-testid={dataTestId}
       onChange={onChange}
       onContentChange={onContentChange}
     />
@@ -106,7 +135,9 @@ type PaneHeaderTabsProps = {
 
 export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
   const { pathname } = useSelector(getLocation);
-  const backgroundColor = withBackground ? "bg-secondary" : "transparent";
+  const backgroundColor = withBackground
+    ? "background-secondary"
+    : "transparent";
 
   return (
     <Group gap="sm">
@@ -119,7 +150,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             size="sm"
             radius="xl"
             c={isSelected ? "brand" : undefined}
-            bg={isSelected ? "brand-light" : backgroundColor}
+            bg={isSelected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
           >
@@ -136,6 +167,7 @@ type PaneHeaderActionsProps = {
   isValid?: boolean;
   isDirty?: boolean;
   isSaving?: boolean;
+  alwaysVisible?: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
@@ -145,17 +177,18 @@ export function PaneHeaderActions({
   isValid = true,
   isDirty = false,
   isSaving = false,
+  alwaysVisible = false,
   onSave,
   onCancel,
 }: PaneHeaderActionsProps) {
   const canSave = isDirty && !isSaving && isValid;
 
-  if (!isDirty && !isSaving) {
+  if (!isDirty && !isSaving && !alwaysVisible) {
     return null;
   }
 
   return (
-    <Group>
+    <Group wrap="nowrap">
       <Button onClick={onCancel}>{t`Cancel`}</Button>
       <Tooltip label={errorMessage} disabled={errorMessage == null}>
         <Button variant="filled" disabled={!canSave} onClick={onSave}>

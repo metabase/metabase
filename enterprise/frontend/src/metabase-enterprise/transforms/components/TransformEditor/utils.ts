@@ -5,7 +5,10 @@ import type { Database } from "metabase-types/api";
 
 import { doesDatabaseSupportTransforms } from "../../utils";
 
-export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
+export function getEditorOptions(
+  databases: Database[],
+  readOnly?: boolean,
+): QueryEditorUiOptions {
   return {
     canConvertToNative: true,
     convertToNativeTitle: t`SQL for this transform`,
@@ -37,5 +40,7 @@ export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
 
       return false;
     },
+    shouldShowLibrary: false,
+    readOnly,
   };
 }

@@ -12,7 +12,6 @@ import {
   undo,
 } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,
@@ -115,7 +114,7 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Actions = createEntity({
+export const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   schema: ActionSchema,
@@ -226,12 +225,4 @@ const Actions = createEntity({
       }
     }
   },
-  objectSelectors: {
-    getUrl: (action: WritebackAction) =>
-      Urls.action({ id: action.model_id }, action.id),
-    getIcon: () => ({ name: "bolt" }),
-  },
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Actions;

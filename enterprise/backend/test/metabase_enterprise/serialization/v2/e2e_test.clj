@@ -186,6 +186,13 @@
                                                                                     :source-table 4}}}
                                                         {:table_id   [:t 100]
                                                          :creator_id [:u 10]})
+              :measure                  (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
+                                                                                     :database 1
+                                                                                     :stages   [{:lib/type     :mbql.stage/mbql
+                                                                                                 :source-table 4
+                                                                                                 :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}}}
+                                                         {:table_id   [:t 100]
+                                                          :creator_id [:u 10]})
               :native-query-snippet    (many-random-fks 10 {} {:creator_id    [:u 10]
                                                                :collection_id [:coll 10 100]})
               :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
@@ -350,6 +357,12 @@
                          (-> (ts/extract-one "Segment" entity_id)
                              clean-entity)))))
 
+              (testing "for measures"
+                (doseq [{:keys [entity_id] :as measure} (get @entities "Measure")]
+                  (is (= (clean-entity measure)
+                         (-> (ts/extract-one "Measure" entity_id)
+                             clean-entity)))))
+
               (testing "for native query snippets"
                 (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
                   (is (= (clean-entity snippet)
@@ -409,7 +422,7 @@
                                                                                  :value_field [:field (:id field1s) nil]}}]}]
 
               (testing "make sure we insert ParameterCard when insert Dashboard/Card"
-                ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+                ;; one for parameter on card card2s, and one for parameter on dashboard dash1s
                 (is (= 2 (t2/count :model/ParameterCard))))
 
               (testing "extract and store"

@@ -6,7 +6,7 @@ import { setup } from "./setup";
 
 describe("SnippetSidebar (EE no token)", () => {
   beforeEach(async () => {
-    await setup({ hasEnterprisePlugins: true });
+    await setup({});
   });
 
   it("should not display the `Change permissions` menu", () => {

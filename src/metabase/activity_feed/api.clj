@@ -111,7 +111,12 @@
 (def ^:private card-runs-limit 8)
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
@@ -121,7 +126,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
@@ -132,6 +142,10 @@
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context {:include-metadata? include_metadata}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/recents"
   "Adds a model to the list of recently selected items."
   [_route-params
@@ -148,7 +162,12 @@
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
@@ -198,7 +217,7 @@
 
                                ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
                                ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
-                               ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
+                               ;; a long time ago. This may not even make it into the first 10 items from the query, even though it might be worth showing
                                (when-not (zero? max-count)
                                  (* (/ cnt max-count) views-wt))])]
            (assoc item :score (double (reduce + scores))))) items))))
@@ -246,7 +265,12 @@
                    recent-views/fill-recent-view-info)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "

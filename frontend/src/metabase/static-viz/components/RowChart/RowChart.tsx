@@ -93,7 +93,7 @@ export const StaticRowChart = ({
   const xValueRange = getXValueRange(settings);
   const labelledSeries = getLabelledSeries(settings, series);
 
-  const legendItems = getLegendItems(series, seriesColors, settings);
+  const legendItems = getLegendItems(series, seriesColors);
   const legend = calculateLegendRows({
     items: legendItems,
     width,
@@ -150,6 +150,8 @@ export const StaticRowChart = ({
           height={fullChartHeight}
           width={width}
           preserveAspectRatio="xMinYMin slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -14,6 +14,7 @@ import {
   type PermissionSectionConfig,
   type PermissionSubject,
   type SchemaEntityId,
+  type SpecialGroupType,
   type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
@@ -85,10 +86,23 @@ const getPermissionValue = (
   }
 };
 
+const getDisabledTooltip = (groupType: SpecialGroupType) => {
+  switch (groupType) {
+    case "admin":
+      return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+    case "analyst":
+      return Messages.UNABLE_TO_CHANGE_DATA_ANALYST_PERMISSIONS;
+    case "external":
+      return Messages.EXTERNAL_USERS_NO_ACCESS_DATABASE;
+    default:
+      return null;
+  }
+};
+
 export const buildDataModelPermission = (
   entityId: EntityId,
   groupId: number,
-  isAdmin: boolean,
+  groupType: SpecialGroupType,
   permissions: GroupsPermissions,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
@@ -129,15 +143,17 @@ export const buildDataModelPermission = (
     ),
   ];
 
+  const disabledTooltip = getDisabledTooltip(groupType);
+
   return {
     permission: DataPermission.DATA_MODEL,
     type: DataPermissionType.DATA_MODEL,
-    isDisabled: isAdmin,
+    isDisabled: disabledTooltip !== null,
     warning,
     confirmations,
     value,
-    isHighlighted: isAdmin,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    isHighlighted: groupType === "admin" || groupType === "analyst",
+    disabledTooltip,
     options: [
       DATA_MODEL_PERMISSION_OPTIONS.none,
       ...(hasChildEntities ? [DATA_MODEL_PERMISSION_OPTIONS.controlled] : []),

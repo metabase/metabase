@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Anchor, Stack, Text } from "metabase/ui";
 
 import { getQuestionTitle } from "../QuestionTitle";
@@ -46,6 +47,7 @@ export const DefaultViewTitle = ({
   withResetButton = false,
 }: SdkQuestionDefaultViewProps) => {
   const { question, originalQuestion, onReset } = useSdkQuestionContext();
+  const tc = useTranslateContent();
 
   const isQuestionChanged = originalQuestion
     ? question?.isQueryDirtyComparedTo(originalQuestion)
@@ -56,15 +58,15 @@ export const DefaultViewTitle = ({
   }
 
   if (title === undefined || title === true) {
-    const originalName = originalQuestion?.displayName();
+    const originalName = tc(originalQuestion?.displayName());
 
-    const titleText = getQuestionTitle({ question });
+    const titleText = tc(getQuestionTitle({ question }));
 
     return (
       <DefaultViewTitleText
         title={
           titleText && (
-            <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+            <Text fw={700} c="text-primary" fz="xl">
               {titleText}
             </Text>
           )
@@ -78,11 +80,13 @@ export const DefaultViewTitle = ({
   }
 
   if (typeof title === "string") {
+    const titleText = tc(title);
+
     return (
       <DefaultViewTitleText
         title={
-          <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
-            {title}
+          <Text fw={700} c="text-primary" fz="xl">
+            {titleText}
           </Text>
         }
         withResetButton={withResetButton}

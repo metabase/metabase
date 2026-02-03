@@ -1,9 +1,9 @@
 (ns metabase.legacy-mbql.util
-  "Utilitiy functions for working with MBQL queries.
+  "Utility functions for working with MBQL queries.
 
   DEPRECATED: Use [[metabase.lib.core]] for MBQL manipulation in all new code."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [replace some mapv every? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [replace some mapv every? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]])
@@ -18,7 +18,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some mapv every? not-empty #?(:clj for)]]
+   [metabase.util.performance :refer [some mapv every? not-empty get-in #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn mbql-clause?
@@ -85,10 +85,8 @@
   {:deprecated "0.57.0"}
   [compound-type subclauses]
   (mapcat #(lib.util.match/match-lite %
-             [(t :guard (= t compound-type)) & args]
-             args
-             _
-             [%])
+             [#{compound-type} & args] args
+             _                         [%])
           subclauses))
 
 (declare simplify-compound-filter)
@@ -388,7 +386,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
-    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+    (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
       (into [clause field] (lib.util.match/replace args

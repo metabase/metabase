@@ -49,6 +49,7 @@ type EditorProps = {
   expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
@@ -74,6 +75,7 @@ export function Editor(props: EditorProps) {
     stageIndex,
     query,
     availableColumns,
+    availableMetrics,
     readOnly,
     error,
     reportTimezone,
@@ -125,6 +127,7 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     availableColumns,
+    availableMetrics,
     metadata,
     extensions: [customTooltip],
   });
@@ -253,6 +256,7 @@ function useExpression({
   expressionIndex,
   query,
   availableColumns,
+  availableMetrics,
   metadata,
   onChange,
   initialClause,
@@ -325,6 +329,7 @@ function useExpression({
         expressionIndex,
         metadata,
         availableColumns,
+        availableMetrics,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -342,6 +347,7 @@ function useExpression({
       handleChange,
       debouncedOnChange,
       availableColumns,
+      availableMetrics,
     ],
   );
 

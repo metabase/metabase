@@ -21,7 +21,7 @@ export const TableBodyCell = styled.div`
 
   &:not(:first-of-type) {
     border-left: 1px solid var(--mb-color-border);
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 `;
 

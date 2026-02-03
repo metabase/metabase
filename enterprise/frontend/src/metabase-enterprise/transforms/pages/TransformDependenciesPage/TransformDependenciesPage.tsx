@@ -4,8 +4,10 @@ import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Center, Flex } from "metabase/ui";
+import { Card, Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
@@ -25,9 +27,13 @@ export function TransformDependenciesPage({
   const id = Urls.extractEntityId(params?.transformId);
   const {
     data: transform,
-    isLoading,
-    error,
+    isLoading: isLoadingTransform,
+    error: transformError,
   } = useGetTransformQuery(id ?? skipToken);
+  const { readOnly, isLoadingDatabases, databasesError } =
+    useTransformPermissions({ transform });
+  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const error = transformError || databasesError;
 
   if (id == null || transform == null || isLoading || error != null) {
     return (
@@ -38,16 +44,18 @@ export function TransformDependenciesPage({
   }
 
   return (
-    <Flex direction="column" h="100%">
-      <TransformHeader transform={transform} />
+    <PageContainer data-testid="transforms-dependencies-content">
+      <TransformHeader transform={transform} readOnly={readOnly} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),
           defaultEntry: { id: transform.id, type: "transform" },
         }}
       >
-        {children}
+        <Card flex={1} p={0} withBorder>
+          {children}
+        </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-    </Flex>
+    </PageContainer>
   );
 }

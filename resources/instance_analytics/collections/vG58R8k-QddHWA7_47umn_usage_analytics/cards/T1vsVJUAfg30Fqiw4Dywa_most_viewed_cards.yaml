@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,71 +21,46 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_view_log, entity_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Entity Qualified
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Entity Qualified}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_type
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_view_log, entity_type]
+      - {base-type: type/Text}
     - card
     joins:
     - alias: Group Members - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_view_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Group Members - User
+        - [Internal Metabase Database, public, v_group_members, user_id]
+        - {base-type: type/Integer, join-alias: Group Members - User}
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     - alias: Content - Entity Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - entity_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Entity Qualified}
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:
     - - desc
-      - - aggregation
-        - 0
+      - [aggregation, 0]
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
 result_metadata:
@@ -99,17 +71,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - entity_id
-  - base-type: type/Integer
+  - [Internal Metabase Database, public, v_view_log, entity_id]
+  - {base-type: type/Integer}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - entity_id
+  id: [Internal Metabase Database, public, v_view_log, entity_id]
   name: entity_id
   semantic_type: null
   settings: null
@@ -121,18 +86,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - name
-  - base-type: type/Text
-    join-alias: Content - Entity Qualified
+  - [Internal Metabase Database, public, v_content, name]
+  - {base-type: type/Text, join-alias: Content - Entity Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
+  id: [Internal Metabase Database, public, v_content, name]
   name: name
   semantic_type: type/Name
   settings: null
@@ -140,29 +97,19 @@ result_metadata:
 - base_type: type/BigInteger
   display_name: Count
   effective_type: type/BigInteger
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: count
   semantic_type: type/Quantity
 visualization_settings:
   column_settings:
-    '["name","count"]':
-      show_mini_bar: true
-    '["name","entity_id"]':
-      column_title: Question ID
-    '["name","name"]':
-      column_title: Question name
-      link_url: /question/{{entity_id}}
-      view_as: link
-    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
-      column_title: Question ID
+    '["name","count"]': {show_mini_bar: true}
+    '["name","entity_id"]': {column_title: Question ID}
+    '["name","name"]': {column_title: Question name, link_url: '/question/{{entity_id}}', view_as: link}
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]': {column_title: Question ID}
     ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Question 35"}]]'
-    : column_title: Question Name
-  graph.dimensions:
-  - model_id
-  graph.metrics:
-  - count
+    : {column_title: Question Name}
+  graph.dimensions: [model_id]
+  graph.metrics: [count]
   graph.show_goal: false
   graph.show_values: true
   table.cell_column: count
@@ -170,36 +117,26 @@ visualization_settings:
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - base-type: type/Text
-      join-alias: Content - Entity Qualified
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Entity Qualified}
     name: name
   - enabled: false
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_view_log
-      - entity_id
-    - base-type: type/Integer
+    - [Internal Metabase Database, public, v_view_log, entity_id]
+    - {base-type: type/Integer}
     name: entity_id
   - enabled: true
-    fieldRef:
-    - aggregation
-    - 0
+    fieldRef: [aggregation, 0]
     name: count
   table.pivot: false
   table.pivot_column: model_id
+card_schema: 23
 serdes/meta:
-- id: T1vsVJUAfg30Fqiw4Dywa
-  label: most_viewed_cards
-  model: Card
+- {id: T1vsVJUAfg30Fqiw4Dywa, label: most_viewed_cards, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import ModalFooter from "../ModalFooter";

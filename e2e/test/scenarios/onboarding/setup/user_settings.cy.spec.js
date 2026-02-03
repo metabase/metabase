@@ -16,7 +16,7 @@ describe("user > settings", () => {
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
     cy.visit("/account/profile");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(fullName);
     cy.findByLabelText("First name").clear();
     cy.findByLabelText("Last name").clear();
@@ -44,7 +44,7 @@ describe("user > settings", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
     cy.visit("/account/profile");
     cy.findByDisplayValue(first_name).click().clear().type("John");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update").click();
     cy.findByDisplayValue("John");
 
@@ -58,7 +58,7 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Password").should("exist");
   });
 
@@ -66,7 +66,7 @@ describe("user > settings", () => {
     cy.signOut();
     cy.visit("/account/profile");
     cy.url().should("include", "/auth/login");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
 
@@ -76,15 +76,14 @@ describe("user > settings", () => {
     cy.findByLabelText("Current password").type(password);
     cy.findByLabelText("Create a password").type(password);
     cy.findByLabelText("Confirm your password").type(password);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success");
 
-    cy.findByLabelText("gear icon").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign out").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    H.getProfileLink().click();
+    H.popover().findByText("Sign out").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
 
@@ -98,7 +97,7 @@ describe("user > settings", () => {
       .type("qwerty123")
       .blur();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("password is too common");
     cy.get("@passwordInput").clear();
 
@@ -111,7 +110,7 @@ describe("user > settings", () => {
     cy.findByLabelText("Confirm your password").type("new_password1");
 
     cy.button("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Invalid password");
   });
 
@@ -122,7 +121,7 @@ describe("user > settings", () => {
 
     cy.findByTestId("user-locale-select").findByRole("textbox").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
@@ -131,8 +130,8 @@ describe("user > settings", () => {
     // Assert that the page reloaded with the new language
     cy.findByLabelText("Nama depan").should("exist");
 
-    // We need some UI element other than a string
-    cy.icon("gear").should("exist");
+    // We need some UI element other than a string, and cannot get by labels as they could be translated
+    H.getProfileLink().should("exist");
   });
 
   it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
@@ -146,7 +145,7 @@ describe("user > settings", () => {
             cy.request("PUT", `/api/user/${user.id}`, { locale });
             cy.visit("/");
             cy.wait("@getUser");
-            cy.icon("gear").should("exist");
+            H.getProfileLink().should("exist");
           });
         },
       );
@@ -166,7 +165,7 @@ describe("user > settings", () => {
     // should be redirected to new question page
     cy.wait("@getUser");
     H.miniPicker().findByText("Parcourir tout").click();
-    H.entityPickerModal().findByText("Orders Model").click();
+    H.pickEntity({ path: ["Nos analyses", "Orders Model"] });
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
       .should("not.exist");
@@ -182,7 +181,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
   });
@@ -196,7 +195,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -216,7 +215,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -235,7 +234,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -253,7 +252,7 @@ describe("user > settings", () => {
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
-      cy.findByDisplayValue("Light").click();
+      cy.findByDisplayValue("Use system default").click();
       H.popover().findByText("Dark").click();
       assertDarkMode();
 
@@ -265,6 +264,132 @@ describe("user > settings", () => {
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
       cy.realPress([metaKey, "Shift", "L"]);
       assertDarkMode();
+    });
+
+    it("should persist theme selection on browser change", () => {
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveSetting");
+
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.wait("@saveSetting");
+
+      // emulate browser change by deleting localStorage values
+      cy.window().then((win) => {
+        win.sessionStorage.clear();
+        win.localStorage.clear();
+      });
+
+      cy.visit("/account/profile");
+      assertDarkMode();
+    });
+
+    it("should apply user's selected theme instead of browser's OS theme preference", () => {
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+
+      assertLightMode();
+
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.getProfileLink()
+          .findByText("RT")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.84)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(7, 23, 34, 0.62)", // text-medium
+            );
+          });
+      });
+
+      H.goToProfile();
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
+
+      H.openNavigationSidebar();
+      H.navigationSidebar().findByText("Our analytics").click();
+      H.collectionTable().findByText("Orders").should("exist").click();
+
+      cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
+
+      cy.window().then((win) => {
+        H.getProfileLink()
+          .findByText("RT")
+          .should("exist")
+          .then(($button) => {
+            cy.wrap(win.getComputedStyle($button[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.95)", // text-dark
+            );
+          });
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-left")
+          .findByText("Other charts")
+          .then(($text) => {
+            cy.wrap(win.getComputedStyle($text[0]).color).should(
+              "eq",
+              "rgba(255, 255, 255, 0.69)", // text-medium
+            );
+          });
+      });
+    });
+
+    it("should apply user's color scheme preference immediately after login (metabase#66874)", () => {
+      // First, set the color scheme preference while logged in
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveColorScheme");
+
+      cy.visit("/account/profile", stubSystemColorScheme("dark"));
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Light").click();
+
+      cy.wait("@saveColorScheme");
+
+      assertLightMode();
+
+      cy.signOut();
+      cy.visit("/", stubSystemColorScheme("dark"));
+
+      // Verify that the theme is restored to "auto" after sign out
+      assertDarkMode();
+
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+      // Sign-in is done manually in order to test theme replacement throughout
+      // react navigation, where no new metadata is passed or injected into the
+      // window object, and the theme is purely updated from session properties
+      cy.findByLabelText("Email address").type(email);
+      cy.findByLabelText("Password").type(password);
+      cy.button("Sign in").click();
+
+      cy.wait("@sessionProperties");
+
+      // Verify light mode is applied immediately after login
+      assertLightMode();
+
+      // Verify the theme selector shows the correct value
+      cy.visit("/account/profile", stubSystemColorScheme("dark"));
+      cy.findByDisplayValue("Light").should("exist");
     });
   });
 });
@@ -290,4 +415,28 @@ function stubCurrentUser(authenticationMethod) {
       Object.assign({}, user, authenticationMethod),
     ).as("getUser");
   });
+}
+
+/**
+ * Stub the system color scheme preference
+ *
+ * @param {boolean} prefersDark - Whether the system prefers dark mode
+ * @returns {Object} - The stub object
+ */
+function stubSystemColorScheme(preferredColorScheme = "light") {
+  return {
+    onBeforeLoad: (win) => {
+      cy.stub(win, "matchMedia").callsFake((query) => {
+        return {
+          matches: query === `(prefers-color-scheme: ${preferredColorScheme})`,
+          media: query,
+          addEventListener: cy.stub(),
+          removeEventListener: cy.stub(),
+          addListener: cy.stub(), // deprecated but sometimes needed
+          removeListener: cy.stub(),
+          dispatchEvent: cy.stub(),
+        };
+      });
+    },
+  };
 }

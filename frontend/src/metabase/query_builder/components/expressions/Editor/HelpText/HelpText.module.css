@@ -46,7 +46,7 @@
   padding: 0.5rem;
   overflow: auto;
   border-top: 1px solid var(--mb-color-border);
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   height: calc(50% - 2.5rem);
 
   &:last-child {

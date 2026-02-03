@@ -11,7 +11,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "simple table name"
         (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
+                                               {:query {:query "SELECT * FROM products"}
                                                 :output-table :my_table
                                                 :primary-key "id"})]
           (testing "returns a vector"
@@ -28,7 +28,7 @@
 
       (testing "schema-qualified table name"
         (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
+                                               {:query {:query "SELECT * FROM products"}
                                                 :output-table :my_schema/my_table
                                                 :primary-key "id"})]
           (testing "returns a vector"
@@ -82,7 +82,7 @@
   (testing "execute-transform! should pass correct format to execute-raw-queries!"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [compile-result (driver/compile-transform driver/*driver*
-                                                     {:query "SELECT * FROM products"
+                                                     {:query {:query "SELECT * FROM products"}
                                                       :output-table :my_table
                                                       :primary-key "id"})
             drop-result (driver/compile-drop-table driver/*driver* :my_table)]
@@ -126,3 +126,32 @@
           ;; Drivers might quote these differently, but both parts should be present
           (is (or (re-find #"schema.*my_table" (first result))
                   (re-find #"my_table" (first result)))))))))
+
+(deftest compile-insert-test
+  (testing "compile-insert generates INSERT INTO statements"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "simple table name"
+        (let [result (driver/compile-insert driver/*driver*
+                                            {:query {:query "SELECT * FROM products"}
+                                             :output-table :my_table})]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "generates INSERT INTO statement"
+            (is (re-find #"(?i)INSERT\s+INTO.*my_table" (first result))))
+          (testing "includes SELECT statement"
+            (is (re-find #"(?i)SELECT" (first result))))))
+
+      (testing "schema-qualified table"
+        (let [result (driver/compile-insert driver/*driver*
+                                            {:query {:query "SELECT * FROM products"}
+                                             :output-table :my_schema/my_table})]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "generates INSERT INTO statement"
+            (is (re-find #"(?i)INSERT\s+INTO" (first result))))
+          (testing "includes both schema and table parts"
+            (let [sql (first result)]
+              (is (re-find #"my_schema" sql) "Schema name should be present")
+              (is (re-find #"my_table" sql) "Table name should be present"))))))))

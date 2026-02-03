@@ -16,7 +16,7 @@
   border-radius: 6px;
   border: 2px solid transparent;
   cursor: default;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   align-items: stretch;
   transition: border 300ms linear;
 
@@ -66,7 +66,7 @@
 
   &.leftBorder {
     border-left: 1px solid
-      color-mix(in srgb, var(--mb-color-bg-white), transparent 25%);
+      color-mix(in srgb, var(--mb-color-background-primary), transparent 25%);
   }
 
   &.leftRoundedCorners {

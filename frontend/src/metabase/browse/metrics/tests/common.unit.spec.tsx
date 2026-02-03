@@ -25,7 +25,7 @@ describe("BrowseMetrics (OSS)", () => {
   });
 
   it("should not show the Create metric button in an empty state if the user does not have data access", async () => {
-    setup({ metricCount: 0, databases: [] });
+    setup({ metricCount: 0, canCreateQueries: false });
     expect(
       await screen.findByText(
         "Create Metrics to define the official way to calculate important numbers for your team",
@@ -35,7 +35,7 @@ describe("BrowseMetrics (OSS)", () => {
   });
 
   it("should not show the new metric header button if the user does not have data access", async () => {
-    setup({ metricCount: 0, databases: [] });
+    setup({ metricCount: 0, canCreateQueries: false });
     const header = await screen.findByTestId("browse-metrics-header");
     expect(
       within(header).queryByLabelText("Create a new metric"),

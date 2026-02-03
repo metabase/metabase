@@ -1,0 +1,1050 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:23
+      author: nvoxland
+      comment: Add source_database_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_database_id
+                  type: int
+                  remarks: The database containing the source data for this transform
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:24
+      author: nvoxland
+      comment: Add index for transform.source_database_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_source_database_id
+            columns:
+              - column:
+                  name: source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:25
+      author: nvoxland
+      comment: Add foreign key on transform(source_database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:26
+      author: nvoxland
+      comment: Transfer data from transform.source to transform.source_database_id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.SetTransformSourceDatabaseId"
+      rollback: # No need to roll back
+
+  - changeSet:
+      id: v59.2025-12-01T18:53:27
+      author: nvoxland
+      comment: Make transform.source_database_id not nullable
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:00
+      author: metabase
+      comment: Create measure table for saved aggregation expressions
+      changes:
+        - createTable:
+            tableName: measure
+            remarks: Stores saved aggregation expressions tied to tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: Foreign key to metabase_table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: Foreign key to core_user who created this measure
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Name of the measure
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional description of the measure
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether the measure has been archived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: JSON MBQL query containing the aggregation definition
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this measure was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this measure was last updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: dependency_analysis_version
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Version number for dependency analysis to track when dependencies need recalculation
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: measure
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:01
+      author: metabase
+      comment: Add index on measure.table_id
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+            columns:
+              - column:
+                  name: table_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:02
+      author: metabase
+      comment: Add foreign key from measure to metabase_table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_measure_ref_table_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: measure
+            constraintName: fk_measure_ref_table_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:03
+      author: metabase
+      comment: Add index on measure.creator_id
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:04
+      author: metabase
+      comment: Add foreign key from measure to core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_measure_ref_creator_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: measure
+            constraintName: fk_measure_ref_creator_id
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:00
+      author: gantoreno
+      comment: Add owner_user_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: owner_user_id
+                  type: int
+                  remarks: The user ID of the owner of this transform (can be different from creator)
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:01
+      author: gantoreno
+      comment: Add owner_email column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: owner_email
+                  type: ${text.type}
+                  remarks: An optional email address of the owner of this transform (for external owners), exclusive with owner_user_id
+
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:02
+      author: gantoreno
+      comment: Add index on transform.owner_user_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_owner_user_id
+            columns:
+              - column:
+                  name: owner_user_id
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:03
+      author: gantoreno
+      comment: Add foreign key constraint for transform.owner_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: owner_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_owner_user_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:04
+      author: gantoreno
+      comment: Backfill owner_user_id from creator_id for existing transforms
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform SET owner_user_id = creator_id WHERE owner_user_id IS NULL AND creator_id IS NOT NULL AND creator_id != 13371338
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform SET owner_user_id = NULL
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:05
+      author: gantoreno
+      comment: Add user_id column to transform_run table for tracking who triggered the run
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user ID who triggered this run (owner for scheduled runs, current user for manual runs)
+
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:06
+      author: gantoreno
+      comment: Add index on transform_run.user_id
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v59.2026-01-06T10:00:07
+      author: gantoreno
+      comment: Add foreign key constraint for transform_run.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_run_user_id
+            onDelete: SET NULL
+
+
+  - changeSet:
+      id: v59.2026-01-07T00:00:01
+      author: bshepherdson
+      comment: Create analysis finding table
+      changes:
+        - createTable:
+            tableName: analysis_finding
+            remarks: Findings from analysis of cards, transforms, dashboards, etc.
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: analyzed_entity_type
+                  type: varchar(254)
+                  remarks: The type of the analyzed entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analyzed_entity_id
+                  type: int
+                  remarks: The ID of the analyzed entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  remarks: The version of the analysis that was performed
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analyzed_at
+                  remarks: The timestamp of when the analysis was performed
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result
+                  type: ${boolean.type}
+                  remarks: The result of the analysis - true for passed, false for failed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finding_details
+                  type: ${text.type}
+                  remarks: Arbitrary EDN text of the findings
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-01-07T00:00:02
+      author: bshepherdson
+      comment: Unique constraint to prevent duplicate analyses
+      changes:
+        - addUniqueConstraint:
+            tableName: analysis_finding
+            columnNames: analyzed_entity_type, analyzed_entity_id
+            constraintName: idx_unique_analysis_finding
+
+  - changeSet:
+      id: v59.2026-01-07T00:00:03
+      author: bshepherdson
+      comment: Index for analysis_finding by analyzed entity
+      changes:
+        - createIndex:
+            tableName: analysis_finding
+            indexName: idx_analyzed_entity
+            columns:
+              - column:
+                  name: analyzed_entity_type
+              - column:
+                  name: analyzed_entity_id
+
+  - changeSet:
+      id: v59.2026-01-07T00:00:04
+      author: bshepherdson
+      comment: Index for analysis_finding by analysis result
+      changes:
+        - createIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_result
+            columns:
+              - column:
+                  name: result
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:00
+      author: rileythomp
+      comment: Create analysis_finding_error table for storing individual errors with source info
+      changes:
+        - createTable:
+            tableName: analysis_finding_error
+            remarks: Individual validation errors from analysis with source entity information
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: analyzed_entity_type
+                  type: varchar(254)
+                  remarks: The type of the analyzed entity (card, transform, segment, etc.)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analyzed_entity_id
+                  type: int
+                  remarks: The ID of the analyzed entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_type
+                  type: varchar(254)
+                  remarks: The type of error (missing-column, missing-table-alias, duplicate-column, syntax-error, validation-exception-error)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_detail
+                  type: varchar(254)
+                  remarks: Additional error details (e.g., column name, alias name, error message)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_entity_type
+                  type: varchar(254)
+                  remarks: The type of the source entity causing the error (table, card, etc.)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_entity_id
+                  type: int
+                  remarks: The ID of the source entity causing the error
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: analysis_finding_error
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:01
+      author: rileythomp
+      comment: Index for querying errors by source entity
+      changes:
+        - createIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_source
+            columns:
+              - column:
+                  name: source_entity_type
+              - column:
+                  name: source_entity_id
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_source
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:02
+      author: rileythomp
+      comment: Index for querying/deleting errors by analyzed entity
+      changes:
+        - createIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_analyzed
+            columns:
+              - column:
+                  name: analyzed_entity_type
+              - column:
+                  name: analyzed_entity_id
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_analyzed
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:03
+      author: rileythomp
+      comment: Index for filtering by error type
+      changes:
+        - createIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_type
+            columns:
+              - column:
+                  name: error_type
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_type
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:04
+      author: rileythomp
+      comment: Drop redundant finding_details column from analysis_finding table
+      changes:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: finding_details
+      rollback:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: finding_details
+                  type: ${text.type}
+                  remarks: Arbitrary EDN text of the findings
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:00
+      author: bronsa
+      comment: Create task_run table for grouping related tasks
+      changes:
+        - createTable:
+            tableName: task_run
+            remarks: Groups related tasks from a single operation (subscription, alert, sync, fingerprint)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: run_type
+                  type: varchar(32)
+                  remarks: "Type of run: subscription, alert, sync, fingerprint"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: "Type of associated entity: database, card, dashboard"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: ID of associated entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the run started
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: When the run completed (null if still running)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(21)
+                  remarks: "Overall status: started, success, failed"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: task_run
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:01
+      author: bronsa
+      comment: Add composite index on task_run for type/entity queries
+      changes:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_type_entity
+            columns:
+              - column:
+                  name: run_type
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_type_entity
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:02
+      author: bronsa
+      comment: Add index on task_run.started_at for ordering
+      changes:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_started_at
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+      rollback:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_started_at
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:03
+      author: bronsa
+      comment: Add run_id column to task_history
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: run_id
+                  type: int
+                  remarks: FK to task_run - groups tasks belonging to the same run
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: task_history
+            columnName: run_id
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:04
+      author: bronsa
+      comment: Add index on task_history.run_id
+      changes:
+        - createIndex:
+            tableName: task_history
+            indexName: idx_task_history_run_id
+            columns:
+              - column:
+                  name: run_id
+      rollback:
+        - dropIndex:
+            tableName: task_history
+            indexName: idx_task_history_run_id
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:05
+      author: bronsa
+      comment: Add foreign key from task_history.run_id to task_run
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: task_history
+            baseColumnNames: run_id
+            referencedTableName: task_run
+            referencedColumnNames: id
+            constraintName: fk_task_history_run_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: task_history
+            constraintName: fk_task_history_run_id
+
+  - changeSet:
+      id: v59.2026-01-16T09:30:06
+      author: bronsa
+      comment: Add logs column to task_history for captured execution logs
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: logs
+                  type: ${text.type}
+                  remarks: JSON array of captured log messages during task execution
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: task_history
+            columnName: logs
+
+  - changeSet:
+      id: v59.2026-01-16T10:00:00
+      author: bronsa
+      comment: Add process_uuid to task_run for orphan detection
+      changes:
+        - addColumn:
+            tableName: task_run
+            columns:
+              - column:
+                  name: process_uuid
+                  type: varchar(36)
+                  remarks: UUID of the Metabase instance that created this run
+                  defaultValue: "unknown"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: task_run
+            columnName: process_uuid
+
+  - changeSet:
+      id: v59.2026-01-16T10:00:01
+      author: bronsa
+      comment: Add updated_at to task_run for heartbeat tracking
+      changes:
+        - addColumn:
+            tableName: task_run
+            columns:
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Last heartbeat timestamp - updated periodically for running tasks
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: task_run
+            columnName: updated_at
+
+  - changeSet:
+      id: v59.2026-01-16T11:00:00
+      author: bronsa
+      comment: Usage analytics; Create v_task_runs view for task run analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/task_runs/v1/postgres-task_runs.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/task_runs/v1/mysql-task_runs.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/task_runs/v1/h2-task_runs.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_task_runs;
+
+  - changeSet:
+      id: v59.2026-01-16T11:00:01
+      author: bronsa
+      comment: Usage analytics; Update v_tasks view to include run_id and logs columns
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v4/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v4/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v4/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v2/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v3/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v2/h2-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v59.2026-01-23T12:00:00
+      author: bronsa
+      comment: Insert default common.py entry in python_library if not exists
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM python_library WHERE path = 'common.py'
+      changes:
+        - sql:
+            sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
+      rollback:
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:00
+      author: nvoxland
+      comment: Add transform_name for preserving history when transform is deleted
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: transform_name
+                  type: varchar(254)
+                  remarks: Name of transform at time of run, stored for historical purposes
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:01
+      author: nvoxland
+      comment: Add transform_entity_id column for potential reconnection when transform is recreated
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: transform_entity_id
+                  type: char(21)
+                  remarks: Original transform entity_id, stored for historical purposes
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:02
+      author: nvoxland
+      comment: Backfill transform_name and transform_entity_id for existing runs
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform_run
+              SET transform_name = (SELECT name FROM transform WHERE transform.id = transform_run.transform_id),
+                  transform_entity_id = (SELECT entity_id FROM transform WHERE transform.id = transform_run.transform_id)
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform_run SET transform_name = NULL, transform_entity_id = NULL
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:03
+      author: nvoxland
+      comment: Drop existing FK constraint on transform_run.transform_id to change to SET NULL behavior
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:04
+      author: nvoxland
+      comment: Make transform_id nullable to support orphaned runs when transform is deleted
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform_run
+            columnName: transform_id
+            columnDataType: int
+
+  - changeSet:
+      id: v59.2026-01-23T13:00:05
+      author: nvoxland
+      comment: Re-add FK constraint with ON DELETE SET NULL behavior to preserve runs when transform is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: SET NULL
+
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:00
+      author: epaget
+      comment: Add entity_id column to python_library table
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: python_library
+            columnName: entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:01
+      author: epaget
+      comment: Backfill entity_id for existing common.py python_library row
+      changes:
+        - sql:
+            sql: UPDATE python_library SET entity_id = 'cWWH9qJPvHNB3rP2vLZrK' WHERE path = 'common.py' AND entity_id IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE python_library SET entity_id = NULL WHERE path = 'common.py'
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:02
+      author: epaget
+      comment: Add index on entity_id column in python_library table
+      changes:
+        - createIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+            columns:
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:03
+      author: epaget
+      comment: Add unique constraint on entity_id column in python_library table
+      changes:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: entity_id
+            constraintName: unique_python_library_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: python_library
+            constraintName: unique_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:00
+      author: metamben
+      comment: Add stale column to analysis_finding for asynchronous dependent updates
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs re-analysis due to upstream changes
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: stale
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:01
+      author: metamben
+      comment: Add partial index on analysis_finding.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_finding_stale
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:02
+      author: winlost
+      comment: Add disable_links column to notification_card table
+      changes:
+        - addColumn:
+            tableName: notification_card
+            columns:
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable alert email links"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: notification_card
+            columnName: disable_links
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+########################################################################################################################
+#
+# ADVICE:
+#
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.app_db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
+#
+# 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
+#
+# 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
+#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
+#    this check but it's nicer to know now instead of waiting for CI.
+#
+# 3) Migration IDs should follow the format
+#
+#    vMM.TIMESTAMP
+#
+#    Where
+#
+#    M         = major version
+#    TIMESTAMP = the current timestamp with format `yyyy-MM-dd'T'HH:mm:ss`
+#                To get this timestamp, evaluate this in your REPL: `(dev/migration-timestamp)`
+#
+#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023 (UTC),
+#    your migration id should be: `v49.2023-04-01T10:30:00`.
+#
+# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
+#
+########################################################################################################################

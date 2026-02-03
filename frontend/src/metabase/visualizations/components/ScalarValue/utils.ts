@@ -5,7 +5,7 @@ interface FindSizeInput {
   text: string;
   targetHeight: number;
   targetWidth: number;
-  unit: string;
+  unit: "rem";
   fontFamily: string;
   fontWeight: string | number;
   step: number;

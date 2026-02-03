@@ -5,6 +5,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
@@ -20,8 +21,9 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
@@ -173,6 +175,8 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  ;; In OSS, convert any Data Analysts group with members to a normal visible group
+  (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
@@ -182,8 +186,6 @@
   (log/info "Setting up prometheus metrics")
   (analytics/setup!)
   (init-status/set-progress! 0.5)
-  (premium-features/airgap-check-user-count)
-  (init-status/set-progress! 0.55)
   (task/init-scheduler!)
   (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
@@ -220,18 +222,23 @@
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
-  (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
-        duration   (u/since-ms-wall-clock start-time)]
-    (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
+  (log/info "Metabase Initialization COMPLETE"))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
-  (let [start-time (t/zoned-date-time)]
+  (let [start-time          (t/zoned-date-time)
+        jvm-start-time      (.getStartTime (ManagementFactory/getRuntimeMXBean))]
     (init!*)
-    (system/startup-time-millis!
-     (.toMillis (t/duration start-time (t/zoned-date-time))))))
+    (let [init-duration-ms  (.toMillis (t/duration start-time (t/zoned-date-time)))
+          jvm-to-complete-ms (u/since-ms-wall-clock jvm-start-time)]
+      (log/infof "Metabase Initialization COMPLETE in %s (JVM uptime: %s)"
+                 (u/format-milliseconds init-duration-ms)
+                 (u/format-milliseconds jvm-to-complete-ms))
+      (system/startup-time-millis! init-duration-ms)
+      (prometheus/set! :metabase-startup/init-duration-millis init-duration-ms)
+      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

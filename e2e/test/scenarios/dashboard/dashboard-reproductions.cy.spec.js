@@ -96,8 +96,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     H.getDashboardCards().should("have.length", 1);
@@ -133,8 +133,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     cy.findByTestId("edit-bar")
@@ -754,9 +754,9 @@ describe("issue 29076", () => {
     // test that user is sandboxed - normal users has over 2000 rows
     H.getDashboardCard().findAllByRole("row").should("have.length", 1);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
     H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     H.assertDatasetReqIsSandboxed({
@@ -1631,7 +1631,7 @@ describe("issue 47170", () => {
 
   it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
     cy.visit("/account/profile");
-    cy.findByDisplayValue("Light").click();
+    cy.findByDisplayValue("Use system default").click();
     H.popover().findByText("Dark").click();
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -2262,4 +2262,130 @@ describe("issue 64138", () => {
       .should("have.length.gt", 0)
       .last();
   }
+});
+
+describe("issue 58556, issue 66277", () => {
+  const QUESTION = {
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }]],
+    },
+    display: "table",
+  };
+
+  const PARAMETER = createMockParameter({
+    id: "date-param",
+    name: "Date",
+    slug: "date",
+    type: "date/all-options",
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createDashboardWithQuestions({
+      questions: [QUESTION],
+      dashboardDetails: {
+        parameters: [PARAMETER],
+      },
+    }).then(({ dashboard }) => {
+      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
+        ({ body: dashboard }) => {
+          const [dashcard] = dashboard.dashcards;
+
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            dashcards: [
+              {
+                ...dashcard,
+                parameter_mappings: [
+                  {
+                    card_id: dashcard.card_id,
+                    parameter_id: PARAMETER.id,
+                    target: [
+                      "dimension",
+                      [
+                        "field",
+                        "CREATED_AT",
+                        {
+                          "base-type": "type/DateTime",
+                          "inherited-temporal-unit": "hour",
+                        },
+                      ],
+                      {
+                        "stage-number": 1,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+        },
+      );
+
+      H.visitDashboard(dashboard.id);
+    });
+
+    H.editDashboard();
+    H.showDashboardCardActions();
+  });
+
+  it("should be possible to add a click action on a time column with hour granularity and have the time be present in the resulting parameter (metabase#58556)", () => {
+    H.clickBehaviorSidebar().within(() => {
+      cy.findByText("Created At: Hour").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Date").click();
+    });
+
+    H.popover().findByText("Created At: Hour").click();
+    H.sidebar().button("Done").click();
+
+    H.saveDashboard();
+
+    cy.log("click a row");
+    H.dashboardCards()
+      .findByTestId("table-body")
+      .findAllByTestId("link-formatted-text")
+      .eq(0)
+      .click();
+
+    cy.log("ensure the filter contains a time value");
+    cy.location().then((location) => {
+      const url = new URL(location.href);
+      const date = url.searchParams.get("date");
+      cy.wrap(date).should("match", /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+    });
+  });
+
+  it("should pass hour or minutes to linked questions from click actions (metabase#66277)", () => {
+    H.clickBehaviorSidebar().within(() => {
+      cy.findByText("Created At: Hour").click();
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+
+    H.entityPickerModal().findByText("Orders").click();
+
+    H.sidebar().findByText("Created At").scrollIntoView().click();
+
+    H.popover().findByText("Created At: Hour").click();
+    H.sidebar().button("Done").click();
+
+    H.saveDashboard();
+
+    cy.log("click a row");
+    H.dashboardCards()
+      .findByTestId("table-body")
+      .findAllByTestId("link-formatted-text")
+      .eq(0)
+      .click();
+
+    H.queryBuilderFiltersPanel()
+      .findByText(
+        /Created At is .* \d{1,2}:\d{2} (AM|PM) – \d{1,2}:\d{2} (AM|PM)/,
+      )
+      .should("be.visible");
+  });
 });

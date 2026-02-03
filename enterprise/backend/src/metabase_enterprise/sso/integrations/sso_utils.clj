@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
@@ -36,6 +37,10 @@
   [_]
   (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
 
+(defmethod check-user-provisioning :slack-connect
+  [_]
+  (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled)))
+
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."
   [uri]
@@ -65,12 +70,18 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
-(defn filter-non-stringable-attributes
-  "Removes vectors and map json attribute values that cannot be turned into strings."
+(defn stringify-valid-attributes
+  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
   [attrs]
   (->> attrs
        (keep (fn [[key value]]
-               (if (or (vector? value) (map? value) (nil? value))
+               (cond
+                 (or (vector? value) (map? value) (nil? value))
                  (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
-                 [key value])))
+
+                 (str/starts-with? (name key) "@")
+                 (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))
+
+                 :else
+                 [(u/qualified-name key) (str value)])))
        (into {})))

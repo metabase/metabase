@@ -1,5 +1,5 @@
 (ns metabase.lib.field
-  (:refer-clojure :exclude [every? select-keys mapv empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [every? select-keys mapv empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -34,7 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys mapv empty? not-empty #?(:clj for)]]
+   [metabase.util.performance :refer [every? select-keys mapv empty? not-empty get-in #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn- column-metadata-effective-type
@@ -390,10 +390,10 @@
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
       ;; TODO: Include the time and date binning strategies too
-      (for [strat strategies]
-        (cond-> strat
+      (for [strategy strategies]
+        (cond-> strategy
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)
-          (lib.binning/strategy= strat existing) (assoc :selected true))))
+          (lib.binning/strategy= strategy existing) (assoc :selected true))))
     []))
 
 (defmethod lib.ref/ref-method :field
@@ -705,7 +705,7 @@
                                                         {:query  query
                                                          :stage  stage-number
                                                          :source source}))
-          ;; Default case: do nothing and return the query unchaged.
+          ;; Default case: do nothing and return the query unchanged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
             (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))

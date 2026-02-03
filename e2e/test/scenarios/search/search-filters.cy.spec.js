@@ -2,8 +2,10 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
   ADMIN_USER_ID,
   FIRST_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -999,6 +1001,83 @@ describe("scenarios > search", () => {
 
         expectSearchResultItemNameContent({
           itemNames: [TEST_NATIVE_QUESTION_NAME],
+        });
+      });
+    });
+
+    describe("personal collection filter", () => {
+      beforeEach(() => {
+        cy.log("Create a question in admin's personal collection");
+        H.createQuestion({
+          name: "Admin Personal Question [keyword]",
+          query: { "source-table": ORDERS_ID, limit: 1 },
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        });
+
+        cy.log("Create a question in normal user's personal collection");
+        cy.signInAsNormalUser();
+        H.createQuestion({
+          name: "Normal User Personal Question [keyword]",
+          query: { "source-table": ORDERS_ID, limit: 1 },
+          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+        });
+        cy.signInAsAdmin();
+      });
+
+      it("should hydrate personal collection filter", () => {
+        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
+        cy.wait("@search");
+
+        cy.findByTestId("filter_items_in_personal_collection-search-filter")
+          .findByRole("switch")
+          .should("be.checked");
+
+        expectSearchResultItemNameContent({
+          itemNames: [
+            "Admin Personal Question [keyword]",
+            "Normal User Personal Question [keyword]",
+          ],
+        });
+      });
+
+      it("should not be exposed to non-admins", () => {
+        cy.signInAsNormalUser();
+        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
+        cy.wait("@search");
+        expectSearchResultItemNameContent({
+          itemNames: ["Normal User Personal Question [keyword]"],
+        });
+        cy.findByTestId(
+          "filter_items_in_personal_collection-search-filter",
+        ).should("not.exist");
+      });
+
+      it("should include other users' personal collection items when filter is turned on", () => {
+        cy.visit("/search?q=keyword");
+        cy.wait("@search");
+
+        cy.log("Should only see own personal items when filter is off");
+        expectSearchResultItemNameContent({
+          itemNames: ["Admin Personal Question [keyword]"],
+        });
+
+        cy.log("Turn on personal collection filter");
+        cy.findByTestId("filter_items_in_personal_collection-search-filter")
+          .findByRole("switch")
+          .should("not.be.checked");
+        cy.findByTestId("filter_items_in_personal_collection-search-filter")
+          .click()
+          .findByRole("switch")
+          .should("be.checked");
+
+        cy.url().should("contain", "filter_items_in_personal_collection=all");
+
+        cy.log("Should see own and other users' items when filter is on");
+        expectSearchResultItemNameContent({
+          itemNames: [
+            "Admin Personal Question [keyword]",
+            "Normal User Personal Question [keyword]",
+          ],
         });
       });
     });

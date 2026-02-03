@@ -9,7 +9,7 @@ describe("ParameterWidget (EE with token, in static embedding)", () => {
 
     it("should translate legend", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["content_translation"],
         tokenFeatures: { content_translation: true },
         staticallyEmbedded: true,
         localeCode: "de",

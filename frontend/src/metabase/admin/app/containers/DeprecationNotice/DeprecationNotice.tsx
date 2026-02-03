@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import Databases from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -18,7 +18,7 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-function setup({ question, tokenFeatures = {}, hasEnterprisePlugins = false }) {
+function setup({ question, tokenFeatures = {}, enterprisePlugins }) {
   const onSave = jest.fn();
 
   const state = createMockState({
@@ -27,8 +27,8 @@ function setup({ question, tokenFeatures = {}, hasEnterprisePlugins = false }) {
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(
@@ -98,10 +98,10 @@ describe("SavedQuestionHeaderButton", () => {
     it("should have an additional icon to signify the question's moderation status", () => {
       setup({
         question,
-        hasEnterprisePlugins: true,
         tokenFeatures: {
           content_verification: true,
         },
+        enterprisePlugins: ["content-verification", "moderation"],
       });
       expect(getIcon("verified")).toBeInTheDocument();
     });
@@ -122,8 +122,8 @@ describe("SavedQuestionHeaderButton", () => {
     it("should have an additional icon to signify the question's collection type", () => {
       setup({
         question,
-        hasEnterprisePlugins: true,
         tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["collections", "audit-app"],
       });
       expect(getIcon("audit")).toBeInTheDocument();
     });

@@ -55,7 +55,7 @@ describe("issue 13289", () => {
 
     H.openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     // Add custom column that will be used later in summarize (group by)
@@ -65,15 +65,15 @@ describe("issue 13289", () => {
 
   it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     H.popover().findByText(CC_NAME).click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.icon("add").last().click();
 
     H.popover().within(() => {
@@ -88,14 +88,14 @@ describe("issue 13289", () => {
         .click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At is Sep 1–30, 2022");
   });
 });
@@ -154,7 +154,7 @@ describe(
       cy.signInAsAdmin();
 
       H.startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });
@@ -208,9 +208,9 @@ describe("issue 14843", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
 });
@@ -241,7 +241,7 @@ describe("issue 18069", () => {
 
   it("should not allow choosing text fields for SUM (metabase#18069)", () => {
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of ...").click();
 
     H.popover().within(() => {
@@ -261,7 +261,7 @@ describe("issue 18069", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,041.45");
   });
 });
@@ -323,10 +323,10 @@ describe("issue 18747", () => {
     addNumberParameterToDashboard();
     mapParameterToCustomColumn();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // wait for saving to finish
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     addValueToParameterFilter();
@@ -369,10 +369,10 @@ describe("issue 18814", () => {
     H.openNotebook();
 
     cy.icon("sum").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     H.popover().contains(ccName).click();
 
@@ -626,11 +626,11 @@ describe("issue 21513", () => {
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     H.popover().findByText("Category").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     H.enterCustomColumnDetails({
       formula: "[Count] * 2",
@@ -683,9 +683,9 @@ describe("issue 23862", () => {
       );
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Small");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("-36.53");
   });
 });
@@ -716,13 +716,13 @@ describe("issue 24922", () => {
   it("should allow segments in case custom expressions (metabase#24922)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     H.enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
     H.visualize();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
   });
 });
@@ -786,7 +786,7 @@ describe("issue 25189", { tags: "@skip" }, () => {
     });
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No results!");
 
     // 3. We shouldn't see duplication in the breakout fields
@@ -932,7 +932,7 @@ describe("issue 42949", { tags: "@skip" }, () => {
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -979,7 +979,7 @@ describe("issue 42949", { tags: "@skip" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("N").should("be.visible");
   });
 
@@ -1008,7 +1008,7 @@ describe("issue 42949", { tags: "@skip" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("'abc'").should("be.visible");
   });
 });
@@ -1302,7 +1302,7 @@ describe("issue 49305", () => {
     H.saveQuestion(
       "49305 Base question",
       { wrapId: true },
-      { tab: "Browse", path: ["Our analytics"], select: true },
+      { path: ["Our analytics"], select: true },
     );
 
     cy.get("@questionId").then((id) => {
@@ -2451,7 +2451,7 @@ describe("issue 61010", () => {
 
     H.CustomExpressionEditor.clear().type("[New count]");
     H.popover()
-      .findByText("Unknown Aggregation or Metric: New count")
+      .findByText("Unknown Aggregation, Measure or Metric: New count")
       .should("be.visible");
   });
 });

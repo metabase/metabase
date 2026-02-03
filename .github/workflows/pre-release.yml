@@ -166,11 +166,8 @@ jobs:
           snowplow: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -189,8 +186,14 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      # For now we only need the default snapshots for pre-release checks.
+      # If we decide to include tests that rely on the external QA databases, we should:
+      #   1. remove the --spec ... line
+      #   2. add postgres, mysql, and mongo to the prepare-containers step
       - name: Make app db snapshot
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Run a few important OSS Cypress tests as sanity check
         if: ${{ matrix.edition == 'oss' }}

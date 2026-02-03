@@ -77,6 +77,10 @@ To use Oauth as a provider, you'll need to input your:
 - Auth token URL
 - Auth token request headers (a JSON map)
 
+#### IAM authentication
+
+To connect to Amazon RDS instances using IAM authentication instead of a password, see [IAM authentication for AWS RDS](./aws-rds.md#iam-authentication).
+
 ### Schemas
 
 You can specify which schemas you want to sync and scan. Options are:

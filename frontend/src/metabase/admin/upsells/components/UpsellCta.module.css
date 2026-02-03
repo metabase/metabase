@@ -1,6 +1,7 @@
 @import "./Upsells.base.module.css";
 
 .UpsellCTALink {
+  white-space: nowrap;
   display: flex;
   gap: 0.5rem;
   align-items: center;

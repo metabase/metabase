@@ -55,7 +55,7 @@
 
 (defn- jsonl-output [expected] #(= expected (parse-jsonl %)))
 
-(defn- execute! [{:keys [code tables]}]
+(defn execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
     (let [server-url     (transforms-python.settings/python-runner-url)
           cancel-chan    (a/promise-chan)
@@ -63,7 +63,7 @@
           test-id        (next-job-run-id)
           _              (python-runner/copy-tables-to-s3! {:run-id         test-id
                                                             :shared-storage @shared-storage-ref
-                                                            :table-name->id table-name->id
+                                                            :source         {:source-tables table-name->id}
                                                             :cancel-chan    cancel-chan})
           response       (python-runner/execute-python-code-http-call! {:server-url     server-url
                                                                         :code           code
@@ -498,7 +498,7 @@
 
 (deftest python-runner-timeout-test
   (testing "Python script execution respects timeout setting"
-    (mt/with-premium-features #{:transforms-python}
+    (mt/with-premium-features #{:transforms-python :transforms}
       (tu/with-temporary-setting-values [python-runner-timeout-seconds 5]
         (let [long-running-code (str "import time\n"
                                      "import pandas as pd\n"

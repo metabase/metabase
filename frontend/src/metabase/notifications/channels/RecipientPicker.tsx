@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import TokenField from "metabase/common/components/TokenField";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { TokenField } from "metabase/common/components/TokenField";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { isEmail } from "metabase/lib/email";
@@ -14,7 +14,6 @@ import { Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import S from "./RecipientPicker.module.css";
-import { ErrorMessage } from "./RecipientPicker.styled";
 
 interface RecipientPickerProps {
   recipients?: RecipientPickerValue[];
@@ -59,7 +58,7 @@ export const RecipientPicker = ({
           valueRenderer={(value) => value.common_name ?? value.email}
           optionRenderer={(option) => (
             <div className={cx(CS.flex, CS.alignCenter)}>
-              <Text color="text-white">
+              <Text color="text-primary-inverse">
                 <UserAvatar user={option.value} />
               </Text>
               <span className={CS.ml1}>{option.value.common_name}</span>
@@ -76,7 +75,7 @@ export const RecipientPicker = ({
         />
       </div>
       {domains && !isValid && (
-        <ErrorMessage>{invalidRecipientText(domains)}</ErrorMessage>
+        <div className={S.ErrorMessage}>{invalidRecipientText(domains)}</div>
       )}
     </div>
   );

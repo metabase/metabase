@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import Pulses from "metabase/entities/pulses";
+import { Pulses } from "metabase/entities/pulses";
 import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
@@ -19,6 +19,7 @@ const mapDispatchToProps = {
   onArchive: navigateToArchive,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Pulses.load({
     id: (state, props) => getPulseId(props),

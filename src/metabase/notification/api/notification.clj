@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
+   [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -87,7 +88,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "List notifications.
   - `creator_id`: if provided returns only notifications created by this user
@@ -110,6 +116,10 @@
                        :include_inactive        include_inactive
                        :payload_type            payload_type}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
@@ -137,16 +147,22 @@
         (messages/send-you-were-added-card-notification-email!
          (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
                            (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
-                           (dissoc :handlers :subscriptions))
+                           (dissoc :handlers :subscriptions)
+                           (assoc-in [:payload :disable_links]
+                                     (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)))
                        (:subscriptions body)
                        (:handlers body)))]
     (when (card-notification? notification)
@@ -180,6 +196,10 @@
           (when (seq added-recipients)
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a notification, can also update its subscriptions, handlers.
   Return the updated notification."
@@ -196,19 +216,20 @@
                                                          :previous-object existing-notification
                                                          :user-id         api/*current-user-id*}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (let [notification (get-notification id)]
+  (let [notification (cond-> (get-notification id)
+                       (seq handler_ids)
+                       (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
     (api/read-check notification)
-    (cond-> notification
-      (seq handler_ids)
-      (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers)))
-
-      true
-      (notification/send-notification! :notification/sync? true))))
+    (notification/send-notification! notification :notification/sync? true)))
 
 (defn- promote-to-t2-instance
   [notification]
@@ -221,15 +242,21 @@
                                           %))
        (m/update-existing :subscriptions #(map (fn [x] (t2/instance :model/NotificationSubscription x)) %))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
-  (-> body
-      (assoc :creator_id api/*current-user-id*)
-      promote-to-t2-instance
-      (notification/send-notification! :notification/sync? true)))
+  (let [notification (-> body
+                         (assoc :creator_id api/*current-user-id*)
+                         (assoc-in [:payload :disable_links]
+                                   (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
+                         promote-to-t2-instance)]
+    (notification/send-notification! notification :notification/sync? true)))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."
@@ -246,6 +273,10 @@
       (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]

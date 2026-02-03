@@ -16,25 +16,10 @@ show_in_getting_started: false
 caveats: null
 points_of_interest: null
 parameters:
-- id: 81d22d7f
-  isMultiSelect: false
-  name: Question ID
-  sectionId: id
-  slug: question_id
-  type: id
-- id: 34ed3a3a
-  name: Question name
-  sectionId: string
-  slug: question_name
-  type: string/=
-  values_query_type: search
-- id: 602ee33c
-  name: Date Filter
-  sectionId: date
-  slug: date_filter
-  type: date/all-options
-- default:
-  - All Users
+- {id: 81d22d7f, isMultiSelect: false, name: Question ID, sectionId: id, slug: question_id, type: id}
+- {id: 34ed3a3a, name: Question name, sectionId: string, slug: question_name, type: string/=, values_query_type: search}
+- {id: 602ee33c, name: Date Filter, sectionId: date, slug: date_filter, type: date/all-options}
+- default: [All Users]
   id: 66ce4bc6
   isMultiSelect: false
   name: Group name
@@ -43,9 +28,7 @@ parameters:
   slug: group_name
   type: string/=
 serdes/meta:
-- id: jm7KgY6IuS6pQjkBZ7WUI
-  label: question_overview
-  model: Dashboard
+- {id: jm7KgY6IuS6pQjkBZ7WUI, label: question_overview, model: Dashboard}
 archived_directly: false
 dashcards:
 - entity_id: ejJ8SwwOs7vpmHsgPqq0r
@@ -57,37 +40,29 @@ dashcards:
   size_y: 7
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: XLzhOnMmk3DkefFAMx_Vg
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer}
+    - {stage-number: 0}
   - card_id: XLzhOnMmk3DkefFAMx_Vg
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text}
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: ejJ8SwwOs7vpmHsgPqq0r
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: ejJ8SwwOs7vpmHsgPqq0r, model: DashboardCard}
 - entity_id: jeaMN8dAMxu8cQrKT28nz
   card_id: 613VT_7b325t9FBAJZcU8
   created_at: '2023-11-01T02:35:42.541237Z'
@@ -97,62 +72,45 @@ dashcards:
   size_y: 7
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: 613VT_7b325t9FBAJZcU8
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Entity Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+    - {stage-number: 0}
   - card_id: 613VT_7b325t9FBAJZcU8
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Entity Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    - {stage-number: 0}
   - card_id: 613VT_7b325t9FBAJZcU8
     parameter_id: 602ee33c
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - base-type: type/DateTimeWithLocalTZ
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_view_log, timestamp]
+      - {base-type: type/DateTimeWithLocalTZ}
+    - {stage-number: 0}
   - card_id: 613VT_7b325t9FBAJZcU8
     parameter_id: 66ce4bc6
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_group_members
-        - group_name
-      - base-type: type/Text
-        join-alias: Group Members - User
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_group_members, group_name]
+      - {base-type: type/Text, join-alias: Group Members - User}
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: jeaMN8dAMxu8cQrKT28nz
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: jeaMN8dAMxu8cQrKT28nz, model: DashboardCard}
 - entity_id: ZW-Zh5fCsudRWuc_5-ebV
   card_id: vrez-ciNppijhELOxLJOY
   created_at: '2023-11-01T02:41:00.615638Z'
@@ -162,90 +120,60 @@ dashcards:
   size_y: 6
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: vrez-ciNppijhELOxLJOY
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Card Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
   - card_id: vrez-ciNppijhELOxLJOY
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Card Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
   series: []
   visualization_settings:
     column_settings:
-      '["name","created_at"]':
-        column_title: Added At
-      '["name","entity_id"]':
-        column_title: Dashboard ID
-        view_as: link
-      '["name","name"]':
-        column_title: Dashboard name
-        link_text: ''
-        link_url: /dashboard/{{entity_id}}
-        view_as: link
+      '["name","created_at"]': {column_title: Added At}
+      '["name","entity_id"]': {column_title: Dashboard ID, view_as: link}
+      '["name","name"]': {column_title: Dashboard name, link_text: '', link_url: '/dashboard/{{entity_id}}', view_as: link}
       ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
-      : column_title: Card ID
+      : {column_title: Card ID}
       ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-      : column_title: Question name
-      '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
-        column_title: Question Name
-      '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]':
-        column_title: Dashboard Name
+      : {column_title: Question name}
+      '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]': {column_title: Question Name}
+      '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]': {column_title: Dashboard Name}
     table.cell_column: name
     table.columns:
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - created_at
-      - base-type: type/DateTimeWithLocalTZ
-        temporal-unit: default
+      - [Internal Metabase Database, public, v_dashboardcard, created_at]
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
       name: created_at
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Dashboard Qualified
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
       name: name
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Card Qualified
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Card Qualified}
       name: entity_id
     table.pivot_column: name_2
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: ZW-Zh5fCsudRWuc_5-ebV
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: ZW-Zh5fCsudRWuc_5-ebV, model: DashboardCard}
 - entity_id: t94BPUqDcK5f5_WEuTP-S
   card_id: y-_5bBl0fXY9XlEbpJkrj
   created_at: '2023-11-01T02:46:22.129198Z'
@@ -255,62 +183,45 @@ dashcards:
   size_y: 6
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: y-_5bBl0fXY9XlEbpJkrj
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Entity Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+    - {stage-number: 0}
   - card_id: y-_5bBl0fXY9XlEbpJkrj
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Entity Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    - {stage-number: 0}
   - card_id: y-_5bBl0fXY9XlEbpJkrj
     parameter_id: 602ee33c
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - base-type: type/DateTimeWithLocalTZ
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_view_log, timestamp]
+      - {base-type: type/DateTimeWithLocalTZ}
+    - {stage-number: 0}
   - card_id: y-_5bBl0fXY9XlEbpJkrj
     parameter_id: 66ce4bc6
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_group_members
-        - group_name
-      - base-type: type/Text
-        join-alias: Group Members - User
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_group_members, group_name]
+      - {base-type: type/Text, join-alias: Group Members - User}
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: t94BPUqDcK5f5_WEuTP-S
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: t94BPUqDcK5f5_WEuTP-S, model: DashboardCard}
 - entity_id: d6fgUU6_hAqWj_ngoJea_
   card_id: MOAq881VSlM2BhVUv5e_K
   created_at: '2023-11-01T02:47:47.57613Z'
@@ -320,42 +231,32 @@ dashcards:
   size_y: 7
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: MOAq881VSlM2BhVUv5e_K
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Entity Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+    - {stage-number: 0}
   - card_id: MOAq881VSlM2BhVUv5e_K
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Entity Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    - {stage-number: 0}
   - card_id: MOAq881VSlM2BhVUv5e_K
     parameter_id: 602ee33c
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - timestamp
-      - base-type: type/DateTimeWithLocalTZ
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_audit_log, timestamp]
+      - {base-type: type/DateTimeWithLocalTZ}
+    - {stage-number: 0}
   series: []
   visualization_settings:
     column_settings:
@@ -365,23 +266,14 @@ dashcards:
           parameterMapping:
             6b3da96f:
               id: 6b3da96f
-              source:
-                id: user_id
-                name: Question 1 → User ID
-                type: column
-              target:
-                id: 6b3da96f
-                type: parameter
-          tabId:
-          - DHMhMa1FYxiyIgM7_xdgR
-          - VLzpbzPlShrECFp-dG4pH
+              source: {id: user_id, name: Question 1 → User ID, type: column}
+              target: {id: 6b3da96f, type: parameter}
+          tabId: [DHMhMa1FYxiyIgM7_xdgR, VLzpbzPlShrECFp-dG4pH]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: d6fgUU6_hAqWj_ngoJea_
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: d6fgUU6_hAqWj_ngoJea_, model: DashboardCard}
 - entity_id: PljXyyyfScG10byiLANCg
   card_id: YiHMsA2dv3iQob11DLTIz
   created_at: '2023-11-01T02:51:46.409464Z'
@@ -391,39 +283,29 @@ dashcards:
   size_y: 7
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: YiHMsA2dv3iQob11DLTIz
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Card Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
   - card_id: YiHMsA2dv3iQob11DLTIz
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Card Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: PljXyyyfScG10byiLANCg
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: PljXyyyfScG10byiLANCg, model: DashboardCard}
 - entity_id: e_bl-8XvvXVu7iAA79eCb
   card_id: 7FLoE9kUELG4Ess6DsSEY
   created_at: '2023-11-13T21:40:46.417186Z'
@@ -433,211 +315,134 @@ dashcards:
   size_y: 8
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: 7FLoE9kUELG4Ess6DsSEY
     parameter_id: 81d22d7f
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Card Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
   - card_id: 7FLoE9kUELG4Ess6DsSEY
     parameter_id: 34ed3a3a
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Card Qualified
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
   - card_id: 7FLoE9kUELG4Ess6DsSEY
     parameter_id: 602ee33c
     target:
     - dimension
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - started_at
-      - base-type: type/DateTimeWithLocalTZ
-    - stage-number: 0
+      - [Internal Metabase Database, public, v_query_log, started_at]
+      - {base-type: type/DateTimeWithLocalTZ}
+    - {stage-number: 0}
   series: []
   visualization_settings:
     column_settings:
-      '["name","entity_id"]':
-        column_title: Question ID
-      '["name","entity_id_2"]':
-        column_title: Dashboard ID
-      '["name","entity_id_3"]':
-        column_title: Database ID
-      '["name","full_name"]':
-        column_title: User name
-      '["name","name"]':
-        column_title: Question name
-        link_text: ''
-        link_url: /question/{{entity_id}}
-        view_as: link
-      '["name","name_2"]':
-        column_title: Dashboard name
-        link_url: /dashboard/{{entity_id_2}}
-        view_as: link
-      '["name","name_3"]':
-        column_title: Database name
-        link_url: /browse/{{entity_id_3}}
-        view_as: link
-      '["name","user_id"]':
-        column_title: User ID
+      '["name","entity_id"]': {column_title: Question ID}
+      '["name","entity_id_2"]': {column_title: Dashboard ID}
+      '["name","entity_id_3"]': {column_title: Database ID}
+      '["name","full_name"]': {column_title: User name}
+      '["name","name"]': {column_title: Question name, link_text: '', link_url: '/question/{{entity_id}}', view_as: link}
+      '["name","name_2"]': {column_title: Dashboard name, link_url: '/dashboard/{{entity_id_2}}', view_as: link}
+      '["name","name_3"]': {column_title: Database name, link_url: '/browse/{{entity_id_3}}', view_as: link}
+      '["name","user_id"]': {column_title: User ID}
     table.cell_column: running_time_seconds
     table.columns:
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - started_at
-      - base-type: type/DateTimeWithLocalTZ
-        temporal-unit: default
+      - [Internal Metabase Database, public, v_query_log, started_at]
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
       name: started_at
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
-        join-alias: People - User
+      - [Internal Metabase Database, public, v_users, full_name]
+      - {base-type: type/Text, join-alias: People - User}
       name: full_name
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - query_source
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_query_log, query_source]
+      - {base-type: type/Text}
       name: query_source
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Card Qualified
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Card Qualified}
       name: name
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Dashboard Qualified
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
       name: name_2
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_databases
-        - name
-      - base-type: type/Text
-        join-alias: Databases - Database Qualified
+      - [Internal Metabase Database, public, v_databases, name]
+      - {base-type: type/Text, join-alias: Databases - Database Qualified}
       name: name_3
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - is_native
-      - base-type: type/Boolean
+      - [Internal Metabase Database, public, v_query_log, is_native]
+      - {base-type: type/Boolean}
       name: is_native
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - running_time_seconds
-      - base-type: type/Float
+      - [Internal Metabase Database, public, v_query_log, running_time_seconds]
+      - {base-type: type/Float}
       name: running_time_seconds
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - result_rows
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_query_log, result_rows]
+      - {base-type: type/Integer}
       name: result_rows
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Card Qualified
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Card Qualified}
       name: entity_id
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Dashboard Qualified
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Dashboard Qualified}
       name: entity_id_2
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_databases
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Databases - Database Qualified
+      - [Internal Metabase Database, public, v_databases, entity_id]
+      - {base-type: type/Integer, join-alias: Databases - Database Qualified}
       name: entity_id_3
     - enabled: true
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - error
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_query_log, error]
+      - {base-type: type/Text}
       name: error
     - enabled: false
       fieldRef:
       - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - user_id
-      - base-type: type/Integer
-        join-alias: People - User
+      - [Internal Metabase Database, public, v_users, user_id]
+      - {base-type: type/Integer, join-alias: People - User}
       name: user_id
     table.pivot_column: error
   serdes/meta:
-  - id: jm7KgY6IuS6pQjkBZ7WUI
-    model: Dashboard
-  - id: e_bl-8XvvXVu7iAA79eCb
-    model: DashboardCard
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: e_bl-8XvvXVu7iAA79eCb, model: DashboardCard}
+embedding_type: null
 initially_published_at: null
 tabs: []
 width: full

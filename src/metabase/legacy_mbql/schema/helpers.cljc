@@ -26,14 +26,18 @@
       (lib.util/format "Schema for a valid MBQL 4 %s clause." clause-name)
       schema)))
 
-(defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg).
-
-  Deprecated: Use [[metabase.lib.core/clause?]] going forward."
+(defn possibly-unnormalized-mbql-clause?
+  "True if `x` is a (possibly not-yet-normalized) MBQL 4 clause (a sequence with a keyword as its first arg)."
   [x]
   (and (sequential? x)
        (not (map-entry? x))
        ((some-fn simple-keyword? string?) (first x))))
+
+(defn normalized-mbql-clause?
+  "True if `x` is a **normalized** MBQL 4 clause."
+  [x]
+  (and (vector? x)
+       (simple-keyword? (first x))))
 
 (defn normalize-keyword
   "Like [[lib.schema.common/normalize-keyword]] but also converts the keyword to lower-kebabcase (this is needed in
@@ -43,15 +47,13 @@
   (some-> x lib.schema.common/memoized-kebab-key))
 
 (defn is-clause?
-  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
+  "If `x` is an MBQL 4 clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
     (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true
-
-  Deprecated: use [[metabase.lib.core/clause-of-type?]] going forward."
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
   [k-or-ks x]
   (and
-   (mbql-clause? x)
+   (possibly-unnormalized-mbql-clause? x)
    (let [k (normalize-keyword (first x))]
      (if (coll? k-or-ks)
        ((set k-or-ks) k)
@@ -94,7 +96,7 @@
   "Actual tag of the clause, even if it's one of the MBQL 3 tags removed in MBQL 4. In most cases you want to
   use [[effective-clause-tag]] instead."
   [a-clause]
-  (when (mbql-clause? a-clause)
+  (when (possibly-unnormalized-mbql-clause? a-clause)
     (normalize-keyword (first a-clause))))
 
 (defn effective-clause-tag
@@ -113,7 +115,7 @@
       tag)))
 
 (defn one-of*
-  "Interal impl of `one-of` macro."
+  "Internal impl of `one-of` macro."
   [& schemas]
   (into
    [:multi {:dispatch      effective-clause-tag

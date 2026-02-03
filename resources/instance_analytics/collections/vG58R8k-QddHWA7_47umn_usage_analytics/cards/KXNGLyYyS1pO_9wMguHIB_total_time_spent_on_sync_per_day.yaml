@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_tasks
+table_id: [Internal Metabase Database, public, v_tasks]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -26,60 +23,39 @@ dataset_query:
     aggregation:
     - - sum
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_tasks
-          - duration_seconds
-        - base-type: type/Float
+        - [Internal Metabase Database, public, v_tasks, duration_seconds]
+        - {base-type: type/Float}
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_tasks
-        - started_at
-      - base-type: type/DateTimeWithLocalTZ
-        temporal-unit: day
+      - [Internal Metabase Database, public, v_tasks, started_at]
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: day}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_databases
-        - name
-      - base-type: type/Text
-        join-alias: Databases - Database Qualified
+      - [Internal Metabase Database, public, v_databases, name]
+      - {base-type: type/Text, join-alias: Databases - Database Qualified}
     filter:
     - and
     - - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_tasks
-          - task
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_tasks, task]
+        - {base-type: type/Text}
       - sync
     - - time-interval
       - - field
         - started_at
-        - base-type: type/DateTimeWithLocalTZ
+        - {base-type: type/DateTimeWithLocalTZ}
       - -14
       - day
-      - include-current: true
+      - {include-current: true}
     joins:
     - alias: Databases - Database Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_tasks
-          - database_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_tasks, database_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Databases - Database Qualified
+        - [Internal Metabase Database, public, v_databases, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Databases - Database Qualified}
       fields: all
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
@@ -95,18 +71,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - started_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: day
+  - [Internal Metabase Database, public, v_tasks, started_at]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: day}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - started_at
+  id: [Internal Metabase Database, public, v_tasks, started_at]
   name: started_at
   nfc_path: null
   parent_id: null
@@ -114,10 +82,7 @@ result_metadata:
   semantic_type: type/CreationTimestamp
   settings: null
   source: breakout
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
+  table_id: [Internal Metabase Database, public, v_tasks]
   unit: day
   visibility_type: normal
 - active: true
@@ -129,19 +94,11 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_databases
-    - name
-  - base-type: type/Text
-    join-alias: Databases - Database Qualified
+  - [Internal Metabase Database, public, v_databases, name]
+  - {base-type: type/Text, join-alias: Databases - Database Qualified}
   fk_field_id: 1583
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - name
+  id: [Internal Metabase Database, public, v_databases, name]
   name: name
   nfc_path: null
   parent_id: null
@@ -149,37 +106,28 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: breakout
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
+  table_id: [Internal Metabase Database, public, v_databases]
   visibility_type: normal
 - base_type: type/Float
   display_name: Sum of Duration Seconds
   effective_type: type/Float
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: sum
   semantic_type: type/Quantity
   settings: null
   source: aggregation
 visualization_settings:
   column_settings: null
-  graph.dimensions:
-  - started_at
-  - name
-  graph.metrics:
-  - sum
+  graph.dimensions: [started_at, name]
+  graph.metrics: [sum]
   graph.series_order: null
   graph.series_order_dimension: null
+card_schema: 23
 serdes/meta:
-- id: KXNGLyYyS1pO_9wMguHIB
-  label: total_time_spent_on_sync_per_day
-  model: Card
+- {id: KXNGLyYyS1pO_9wMguHIB, label: total_time_spent_on_sync_per_day, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
-metabase_version: vUNKNOWN (a98530f)
+document_id: null
+embedding_type: null
 source_card_id: PKhlEfegdbTozSMfj0aLB
 type: question

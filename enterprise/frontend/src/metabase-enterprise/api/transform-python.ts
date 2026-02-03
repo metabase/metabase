@@ -1,6 +1,6 @@
 import type {
-  ExecutePythonTransformRequest,
-  ExecutePythonTransformResponse,
+  TestPythonTransformRequest,
+  TestPythonTransformResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -8,27 +8,20 @@ import { EnterpriseApi } from "./api";
 export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     executePython: builder.mutation<
-      ExecutePythonTransformResponse,
-      ExecutePythonTransformRequest
+      TestPythonTransformResponse,
+      TestPythonTransformRequest
     >({
-      query: ({ code, tables }) => ({
-        url: "/api/ee/transform/test-python",
+      query: ({ code, source_tables }) => ({
+        url: "/api/ee/transforms-python/test-run",
         method: "POST",
         body: {
           code,
-          tables,
+          source_tables,
         },
-      }),
-    }),
-    cancelPython: builder.mutation<void, void>({
-      query: () => ({
-        url: "/api/ee/transform/test-python/cancel",
-        method: "POST",
       }),
     }),
   }),
   overrideExisting: true,
 });
 
-export const { useExecutePythonMutation, useCancelPythonMutation } =
-  pythonRunnerApi;
+export const { useExecutePythonMutation } = pythonRunnerApi;

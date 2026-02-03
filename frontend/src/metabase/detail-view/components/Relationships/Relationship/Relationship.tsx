@@ -77,7 +77,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
 
       {!isFetching && (
         <Text
-          c={count === 0 ? "text-light" : "text-medium"}
+          c={count === 0 ? "text-tertiary" : "text-secondary"}
           className={S.text}
           fw="bold"
           fz={rem(24)}
@@ -88,7 +88,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
       )}
 
       <Text
-        c={count === 0 ? "text-light" : "text-medium"}
+        c={count === 0 ? "text-tertiary" : "text-secondary"}
         className={S.text}
         fw="bold"
         lh={1}

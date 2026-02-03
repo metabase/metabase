@@ -2,10 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import {
+  PLUGIN_TENANTS,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
-import type { EmbeddingHubStep } from "../types";
+import type { EmbeddingHubAction, EmbeddingHubStep } from "../types";
 
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
@@ -23,38 +26,31 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   );
 
   return useMemo(() => {
+    const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
+
     const TEST_EMBED: EmbeddingHubStep = {
       id: "create-test-embed",
       title: t`Create embed`,
-      icon: "test_tube",
       actions: [
         {
           title: t`Get embed snippet`,
           description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: true },
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
             });
           },
           variant: "outline",
         },
       ],
-      image: {
-        src: "app/assets/img/embedding_hub_create_embed.png",
-        srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
-        alt: t`Screenshot of creating an embed`,
-      },
     };
 
     const ADD_DATA: EmbeddingHubStep = {
       id: "add-data",
       title: t`Add your data`,
-      icon: "add_data",
-      image: {
-        src: "app/assets/img/onboarding_data_diagram.png",
-        srcSet: "app/assets/img/onboarding_data_diagram@2x.png 2x",
-        alt: t`Data sources and ETL diagram`,
-      },
       actions: [
         {
           title: t`Connect a database`,
@@ -68,12 +64,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     const CREATE_DASHBOARD: EmbeddingHubStep = {
       id: "create-dashboard",
       title: t`Prepare data`,
-      icon: "dashboard",
-      video: {
-        id: "FOAXF4p1AL0",
-        trackingId: "COmu2w0SqGagUoVp",
-        title: t`How to find and use X-rays?`,
-      },
       actions: [
         {
           title: t`Create a dashboard`,
@@ -91,66 +81,74 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
+    const DATA_PERMISSION_CARD: EmbeddingHubAction = {
+      title: t`Configure data permissions`,
+      docsPath: "permissions/embedding",
+      anchor: "one-database-for-all-customers-commingled-setups",
+      description: t`Manage permissions to limit what data your users can access.`,
+      variant: "outline",
+      stepId: "configure-row-column-security",
+      optional: true,
+    };
+
+    const SETUP_TENANTS: EmbeddingHubStep = {
+      id: "setup-tenants",
+      title: t`Pick a strategy for users and permissions`,
+      actions: [
+        {
+          title: t`Pick a user strategy`,
+          description: t`Decide between a multi-tenant or single-tenant user strategy.`,
+          variant: "outline",
+          modal: { type: "user-strategy" },
+        },
+        DATA_PERMISSION_CARD,
+      ],
+    };
+
     const SECURE_EMBEDS: EmbeddingHubStep = {
       id: "secure-embeds",
-      title: t`Security and permissions`,
-      icon: "lock",
+      title: t`Set up authentication`,
       actions: [
         {
           title: t`Configure SSO`,
           description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-          docsPath: "embedding/embedded-analytics-js#set-up-sso",
+          docsPath: "embedding/embedded-analytics-js",
+          anchor: "set-up-sso",
           variant: "outline",
           stepId: "secure-embeds",
         },
-        {
-          title: t`Configure data permissions`,
-          docsPath:
-            "permissions/embedding#one-database-for-all-customers-commingled-setups",
-          description: t`Manage permissions to limit what data your users can access.`,
-          variant: "outline",
-          stepId: "configure-row-column-security",
-          optional: true,
-        },
+
+        // If tenants are not available, show data permission card on the authentication step.
+        // Otherwise, it is already shown on the tenants setup step.
+        ...(isTenantsFeatureAvailable ? [] : [DATA_PERMISSION_CARD]),
       ],
-      image: {
-        src: "app/assets/img/embedding_hub_secure_embeds_diagram.png",
-        srcSet: "app/assets/img/embedding_hub_secure_embeds_diagram@2x.png 2x",
-        alt: t`Diagram of the SSO authentication workflow`,
-      },
     };
 
     const EMBED_PRODUCTION: EmbeddingHubStep = {
       id: "embed-production",
       title: t`Deployment`,
-      icon: "code_block",
       actions: [
         {
-          title: t`Embed in production`,
+          title: t`Embed in production with SSO`,
           description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: false },
+              initialState: {
+                isGuest: false,
+                useExistingUserSession: false,
+              },
             });
           },
           variant: "outline",
         },
       ],
-      image: {
-        src: "app/assets/img/embedding_hub_create_embed.png",
-        srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
-        alt: t`Screenshot of creating an embed`,
-      },
-      infoAlert: {
-        type: "locked",
-        message: t`Configure SSO authentication to unlock this step.`,
-      },
     };
 
     return [
       ADD_DATA,
       CREATE_DASHBOARD,
       TEST_EMBED,
+      ...(isTenantsFeatureAvailable ? [SETUP_TENANTS] : []),
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];

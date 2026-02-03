@@ -8,7 +8,7 @@
 
 (defn show-results-to-user
   "Generate link where the query can be seen."
-  [{:keys [query] :as _arguments}]
+  [{:keys [query]}]
   (let [query-hash (-> {:dataset_query query}
                        json/encode
                        (.getBytes "UTF-8")

@@ -5,17 +5,13 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
 
 export function EmbeddingNav() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
-  const hasInteractiveEmbedding = PLUGIN_EMBEDDING.isEnabled();
-  const hasSdkEmbedding = useHasTokenFeature("embedding_sdk");
 
   return (
     <AdminNavWrapper>
@@ -33,40 +29,31 @@ export function EmbeddingNav() {
         )}
 
         <EmbeddingNavItem
-          path="/admin/embedding/modular"
+          path="/admin/embedding"
           label={
             <Flex gap="sm" align="center">
-              <span>{t`Modular`}</span>
-              {(!hasSdkEmbedding || !hasSimpleEmbedding) && <UpsellGem />}
+              <span>{t`Settings`}</span>
             </Flex>
           }
-          icon="embed_modular"
+          icon="gear"
         />
 
-        <EmbeddingNavItem
-          path="/admin/embedding/interactive"
-          label={
-            <Flex gap="sm" align="center">
-              <span>{t`Interactive`}</span>
-              {!hasInteractiveEmbedding && <UpsellGem />}
-            </Flex>
-          }
-          icon="embed_interactive"
-        />
+        {/* EE with non-starter plan has embedding settings on different pages */}
+        {hasSimpleEmbedding && (
+          <>
+            <EmbeddingNavItem
+              path="/admin/embedding/guest"
+              label={t`Guest embeds`}
+              icon="ghost"
+            />
 
-        <EmbeddingNavItem
-          path="/admin/embedding/static"
-          label={t`Static`}
-          icon="embed_static"
-        />
-
-        <Divider mb="sm" />
-
-        <EmbeddingNavItem
-          path="/admin/embedding/security"
-          label={t`Security`}
-          icon="shield_outline"
-        />
+            <EmbeddingNavItem
+              path="/admin/embedding/security"
+              label={t`Security`}
+              icon="shield_outline"
+            />
+          </>
+        )}
       </Stack>
     </AdminNavWrapper>
   );

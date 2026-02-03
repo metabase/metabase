@@ -23,6 +23,7 @@ concurrency:
 jobs:
   review:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     permissions:
       contents: read
       pull-requests: write
@@ -93,6 +94,8 @@ jobs:
             Review the documentation changes in this pull request.
 
             Use the docs-review skill to review all changed documentation files for compliance with the Metabase writing style guide.
+
+            IMPORTANT: Only review markdown files (.md and .mdx). Skip any .txt files or other non-markdown files.
 
             DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
 

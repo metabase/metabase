@@ -2,7 +2,11 @@
   border-radius: 0;
   /** we hide the trigger button by default, and show it on hover */
   visibility: hidden;
-  color: color-mix(in srgb, var(--mb-color-text-white), transparent 40%);
+  color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary-inverse),
+    transparent 40%
+  );
   border-left: 2px solid
     color-mix(in srgb, var(--mb-color-border), transparent 80%);
 }

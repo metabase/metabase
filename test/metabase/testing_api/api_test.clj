@@ -42,6 +42,20 @@
           (is (= nil
                  (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))))
           (finally
+            (.delete (io/file (#'testing/snapshot-path-for-name snapshot-name))))))))
+  (when (= (mdb/db-type) :h2)
+    (testing "Restore should reset the java-time clock"
+      (let [snapshot-name (munge (u/qualified-name ::test-snapshot))]
+        (try
+          (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))
+          ;; Set the clock to a fixed time
+          (mt/user-http-request :rasta :post 200 "testing/set-time" {:time "2024-01-01T00:00:00Z"})
+          (is (some? java-time.clock/*clock*) "Clock should be set before restore")
+          ;; Restore should reset the clock
+          (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))
+          (is (nil? java-time.clock/*clock*) "Clock should be reset after restore")
+          (finally
+            (alter-var-root #'java-time.clock/*clock* (constantly nil))
             (.delete (io/file (#'testing/snapshot-path-for-name snapshot-name)))))))))
 
 (deftest snapshot-restore-works-with-views
@@ -62,18 +76,17 @@
   (try
     (let [t (t/zoned-date-time 2024 7 8 15 00 00)]
       (testing "You can set exact date and reset it back"
-        (is (= {:result "set" :time "2024-07-08T15:00:00Z"}
+        (is (= {:result "set" :time "2024-07-08T15:00:00.000Z"}
                (mt/user-http-request :rasta :post 200 "testing/set-time"
                                      {:time (u.date/format t)})))
         (is (=? {:result "reset" :time string?}
                 (mt/user-http-request :rasta :post 200 "testing/set-time"))))
       (testing "You can move date with `add-ms`"
-        (is (= {:result "set" :time "2024-07-08T15:00:00Z"}
+        (is (= {:result "set" :time "2024-07-08T15:00:00.000Z"}
                (mt/user-http-request :rasta :post 200 "testing/set-time"
                                      {:time (u.date/format t)})))
-        (is (= {:result "set" :time "2024-07-08T15:00:10Z"}
-               (mt/user-http-request :rasta :post 200 "testing/set-time"
-                                     {:add-ms 10000})))
+        (is (= {:result "set" :time "2024-07-08T15:00:10.000Z"}
+               (mt/user-http-request :rasta :post 200 "testing/set-time" {:add-ms 10000})))
         (is (=? {:result "reset" :time string?}
                 (mt/user-http-request :rasta :post 200 "testing/set-time")))))
     (finally

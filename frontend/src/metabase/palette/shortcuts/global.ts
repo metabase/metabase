@@ -72,9 +72,9 @@ export const globalShortcuts = {
     shortcutGroup: "global" as const,
   },
 
-  "report-issue": {
+  "download-diagnostics": {
     get name() {
-      return t`Report an issue`;
+      return t`Download diagnostics`;
     },
     shortcut: ["$mod+f1"],
     shortcutGroup: "global" as const,
@@ -136,7 +136,7 @@ export const globalShortcuts = {
 
   "navigate-embed-js": {
     get name() {
-      return t`Create a new embed`;
+      return t`New embed`;
     },
 
     shortcut: ["c e"],

@@ -7,7 +7,9 @@
         [metabase.util.date-2.parse.builder :as b]
         [metabase.util.i18n.impl :as i18n.impl]))
    #?@(:cljs
-       (["moment" :as moment]))
+       (["dayjs" :as dayjs]
+        ["dayjs/plugin/customParseFormat" :as dayjs-customParseFormat]
+        ["dayjs/plugin/quarterOfYear" :as dayjs-quarterOfYear]))
    [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.parameters.schema :as parameters.schema]
@@ -19,8 +21,11 @@
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
 
-;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
-#?(:cljs (comment moment/keep-me))
+;; Initialize dayjs plugins
+#?(:cljs
+   (do
+     (dayjs/extend dayjs-customParseFormat)
+     (dayjs/extend dayjs-quarterOfYear)))
 
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
@@ -39,14 +44,14 @@
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/single
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value) locale)]
+  #?(:cljs (let [m (.locale (dayjs value) locale)]
              (.format m "MMMM D, YYYY"))
      :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/month-year
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
+  #?(:cljs (let [m (.locale (dayjs value "YYYY-MM") locale)]
              (if (.isValid m) (.format m "MMMM, YYYY") ""))
      :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
 
@@ -63,7 +68,7 @@
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/quarter-year
   [_ value locale]
-  #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
+  #?(:cljs (let [m (.locale (dayjs value "[Q]Q-YYYY") locale)]
              (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
      :clj (.format (.withLocale ^DateTimeFormatter quarter-formatter-out (i18n.impl/locale locale))
                    (.parse ^DateTimeFormatter quarter-formatter-in value))))
@@ -224,7 +229,7 @@
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
 (def ^:private template-tag-splitting-regex
-  "A regex for spliting text around template tags. This should be identical to `template-tag-regex` above, but without
+  "A regex for splitting text around template tags. This should be identical to `template-tag-regex` above, but without
   the capture group around the tag name."
   #"\{\{\s*[A-Za-z0-9_\.]+?\s*\}\}")
 

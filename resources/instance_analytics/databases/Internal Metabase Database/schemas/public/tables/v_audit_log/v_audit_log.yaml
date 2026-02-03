@@ -14,11 +14,16 @@ initial_sync_status: complete
 points_of_interest: null
 caveats: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_audit_log
-  model: Table
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_audit_log, model: Table}
+archived_at: null
+collection_id: null
+data_authority: unconfigured
+data_layer: bronze
+data_source: null
 database_require_filter: null
-entity_id: mu45LTX3DutWfTNMwu25a
+deactivated_at: null
+is_published: false
+owner_email: null
+owner_user_id: null

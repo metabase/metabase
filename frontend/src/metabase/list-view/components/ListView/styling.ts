@@ -1,5 +1,6 @@
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
+import { color, maybeColor } from "metabase/ui/utils/colors";
 
 export const ENTITY_ICONS = {
   "entity/UserTable": "person",
@@ -27,13 +28,13 @@ export const getEntityIcon = (entityType?: string) => {
   ) as IconName;
 };
 
-export const ENTITY_ICON_COLORS = [
-  color("text-primary"),
-  color("brand"),
-  color("accent1"),
-  color("accent2"),
-  color("accent3"),
-  color("accent6"),
+export const ENTITY_ICON_COLORS: ColorName[] = [
+  "text-primary",
+  "brand",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent6",
 ];
 
 // For icons with default color, use white background,
@@ -44,7 +45,7 @@ export function getIconBackground(iconColor?: string) {
   }
 
   return iconColor !== color("text-primary")
-    ? `color-mix(in srgb, ${color(iconColor)}, transparent 88%)`
+    ? `color-mix(in srgb, ${maybeColor(iconColor)}, transparent 88%)`
     : "var(--mb-color-white)";
 }
 
@@ -57,12 +58,12 @@ const CATEGORY_COLORS = [
   "accent5",
   "accent6",
   "accent7",
-];
+] as const;
 
 // Get a consistent color for a category value based on its hash
 export const getCategoryColor = (categoryValue: any, columnName: string) => {
   if (categoryValue == null || categoryValue === "") {
-    return "var(--mb-color-background-light)";
+    return "var(--mb-color-background-secondary)";
   }
 
   const stringValue = String(categoryValue);

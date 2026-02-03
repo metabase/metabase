@@ -18,7 +18,7 @@ Metabase will print out the help text for available commands.
 
 ## `api-documentation`
 
-Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`.
+Generate an HTML file and a JSON file for Scalar docs for the Metabase API.
 
 ## `command-documentation`
 
@@ -63,6 +63,10 @@ Options:
 - `-s, --include-database-secrets` - Include database connection details (in plain text; use caution).
 - `-e, --continue-on-error` - Do not break execution on errors.
 - `--full-stacktrace` - Output full stacktraces on errors.
+
+## `generate-openapi-spec`
+
+Generate OpenAPI specification file from Malli schema definitions. This is written to `resources/openapi/openapi.json`.
 
 ## `help command-name | help`
 

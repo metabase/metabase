@@ -34,6 +34,8 @@ import {
   type SdkQuestionDefaultViewProps,
 } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 
+import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
+
 import type { SdkQuestionIdProps } from "./types";
 
 /**
@@ -110,11 +112,14 @@ export type SdkQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
+
   SqlParametersList: typeof SqlParametersList;
 };
 
 export const _SdkQuestion = ({
   questionId,
+  token,
   options,
   deserializedCard,
   plugins,
@@ -129,6 +134,7 @@ export const _SdkQuestion = ({
   initialSqlParameters,
   hiddenParameters,
   withDownloads = false,
+  withAlerts = false,
   targetDashboardId,
   backToDashboard,
   getClickActionMode,
@@ -145,6 +151,7 @@ export const _SdkQuestion = ({
 }: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}
+    token={token}
     options={options}
     deserializedCard={deserializedCard}
     componentPlugins={plugins}
@@ -158,6 +165,7 @@ export const _SdkQuestion = ({
     initialSqlParameters={initialSqlParameters}
     hiddenParameters={hiddenParameters}
     withDownloads={withDownloads}
+    withAlerts={withAlerts}
     targetDashboardId={targetDashboardId}
     backToDashboard={backToDashboard}
     getClickActionMode={getClickActionMode}
@@ -201,11 +209,14 @@ const subComponents: SdkQuestionComponents = {
   ChartTypeDropdown: ChartTypeDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   VisualizationButton: VisualizationButton,
   SqlParametersList: SqlParametersList,
 };
 
 export const SdkQuestion = Object.assign(
-  withPublicComponentWrapper(_SdkQuestion),
+  withPublicComponentWrapper(_SdkQuestion, {
+    supportsGuestEmbed: true,
+  }),
   subComponents,
 );

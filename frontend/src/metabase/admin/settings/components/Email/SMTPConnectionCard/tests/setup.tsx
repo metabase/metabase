@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -16,14 +16,14 @@ import { createMockState } from "metabase-types/store/mocks";
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   isHosted?: boolean;
   smtpOverrideEnabled?: boolean;
 }
 
 export function setup({
   tokenFeatures = {},
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   isHosted = true,
   smtpOverrideEnabled = false,
 }: SetupOpts = {}) {
@@ -42,8 +42,8 @@ export function setup({
 
   const state = createMockState({ settings: mockSettings(settings) });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(<SMTPConnectionCard />, {

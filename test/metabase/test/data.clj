@@ -307,7 +307,7 @@
      (mdb/finish-db-setup!)
      ~@body))
 
-;; Non-"normal" timeseries drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
+;; Non-"normal" timeseries drivers are tested in [[metabase.query-processor.timeseries-test]] and elsewhere
 (def timeseries-drivers
   "Drivers that are so weird that we can't use the standard dataset loading against them."
   #{:druid :druid-jdbc})

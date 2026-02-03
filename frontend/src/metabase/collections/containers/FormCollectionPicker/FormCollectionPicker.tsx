@@ -9,46 +9,61 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import CollectionName from "metabase/common/components/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import FormField from "metabase/common/components/FormField";
-import {
-  type CollectionPickerItem,
-  CollectionPickerModal,
-  type CollectionPickerModalProps,
-  type CollectionPickerOptions,
-} from "metabase/common/components/Pickers/CollectionPicker";
-import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+import { CollectionName } from "metabase/common/components/CollectionName";
+import { FormField } from "metabase/common/components/FormField";
+import type {
+  EntityPickerOptions,
+  EntityPickerProps,
+  FilterItemsInPersonalCollection,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
+import { CollectionPickerModal } from "metabase/common/components/Pickers";
+import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
+import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Icon } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;
-  type?: "collections" | "snippet-collections";
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
-  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  collectionPickerModalProps?: Partial<EntityPickerProps>;
+  onCollectionSelect?: (collection: OmniPickerItem) => void;
 }
 
 function ItemName({
   id,
-  type = "collections",
+  namespace = null,
 }: {
   id: CollectionId;
-  type?: "collections" | "snippet-collections";
+  namespace: CollectionNamespace;
 }) {
-  return type === "snippet-collections" ? (
-    <SnippetCollectionName id={id} />
-  ) : (
-    <CollectionName id={id} />
-  );
+  if (namespace === "snippets") {
+    return <SnippetCollectionName id={id} />;
+  }
+
+  if (namespace === "transforms") {
+    return <TransformCollectionName id={id} />;
+  }
+
+  // Check for tenant namespace display name via plugin
+  if (id === null) {
+    const namespaceDisplayName =
+      PLUGIN_TENANTS.getNamespaceDisplayName(namespace);
+    if (namespaceDisplayName) {
+      return <span>{namespaceDisplayName}</span>;
+    }
+  }
+
+  return <CollectionName id={id} />;
 }
 
 function FormCollectionPicker({
@@ -57,10 +72,10 @@ function FormCollectionPicker({
   name,
   title,
   placeholder = t`Select a collection`,
-  type = "collections",
   filterPersonalCollections,
   entityType,
   collectionPickerModalProps,
+  onCollectionSelect,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -83,6 +98,13 @@ function FormCollectionPicker({
     }),
   );
 
+  const [collectionNamespace, setCollectionNamespace] =
+    useState<CollectionNamespace>(
+      selectedCollection?.namespace ??
+        collectionPickerModalProps?.namespaces?.[0] ??
+        null,
+    );
+
   useEffect(
     function preventUsingArchivedCollection() {
       if (selectedCollection && isTrashedCollection(selectedCollection)) {
@@ -97,26 +119,40 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  const options = useMemo<CollectionPickerOptions>(
+  const nonDefaultNamespace =
+    collectionPickerModalProps?.namespaces?.[0] ?? null;
+
+  const options = useMemo<EntityPickerOptions>( // FIXME, this should throw more type errors 🤔
     () => ({
-      showPersonalCollections: filterPersonalCollections !== "exclude",
-      showRootCollection: filterPersonalCollections !== "only",
-      // Search API doesn't support collection namespaces yet
-      showSearch: type === "collections",
+      hasPersonalCollections:
+        !nonDefaultNamespace && filterPersonalCollections !== "exclude",
+      hasRootCollection:
+        !!nonDefaultNamespace || filterPersonalCollections !== "only",
+      hasSearch: !nonDefaultNamespace,
+      hasRecents: !nonDefaultNamespace,
+      hasLibrary: !nonDefaultNamespace,
       hasConfirmButtons: true,
-      namespace: type === "snippet-collections" ? "snippets" : undefined,
-      allowCreateNew: showCreateNewCollectionOption,
-      hasRecents: type !== "snippet-collections",
+      canCreateCollections: showCreateNewCollectionOption,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption],
+    [
+      filterPersonalCollections,
+      showCreateNewCollectionOption,
+      nonDefaultNamespace,
+    ],
   );
 
   const handleChange = useCallback(
-    ({ id }: CollectionPickerItem) => {
-      setValue(canonicalCollectionId(id));
+    (collection: OmniPickerItem) => {
+      onCollectionSelect?.(collection);
+      if ("namespace" in collection) {
+        setCollectionNamespace(collection.namespace ?? null);
+      } else {
+        setCollectionNamespace(null);
+      }
+      setValue(canonicalCollectionId(collection.id));
       setIsPickerOpen(false);
     },
-    [setValue],
+    [onCollectionSelect, setValue],
   );
 
   return (
@@ -143,7 +179,7 @@ function FormCollectionPicker({
           }}
         >
           {isValidCollectionId(value) ? (
-            <ItemName id={value} type={type} />
+            <ItemName id={value} namespace={collectionNamespace} />
           ) : (
             placeholder
           )}
@@ -152,7 +188,11 @@ function FormCollectionPicker({
       {isPickerOpen && (
         <CollectionPickerModal
           title={t`Select a collection`}
-          value={{ id: value, model: "collection" }}
+          value={{
+            id: value,
+            model: "collection",
+            namespace: collectionNamespace,
+          }}
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={options}

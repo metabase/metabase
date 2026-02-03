@@ -54,8 +54,6 @@ Run through the diff looking for these issues:
 
 **Formatting:**
 
-- [ ] Backticks on UI elements (should use **bold**)
-- [ ] Backticks used as quotation marks
 - [ ] Ampersands as "and" substitute (except proper nouns)
 - [ ] Inconsistent list formatting
 
@@ -74,7 +72,6 @@ Run through the diff looking for these issues:
 
 | Pattern                       | Issue                                         |
 | ----------------------------- | --------------------------------------------- |
-| `Button name` or `UI element` | Should use **bold** not backticks             |
 | we can do X, our feature      | Should be "Metabase" or "it"                  |
 | click here, read more here    | Need descriptive link text                    |
 | easy, simple, just            | Remove condescending qualifiers               |
@@ -108,13 +105,10 @@ Suggested fix or explanation
 
 **Examples:**
 
-> **Issue 1: Backticks on UI elements**
-> Line 42: This uses backticks for the UI element. Use **bold** instead: **Filter** not `Filter`.
-
-> **Issue 2: Formal tone**
+> **Issue 1: Formal tone**
 > Line 15: This could be more conversational. Consider: "You can't..." instead of "You cannot..."
 
-> **Issue 3: Vague heading**
+> **Issue 2: Vague heading**
 > Line 8: The heading could be more specific. Try stating the point directly: "Run migrations before upgrading" vs "Upgrade process"
 
 ### PR review mode format
@@ -145,10 +139,11 @@ When posting to GitHub (PR mode), use the **pending review workflow**:
    - All comments will appear together as one cohesive review
 
 **Comment format example:**
-```
-**Issue 1: Backticks on UI elements**
 
-This uses backticks for the UI element. Use **bold** instead: **Filter** not `Filter`.
+```
+**Issue 1: Formal tone**
+
+This could be more conversational. Consider: "You can't..." instead of "You cannot..."
 ```
 
 **IMPORTANT**:

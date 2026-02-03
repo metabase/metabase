@@ -5,7 +5,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -24,8 +24,14 @@ import { useAddOnsBilling } from "./hooks";
 import type { IMetabotPurchaseFormFields } from "./types";
 
 export const MetabotPurchasePageForStoreUser = () => {
-  const { isLoading, error, billingPeriodMonths, tiers, defaultQuantity } =
-    useAddOnsBilling();
+  const {
+    isLoading,
+    error,
+    billingPeriodMonths,
+    defaultQuantity,
+    hadMetabot,
+    tiers,
+  } = useAddOnsBilling();
   const hasData =
     billingPeriodMonths !== undefined &&
     defaultQuantity !== undefined &&
@@ -90,13 +96,27 @@ export const MetabotPurchasePageForStoreUser = () => {
 
   return (
     <>
+      <video controls aria-label={t`Demonstration of Metabot AI features`}>
+        <source
+          src="https://www.metabase.com/images/features/metabot.mp4"
+          type="video/mp4"
+        />
+        {t`Your browser does not support the video tag.`}
+      </video>
       <SettingsSection
-        title={t`Monthly usage limit`}
+        title={
+          hadMetabot
+            ? t`Pick Metabot usage limit`
+            : t`Start free 14-day trial of Metabot`
+        }
         description={
-          <Text
-            maw="35rem"
-            mt="sm"
-          >{t`Usage is measured in Metabot requests. If a chat has multiple questions, they are counted as separate Metabot requests. Usage limit applies to your whole organization.`}</Text>
+          <Text mt="sm">
+            {t`Pick a usage limit below. Usage is measured in Metabot requests.`}
+            <br />
+            {t`Each message sent to Metabot is counted as a request. `}
+            <br />
+            {t`Usage limit applies to your whole organization.`}
+          </Text>
         }
       >
         <FormProvider
@@ -117,11 +137,8 @@ export const MetabotPurchasePageForStoreUser = () => {
                 />
 
                 <Stack gap="md">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-                  <Text maw="35rem">{t`Additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}</Text>
-
                   <Card
-                    bg="var(--mb-color-bg-light)"
+                    bg="background-secondary"
                     p={12}
                     radius="md"
                     shadow="none"
@@ -137,6 +154,14 @@ export const MetabotPurchasePageForStoreUser = () => {
                       }
                     />
                   </Card>
+
+                  <Text>
+                    {hadMetabot
+                      ? /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
+                        t`An additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`
+                      : /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
+                        t`After 14 days of free trial an additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}
+                  </Text>
 
                   <FormSubmitButton
                     disabled={!values.terms_of_service}

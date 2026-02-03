@@ -7,7 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.queries.api.card :as api.card]
+   [metabase.queries-rest.api.card :as api.card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -86,6 +86,7 @@
                                                  :models                      search.config/all-models
                                                  :current-user-id             (mt/user->id :crowberto)
                                                  :is-superuser?               true
+                                                 :is-data-analyst?            false
                                                  :current-user-perms          #{"/"}
                                                  :model-ancestors?            false
                                                  :limit-int                   100

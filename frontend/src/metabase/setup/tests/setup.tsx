@@ -2,7 +2,10 @@ import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -29,13 +32,13 @@ import type { SetupStep } from "../types";
 export interface SetupOpts {
   step?: SetupStep;
   tokenFeatures?: TokenFeatures;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   settingOverrides?: SettingDefinition[];
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   settingOverrides = [],
 }: SetupOpts = {}) {
   localStorage.clear();
@@ -53,8 +56,12 @@ export async function setup({
     ),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    if (enterprisePlugins === "*") {
+      setupEnterprisePlugins();
+    } else {
+      enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+    }
   }
 
   fetchMock.post("path:/api/session/password-check", { valid: true });

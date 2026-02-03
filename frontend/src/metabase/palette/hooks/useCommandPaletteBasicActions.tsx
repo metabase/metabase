@@ -10,25 +10,20 @@ import {
   useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import Collections from "metabase/entities/collections/collections";
+import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  PLUGIN_DOCUMENTS,
-  type SdkIframeEmbedSetupModalProps,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import {
   closeModal,
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
+import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithActionsEnabled,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
-import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
@@ -60,8 +55,8 @@ export const useCommandPaletteBasicActions = ({
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
@@ -140,17 +135,17 @@ export const useCommandPaletteBasicActions = ({
         openNewModal("dashboard");
       },
     });
-    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
-      actions.push({
-        id: "create-new-document",
-        name: t`New document`,
-        section: "basic",
-        icon: "document",
-        perform: () => {
-          dispatch(push(Urls.newDocument()));
-        },
-      });
-    }
+
+    actions.push({
+      id: "create-new-document",
+      name: t`New document`,
+      section: "basic",
+      icon: "document",
+      perform: () => {
+        dispatch(push(Urls.newDocument()));
+      },
+    });
+
     actions.push({
       id: "create-new-collection",
       name: t`New collection`,
@@ -197,8 +192,8 @@ export const useCommandPaletteBasicActions = ({
     }
 
     actions.push({
-      id: "report-issue",
-      name: t`Report an issue`,
+      id: "download-diagnostics",
+      name: t`Download diagnostics`,
       section: "basic",
       icon: "bug",
       keywords: "bug, issue, problem, error, diagnostic",
@@ -229,7 +224,7 @@ export const useCommandPaletteBasicActions = ({
       },
       {
         id: "navigate-browse-metric",
-        name: t`Browse Metrics`,
+        name: t`Browse metrics`,
         section: "basic",
         icon: "metric",
         perform: () => {
@@ -254,7 +249,12 @@ export const useCommandPaletteBasicActions = ({
         perform: () =>
           openNewModalWithProps<
             Pick<SdkIframeEmbedSetupModalProps, "initialState">
-          >("embed"),
+          >("embed", {
+            initialState: {
+              isGuest: true,
+              useExistingUserSession: true,
+            },
+          }),
       });
     }
 

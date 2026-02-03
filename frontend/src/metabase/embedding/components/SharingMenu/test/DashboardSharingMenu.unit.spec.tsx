@@ -76,7 +76,7 @@ describe("DashboardSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it("should show 'subscriptions' option when email is set up", async () => {
+      it("should show 'subscriptions' option when email is set up, but slack is not setup", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
@@ -86,7 +86,7 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Subscriptions")).toBeInTheDocument();
       });
 
-      it("should show disabled 'subscriptions' option when email is not set up", async () => {
+      it("should show 'subscriptions' option when email is not set up, but slack is setup", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmailSetup: false,
@@ -94,7 +94,7 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         expect(
-          await screen.findByText("Can't send subscriptions"),
+          await screen.findByText("Subscriptions", { exact: true }),
         ).toBeInTheDocument();
       });
 
@@ -136,6 +136,33 @@ describe("DashboardSharingMenu", () => {
         await openMenu();
         expect(screen.getByText("Export tab as PDF")).toBeInTheDocument();
       });
+    });
+
+    it("should be disabled if dashcards are still loading", async () => {
+      setupDashboardSharingMenu({
+        dashboardState: {
+          loadingDashCards: {
+            loadingIds: [],
+            loadingStatus: "running",
+            startTime: null,
+            endTime: null,
+          },
+        },
+      });
+      await openMenu();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeDisabled();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toHaveStyle({
+        cursor: "wait",
+      });
+    });
+
+    it("should be enabled if dashcards are done loading", async () => {
+      setupDashboardSharingMenu({});
+      await openMenu();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeEnabled();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).not.toHaveStyle(
+        { cursor: "wait" },
+      );
     });
   });
 

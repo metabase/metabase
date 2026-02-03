@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -297,7 +298,7 @@
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-          (testing "compount index"
+          (testing "compound index"
             (mongo.connection/with-mongo-database [db (mt/db)]
               (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
             (sync/sync-database! (mt/db))
@@ -1010,9 +1011,9 @@
 
   Forward bindings become delays of results of functions used in mongo's describe-table:
 
-  - `dbfields`     : reuslt of [[mongo/fetch-dbfields]],
-  - `ftree`        : reuslt of [[mongo/dbfields->ftree]],
-  - `nested-fields`: reuslt of [[mongo/ftree->nested-fields]]."
+  - `dbfields`     : result of [[mongo/fetch-dbfields]],
+  - `ftree`        : result of [[mongo/dbfields->ftree]],
+  - `nested-fields`: result of [[mongo/ftree->nested-fields]]."
   [documents & body]
   `(do-with-describe-table-for-sample ~documents (fn [~'dbfields ~'ftree ~'nested-fields] ~@body)))
 
@@ -1174,3 +1175,131 @@
       :type/MongoBSONID        "objectId"
       :type/MongoBinData       "binData"
       :type/IPAddress          "string")))
+
+(deftest ^:parallel prettify-native-form-test
+  (mt/test-driver :mongo
+    (testing "prettifies normal lib query"
+      (let [mp (mt/metadata-provider)
+            products-table (lib.metadata/table mp (mt/id :products))
+            product-category (lib.metadata/field mp (mt/id :products :category))
+            query (-> (lib/query mp products-table)
+                      (lib/filter (lib/= product-category
+                                         "Widget")))]
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"category\": \"Widget\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"ean\": \"$ean\","
+                          "      \"title\": \"$title\","
+                          "      \"category\": \"$category\","
+                          "      \"vendor\": \"$vendor\","
+                          "      \"price\": \"$price\","
+                          "      \"rating\": \"$rating\","
+                          "      \"created_at\": \"$created_at\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
+               (->> (qp.compile/compile-with-inline-parameters query)
+                    :query
+                    (driver/prettify-native-form :mongo))))))
+    (testing "prettifies native query with variable that is valid json"
+      (let [query {:database (mt/id)
+                   :type :native
+                   :native {:collection "products"
+                            :query (str/join "\n"
+                                             ["["
+                                              "  {"
+                                              "    \"$match\": {"
+                                              "      \"category\": {{category_var}}"
+                                              "    }},"
+                                              "  {"
+                                              "    \"$project\": {"
+                                              "      \"_id\": \"$_id\","
+                                              "      \"title\": \"$title\","
+                                              "      \"category\": \"$category\""
+                                              "    }},"
+                                              "  {"
+                                              "    \"$limit\": 1048575"
+                                              "  }"
+                                              "]"])
+                            :template-tags {"category_var" {:name "category_var"
+                                                            :display-name "Category Variable"
+                                                            :type :text}}}
+                   :parameters [{:type :text
+                                 :target [:variable [:template-tag "category_var"]]
+                                 :value "Gadget"}]}]
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"category\": \"Gadget\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"title\": \"$title\","
+                          "      \"category\": \"$category\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
+               (->> (qp.compile/compile-with-inline-parameters query)
+                    :query
+                    (driver/prettify-native-form :mongo))))))
+    (testing "prettifies native query with variable that is not valid json"
+      (let [query {:database (mt/id)
+                   :type :native
+                   :native {:collection "products"
+                            :query (str/join "\n"
+                                             ["["
+                                              "  {"
+                                              "    \"$match\": {"
+                                              "      \"created_at\": {\"$gte\": {{created_at_var}}}"
+                                              "    }},"
+                                              "  {"
+                                              "    \"$project\": {"
+                                              "      \"_id\": \"$_id\","
+                                              "      \"title\": \"$title\","
+                                              "      \"category\": \"$category\""
+                                              "    }},"
+                                              "  {"
+                                              "    \"$limit\": 1048575"
+                                              "  }"
+                                              "]"])
+                            :template-tags {"created_at_var" {:name "created_at_var"
+                                                              :display-name "Created At Variable"
+                                                              :type :date}}}
+                   :parameters [{:type :date/single
+                                 :target [:variable [:template-tag "created_at_var"]]
+                                 :value "2018-01-01"}]}]
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"created_at\": {\"$gte\": ISODate(\"2018-01-01\")}"
+                          "    }},"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"title\": \"$title\","
+                          "      \"category\": \"$category\""
+                          "    }},"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
+               (->> (qp.compile/compile-with-inline-parameters query)
+                    :query
+                    (driver/prettify-native-form :mongo))))))))

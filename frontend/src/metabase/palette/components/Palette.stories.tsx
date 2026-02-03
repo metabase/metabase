@@ -2,7 +2,7 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react/*";
-import { userEvent, within } from "@storybook/test";
+import { expect, userEvent, within } from "@storybook/test";
 import { KBarProvider, VisualState, useKBar } from "kbar";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
@@ -18,7 +18,7 @@ import { registerVisualization } from "metabase/visualizations";
 import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -89,6 +89,10 @@ export default {
   decorators: [ReduxDecorator],
   parameters: {
     msw,
+    layout: "fullscreen",
+    loki: {
+      chromeSelector: "[data-testid=command-palette]",
+    },
   },
 };
 
@@ -128,6 +132,12 @@ export const Search = {
     );
 
     await canvas.findByRole("option", { name: "Results" });
+
+    // Wait for the result to all show up because "Results" will be
+    // present when the search query is still loading
+    await expect(
+      await canvas.findByText("Product breakdown"),
+    ).toBeInTheDocument();
 
     asyncCallback();
   },

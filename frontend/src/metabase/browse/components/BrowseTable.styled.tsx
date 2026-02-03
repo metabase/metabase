@@ -6,7 +6,7 @@ import {
   hideResponsively,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`
@@ -63,6 +63,6 @@ export const CollectionLink = styled(Link)`
   box-sizing: border-box;
 
   &:hover {
-    color: var(--mb-color-icon-primary) !important;
+    color: var(--mb-color-icon-brand) !important;
   }
 `;

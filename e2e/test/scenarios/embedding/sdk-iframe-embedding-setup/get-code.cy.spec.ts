@@ -12,10 +12,7 @@ const { H } = cy;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
-const suiteTitle =
-  "scenarios > embedding > sdk iframe embed setup > get code step";
-
-describe(suiteTitle, () => {
+describe("scenarios > embedding > sdk iframe embed setup > get code step", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -35,36 +32,41 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should select user session auth method by default", () => {
+  it("should disable SSO radio button (and show info message) when JWT and SAML are not configured", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Authentication").should("be.visible");
-      cy.findByText("Choose the authentication method for embedding:").should(
+      cy.findByLabelText("Single sign-on").should("be.disabled");
+      cy.findByLabelText("Existing session (local testing only)").should(
+        "be.enabled",
+      );
+      cy.findByLabelText("Existing session (local testing only)").should(
+        "be.checked",
+      );
+      cy.findByText(/The code below will only work for local testing/).should(
         "be.visible",
       );
-
-      cy.findByLabelText("Existing Metabase session")
-        .should("be.visible")
-        .should("be.checked");
-
-      cy.findByLabelText("Single sign-on (SSO)")
-        .should("be.visible")
-        .should("not.be.checked");
     });
   });
 
-  it("should disable SSO radio button when JWT and SAML are not configured", () => {
+  it("should not display a warning when a user session is selected and JWT is configured", () => {
+    enableJwtAuth();
+
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
+      cy.findByLabelText("Existing session (local testing only)").click();
+      cy.findByText(/The code below will only work for local testing/).should(
+        "not.exist",
+      );
     });
   });
 
@@ -73,10 +75,11 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+      cy.findByLabelText("Single sign-on").should("not.be.disabled");
     });
   });
 
@@ -85,10 +88,11 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+      cy.findByLabelText("Single sign-on").should("not.be.disabled");
     });
   });
 
@@ -96,6 +100,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -107,67 +112,90 @@ describe(suiteTitle, () => {
   });
 
   it("should include useExistingUserSession when user session is selected", () => {
+    enableJwtAuth();
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase session").should("be.checked");
+      codeBlock().should("not.contain", '"useExistingUserSession": true');
+      cy.findByLabelText("Existing session (local testing only)").click();
       codeBlock().should("contain", '"useExistingUserSession": true');
 
       cy.findByText(/Copy code/).click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "user_session",
+        event_detail:
+          "experience=dashboard,snippetType=frontend,authSubType=user-session",
       });
     });
   });
 
   it("should track embed_wizard_code_copied when copy event triggers", () => {
+    enableJwtAuth();
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase session").should("be.checked");
-
+      codeBlock().should("not.contain", '"useExistingUserSession": true');
+      cy.findByLabelText("Existing session (local testing only)").click();
       codeBlock().should("contain", '"useExistingUserSession": true');
+
       codeBlock().trigger("copy");
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "user_session",
+        event_detail:
+          "experience=dashboard,snippetType=frontend,authSubType=user-session",
       });
+    });
+  });
+
+  it("should track embed_wizard_options_completed with settings=default properly (metabase#68285)", () => {
+    navigateToGetCodeStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
     });
   });
 
   it("should not include useExistingUserSession when SSO is selected", () => {
     enableJwtAuth();
+
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").click();
       codeBlock().should("not.contain", "useExistingUserSession");
 
       cy.findByText(/Copy code/).click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "sso",
+        event_detail:
+          "experience=dashboard,snippetType=frontend,authSubType=sso",
       });
     });
   });
 
-  it("should set dashboard-id for dashboard experience", () => {
+  it("should set dashboard-id for regular dashboard experience", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -175,13 +203,17 @@ describe(suiteTitle, () => {
     });
   });
 
-  it("should set question-id for chart experience", () => {
+  it("should set question-id for regular chart experience", () => {
+    enableJwtAuth();
     navigateToGetCodeStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
+      cy.findByLabelText("Existing session (local testing only)").click();
+
       codeBlock().should(
         "contain",
         `question-id="${ORDERS_COUNT_QUESTION_ID}"`,

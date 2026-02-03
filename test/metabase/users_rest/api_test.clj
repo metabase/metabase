@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
    [metabase.test :as mt]
@@ -68,7 +69,7 @@
           (is (= (set
                   (concat
                    user/admin-or-self-visible-columns
-                   [:common_name :group_ids :personal_collection_id]))
+                   [:common_name :group_ids :personal_collection_id :tenant_collection_id]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails
           (is (= #{"crowberto@metabase.com"
@@ -503,6 +504,70 @@
                                            custom-homepage-dashboard -3]
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
+(deftest get-current-user-query-permissions-test
+  (testing "GET /api/user/current includes can_create_queries and can_create_native_queries"
+    (mt/with-premium-features #{}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "admins should have both permissions true"
+          (is (partial= {:can_create_queries        true
+                         :can_create_native_queries true}
+                        (user-permissions :crowberto))))
+
+        (testing "user with query-builder-and-native on a non-sample DB"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries true}
+                            (user-permissions :rasta))))))
+
+        (testing "user with only query-builder (no native) on a non-sample DB"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :query-builder}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "user with no query permissions on non-sample DBs"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :no}}
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "at least one non-sample DB with native permission is enough"
+          (mt/with-temp [:model/Database {db1-id :id} {:is_sample false}
+                         :model/Database {db2-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db1-id {:view-data      :unrestricted
+                                                          :create-queries :no}
+                                                  db2-id {:view-data      :unrestricted
+                                                          :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries true}
+                            (user-permissions :rasta))))))))))
+
+(deftest can-create-queries-ignores-published-tables-oss-test
+  (testing "In OSS, can_create_queries should NOT consider published tables"
+    (mt/with-premium-features #{}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "user with collection permission on published table should still have can_create_queries false"
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Table      _table              {:db_id         (mt/id)
+                                                                :is_published  true
+                                                                :collection_id collection-id}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+            (mt/with-no-data-perms-for-all-users!
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))
+                  "Published tables should NOT grant can_create_queries in OSS"))))))))
+
 (deftest ^:parallel get-user-test
   (mt/with-premium-features #{}
     (testing "GET /api/user/:id"
@@ -823,6 +888,23 @@
         (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email)))))))
 
+(deftest create-user-must-assign-to-all-users-group
+  (testing "POST /api/user"
+    (testing "Creating a tenant user automatically assigns them to All tenant users group even when other groups are specified"
+      (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1"}
+                     :model/PermissionsGroup group-2 {:name "Custom Group 2"}]
+        (let [user-name (mt/random-name)
+              email     (mt/random-email)]
+          (mt/with-model-cleanup [:model/User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 400 "user"
+                                               {:first_name             user-name
+                                                :last_name              user-name
+                                                :email                  email
+                                                :user_group_memberships (group-or-ids->user-group-memberships
+                                                                         [group-1 group-2])})]
+                (is (= "You cannot add or remove users to/from the 'All Users' group." resp))))))))))
+
 (deftest create-user-mixed-case-email
   (testing "POST /api/user/:id"
     (testing "can create a new User with a mixed case email and the email is normalized to lower case"
@@ -929,6 +1011,90 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
+(deftest update-login-attributes-with-different-value-types-test
+  (testing "PUT /api/user/:id"
+    (testing "Non-string attributes are converted to strings"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                                :last_name "User"
+                                                :email "testuser-types@metabase.com"}]
+        (let [response (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                             {:login_attributes {:string-attr "hello"
+                                                                 :number-attr 42
+                                                                 :float-attr 3.14
+                                                                 :bool-true true
+                                                                 :bool-false false}})]
+          (is (= {:string-attr "hello"
+                  :number-attr "42"
+                  :float-attr "3.14"
+                  :bool-true "true"
+                  :bool-false "false"}
+                 (:login_attributes response)))
+          (testing "values are persisted correctly in the database"
+            (is (= {"string-attr" "hello"
+                    "number-attr" "42"
+                    "float-attr" "3.14"
+                    "bool-true" "true"
+                    "bool-false" "false"}
+                   (t2/select-one-fn :login_attributes :model/User :id user-id)))))))))
+
+(deftest create-user-with-different-attribute-types-test
+  (testing "POST /api/user"
+    (testing "Non-string attributes are converted to strings"
+      (with-temp-user-email! [email]
+        (let [response (mt/user-http-request :crowberto :post 200 "user"
+                                             {:first_name "Attribute"
+                                              :last_name "Types"
+                                              :email email
+                                              :login_attributes {:string-val "test-string"
+                                                                 :integer-val 123
+                                                                 :decimal-val 45.67
+                                                                 :boolean-true true
+                                                                 :boolean-false false}})]
+          (is (= {:string-val "test-string"
+                  :integer-val "123"
+                  :decimal-val "45.67"
+                  :boolean-true "true"
+                  :boolean-false "false"}
+                 (:login_attributes response)))
+          (testing "values are persisted correctly in the database"
+            (is (= {"string-val" "test-string"
+                    "integer-val" "123"
+                    "decimal-val" "45.67"
+                    "boolean-true" "true"
+                    "boolean-false" "false"}
+                   (t2/select-one-fn :login_attributes :model/User :id (:id response))))))))))
+
+(deftest login-attributes-cannot-start-with-at-symbol
+  (testing "PUT /api/user/:id"
+    (testing "We can't create login attributes starting with `@`"
+      (mt/with-temp [:model/User {user-id :id} {:first_name   "Test"
+                                                :last_name    "User"
+                                                :email        "testuser@metabase.com"
+                                                :is_superuser true}]
+        (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                :errors
+                {:login_attributes
+                 {(keyword "@foo")
+                  "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                     {:email            "testuser@metabase.com"
+                                      :login_attributes {"@foo" "foo"}}))))))
+  (testing "POST /api/user"
+    (let [user-name (mt/random-name)
+          email     (mt/random-email)]
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-fake-inbox
+          (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                  :errors
+                  {:login_attributes
+                   {(keyword "@foo")
+                    "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+                 (mt/user-http-request :crowberto :post 400 "user"
+                                       {:first_name       user-name
+                                        :last_name        user-name
+                                        :email            email
+                                        :login_attributes {"@foo" "bar"}}))))))))
+
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
     (let [names {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
@@ -967,7 +1133,7 @@
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (t2/hydrate :personal_collection_id ::personal-collection-name)
-                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes :is_data_analyst)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]
           (testing "Name keys ommitted does not update the user"
@@ -1061,6 +1227,72 @@
                                 (assoc (fetch-rasta) :is_superuser true))
           (is (= before
                  (fetch-rasta))))))))
+
+(defn- user-is-data-analyst?
+  "Check if a user is a member of the Data Analysts group."
+  [user-id]
+  (t2/exists? :model/PermissionsGroupMembership
+              :user_id user-id
+              :group_id (:id (perms-group/data-analyst))))
+
+(deftest update-data-analyst-status-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
+        (is (not (user-is-data-analyst? user-id)))
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst true})
+        (is (user-is-data-analyst? user-id))))
+
+    (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst true})
+        (is (user-is-data-analyst? user-id))
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst false})
+        (is (not (user-is-data-analyst? user-id)))))
+
+    (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
+      (is (not (user-is-data-analyst? (mt/user->id :rasta))))
+      (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
+                            {:is_data_analyst true})
+      (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
+
+    (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "user/" user-id)
+                                     {:is_data_analyst true})))))))
+
+(deftest filter-by-data-analyst-test
+  (testing "GET /api/user"
+    (testing "Filter users by is_data_analyst=true includes data analysts group members"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst" :last_name "User"
+                                                   :email "analyst-filter@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst" :last_name "User"
+                                                       :email "non-analyst-filter@metabase.com"}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst true))
+              result-ids (set (map :id result))]
+          (testing "data analyst group member is included"
+            (is (contains? result-ids analyst-id)))
+          (testing "non-analyst is excluded"
+            (is (not (contains? result-ids non-analyst-id)))))))
+
+    (testing "Filter users by is_data_analyst=false excludes data analysts group members"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst2"
+                                                   :last_name "User"
+                                                   :email "analyst-filter2@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst2" :last_name "User"
+                                                       :email "non-analyst-filter2@metabase.com"}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst false))
+              result-ids (set (map :id result))]
+          (testing "data analyst group member is excluded"
+            (is (not (contains? result-ids analyst-id))))
+          (testing "non-analyst is included"
+            (is (contains? result-ids non-analyst-id))))))))
 
 (deftest update-permissions-test
   (testing "PUT /api/user/:id"
@@ -1330,6 +1562,14 @@
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
 
+(deftest reactivate-second-to-last-admin-test
+  (mt/with-single-admin-user! [{id :id}]
+    (testing "With two admins, one deactivated"
+      (mt/with-temp [:model/User {other-user :id} {:is_superuser true}]
+        (mt/user-http-request id :delete 200 (format "user/%d" other-user))
+        (testing "We can reactivate the other admin"
+          (mt/user-http-request id :put 200 (format "user/%d/reactivate" other-user)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1418,6 +1658,18 @@
     (testing "Check that a non-superuser CANNOT deactivate themselves"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
+
+(deftest deactivate-missing-user-fails
+  (testing "DELETE /api/user/:id"
+    (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
+                                         :from :core_user}))]
+      (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
+
+(deftest deactivate-deactivated-user-again-succeeds
+  (testing "DELETE /api/user/:id"
+    (mt/with-temp [:model/User user {:is_active false}]
+      (is (= {:success true}
+             (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Other Endpoints                                                    |

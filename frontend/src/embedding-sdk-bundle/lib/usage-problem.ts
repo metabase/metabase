@@ -5,7 +5,7 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
@@ -13,6 +13,7 @@ import { getIsLocalhost } from "./get-is-localhost";
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
   isEnabled: boolean;
+  isGuestEmbed: boolean | null;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
@@ -33,19 +34,19 @@ export const USAGE_PROBLEM_MESSAGES = {
   // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
   EMBEDDING_SDK_NOT_ENABLED: `Embedding is not enabled for this instance. Please enable it in settings.`,
 
-  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development.
   DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
   JWT_EXP_NULL: `The JWT token is missing the "exp" (expiration) claim. We will disallow tokens without "exp" in a future release. Please add "exp" to the token payload.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
   "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
 
 export const METABASE_UPGRADE_URL = "https://www.metabase.com/upgrade";
 
 export const SDK_INTRODUCTION_DOCS_URL =
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
   "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase";
 
 /** Documentation for each kind of SDK usage problems */
@@ -67,6 +68,7 @@ export function getSdkUsageProblem(
 ): SdkUsageProblem | null {
   const {
     isEnabled,
+    isGuestEmbed,
     hasTokenFeature,
     authConfig,
     isDevelopmentMode,
@@ -83,6 +85,14 @@ export function getSdkUsageProblem(
   // in case of a local app running a distant MB instance
   const isLocalhost = isLocalHost ?? getIsLocalhost();
 
+  if (isDevelopmentMode) {
+    return toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE");
+  }
+
+  if (isGuestEmbed === null || isGuestEmbed) {
+    return null;
+  }
+
   /**
    * TODO: these checks for non-localhost environments are pending on
    *       the "allowing CORS for /api/session/properties" PR to be merged
@@ -98,12 +108,8 @@ export function getSdkUsageProblem(
       isApiKey,
       isLocalhost,
       isEnabled,
-      isDevelopmentMode,
       session,
     })
-      .with({ isDevelopmentMode: true }, () =>
-        toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
-      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
@@ -150,11 +156,11 @@ const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 });
 
 const getTitle = () => {
-  if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
-    // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
-    return "This embed is powered by the Metabase Embedded Analytics JS";
+  if (isEmbeddingEajs()) {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development or config error.
+    return "This embed is powered by Metabase";
   }
 
-  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development or config error.
   return "This embed is powered by the Metabase SDK.";
 };

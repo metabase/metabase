@@ -7,6 +7,7 @@ import type {
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
+  SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 
 import type {
@@ -14,14 +15,34 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "../types";
 
+import { getCommonEmbedSettings } from "./get-common-embed-settings";
+
 export const getDefaultSdkIframeEmbedSettings = ({
   experience,
   resourceId,
+  isSimpleEmbedFeatureAvailable,
+  isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
+  isGuest,
+  useExistingUserSession,
 }: {
   experience: SdkIframeEmbedSetupExperience;
-  resourceId: SdkDashboardId | SdkQuestionId;
+  resourceId: SdkDashboardId | SdkQuestionId | null;
+  isSimpleEmbedFeatureAvailable: boolean;
+  isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
+  isGuest: boolean;
+  useExistingUserSession: boolean;
 }): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(experience)
+  const baseSettingsDefaults: Partial<SdkIframeEmbedBaseSettings> = {
+    useExistingUserSession: true,
+    // When `simple embed` feature is not available, we allow to set only a theme preset, so we default it to `light`
+    ...(!isSimpleEmbedFeatureAvailable && {
+      theme: { preset: "light" },
+    }),
+  };
+
+  const experienceSettingsDefaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -29,6 +50,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
         dashboardId: resourceId,
         drills: true,
         withDownloads: false,
+        withSubscriptions: false,
         withTitle: true,
       }),
     )
@@ -39,8 +61,10 @@ export const getDefaultSdkIframeEmbedSettings = ({
         questionId: resourceId,
         drills: true,
         withDownloads: false,
+        withAlerts: false,
         withTitle: true,
         isSaveEnabled: false,
+        initialSqlParameters: {},
       }),
     )
     .with(
@@ -68,8 +92,15 @@ export const getDefaultSdkIframeEmbedSettings = ({
     .exhaustive();
 
   return {
-    ...templateDefaults,
-    useExistingUserSession: true,
+    ...baseSettingsDefaults,
+    ...experienceSettingsDefaults,
+    ...getCommonEmbedSettings({
+      experience,
+      isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
+      isGuest,
+      useExistingUserSession,
+    }),
   };
 };
 

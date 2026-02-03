@@ -1,63 +1,155 @@
 import { useCallback, useMemo } from "react";
+import { Link } from "react-router";
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
+import { useHasEmailSetup } from "metabase/common/hooks";
+import type {
+  MetabaseColors,
+  MetabaseThemePreset,
+} from "metabase/embedding-sdk/theme";
+import {
+  Card,
+  Checkbox,
+  Divider,
+  Flex,
+  HoverCard,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 
+import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
-import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
+import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
+import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
+import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
+import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
 
-export const SelectEmbedOptionsStep = () => {
-  return (
-    <Stack gap="md">
-      <BehaviorSection />
-      <ParametersSection />
-      <AppearanceSection />
-    </Stack>
-  );
-};
+export const SelectEmbedOptionsStep = () => (
+  <Stack gap="md">
+    <BehaviorSection />
+    <ParametersSection />
+    <AppearanceSection />
+    <LegacyStaticEmbeddingAlert />
+    <EmbeddingUpsell campaign={UPSELL_CAMPAIGN_BEHAVIOR} />
+  </Stack>
+);
 
 const BehaviorSection = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
+  const hasEmailSetup = useHasEmailSetup();
 
   const behaviorSection = useMemo(() => {
     return match(settings)
-      .with({ template: "exploration" }, (settings) => (
-        <Checkbox
-          label={t`Allow people to save new questions`}
-          checked={settings.isSaveEnabled}
-          onChange={(e) => updateSettings({ isSaveEnabled: e.target.checked })}
-        />
-      ))
+      .with(
+        { template: "exploration", isGuest: P.optional(false) },
+        (settings) => (
+          <Checkbox
+            label={t`Allow people to save new questions`}
+            disabled={settings.isGuest}
+            checked={settings.isSaveEnabled}
+            onChange={(e) =>
+              updateSettings({
+                isSaveEnabled: e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
+          />
+        ),
+      )
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <Checkbox
-              label={t`Allow people to drill through on data points`}
-              checked={settings.drills}
-              onChange={(e) => updateSettings({ drills: e.target.checked })}
-            />
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow people to drill through on data points`}
+                  disabled={disabled}
+                  checked={settings.drills}
+                  onChange={(e) =>
+                    updateSettings({
+                      drills: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
+                />
+              )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
 
             <Checkbox
               label={t`Allow downloads`}
+              disabled={!isSimpleEmbedFeatureAvailable}
               checked={settings.withDownloads}
               onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
               }
             />
 
-            <Checkbox
-              label={t`Allow people to save new questions`}
-              checked={settings.isSaveEnabled}
-              onChange={(e) =>
-                updateSettings({ isSaveEnabled: e.target.checked })
-              }
-            />
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow people to save new questions`}
+                  disabled={disabled}
+                  checked={settings.isSaveEnabled}
+                  onChange={(e) =>
+                    updateSettings({
+                      isSaveEnabled: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
+                />
+              )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
+
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled: disabledInGuestEmbedding }) => {
+                return (
+                  <Flex align="center" gap="xs">
+                    <Checkbox
+                      disabled={!hasEmailSetup || disabledInGuestEmbedding}
+                      label={t`Allow alerts`}
+                      checked={settings.withAlerts}
+                      onChange={(e) =>
+                        updateSettings({
+                          withAlerts: e.target.checked,
+                        } satisfies Partial<typeof settings>)
+                      }
+                    />
+                    {!hasEmailSetup && !disabledInGuestEmbedding && (
+                      <HoverCard>
+                        <HoverCard.Target>
+                          <Icon name="info" size={14} c="text-secondary" />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown p="sm">
+                          <Text>{c(
+                            "{0} is a link to email settings page with text 'admin settings'",
+                          ).jt`To allow alerts, set up email in ${(
+                            <Link
+                              key="admin-settings-link"
+                              to="/admin/settings/email"
+                            >
+                              <Text
+                                display="inline"
+                                c="text-brand"
+                                fw="bold"
+                              >{c(
+                                "is a link in a sentence 'To allow alerts, set up email in admin settings'",
+                              ).t`admin settings`}</Text>
+                            </Link>
+                          )}`}</Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    )}
+                  </Flex>
+                );
+              }}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
           </Stack>
         ),
       )
@@ -65,31 +157,95 @@ const BehaviorSection = () => {
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <Checkbox
-              label={t`Allow people to drill through on data points`}
-              checked={settings.drills}
-              onChange={(e) => updateSettings({ drills: e.target.checked })}
-            />
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow people to drill through on data points`}
+                  disabled={disabled}
+                  checked={settings.drills}
+                  onChange={(e) =>
+                    updateSettings({
+                      drills: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
+                />
+              )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
 
             <Checkbox
               label={t`Allow downloads`}
+              disabled={!isSimpleEmbedFeatureAvailable}
               checked={settings.withDownloads}
               onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
               }
             />
+
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled: disabledInGuestEmbedding }) => {
+                return (
+                  <Flex align="center" gap="xs">
+                    <Checkbox
+                      disabled={!hasEmailSetup || disabledInGuestEmbedding}
+                      label={t`Allow subscriptions`}
+                      checked={settings.withSubscriptions}
+                      onChange={(e) =>
+                        updateSettings({
+                          withSubscriptions: e.target.checked,
+                        } satisfies Partial<typeof settings>)
+                      }
+                    />
+                    {!hasEmailSetup && !disabledInGuestEmbedding && (
+                      <HoverCard>
+                        <HoverCard.Target>
+                          <Icon name="info" size={14} c="text-secondary" />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown p="sm">
+                          <Text>{c(
+                            "{0} is a link to email settings page with text 'admin settings'",
+                          ).jt`To allow subscriptions, set up email in ${(
+                            <Link
+                              key="admin-settings-link"
+                              to="/admin/settings/email"
+                            >
+                              <Text
+                                display="inline"
+                                c="text-brand"
+                                fw="bold"
+                              >{c(
+                                "is a link in a sentence 'To allow subscriptions, set up email in admin settings'",
+                              ).t`admin settings`}</Text>
+                            </Link>
+                          )}`}</Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    )}
+                  </Flex>
+                );
+              }}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
           </Stack>
         ),
       )
-      .with({ componentName: "metabase-browser" }, (settings) => (
-        <Checkbox
-          label={t`Allow editing dashboards and questions`}
-          checked={!settings.readOnly}
-          onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
-        />
-      ))
+      .with(
+        { componentName: "metabase-browser", isGuest: P.optional(false) },
+        (settings) => (
+          <Checkbox
+            label={t`Allow editing dashboards and questions`}
+            disabled={settings.isGuest}
+            checked={!settings.readOnly}
+            onChange={(e) =>
+              updateSettings({
+                readOnly: !e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
+          />
+        ),
+      )
       .otherwise(() => null);
-  }, [settings, updateSettings]);
+  }, [hasEmailSetup, isSimpleEmbedFeatureAvailable, settings, updateSettings]);
 
   if (behaviorSection === null) {
     return null;
@@ -119,7 +275,7 @@ const ParametersSection = () => {
         {t`Parameters`}
       </Text>
 
-      <Text size="sm" c="text-medium" mb="lg">
+      <Text size="sm" c="text-secondary" mb="lg">
         {experience === "dashboard"
           ? t`Set default values and control visibility`
           : t`Set default values`}
@@ -131,15 +287,23 @@ const ParametersSection = () => {
 };
 
 const AppearanceSection = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
 
   const { theme } = settings;
+
+  const updateThemePreset = useCallback(
+    (preset: MetabaseThemePreset) => {
+      updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
+    },
+    [updateSettings],
+  );
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
         theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
-      });
+      } satisfies Partial<typeof settings>);
     },
     [theme, updateSettings],
   );
@@ -159,7 +323,11 @@ const AppearanceSection = () => {
           <Checkbox
             label={label}
             checked={settings.withTitle}
-            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+            onChange={(e) =>
+              updateSettings({
+                withTitle: e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
           />
         );
       },
@@ -168,11 +336,22 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      <ColorCustomizationSection
-        theme={theme}
-        onColorChange={updateColors}
-        onColorReset={() => updateSettings({ theme: undefined })}
-      />
+      {isSimpleEmbedFeatureAvailable ? (
+        <ColorCustomizationSection
+          theme={theme}
+          onColorChange={updateColors}
+          onColorReset={() =>
+            updateSettings({ theme: undefined } satisfies Partial<
+              typeof settings
+            >)
+          }
+        />
+      ) : (
+        <SimpleThemeSwitcherSection
+          preset={theme?.preset}
+          onPresetChange={updateThemePreset}
+        />
+      )}
 
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}

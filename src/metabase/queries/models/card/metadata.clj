@@ -88,7 +88,7 @@ saved later when it is ready."
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
-  [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
+  [[metadata-sync-wait-ms]] for it to be recalculated; if not recalculated by then, returns a map with
   `:metadata-future`. Otherwise returns a map with `:metadata`.
 
   Takes the `original-query` so it can determine if existing `metadata` might still be valid. Takes `dataset?` since
@@ -119,7 +119,7 @@ saved later when it is ready."
         (log/debug "Reusing provided metadata")
         {:metadata metadata})
 
-      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
+      ;; frontend always sends query. But sometimes programmatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
       (nil? query)
       (do
@@ -176,7 +176,11 @@ saved later when it is ready."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols query)))))
+                 (qp.preprocess/query->expected-cols
+                  ;; 1. This function is called when storing metadata.
+                  ;; 2. The metadata for storage shouldn't have remaps.
+                  ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
+                  (assoc-in query [:middleware :disable-remaps?] true))))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.

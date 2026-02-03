@@ -5,11 +5,11 @@ import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import Segments from "metabase/entities/segments";
-import Tables from "metabase/entities/tables";
+import { Segments } from "metabase/entities/segments";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 
-import SegmentForm from "../components/SegmentForm";
+import { SegmentForm } from "../components/SegmentForm";
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
 
@@ -113,7 +113,7 @@ const CreateSegmentForm = ({
   );
 };
 
-const SegmentApp = (props) => {
+const SegmentAppInner = (props) => {
   if (props.params.id) {
     return <UpdateSegmentForm {...props} />;
   }
@@ -121,4 +121,7 @@ const SegmentApp = (props) => {
   return <CreateSegmentForm {...props} />;
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentApp);
+export const SegmentApp = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentAppInner);

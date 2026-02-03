@@ -1125,3 +1125,87 @@
                         {}
                         {}]}
               preprocessed)))))
+
+;; before the fix this failed with
+;;
+;; Error preprocessing query in #'metabase.query-processor.middleware.add-implicit-joins/add-implicit-joins:
+;; Cannot find matching FK Table ID for FK Field 31 nil
+(deftest ^:parallel conflicting-implicit-joins-with-same-generated-alias-test
+  (testing "If two DIFFERENT implicit joins need to be added that would have the same generated alias, deduplicate them"
+    (let [mp          (-> (lib.tu/mock-metadata-provider
+                           {:database meta/database
+                            :tables   [{:id 1, :name "A"}
+                                       {:id 2, :name "B"}
+                                       {:id 3, :name "C"}
+                                       {:id 4, :name "D"}]
+                            :fields   [{:id 10, :table-id 1, :name "ID", :semantic-type :type/PK}
+                                       {:id 11, :table-id 1, :name "B_ID", :fk-target-field-id 20, :semantic-type :type/FK}
+                                       {:id 12, :table-id 1, :name "C_ID", :fk-target-field-id 30, :semantic-type :type/FK}
+                                       {:id 20, :table-id 2, :name "ID", :semantic-type :type/PK}
+                                       {:id 21, :table-id 2, :name "D_ID", :fk-target-field-id 40, :semantic-type :type/FK}
+                                       {:id 30, :table-id 3, :name "ID", :semantic-type :type/PK}
+                                       {:id 31, :table-id 3, :name "D_ID", :fk-target-field-id 40, :semantic-type :type/FK}
+                                       {:id 40, :table-id 4, :name "ID", :semantic-type :type/PK}
+                                       {:id 41, :table-id 4, :name "NAME"}]})
+                          (lib.tu/remap-metadata-provider 21 41)
+                          (lib.tu/remap-metadata-provider 31 41))
+          model-query (-> (lib/query mp (lib.metadata/table mp 1))
+                          (lib/join (lib.metadata/table mp 2))
+                          (lib/join (lib.metadata/table mp 3)))
+          mp          (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id            1
+                                 :type          :model
+                                 :name          "A + B + C"
+                                 :display-name  "A + B + C"
+                                 :dataset-query model-query}]})
+          query       (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:stages [{:joins [{:alias "B"}
+                                 {:alias "C"}]}
+                        {:joins [{:alias      "D__via__D_ID"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "B__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID"} 40]]]}
+                                 {:alias      "D__via__D_ID_2"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "C__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID_2"} 40]]]}]}]}
+              (qp.preprocess/preprocess query))))))
+
+(deftest ^:parallel filter-creator-full-name-test
+  (testing "Implicit join through a filter on field with a remap only shows field once (#66418)"
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title))
+                 (as-> $mp
+                       (let [model-query (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))]
+                         (lib.tu/mock-metadata-provider
+                          $mp
+                          {:cards [{:id            1
+                                    :dataset-query model-query}]}))))
+          q  (-> (lib/query mp (lib.metadata/card mp 1))
+                 (lib/filter (lib/= (-> (lib.metadata/field mp (mt/id :products :title))
+                                        (lib/ref)
+                                        ;; these options can get passed in from the frontend
+                                        (lib/update-options assoc
+                                                            :source-field-name "PRODUCT_ID"
+                                                            :source-field   (mt/id :orders :product_id)))
+                                    "Blah")))]
+      (is (=? [[:field {} (mt/id :orders :id)]
+               [:field {} (mt/id :orders :user_id)]
+               [:field {} (mt/id :orders :product_id)]
+               [:field {} (mt/id :orders :subtotal)]
+               [:field {} (mt/id :orders :tax)]
+               [:field {} (mt/id :orders :total)]
+               [:field {} (mt/id :orders :discount)]
+               [:field {} (mt/id :orders :created_at)]
+               [:field {} (mt/id :orders :quantity)]
+               [:field
+                {:source-field (mt/id :orders :product_id)
+                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}
+                (mt/id :products :title)]
+               ;; should only have one product title... this is broken if we have a second copy that includes
+               ;; `:source-field-name`
+               ]
+              (get-in (qp.preprocess/preprocess q) [:stages 0 :fields]))))))

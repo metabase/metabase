@@ -12,7 +12,7 @@ export function useExpandedState(path: TreePath) {
   const { databaseId, schemaName, tableId } = path;
 
   useEffect(() => {
-    // When the path changes, this means a user has navigated throught the browser back
+    // When the path changes, this means a user has navigated through the browser back
     // button, ensure the path is completely expanded.
     setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
   }, [databaseId, schemaName, tableId]);

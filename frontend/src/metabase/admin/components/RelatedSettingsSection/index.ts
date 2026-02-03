@@ -2,6 +2,5 @@ export { RelatedSettingsSection } from "./RelatedSettingsSection";
 
 export {
   getModularEmbeddingRelatedSettingItems,
-  getStaticEmbeddingRelatedSettingItems,
-  getInteractiveEmbeddingRelatedSettingItems,
+  getGuestEmbedsRelatedSettingItems,
 } from "./constants";

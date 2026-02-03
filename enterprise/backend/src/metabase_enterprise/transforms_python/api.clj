@@ -10,33 +10,48 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
   [path]
-  (api/check-superuser)
   (-> (python-library/get-python-library-by-path path)
-      api/check-404
+      api/read-check
       (select-keys [:source :path :created_at :updated_at])))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules."
-  [{:keys [path]} :- [:map [:path :string]]
+  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params]
   (get-python-library-by-path path))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."
-  [{:keys [path]} :- [:map [:path :string]]
+  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
-  (api/check-superuser)
+  ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
+  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
   (python-library/update-python-library-source! path (:source body)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test-run"
   :- [:map
       [:logs :string]
@@ -56,15 +71,17 @@
            per_input_row_limit 100}}
    :- [:map
        [:code                                 :string]
-       [:source_tables                        [:map-of :string :int]]
+       [:source_tables                        [:map-of {:min 1} :string :int]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
-  (api/check-superuser)
+  (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (vals source_tables)])]
+    (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
+    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
   ;; NOTE: we do not test database support, as there is no write target.
   (with-open [shared-storage-ref (s3/open-shared-storage! source_tables)]
     (let [server-url  (transforms-python.settings/python-runner-url)
           _           (python-runner/copy-tables-to-s3! {:shared-storage @shared-storage-ref
-                                                         :table-name->id source_tables
+                                                         :source         {:source-tables source_tables}
                                                          :limit          per_input_row_limit})
           {runner-status :status
            runner-body   :body}

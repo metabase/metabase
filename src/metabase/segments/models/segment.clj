@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -70,9 +71,7 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/write-policy.superuser)
-  (derive ::mi/create-policy.superuser))
+  (derive :hook/entity-id))
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
@@ -86,11 +85,74 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(t2/define-before-update :model/Segment [segment]
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-  segment)
+;; Segments can be created by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-write? :model/Segment
+  ([instance]
+   (let [table (or (:table instance)
+                   (t2/select-one :model/Table :id (:table_id instance)))]
+     (and (or (mi/superuser?)
+              (and api/*is-data-analyst?*
+                   (perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    :perms/view-data
+                    :unrestricted
+                    (:db_id table)
+                    (u/the-id table))))
+          (remote-sync/table-editable? table))))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
+
+;; Segments can be created by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-create? :model/Segment
+  [_model instance]
+  (let [table (or (:table instance)
+                  (t2/select-one :model/Table :id (:table_id instance)))]
+    (and (or (mi/superuser?)
+             (and api/*is-data-analyst?*
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
+         (remote-sync/table-editable? table))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
+  "Batched hydration for :can_write on segments. First hydrates :table for all segments,
+   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
+   on each segment. This avoids N+1 queries when checking permissions for multiple segments."
+  [_model k segments]
+  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
+        ;; Get all unique collection IDs from the hydrated tables
+        collection-ids (->> segments-with-tables
+                            (keep (comp :collection_id :table))
+                            distinct)
+        ;; Batch fetch is_remote_synced for all collections
+        collection-synced-map (if (seq collection-ids)
+                                (into {}
+                                      (map (juxt :id :is_remote_synced))
+                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                {})
+        ;; Associate collection info with each segment's table
+        segments-with-collection (for [segment segments-with-tables
+                                       :let [table (:table segment)
+                                             coll-id (:collection_id table)]]
+                                   (if (and table coll-id)
+                                     (assoc-in segment [:table :collection]
+                                               {:id coll-id
+                                                :is_remote_synced (get collection-synced-map coll-id false)})
+                                     segment))]
+    (mi/instances-with-hydrated-data
+     segments k
+     #(u/index-by :id mi/can-write? segments-with-collection)
+     :id
+     {:default false})))
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
@@ -99,8 +161,23 @@
 
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
-  (cond-> segment
-    (some? definition) (assoc :definition (migrated-segment-definition segment))))
+  (let [segment (cond-> segment
+                  (some? definition) (assoc :definition (migrated-segment-definition segment)))]
+    (when (seq (:definition segment))
+      (lib/check-segment-overwrite nil (:definition segment)))
+    segment))
+
+(t2/define-before-update :model/Segment [{:keys [id] :as segment}]
+  ;; throw an Exception if someone tries to update creator_id
+  (when (contains? (t2/changes segment) :creator_id)
+    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+  ;; normalize and check for cycles if definition is being updated
+  (if-let [def-change (:definition (t2/changes segment))]
+    (let [normalized-def (migrated-segment-definition (assoc segment :definition def-change))]
+      (when (seq normalized-def)
+        (lib/check-segment-overwrite id normalized-def))
+      (assoc segment :definition normalized-def))
+    segment))
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
@@ -156,7 +233,7 @@
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip []
+   :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)

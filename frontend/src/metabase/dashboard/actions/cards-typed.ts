@@ -2,7 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
@@ -273,7 +273,9 @@ export const replaceCard =
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
-    dashboardId && trackQuestionReplaced(dashboardId);
+    if (dashboardId) {
+      trackQuestionReplaced(dashboardId);
+    }
   };
 
 export const addCardWithVisualization =

@@ -1,11 +1,13 @@
 (ns metabase.lib.drill-thru.summarize-column-test
   (:require
-   [clojure.test :refer [deftest testing]]
+   [clojure.test :refer [deftest testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.types.isa :as lib.types.isa]))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel summarize-column-availability-test
   (testing "summarize-column is available for column headers with no aggregations or breakouts"

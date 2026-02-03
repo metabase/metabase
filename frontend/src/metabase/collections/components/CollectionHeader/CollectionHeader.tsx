@@ -11,6 +11,7 @@ import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
+import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
@@ -49,6 +50,7 @@ const CollectionHeader = ({
   const showNewButton = hasCuratePermissions && !isInstanceAnalytics;
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
+  const showExportButton = isInstanceAnalytics && isAdmin && showUploadButton;
   const showTimelinesButton = !isInstanceAnalytics;
   const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 
@@ -72,6 +74,7 @@ const CollectionHeader = ({
           {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
+          {showExportButton && <CollectionExportAnalytics />}
           {isInstanceAnalytics && (
             <CollectionPermissions collection={collection} />
           )}

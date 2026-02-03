@@ -4,17 +4,16 @@ import querystring from "querystring";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
+import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
 import { delay } from "metabase/lib/promise";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-
-import { IS_EMBED_PREVIEW } from "./embed";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
-// eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+// eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
-// eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+// eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
 const METABASE_VERSION_HEADER = "X-Metabase-Version";
 
 let ANTI_CSRF_TOKEN = null;
@@ -68,33 +67,33 @@ export class Api extends EventEmitter {
     }
 
     if (this.sessionToken) {
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Session"] = self.sessionToken;
     }
 
     if (isWithinIframe() && !self.requestClient) {
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
       /**
        * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
        * This header is only used for analytics and for checking if we want to disable some features in the
        * embedding iframe (only for Documents at the time of this comment)
        */
-      if (!IS_EMBED_PREVIEW) {
-        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      if (!IFRAMED_IN_SELF) {
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = "embedding-iframe";
       }
     }
 
     if (self.requestClient) {
       if (typeof self.requestClient === "object") {
-        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient.name;
-        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client-Version"] =
           self.requestClient.version ?? "unknown";
       } else {
-        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient;
       }
     }
@@ -103,11 +102,11 @@ export class Api extends EventEmitter {
       headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
     }
 
-    // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
     if (DEFAULT_OPTIONS.headers["X-Metabase-Locale"]) {
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Locale"] =
-        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         DEFAULT_OPTIONS.headers["X-Metabase-Locale"];
     }
 
@@ -378,25 +377,8 @@ export class Api extends EventEmitter {
   }
 
   /**
-   /**
-   * @typedef {{
-   *    method: "GET" | "POST";
-   *    url: string;
-   *    options: {
-   *      headers?: Record<string, string>;
-   *      hasBody: boolean;
-   *    } & Record<string, unknown>;
-   * }} OnBeforeRequestHandlerData
-   *
-   * @typedef {(data: OnBeforeRequestHandlerData) => (Promise<void | OnBeforeRequestHandlerData>)} OnBeforeRequestHandler
-   *
-   * @typedef {{
-   *   key: string;
-   *   handler: OnBeforeRequestHandler
-   * }} OnBeforeRequestHandlerDescriptor
-   *
-   * @param data {OnBeforeRequestHandlerData}
-   * @return data {Promise<OnBeforeRequestHandlerData>}
+   * @param data {import('metabase/plugins').OnBeforeRequestHandlerData}
+   * @return data {Promise<import('metabase/plugins').OnBeforeRequestHandlerData>}
    */
   async apiRequestManipulationMiddleware(data) {
     let { method, url, options } = data;
@@ -404,20 +386,26 @@ export class Api extends EventEmitter {
     /**
      * Handlers order is important.
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
-     * @type {OnBeforeRequestHandler[]}
+     * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
      */
     const handlers = [];
 
     if (isEmbeddingSdk()) {
-      if (
-        PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler
-      ) {
-        // A handler that set's `getOrRefreshSession` logic for SDK
-        handlers.push(
+      handlers.push(
+        ...[
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .getOrRefreshSessionHandler,
-        );
-      }
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .overrideRequestsForGuestEmbeds,
+        ],
+      );
+    } else {
+      handlers.push(
+        ...[
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
+        ],
+      );
     }
 
     if (handlers.length) {
@@ -453,6 +441,7 @@ export class Api extends EventEmitter {
 
 const instance = new Api();
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
 
@@ -461,6 +450,6 @@ export const setLocaleHeader = (locale) => {
    * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
    * for public/static embedding.
    */
-  // eslint-disable-next-line no-literal-metabase-strings -- Header name, not a user facing string
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Header name, not a user facing string
   DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
 };

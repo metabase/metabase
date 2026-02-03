@@ -22,6 +22,7 @@ describe(suiteTitle, () => {
     H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", false);
     H.mockEmbedJsToDevServer();
   });
 
@@ -55,6 +56,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -84,6 +86,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
+        preselectSso: true,
       });
 
       cy.log("set default value for id");
@@ -126,6 +129,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
+        preselectSso: true,
       });
 
       cy.log("hide both parameters");
@@ -178,6 +182,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Question with Parameters",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -222,6 +227,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Orders in a dashboard",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -235,6 +241,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Orders, Count",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -245,7 +252,10 @@ describe(suiteTitle, () => {
     });
 
     it("should not show parameter settings for exploration template", () => {
-      navigateToEntitySelectionStep({ experience: "exploration" });
+      navigateToEntitySelectionStep({
+        experience: "exploration",
+        preselectSso: true,
+      });
 
       getEmbedSidebar().within(() => {
         cy.log("go to embed options step");

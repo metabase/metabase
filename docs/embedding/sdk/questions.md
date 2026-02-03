@@ -1,11 +1,11 @@
 ---
-title: "Embedded analytics SDK - questions"
-description: How to embed charts in your app with the Embedded analytics SDK.
+title: "Modular embedding SDK - questions"
+description: How to embed charts in your app with the Modular embedding SDK.
 ---
 
-# Embedded analytics SDK - questions
+# Modular embedding SDK - questions
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 There are different ways you can embed questions:
 
@@ -77,7 +77,7 @@ See [AI chat](./ai-chat.md).
 
 ## Customizing interactive questions
 
-By default, the Embedded analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
+By default, the modular embedding SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
 
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
@@ -162,10 +162,20 @@ To prevent people from saving changes to an interactive question, or from saving
 
 ![Query builder](../images/query-builder.png)
 
+### Embed the visual query builder
+
 You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
+```
+
+### Embed the SQL editor
+
+You can also embed the SQL editor to enable people to build questions with SQL by passing `questionId="new-native"` to the `InteractiveQuestion` component:
+
+```tsx
+{% include_file "{{ dirname }}/snippets/questions/new-native-question.tsx" %}
 ```
 
 To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).

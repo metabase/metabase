@@ -11,10 +11,10 @@ import {
 import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
-import LimitPopover from "metabase/query_builder/components/LimitPopover";
+import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
 import {
   getFirstQueryResult,
   getIsResultDirty,
@@ -70,7 +70,7 @@ const mapDispatchToProps = {
   onChangeLimit: setLimit,
 };
 
-function QuestionRowCount({
+function QuestionRowCountInner({
   question,
   result,
   isResultDirty,
@@ -203,11 +203,11 @@ function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
 
 const ConnectedQuestionRowCount = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
-  Database.load({
+  Databases.load({
     id: getDatabaseId,
     loadingAndErrorWrapper: false,
   }),
-)(QuestionRowCount);
+)(QuestionRowCountInner);
 
 export type QuestionRowCountOpts = {
   result?: Dataset;
@@ -218,5 +218,6 @@ function shouldRender({ result, isObjectDetail }: QuestionRowCountOpts) {
   return result?.data && !isObjectDetail;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(ConnectedQuestionRowCount, { shouldRender });
+export const QuestionRowCount = Object.assign(ConnectedQuestionRowCount, {
+  shouldRender,
+});

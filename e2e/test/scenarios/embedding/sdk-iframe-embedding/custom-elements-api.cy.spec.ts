@@ -14,7 +14,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   beforeEach(() => {
     cy.signInAsAdmin();
     H.prepareSdkIframeEmbedTest({
-      withTokenFeatures: true,
+      withToken: "bleeding-edge",
     });
   });
 
@@ -527,7 +527,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         cy.log(
           "Check that calling defineMetabaseConfig after the initial load works",
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- this is not the real app
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- this is not the real app
         cy.findByText("Change theme").click();
 
         H.getSimpleEmbedIframeContent()

@@ -120,7 +120,7 @@
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
-  :visibility :admin
+  :visibility :authenticated
   :export?    true
   :setter     :none
   :getter     (comp str t/zone-id)

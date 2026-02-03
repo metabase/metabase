@@ -3,7 +3,7 @@
 
   TODO -- move this into the `lib-be` module since it's not really QP-specific, it's something that would live in Lib
   if it didn't have dependencies on [[metabase.util.date-2]]."
-  (:refer-clojure :exclude [every? some])
+  (:refer-clojure :exclude [every? some get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -19,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? some]]
+   [metabase.util.performance :refer [every? some get-in]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
@@ -166,7 +166,7 @@
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
 
-;; Decorders consist of:
+;; Decoders consist of:
 ;; 1) Parser which tries to parse the date parameter string
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference

@@ -108,7 +108,8 @@
    ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
    [:and
     {:error/message "non-blank string"
-     :json-schema   {:type "string" :minLength 1}}
+     :json-schema   {:type "string" :minLength 1}
+     :api/regex     #".+"}
     [:string {:min 1}]
     [:fn
      {:error/message "non-blank string"}
@@ -152,7 +153,7 @@
       :description (str message)
       :error/fn    (fn [_ _]
                      (str message))
-      :api/regex   #"[1-9]\d*"}]))
+      :api/regex   #"-[1-9]\d*"}]))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -261,7 +262,7 @@
   "Schema for a valid representation of a boolean
   (one of `\"true\"` or `true` or `\"false\"` or `false`.).
   Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
-   Garanteed to evaluate to `true` or `false` when passed through a json decoder."
+   Guaranteed to evaluate to `true` or `false` when passed through a json decoder."
   (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))
               :json-schema {:type "boolean"}}
        "true" "false" true false]
@@ -319,7 +320,7 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (mu/with-api-error-message
-   [:re #"^[A-Za-z0-9_\-]{21}$"]
+   [:re {:api/regex #"[A-Za-z0-9_\-]{21}"} #"^[A-Za-z0-9_\-]{21}$"]
    (deferred-tru "String must be a valid 21-character NanoID string.")))
 
 (def UUIDString
