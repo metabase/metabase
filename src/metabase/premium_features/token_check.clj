@@ -111,6 +111,11 @@
       t/local-date
       str))
 
+(defn- today []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      t/local-date
+      str))
+
 (defenterprise metabot-stats
   "Stats for Metabot"
   metabase-enterprise.metabot-v3.core
@@ -124,9 +129,12 @@
   "Stats for Transforms"
   metabase.transforms.core
   []
-  {:transform-native-runs    0
-   :transform-python-runs    0
-   :transform-usage-date     (yesterday)})
+  {:transform-native-runs         0
+   :transform-python-runs         0
+   :transform-usage-date          (yesterday)
+   :transform-rolling-native-runs 0
+   :transform-rolling-python-runs 0
+   :transform-rolling-usage-date  (today)})
 
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "

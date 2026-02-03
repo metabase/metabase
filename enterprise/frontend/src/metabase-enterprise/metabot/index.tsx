@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 
+import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -8,6 +9,7 @@ import { Metabot } from "./components/Metabot";
 import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getAdminRoutes as getAdminUpsellRoutes } from "./components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
+import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { MetabotDataStudioSidebar } from "./components/MetabotDataStudioSidebar";
@@ -32,7 +34,8 @@ import {
  */
 PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
 PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
-PLUGIN_METABOT.MetabotContext = MetabotContext;
+PLUGIN_METABOT.MetabotContext =
+  MetabotContext as React.Context<MetabotContextType>;
 
 PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 
@@ -54,6 +57,7 @@ export function initializePlugin() {
       ),
       // components
       Metabot,
+      MetabotChat,
       MetabotAppBarButton,
       MetabotDataStudioButton,
       MetabotDataStudioSidebar,

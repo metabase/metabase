@@ -119,6 +119,47 @@
                   ;; Ignore cleanup errors
                   nil)))))))))
 
+;;; ------------------------------------------------------------
+;;; Filter xf tests
+;;; ------------------------------------------------------------
+
+(deftest ^:parallel matching-timestamp?-test
+  (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
+    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+          field-path          [:start_time]
+          range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
+          range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
+          range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
+
+      (testing "with both start and end bounds"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
+          nil   nil                       ; missing field returns nil
+          true  "2024-01-15T12:00:00Z"    ; timestamp in middle of range
+          false "2023-12-15T12:00:00Z"    ; timestamp before range
+          false "2024-02-15T12:00:00Z"    ; timestamp after range
+          true  "2024-01-01T00:00:00Z"    ; start boundary is inclusive
+          true  "2024-02-01T00:00:00Z"))  ; end boundary is inclusive too 🤷
+
+      (testing "with only start bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-start-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp after start
+          true  "2024-02-15T12:00:00Z"    ; any timestamp after start
+          false "2023-12-15T12:00:00Z"))  ; timestamp before start
+
+      (testing "with only end bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-end-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp before end
+          true  "2023-12-15T12:00:00Z"    ; any timestamp before end
+          false "2024-02-15T12:00:00Z"))  ; timestamp after end
+
+      (testing "returns nil when field value is missing"
+        (are [job] (nil? (matching-timestamp? job field-path range-jan-feb))
+          {}
+          {:other "value"})))))
+
 ;;; ------------------------------------------------- Source Table Resolution Tests ----------------------------------
 
 (deftest batch-lookup-table-ids-test

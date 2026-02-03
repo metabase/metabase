@@ -183,6 +183,12 @@ export function useEntitySuggestions({
     hasMatchingFilteredModels &&
     (searchModels?.length ?? 0) > 1;
 
+  const shouldFetchRecents =
+    enabled &&
+    query.length === 0 &&
+    !isInModelSelectionMode &&
+    !selectedSearchModel;
+
   const {
     menuItems: entityMenuItems,
     isLoading,
@@ -193,11 +199,7 @@ export function useEntitySuggestions({
     onSelectSearchResult: handleSearchResultSelect,
     onSelectUser: handleUserSelect,
     enabled: enabled && !isInModelSelectionMode,
-    shouldFetchRecents:
-      enabled &&
-      query.length === 0 &&
-      !isInModelSelectionMode &&
-      !selectedSearchModel,
+    shouldFetchRecents,
     searchModels: effectiveSearchModels,
     searchOptions,
   });

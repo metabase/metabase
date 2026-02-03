@@ -1,18 +1,38 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import type {
-  PythonTransformSourceDraft,
+  DraftTransformSource,
+  MetabotTransformInfo,
   SuggestedTransform,
+  TaggedTransform,
   Transform,
-  TransformSource,
+  UnsavedTransform,
+  WorkspaceTransform,
 } from "metabase-types/api";
 
+type AnyTransform =
+  | Transform
+  | TaggedTransform
+  | WorkspaceTransform
+  | UnsavedTransform
+  | SuggestedTransform;
+
 export const useRegisterMetabotTransformContext = (
-  transform: Transform | SuggestedTransform | undefined,
-  source: TransformSource | PythonTransformSourceDraft,
+  transform: AnyTransform | undefined,
+  source?: DraftTransformSource,
 ) => {
   useRegisterMetabotContextProvider(async () => {
+    if (!transform && !source) {
+      return {};
+    }
+
     return {
-      user_is_viewing: [{ type: "transform", ...(transform || {}), source }],
+      user_is_viewing: [
+        {
+          ...transform,
+          type: "transform",
+          ...(source !== undefined && { source }),
+        } as MetabotTransformInfo,
+      ],
     };
   }, [transform, source]);
 };

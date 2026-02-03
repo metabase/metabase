@@ -21,6 +21,7 @@ import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
+import { initializePlugin as initializeWorkspaces } from "./data-studio/workspaces";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -95,4 +96,5 @@ export function initializePlugins() {
   initializeTransformsPython();
   initializeSupport();
   initializeTenants?.();
+  initializeWorkspaces();
 }

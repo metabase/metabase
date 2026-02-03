@@ -171,6 +171,7 @@ const SdkIframeEmbedView = ({
               key={rerenderKey}
               className={SdkIframeEmbedRouteS.Dashboard}
               {...entityProps}
+              autoRefreshInterval={settings.autoRefreshInterval}
               withTitle={settings.withTitle}
               withDownloads={settings.withDownloads}
               initialParameters={settings.initialParameters}
@@ -192,6 +193,7 @@ const SdkIframeEmbedView = ({
             className={SdkIframeEmbedRouteS.Dashboard}
             dashboardId={settings.dashboardId ?? null}
             token={settings.token}
+            autoRefreshInterval={settings.autoRefreshInterval}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
             withSubscriptions={settings.withSubscriptions}

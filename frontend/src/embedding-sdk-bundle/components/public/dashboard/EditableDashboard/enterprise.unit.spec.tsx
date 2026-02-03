@@ -10,6 +10,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 
+import { addEnterpriseAutoRefreshTests } from "../shared-tests/auto-refresh.spec";
 import { addEnterpriseSubscriptionsTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -30,6 +31,7 @@ const setupEnterprise = async (
 
 describe("EditableDashboard", () => {
   addEnterpriseSubscriptionsTests(setupEnterprise);
+  addEnterpriseAutoRefreshTests(setupEnterprise);
 
   it("should support dashboard editing", async () => {
     await setupEnterprise();

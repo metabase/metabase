@@ -4,9 +4,11 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime ZonedDateTime ZoneId)))
@@ -15,21 +17,29 @@
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
-   `target` can be a string or a map. If `target` is a string, type :table is assumed."
+   `target` can be a string or a map. If `target` is a string, type :table is assumed.
+   If no schema is provided, uses the driver's default schema."
   [target]
-  (let [target (if (map? target)
-                 target
-                 ;; assume this is just a plain table name
-                 {:type :table, :name target})
-        driver driver/*driver*]
+  (let [driver driver/*driver*
+        target (cond-> (if (map? target)
+                         target
+                         ;; assume this is just a plain table name
+                         {:type :table, :name target})
+                 (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
+                 (assoc :schema (driver.sql/default-schema driver)))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
-      (-> (driver/drop-transform-target! driver (mt/db) target)
-          u/ignore-exceptions)
+      (try
+        (driver/drop-transform-target! driver (mt/db) target)
+        (catch Exception e
+          (log/warnf e "Failed to drop transform target table %s.%s for driver %s"
+                     (:schema target) (:name target) driver)))
       ;; Also clean up the Metabase metadata
-      (-> (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
-          u/ignore-exceptions))))
+      (try
+        (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
+        (catch Exception e
+          (log/warnf e "Failed to delete Table metadata for %s" (:name target)))))))
 
 (defn gen-table-name
   "Generate a random table name with prefix `table-name-prefix`."
@@ -37,7 +47,8 @@
   (if (map? table-name-prefix)
     ;; table-name-prefix is a whole target, randomize the name
     (update table-name-prefix :name gen-table-name)
-    (let [table-name (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))]
+    ;; Strip off some of the randomness, so that less tests run afoul of the length limit.
+    (let [table-name (str table-name-prefix \_ (subs (str/replace (str (random-uuid)) \- \_) 0 26))]
       ;; this caught me out when testing, was annoying to debug - hence assert
       (assert (< (count table-name) (driver/table-name-length-limit driver/*driver*))
               "chosen identifier prefix should not cause identifiers longer than the driver/table-name-length-limit")
@@ -138,6 +149,14 @@
    This is needed for databases like BigQuery that require a schema/dataset."
   []
   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
+
+(defn default-schema-or-public
+  "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
+   Useful for tests that need to create tables with a schema matching transform targets."
+  []
+  (or (when (get-method driver.sql/default-schema driver/*driver*)
+        (driver.sql/default-schema driver/*driver*))
+      "public"))
 
 (defmulti delete-schema!
   "Deletes a schema."

@@ -2,44 +2,85 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTablesEndpoints,
+  setupWorkspaceCheckoutEndpoint,
+  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { PythonTransformSourceDraft } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockTable,
+  createMockTransform,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { PythonTransformEditor } from "./PythonTransformEditor";
 
-const mockDatabase = createMockDatabase({ id: 1, name: "Test Database" });
-const mockTable = createMockTable({ id: 1, db_id: 1, name: "Test Table" });
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
+
+const DATABASE_ID = 1;
+const mockDatabase = createMockDatabase({
+  id: DATABASE_ID,
+  name: "Test Database",
+});
+const mockTable = createMockTable({
+  id: 1,
+  db_id: DATABASE_ID,
+  name: "Test Table",
+});
 
 const mockPythonSource: PythonTransformSourceDraft = {
   type: "python",
   body: "# Python script\nprint('Hello, world!')",
-  "source-database": 1,
+  "source-database": DATABASE_ID,
   "source-tables": {},
 };
+
+const mockPythonTransform = createMockTransform({
+  id: 1,
+  name: "Test Python Transform",
+  source_type: "python",
+  source: {
+    type: "python",
+    body: "def transform(): pass",
+    "source-database": DATABASE_ID,
+    "source-tables": {},
+  },
+});
 
 type SetupOpts = {
   source?: PythonTransformSourceDraft;
   isEditMode?: boolean;
-  transformId?: number;
+  transform?: Transform;
+  uiOptions?: PythonTransformEditorUiOptions;
 };
 
 function setup({
   source = mockPythonSource,
   isEditMode = true,
-  transformId = 1,
+  transform,
+  uiOptions,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([mockDatabase]);
   setupTablesEndpoints([mockTable]);
   setupSearchEndpoints([]);
+  setupWorkspacesEndpoint([]);
+  setupWorkspaceCheckoutEndpoint({});
 
   renderWithProviders(
     <PythonTransformEditor
       source={source}
       isEditMode={isEditMode}
-      transformId={transformId}
+      transform={transform}
+      uiOptions={uiOptions}
       onChangeSource={jest.fn()}
       onAcceptProposed={jest.fn()}
       onRejectProposed={jest.fn()}
@@ -51,6 +92,10 @@ function setup({
 }
 
 describe("PythonTransformEditor", () => {
+  beforeEach(() => {
+    mockHasPremiumFeature.mockReturnValue(false);
+  });
+
   describe("view mode (not editing)", () => {
     it("should not render the data picker sidebar when not in edit mode", () => {
       setup({ isEditMode: false });
@@ -72,7 +117,7 @@ describe("PythonTransformEditor", () => {
     });
 
     it("should render EditDefinitionButton when not in edit mode", () => {
-      setup({ isEditMode: false, transformId: 1 });
+      setup({ isEditMode: false, transform: mockPythonTransform });
       expect(screen.getByText(/edit definition/i)).toBeInTheDocument();
     });
   });
@@ -100,6 +145,23 @@ describe("PythonTransformEditor", () => {
     it("should not render EditDefinitionButton in edit mode", () => {
       setup({ isEditMode: true });
       expect(screen.queryByText(/edit definition/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("hideRunButton option", () => {
+    it("should render run button when hideRunButton is not set", () => {
+      setup({ isEditMode: true });
+      expect(screen.getByTestId("run-button")).toBeInTheDocument();
+    });
+
+    it("should render run button when hideRunButton is false", () => {
+      setup({ isEditMode: true, uiOptions: { hideRunButton: false } });
+      expect(screen.getByTestId("run-button")).toBeInTheDocument();
+    });
+
+    it("should not render run button when hideRunButton is true", () => {
+      setup({ isEditMode: true, uiOptions: { hideRunButton: true } });
+      expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
     });
   });
 });
