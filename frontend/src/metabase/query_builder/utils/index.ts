@@ -3,10 +3,9 @@ import querystring from "querystring";
 import type { Location } from "history";
 import _ from "underscore";
 
-import { serializeCardForUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Field, Series } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
@@ -50,7 +49,14 @@ export function getURLForCardState(
     objectId?: string;
   }
   const options: Options = {
-    hash: card && dirty ? serializeCardForUrl(card) : "",
+    hash:
+      card && dirty
+        ? Question.serializeCardForUrl(card, {
+            includeOriginalCardId: true,
+            includeDatasetQuery: true,
+            includeDisplayIsLocked: true,
+          })
+        : "",
     query,
   };
   const isAdHocQuestion = !card.id;

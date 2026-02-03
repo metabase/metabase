@@ -724,30 +724,31 @@ class Question {
     );
   }
 
-  // Internal methods
-  _serializeForUrl({
-    includeEntityId = true,
-    includeDatasetQuery = true,
-    includeOriginalCardId = true,
-    includeDisplayIsLocked = false,
-    creationType,
-  }: {
-    includeEntityId?: boolean;
-    includeDatasetQuery?: boolean;
-    includeOriginalCardId?: boolean;
-    includeDisplayIsLocked?: boolean;
-    creationType?: string;
-  } = {}) {
-    const card = this._card;
+  static serializeCardForUrl(
+    card: CardObject,
+    options: {
+      includeEntityId?: boolean;
+      includeDatasetQuery?: boolean;
+      includeOriginalCardId?: boolean;
+      includeDisplayIsLocked?: boolean;
+      creationType?: string;
+    },
+  ) {
+    const {
+      includeEntityId = true,
+      includeDatasetQuery = true,
+      includeOriginalCardId = true,
+      includeDisplayIsLocked = false,
+      creationType,
+    } = options;
+
     const cardCopy = {
       name: card.name,
       description: card.description,
       collection_id: card.collection_id,
       dashboard_id: card.dashboard_id,
       ...(includeEntityId ? { entity_id: card.entity_id } : {}),
-      ...(includeDatasetQuery
-        ? { dataset_query: Lib.toJsQuery(this.query()) }
-        : {}),
+      ...(includeDatasetQuery ? { dataset_query: card.dataset_query } : {}),
       display: card.display,
       ...(_.isEmpty(card.parameters)
         ? undefined
@@ -778,6 +779,22 @@ class Question {
       dashcardId: card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
+  }
+
+  // Internal methods
+  _serializeForUrl(
+    options: {
+      includeEntityId?: boolean;
+      includeDatasetQuery?: boolean;
+      includeOriginalCardId?: boolean;
+      includeDisplayIsLocked?: boolean;
+      creationType?: string;
+    } = {},
+  ) {
+    return Question.serializeCardForUrl(
+      { ...this._card, dataset_query: Lib.toJsQuery(this.query()) },
+      options,
+    );
   }
 
   _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
