@@ -217,6 +217,23 @@
   [_parser driver query]
   (returned-columns driver query))
 
+(defn- referenced-fields
+  "Extract fields referenced (used) in a native query - fields in WHERE, JOIN ON, etc."
+  [driver native-query]
+  (let [{:keys [used-fields]} (-> native-query
+                                  lib/raw-native-query
+                                  (parsed-query driver)
+                                  macaw/->ast
+                                  (->> (sql-tools.macaw.references/field-references driver)))]
+    (into #{}
+          (mapcat #(->> (resolve-field driver native-query %)
+                        (keep :col)))
+          used-fields)))
+
+(defmethod sql-tools/referenced-fields-impl :macaw
+  [_parser driver query]
+  (referenced-fields driver query))
+
 (defn validate-query
   "Validate native query. TODO: limits; what this can and can not do."
   [driver native-query]

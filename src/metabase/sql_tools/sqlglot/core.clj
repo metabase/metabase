@@ -78,6 +78,40 @@
   [_parser driver query]
   (referenced-tables driver query))
 
+;;;; referenced-fields
+
+(defn- namespaced-fields
+  "Build a lookup map: table -> field-name -> field metadata."
+  [mp]
+  (reduce (fn [acc table]
+            ;; TODO: Multiple schemas.
+            (assoc acc (:name table) (u/for-map
+                                      [field (lib.metadata/fields mp (:id table))]
+                                      [(:name field) field])))
+          {}
+          (lib.metadata/tables mp)))
+
+(defn- coords->fields
+  "Convert a [catalog schema table field] tuple to field metadata."
+  [namespaced-fields* [_catalog _schema table-name field-name :as _coords]]
+  (if (= "*" field-name)
+    (some-> (get namespaced-fields* table-name) vals)
+    (some-> (get-in namespaced-fields* [table-name field-name]) vector)))
+
+(defn- referenced-fields
+  "Given a driver and a native query, return the set of :metadata/column fields referenced in the query."
+  [driver query]
+  (let [sql (lib/raw-native-query query)
+        field-coords (sql-parsing/referenced-fields (driver->dialect driver) sql)
+        namespaced-fields* (namespaced-fields query)]
+    (into #{}
+          (mapcat (partial coords->fields namespaced-fields*))
+          field-coords)))
+
+(defmethod sql-tools/referenced-fields-impl :sqlglot
+  [_parser driver query]
+  (referenced-fields driver query))
+
 ;;;; Validation
 
 (defn- process-error-dispatch [_driver {:keys [type]}]
@@ -143,40 +177,6 @@
 (defmethod sql-tools/validate-query-impl :sqlglot
   [_parser driver query]
   (validate-query driver query))
-
-;;;; referenced-fields
-
-(defn- namespaced-columns
-  [mp]
-  (reduce (fn [acc table]
-            ;; TODO: Multiple schemas.
-            #_(assoc-in acc [(:schema table) (:name table)]
-                        (u/for-map
-                         [field (lib.metadata/fields mp (:id table))]
-                         [(:name field) field]))
-            (assoc acc (:name table) (u/for-map
-                                      [field (lib.metadata/fields mp (:id table))]
-                                      [(:name field) field])))
-          {}
-          (lib.metadata/tables mp)))
-
-(defn- field->columns
-  [namespaced-columns* [_catalog _schema table-name field-name :as _coords]]
-  (if (= "*" field-name)
-    (some-> (get namespaced-columns* table-name) vals)
-    (some-> (get-in namespaced-columns* [table-name field-name]) vector)))
-
-(defn referenced-columns
-  "Given a driver and a native query, return the set of :metadata/columns referenced in the query.
-
-  Throws if a referenced field in the query cannot be matched to an application database column."
-  [driver query]
-  (let [sql (lib/raw-native-query query)
-        fields (sql-parsing/referenced-fields (driver->dialect driver) sql)
-        namespaced-columns* (namespaced-columns query)]
-    (into #{}
-          (mapcat (partial field->columns namespaced-columns*))
-          fields)))
 
 ;;;; returned-columns (column lineage)
 

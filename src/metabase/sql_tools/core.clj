@@ -25,6 +25,19 @@
   [driver native-query]
   (referenced-tables-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
+(defmulti referenced-fields-impl
+  "Parser specific implementation of [[referenced-fields]]. Do not use directly."
+  {:arglists '([parser driver native-query])}
+  parser-dispatch)
+
+(defn referenced-fields
+  "Return appdb fields referenced (used) by the `native-query`.
+
+  This includes fields in SELECT, WHERE, JOIN ON, GROUP BY, ORDER BY, etc.
+  Returns a set of :metadata/column maps."
+  [driver native-query]
+  (referenced-fields-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+
 (defmulti validate-query-impl
   "Parser specific implementation of [[validate-query]]. Do not use directly."
   {:arglists '([parser driver native-query])}
