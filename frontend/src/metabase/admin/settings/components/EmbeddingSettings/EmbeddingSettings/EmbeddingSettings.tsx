@@ -30,13 +30,17 @@ import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSetti
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
   const isEE = isEEBuild();
   const isUsingTenants = useSetting("use-tenants");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
       {children}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
+        items={getModularEmbeddingRelatedSettingItems({
+          isUsingTenants,
+          hasSimpleEmbedding,
+        })}
       />
 
       {isEE && <UpsellDevInstances location="embedding-page" />}
@@ -116,12 +120,7 @@ function EmbeddingSettingsEE() {
 }
 
 function EmbeddingSettingsOSS() {
-  return (
-    <SharedCombinedEmbeddingSettings
-      showCorsSettings
-      showContentTranslationSettings
-    />
-  );
+  return <SharedCombinedEmbeddingSettings showContentTranslationSettings />;
 }
 
 export const EmbeddingSettings = () => {

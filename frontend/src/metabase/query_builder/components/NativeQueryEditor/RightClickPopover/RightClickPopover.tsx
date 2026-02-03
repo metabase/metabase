@@ -9,7 +9,7 @@ interface RightClickPopoverProps {
   isOpen: boolean;
   canSaveSnippets: boolean;
   target: () => Element | null | undefined;
-  runQuery: () => void;
+  runQuery?: () => void;
   openSnippetModalWithSelectedText?: () => void;
 }
 
@@ -22,10 +22,12 @@ export const RightClickPopover = ({
 }: RightClickPopoverProps) => (
   <Popover isOpen={isOpen} target={target}>
     <Flex direction="column">
-      <a className={RightClickPopoverS.Anchor} onClick={runQuery}>
-        <Icon mr="sm" name="play" size={16} />
-        <h4>{t`Run selection`}</h4>
-      </a>
+      {runQuery && (
+        <a className={RightClickPopoverS.Anchor} onClick={runQuery}>
+          <Icon mr="sm" name="play" size={16} />
+          <h4>{t`Run selection`}</h4>
+        </a>
+      )}
       {canSaveSnippets && openSnippetModalWithSelectedText && (
         <a
           className={RightClickPopoverS.Anchor}

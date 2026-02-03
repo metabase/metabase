@@ -36,7 +36,7 @@ import {
 } from "../FlexibleSizeComponent";
 import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
-import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";

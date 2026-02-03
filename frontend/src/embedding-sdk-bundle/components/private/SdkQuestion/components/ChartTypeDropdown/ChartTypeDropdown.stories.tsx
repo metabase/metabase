@@ -7,7 +7,7 @@ import { ChartTypeDropdown } from "./ChartTypeDropdown";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/SdkQuestion/ChartTypeSelectorsList",
+  title: "EmbeddingSDK/SdkQuestion/ChartTypeDropdown",
   component: ChartTypeDropdown,
   parameters: {
     layout: "fullscreen",

@@ -678,3 +678,18 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
+
+(defn temp-table-name
+  "Generate a temporary table name with a random suffix for uniqueness.
+
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
+
+   Format: <prefix>_<random_suffix>"
+  [_driver table]
+  (let [schema (some-> table namespace)
+        rand   (subs (str (random-uuid)) 0 8)]
+    (keyword schema (str transform-temp-table-prefix "_" rand))))

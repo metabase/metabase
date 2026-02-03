@@ -13,11 +13,3 @@ export function publicDocument(uuid: string) {
   const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/public/document/${uuid}`;
 }
-
-export function documentWithAnchor(
-  document: Pick<Document, "id">,
-  blockId: string,
-) {
-  const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/document/${document.id}#${blockId}`;
-}
