@@ -125,7 +125,8 @@ function ActionMenu({
       if (!isBookmarked) {
         trackCollectionItemBookmarked(item);
       }
-      toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
+      const normalizedModel = normalizeItemModel(item);
+      toggleBookmark?.(item.id.toString(), normalizedModel);
     };
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);

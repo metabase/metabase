@@ -87,7 +87,7 @@ describe("ChartNestedSettingSeriesSingle", () => {
     const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
     expect(expandButtons).toHaveLength(5);
 
-    await fireEvent.click(expandButtons[1]);
+    fireEvent.click(expandButtons[1]);
 
     await waitFor(() => {
       screen.getByTestId("chart-settings-widget-series_settings");
@@ -108,7 +108,7 @@ describe("ChartNestedSettingSeriesSingle", () => {
     const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
     expect(expandButtons).toHaveLength(5);
 
-    await fireEvent.click(expandButtons[1]);
+    fireEvent.click(expandButtons[1]);
 
     await waitFor(() => {
       screen.getByTestId("chart-settings-widget-series_settings");
@@ -128,7 +128,7 @@ describe("ChartNestedSettingSeriesSingle", () => {
     setup({ series });
 
     const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
-    await fireEvent.click(expandButtons[1]);
+    fireEvent.click(expandButtons[1]);
 
     await waitFor(() => {
       screen.getByTestId("chart-settings-widget-series_settings");

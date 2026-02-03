@@ -3,8 +3,7 @@ import { t } from "ttag";
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import { formatValue } from "metabase/lib/formatting";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { Dataset } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { Dataset, SortingOptions } from "metabase-types/api";
 
 import type { MetricResult, SortColumn } from "./types";
 
@@ -51,7 +50,7 @@ export function sortMetrics(
       result = compare(a2, b2);
     }
 
-    return sort_direction === SortDirection.Asc ? result : -result;
+    return sort_direction === "asc" ? result : -result;
   });
 }
 

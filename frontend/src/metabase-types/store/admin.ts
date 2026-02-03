@@ -2,7 +2,6 @@ import type {
   CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
-  SettingDefinition,
 } from "metabase-types/api";
 
 export type AdminPathKey =
@@ -41,9 +40,6 @@ export interface AdminState {
       revision: number | null;
       hasChanged: boolean;
     };
-  };
-  settings: {
-    settings: SettingDefinition[];
   };
   databases: {
     deletionError: null | unknown;

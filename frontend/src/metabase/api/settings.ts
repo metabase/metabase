@@ -55,6 +55,7 @@ export const settingsApi = Api.injectEndpoints({
         return invalidateTags(error, [
           tag("session-properties"),
           ...(key === "uploads-settings" ? [listTag("database")] : []),
+          ...(key === "llm-anthropic-api-key" ? [listTag("llm-models")] : []),
         ]);
       },
     }),

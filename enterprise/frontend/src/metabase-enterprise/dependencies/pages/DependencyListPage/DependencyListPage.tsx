@@ -12,7 +12,6 @@ import type {
   DependencyListParamsOptions,
 } from "../../components/DependencyList/types";
 
-import type { DependencyListQueryParams } from "./types";
 import {
   getPageUrl,
   getUserParams,
@@ -22,17 +21,14 @@ import {
 } from "./utils";
 
 type DependencyListPageProps = {
-  location: Pick<Location<DependencyListQueryParams>, "query">;
+  location: Location;
 };
 
 type DependencyListPageOwnProps = DependencyListPageProps & {
   mode: DependencyListMode;
 };
 
-export function DependencyListPage({
-  mode,
-  location,
-}: DependencyListPageOwnProps) {
+function DependencyListPage({ mode, location }: DependencyListPageOwnProps) {
   const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 
@@ -46,10 +42,10 @@ export function DependencyListPage({
   });
 
   const params = useMemo(() => {
-    return isEmptyParams(location.query)
+    return isEmptyParams(location)
       ? parseUserParams(rawLastUsedParams)
-      : parseUrlParams(location.query);
-  }, [location.query, rawLastUsedParams]);
+      : parseUrlParams(location);
+  }, [location, rawLastUsedParams]);
 
   const handleParamsChange = (
     params: Urls.DependencyListParams,
