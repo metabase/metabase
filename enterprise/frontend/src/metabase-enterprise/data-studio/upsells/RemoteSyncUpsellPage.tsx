@@ -1,12 +1,14 @@
 import { t } from "ttag";
 
+import { useUpgradeAction } from "metabase/admin/upsells/components/UpgradeModal";
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
-import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import { useStoreUrl } from "metabase/common/hooks";
+// import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
+import { UPGRADE_URL } from "metabase/admin/upsells/constants";
+import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
+// import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getIsHosted } from "metabase/setup";
@@ -28,13 +30,14 @@ import { DottedBackground } from "../components/DottedBackground";
 
 import S from "./DataStudioUpsellPage.module.css";
 import { LineDecorator } from "./LineDecorator";
-import { DATA_STUDIO_UPGRADE_URL } from "./constants";
+// import { DATA_STUDIO_UPGRADE_URL } from "./constants";
 
 const CAMPAIGN = "remote-sync";
 const LOCATION = "data-studio-remote-sync";
 
 export function RemoteSyncUpsellPage() {
-  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
+    url: UPGRADE_URL,
     campaign: CAMPAIGN,
     location: LOCATION,
   });
@@ -43,19 +46,25 @@ export function RemoteSyncUpsellPage() {
   const applicationName = useSelector(getApplicationName);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const genericUpsellUrl = useUpsellLink({
-    url: DATA_STUDIO_UPGRADE_URL,
-    campaign: CAMPAIGN,
-    location: LOCATION,
-  });
-  const storeManagePlansUrl = useStoreUrl("account/manage/plans");
+  const {
+    data: trialData,
+    // isLoading: isTrialLoading,
+    // isError: isTrialError,
+  } = useCheckTrialAvailableQuery();
 
-  const getUpsellUrl = () => {
-    if (isHosted && isStoreUser) {
-      return storeManagePlansUrl;
-    }
-    return genericUpsellUrl;
-  };
+  // const genericUpsellUrl = useUpsellLink({
+  //   url: DATA_STUDIO_UPGRADE_URL,
+  //   campaign: CAMPAIGN,
+  //   location: LOCATION,
+  // });
+  // const storeManagePlansUrl = useStoreUrl("account/manage/plans");
+
+  // const getUpsellUrl = () => {
+  //   if (isHosted && isStoreUser) {
+  //     return storeManagePlansUrl;
+  //   }
+  //   return genericUpsellUrl;
+  // };
 
   const shouldShowContactAdmin = isHosted && !isStoreUser;
 
@@ -64,6 +73,8 @@ export function RemoteSyncUpsellPage() {
     description: t`Keep your most important datasets, metrics, and SQL logic under version control. Sync content to a Git repository to review changes, collaborate, and maintain a production-ready source of truth.`,
     // trialUpCta:
   };
+
+  const isTrialAvailable = trialData?.available ?? false;
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">
@@ -87,7 +98,7 @@ export function RemoteSyncUpsellPage() {
                     <Title order={2}>{copy.title}</Title>
                     <Stack gap="md" py="sm" mb="sm">
                       <Text c="text-secondary">{copy.description}</Text>
-                      {shouldShowContactAdmin ? (
+                      {shouldShowContactAdmin && (
                         <Text>
                           {anyStoreUserEmailAddress
                             ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
@@ -95,17 +106,22 @@ export function RemoteSyncUpsellPage() {
                             : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
                               t`Please ask a Metabase Store Admin to upgrade your plan.`}
                         </Text>
-                      ) : (
+                      )}
+                      {!isTrialAvailable && (
                         <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
                       )}
                     </Stack>
                     {!shouldShowContactAdmin && (
                       <Stack align="flex-start">
                         <UpsellCta
-                          onClick={triggerUpsellFlow}
-                          url={getUpsellUrl()}
+                          onClick={upgradeOnClick}
+                          url={upgradeUrl}
                           internalLink={undefined}
-                          buttonText={t`Upgrade to Pro`}
+                          buttonText={
+                            isTrialAvailable
+                              ? t`Try for free`
+                              : t`Upgrade to Pro`
+                          }
                           onClickCapture={() =>
                             trackUpsellClicked({
                               location: LOCATION,

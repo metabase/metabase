@@ -1,16 +1,16 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { useUpgradeAction } from "metabase/admin/upsells/components/UpgradeModal";
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/admin/upsells/components/analytics";
-import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import { useStoreUrl } from "metabase/common/hooks";
+import { UPGRADE_URL } from "metabase/admin/upsells/constants";
+import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
@@ -30,7 +30,6 @@ import { DottedBackground } from "../components/DottedBackground";
 
 import S from "./DataStudioUpsellPage.module.css";
 import { LineDecorator } from "./LineDecorator";
-import { DATA_STUDIO_UPGRADE_URL } from "./constants";
 
 export type DataStudioUpsellPageProps = {
   campaign: string;
@@ -51,19 +50,27 @@ export function DataStudioUpsellPage({
   bulletPoints,
   image,
 }: DataStudioUpsellPageProps) {
-  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
+    url: UPGRADE_URL,
     campaign,
     location,
   });
+
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const genericUpsellUrl = useUpsellLink({
-    url: DATA_STUDIO_UPGRADE_URL,
-    campaign,
-    location,
-  });
-  const storeManagePlansUrl = useStoreUrl("account/manage/plans");
+  const {
+    data: trialData,
+    // isLoading: isTrialLoading,
+    // isError: isTrialError,
+  } = useCheckTrialAvailableQuery();
+
+  // const genericUpsellUrl = useUpsellLink({
+  //   url: DATA_STUDIO_UPGRADE_URL,
+  //   campaign,
+  //   location,
+  // });
+  // const storeManagePlansUrl = useStoreUrl("account/manage/plans");
 
   useEffect(() => {
     trackUpsellViewed({ location, campaign });
@@ -71,14 +78,15 @@ export function DataStudioUpsellPage({
 
   const shouldShowContactAdmin = isHosted && !isStoreUser;
 
-  const getUpsellUrl = () => {
-    if (isHosted && isStoreUser) {
-      return storeManagePlansUrl;
-    }
-    return genericUpsellUrl;
-  };
+  // const getUpsellUrl = () => {
+  //   if (isHosted && isStoreUser) {
+  //     return storeManagePlansUrl;
+  //   }
+  //   return genericUpsellUrl;
+  // };
 
   const maxWidth = image ? 700 : 450;
+  const isTrialAvailable = trialData?.available ?? false;
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">
@@ -114,7 +122,7 @@ export function DataStudioUpsellPage({
                       ))}
                     </Stack>
                   )}
-                  {shouldShowContactAdmin ? (
+                  {shouldShowContactAdmin && (
                     <Text>
                       {anyStoreUserEmailAddress
                         ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
@@ -122,17 +130,20 @@ export function DataStudioUpsellPage({
                         : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
                           t`Please ask a Metabase Store Admin to upgrade your plan.`}
                     </Text>
-                  ) : (
+                  )}
+                  {isTrialAvailable && (
                     <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
                   )}
                 </Stack>
                 {!shouldShowContactAdmin && (
                   <Stack align="flex-start">
                     <UpsellCta
-                      onClick={triggerUpsellFlow}
-                      url={getUpsellUrl()}
+                      onClick={upgradeOnClick}
+                      url={upgradeUrl}
                       internalLink={undefined}
-                      buttonText={t`Upgrade to Pro`}
+                      buttonText={
+                        isTrialAvailable ? t`Try for free` : t`Upgrade to Pro`
+                      }
                       onClickCapture={() =>
                         trackUpsellClicked({ location, campaign })
                       }
