@@ -2,7 +2,7 @@ import type { BaseEntityId, DashboardSubscription } from "metabase-types/api";
 
 import { createMockUser } from "./user";
 
-export const createMockPulse = (
+export const createMockDashboardSubscription = (
   opts?: Partial<DashboardSubscription>,
 ): DashboardSubscription => ({
   name: "Pulse",

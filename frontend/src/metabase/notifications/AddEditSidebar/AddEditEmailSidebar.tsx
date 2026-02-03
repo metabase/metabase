@@ -83,10 +83,7 @@ export const AddEditEmailSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditEmailSidebarProps) => {
-  const isValid = dashboardPulseIsValid(
-    pulse,
-    formInput.channels as ChannelSpecs,
-  );
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
 

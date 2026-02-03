@@ -45,13 +45,12 @@ export const MutableParametersSection = ({
   }, [parameters, dashboard]);
 
   const pulseParameters = getPulseParameters(pulse);
-  const pulseParamValuesById = pulseParameters.reduce(
-    (map, parameter) => {
-      map[parameter.id] = parameter.value;
-      return map;
-    },
-    {} as Record<string, Parameter["value"]>,
-  );
+  const pulseParamValuesById = pulseParameters.reduce<
+    Record<string, Parameter["value"]>
+  >((map, parameter) => {
+    map[parameter.id] = parameter.value;
+    return map;
+  }, {});
 
   const valuePopulatedParameters = getDefaultValuePopulatedParameters(
     sortedParameters,
