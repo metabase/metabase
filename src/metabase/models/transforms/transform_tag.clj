@@ -18,9 +18,9 @@
 
 (defmethod mi/can-read? :model/TransformTag
   ([_instance]
-   (or api/*is-superuser?* api/*is-data-analyst?*))
+   (api/is-data-analyst?))
   ([_model _pk]
-   (or api/*is-superuser?* api/*is-data-analyst?*)))
+   (api/is-data-analyst?)))
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
@@ -34,7 +34,7 @@
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
-  (or api/*is-superuser?* api/*is-data-analyst?*))
+  (api/is-data-analyst?))
 
 (defn tag-name-exists?
   "Check if a tag with the given name already exists"

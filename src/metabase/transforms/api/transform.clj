@@ -51,10 +51,6 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
-(defn- check-is-data-analyst
-  []
-  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
-
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
 
@@ -316,7 +312,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (check-is-data-analyst)
+  (api/check-data-analyst)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
