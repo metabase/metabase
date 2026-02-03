@@ -35,7 +35,10 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
+import {
+  EmbeddingHubAdminSettingsPage,
+  SetupPermissionsAndTenantsPage,
+} from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
@@ -175,11 +178,14 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
           <Route title={t`Embedding`} component={AdminEmbeddingApp}>
             <IndexRoute component={EmbeddingSettings} />
 
-            <Route
-              path="setup-guide"
-              title={t`Setup guide`}
-              component={EmbeddingHubAdminSettingsPage}
-            />
+            <Route path="setup-guide" title={t`Setup guide`}>
+              <IndexRoute component={EmbeddingHubAdminSettingsPage} />
+              <Route
+                path="permissions"
+                title={t`Configure data permissions and enable tenants`}
+                component={SetupPermissionsAndTenantsPage}
+              />
+            </Route>
 
             {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
