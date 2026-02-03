@@ -67,84 +67,84 @@ export const translateContentString: TranslateContentStringFunction = (
 
 export type ColumnDisplayNamePattern = (value: string) => string;
 
-/**
- * Patterns for column display names.
- * These must match the patterns used in the backend:
- * - Aggregations: metabase.lib.aggregation
- * - Binning: metabase.lib.binning
- * - Temporal buckets: metabase.lib.temporal_bucket
- *
- * Each pattern is a function that takes a column name and returns the full display name.
- * More specific patterns must come before less specific ones.
- */
-const COLUMN_DISPLAY_NAME_PATTERNS: ColumnDisplayNamePattern[] = [
-  // Aggregation patterns (from metabase.lib.aggregation)
-  ...Lib.aggregationDisplayNamePatterns().map(
-    ({ prefix, suffix }) =>
-      (value: string) =>
-        `${prefix}${value}${suffix}`,
-  ),
-
-  // Binning patterns (from metabase.lib.binning)
-  // Numeric binning: uses displayName directly (e.g., "10 bins", "Auto binned")
-  ...Lib.numericBinningStrategies().map(
-    (strategy) => (value: string) => `${value}: ${strategy.displayName}`,
-  ),
-  // Coordinate binning: extract bin-width and format as "{width}°"
-  ...Lib.coordinateBinningStrategies()
-    .filter((strategy) => strategy.mbql?.binWidth != null)
-    .map(
-      (strategy) => (value: string) =>
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- filter ensures mbql.binWidth exists
-        `${value}: ${strategy.mbql!.binWidth}°`,
-    ),
-
-  // Temporal bucket patterns (from metabase.lib.temporal_bucket)
-  // ensuring the translated suffixes match (e.g., "Month" → "Monat" in German)
-  ...Lib.availableTemporalUnits().map(
-    (unit) => (value: string) => `${value}: ${Lib.describeTemporalUnit(unit)}`,
-  ),
-];
-
-// Unique marker to find where the value placeholder is in a pattern
-const VALUE_MARKER = "\u0000";
+// Cache the aggregation patterns since they're expensive to compute and don't change
+const AGGREGATION_PATTERNS = Lib.aggregationDisplayNamePatterns();
 
 /**
- * Translates a column display name by recursively parsing known patterns
- * (aggregations, binning, temporal buckets) and translating the inner column name.
+ * Translates a column display name by parsing it into parts and translating the translatable ones.
  *
- * Handles patterns where the value can be:
- * - At the start: "{value} של סכום" (Hebrew, right-to-left)
- * - At the end: "Sum of {value}" (English)
- * - Wrapped: "Somme de {value} totale" (hypothetical)
+ * The CLJ side (metabase.lib.util/parse-column-display-name-parts) handles all the complexity
+ * of understanding display name formats. This function simply:
+ * 1. Gets the parts from CLJ
+ * 2. Translates parts marked as "translatable"
+ * 3. Concatenates everything back together
  *
  * Examples:
- * - "Total" => tc("Total") (no pattern matched)
- * - "Sum of Total" => t`Sum of ${tc("Total")}`
- * - "Sum of Min of Total" => t`Sum of ${t`Min of ${tc("Total")}`}`
- * - "Created At: Month" => t`${tc("Created At")}: Month`
- * - "Total: Auto binned" => t`${tc("Total")}: Auto binned`
+ * - "Total" => tc("Total")
+ * - "Sum of Total" => "Sum of " + tc("Total")
+ * - "Products → Total" => tc("Products") + " → " + tc("Total")
+ * - "People - Product → Created At: Month" =>
+ *     tc("People") + " - " + tc("Product") + " → " + tc("Created At") + ": " + "Month"
  */
-// Separator used for binning and temporal bucket suffixes (e.g., "Total: Day", "Total: 10 bins")
-const COLON_SEPARATOR = ": ";
-
-// Separator used for joined table column names (e.g., "Products → Created At")
-// See: src/metabase/lib/field.cljc - field-display-name-add-fk-or-join-display-name
-const JOIN_SEPARATOR = " → ";
-
-// Separator used for implicit join aliases (e.g., "People - Product")
-// See: src/metabase/lib/join.cljc - standard-join-name
-const IMPLICIT_JOIN_SEPARATOR = " - ";
-
 export const translateColumnDisplayName = (
   displayName: string,
   tc: ContentTranslationFunction,
-  patterns: ColumnDisplayNamePattern[] = COLUMN_DISPLAY_NAME_PATTERNS,
+  patterns?: ColumnDisplayNamePattern[],
 ): string => {
   if (!hasTranslations(tc)) {
     return displayName;
   }
 
+  // If custom patterns are provided (for testing), use the legacy approach
+  if (patterns) {
+    return translateColumnDisplayNameWithPatterns(displayName, tc, patterns);
+  }
+
+  // Get parts from CLJ - it handles all the parsing complexity
+  const parts = Lib.parseColumnDisplayNameParts(
+    displayName,
+    AGGREGATION_PATTERNS,
+  );
+
+  // Translate translatable parts
+  const translatedParts = parts.map((part) => {
+    if (part.type === "translatable") {
+      return { ...part, translated: tc(part.value) };
+    }
+
+    return { ...part, translated: part.value };
+  });
+
+  // Check if any translatable part actually changed.
+  // If not, the parsing may have been wrong (e.g., "Note: Important" is a column name with a colon,
+  // not a column with a temporal bucket suffix). In that case, translate the whole string.
+  const anyTranslationApplied = translatedParts.some(
+    (part) => part.type === "translatable" && part.translated !== part.value,
+  );
+
+  if (!anyTranslationApplied) {
+    // No translation was applied to any part - try translating the whole string
+    return tc(displayName);
+  }
+
+  // Concatenate all parts
+  return translatedParts.map((part) => part.translated).join("");
+};
+
+/**
+ * Legacy pattern-based translation for backwards compatibility with tests.
+ * Uses the marker-based approach to find prefix/suffix in patterns.
+ */
+const VALUE_MARKER = "\u0000";
+const COLON_SEPARATOR = ": ";
+const JOIN_SEPARATOR = " → ";
+const IMPLICIT_JOIN_SEPARATOR = " - ";
+
+const translateColumnDisplayNameWithPatterns = (
+  displayName: string,
+  tc: ContentTranslationFunction,
+  patterns: ColumnDisplayNamePattern[],
+): string => {
   for (const pattern of patterns) {
     const withMarker = pattern(VALUE_MARKER);
     const markerIndex = withMarker.indexOf(VALUE_MARKER);
@@ -162,14 +162,14 @@ export const translateColumnDisplayName = (
       if (innerStart <= innerEnd) {
         const innerPart = displayName.substring(innerStart, innerEnd);
 
-        return pattern(translateColumnDisplayName(innerPart, tc, patterns));
+        return pattern(
+          translateColumnDisplayNameWithPatterns(innerPart, tc, patterns),
+        );
       }
     }
   }
 
-  // Handle colon-separated patterns for backend-translated temporal bucket suffixes
-  // (e.g., "Created At: Monat" where "Monat" is already translated by the backend).
-  // Explicit binning patterns are already handled above in COLUMN_DISPLAY_NAME_PATTERNS.
+  // Handle colon-separated patterns
   const colonIndex = displayName.lastIndexOf(COLON_SEPARATOR);
 
   if (colonIndex > 0) {
@@ -177,57 +177,52 @@ export const translateColumnDisplayName = (
     const suffixPart = displayName.substring(
       colonIndex + COLON_SEPARATOR.length,
     );
-
-    // Only split if the column part actually has a translation.
-    // This avoids incorrectly splitting column names that contain ": " literally.
-    const translatedColumn = translateColumnDisplayName(
+    const translatedColumn = translateColumnDisplayNameWithPatterns(
       columnPart,
       tc,
       patterns,
     );
+
     if (translatedColumn !== columnPart) {
       return translatedColumn + COLON_SEPARATOR + suffixPart;
     }
   }
 
-  // Handle joined table column names like "Products → Created At"
-  // or nested joins like "Orders → Products → Created At: Monat"
-  // We split on the FIRST arrow to preserve nested patterns in the column part.
+  // Handle join patterns
   const arrowIndex = displayName.indexOf(JOIN_SEPARATOR);
+
   if (arrowIndex > 0) {
     const joinAliasPart = displayName.substring(0, arrowIndex);
     const columnPart = displayName.substring(
       arrowIndex + JOIN_SEPARATOR.length,
     );
 
-    // The join alias may contain an implicit join separator " - " (e.g., "People - Product")
-    // which combines the joined table name and the FK field name.
-    // We only split on " - " here (within the arrow context) to avoid incorrectly
-    // splitting question names or other strings that contain dashes.
     const dashIndex = joinAliasPart.indexOf(IMPLICIT_JOIN_SEPARATOR);
+
     let translatedJoinAlias: string;
+
     if (dashIndex > 0) {
       const tablePart = joinAliasPart.substring(0, dashIndex);
       const fkPart = joinAliasPart.substring(
         dashIndex + IMPLICIT_JOIN_SEPARATOR.length,
       );
+
       translatedJoinAlias =
-        translateColumnDisplayName(tablePart, tc, patterns) +
+        translateColumnDisplayNameWithPatterns(tablePart, tc, patterns) +
         IMPLICIT_JOIN_SEPARATOR +
-        translateColumnDisplayName(fkPart, tc, patterns);
+        translateColumnDisplayNameWithPatterns(fkPart, tc, patterns);
     } else {
-      translatedJoinAlias = translateColumnDisplayName(
+      translatedJoinAlias = translateColumnDisplayNameWithPatterns(
         joinAliasPart,
         tc,
         patterns,
       );
     }
 
-    // columnPart may have more patterns (arrows, colons, aggregations)
     return (
       translatedJoinAlias +
       JOIN_SEPARATOR +
-      translateColumnDisplayName(columnPart, tc, patterns)
+      translateColumnDisplayNameWithPatterns(columnPart, tc, patterns)
     );
   }
 

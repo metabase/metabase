@@ -552,6 +552,26 @@
   []
   (to-array (map clj->js (lib.aggregation/aggregation-display-name-patterns))))
 
+(defn ^:export parse-column-display-name-parts
+  "Parse a column display name into a flat list of parts for translation.
+
+  Returns an array of objects, each with:
+  - type: 'static' (don't translate) or 'translatable' (should be translated)
+  - value: the string value
+
+  The FE simply needs to:
+  1. Translate all parts where type is 'translatable'
+  2. Concatenate all value strings together
+
+  The optional second argument is an array of aggregation patterns (from aggregation-display-name-patterns)."
+  ([display-name]
+   (parse-column-display-name-parts display-name nil))
+  ([display-name aggregation-patterns]
+   (let [patterns (when aggregation-patterns
+                    (map #(js->clj % :keywordize-keys true) aggregation-patterns))
+         parts (lib.util/parse-column-display-name-parts display-name patterns)]
+     (to-array (map clj->js parts)))))
+
 (defn ^:export numeric-binning-strategies
   "Returns the list of binning options for numeric fields. These split the data evenly into a fixed number of bins.
   Returns opaque values that can be passed to [[display-info]] for rendering."
