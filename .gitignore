@@ -171,4 +171,5 @@ CLAUDE.local.md
 /resources/python-sources/sqlglot/
 /resources/python-sources/sqlglot-*.dist-info/
 /resources/python-sources/.lock
+__pycache__/
 
