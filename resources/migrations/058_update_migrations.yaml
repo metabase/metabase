@@ -1394,7 +1394,7 @@ databaseChangeLog:
               UPDATE metabase_table
               SET data_layer = CASE data_layer
                 WHEN 'copper' THEN 'hidden'
-                ELSE 'internal'
+                ELSE 'final'
               END
       rollback:
         - sql:
