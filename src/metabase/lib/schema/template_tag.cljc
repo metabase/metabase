@@ -143,7 +143,10 @@
      [:type         [:= :table]]
      [:table-id     {:optional true} ::id/table]
      [:table-name   {:optional true} :string]
-     [:table-schema {:optional true} :string]]]
+     [:table-schema {:optional true} :string]
+     [:field-id     {:optional true} ::id/field]
+     [:start        {:optional true} :any]
+     [:stop         {:optional true} :any]]]
    [:ref ::disallow-dimension]
    [:fn
     {:error/message ":table template tags must have either a :table-id or a :table-name"}
