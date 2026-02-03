@@ -64,7 +64,7 @@ const convertCardsStatsToKebabCase = (
 export const interestingFields = (
   fields: TransformInspectField[],
   options?: { threshold?: number; limit?: number },
-): TransformInspectField & { interestingness: { score: number } }[] =>
+): Array<TransformInspectField & { interestingness: { score: number } }> =>
   INSPECTOR.interestingFields(fields, options?.threshold, options?.limit);
 
 export const evaluateTriggers = (

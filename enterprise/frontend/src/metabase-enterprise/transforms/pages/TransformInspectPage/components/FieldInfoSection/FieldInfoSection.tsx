@@ -73,7 +73,6 @@ export const FieldInfoSection = ({
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
-    defaultExpanded: {},
   });
 
   const targetInstance = useTreeTableInstance({
@@ -81,7 +80,6 @@ export const FieldInfoSection = ({
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
-    defaultExpanded: {},
   });
 
   return (
