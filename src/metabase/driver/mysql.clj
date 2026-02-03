@@ -120,9 +120,9 @@
     (= driver :mysql)))
 
 (defn mariadb?
-  "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
+  "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms-version` is present."
   [database]
-  (-> database :dbms_version :flavor (= "MariaDB")))
+  (-> database :dbms-version :flavor (= "MariaDB")))
 
 (defn- mysql?
   "Returns true if the database is MySQL (not MariaDB).
@@ -131,12 +131,27 @@
   (= "MySQL"
      (if-let [conn (:connection db)]
        (->> ^java.sql.Connection conn .getMetaData .getDatabaseProductName)
-       (-> db :dbms_version :flavor))))
+       (-> db :dbms-version :flavor))))
 
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+
+(defn- singlestore-connection?
+  "Returns true if the database is SingleStore by checking for memsql_version variable."
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (try
+       (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'memsql_version';")
+             rset (.executeQuery stmt)]
+         (.next rset))
+       (catch Exception _
+         false)))))
 
 (defn- partial-revokes-enabled?
   [driver db]
@@ -160,6 +175,7 @@
   [driver _feat db]
   (and (= driver :mysql)
        (mysql? db)
+       (not (singlestore-connection? driver db))
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
@@ -218,9 +234,10 @@
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :mysql
   [driver conn & {:as _options}]
-  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
+  ;; MariaDB and SingleStore don't allow users to query the privileges of roles a user might have (unless they have select privileges
   ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (mariadb-connection? driver conn)
+  (when-not (or (mariadb-connection? driver conn)
+                (singlestore-connection? driver conn))
     (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn sql {:as-arrays? true})))
           db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
           table-names (map first (sql->tuples "SHOW TABLES"))]
