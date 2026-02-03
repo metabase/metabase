@@ -4,10 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.transforms.api :as transforms.api]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
@@ -22,6 +18,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.transforms.api :as transforms.api]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -1133,7 +1133,7 @@
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
               ws            (ws.tu/ws-done! (:id ws))]
           (testing "returns failed status with error message and isolated table info"
-            (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+            (let [result (mt/with-log-level [metabase.transforms.query-impl :fatal]
                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
               (is (=? {:status     "failed"
                        :message    some?
@@ -1169,7 +1169,7 @@
               ws            (ws.tu/ws-done! (:id ws))]
 
           (testing "returns failed status with error message mentioning the bad column"
-            (let [result  (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+            (let [result  (mt/with-log-level [metabase.transforms.query-impl :fatal]
                             (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
               (is (=? {:status     "failed"
                        :message    #"(?si).*nocolumn.*"

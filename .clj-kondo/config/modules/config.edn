@@ -1585,7 +1585,8 @@
            task-history
            util}
    :friends #{models
-              enterprise/transforms-python}}
+              enterprise/transforms-python
+              enterprise/workspaces}}
 
 
   types
@@ -2444,6 +2445,7 @@
    :uses #{api
            api-keys
            config
+           database-routing
            driver
            events
            lib
