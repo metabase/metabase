@@ -84,7 +84,15 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
       iconSize={28}
     >
       {steps.map((step) => {
-        const isDone = step.cards.every((card) => card.done || card.optional);
+        const requiredCards = step.cards.filter((card) => !card.optional);
+
+        // For steps with required cards, only consider required cards.
+        // For steps with ONLY optional cards, consider optional cards too.
+        const isDone =
+          requiredCards.length > 0
+            ? requiredCards.every((card) => card.done)
+            : step.cards.some((card) => card.done);
+
         const hasOnlyOneCard = step.cards.length === 1;
 
         return (
