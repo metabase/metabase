@@ -56,14 +56,6 @@
 
 (humane-are/install!)
 
-;; Use for OSS-only tests to avoid EE-only failures when EE is available.
-(defmacro deftest-oss
-  "Define a test that only runs when EE features are unavailable."
-  [name & body]
-  `(clojure.test/deftest ~name
-     (when-not config/ee-available?
-       ~@body)))
-
 ;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
 (when-not config/is-test?
   (humane-test-output/activate!))
