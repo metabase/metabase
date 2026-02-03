@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Icon } from "metabase/ui";
 import {
+  Accordion,
   Card,
-  Collapse,
-  Flex,
   SimpleGrid,
   Stack,
   Text,
@@ -12,7 +12,6 @@ import {
   type TreeNodeData,
   TreeTable,
   type TreeTableColumnDef,
-  UnstyledButton,
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
@@ -20,6 +19,8 @@ import type {
   TransformInspectSource,
   TransformInspectTarget,
 } from "metabase-types/api";
+
+import S from "./FieldInfoSection.module.css";
 
 type FieldInfoSectionProps = {
   sources: TransformInspectSource[];
@@ -158,8 +159,6 @@ export const FieldInfoSection = ({
   sources,
   target,
 }: FieldInfoSectionProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   const sourceTreeData = useMemo(() => sources.map(buildTableNode), [sources]);
   const targetTreeData = useMemo(
     () => (target ? [buildTableNode(target)] : []),
@@ -242,35 +241,42 @@ export const FieldInfoSection = ({
   });
 
   return (
-    <Stack gap="md">
-      <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} w="100%">
-        <Flex gap="sm" align="center">
-          <Text fw={600}>{isExpanded ? "▼" : "▶"}</Text>
-          <Text fw={600}>{t`Field Information`}</Text>
-        </Flex>
-      </UnstyledButton>
-
-      <Collapse in={isExpanded}>
-        <SimpleGrid cols={2} spacing="lg">
-          <Stack gap="sm">
-            <Title order={5}>{t`Input`}</Title>
-            <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={sourceInstance} />
-            </Card>
-          </Stack>
-
-          <Stack gap="sm">
-            <Title order={5}>{t`Output`}</Title>
-            {target ? (
+    <Accordion
+      classNames={{
+        chevron: S.chevron,
+        content: S.content,
+        control: S.control,
+        icon: S.icon,
+        item: S.item,
+        label: S.label,
+      }}
+    >
+      <Accordion.Item value="field-info">
+        <Accordion.Control icon={<Icon name="field" />}>
+          {t`Field Information`}
+        </Accordion.Control>
+        <Accordion.Panel>
+          <SimpleGrid cols={2} spacing="lg">
+            <Stack gap="sm">
+              <Title order={5}>{t`Input`}</Title>
               <Card p={0} shadow="none" withBorder>
-                <TreeTable instance={targetInstance} />
+                <TreeTable instance={sourceInstance} />
               </Card>
-            ) : (
-              <Text c="text-tertiary">{t`No output table`}</Text>
-            )}
-          </Stack>
-        </SimpleGrid>
-      </Collapse>
-    </Stack>
+            </Stack>
+
+            <Stack gap="sm">
+              <Title order={5}>{t`Output`}</Title>
+              {target ? (
+                <Card p={0} shadow="none" withBorder>
+                  <TreeTable instance={targetInstance} />
+                </Card>
+              ) : (
+                <Text c="text-tertiary">{t`No output table`}</Text>
+              )}
+            </Stack>
+          </SimpleGrid>
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion>
   );
 };
