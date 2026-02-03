@@ -55,6 +55,22 @@
   (doseq [suffix ["" ".mv.db" ".trace.db" ".h2.db" ".lock.db"]]
     (fs/delete-if-exists (str base-path suffix))))
 
+(defn- h2-db-exists?
+  "Returns true when any H2 file exists for the base path."
+  [base-path]
+  (boolean
+   (some #(fs/exists? (str base-path %))
+         ["" ".mv.db" ".trace.db" ".h2.db" ".lock.db"])))
+
+;; H2 reuse prompt
+(defn- ask-reuse-h2?
+  "Ask user whether to reuse existing H2 files."
+  [base-path]
+  (println (c/yellow "Found existing H2 database:") base-path)
+  (let [choice (u/fzf-select! ["Reuse existing" "Create fresh"]
+                              "--height=10 --layout=reverse --prompt='H2 database: '")]
+    (= choice "Reuse existing")))
+
 ;; Token env var mapping (expects MBDEV_*_TOKEN in env)
 (def token-env-vars
   {:all-features    "MBDEV_ALL_FEATURES_TOKEN"
@@ -351,8 +367,14 @@
                       (find-free-port))
         _          (when h2-path
                      (ensure-h2-dir! h2-path))
-        _          (when (and h2-path fresh?)
-                     (delete-h2-files! h2-path))
+        _          (when h2-path
+                     (cond
+                       fresh?
+                       (delete-h2-files! h2-path)
+
+                       (h2-db-exists? h2-path)
+                       (when-not (ask-reuse-h2? h2-path)
+                         (delete-h2-files! h2-path))))
 
         ;; Ensure DB container (reuse if exists, unless --fresh)
         db-info    (when (not= db-type :h2)
