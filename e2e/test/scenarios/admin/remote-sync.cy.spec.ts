@@ -123,9 +123,7 @@ describe("Remote Sync", () => {
 
       cy.log("Test moving via drag-and-drop");
       H.collectionTable().findByText("Orders in a dashboard").as("dragSubject");
-      H.navigationSidebar()
-        .findByText("Test Synced Collection")
-        .as("dropTarget");
+      H.navigationSidebar().findByText("Synced Collection").as("dropTarget");
       H.dragAndDrop("dragSubject", "dropTarget");
       H.undoToast().should("contain.text", expectedError);
 
