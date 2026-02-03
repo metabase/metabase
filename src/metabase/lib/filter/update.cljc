@@ -55,7 +55,7 @@
    query
    (lib.filter/filters query stage-number)))
 
-(mu/defn remove-existing-filters-against-column :- ::lib.schema/query
+(mu/defn- remove-existing-filters-against-column :- ::lib.schema/query
   "Remove any existing filter clauses that use `column` as the first arg in a stage of a `query`."
   [query        :- ::lib.schema/query
    stage-number :- :int

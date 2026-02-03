@@ -25,6 +25,7 @@ import { getVisualizationSettings } from "./utils/visualization-settings";
 import {
   buildMeasureQuery,
   buildModifiedQuery,
+  ensureDatetimeBreakout,
   initializeProjectionConfigFromQuery,
 } from "./utils/queries";
 import {
@@ -209,7 +210,7 @@ export const selectBaseQueries = createSelector(
 
       if (sourceData.type === "metric") {
         const question = new Question(sourceData.data.card, metadata);
-        queries[sourceId] = Lib.ensureDatetimeBreakout(question.query());
+        queries[sourceId] = ensureDatetimeBreakout(question.query());
       } else {
         const measureId = getMeasureIdFromSourceId(sourceId);
         const query = buildMeasureQuery(measureId, sourceData, metadata);

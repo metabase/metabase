@@ -1,5 +1,9 @@
 import type * as Lib from "metabase-lib";
-import type { DateFilterSpec } from "metabase-lib";
+import type {
+  RelativeDateFilter,
+  SpecificDateFilter,
+  ExcludeDateFilter,
+} from "metabase-lib";
 import type {
   Card,
   CardDisplayType,
@@ -73,6 +77,14 @@ export interface MeasureData {
 export type SourceData =
   | { type: "metric"; data: MetricData }
   | { type: "measure"; data: MeasureData; tableId: ConcreteTableId };
+
+/**
+ * DateFilterSpec - reuses base filter types for abstract date filter configuration.
+ */
+export type DateFilterSpec =
+  | RelativeDateFilter
+  | SpecificDateFilter
+  | ExcludeDateFilter;
 
 /**
  * Projection config for temporal unit and date filter.

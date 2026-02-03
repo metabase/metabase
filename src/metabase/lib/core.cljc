@@ -13,7 +13,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.convert.metadata-to-legacy]
    [metabase.lib.database :as lib.database]
-   [metabase.lib.projection-config :as lib.projection-config]
    [metabase.lib.dispatch]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
@@ -34,7 +33,6 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.measure :as lib.measure]
    [metabase.lib.metadata]
-   [metabase.lib.metric-definition :as lib.metric-definition]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.column]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
@@ -75,7 +73,6 @@
          lib.convert/keep-me
          metabase.lib.convert.metadata-to-legacy/keep-me
          lib.database/keep-me
-         lib.projection-config/keep-me
          metabase.lib.dispatch/keep-me
          lib.drill-thru.column-extract/keep-me
          lib.drill-thru.pivot/keep-me
@@ -113,7 +110,6 @@
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
          lib.measure/keep-me
-         lib.metric-definition/keep-me
          metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
@@ -181,26 +177,6 @@
   lib-metadata-column-key->legacy-metadata-column-key]
  [lib.database
   database-id]
- [lib.projection-config
-  ;; ProjectionConfig functions
-  projection-config
-  with-projection-unit
-  with-projection-filter
-  clear-projection-filter
-  projection-config-unit
-  projection-config-filter
-  ;; Column matchers
-  first-datetime-column-matcher
-  first-numeric-column-matcher
-  column-matcher-by-name
-  column-matcher-by-field-id
-  ;; Apply functions
-  apply-projection-config
-  apply-projection-config-to-query
-  ensure-datetime-breakout
-  ;; Extract/initialize
-  initialize-projection-config
-  extract-filter-spec]
  [metabase.lib.dispatch
   dispatch-value]
  [lib.drill-thru
@@ -485,22 +461,6 @@
   available-measures
   check-measure-cycles
   check-measure-overwrite]
- [lib.metric-definition
-  metric-definition
-  with-metric-card
-  with-measure
-  metric-definition-source
-  metric-definition-source-type
-  metric-definition->base-query
-  ;; New MetricDefinition functions
-  available-dimensions
-  add-projection
-  projections
-  clear-projections
-  add-filter
-  metric-definition-filters
-  clear-filters
-  metric-definition->query]
  [metabase.lib.serialize
   prepare-for-serialization]
  [lib.stage

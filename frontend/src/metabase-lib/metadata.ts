@@ -9,7 +9,6 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import type { ProjectionConfigDisplayInfo } from "./projection-config";
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -43,7 +42,6 @@ import type {
   MetricMetadata,
   OrderByClause,
   OrderByClauseDisplayInfo,
-  ProjectionConfig,
   Query,
   QueryDisplayInfo,
   SegmentDisplayInfo,
@@ -152,11 +150,6 @@ declare function DisplayInfoFn(
   stageIndex: number,
   extraction: ColumnExtraction,
 ): ColumnExtractionInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  projectionConfig: ProjectionConfig,
-): ProjectionConfigDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

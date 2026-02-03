@@ -21,6 +21,7 @@ import {
   selectRawSeries,
 } from "../../selectors";
 import { isGeoColumn } from "../../utils/dimensions";
+import { extractFilterSpecFromQuery } from "../../utils/queries";
 import {
   cardIdToMeasureId,
   createMeasureSourceId,
@@ -105,7 +106,7 @@ export function MetricVisualization({
         : null;
 
       const filterSpec = newBreakoutCol
-        ? Lib.extractFilterSpec(newQuery, newBreakoutCol)
+        ? extractFilterSpecFromQuery(newQuery, newBreakoutCol)
         : null;
 
       onProjectionConfigChange({ unit, filterSpec });
