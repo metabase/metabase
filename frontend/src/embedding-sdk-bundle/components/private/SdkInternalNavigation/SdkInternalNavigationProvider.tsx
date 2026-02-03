@@ -56,14 +56,15 @@ const SdkInternalNavigationProviderInner = ({
   }, []);
 
   const pop = useCallback(() => {
-    // Get the entry being popped before updating state
-    const poppedEntry = stack.at(-1);
-    setStack((prev) => prev.slice(0, -1));
-    // Call onPop for placeholder entries (types starting with "placeholder-")
-    if (poppedEntry && "onPop" in poppedEntry && poppedEntry.onPop) {
-      poppedEntry.onPop();
-    }
-  }, [stack]);
+    setStack((prev) => {
+      const poppedEntry = prev.at(-1);
+      // Call onPop for placeholder entries (types starting with "placeholder-")
+      if (poppedEntry && "onPop" in poppedEntry && poppedEntry.onPop) {
+        poppedEntry.onPop();
+      }
+      return prev.slice(0, -1);
+    });
+  }, []);
 
   // Initialize the stack with a dashboard entry (called by dashboard components)
   const initWithDashboard = useCallback(
