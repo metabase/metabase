@@ -500,7 +500,22 @@ def is_pure_column(root):
 
 # TODO: infer_schema=True?
 # TODO: Comment on everything is aliased?
-def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema):
+def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
+    """
+    Extract column lineage from SQL query.
+
+    Args:
+        dialect: SQL dialect string (e.g., "postgres", "mysql")
+        sql: SQL query string
+        default_table_schema: Default schema name (e.g., "public")
+        sqlglot_schema_json: JSON-encoded schema map (to avoid GraalVM polyglot issues)
+
+    Returns:
+        JSON array of [alias, is_pure, dependencies] tuples
+    """
+    # Decode schema from JSON (passed from Clojure to avoid polyglot map issues)
+    sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
+
     ast = sqlglot.parse_one(sql, read=dialect)
     ast = qualify.qualify(ast,
                           db=default_table_schema,
