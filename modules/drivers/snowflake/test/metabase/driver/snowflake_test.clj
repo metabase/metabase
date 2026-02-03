@@ -301,12 +301,11 @@
     (mt/dataset airports
       (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
         (testing "describe-database"
-          (let [expected-tables #{:tables
-                                  #{{:name "continent",    :schema "PUBLIC", :description nil}
-                                    {:name "municipality", :schema "PUBLIC", :description nil}
-                                    {:name "region",       :schema "PUBLIC", :description nil}
-                                    {:name "country",      :schema "PUBLIC", :description nil}
-                                    {:name "airport",      :schema "PUBLIC", :description nil}}}]
+          (let [expected-tables #{{:name "continent", :schema "PUBLIC", :description nil}
+                                  {:name "municipality", :schema "PUBLIC", :description nil}
+                                  {:name "region", :schema "PUBLIC", :description nil}
+                                  {:name "country", :schema "PUBLIC", :description nil}
+                                  {:name "airport", :schema "PUBLIC", :description nil}}]
             (testing "should work with normal details"
               (is (= expected-tables
                      (:tables (driver/describe-database :snowflake (mt/db))))))
@@ -1429,25 +1428,22 @@
   ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
     (mt/test-driver :snowflake
-      (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
-        (let [priv-key-val      (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
-              expected-tables   #{{:name "users",      :schema "PUBLIC", :description nil}
-                                  {:name "venues",     :schema "PUBLIC", :description nil}
-                                  {:name "checkins",   :schema "PUBLIC", :description nil}
-                                  {:name "categories", :schema "PUBLIC", :description nil}
-                                  {:name "orders",     :schema "PUBLIC", :description nil}
-                                  {:name "people",     :schema "PUBLIC", :description nil}
-                                  {:name "products",   :schema "PUBLIC", :description nil}
-                                  {:name "reviews",    :schema "PUBLIC", :description nil}}]
-          (mt/with-temp [:model/Database db {:engine :snowflake
-                                             :details (-> (:details (mt/db))
-                                                          (dissoc :private-key-id)
-                                                          (assoc :private-key-options "uploaded")
-                                                          (assoc :private-key-value priv-key-val)
-                                                          (assoc :use-password false)
-                                                          (assoc :dbname nil))}]
-            (is (= expected-tables
-                   (:tables (driver/describe-database :snowflake db))))))))))
+      (mt/dataset airports
+        (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
+          (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
+            (mt/with-temp [:model/Database db {:engine :snowflake
+                                               :details (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)
+                                                            (assoc :private-key-options "uploaded")
+                                                            (assoc :private-key-value priv-key-val)
+                                                            (assoc :use-password false)
+                                                            (assoc :dbname nil))}]
+              (is (= #{{:name "continent",    :schema "PUBLIC", :description nil}
+                       {:name "municipality", :schema "PUBLIC", :description nil}
+                       {:name "region",       :schema "PUBLIC", :description nil}
+                       {:name "country",      :schema "PUBLIC", :description nil}
+                       {:name "airport",      :schema "PUBLIC", :description nil}}
+                     (:tables (driver/describe-database :snowflake db)))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.

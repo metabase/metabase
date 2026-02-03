@@ -29554,7 +29554,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "started_at", "ended_at" ]
+            "enum" : [ "transform-name", "start-time", "end-time", "status", "run-method", "transform-tags" ]
           }
         }, {
           "in" : "query",

@@ -13,6 +13,7 @@ import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
+import type { WorkspaceTransform } from "./workspace";
 
 export type DependencyId = number;
 
@@ -20,6 +21,7 @@ export const DEPENDENCY_TYPES = [
   "card",
   "table",
   "transform",
+  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -35,6 +37,7 @@ export const DEPENDENCY_GROUP_TYPES = [
   "metric",
   "table",
   "transform",
+  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -70,12 +73,24 @@ export type TableDependencyNodeData = Pick<
   | "fields"
   | "transform"
   | "owner"
->;
+> & { table_id?: TableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
   "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
+
+export type WorkspaceTransformDependencyNodeData = Pick<
+  WorkspaceTransform,
+  "name" | "ref_id" | "workspace_id"
+> & {
+  target?: {
+    db: number;
+    schema: string;
+    table: string;
+    table_id?: number | null;
+  };
+};
 
 export type CardDependencyNodeData = Pick<
   Card,
@@ -148,6 +163,11 @@ export type TransformDependencyNode = BaseDependencyNode<
   TransformDependencyNodeData
 >;
 
+export type WorkspaceTransformDependencyNode = BaseDependencyNode<
+  "workspace-transform",
+  WorkspaceTransformDependencyNodeData
+>;
+
 export type CardDependencyNode = BaseDependencyNode<
   "card",
   CardDependencyNodeData
@@ -200,6 +220,7 @@ export type MeasureDependencyNode = BaseDependencyNode<
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
+  | WorkspaceTransformDependencyNode
   | CardDependencyNode
   | SnippetDependencyNode
   | DashboardDependencyNode

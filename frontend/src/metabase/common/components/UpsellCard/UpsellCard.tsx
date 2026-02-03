@@ -3,6 +3,7 @@ import { useMount } from "react-use";
 
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
+import { useUpgradeAction } from "../../../admin/upsells/components/UpgradeModal";
 import { UpsellCta } from "../../../admin/upsells/components/UpsellCta";
 import { UpsellGem } from "../../../admin/upsells/components/UpsellGem";
 import { UpsellWrapper } from "../../../admin/upsells/components/UpsellWrapper";
@@ -10,7 +11,6 @@ import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "../../../admin/upsells/components/analytics";
-import { useUpsellLink } from "../../../admin/upsells/components/use-upsell-link";
 import { UPGRADE_URL } from "../../../admin/upsells/constants";
 
 import S from "./UpsellCard.module.css";
@@ -69,7 +69,7 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
   buttonStyle,
   ...props
 }: UpsellCardProps) => {
-  const urlWithParams = useUpsellLink({
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -88,6 +88,9 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
 
   const normalizedMaxWidth =
     maxWidth === "initial" ? undefined : `${maxWidth ?? 200}px`;
+
+  // Use onClick if provided, otherwise use upgrade action
+  const handleClick = onClick ?? upgradeOnClick;
 
   return (
     <Box
@@ -112,8 +115,8 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
           <Box mx="md" mb="lg">
             <UpsellCta
               style={buttonStyle}
-              onClick={onClick}
-              url={buttonLink ? urlWithParams : undefined}
+              onClick={handleClick}
+              url={upgradeUrl}
               internalLink={internalLink}
               buttonText={buttonText}
               onClickCapture={() => trackUpsellClicked({ location, campaign })}

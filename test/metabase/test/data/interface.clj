@@ -110,7 +110,10 @@
     [:database-name ms/NonBlankString] ; this must be unique
     [:table-definitions [:sequential ValidTableDefinition]]
     [:options [:map {:closed true}
-               [:native-ddl {:optional true} [:sequential :any]]]]]
+               [:native-ddl {:optional true} [:sequential :any]]
+               ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
+               ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
+               [:disable-fk-checks {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead

@@ -104,6 +104,9 @@ describe("Remote Sync", () => {
 
       H.getSyncStatusIndicators().should("have.length", 0);
 
+      const expectedError = "Uses content that is not remote synced.";
+
+      cy.log("Test moving via 'Move' modal");
       H.openCollectionItemMenu("Orders in a dashboard");
       H.popover().findByText("Move").click();
 
@@ -115,12 +118,20 @@ describe("Remote Sync", () => {
 
       cy.wait("@updateDashboard").then((req) => {
         expect(req.response?.statusCode).to.eq(400);
-        expect(req.response?.body.message).to.contain(
-          "content that is not remote synced",
-        );
+        expect(req.response?.body.message).to.contain(expectedError);
+        H.entityPickerModal().findByText(expectedError).should("exist");
+        H.entityPickerModal().button("Cancel").click();
       });
 
-      H.entityPickerModal().button("Cancel").click();
+      cy.log("Test moving via drag-and-drop");
+      H.collectionTable().findByText("Orders in a dashboard").as("dragSubject");
+      H.navigationSidebar()
+        .findByText("Test Synced Collection")
+        .as("dropTarget");
+      H.dragAndDrop("dragSubject", "dropTarget");
+      H.undoToast().should("contain.text", expectedError);
+
+      cy.log("Test positive case");
       H.openCollectionItemMenu("Orders, Count");
       H.popover().findByText("Move").click();
 

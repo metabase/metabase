@@ -235,7 +235,7 @@ describe("scenarios > admin > transforms", () => {
       "should be possible to create and run a Python transform",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new transform");
         visitTransformListPage();
         cy.button("Create a transform").click();
@@ -416,7 +416,7 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       cy.url().should("include", "/edit");
 
       getQueryEditor().findByLabelText("View SQL").click();
@@ -646,7 +646,7 @@ LIMIT
         visitTransform: true,
       });
 
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
 
       getQueryEditor().within(() => {
         cy.findByTestId("run-button").eq(0).click();
@@ -1468,8 +1468,7 @@ LIMIT
       });
       H.NativeEditor.get().should("have.attr", "contenteditable", "false");
       H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
-      H.DataStudio.Transforms.editDefinition().should("be.visible");
-      H.DataStudio.Transforms.editDefinition().should(
+      H.DataStudio.Transforms.getEditDefinitionLink().should(
         "have.attr",
         "href",
         "/data-studio/transforms/1/edit",
@@ -1483,8 +1482,7 @@ LIMIT
         .findByText("Animals")
         .closest("button")
         .should("be.disabled");
-      H.DataStudio.Transforms.editDefinition().should("be.visible");
-      H.DataStudio.Transforms.editDefinition().should(
+      H.DataStudio.Transforms.getEditDefinitionLink().should(
         "have.attr",
         "href",
         "/data-studio/transforms/1/edit",
@@ -1496,7 +1494,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("visit edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       cy.url().should("include", "/edit");
 
       cy.log("update the query");
@@ -1528,7 +1526,7 @@ LIMIT
       });
 
       cy.log("visit edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       cy.url().should("include", "/edit");
 
       cy.log("update the query");
@@ -1620,7 +1618,7 @@ LIMIT
         H.visitTransform(transformId);
 
         cy.log("remove score column (breaking change)");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.clickEditDefinition();
         H.getNotebookStep("data").findByLabelText("Pick columns").click();
         H.popover().findByLabelText("Score").click();
         H.DataStudio.Transforms.saveChangesButton().click();
@@ -1637,7 +1635,7 @@ LIMIT
           cy.button("Cancel").click();
         });
 
-        H.DataStudio.Transforms.editDefinition().should("not.exist");
+        H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
         H.DataStudio.Transforms.saveChangesButton()
           .should("be.visible")
           .and("be.enabled");
@@ -1649,7 +1647,7 @@ LIMIT
     });
 
     it("should be able to update a Python query", { tags: ["@python"] }, () => {
-      setPythonRunnerSettings();
+      H.setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (id) => {
@@ -1667,7 +1665,7 @@ LIMIT
       );
 
       cy.log("enter edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
 
       cy.log("update the query");
       H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
@@ -1687,7 +1685,7 @@ LIMIT
       "should show Python transforms in view-only mode",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
@@ -1705,8 +1703,7 @@ LIMIT
         );
 
         cy.log("should be in read-only mode by default");
-        H.DataStudio.Transforms.editDefinition().should("be.visible");
-        H.DataStudio.Transforms.editDefinition().should(
+        H.DataStudio.Transforms.getEditDefinitionLink().should(
           "have.attr",
           "href",
           "/data-studio/transforms/1/edit",
@@ -1728,7 +1725,7 @@ LIMIT
       "should transition from read-only to edit mode for Python transforms",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
@@ -1746,7 +1743,7 @@ LIMIT
         );
 
         cy.log("click Edit definition to enter edit mode");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.clickEditDefinition();
         cy.url().should("include", "/edit");
 
         cy.log("sidebar should be visible in edit mode");
@@ -1756,7 +1753,7 @@ LIMIT
         H.DataStudio.Transforms.pythonResults().should("be.visible");
 
         cy.log("Edit definition button should be hidden in edit mode");
-        H.DataStudio.Transforms.editDefinition().should("not.exist");
+        H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
       },
     );
 
@@ -1764,7 +1761,7 @@ LIMIT
       "should return to read-only mode after saving a Python transform",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
@@ -1782,7 +1779,7 @@ LIMIT
         );
 
         cy.log("enter edit mode");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.clickEditDefinition();
         cy.url().should("include", "/edit");
 
         cy.log("make a change to trigger dirty state");
@@ -1794,7 +1791,7 @@ LIMIT
 
         cy.log("should return to read-only mode after save");
         cy.url().should("not.include", "/edit");
-        H.DataStudio.Transforms.editDefinition().should("be.visible");
+        H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
         cy.findByTestId("python-data-picker").should("not.exist");
         H.DataStudio.Transforms.pythonResults().should("not.exist");
       },
@@ -1810,7 +1807,7 @@ LIMIT
         });
 
         cy.log("visit edit mode and change to a complex query with LIMIT");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.clickEditDefinition();
         cy.url().should("include", "/edit");
 
         H.NativeEditor.type(" LIMIT 10");
@@ -2096,7 +2093,7 @@ LIMIT
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
 
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       cy.url().should("include", "/edit");
 
       getQueryEditor().within(() => {
@@ -2196,7 +2193,7 @@ LIMIT
       "should be possible to use the common library",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         createPythonLibrary(
           "common.py",
           dedent`
@@ -2313,7 +2310,7 @@ LIMIT
       "should be able to run a transform with default import common even without custom library code",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
 
         visitTransformListPage();
         cy.button("Create a transform").click();
@@ -2862,7 +2859,7 @@ LIMIT
       cy.visit("/data-studio/transforms/1");
 
       cy.log("'edit definition' button is not displayed");
-      H.DataStudio.Transforms.editDefinition().should("not.exist");
+      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
 
       cy.log("visit the Run tab");
       H.DataStudio.Transforms.runTab().click();
@@ -3670,7 +3667,7 @@ describe(
       H.activateToken("bleeding-edge");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-      setPythonRunnerSettings();
+      H.setPythonRunnerSettings();
     });
 
     afterEach(() => {
@@ -3705,7 +3702,7 @@ describe(
       );
 
       cy.log("enter edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
 
       cy.log("running the script should work");
       runPythonScriptAndWaitForSuccess();
@@ -3746,7 +3743,7 @@ describe(
         },
       );
 
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
 
       H.DataStudio.Transforms.pythonResults()
         .findByText("Done")
@@ -4071,28 +4068,6 @@ function createPythonLibrary(path: string, source: string) {
   cy.request("PUT", `/api/ee/transforms-python/library/${path}`, {
     source,
   });
-}
-
-function setPythonRunnerSettings() {
-  H.updateEnterpriseSetting("python-runner-url", "http://localhost:5001");
-  H.updateEnterpriseSetting("python-runner-api-token", "dev-token-12345");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-endpoint",
-    "http://localhost:4566",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-region", "us-east-1");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-bucket",
-    "metabase-python-runner",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-prefix", "test-prefix");
-  H.updateEnterpriseSetting("python-storage-s-3-access-key", "test");
-  H.updateEnterpriseSetting("python-storage-s-3-secret-key", "test");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-container-endpoint",
-    "http://localstack:4566",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
 }
 
 function runPythonScriptAndWaitForSuccess() {

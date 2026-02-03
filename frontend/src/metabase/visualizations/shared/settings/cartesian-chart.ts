@@ -60,18 +60,32 @@ export function getDefaultDimensions(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  const mainSeriesColumns = rawSeries[0]?.data?.cols;
-  const prevDimensions = (settings["graph.dimensions"] ?? [])
-    .filter(isNotNull)
-    .filter((columnName) =>
-      mainSeriesColumns.some((col) => col.name === columnName),
-    );
+  const [{ card, data }] = rawSeries;
+  const mainSeriesColumns = data?.cols ?? [];
+  const hasData = mainSeriesColumns.length > 0;
+  const prevDimensionsRaw = (settings["graph.dimensions"] ?? []).filter(
+    isNotNull,
+  );
+  const prevDimensions = hasData
+    ? prevDimensionsRaw.filter((columnName: string) =>
+        mainSeriesColumns.some((col: DatasetColumn) => col.name === columnName),
+      )
+    : prevDimensionsRaw;
   const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
-  if (
+  const canReusePrevious =
     prevDimensions.length > 0 &&
     defaultDimensions.length > 0 &&
-    defaultDimensions[0] == null
-  ) {
+    defaultDimensions[0] == null &&
+    (!hasData ||
+      (columnsAreValid(
+        prevDimensionsRaw,
+        data,
+        getDefaultDimensionFilter(card.display),
+      ) &&
+        prevDimensionsRaw.filter((colName) => colName !== null).length ===
+          prevDimensionsRaw.length));
+
+  if (canReusePrevious) {
     return prevDimensions;
   }
 
@@ -82,14 +96,24 @@ export function getDefaultMetrics(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  const [{ card }] = rawSeries;
+  const [{ card, data }] = rawSeries;
+  const hasData = (data?.cols ?? []).length > 0;
   const prevMetrics = settings["graph.metrics"] ?? [];
   const defaultMetrics = getDefaultColumns(rawSeries).metrics;
-  if (
+  const canReusePrevious =
     prevMetrics.length > 0 &&
     defaultMetrics.length > 0 &&
-    defaultMetrics[0] == null
-  ) {
+    defaultMetrics[0] == null &&
+    (!hasData ||
+      (columnsAreValid(
+        prevMetrics,
+        data,
+        getDefaultMetricFilter(card.display),
+      ) &&
+        prevMetrics.filter((metric) => metric !== null).length ===
+          prevMetrics.length));
+
+  if (canReusePrevious) {
     return prevMetrics;
   }
   return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
