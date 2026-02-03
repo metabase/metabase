@@ -89,6 +89,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   view_count?: number;
 
   download_perms?: DownloadPermission;
+  displayIsLocked?: boolean;
 }
 
 export interface PublicCard {

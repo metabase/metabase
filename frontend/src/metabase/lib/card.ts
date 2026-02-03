@@ -1,7 +1,8 @@
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { equals } from "metabase/lib/utils";
+import type { Card } from "metabase-types/api";
 
-export function createCard(name = null) {
+export function createCard(name = null): Card {
   return {
     name: name,
     display: "table",
@@ -10,10 +11,10 @@ export function createCard(name = null) {
   };
 }
 
-function getCleanCard(card) {
+function getCleanCard(card: Card) {
   return {
     name: card.name,
-    collectionId: card.collectionId,
+    collection_id: card.collection_id,
     description: card.description,
     dataset_query: card.dataset_query,
     display: card.display,
@@ -27,7 +28,7 @@ function getCleanCard(card) {
   };
 }
 
-export function isEqualCard(card1, card2) {
+export function isEqualCard(card1: Card, card2: Card) {
   if (card1 && card2) {
     return equals(getCleanCard(card1), getCleanCard(card2));
   } else {
@@ -36,10 +37,10 @@ export function isEqualCard(card1, card2) {
 }
 
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
-export function serializeCardForUrl(card) {
+export function serializeCardForUrl(card: Card): string {
   return utf8_to_b64url(JSON.stringify(getCleanCard(card)));
 }
 
-export function deserializeCardFromUrl(serialized) {
+export function deserializeCardFromUrl(serialized: string): Card {
   return JSON.parse(b64hash_to_utf8(serialized));
 }
