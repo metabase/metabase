@@ -14,7 +14,7 @@
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
-   (java.nio.file Files Path)))
+   (java.nio.file Files FileVisitOption Path Paths)))
 
 (set! *warn-on-reflection* true)
 
@@ -115,40 +115,36 @@
                              "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))]
     path))
 
-(when (not config/is-prod?)
-  (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
+(defn- load-local-plugin-manifest! [^Path path]
+  (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
-  (defn- driver-manifest-paths
-    "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
-    []
-    ;; only include plugin manifests if they're on the system classpath.
-    (concat
-     (for [^File file (classpath/system-classpath)
-           :when      (and (.isDirectory file)
-                           (not (.isHidden file))
-                           (str/includes? (str file) "modules/drivers")
-                           (or (str/ends-with? (str file) "resources")
-                               (str/ends-with? (str file) "resources-ee")))
-           :let       [manifest-file (io/file file "metabase-plugin.yaml")]
-           :when      (.exists manifest-file)]
-       manifest-file)
-     ;; for hacking on 3rd-party drivers locally: set
-     ;; `-Dmb.dev.additional.driver.manifest.paths=/path/to/whatever/metabase-plugin.yaml` or
-     ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
-     ;; multiple plugin manifests by comma-separating them.
-     (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
-       (map u.files/get-path (str/split additional-paths #",")))))
+(defn- driver-manifest-paths
+  "Return a sequence of [[java.net.URL]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
+  []
+  ;; only include plugin manifests if they're on the system classpath.
+  (if (u.files/running-from-jar?)
+    (u.files/find-in-current-jar "glob:/metabase/*/metabase-plugin.yaml")
+    (let [matcher (.getPathMatcher (java.nio.file.FileSystems/getDefault) "glob:**/metabase/*/metabase-plugin.yaml")]
+      (for [^File f (classpath/system-classpath)
+            :when (.isDirectory f)
+            founds [(-> (.toURI f)
+                        (Paths/get)
+                        (Files/find 3
+                                    (fn [path _attr] (.matches matcher path))
+                                    (make-array FileVisitOption 0))
+                        (.collect (java.util.stream.Collectors/toList)))]
+            f founds]
+        f))))
 
-  (defn- load-local-plugin-manifests!
-    "Load local plugin manifest files when not running in a production mode, to simulate what would happen when loading those
+(defn- load-local-plugin-manifests!
+  "Load local plugin manifest files when not running in a production mode, to simulate what would happen when loading those
   same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
   aren't defined elsewhere."
-    []
-    ;; TODO - this should probably do an actual search in case we ever add any additional directories
-    (doseq [manifest-path (driver-manifest-paths)]
-      (log/infof "Loading local plugin manifest at %s" (str manifest-path))
-      (load-local-plugin-manifest! manifest-path))))
+  []
+  ;; TODO - this should probably do an actual search in case we ever add any additional directories
+  (doseq [manifest-path (driver-manifest-paths)]
+    (log/infof "Loading local plugin manifest at %s" (str manifest-path))
+    (load-local-plugin-manifest! manifest-path)))
 
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (u.files/file-exists-in-archive? path "metabase-plugin.yaml")))
@@ -167,11 +163,10 @@
 
 (defn- load! []
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
-  (extract-system-modules!)
+  #_(extract-system-modules!)
   (let [paths (plugins-paths)]
     (init-plugins! paths))
-  (when (not config/is-prod?)
-    (load-local-plugin-manifests!)))
+  (load-local-plugin-manifests!))
 
 (defonce ^:private loaded? (atom false))
 

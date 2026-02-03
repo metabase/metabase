@@ -1,0 +1,65 @@
+info:
+  name: Metabase ClickHouse Driver
+  version: 1.53.3
+  description: Allows Metabase to connect to ClickHouse databases.
+driver:
+  name: clickhouse
+  display-name: ClickHouse
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 8123
+    - user
+    - password
+    - name: enable-multiple-db
+      display-name: Enable multiple databases
+      type: boolean
+      default: true
+      description: Enable syncing and scanning tables from multiple ClickHouse databases except the system ones.
+    - name: dbname
+      visible-if:
+        enable-multiple-db: false
+      display-name: Default database
+      placeholder: default
+      helper-text: "Specify the default database to connect to"
+    - name: db-filters
+      visible-if:
+        enable-multiple-db: true
+      type: schema-filters
+      display-name: Databases
+      placeholder: >-
+        database_1, database_2
+      helper-text: Optionally filter which databases are visible.
+
+    - ssl
+    - ssh-tunnel
+    - advanced-options-start
+    - name: use-no-proxy
+      display-name: Disable system wide proxy settings
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: clickhouse-settings
+      display-name: ClickHouse settings (comma-separated)
+      placeholder: "allow_experimental_analyzer=1,max_result_rows=100"
+      visible-if:
+        advanced-options: true
+    - name: max-open-connections
+      display-name: "Max open HTTP connections in the JDBC driver (default: 100)"
+      placeholder: 100
+      visible-if:
+        advanced-options: true
+    - merge:
+        - additional-options
+        - placeholder: "connection_timeout=1000&socket_timeout=300000"
+    - default-advanced-options
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.clickhouse
+  - step: register-jdbc-driver
+    class: com.clickhouse.jdbc.ClickHouseDriver

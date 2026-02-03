@@ -1,0 +1,94 @@
+info:
+  name: Metabase MongoDB Driver
+  version: 1.0.0-SNAPSHOT-3.9.0
+  description: Allows Metabase to connect to MongoDB databases.
+driver:
+  name: mongo
+  display-name: MongoDB
+  lazy-load: true
+  connection-properties:
+    - name: use-conn-uri
+      type: section
+      default: false
+    - name: conn-uri
+      type: string
+      display-name: Paste your connection string
+      placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
+      required: true
+      visible-if:
+        use-conn-uri: true
+    - merge:
+        - host
+        - visible-if:
+            use-conn-uri: false
+          required: true
+    - merge:
+        - dbname
+        - visible-if:
+            use-conn-uri: false
+    - merge:
+        - port
+        - placeholder: 27017
+          visible-if:
+            use-conn-uri: false
+    - merge:
+        - user
+        - required: false
+          visible-if:
+            use-conn-uri: false
+    - merge:
+        - password
+        - name: pass
+          visible-if:
+            use-conn-uri: false
+    - name: authdb
+      display-name: Authentication database (optional)
+      placeholder: admin
+      visible-if:
+        use-conn-uri: false
+    - cloud-ip-address-info
+    - merge:
+        - ssl
+        - visible-if:
+            use-conn-uri: false
+    - name: ssl-cert
+      type: string
+      display-name: Server SSL certificate chain (PEM)
+      visible-if:
+        ssl: true
+    - name: ssl-use-client-auth
+      display-name: Authenticate client certificate?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: client-ssl-cert
+      display-name: Client SSL certificate chain (PEM)
+      placeholder: Paste the contents of the client's SSL certificate chain here
+      type: text
+      visible-if:
+        ssl-use-client-auth: true
+    - name: client-ssl-key
+      display-name: Client SSL private key (PEM)
+      type: secret
+      secret-kind: pem-cert
+      visible-if:
+        ssl-use-client-auth: true
+    - ssh-tunnel
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - display-name: Additional connection string options (optional)
+          placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
+          visible-if:
+            use-conn-uri: false
+            advanced-options: true
+    - name: use-srv
+      type: boolean
+      default: false
+      visible-if:
+        use-conn-uri: false
+        advanced-options: true
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.mongo

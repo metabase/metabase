@@ -1,0 +1,64 @@
+# Complete list of options here: https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference
+info:
+  name: Metabase Athena Driver
+  version: 1.0.0-athena-jdbc-2.0.13
+  description: Allows Metabase to connect to AWS Athena databases.
+driver:
+  name: athena
+  display-name: Amazon Athena
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: region
+      display-name: Region
+      placeholder: "us-east-1"
+      required: true
+    - name: workgroup
+      display-name: Workgroup
+      placeholder: "primary"
+    - name: s3_staging_dir
+      display-name: S3 staging directory
+      helper-text: This S3 staging directory must be in the same region you specify above.
+      placeholder: s3://your_bucket
+      required: true
+    - merge:
+      - dbname
+      - name: catalog
+        placeholder: AwsDataCatalog
+        display-name: Catalog
+        helper-text: Use a different data catalog (if you have federated queries, for example)
+        required: false
+    - name: access_key
+      display-name: Access key
+      helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
+    - merge:
+        - password
+        - name: secret_key
+          display-name: Secret key
+          helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
+    - name: hostname
+      display-name: Full hostname
+      placeholder: "Optional"
+      helper-text: "This is useful when Metabase is deployed on a VPC or AWS Secret Cloud."
+      required: false
+    - name: dbname
+      display-name: Specific database
+      helper-text: Specify a single database to enable features like DB routing
+      required: false
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - display-name: Additional Athena connection string options
+          placeholder: "UseResultsetStreaming=0;LogLevel=6"
+    - name: include-user-id-and-hash
+      display-name: Include User ID and query hash in queries
+      default: true
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.athena
+  - step: register-jdbc-driver
+    class: com.amazon.athena.jdbc.AthenaDriver
