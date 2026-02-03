@@ -6,7 +6,7 @@
    [buddy.core.mac :as mac]
    [metabase.premium-features.core :refer [defenterprise]]))
 
-(defenterprise metabot-slack-signing-secret
+(defenterprise metabot-slack-signing-secret-setting
   "Returns the Slack signing secret for Metabot (EE only)."
   metabase-enterprise.metabot-v3.settings
   []
@@ -35,7 +35,7 @@
 (defn- verify-slack-signature
   "Verify that the request came from Slack using signature verification"
   [request-body timestamp slack-signature]
-  (when-let [signing-secret (metabot-slack-signing-secret)]
+  (when-let [signing-secret (metabot-slack-signing-secret-setting)]
     (let [message (str "v0:" timestamp ":" request-body)
           computed-signature (hmac-sha256 signing-secret message)
           expected-signature (str "v0=" computed-signature)]

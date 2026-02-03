@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.settings
   (:require
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -59,6 +60,12 @@
   :feature    :metabot-v3
   :export?    false
   :audit      :no-value)
+
+(defenterprise metabot-slack-signing-secret-setting
+  "Returns the Slack signing secret for Metabot."
+  :feature :metabot-v3
+  []
+  (metabot-slack-signing-secret))
 
 (defsetting metabot-slack-bot-token
   (deferred-tru "Bot user OAuth token for the Metabot Slack app")

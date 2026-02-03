@@ -65,6 +65,7 @@
   "Error codes from Slack that indicate an invalid or revoked token."
   #{"invalid_auth" "account_inactive" "token_revoked" "token_expired" "not_authed"})
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn validate-bot-token!
   "Validate a Slack bot token using the auth.test endpoint.
    Throws an exception with appropriate status code if validation fails:
