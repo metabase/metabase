@@ -458,9 +458,7 @@
   "Given a native query, find any table tags and convert them to table/schema pairs"
   [query]
   (let [tags (->> (lib.walk.util/all-template-tags query)
-                  (filter #(= (:type %) :table)))
-        tables (lib.metadata/tables query)
-        transforms (lib.metadata/transforms query)]
+                  (filter #(= (:type %) :table)))]
     (into #{}
           (keep (fn [{:keys [table-id table-name table-schema]}]
                   (if table-id

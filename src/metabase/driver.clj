@@ -902,7 +902,7 @@
 
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
     :describe-is-generated
-    
+
     ;; Does this driver support the workspace feature
     :workspace
 
