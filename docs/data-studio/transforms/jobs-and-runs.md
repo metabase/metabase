@@ -48,8 +48,12 @@ Depended transforms will be scheduled and run intelligently: if Transform B depe
 
 This means that you can explicitly tag transform A to run daily, and transform B hourly, but because transform B depends on transform A, transform A will _also_ run hourly (in addition to daily), despite not having the tag.
 
-You can see which transforms will be executed during the job and in which order on the job's page.
+You can see which transforms will be executed during the job (and in which order) on the job's page in **Data Studio > Jobs**
 
 ## Runs
 
-You can see all past and current transform runs (both manual and scheduled) by going to **Data studio** and clicking on **Runs** at the bottom of the left sidebar.
+You can see all past and current transform runs (both manual and scheduled) by going to **Data studio** and clicking on **Runs** at the bottom of the left sidebar. The transform run times will be given in GMT.
+
+You can click on any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click on the icon next the transform name in the right sidebar.
+
+Note that the "Tags" column in the **Runs** table will only show the tags that the transform is explicitly tagged with, which might not correspond to the schedule that the transform is actually executed by. For example, a transform can be run on schedule because another transform that depends on it was run on schedule, because [jobs will run all dependent transforms](#jobs-will-run-all-dependent-transforms).

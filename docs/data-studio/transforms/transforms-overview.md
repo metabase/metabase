@@ -46,11 +46,11 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 If you are running Metabase Open Source/Starter, Admins (and only Admins) can see and run transforms.
 
-Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](LINK). A
+Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](../../permissions/data.md).
 
-To **see** the list of transforms on your instance, people need to be able to access [Data Studio](LINK), so they need to be either an Admin of a member of the special [Data Analyst group](LINK).
+To **see** the list of transforms on your instance, people need to be able to access [Data Studio](LINK), so they need to be either an Admin of a member of the special [Data Analyst group](../../people-and-groups/managing.md).
 
-To **execute** transforms on a database, people additionally need to have the [Transform permissions](LINK) for that database.
+To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
 
 ## See all transforms
 
@@ -93,7 +93,7 @@ To create a transform:
    - **Schema** (required): Target schema for your transform. This schema can be different from the schema of the source table(s). You create a new schema by typing its name in this field. You can only transform data _within_ a database; you can't write from one database to another.
    - **Table name** (required): Name of the table where Metabase will write and enter a name for the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
    - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
-   - **Incremental transformation** (optional): see [Incremental query-based transforms](LINK) or [Incremental Python transforms](LINK)
+   - **Incremental transformation** (optional): see [Incremental query-based transforms](query-transforms.md#incremental-query-transforms) or [Incremental Python transforms](python-transforms.md)
 
 7. Optionally, once the transform is saved, assign tags to your transform. Tags are used by [jobs](./jobs-and-runs.md) to run transforms on schedule.
 
@@ -174,7 +174,20 @@ If a job includes a transform that depends on a table created by another transfo
 
 ### Incremental transforms
 
-Incremental transforms allow you to only write the _new_ data to the database when the transform is executed. Incremental transforms work differently for query-based transforms and Python transforms, so see [incremental query transforms](LINK) and [incremental Python transforms](LINK) for more information.
+_Data Studio > Transforms > Settings_
+
+Incremental transforms allow you to only write the _new_ data to the database when the transform is executed. For example, you might have new transaction data coming in every day. You can Metabase transforms to only write data for transactions that haven't been processed before
+
+### Prerequisites for incremental transforms
+
+- There is a column in your data that Metabase can check for new values to determine which data is new. We'll refer to this as a "Checkpoint" column.
+- The checkpoint column has to be either numeric or timestamp, and has to have increasing values. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values. usually this will be some kind of "ID" or "Created At" column.
+- The checkpoint column should be present in both input and output table.
+- Your schema is stable, meaning that the structure of the tables is not going to change from run to run
+
+### Make a transform incremental
+
+Incremental transforms work differently for query-based transforms and Python transforms, so see [incremental query transforms](query-transforms.md#incremental-query-transforms) and [incremental Python transforms](./query-transforms.md#incremental-python-transforms) for more information.
 
 ## Version transforms
 

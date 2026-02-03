@@ -5,7 +5,7 @@ summary: Use Python to wrangle your data in Metabase and write the results back 
 
 # Python transforms
 
-{% include plans-blockquote.html feature="Python transforms" is_plural=true %}
+> Python transforms require the **Transforms add-on**
 
 You can write a Python script to transform the data from your database, and write the result back into the database as another table.
 
@@ -13,7 +13,7 @@ For general information about Metabase transforms, see [Transforms](transforms.m
 
 ## How Python transforms work
 
-Python-based transforms require a dedicated [Python execution environment](#set-up-a-python-runner). Once yiy
+Python-based transforms require a dedicated [Python execution environment](#set-up-a-python-runner).
 
 - In your Metabase, you write a Python script that returns a `pandas` DataFrame and uses one or more tables from your database.
 - When Metabase runs the transform, a new Python execution environment is spun up. Python transforms run in a separate, isolated environment—not on your Metabase instance.
@@ -24,38 +24,48 @@ Python-based transforms require a dedicated [Python execution environment](#set-
 - The new table is synced to Metabase.
 - On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
 
+Only one Python transform can run in the execution environment at once.
+
 ## Set up a Python runner
 
-To execute Python transforms, you'll need to set up the _Python runner_ - a dedicated environment for running Python code.
+To execute Python transforms, you'll need a _Python runner_ - a dedicated environment for running Python code.
+
+If you're on Metabase Cloud, all you need it to add the **Transforms add-on**, and you'll be good to go.
+
+If you're self-hosting Metabase, you'll need to set up a self-hosted Python runner, see [Python runner](python-runner.md).
 
 ## Create a Python transform
 
-To write Python transforms, you'll need to [Set up the Python runner]. Once you've set up the runner:
+To write Python transforms, you'll need to [Set up the Python runner](#set-up-a-python-runner). Once you've set up the runner:
 
-1. Go to **Data studio > Transforms** and click **Create a transform > Python script**.
+1. Go to **Data studio > Transforms**.
 
-2. Select a database that has the data you want to transform. See [Databases that support transforms](transforms.md#databases-that-support-transforms).
+2. Click **+New** and select **Python transform**
 
-3. Select one or more tables with the data that you'd like to transform. Optionally, assign aliases to the tables.
+3. Select a database that has the data you want to transform. See [Databases that support transforms](transforms.md#databases-that-support-transforms).
+
+4. Select one or more tables with the data that you'd like to transform. Optionally, assign aliases to the tables.
 
    The tables you select will be available as DataFrames in your Python code with your chosen aliases, and will be passed to the `transform()` function as parameters. For now, all the tables you pick must be in the same database.
 
-4. Create a function `transform()` that does the data wrangling and returns a [pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html).
+5. Create a function `transform()` that does the data wrangling and returns a [pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html).
 
    See [Tips for writing Python transforms](#tips-for-writing-python-transforms). The DataFrame returned by the function will be written back to your database when the transform is run.
 
-5. To test your transform, press the "Run transform" button at the bottom right of the editor.
+6. To test your transform, press the "Run Python script" button at the bottom right of the editor.
 
-   The transform preview will only use first 100 rows from each input table. This means that if yyou might
+   Metabase will pull 100 rows from each input table and run your transform on those rows. You'll be able to see the result in the **Results preview** tab below the editor. You can see any other output (e.g. outputs of any print statements in your code) in the **Output** tab.
 
-6. Once you're done with you code, click **Save** in the top right corner.
+   The transform preview will **only use first 100 rows from each input table**. This means that if you might not see the real results of your transforms in preview: for example, if your transform renames the values of `Doohickey` to `Widget`, and the first 100 records of the input table happen to not contain any doohickeys, you won't be able to preview the result.
 
-7. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform into this table.
+7. Once you're done with you code, click **Save** in the top right corner.
+
+8. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform into this table.
 
    You can only write back to the same database as you chose for the transform source.
 
-8. Optionally, make your transform incremental. See [Incremental Python transforms](LINK)
-9. Optionally, assign tags to your transforms. Tags are used by [jobs](transforms.md#jobs-and-tags) to run transforms on schedule.
+9. Optionally, make your transform incremental. See [Incremental Python transforms](#incremental-python-transforms)
+10. Optionally, assign tags to your transforms. Tags are used by [jobs](jobs-and-runs.md) to run transforms on schedule.
 
 ## Tips for writing Python transforms
 
@@ -63,7 +73,7 @@ To write Python transforms, you'll need to [Set up the Python runner]. Once you'
 - A Python transform must have a function `transform()` that returns a single `pandas` DataFrame.
 - You can use aliases to include tables from your database as DataFrames inside the `transform()` function. The tables will _only_ be available in the transform function. Other functions won't have access to the tables.
 - Only `pandas` will be imported by default, but you can import [certain other packages](#available-python-packages). You can also use functions from the [common library](#common-python-library).
-- You'll see the output of `print()` statements in the "Output ".
+- You can use `print()` statements in your code. You'll see the output of `print()` statements in the **Output** tab under the editor.
 - Metabase won't write DataFrame indexes to the database, including indexes created by `groupby()`. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function.
 
 ## Run a Python transform
@@ -88,23 +98,42 @@ If you have functions or classes you'd like to reuse across multiple transforms,
 
 To add things to the common Python library:
 
-1. Go to **Admin > Transforms > Python library**.
+1. Go to **Data studio > Transforms**.
+2. Scroll to the very bottom of the transforms list and click on **Python library**.
 
-2. Add a Python function or class.
+3. Add a Python function or class.
 
    Functions in this library can't access any data in your database.
 
 To use functions or classes from your Python library:
 
-1. When editing your Python transform script, check **Import common library** in the top right.
+1. Metabase will automatically add `import common` to your transform's code. The `common` here refers to the Python library. You can click on `common` in the editor to navigate to the library.
 
-   This will add an aptly named import `import common` to the transform's code.
+2. You can reference functions or classes from the common library in your code like `common.manifest_kittens()`.
 
-2. Reference functions or classes from the common library in your code like `common.manifest_kittens()`.
+## Incremental Python transforms
+
+By default, on every transform run after the first one, Metabase will process all the data in all input tables, then drop the existing target table, and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking you transform as incremental.
+
+### Prerequisites for incremental transforms
+
+You data has to have certain structure for incremental transforms to work. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+
+### Make a Python transform incremental
+
+To make a Python transform incremental:
+
+1. Go to the transform's page in **Data studio > Transforms**.
+2. Switch to **Settings** tab.
+3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column
+
+   You have to select the column from the list of the columns of the _input_ tables. Note: this is different from [Query transforms](./query-transforms.md), where you select an _output_ column as column to check for new values.
 
 ## Current limitations of Python transforms
 
 - The transform function must return a single `pandas` DataFrame. Other data manipulation and DataFrame libraries like `polars` or `pyspark` are not supported.
+- Transform preview only uses 100 input rows from each input table.
 - DataFrame indexes, including indexes created by `groupby()`, are ignored from writing back to the database. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function to make the index into a real column.
 - Only a [limited set of packages](#available-python-packages) are available for import. You can't install additional packages.
 - Because Python transforms use `pandas`, all data manipulation is done in memory. The available memory is determined by the Python execution add-on. For large datasets, consider using [query-based transforms](./query-transforms.md) that run in your database.
+- Only one Python transform can be run at any given time.
