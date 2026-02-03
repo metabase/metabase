@@ -356,7 +356,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
-    it("should support nested navigations dashboard -> dashboard -> question -> drill -> back through all", () => {
+    it("should support nested navigations dashboard -> dashboard -> question -> multiple drills -> back through all", () => {
       cy.get<number>("@dashboardAId").then((dashboardAId) => {
         mountSdkContent(
           <InteractiveDashboard
@@ -391,11 +391,15 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         // Verify back button shows Dashboard B
         // cy.findByText("Back to Dashboard B").should("be.visible");
 
-        // Step 4: Perform a drill on the question (click on Product ID to drill)
-        H.tableInteractiveBody().findByRole("gridcell", { name: "14" }).click();
+        // We'll later verify this will be hidden by the drill
+        H.tableInteractiveBody().findByText("123").should("be.visible");
 
-        // Click on "View this Product's Orders" to drill down
+        // Step 4: Perform first drill on the question (click on Product ID to drill)
+
+        H.tableInteractiveBody().findByRole("gridcell", { name: "14" }).click();
         H.popover().findByText("View this Product's Orders").click();
+
+        H.tableInteractiveBody().findByText("123").should("not.exist");
 
         // Verify we're now on an adhoc question (drill result)
         cy.findByTestId("visualization-root").should("be.visible");
@@ -403,21 +407,52 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         // After drilling, back button should show "Drillable Question"
         cy.findByText("Back to Drillable Question").should("be.visible");
 
-        // Step 5: Go back to the question
+        // We'll later verify this will be hidden by the drill
+        H.tableInteractiveBody().findByText("2.26").should("be.visible");
+
+        // Step 5: Perform second drill
+        H.tableInteractiveBody().findAllByText("2.07").first().click();
+
+        H.popover().findByText("<").click();
+
+        // Verify drill really happened
+        H.tableInteractiveBody().findByText("2.26").should("not.exist");
+
+        // Back button should still show the original question
+        cy.findByText("Back to Drillable Question").should("be.visible");
+
+        H.tableInteractiveBody()
+          .findAllByText("25.1")
+          .first()
+          .should("be.visible");
+
+        // Step 6: Perform third drill
+        H.tableInteractiveBody().findAllByText("37.65").first().click();
+
+        H.popover().findByText("=").click();
+
+        H.tableInteractiveBody().findByText("25.1").should("not.exist");
+
+        // Back button should still show the original question
+        cy.findByText("Back to Drillable Question").should("be.visible");
+
+        // Step 7: One back click should revert ALL drills and return to the original question
         cy.findByText("Back to Drillable Question").click();
 
-        // Verify we're back on the question
+        // Verify we're back on the question (not an intermediate drill state)
         cy.findByTestId("visualization-root").should("be.visible");
         cy.findByText("Back to Dashboard B").should("be.visible");
 
-        // Step 6: Go back to Dashboard B
+        H.tableInteractiveBody().findByText("110.93").should("be.visible");
+
+        // Step 8: Go back to Dashboard B
         cy.findByText("Back to Dashboard B").click();
 
         // Verify we're back on Dashboard B
         cy.findByText("Dashboard B").should("be.visible");
         cy.findByText("Back to Dashboard A").should("be.visible");
 
-        // Step 7: Go back to Dashboard A
+        // Step 9: Go back to Dashboard A
         cy.findByText("Back to Dashboard A").click();
 
         // Verify we're back on Dashboard A (root)
