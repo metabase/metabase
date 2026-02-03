@@ -35,7 +35,6 @@
 .tab,
 .toggle {
   color: var(--mb-color-text-primary);
-  font-weight: 600;
   position: relative;
   transition: opacity 400ms ease;
 
