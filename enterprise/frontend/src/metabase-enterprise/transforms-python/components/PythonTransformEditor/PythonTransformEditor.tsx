@@ -25,12 +25,7 @@ export function PythonTransformEditor({
   proposedSource,
   uiOptions,
   isEditMode,
-<<<<<<< HEAD
   transform,
-=======
-  readOnly,
-  transformId,
->>>>>>> master
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
@@ -130,12 +125,8 @@ export function PythonTransformEditor({
       <PythonTransformTopBar
         databaseId={source["source-database"]}
         isEditMode={isEditMode}
-<<<<<<< HEAD
+        readOnly={uiOptions?.readOnly}
         transform={transform}
-=======
-        readOnly={readOnly}
-        transformId={transformId}
->>>>>>> master
         onDatabaseChange={handleDatabaseChange}
         canChangeDatabase={uiOptions?.canChangeDatabase}
       />
