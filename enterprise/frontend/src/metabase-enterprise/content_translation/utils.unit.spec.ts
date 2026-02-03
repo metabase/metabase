@@ -611,7 +611,7 @@ describe("translateColumnDisplayName", () => {
         const translations: Record<string, string> = {
           Total: "Gesamtsumme",
           Products: "Produkte",
-          Product: "Produkt", // Singular form used in FK names
+          Product: "Produkt",
           Orders: "Bestellungen",
           People: "Personen",
           "Created At": "Erstellt am",
@@ -661,6 +661,17 @@ describe("translateColumnDisplayName", () => {
           tcWithQuestionName,
         );
         expect(result).toBe("Meine Frage - Teil 2");
+      });
+
+      it("should handle already-translated display names from backend", () => {
+        const result = translateColumnDisplayName(
+          "Eindeutige Werte von People - Product → Created At: Monat",
+          tcWithImplicitJoinTranslations,
+        );
+
+        expect(result).toBe(
+          "Eindeutige Werte von Personen - Produkt → Erstellt am: Monat",
+        );
       });
     });
   });
