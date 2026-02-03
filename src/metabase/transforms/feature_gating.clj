@@ -1,13 +1,12 @@
 (ns metabase.transforms.feature-gating
   (:require
-   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]))
 
 (defn query-transforms-enabled?
   "Query transforms: available in OSS, requires :transforms feature in EE.
   Note: OSS intentionally gets query transforms without a license."
   []
-  (or (not config/ee-available?)
+  (or (not (premium-features/is-hosted?))
       (premium-features/has-feature? :transforms)))
 
 (defn python-transforms-enabled?

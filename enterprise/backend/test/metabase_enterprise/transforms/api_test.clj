@@ -50,7 +50,7 @@
 
 (deftest create-query-transform-requires-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (let [table-name (str "test_transform_" (u/generate-nano-id))
               response   (mt/user-http-request :crowberto :post 402 "transform"
@@ -59,7 +59,7 @@
 
 (deftest update-query-transform-requires-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {transform-id :id} {}]
           (let [response (mt/user-http-request :crowberto :put 402
@@ -69,7 +69,7 @@
 
 (deftest run-query-transform-requires-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {transform-id :id} {}]
           (let [response (mt/user-http-request :crowberto :post 402
@@ -78,12 +78,12 @@
 
 (deftest list-transforms-404-without-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:hosting}
       (mt/user-http-request :crowberto :get 404 "transform"))))
 
 (deftest get-transform-404-without-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {transform-id :id} {}]
           (mt/user-http-request :crowberto :get 404 (format "transform/%d" transform-id)))))))
@@ -156,14 +156,17 @@
                        :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
                                                                :name python-name)]
           (search.tu/with-new-search-and-legacy-search
-            (testing "no transforms feature"
+            (testing "no hosting feature"
               (mt/with-premium-features #{}
+                (is (= #{query-id} (search-transform-ids search-term)))))
+            (testing "no transforms feature"
+              (mt/with-premium-features #{:hosting}
                 (is (empty? (search-transform-ids search-term)))))
             (testing "transforms only"
-              (mt/with-premium-features #{:transforms}
+              (mt/with-premium-features #{:transforms :hosting}
                 (is (= #{query-id} (search-transform-ids search-term)))))
             (testing "transforms and transforms-python"
-              (mt/with-premium-features #{:transforms :transforms-python}
+              (mt/with-premium-features #{:transforms :transforms-python :hosting}
                 (is (= #{query-id python-id} (search-transform-ids search-term)))))))))))
 
 (deftest search-filtering-updates-with-feature-flips-without-reindex-test
@@ -177,16 +180,18 @@
                        :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
                                                                :name python-name)]
           (search.tu/with-new-search-and-legacy-search
-            (mt/with-premium-features #{:transforms :transforms-python}
+            (mt/with-premium-features #{:transforms :transforms-python :hosting}
               (is (= #{query-id python-id} (search-transform-ids search-term))))
-            (mt/with-premium-features #{:transforms}
+            (mt/with-premium-features #{:transforms :hosting}
               (is (= #{query-id} (search-transform-ids search-term))))
+            (mt/with-premium-features #{:hosting}
+              (is (empty? (search-transform-ids search-term))))
             (mt/with-premium-features #{}
-              (is (empty? (search-transform-ids search-term))))))))))
+              (is (= #{query-id} (search-transform-ids search-term))))))))))
 
 (deftest search-api-transform-models-empty-without-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (let [search-term (str "transform-search-" (u/generate-nano-id))
               query-name  (str search-term "-query")]
