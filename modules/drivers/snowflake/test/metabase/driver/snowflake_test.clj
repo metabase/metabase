@@ -1443,7 +1443,7 @@
                        {:name "region",       :schema "PUBLIC", :description nil}
                        {:name "country",      :schema "PUBLIC", :description nil}
                        {:name "airport",      :schema "PUBLIC", :description nil}}
-                     (:table (driver/describe-database :snowflake db)))))))))))
+                     (:tables (driver/describe-database :snowflake db)))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.
