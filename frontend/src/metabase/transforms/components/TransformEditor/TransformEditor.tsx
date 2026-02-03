@@ -1,15 +1,13 @@
 import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_WORKSPACES } from "metabase/plugins";
 import {
   QueryEditor,
   type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -71,7 +69,9 @@ export function TransformEditor({
     [databases, isEditMode, uiOptions],
   );
 
-  const isRemoteSyncReadOnly = useSelector(PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const showEditButton =
     !!transform && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
@@ -100,8 +100,8 @@ export function TransformEditor({
       onBlur={onBlur}
       topBarInnerContent={
         showEditButton &&
-        (hasPremiumFeature("workspaces") && transform ? (
-          <EditTransformMenu transform={transform} />
+        (PLUGIN_WORKSPACES.isEnabled && transform ? (
+          <PLUGIN_WORKSPACES.EditTransformMenu transform={transform} />
         ) : (
           <EditDefinitionButton
             bg="transparent"

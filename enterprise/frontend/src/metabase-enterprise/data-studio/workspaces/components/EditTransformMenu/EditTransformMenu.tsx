@@ -4,9 +4,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import { transformEdit } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
+import { transformEdit } from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { EditTransformMenuProps } from "metabase/plugins/oss/database";
 import {
   Box,
   Button,
@@ -26,10 +27,6 @@ import {
 } from "metabase-enterprise/api";
 import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
 import type { DatabaseId, Transform } from "metabase-types/api";
-
-type EditTransformMenuProps = {
-  transform: Transform;
-};
 
 export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   const dispatch = useDispatch();

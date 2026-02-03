@@ -41,7 +41,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "workspace-transforms",
   "workspace-transform",
   "workspace-tables",
-  "external-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",

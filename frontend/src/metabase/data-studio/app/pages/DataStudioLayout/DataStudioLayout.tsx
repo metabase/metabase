@@ -14,8 +14,10 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   canAccessTransforms as canAccessTransformsSelector,
   getTransformsFeatureAvailable,
@@ -33,10 +35,8 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import S from "./DataStudioLayout.module.css";
-import { WorkspacesSection } from "./WorkspaceSection";
 import { getCurrentTab } from "./utils";
 
 type DataStudioLayoutProps = {
@@ -88,6 +88,7 @@ type DataStudioNavProps = {
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
+  const isAdmin = useSelector(getUserIsAdmin);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
@@ -181,10 +182,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
-          {(canAccessTransforms || isAdmin) &&
-            hasPremiumFeature("workspaces") && (
-              <WorkspacesSection showLabel={isNavbarOpened} />
-            )}
+          {(canAccessTransforms || isAdmin) && (
+            <PLUGIN_WORKSPACES.WorkspacesSection showLabel={isNavbarOpened} />
+          )}
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (

@@ -65,11 +65,11 @@ const setupRemoteSyncSettingsEndpoints = (
 const setupDirtyEndpoints = ({
   dirty = [],
   collections = [],
-  hasWorkspacesFeature = false,
+  tokenFeatures = {},
 }: {
   dirty?: RemoteSyncEntity[];
   collections?: Collection[];
-  hasWorkspacesFeature?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
 } = {}) => {
   const changedCollections: Record<number, boolean> = {};
   for (const entity of dirty) {
@@ -86,7 +86,7 @@ const setupDirtyEndpoints = ({
 
   setupCollectionsEndpoints({ collections });
 
-  if (hasWorkspacesFeature) {
+  if (tokenFeatures.workspaces) {
     setupWorkspacesEndpoint([]);
   }
 };
@@ -237,5 +237,22 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     advanced_permissions: true,
     data_studio: true,
     dependencies: true,
+  },
+};
+
+export const DEFAULT_EE_SETTINGS_WITH_WORKSPACES: Partial<SetupOpts> = {
+  enterprisePlugins: [
+    "library",
+    "remote_sync",
+    "dependencies",
+    "feature_level_permissions",
+    "workspaces",
+  ],
+  tokenFeatures: {
+    remote_sync: true,
+    advanced_permissions: true,
+    data_studio: true,
+    dependencies: true,
+    workspaces: true,
   },
 };

@@ -3,7 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-import { DEFAULT_EE_SETTINGS, setup } from "./setup";
+import {
+  DEFAULT_EE_SETTINGS,
+  DEFAULT_EE_SETTINGS_WITH_WORKSPACES,
+  setup,
+} from "./setup";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -209,12 +213,8 @@ describe("DataStudioLayout", () => {
   });
 
   describe("workspaces feature", () => {
-    afterEach(() => {
-      mockHasPremiumFeature.mockReset();
-    });
-
     it("should not render WorkspacesSection when workspaces feature is not available", async () => {
-      setup({ hasWorkspacesFeature: false, isNavbarOpened: true });
+      setup({ isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render WorkspacesSection when workspaces feature is available", async () => {
-      setup({ hasWorkspacesFeature: true, isNavbarOpened: true });
+      setup({ ...DEFAULT_EE_SETTINGS_WITH_WORKSPACES, isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();

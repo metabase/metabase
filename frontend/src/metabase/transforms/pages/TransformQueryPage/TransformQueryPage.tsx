@@ -24,7 +24,12 @@ import {
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
-import type { Database, Transform } from "metabase-types/api";
+import type {
+  Database,
+  DatasetQuery,
+  DraftTransformSource,
+  Transform,
+} from "metabase-types/api";
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import {

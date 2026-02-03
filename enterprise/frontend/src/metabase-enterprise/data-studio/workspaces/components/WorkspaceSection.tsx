@@ -7,10 +7,12 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import S from "metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.module.css";
 import type { MetabaseColorKey } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { WorkspacesSectionProps } from "metabase/plugins/oss/database";
 import { getLocation } from "metabase/selectors/routing";
 import {
   ActionIcon,
@@ -40,15 +42,9 @@ import type {
   WorkspaceItem as WorkspaceItemType,
 } from "metabase-types/api";
 
-import S from "./DataStudioLayout.module.css";
-
 const TOOLTIP_OPEN_DELAY = 700;
 
-type WorkspacesSectionProps = {
-  showLabel: boolean;
-};
-
-function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
+export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const dispatch = useDispatch();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
   const { pathname } = useSelector(getLocation);
@@ -212,8 +208,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     </Stack>
   );
 }
-
-export { WorkspacesSection };
 
 interface WorkspaceItemProps {
   workspace: Workspace;

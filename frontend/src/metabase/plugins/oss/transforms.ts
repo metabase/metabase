@@ -12,7 +12,6 @@ import type {
   GetDependencyGraphRequest,
   PythonTransformSourceDraft,
   Transform,
-  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";

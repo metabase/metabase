@@ -9,12 +9,12 @@ import { DatabaseDataSelector } from "metabase/query_builder/components/DataSele
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
+import { EditTransformMenu } from "metabase-enterprise/data-studio/workspaces/components/EditTransformMenu";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
-import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 
 type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
