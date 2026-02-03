@@ -1,7 +1,6 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -80,22 +79,13 @@ export type ColumnDisplayNamePattern = (value: string) => string;
  */
 const COLUMN_DISPLAY_NAME_PATTERNS: ColumnDisplayNamePattern[] = [
   // Aggregation patterns (from metabase.lib.aggregation)
-  // More specific patterns must come first
-  (value: string) => t`Sum of ${value} matching condition`,
-  (value: string) => t`Average of ${value}`,
-  (value: string) => t`Count of ${value}`,
-  (value: string) => t`Cumulative count of ${value}`,
-  (value: string) => t`Cumulative sum of ${value}`,
-  (value: string) => t`Distinct values of ${value}`,
-  (value: string) => t`Max of ${value}`,
-  (value: string) => t`Median of ${value}`,
-  (value: string) => t`Min of ${value}`,
-  (value: string) => t`Standard deviation of ${value}`,
-  (value: string) => t`Sum of ${value}`,
-  (value: string) => t`Variance of ${value}`,
+  ...Lib.aggregationDisplayNamePatterns().map(
+    ({ prefix, suffix }) =>
+      (value: string) =>
+        `${prefix}${value}${suffix}`,
+  ),
 
   // Binning patterns (from metabase.lib.binning)
-  // Generated dynamically from the same Lib functions the backend uses
   // Numeric binning: uses displayName directly (e.g., "10 bins", "Auto binned")
   ...Lib.numericBinningStrategies().map(
     (strategy) => (value: string) => `${value}: ${strategy.displayName}`,
@@ -110,7 +100,6 @@ const COLUMN_DISPLAY_NAME_PATTERNS: ColumnDisplayNamePattern[] = [
     ),
 
   // Temporal bucket patterns (from metabase.lib.temporal_bucket)
-  // Generated dynamically using the same Lib functions the backend uses,
   // ensuring the translated suffixes match (e.g., "Month" → "Monat" in German)
   ...Lib.availableTemporalUnits().map(
     (unit) => (value: string) => `${value}: ${Lib.describeTemporalUnit(unit)}`,

@@ -73,3 +73,18 @@ export function aggregableColumns(
 ): ColumnMetadata[] {
   return ML.aggregable_columns(query, stageIndex, expressionIndex);
 }
+
+export interface AggregationDisplayNamePattern {
+  prefix: string;
+  suffix: string;
+}
+
+/**
+ * Returns the list of aggregation display name patterns for content translation.
+ * Each pattern has a prefix and suffix derived from the translated pattern string.
+ * For example, "Average of {0}" becomes { prefix: "Average of ", suffix: "" }.
+ * More specific patterns (like "Sum of {0} matching condition") come first.
+ */
+export function aggregationDisplayNamePatterns(): AggregationDisplayNamePattern[] {
+  return ML.aggregation_display_name_patterns();
+}

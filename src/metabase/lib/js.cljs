@@ -63,6 +63,7 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
@@ -542,6 +543,14 @@
   ([a-query stage-number x]
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
+
+(defn ^:export aggregation-display-name-patterns
+  "Returns the list of aggregation display name patterns for content translation.
+  Each pattern is an object with `prefix` and `suffix` properties, derived from
+  the display name pattern by splitting on the placeholder.
+  These match the patterns used by display-name-method for aggregations."
+  []
+  (to-array (map clj->js (lib.aggregation/aggregation-display-name-patterns))))
 
 (defn ^:export numeric-binning-strategies
   "Returns the list of binning options for numeric fields. These split the data evenly into a fixed number of bins.
