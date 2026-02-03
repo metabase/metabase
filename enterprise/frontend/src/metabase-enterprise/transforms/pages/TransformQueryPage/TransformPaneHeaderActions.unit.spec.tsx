@@ -80,7 +80,6 @@ function setup({
           isSaving={isSaving}
           source={resolvedSource}
           transform={transform}
-          transformId={1}
         />
       )}
       path="/"
