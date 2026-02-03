@@ -151,6 +151,33 @@
         .asString
         json/decode+kw)))
 
+(defn simple-query?
+  "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
+
+   Used by Workspaces to determine if automatic checkpoints can be inserted.
+
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
+   - sql: The SQL query string to check
+
+   Returns a map with:
+   - :is_simple - boolean indicating if query is simple
+   - :reason - string explaining why query is not simple (when false)
+
+   Examples:
+   (simple-query? \"postgres\" \"SELECT * FROM users\")
+   => {:is_simple true}
+
+   (simple-query? nil \"SELECT * FROM users LIMIT 10\")
+   => {:is_simple false :reason \"Contains a LIMIT\"}"
+  [dialect sql]
+  (with-open [^Closeable ctx (python.pool/python-context)]
+    (common/eval-python ctx "import sql_tools")
+    (-> ^Value (common/eval-python ctx "sql_tools.simple_query")
+        (.execute ^Value (object-array [sql dialect]))
+        .asString
+        json/decode+kw)))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 

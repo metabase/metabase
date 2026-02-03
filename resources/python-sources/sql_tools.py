@@ -500,6 +500,58 @@ def is_pure_column(root):
 
 # TODO: infer_schema=True?
 # TODO: Comment on everything is aliased?
+def simple_query(sql: str, dialect: str = None) -> str:
+    """
+    Check if SQL is a simple SELECT (no LIMIT, OFFSET, or CTEs).
+
+    Used by Workspaces to determine if automatic checkpoints can be inserted.
+
+    Returns a JSON object with:
+    - If simple: {"is_simple": true}
+    - If not simple: {"is_simple": false, "reason": "..."}
+
+    :param sql: SQL query string to check
+    :param dialect: SQL dialect (postgres, mysql, snowflake, bigquery, etc.)
+
+    Examples:
+        simple_query("SELECT * FROM users")
+        => '{"is_simple": true}'
+
+        simple_query("SELECT * FROM users LIMIT 10")
+        => '{"is_simple": false, "reason": "Contains a LIMIT"}'
+
+        simple_query("WITH cte AS (SELECT 1) SELECT * FROM cte")
+        => '{"is_simple": false, "reason": "Contains a CTE"}'
+    """
+    try:
+        ast = sqlglot.parse_one(sql, read=dialect)
+
+        # Must be a SELECT or Query type (CTE queries parse as Select with 'with' arg)
+        if not isinstance(ast, (exp.Select, exp.Query)):
+            return json.dumps({"is_simple": False, "reason": "Not a simple SELECT"})
+
+        # No CTEs (WITH clause) - SQLGlot uses "with_" (with underscore) as the arg name
+        if ast.args.get("with_"):
+            return json.dumps({"is_simple": False, "reason": "Contains a CTE"})
+
+        # For non-Select Query types (Union, Intersect, etc.), reject
+        if not isinstance(ast, exp.Select):
+            return json.dumps({"is_simple": False, "reason": "Not a simple SELECT"})
+
+        # No LIMIT
+        if ast.args.get("limit"):
+            return json.dumps({"is_simple": False, "reason": "Contains a LIMIT"})
+
+        # No OFFSET
+        if ast.args.get("offset"):
+            return json.dumps({"is_simple": False, "reason": "Contains an OFFSET"})
+
+        return json.dumps({"is_simple": True})
+    except ParseError as e:
+        return json.dumps({"is_simple": False, "reason": str(e)})
+    except Exception as e:
+        return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
+
 def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
     """
     Extract column lineage from SQL query.

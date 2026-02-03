@@ -9,6 +9,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.macaw.references :as sql-tools.macaw.references]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 ;;;; referenced-tables
@@ -173,3 +174,31 @@
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
   [_parser _driver sql-str]
   (vec (:tables (macaw/query->tables sql-str {:mode :compound-select}))))
+
+(defmethod sql-tools/simple-query?-impl :macaw
+  [_parser sql-string]
+  (try
+    ;; BEWARE: No driver available, so we pass nil. This means macaw-options will be minimal.
+    (let [^net.sf.jsqlparser.statement.select.PlainSelect parsed (driver.u/parsed-query sql-string nil)]
+      (cond
+        (not (instance? net.sf.jsqlparser.statement.select.PlainSelect parsed))
+        {:is_simple false
+         :reason "Not a simple SELECT"}
+
+        (.getLimit parsed)
+        {:is_simple false
+         :reason "Contains a LIMIT"}
+
+        (.getOffset parsed)
+        {:is_simple false
+         :reason "Contains an OFFSET"}
+
+        (seq (.getWithItemsList parsed))
+        {:is_simple false
+         :reason "Contains a CTE"}
+
+        :else
+        {:is_simple true}))
+    (catch Exception e
+      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      {:is_simple false})))

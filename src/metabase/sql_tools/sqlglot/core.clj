@@ -274,3 +274,12 @@
         table-tuples (sql-parsing/referenced-tables dialect sql-str)
         tables (mapv (fn [[_catalog schema table]] {:schema schema :table table}) table-tuples)]
     tables))
+
+(defmethod sql-tools/simple-query?-impl :sqlglot
+  [_parser sql-string]
+  (try
+    ;; No dialect available from caller, use nil for SQLGlot's default dialect
+    (sql-parsing/simple-query? nil sql-string)
+    (catch Exception e
+      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      {:is_simple false})))

@@ -58,3 +58,22 @@
   "Given a driver and sql string, returns a set of form #{{:schema <name> :table <name>}...}."
   [driver sql-str]
   (referenced-tables-raw-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-str))
+
+(defmulti simple-query?-impl
+  "Parser specific implementation of [[simple-query?]]. Do not use directly.
+
+  Returns a map with:
+  - `:is_simple` - boolean indicating if query is simple
+  - `:reason` - string explaining why query is not simple (optional)"
+  {:arglists '([parser sql-string])}
+  parser-dispatch)
+
+(defn simple-query?
+  "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
+  Used by Workspaces to determine if automatic checkpoints can be inserted.
+
+  Returns a map with:
+  - `:is_simple` - boolean indicating if query is simple
+  - `:reason` - string explaining why query is not simple (when false)"
+  [sql-string]
+  (simple-query?-impl (sql-tools.settings/sql-tools-parser-backend) sql-string))

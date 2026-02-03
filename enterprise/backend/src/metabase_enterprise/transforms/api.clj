@@ -1,3 +1,4 @@
+^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase-enterprise.transforms.api
   (:require
    [metabase-enterprise.transforms.api.transform-job]
@@ -24,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
@@ -32,11 +34,8 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
-   (java.sql PreparedStatement)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect)))
+   (java.sql PreparedStatement)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
          metabase-enterprise.transforms.api.transform-tag/keep-me)
@@ -434,37 +433,11 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
 (defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion.
+  Delegates to sql-tools which dispatches to the configured parser backend (macaw or sqlglot)."
   [sql-string]
-  (try
-    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
-    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
-    ;;         adding at least default :non-resserved-words.
-    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
-      (cond
-        (not (instance? PlainSelect parsed))
-        {:is_simple false
-         :reason "Not a simple SELECT"}
-
-        (.getLimit parsed)
-        {:is_simple false
-         :reason "Contains a LIMIT"}
-
-        (.getOffset ^PlainSelect parsed)
-        {:is_simple false
-         :reason "Contains an OFFSET"}
-
-        (seq (.getWithItemsList ^PlainSelect parsed))
-        {:is_simple false
-         :reason "Contains a CTE"}
-
-        :else
-        {:is_simple true}))
-    (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
-      {:is_simple false})))
+  (sql-tools/simple-query? sql-string))
 
 ;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
