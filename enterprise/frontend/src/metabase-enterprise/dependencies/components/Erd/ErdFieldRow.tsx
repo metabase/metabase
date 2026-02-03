@@ -33,7 +33,7 @@ export function ErdFieldRow({
         {field.name}
       </Box>
       <Box fz="sm" c="text-tertiary" style={{ flexShrink: 0 }}>
-        {field.database_type}
+        {field.database_type.toLowerCase()}
       </Box>
       {isFK && isConnected && (
         <Handle
