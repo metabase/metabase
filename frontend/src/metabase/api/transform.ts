@@ -142,7 +142,10 @@ export const transformApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform")]),
+        invalidateTags(error, [
+          listTag("transform"),
+          listTag("external-transform"),
+        ]),
     }),
     updateTransform: builder.mutation<Transform, UpdateTransformRequest>({
       query: ({ id, ...body }) => ({

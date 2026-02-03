@@ -12,7 +12,6 @@ import type {
   GetDependencyGraphRequest,
   PythonTransformSourceDraft,
   Transform,
-  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";
@@ -32,15 +31,26 @@ export type TransformsPlugin = {
   TransformsUpsellPage: ComponentType;
 };
 
+export type PythonTransformEditorUiOptions = {
+  canChangeDatabase?: boolean;
+  readOnly?: boolean;
+  hidePreview?: boolean;
+  hideRunButton?: boolean;
+};
+
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
+  uiOptions?: PythonTransformEditorUiOptions;
   isEditMode?: boolean;
+  transform?: Transform;
   readOnly?: boolean;
-  transformId?: TransformId;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onRunTransform?: (result: any) => void;
+  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
+  onRun?: () => void;
 };
 
 export type PythonTransformSourceSectionProps = {

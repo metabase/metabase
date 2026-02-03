@@ -89,11 +89,16 @@ export function ResizableArea(props: {
       maxConstraints={[Infinity, maxHeight]}
       axis="y"
       handle={dragHandle}
-      resizeHandles={["s"]}
+      resizeHandles={resizable ? ["s"] : []}
       onResize={handleResize}
       onResizeStop={handleResize}
     >
-      <Flex w="100%" flex="1" h={height} className={className}>
+      <Flex
+        w="100%"
+        flex="1"
+        h={resizable ? height : "100%"}
+        className={className}
+      >
         {children}
       </Flex>
     </Resizable>

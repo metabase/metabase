@@ -8,6 +8,7 @@ import {
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
+  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -64,9 +65,11 @@ const setupRemoteSyncSettingsEndpoints = (
 const setupDirtyEndpoints = ({
   dirty = [],
   collections = [],
+  tokenFeatures = {},
 }: {
   dirty?: RemoteSyncEntity[];
   collections?: Collection[];
+  tokenFeatures?: Partial<TokenFeatures>;
 } = {}) => {
   const changedCollections: Record<number, boolean> = {};
   for (const entity of dirty) {
@@ -82,6 +85,10 @@ const setupDirtyEndpoints = ({
   });
 
   setupCollectionsEndpoints({ collections });
+
+  if (tokenFeatures.workspaces) {
+    setupWorkspacesEndpoint([]);
+  }
 };
 
 const setupNavbarEndpoints = (isOpened = true) => {
@@ -174,7 +181,7 @@ export const setup = ({
 
   setupSettingsEndpoints([]);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
-  setupDirtyEndpoints({ dirty, collections });
+  setupDirtyEndpoints({ dirty, collections, tokenFeatures });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
 
@@ -230,5 +237,22 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     advanced_permissions: true,
     data_studio: true,
     dependencies: true,
+  },
+};
+
+export const DEFAULT_EE_SETTINGS_WITH_WORKSPACES: Partial<SetupOpts> = {
+  enterprisePlugins: [
+    "library",
+    "remote_sync",
+    "dependencies",
+    "feature_level_permissions",
+    "workspaces",
+  ],
+  tokenFeatures: {
+    remote_sync: true,
+    advanced_permissions: true,
+    data_studio: true,
+    dependencies: true,
+    workspaces: true,
   },
 };

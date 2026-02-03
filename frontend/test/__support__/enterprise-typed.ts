@@ -52,6 +52,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
   tenants: "metabase-enterprise/tenants",
+  workspaces: "metabase-enterprise/data-studio/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

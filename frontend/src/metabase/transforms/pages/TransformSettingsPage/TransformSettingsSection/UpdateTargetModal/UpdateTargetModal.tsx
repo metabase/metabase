@@ -34,7 +34,7 @@ import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
   transform: Transform;
-  onUpdate: () => void;
+  onUpdate: (transform?: Transform) => void;
   onClose: () => void;
 };
 
@@ -72,7 +72,7 @@ const EDIT_TRANSFORM_SCHEMA = Yup.object({
 
 type UpdateTargetFormProps = {
   transform: Transform;
-  onUpdate: () => void;
+  onUpdate: (transform?: Transform) => void;
   onClose: () => void;
 };
 
@@ -117,10 +117,10 @@ function UpdateTargetForm({
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
-    await updateTransform(
+    const updatedTransform = await updateTransform(
       getUpdateRequest(transform, values, databaseId),
     ).unwrap();
-    onUpdate();
+    onUpdate(updatedTransform);
   };
 
   return (

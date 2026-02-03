@@ -1,6 +1,8 @@
 import { useFormikContext } from "formik";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import type * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
@@ -25,8 +27,10 @@ import {
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
   QueryComplexity,
+  SchemaName,
   Transform,
   TransformSource,
+  WorkspaceTransform,
 } from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
@@ -35,11 +39,23 @@ import { TargetNameInput } from "./TargetNameInput";
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 
+export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
+
+type SchemasFilter = (schema: SchemaName) => boolean;
+
 type CreateTransformModalProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
+  onCreate?: (transform: Transform) => void;
   onClose: () => void;
+  schemasFilter?: SchemasFilter;
+  validationSchemaExtension?: ValidationSchemaExtension;
+  handleSubmit?: (
+    values: NewTransformValues,
+  ) => Promise<Transform | WorkspaceTransform>;
+  targetDescription?: string;
+  validateOnMount?: boolean;
+  showIncrementalSettings?: boolean;
 };
 
 export function CreateTransformModal({
@@ -47,6 +63,12 @@ export function CreateTransformModal({
   defaultValues,
   onCreate,
   onClose,
+  schemasFilter,
+  validationSchemaExtension,
+  handleSubmit,
+  targetDescription,
+  validateOnMount,
+  showIncrementalSettings,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -58,29 +80,43 @@ export function CreateTransformModal({
   } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
 
   const {
-    data: schemas = [],
+    data: fetchedSchemas = [],
     isLoading: isSchemasLoading,
     error: schemasError,
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
+  const schemas = useMemo(() => {
+    return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);
+  }, [schemasFilter, fetchedSchemas]);
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
 
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const { initialValues, validationSchema, createTransform } =
-    useCreateTransform(schemas, defaultValues);
+  const {
+    initialValues,
+    validationSchema: defaultSchema,
+    createTransform,
+  } = useCreateTransform(schemas, defaultValues);
+
+  const validationSchema = useMemo(
+    () =>
+      validationSchemaExtension
+        ? defaultSchema.shape(validationSchemaExtension)
+        : defaultSchema,
+    [validationSchemaExtension, defaultSchema],
+  );
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const handleSubmit = async (values: NewTransformValues) => {
+  const defaultHandleSubmit = async (values: NewTransformValues) => {
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
     const transform = await createTransform(databaseId, source, values);
-    onCreate(transform);
+    onCreate?.(transform);
   };
 
   return (
@@ -88,13 +124,16 @@ export function CreateTransformModal({
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit || defaultHandleSubmit}
+        validateOnMount={validateOnMount}
       >
         <CreateTransformForm
           source={source}
           supportsSchemas={supportsSchemas}
           schemas={schemas}
           onClose={onClose}
+          targetDescription={targetDescription}
+          showIncrementalSettings={showIncrementalSettings}
         />
       </FormProvider>
     </Modal>
@@ -106,6 +145,8 @@ type CreateTransformFormFieldsProps = {
   supportsSchemas: boolean | undefined;
   schemas: string[];
   onClose: () => void;
+  targetDescription?: string;
+  showIncrementalSettings?: boolean;
 };
 
 function CreateTransformForm({
@@ -113,6 +154,8 @@ function CreateTransformForm({
   supportsSchemas,
   schemas,
   onClose,
+  targetDescription,
+  showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
   const { checkComplexity } = useQueryComplexityChecks();
@@ -144,18 +187,20 @@ function CreateTransformForm({
             data={schemas}
           />
         )}
-        <TargetNameInput />
+        <TargetNameInput description={targetDescription} />
         <FormCollectionPicker
           name="collection_id"
           title={t`Collection`}
           collectionPickerModalProps={{ namespaces: ["transforms"] }}
           style={{ marginBottom: 0 }}
         />
-        <IncrementalTransformSettings
-          source={source}
-          incremental={values.incremental}
-          onIncrementalChange={handleIncrementalChange}
-        />
+        {showIncrementalSettings && (
+          <IncrementalTransformSettings
+            source={source}
+            incremental={values.incremental}
+            onIncrementalChange={handleIncrementalChange}
+          />
+        )}
         {complexity && (
           <QueryComplexityWarning complexity={complexity} variant="standout" />
         )}

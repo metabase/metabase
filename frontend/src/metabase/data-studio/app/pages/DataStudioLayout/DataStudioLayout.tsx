@@ -14,8 +14,10 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   canAccessTransforms as canAccessTransformsSelector,
   getTransformsFeatureAvailable,
@@ -86,6 +88,7 @@ type DataStudioNavProps = {
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
+  const isAdmin = useSelector(getUserIsAdmin);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
@@ -111,7 +114,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         justify="space-between"
         data-testid="data-studio-nav"
       >
-        <Stack gap="0.75rem">
+        <Stack gap="0.75rem" flex={1} mih={0}>
           <DataStudioNavbarToggle
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}
@@ -178,6 +181,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
                 ) : null
               }
             />
+          )}
+          {(canAccessTransforms || isAdmin) && (
+            <PLUGIN_WORKSPACES.WorkspacesSection showLabel={isNavbarOpened} />
           )}
         </Stack>
         <Stack gap="0.75rem">

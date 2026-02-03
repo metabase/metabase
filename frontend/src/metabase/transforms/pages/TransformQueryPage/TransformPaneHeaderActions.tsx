@@ -7,7 +7,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { DraftTransformSource, TransformId } from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 type Props = {
   handleCancel: VoidFunction;
@@ -17,7 +17,7 @@ type Props = {
   isSaving: boolean;
   readOnly?: boolean;
   source: DraftTransformSource;
-  transformId: TransformId;
+  transform: Transform;
 };
 
 export const TransformPaneHeaderActions = (props: Props) => {
@@ -28,8 +28,8 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
+    transform,
     readOnly,
-    transformId,
   } = props;
   const metadata = useSelector(getMetadata);
   const isRemoteSyncReadOnly = useSelector(
@@ -61,7 +61,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     !isEditMode &&
     !isRemoteSyncReadOnly
   ) {
-    return <EditDefinitionButton transformId={transformId} />;
+    return <EditDefinitionButton transformId={transform.id} />;
   }
 
   if (!isEditMode && isNative) {

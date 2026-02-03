@@ -11,6 +11,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
@@ -352,7 +353,7 @@
   (try
     (let [message-log (empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          {driver :engine :as db} (t2/select-one :model/Database (:database target))
+          {driver :engine :as db} (t2/select-one :model/Database (transforms.i/target-db-id transform))
           ;; For manual runs, use the triggering user; for cron, use owner/creator
           run-user-id (if (and (= run-method :manual) user-id)
                         user-id
@@ -363,6 +364,7 @@
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
       (let [start-ms          (u/start-timer)
             transform-details {:db-id          (:id db)
+                               :transform-id   transform-id
                                :transform-type (keyword (:type target))
                                :conn-spec      (driver/connection-spec driver db)
                                :output-schema  (:schema target)

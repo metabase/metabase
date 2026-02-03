@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- { ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -179,6 +179,11 @@
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; Workspace isolation functions are safe in parallel tests because they operate on
+     ;; isolated, test-specific workspaces and databases that don't affect other tests
+     metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
+     metabase-enterprise.workspaces.isolation/ensure-database-isolation!
+     metabase-enterprise.workspaces.test-util/create-ready-ws!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
@@ -192,7 +197,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -420,6 +425,8 @@
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+  metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
+  metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let

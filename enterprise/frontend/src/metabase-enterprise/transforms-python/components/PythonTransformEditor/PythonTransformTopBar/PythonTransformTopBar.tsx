@@ -9,8 +9,10 @@ import { DatabaseDataSelector } from "metabase/query_builder/components/DataSele
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
+import { EditTransformMenu } from "metabase-enterprise/data-studio/workspaces/components/EditTransformMenu";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Database, DatabaseId, TransformId } from "metabase-types/api";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
 
@@ -18,20 +20,22 @@ type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
   isEditMode?: boolean;
   readOnly?: boolean;
-  transformId?: TransformId;
+  transform?: Transform;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
+  canChangeDatabase?: boolean;
 };
 
 export function PythonTransformTopBar({
   databaseId,
   isEditMode,
   readOnly,
-  transformId,
+  transform,
   onDatabaseChange,
+  canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const showEditDefinitionButton =
-    !isEditMode && transformId && !isRemoteSyncReadOnly && !readOnly;
+  const showEditButton =
+    !isEditMode && transform && !isRemoteSyncReadOnly && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -52,7 +56,7 @@ export function PythonTransformTopBar({
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >
-      {isEditMode ? (
+      {isEditMode && canChangeDatabase ? (
         <Flex h="3rem" ml="sm" align="center" data-testid="selected-database">
           <DatabaseDataSelector
             className={S.databaseSelector}
@@ -77,16 +81,20 @@ export function PythonTransformTopBar({
           {database?.name}
         </Flex>
       )}
-      {showEditDefinitionButton && (
+      {showEditButton && (
         <Flex ml="auto" mr="lg" align="center" h="3rem">
-          <EditDefinitionButton
-            bg="transparent"
-            fz="sm"
-            h="1.5rem"
-            px="sm"
-            size="xs"
-            transformId={transformId}
-          />
+          {hasPremiumFeature("workspaces") ? (
+            <EditTransformMenu transform={transform} />
+          ) : (
+            <EditDefinitionButton
+              bg="transparent"
+              fz="sm"
+              h="1.5rem"
+              px="sm"
+              size="xs"
+              transformId={transform.id}
+            />
+          )}
         </Flex>
       )}
     </Flex>
