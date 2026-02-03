@@ -28,6 +28,7 @@ export type UnsavedTransform = {
   source: DraftTransformSource;
   target: {
     name: string;
+    schema: string | null;
     type: TransformTargetType;
   };
 };

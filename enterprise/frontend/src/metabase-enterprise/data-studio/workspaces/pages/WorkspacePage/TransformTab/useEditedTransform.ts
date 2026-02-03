@@ -37,7 +37,12 @@ export function useEditedTransform(
     "target" in editedTransform &&
     "target" in transform &&
     transform.target.name !== editedTransform.target.name;
-  const hasChanges = hasSourceChanged || hasTargetNameChanged;
+  const hasTargetSchemaChanged =
+    "target" in editedTransform &&
+    "target" in transform &&
+    transform.target.schema !== editedTransform.target.schema;
+  const hasChanges =
+    hasSourceChanged || hasTargetNameChanged || hasTargetSchemaChanged;
 
   return { editedTransform, hasChanges, providerEdited };
 }

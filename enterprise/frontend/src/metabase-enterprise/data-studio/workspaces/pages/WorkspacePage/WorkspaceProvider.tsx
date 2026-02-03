@@ -34,6 +34,7 @@ export interface EditedTransform {
   source: DraftTransformSource;
   target: {
     name: string;
+    schema: string | null;
     type: TransformTargetType;
   };
 }
@@ -550,6 +551,7 @@ export const WorkspaceProvider = ({
           source,
           target: {
             name: "",
+            schema: null,
             type: "table",
           },
         };
