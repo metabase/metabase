@@ -1,6 +1,7 @@
 ^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase.sql-tools.sqlglot.core
   (:require
+   [clojure.string :as str]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -58,7 +59,7 @@
         default-schema (driver.sql/default-schema driver)
         query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
     (into #{}
-          (keep (fn [[table-schema table]]
+          (keep (fn [[_catalog table-schema table]]
                   (sql-tools.common/find-table-or-transform
                    driver db-tables db-transforms
                    (sql-tools.common/normalize-table-spec
@@ -72,48 +73,69 @@
 
 ;;;; Validation
 
-(defn- process-error-dispatch [_driver {:keys [type]}] type)
+(defn- process-error-dispatch [_driver {:keys [type]}]
+  (keyword (str/replace type "_" "-")))
 
 (defmulti process-error
-  "WIP"
+  "Convert a SQLGlot validation error to a Metabase lib validation error."
   {:arglists '([driver validation-output])}
   #'process-error-dispatch)
 
-;; TODO: Better/correct error mapping for all methods!
+;; Error type mappings from SQLGlot to Metabase lib validation errors.
+;; SQLGlot's "unknown_table" typically means a table alias/qualifier that doesn't
+;; exist (e.g., "foo.*" when foo isn't a valid table or alias).
 (defmethod process-error :unknown-table
-  [_driver _validation-output]
-  (lib/syntax-error))
+  [driver {:keys [table]}]
+  (lib/missing-table-alias-error (driver.sql/normalize-name driver table)))
 
+;; SQLGlot's "column_not_resolved" can mean either:
+;; 1. A missing column in a known table → missing-column-error
+;; 2. A column qualified with an unknown table alias → missing-table-alias-error
+;; We check the details field for "for table: 'X'" to distinguish these cases.
 (defmethod process-error :column-not-resolved
-  [driver {:keys [column] :as _validation-output}]
-  (-> column
-      ((partial driver.sql/normalize-name driver))
-      lib/missing-column-error))
+  [driver {:keys [column details] :as _validation-output}]
+  (if-let [[_ table-alias] (when details (re-find #"for table: '(\w+)'" details))]
+    (lib/missing-table-alias-error (driver.sql/normalize-name driver table-alias))
+    (lib/missing-column-error (driver.sql/normalize-name driver column))))
 
 (defmethod process-error :invalid-expression
   [_driver _validation-output]
   (lib/syntax-error))
 
+(defmethod process-error :default
+  [_driver {:keys [message]}]
+  (log/warn "Unhandled SQLGlot validation error:" message)
+  (lib/syntax-error))
+
 ;; TODO: The original, Macaw impl returns multiple errors for a query.
 ;; This should be extended the same way (e.g. by adding the checks over lineage).
 ;; For now we return #{<err>}, single error to conform previous implementation.
-#_(defn validate-query
-    "Validate the native `query`."
-    [driver query]
-    (log/warn "I'm using sqlglot-schema, please fix me.")
+(defn validate-query
+  "Validate the native `query`.
+
+  Returns a set of validation errors. Empty set means valid.
+  Possible error types:
+  - (lib/syntax-error) - SQL syntax error
+  - (lib/missing-column-error col) - column not found in any table
+  - (lib/missing-table-alias-error alias) - table alias not found"
+  [driver query]
+  (try
     (let [sql (lib/raw-native-query query)
           default-table-schema* (driver.sql/default-schema driver)
           sqlglot-schema* (sqlglot-schema driver query)
           validation-result (sql-parsing/validate-query
                              (driver->dialect driver) sql default-table-schema* sqlglot-schema*)]
-      (if (= :ok (:status validation-result))
+      (if (= "ok" (:status validation-result))
         #{}
         (let [processed (process-error driver validation-result)]
-          #{processed}))))
+          #{processed})))
+    (catch Exception e
+      (log/warn e "SQLGlot validation failed unexpectedly")
+      #{(lib/syntax-error)})))
 
-#_(defmethod sql-tools/validate-query-impl :sqlglot
-    [_parser driver query]
-    (validate-query driver query))
+(defmethod sql-tools/validate-query-impl :sqlglot
+  [_parser driver query]
+  (validate-query driver query))
 
 ;;;; referenced-fields
 
@@ -132,7 +154,7 @@
           (lib.metadata/tables mp)))
 
 (defn- field->columns
-  [namespaced-columns* [table-name field-name :as _coords]]
+  [namespaced-columns* [_catalog _schema table-name field-name :as _coords]]
   (let [columns (or (if (= "*" field-name)
                       (some-> (get namespaced-columns* table-name) vals)
                       (some-> (get-in namespaced-columns* [table-name field-name]) vector))

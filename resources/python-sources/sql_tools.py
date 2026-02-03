@@ -166,22 +166,26 @@ def analyze(sql: str) -> str:
 
 def table_parts(table):
     """
-    Extract (schema, name) tuple from a table expression.
+    Extract (catalog, schema, table) 3-tuple from a table expression.
     Returns None if the table doesn't have a valid name (e.g., UDTFs).
+
+    SQLGlot naming:
+    - table.catalog → SQL catalog (e.g., BigQuery project, Snowflake database)
+    - table.db      → SQL schema (e.g., BigQuery dataset, Postgres schema)
+    - table.name    → table name
     """
-    # table.db maps to what is known as table schema
     name = table.name
     if not isinstance(name, str) or not name:
         # UDTFs and other function-based sources don't have traditional table names
         return None
-    return (table.db or None, name)
+    return (table.catalog or None, table.db or None, name)
 
 def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
     Extract table references from a SQL query.
 
-    Returns a JSON array of [schema_or_null, table_name] pairs:
-    [[null, "users"], ["public", "orders"]]
+    Returns a JSON array of [catalog, schema, table] 3-tuples:
+    [[null, null, "users"], [null, "public", "orders"], ["myproject", "dataset", "events"]]
 
     Excludes CTEs, subquery aliases, and UDTFs.
 
@@ -190,10 +194,13 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
 
     Examples:
         referenced_tables("SELECT * FROM users")
-        => '[[null, "users"]]'
+        => '[[null, null, "users"]]'
 
-        referenced_tables("SELECT * FROM public.users u1 LEFT JOIN other.users u2 ON ...")
-        => '[["other", "users"], ["public", "users"]]'
+        referenced_tables("SELECT * FROM public.users")
+        => '[[null, "public", "users"]]'
+
+        referenced_tables("SELECT * FROM myproject.analytics.events", "bigquery")
+        => '[["myproject", "analytics", "events"]]'
     """
     ast = sqlglot.parse_one(sql, read=dialect)
     root_scope = optimizer.build_scope(ast)
@@ -207,7 +214,7 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
                     tables.add(parts)
 
     # Sort for deterministic output (nulls sort first via empty string)
-    return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1])))
+    return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1] or "", x[2])))
 
 def validate_sql_query(sql: str, dialect: str = "postgres") -> str:
     """
@@ -291,11 +298,11 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
     """
     Extract field references from a SQL query, returning only fields from actual database tables.
 
-    Returns a JSON array of [table_name, field_name] pairs:
-    [["users", "id"], ["users", "email"], ["orders", "total"]]
+    Returns a JSON array of [catalog, schema, table, field] 4-tuples:
+    [[null, null, "users", "id"], [null, "public", "orders", "total"]]
 
     Includes:
-    - Wildcards as ["table_name", "*"] (both qualified like "users.*" and unqualified "SELECT *")
+    - Wildcards as [catalog, schema, table, "*"]
     - All specific column references
 
     Excludes:
@@ -307,14 +314,14 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
     :param dialect: SQL dialect (postgres, mysql, snowflake, bigquery, redshift, duckdb)
 
     Examples:
-        referenced_fields("SELECT t.id, u.* FROM transactions t LEFT JOIN users u ON t.user_id = u.id", "postgres")
-        => '[["transactions", "id"], ["transactions", "user_id"], ["users", "*"], ["users", "id"]]'
+        referenced_fields("SELECT id FROM users", "postgres")
+        => '[[null, null, "users", "id"]]'
 
-        referenced_fields("SELECT * FROM users", "postgres")
-        => '[["users", "*"]]'
+        referenced_fields("SELECT * FROM public.users", "postgres")
+        => '[[null, "public", "users", "*"]]'
 
-        referenced_fields("SELECT * FROM users u LEFT JOIN transactions t ON u.id = t.user_id", "postgres")
-        => '[["transactions", "*"], ["transactions", "user_id"], ["users", "*"], ["users", "id"]]'
+        referenced_fields("SELECT * FROM myproject.analytics.events", "bigquery")
+        => '[["myproject", "analytics", "events", "*"]]'
     """
     ast = sqlglot.parse_one(sql, read=dialect)
     root_scope = optimizer.build_scope(ast)
@@ -332,23 +339,23 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
 
     # Traverse all scopes to find column references
     for scope in root_scope.traverse():
-        # Build a mapping of table aliases to real table names
+        # Build a mapping of table aliases to table_parts tuples (catalog, schema, table)
         # Only include actual tables, not CTEs or subqueries
-        alias_to_table = {}
+        alias_to_table_parts = {}
         for alias, source in scope.sources.items():
             if isinstance(source, exp.Table):
-                # Get the actual table name (not the alias)
                 table_name = source.name
                 # Skip if this is actually a CTE reference
                 if table_name and table_name not in cte_names and alias not in cte_names:
-                    alias_to_table[alias] = table_name
+                    parts = table_parts(source)
+                    if parts is not None:
+                        alias_to_table_parts[alias] = parts
 
         # Check for unqualified wildcards (SELECT * without table qualification)
-        # These appear as Star nodes directly in the SELECT expressions list
         if isinstance(scope.expression, exp.Select):
             for expr in scope.expression.expressions:
                 if isinstance(expr, exp.Star):
-                    unqualified_wildcard_scopes.append((scope, alias_to_table))
+                    unqualified_wildcard_scopes.append((scope, alias_to_table_parts))
                     break
 
         # Find all column references in this scope
@@ -357,37 +364,33 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
             table_ref = column.table
 
             # Handle qualified wildcards (e.g., "users.*")
-            # These appear as Column nodes with name="*"
             if column_name == "*":
                 if table_ref:
-                    actual_table = alias_to_table.get(table_ref, table_ref)
-                    if actual_table in alias_to_table.values():
-                        fields.add((actual_table, "*"))
+                    parts = alias_to_table_parts.get(table_ref)
+                    if parts is not None:
+                        # 4-tuple: (catalog, schema, table, field)
+                        fields.add(parts + ("*",))
                 continue
 
             # Regular column references
             if table_ref:
-                # Resolve alias to actual table name
-                actual_table = alias_to_table.get(table_ref, table_ref)
-
-                # Only include if we have a real table (not a CTE or subquery)
-                if actual_table in alias_to_table.values():
-                    fields.add((actual_table, column_name))
+                parts = alias_to_table_parts.get(table_ref)
+                if parts is not None:
+                    fields.add(parts + (column_name,))
             else:
                 # Column without explicit table qualifier
-                # Try to infer which table it belongs to
-                # For simplicity, if there's only one source table, use that
-                if len(alias_to_table) == 1:
-                    actual_table = list(alias_to_table.values())[0]
-                    fields.add((actual_table, column_name))
+                # If there's only one source table, use that
+                if len(alias_to_table_parts) == 1:
+                    parts = list(alias_to_table_parts.values())[0]
+                    fields.add(parts + (column_name,))
 
     # For scopes with unqualified wildcards, add wildcard entries for all tables
-    for scope, alias_to_table in unqualified_wildcard_scopes:
-        for table_name in alias_to_table.values():
-            fields.add((table_name, "*"))
+    for scope, alias_to_table_parts in unqualified_wildcard_scopes:
+        for parts in alias_to_table_parts.values():
+            fields.add(parts + ("*",))
 
-    # Sort for deterministic output
-    return json.dumps(sorted(fields, key=lambda x: (x[0], x[1])))
+    # Sort for deterministic output: catalog, schema, table, field
+    return json.dumps(sorted(fields, key=lambda x: (x[0] or "", x[1] or "", x[2], x[3])))
 
 # TODO: signal missing cases failures better?
 # TODO: Consider generic way of error extraction. It might make sense to do this in clojure.
@@ -426,14 +429,23 @@ def serialize_error(e):
 # TODO: get rid of sqlglot_schema
 def validate_query(dialect, sql, default_table_schema, sqlglot_schema):
     """
-    Docstring for validate_query_stub
+    Validate a SQL query against a schema using sqlglot's qualify optimizer.
 
-    :param dialect: Description
-    :param sql: Description
-    :param default_table_schema: Description
-    :param sqlglot_schema: Description
+    Returns JSON with:
+    - If valid: {"status": "ok"}
+    - If error: {"status": "error", "type": "...", "message": "...", ...}
+
+    Error types:
+    - unknown_table: Table reference not found
+    - column_not_resolved: Column not found (includes 'column' and optionally 'details' with table info)
+    - invalid_expression: Syntax/parse error
+    - unhandled: Other errors
+
+    :param dialect: SQLGlot dialect string (e.g., "postgres", "mysql")
+    :param sql: SQL query string to validate
+    :param default_table_schema: Default schema for unqualified tables
+    :param sqlglot_schema: Schema dict {schema: {table: {column: type}}}
     """
-    print(sql)
     status = {"status": "ok"}
     # TODO: divide into 2 chunks -- parse, optimize
     try:

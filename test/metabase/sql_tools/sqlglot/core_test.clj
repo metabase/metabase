@@ -185,8 +185,10 @@
     :postgres
     (let [mp (mt/metadata-provider)
           query (lib/native-query mp "select id from orders")]
-      (is (=? [{:name "id"}]
-              (sql-tools.sqlglot/referenced-columns driver/*driver* query))))))
+      (is (= #{"id"}
+             (->> (sql-tools.sqlglot/referenced-columns driver/*driver* query)
+                  (map :name)
+                  set))))))
 
 (deftest referenced-columns-select-*-test
   (mt/test-driver
@@ -286,3 +288,50 @@
                  {:name "quantity"}]
                 (->> (sql-tools.sqlglot/referenced-columns driver/*driver* query)
                      (sort-by :position))))))))
+
+;;;; validate-query
+
+(deftest validate-query-syntax-error-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "complete nonsense query")]
+      (testing "Gibberish SQL returns syntax error"
+        (is (= #{(lib/syntax-error)}
+               (sql-tools.sqlglot/validate-query driver/*driver* query)))))))
+
+(deftest validate-query-missing-table-alias-wildcard-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select foo.* from (select id from orders)")]
+      (testing "Wildcard with unknown table alias returns missing-table-alias error"
+        (is (= #{(lib/missing-table-alias-error "foo")}
+               (sql-tools.sqlglot/validate-query driver/*driver* query)))))))
+
+(deftest validate-query-missing-table-alias-column-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select bad.id from products")]
+      (testing "Column with unknown table qualifier returns missing-table-alias error"
+        (is (= #{(lib/missing-table-alias-error "bad")}
+               (sql-tools.sqlglot/validate-query driver/*driver* query)))))))
+
+(deftest validate-query-missing-column-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select nonexistent from orders")]
+      (testing "Reference to non-existent column returns missing-column error"
+        (is (= #{(lib/missing-column-error "nonexistent")}
+               (sql-tools.sqlglot/validate-query driver/*driver* query)))))))
+
+(deftest validate-query-valid-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          query (lib/native-query mp "select id, total from orders")]
+      (testing "Valid query returns empty error set"
+        (is (= #{}
+               (sql-tools.sqlglot/validate-query driver/*driver* query)))))))
