@@ -352,18 +352,28 @@
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [card recipient-emails archiver]
+  [card recipient-emails recipient-emails-with-no-links archiver]
   (send-email! recipient-emails not-working-subject archived-template
                {:card card
                 :actor archiver}
+               true)
+  (send-email! recipient-emails-with-no-links not-working-subject archived-template
+               {:card card
+                :actor archiver
+                :disable_links true}
                true))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [card recipient-emails archiver]
+  [card recipient-emails recipient-emails-with-no-links archiver]
   (send-email! recipient-emails not-working-subject changed-stopped-template
                {:card card
                 :actor archiver}
+               true)
+  (send-email! recipient-emails-with-no-links not-working-subject changed-stopped-template
+               {:card card
+                :actor archiver
+                :disable_links true}
                true))
 
 (defn send-broken-subscription-notification!
