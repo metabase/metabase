@@ -20,7 +20,7 @@
    [toucan2.core :as t2]))
 
 ;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
-(def ^:private TYPE->MODEL
+(def ^:private type->model
   {"document" :model/Document})
 
 (defn- entity-archived?
@@ -107,7 +107,7 @@
   (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
     {:disabled true
      :comments []}
-    (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
+    (let [_entity  (api/read-check (type->model target_type) target_id)
           comments (-> (t2/select :model/Comment
                                   {:where    [:and
                                               [:= :target_type target_type]
@@ -121,7 +121,7 @@
   [{:keys [target_type target_id parent_comment_id] :as comment}
    & [{:keys [entity parent]
        ;; if you don't pass them we'll try to fetch them
-       :or   {entity (t2/select-one (TYPE->MODEL target_type) :id target_id)
+       :or   {entity (t2/select-one (type->model target_type) :id target_id)
               parent (when parent_comment_id
                        (t2/select-one :model/Comment :id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
@@ -167,7 +167,7 @@
   [_route-params
    _query-params
    {:keys [target_type target_id child_target_id parent_comment_id content html]} :- CreateComment]
-  (let [entity     (-> (api/read-check (TYPE->MODEL target_type) target_id)
+  (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
         ;; If this is a reply, validate the parent comment exists and belongs to same entity
@@ -205,7 +205,7 @@
    _query-params
    {:keys [content html is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
-        entity  (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
+        entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
 
@@ -243,7 +243,7 @@
    _query-params]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
 
-    (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
+    (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
 
@@ -275,7 +275,7 @@
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
 
-    (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
+    (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot react to comments on archived entities")))
 

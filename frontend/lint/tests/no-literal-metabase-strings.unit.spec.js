@@ -1,6 +1,6 @@
 import { RuleTester } from "eslint";
 
-import noLiteralMetabaseString from "../eslint-rules/no-literal-metabase-strings";
+import rule from "../eslint-plugin-metabase/rules/no-literal-metabase-strings";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -120,7 +120,7 @@ const INVALID_CASES = [
   },
 ];
 
-ruleTester.run("no-literal-metabase-strings", noLiteralMetabaseString, {
+ruleTester.run("no-literal-metabase-strings", rule, {
   valid: VALID_CASES,
   invalid: INVALID_CASES.map((invalidCase) => ({
     code: invalidCase.code,

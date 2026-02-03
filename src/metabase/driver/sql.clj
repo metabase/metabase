@@ -193,6 +193,7 @@
                                                            :name (name output-table)})
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
+    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
@@ -238,6 +239,35 @@
                 (when (matches? name schema)
                   {:transform id}))
               transforms))))
+
+(defn- normalize-table-spec
+  [driver {:keys [table schema]}]
+  {:table (sql.normalize/normalize-name driver table)
+   :schema (some->> schema (sql.normalize/normalize-name driver))})
+
+(defn- parsed-table-refs
+  "Parse a native query and return a sequence of normalized table specs {:table ... :schema ...}."
+  [driver query]
+  (-> query
+      driver-api/raw-native-query
+      (driver.u/parsed-query driver)
+      (macaw/query->components {:strip-contexts? true})
+      :tables
+      (->> (map :component)
+           (map #(normalize-table-spec driver %)))))
+
+(mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (into #{} (parsed-table-refs driver query)))
+
+(mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables     (driver-api/tables query)
+        db-transforms (driver-api/transforms query)]
+    (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
+                    (parsed-table-refs driver query)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |

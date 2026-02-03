@@ -255,20 +255,21 @@
 
 (defn- create-db-load-data!
   "Load the data for each Table."
-  [driver ^java.sql.Connection conn {:keys [table-definitions] :as dbdef}]
-  (doseq [tabledef table-definitions
-          :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
-                                                   u/format-nanoseconds)
-                                           "NONE")]]
-    (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
-                       (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-      (try
-        (load-data-for-table-definition! driver conn dbdef tabledef)
-        (catch Throwable e
-          (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                          {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                              (concat (take 10 rows) ['...])))}
-                          e)))))))
+  [driver ^java.sql.Connection conn {:keys [table-definitions options] :as dbdef}]
+  (binding [*disable-fk-checks* (get options :disable-fk-checks false)]
+    (doseq [tabledef table-definitions
+            :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
+                                                     u/format-nanoseconds)
+                                             "NONE")]]
+      (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
+                         (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
+        (try
+          (load-data-for-table-definition! driver conn dbdef tabledef)
+          (catch Throwable e
+            (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                            {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                                (concat (take 10 rows) ['...])))}
+                            e))))))))
 
 (defn create-db!
   "Default implementation of [[tx/create-db!]] for SQL drivers. Loads test data into a data

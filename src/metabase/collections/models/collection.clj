@@ -2023,7 +2023,8 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)}})
+               :personal_owner_id (serdes/fk :model/User)
+               :workspace_id      (serdes/fk :model/Workspace)}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

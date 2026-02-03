@@ -2915,7 +2915,7 @@
   (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
-        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
@@ -2923,7 +2923,7 @@
 
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
-        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
