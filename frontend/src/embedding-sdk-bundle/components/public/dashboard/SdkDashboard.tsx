@@ -302,7 +302,7 @@ const SdkDashboardInner = ({
     }
   }, [dashboard, sdkNavigation]);
 
-  // Wrap the navigation handler to push a placeholder for back button support
+  // Wrap the navigation handler to push a virtual entry for back button support
   const onNavigateToNewCardFromDashboard = useCallback(
     (opts: Parameters<typeof baseOnNavigateToNewCardFromDashboard>[0]) => {
       baseOnNavigateToNewCardFromDashboard(opts);

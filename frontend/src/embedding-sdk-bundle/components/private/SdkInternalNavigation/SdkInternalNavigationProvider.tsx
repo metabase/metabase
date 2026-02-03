@@ -124,14 +124,14 @@ const SdkInternalNavigationProviderInner = ({
     [stack, push, pop, navigateToNewCard, initWithDashboard],
   );
 
-  // "Placeholder" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
+  // "Virtual" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
   // we don't have to render them, but we need them in the stack to make the back button work correctly
-  const nonPlaceholderEntries = useMemo(
-    () => stack.filter((entry) => !entry.type.startsWith("placeholder")),
+  const nonVirtualEntries = useMemo(
+    () => stack.filter((entry) => !entry.type.startsWith("virtual")),
     [stack],
   );
 
-  const entryToRender = nonPlaceholderEntries.at(-1);
+  const entryToRender = nonVirtualEntries.at(-1);
   const entryIndex = entryToRender ? stack.indexOf(entryToRender) : -1;
   // If the entry is the original entry, we just need to return the children.
   const entryIsOriginalEntity = stack.length === 0 || entryIndex === 0;
