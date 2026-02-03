@@ -34,13 +34,8 @@ export type TransformEditorProps = {
   onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
-<<<<<<< HEAD
   transform?: Transform;
-  isEditMode: boolean;
-=======
   isEditMode?: boolean;
-  readOnly?: boolean;
->>>>>>> master
   transformId?: TransformId;
 };
 
@@ -58,7 +53,6 @@ export function TransformEditor({
   onBlur,
   transform,
   isEditMode,
-  readOnly,
   transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
@@ -79,12 +73,12 @@ export function TransformEditor({
   );
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-<<<<<<< HEAD
-  const showEditButton = !!transformId && !isEditMode && !isRemoteSyncReadOnly;
-=======
-  const showEditDefinitionButton =
-    !!transformId && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
->>>>>>> master
+
+  const showEditButton =
+    !!transformId &&
+    !uiOptions?.readOnly &&
+    !isEditMode &&
+    !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
