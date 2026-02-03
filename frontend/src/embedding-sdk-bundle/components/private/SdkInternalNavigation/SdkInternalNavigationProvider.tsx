@@ -13,6 +13,7 @@ import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/publi
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
 import * as Urls from "metabase/lib/urls";
+import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
@@ -139,10 +140,13 @@ const SdkInternalNavigationProviderInner = ({
     .with(null, () => false)
     .with("dashboard", () => true)
     .with("question", () => false) // questions render their button in the header toolbar
-    .otherwise(() => false);
+    .otherwise(() => false); // all other navigations end up rendering a question (ad-hoc, new question etc)
 
   const maybeButton = shouldRenderBackButton ? (
-    <SdkInternalNavigationBackButton style={{ border: "1px solid red" }} />
+    // Same padding as when the button is rendered inside the question, to minimize movement while navigating
+    <Stack align="flex-start" p="md">
+      <SdkInternalNavigationBackButton />
+    </Stack>
   ) : null;
 
   const content = match({ activeEntry: entryToRender })
