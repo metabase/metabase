@@ -246,9 +246,6 @@ describe("user > settings", () => {
   });
 
   describe("dark mode", () => {
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
@@ -262,7 +259,7 @@ describe("user > settings", () => {
 
       //Need to take focus off the inpout
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
-      cy.realPress([metaKey, "Shift", "L"]);
+      cy.realPress([H.metaKey, "Shift", "L"]);
       assertDarkMode();
     });
 

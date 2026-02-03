@@ -576,9 +576,7 @@ describe("issue 56905", () => {
     H.NativeEditor.type("select {{ foo }}");
     cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
 
     cy.findByTestId("query-visualization-root")
       .findByText("foobar")
@@ -760,9 +758,7 @@ describe("issue 60719", () => {
 
 describe("issue 59356", () => {
   function typeRunShortcut() {
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
   }
 
   function getLoader() {
