@@ -258,7 +258,8 @@
       (macaw/query->components {:strip-contexts? true})
       :tables
       (->> (map :component)
-           (map #(normalize-table-spec driver %)))))
+           (map #(normalize-table-spec driver %)))
+      (into (driver-api/native-query-table-references query))))
 
 (mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
   [driver :- :keyword
@@ -270,9 +271,9 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (into (driver-api/native-query-table-references query)
-          (keep #(find-table-or-transform driver db-tables db-transforms %)
-                (parsed-table-refs driver query)))))
+    (into #{}
+          (keep #(find-table-or-transform driver db-tables db-transforms %))
+          (parsed-table-refs driver query))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |

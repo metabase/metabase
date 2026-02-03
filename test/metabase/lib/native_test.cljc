@@ -654,44 +654,25 @@
 
 (deftest ^:parallel basic-native-query-table-references-test
   (testing "should find id-based native query table references"
-    (is (= #{{:table (meta/id :orders)}}
-           (lib.native/native-query-table-references
-            (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)}))))))
+    (let [table (meta/table-metadata :orders)]
+      (is (= #{{:table (:name table)
+                :schema (:schema table)}}
+             (lib.native/native-query-table-references
+              (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)})))))))
 
 (deftest ^:parallel name-native-query-table-references-test
   (testing "should find name-based native query table references"
     (let [table (meta/table-metadata :orders)]
-      (is (= #{{:table (meta/id :orders)}}
+      (is (= #{{:table (:name table)
+                :schema nil}}
              (lib.native/native-query-table-references
               (table-tag-query meta/metadata-provider {:table-name (:name table)})))))))
 
 (deftest ^:parallel name-schema-native-query-table-references-test
   (testing "should find name and schema-based native query table references"
     (let [table (meta/table-metadata :orders)]
-      (is (= #{{:table (meta/id :orders)}}
+      (is (= #{{:table (:name table)
+                :schema (:schema table)}}
              (lib.native/native-query-table-references
               (table-tag-query meta/metadata-provider {:table-name (:name table)
                                                        :table-schema (:schema table)})))))))
-
-(deftest ^:parallel transform-name-native-query-table-references-test
-  (testing "should find name-based native query transform references"
-    (let [transform {:id 1
-                     :target {:type :table
-                              :schema "transform-schema"
-                              :name "transform-name"}}
-          mp (lib.tu/metadata-provider-with-mock-transform transform)]
-      (is (= #{{:transform 1}}
-             (lib.native/native-query-table-references
-              (table-tag-query mp {:table-name "transform-name"})))))))
-
-(deftest ^:parallel transform-name-schema-native-query-table-references-test
-  (testing "should find name and schema-based native query transform references"
-    (let [transform {:id 1
-                     :target {:type :table
-                              :schema "transform-schema"
-                              :name "transform-name"}}
-          mp (lib.tu/metadata-provider-with-mock-transform transform)]
-      (is (= #{{:transform 1}}
-             (lib.native/native-query-table-references
-              (table-tag-query mp {:table-name "transform-name"
-                                   :table-schema "transform-schema"})))))))

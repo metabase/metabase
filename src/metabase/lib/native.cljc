@@ -452,35 +452,21 @@
       (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
       true)))
 
-(defn- find-table-or-transform-for-tag
-  "Given a table template tag, find a matching table or transform."
-  [tables transforms {:keys [table-id table-name table-schema] :as tag}]
-  (let [matches? (fn [current-name current-schema]
-                   (and (= current-name table-name)
-                        (or (not table-schema)
-                            (= current-schema table-schema))))]
-    (cond
-      table-id {:table table-id}
-      table-name (or (some (fn [table]
-                             (when (matches? (:name table) (:schema table))
-                               {:table (:id table)}))
-                           tables)
-                     (some (fn [{:keys [id target]}]
-                             (when (matches? (:name target) (:schema target))
-                               {:transform id}))
-                           transforms))
-      :else (throw (ex-info "Table tag missing both table-id and table-name"
-                            {:tag tag})))))
-
-(mu/defn native-query-table-references :- [:set [:or
-                                                 [:map [:table ::lib.schema.id/table]]
-                                                 [:map [:transform ::lib.schema.id/transform]]]]
-  "Given a native query, find any tables or transforms referenced by `:table` template tags"
+(mu/defn native-query-table-references :- [:set [:map
+                                                 [:table :string]
+                                                 [:schema [:maybe :string]]]]
+  "Given a native query, find any table tags and convert them to table/schema pairs"
   [query]
   (let [tags (->> (lib.walk.util/all-template-tags query)
                   (filter #(= (:type %) :table)))
         tables (lib.metadata/tables query)
         transforms (lib.metadata/transforms query)]
     (into #{}
-          (keep #(find-table-or-transform-for-tag tables transforms %))
+          (keep (fn [{:keys [table-id table-name table-schema]}]
+                  (if table-id
+                    (let [table (lib.metadata/table query table-id)]
+                      {:schema (:schema table)
+                       :table (:name table)})
+                    {:schema table-schema
+                     :table table-name})))
           tags)))
