@@ -40,11 +40,12 @@ jobs:
           fi
 
           # Get changed story files from PR (pull_request trigger)
+          # Prefix with / to avoid partial matches (e.g., /Button won't match ButtonGroup)
           FILTER=$( \
             gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path' \
             | grep '\.stories\.tsx$' \
             | xargs -n1 basename \
-            | sed 's/\.stories\.tsx$//' \
+            | sed 's/\.stories\.tsx$//; s/^/\//' \
             | sort -u \
             | paste -sd'|' \
           )
