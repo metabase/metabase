@@ -3,9 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-<<<<<<< HEAD
 import { mockHasPremiumFeature, setup } from "./DataStudioLayout.setup.spec";
-=======
+
 // Mock useHasTokenFeature to return true for required features
 jest.mock(
   "metabase/common/hooks/use-has-token-feature/use-has-token-feature",
@@ -22,9 +21,6 @@ jest.mock(
     },
   }),
 );
-
-import { setup } from "./DataStudioLayout.setup.spec";
->>>>>>> master
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
