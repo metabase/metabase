@@ -1,6 +1,6 @@
 import { RuleTester } from "eslint";
 
-import rule from "../eslint-rules/no-unscoped-text-selectors";
+import rule from "../eslint-plugin-metabase/rules/no-unscoped-text-selectors";
 
 const ruleTester = new RuleTester({ languageOptions: { ecmaVersion: 2015 } });
 

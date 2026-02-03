@@ -1,6 +1,6 @@
 import { RuleTester } from "eslint";
 
-import noUnconditionalMetabaseLinksRender from "../eslint-rules/no-unconditional-metabase-links-render";
+import rule from "../eslint-plugin-metabase/rules/no-unconditional-metabase-links-render";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -148,14 +148,10 @@ const { url: docsUrl } = useDocsUrl("permissions/data");`,
   },
 ];
 
-ruleTester.run(
-  "no-unconditional-metabase-links-render",
-  noUnconditionalMetabaseLinksRender,
-  {
-    valid: VALID_CASES,
-    invalid: INVALID_CASES.map((invalidCase) => ({
-      code: invalidCase.code,
-      errors: [{ message: invalidCase.error }],
-    })),
-  },
-);
+ruleTester.run("no-unconditional-metabase-links-render", rule, {
+  valid: VALID_CASES,
+  invalid: INVALID_CASES.map((invalidCase) => ({
+    code: invalidCase.code,
+    errors: [{ message: invalidCase.error }],
+  })),
+});
