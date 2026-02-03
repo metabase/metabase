@@ -284,7 +284,7 @@
             [op-type sql] ops]
       (testing (str "dialect: " (name dialect) " - " (name op-type))
         (let [result (sql-parsing/validate-query (name dialect) sql "public" {})]
-          (is (= :ok (:status result))
+          (is (= "ok" (:status result))
               (format "%s/%s should validate OK, got %s"
                       (name dialect) (name op-type) result)))))))
 
