@@ -27,12 +27,15 @@
   becomes a serious enough issue, at which point we will have to redesign version marking and
   analysis triggering."
   {:style/indent 0}
-  [& body]
-  `(try
-     ~@body
-     (catch Throwable e#
-       (log/error e# "Dependency calculation failed")
-       nil)))
+  ([& body]
+   `(ignore-errors :unknown nil ~@body))
+  ([entity-type entity-id & body]
+   `(try
+      ~@body
+      (catch Throwable e#
+        (log/error e# "Dependency calculation failed" {:entity-type ~entity-type
+                                                       :entity-id   ~entity-id})
+        nil))))
 
 ;; ### Cards
 (derive ::card-deps :metabase/event)
@@ -46,8 +49,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :card (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:card object)))
+                                               (ignore-errors :card (:id object)
+                                                              (deps.calculation/upstream-deps:card object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Card (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -70,8 +73,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :snippet (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:snippet object)))
+                                               (ignore-errors :snippet (:id object)
+                                                              (deps.calculation/upstream-deps:snippet object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/NativeQuerySnippet (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -119,8 +122,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :transform (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:transform object)))
+                                               (ignore-errors :transform (:id object)
+                                                              (deps.calculation/upstream-deps:transform object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
       (drop-outdated-target-dep! object))))
@@ -169,8 +172,8 @@
                                                 :dashboardcard_id [:in (map :id dashcards)]))
             dashboard (assoc object :dashcards dashcards :series-card-ids series-card-ids)]
         (models.dependency/replace-dependencies! :dashboard dashboard-id
-                                                 (ignore-errors
-                                                  (deps.calculation/upstream-deps:dashboard dashboard))))
+                                                 (ignore-errors :dashboard dashboard-id
+                                                                (deps.calculation/upstream-deps:dashboard dashboard))))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Dashboard (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -193,8 +196,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :document (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:document object)))
+                                               (ignore-errors :document (:id object)
+                                                              (deps.calculation/upstream-deps:document object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Document (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -216,8 +219,8 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors
-                                                                      (deps.calculation/upstream-deps:sandbox object)))
+      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors :sandbox (:id object)
+                                                                                    (deps.calculation/upstream-deps:sandbox object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Sandbox (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -240,8 +243,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :segment (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:segment object)))
+                                               (ignore-errors :segment (:id object)
+                                                              (deps.calculation/upstream-deps:segment object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Segment (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -263,8 +266,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :measure (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:measure object)))
+                                               (ignore-errors :measure (:id object)
+                                                              (deps.calculation/upstream-deps:measure object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Measure (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
