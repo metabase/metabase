@@ -36,3 +36,7 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+
+    - name: Prepare dependencies
+      shell: bash
+      run: clojure -X:deps prep
