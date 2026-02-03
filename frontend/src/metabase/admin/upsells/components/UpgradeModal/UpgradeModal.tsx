@@ -12,7 +12,7 @@ import { Center, Loader, Modal } from "metabase/ui";
 import { UpgradeModalError } from "./UpgradeModalError";
 import { UpgradeModalInitial } from "./UpgradeModalInitial";
 import { UpgradeModalLoading } from "./UpgradeModalLoading";
-import type { ModalStep, UpgradeFlow } from "./constants";
+import type { ModalStep, UpgradeFlow } from "./types";
 
 interface UpgradeModalProps {
   opened: boolean;

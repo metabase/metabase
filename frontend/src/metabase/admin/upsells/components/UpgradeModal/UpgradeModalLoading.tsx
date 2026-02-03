@@ -4,7 +4,7 @@ import { useGetSettingsQuery } from "metabase/api";
 import { useTokenRefreshUntil } from "metabase/api/utils";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
-import type { UpgradeFlow } from "./constants";
+import type { UpgradeFlow } from "./types";
 
 interface UpgradeModalLoadingProps {
   flow: UpgradeFlow;

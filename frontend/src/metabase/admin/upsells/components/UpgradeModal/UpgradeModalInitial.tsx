@@ -16,7 +16,7 @@ import {
 
 import { UpsellGem } from "../UpsellGem";
 
-import type { UpgradeFlow } from "./constants";
+import type { UpgradeFlow } from "./types";
 
 // Strip cents from price strings like "$575.00" → "$575"
 function formatPriceNoCents(price: string): string {
