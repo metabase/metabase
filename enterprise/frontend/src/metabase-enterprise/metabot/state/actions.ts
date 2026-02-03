@@ -13,12 +13,12 @@ import { getIsEmbedding } from "metabase/selectors/embed";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
-  type JSONValue,
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase-enterprise/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase-enterprise/api/ai-streaming/process-stream";
 import type {
+  JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,

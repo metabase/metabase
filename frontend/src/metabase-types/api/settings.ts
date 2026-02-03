@@ -465,6 +465,7 @@ export type EmbeddingHomepageStatus =
 interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
+  "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -744,6 +745,8 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "metabot-slack-bot-token"?: string | null;
+  "metabot-slack-signing-secret"?: string | null;
   /**
    * @deprecated
    */

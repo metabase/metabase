@@ -12,6 +12,7 @@ export * from "./metabot";
 export * from "./remote-sync";
 export * from "./saml";
 export * from "./scim";
+export * from "./slackbot";
 export * from "./support-access-grants";
 export * from "./table";
 export * from "./tags";

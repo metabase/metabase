@@ -5,6 +5,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -124,4 +125,12 @@
   :export?    true
   :setter     :none
   :getter     (comp str t/zone-id)
+  :doc        false)
+
+(defsetting encryption-enabled
+  "Whether encryption is enabled for this Metabase instance via MB_ENCRYPTION_SECRET_KEY."
+  :visibility :admin
+  :type       :boolean
+  :setter     :none
+  :getter     encryption/default-encryption-enabled?
   :doc        false)

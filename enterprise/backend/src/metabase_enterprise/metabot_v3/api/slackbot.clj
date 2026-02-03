@@ -329,7 +329,7 @@
 ;; ----------------------- ROUTES --------------------------
 
 (api.macros/defendpoint :get "/manifest"
-  "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
+  "Returns the JSON manifest used to create a new Slack app"
   []
   (perms/check-has-application-permission :setting)
   (slackbot-manifest (system/site-url)))
