@@ -244,7 +244,7 @@ function TransformQueryPageBody({
               }
               uiState={uiState}
               // todo: @uladzimirdev probably not the proper fix
-              uiOptions={{ resizable: isEditMode, readOnly }}
+              uiOptions={{ resizable: isEditMode && !readOnly }}
               isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}
@@ -252,7 +252,7 @@ function TransformQueryPageBody({
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
               transform={transform}
-              transformId={transform.id}
+              readOnly={readOnly}
             />
           )}
         </Box>

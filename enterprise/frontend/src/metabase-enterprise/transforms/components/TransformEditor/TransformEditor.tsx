@@ -17,7 +17,6 @@ import type {
   DatasetQuery,
   QueryTransformSource,
   Transform,
-  TransformId,
 } from "metabase-types/api";
 
 import { getEditorOptions } from "./utils";
@@ -36,7 +35,7 @@ export type TransformEditorProps = {
   onBlur?: () => void;
   transform?: Transform;
   isEditMode?: boolean;
-  transformId?: TransformId;
+  readOnly?: boolean;
 };
 
 export function TransformEditor({
@@ -53,7 +52,7 @@ export function TransformEditor({
   onBlur,
   transform,
   isEditMode,
-  transformId,
+  readOnly,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
   const query = useMemo(
@@ -75,10 +74,7 @@ export function TransformEditor({
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const showEditButton =
-    !!transformId &&
-    !uiOptions?.readOnly &&
-    !isEditMode &&
-    !isRemoteSyncReadOnly;
+    !!transform && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -113,7 +109,7 @@ export function TransformEditor({
             h="1.5rem"
             px="sm"
             size="xs"
-            transformId={transformId}
+            transformId={transform.id}
           />
         ))
       }
