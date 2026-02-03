@@ -99,10 +99,6 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
-(defn- check-feature-enabled-404!
-  [transform]
-  (api/check-404 (transforms.util/check-feature-enabled transform)))
-
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
@@ -266,7 +262,6 @@
   [id]
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
-    (check-feature-enabled-404! transform)
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)

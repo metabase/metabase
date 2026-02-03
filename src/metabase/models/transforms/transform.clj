@@ -31,9 +31,9 @@
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
-   (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
-            (transforms.util/source-tables-readable? instance))))
+   (and (api/is-data-analyst?)
+        (transforms.util/source-tables-readable? instance)
+        (transforms.util/check-feature-enabled instance)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-read? transform))))
