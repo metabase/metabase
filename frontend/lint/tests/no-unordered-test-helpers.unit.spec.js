@@ -1,6 +1,6 @@
 import { RuleTester } from "eslint";
 
-import rule from "../eslint-rules/no-unordered-test-helpers";
+import rule from "../eslint-plugin-metabase/rules/no-unordered-test-helpers";
 
 const ruleTester = new RuleTester({ languageOptions: { ecmaVersion: 2015 } });
 
