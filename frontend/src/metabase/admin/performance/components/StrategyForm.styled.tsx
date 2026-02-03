@@ -19,7 +19,9 @@ export const FormWrapper = styled.div`
   flex-direction: column;
 `;
 
-export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
+export const StyledFormButtonsGroup = styled(Group, {
+  shouldForwardProp: prop => prop !== "isInSidebar",
+})<{ isInSidebar?: boolean }>`
   padding-block: 1rem;
   gap: 1rem;
   ${({ isInSidebar }) =>

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
@@ -73,7 +74,8 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
     },
   );
 
-  const mockEventListener = jest.spyOn(window, "addEventListener");
+  const mockEventListener = spyOn(window, "addEventListener");
+  mockEventListenerRef = mockEventListener;
 
   return {
     history: checkNotNull(history),
@@ -81,9 +83,12 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   };
 };
 
+let mockEventListenerRef: ReturnType<typeof spyOn> | null = null;
+
 describe("SegmentApp", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    mockEventListenerRef?.mockRestore();
+    mockEventListenerRef = null;
   });
 
   it("should have beforeunload event when user makes edits to a segment", async () => {
@@ -155,7 +160,15 @@ describe("SegmentApp", () => {
     );
     await userEvent.click(screen.getByText("ID"));
     await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
-    await userEvent.click(screen.getByText("Add filter"));
+
+    // The "Add filter" text is in a span inside a Mantine button - need to click the button itself
+    const addFilterSpan = screen.getByText("Add filter");
+    const addFilterBtn = addFilterSpan.closest("button");
+    if (!addFilterBtn) {
+      throw new Error("Could not find Add filter button");
+    }
+    await userEvent.click(addFilterBtn);
+
     await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
     await userEvent.type(
       screen.getByLabelText("Describe Your Segment"),
@@ -163,10 +176,12 @@ describe("SegmentApp", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Save changes")).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: /Save changes/ }),
+      ).toBeEnabled();
     });
 
-    await userEvent.click(screen.getByText("Save changes"));
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
 
     await waitFor(() => {
       expect(history.getCurrentLocation().pathname).toBe(SEGMENTS_URL);

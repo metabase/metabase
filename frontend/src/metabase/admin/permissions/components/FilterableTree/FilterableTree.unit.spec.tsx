@@ -58,6 +58,10 @@ describe("FilterableTree", () => {
     jest.useFakeTimers();
   });
 
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   it("allows to filter tree items", () => {
     const { filterInput } = setup();
 

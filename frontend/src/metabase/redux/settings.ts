@@ -1,9 +1,15 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createReducer } from "@reduxjs/toolkit";
 
 import { sessionApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { SettingsApi } from "metabase/services";
-import type { Settings, UserSettings } from "metabase-types/api";
+import type { UserSettings } from "metabase-types/api";
+
+// Re-export loadSettings from settings-actions to maintain backwards compatibility
+// (loadSettings is in a separate file to avoid circular dependency with metabase/api/session)
+import { loadSettings } from "./settings-actions";
+
+export { loadSettings };
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
@@ -17,10 +23,6 @@ export const refreshSiteSettings = createAsyncThunk(
     );
     return response.data;
   },
-);
-
-export const loadSettings = createAction<Settings>(
-  "metabase/settings/LOAD_SETTINGS",
 );
 
 interface UpdateUserSettingProps<K extends keyof UserSettings> {

@@ -134,13 +134,13 @@ describe("GeneralSettingsPage", () => {
     const nameInput = await screen.findByDisplayValue("Metabased");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Metabasey");
-    blur();
+    await blur();
     await screen.findByDisplayValue("Metabasey");
 
     const emailInput = await screen.findByDisplayValue("help@mysite.biz");
     await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "support@mySite.biz");
-    blur();
+    await blur();
     await screen.findByDisplayValue("support@mySite.biz");
 
     await waitFor(async () => {

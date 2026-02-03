@@ -35,6 +35,14 @@ import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./downloads-analytics";
+import type {
+  DownloadedResourceInfo,
+  ResourceAccessedVia,
+  ResourceType,
+} from "./downloads-types";
+
+// Re-export types for backwards compatibility
+export type { DownloadedResourceInfo, ResourceAccessedVia, ResourceType };
 
 export interface DownloadQueryResultsOpts {
   type: string;
@@ -59,22 +67,6 @@ interface DownloadQueryResultsParams {
   params?: URLSearchParams | string;
 }
 
-export type ResourceType =
-  | "question"
-  | "dashcard"
-  | "document-card"
-  | "ad-hoc-question";
-export type ResourceAccessedVia =
-  | "internal"
-  | "public-link"
-  | "static-embed"
-  | "interactive-iframe-embed"
-  | "sdk-embed";
-
-export type DownloadedResourceInfo = {
-  resourceType: ResourceType;
-  accessedVia: ResourceAccessedVia;
-};
 
 /**
  * Determine how the resource is being accessed (public link, embed, etc.)

@@ -48,6 +48,9 @@ const setup = async (
   ]);
 
   renderWithProviders(<GoogleAuthForm />);
+
+  // Wait for form to fully render before returning
+  await screen.findByLabelText("Client ID");
 };
 
 describe("GoogleAuthForm", () => {
@@ -55,8 +58,10 @@ describe("GoogleAuthForm", () => {
     await setup();
 
     await userEvent.type(screen.getByLabelText("Client ID"), "id.test");
-    await waitFor(() => expect(screen.getByText(/Save/)).toBeEnabled());
-    await userEvent.click(screen.getByText("Save and enable"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Save/ })).toBeEnabled(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
 
     const [{ url, body }] = await findRequests("PUT");
     expect(url).toMatch(/api\/google\/settings/);

@@ -16,6 +16,9 @@ export const entityTypeForObject = (object) =>
   object && entityTypeForModel(object.model);
 
 export const entityForObject = (object) => {
+  // Dynamic require to avoid circular dependency:
+  // schema.js → lib/schema → entities → entity files → schema.js
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const entities = require("metabase/entities");
   const enterpriseEntities = PLUGIN_ENTITIES.entities;
 

@@ -3,7 +3,7 @@ import {
   setUserColorSchemeAfterUpdate,
 } from "metabase/lib/color-scheme";
 import MetabaseSettings from "metabase/lib/settings";
-import { loadSettings } from "metabase/redux/settings";
+import { loadSettings } from "metabase/redux/settings-actions";
 import type {
   EnterpriseSettings,
   PasswordResetTokenStatus,

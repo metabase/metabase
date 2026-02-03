@@ -26,13 +26,12 @@ const SSO_PROVIDER = {
   Button: SsoButton,
 };
 
-// Always set AuthSettingsPage - this doesn't depend on premium features
-PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
-
 /**
  * Initialize auth plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  // Always set AuthSettingsPage - this doesn't depend on premium features
+  PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
   if (hasPremiumFeature("sso_saml")) {
     PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm = SettingsSAMLForm;
   }

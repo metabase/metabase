@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["bun-types", "bun-types/test-globals"],
     "jsx": "react-jsx",
     "target": "esnext",
     "allowSyntheticDefaultImports": true,

@@ -29,9 +29,10 @@ global.window.ResizeObserver = class ResizeObserver {
 jest.mock("metabase/lib/analytics");
 
 jest.mock("@uiw/react-codemirror", () => {
-  const { forwardRef } = jest.requireActual("react");
+  const React = require("react");
+  const actualCodeMirror = require("@uiw/react-codemirror");
 
-  const MockEditor = forwardRef((props, ref) => {
+  const MockEditor = React.forwardRef((props, ref) => {
     const { indentWithTab, extensions, basicSetup, editable, ...rest } = props;
     return (
       // @ts-expect-error: some props types are different on CodeMirror
@@ -49,7 +50,7 @@ jest.mock("@uiw/react-codemirror", () => {
 
   return {
     __esModule: true,
-    ...jest.requireActual("@uiw/react-codemirror"),
+    ...actualCodeMirror,
     default: MockEditor,
   };
 });

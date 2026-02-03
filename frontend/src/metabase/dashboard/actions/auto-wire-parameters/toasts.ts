@@ -1,11 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { SetMultipleDashCardAttributesOpts } from "metabase/dashboard/actions";
+// Import from core directly to avoid circular dependency through actions/index
+import type { SetMultipleDashCardAttributesOpts } from "metabase/dashboard/actions/core";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/core";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import type {
   DashCardId,

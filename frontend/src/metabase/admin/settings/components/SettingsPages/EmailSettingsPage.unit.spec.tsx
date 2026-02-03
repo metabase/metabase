@@ -67,16 +67,16 @@ describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
     await setup({});
 
-    [
+    for (const text of [
       "From Name",
       "From Address",
       "Reply-To Address",
       "Add Recipients as CC or BCC",
       "Approved domains for notifications",
       "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach(async (text) => {
+    ]) {
       expect(screen.getByText(text)).toBeInTheDocument();
-    });
+    }
   });
 
   it("should not render premium features missing from token", async () => {

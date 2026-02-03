@@ -77,8 +77,6 @@ describe("HttpsOnlyWidget", () => {
   it("should not display or check for an http site", async () => {
     setup({ url: "http://myinsecuresite.guru" });
 
-    await screen.findByLabelText("undo-list");
-
     await waitFor(() => {
       const calls = fetchMock.callHistory.calls();
       expect(calls.length).toBe(2);
@@ -95,8 +93,6 @@ describe("HttpsOnlyWidget", () => {
 
   it("should not check https for a hosted site", async () => {
     setup({ hosting: true });
-
-    await screen.findByLabelText("undo-list");
 
     await waitFor(() => {
       const calls = fetchMock.callHistory.calls();

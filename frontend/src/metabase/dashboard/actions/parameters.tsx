@@ -85,7 +85,7 @@ import {
   setMultipleDashCardAttributes,
 } from "./core";
 import { selectTab } from "./tabs";
-import { closeSidebar, setSidebar } from "./ui";
+import { closeSidebar, setSidebar } from "./sidebar";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
 

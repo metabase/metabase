@@ -1,4 +1,4 @@
-import { useClipboard } from "@mantine/hooks";
+import * as mantineHooks from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
@@ -19,12 +19,8 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TaskDetailsPage } from "./TaskDetailsPage";
 
-jest.mock("@mantine/hooks", () => ({
-  ...jest.requireActual("@mantine/hooks"),
-  useClipboard: jest.fn(),
-}));
-
-const mockUseClipboard = useClipboard as jest.Mock;
+const mockUseClipboard = jest.fn();
+jest.spyOn(mantineHooks, "useClipboard").mockImplementation(mockUseClipboard);
 
 const PATHNAME = `${Urls.adminToolsTasksList()}/:taskId`;
 

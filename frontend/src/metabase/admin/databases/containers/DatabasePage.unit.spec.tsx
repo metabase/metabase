@@ -1,4 +1,5 @@
 import { waitFor } from "@testing-library/react";
+import { describe, expect, it, mock } from "bun:test";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
@@ -9,10 +10,9 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabasePage } from "./DatabasePage";
 
-jest.mock(
-  "docs/databases/connections/postgresql.md",
-  () => "Postgres MD Content",
-);
+mock.module("docs/databases/connections/postgresql.md", () => ({
+  default: "Postgres MD Content",
+}));
 
 const setup = () => {
   renderWithProviders(<Route path="/" component={DatabasePage} />, {

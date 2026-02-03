@@ -23,10 +23,8 @@ export function setupSegmentEndpointError(segmentId: number) {
 
 export function setupSegmentsEndpoints(segments: Segment[]) {
   fetchMock.post("path:/api/segment", async (call) => {
-    const metric = await fetchMock.callHistory
-      .lastCall(call.url)
-      ?.request?.json();
-    return createMockSegment(metric);
+    const segment = await call.request?.json();
+    return createMockSegment(segment);
   });
   fetchMock.get("path:/api/segment", segments);
   segments.forEach((segment) => setupSegmentEndpoint(segment));

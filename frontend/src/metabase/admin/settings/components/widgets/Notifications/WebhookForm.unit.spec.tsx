@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { WebhookForm } from "./WebhookForm";
 
@@ -50,10 +50,6 @@ const setup = async ({
 };
 
 describe("WebhookForm", () => {
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
   it("should error when an invalid url is given", async () => {
     await setup();
     await userEvent.type(
@@ -170,11 +166,7 @@ describe("WebhookForm", () => {
   });
 
   it("should allow you to test a connection", async () => {
-    jest.useFakeTimers({
-      advanceTimers: true,
-    });
-
-    fetchMock.post("path:/api/channel/test", async (call) => {
+    fetchMock.post("path:/api/channel/test", (call) => {
       const body = JSON.parse(call.options?.body as string);
       return body.details.url?.endsWith("good") ? { ok: true } : 400;
     });
@@ -188,15 +180,19 @@ describe("WebhookForm", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Send a test" }));
 
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
+    // Wait for the test result to appear
+    expect(
+      await screen.findByRole("button", { name: "Test failed" }),
+    ).toBeInTheDocument();
 
-    expect(await screen.findByText("Test failed")).toBeInTheDocument();
-
-    act(() => jest.advanceTimersByTime(4000));
-
-    expect(screen.getByText("Send a test")).toBeInTheDocument();
+    // Wait for the button to reset (3 second timeout in the hook)
+    expect(
+      await screen.findByRole(
+        "button",
+        { name: "Send a test" },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText("Webhook URL"));
     await userEvent.type(
@@ -205,12 +201,19 @@ describe("WebhookForm", () => {
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Send a test" }));
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
 
-    expect(await screen.findByText("Success")).toBeInTheDocument();
-    act(() => jest.advanceTimersByTime(4000));
-    expect(screen.getByText("Send a test")).toBeInTheDocument();
-  });
+    // Wait for success message
+    expect(
+      await screen.findByRole("button", { name: "Success" }),
+    ).toBeInTheDocument();
+
+    // Wait for button to reset (3 second timeout in the hook)
+    expect(
+      await screen.findByRole(
+        "button",
+        { name: "Send a test" },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+  }, 15000);
 });
