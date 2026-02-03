@@ -63,7 +63,7 @@ describe("StepperWithCards", () => {
     const allSteps = screen.getAllByRole("button");
     expect(allSteps).toHaveLength(3);
 
-    // Only the last step should be marked as done.
+    // only the last step should be marked as done.
     expect(allSteps[0]).toHaveAttribute("data-done", "false");
     expect(allSteps[1]).toHaveAttribute("data-done", "false");
     expect(allSteps[2]).toHaveAttribute("data-done", "true");
@@ -98,7 +98,7 @@ describe("StepperWithCards", () => {
     const allSteps = screen.getAllByRole("button");
     expect(allSteps).toHaveLength(1);
 
-    // Only the first step should be marked as done.
+    // only the first step should be marked as done.
     expect(allSteps[0]).toHaveAttribute("data-done", "true");
 
     // step header + done card should have check icons
@@ -108,7 +108,59 @@ describe("StepperWithCards", () => {
     );
   });
 
-  it("should disable locked cards", async () => {
+  it("should not mark step as done when it only has optional cards and none are done", () => {
+    const steps = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [
+          { id: "1", done: false, optional: true },
+          { id: "2", done: false, optional: true },
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={steps} />);
+
+    const allSteps = screen.getAllByRole("button");
+    expect(allSteps).toHaveLength(1);
+
+    // step should not be marked as done as no cards are actually done
+    expect(allSteps[0]).toHaveAttribute("data-done", "false");
+
+    // no check icons should be present
+    expect(screen.queryAllByLabelText("check icon")).toHaveLength(0);
+  });
+
+  it("marks step as done when it only has optional cards and at least one is done", async () => {
+    const steps = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [
+          { id: "1", done: true, optional: true },
+          { id: "2", done: false, optional: true },
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={steps} />);
+
+    const allSteps = screen.getAllByRole("button");
+    expect(allSteps).toHaveLength(1);
+
+    // step should be marked as done since at least one optional card is done
+    expect(allSteps[0]).toHaveAttribute("data-done", "true");
+
+    // step header and done card should have check icons
+    expect(screen.getAllByLabelText("check icon")).toHaveLength(2);
+
+    await within(screen.getByTestId(`step-card-1`)).findByLabelText(
+      "check icon",
+    );
+  });
+
+  it("should disable locked cards", () => {
     const mockClickAction = jest.fn();
     const steps = createMockSteps([
       {
@@ -128,24 +180,24 @@ describe("StepperWithCards", () => {
 
     render(<StepperWithCards steps={steps} />);
 
-    // Lock icon should be shown
+    // lock icon should be shown
     const lockIcon = screen.getByLabelText("lock icon");
     expect(lockIcon).toBeInTheDocument();
 
-    // The locked card should be disabled
+    // locked card should be disabled
     const lockedCard = screen.getByTestId("step-card-2");
     expect(lockedCard).toBeDisabled();
 
-    // Clicking the disabled card should not trigger the action
-    await userEvent.click(lockedCard);
+    // clicking the card should not trigger the action
+    userEvent.click(lockedCard);
     expect(mockClickAction).not.toHaveBeenCalled();
 
-    // The step should not be marked as done
+    // step should not be marked as done
     const allSteps = screen.getAllByRole("button");
     expect(allSteps).toHaveLength(2);
     expect(allSteps[0]).toHaveAttribute("data-done", "false");
 
-    // No steps should be marked as done
+    // no steps should be marked as done
     const checkIcons = screen.queryAllByLabelText("check icon");
     expect(checkIcons).toHaveLength(0);
   });
