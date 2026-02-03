@@ -37,10 +37,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const transform-temp-table-prefix
-  "Prefix used for temporary tables created during transform execution."
-  "mb_transform_temp_table")
-
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [_driver {:keys [schema name]}]
@@ -401,21 +397,6 @@
   (log/infof "Dropping table %s" table-name)
   (driver/drop-table! driver database-id table-name))
 
-(defn temp-table-name
-  "Generate a temporary table name with current timestamp in milliseconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
-  [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (keyword schema table-name)))
-
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
    This is a simpler, composable operation that only handles renaming."
@@ -428,7 +409,7 @@
   :feature :transforms
   [table]
   (when-let [table-name (:name table)]
-    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
+    (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix)))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"

@@ -320,7 +320,10 @@
 
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard (every? string? args))]
-      (result op col-ref args {:case-sensitive (:case-sensitive opts true)}))))
+      (result op col-ref args {:case-sensitive (:case-sensitive opts true)})
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private NumberFilterValue
   [:or number? [:fn u.number/bigint?]])
@@ -338,7 +341,9 @@
     value
 
     [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
-    (u.number/parse-bigint value)))
+    (u.number/parse-bigint value)
+
+    _ nil))
 
 (def ^:private NumberFilterParts
   [:map
@@ -381,7 +386,10 @@
        [(op :guard #{:between})           _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))])
       {:operator ({:in :=, :not-in :!=} op op)
        :column   (ref->col col-ref)
-       :values   (mapv expression-arg->number args)})))
+       :values   (mapv expression-arg->number args)}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private CoordinateFilterParts
   [:map
@@ -417,7 +425,6 @@
                                    :column (ref->col col-ref)
                                    :values (mapv expression-arg->number args)}
                             lon-col-ref (assoc :longitude-column (ref->col lon-col-ref))))]
-    ;; Separated into two match calls to allow `match-lite` macro to better group things.
     (lib.util.match/match-lite filter-clause
       (:or
        ;; multiple arguments, `:=`
@@ -436,7 +443,10 @@
        (lat-col-ref :guard coordinate-col?)
        (lon-col-ref :guard coordinate-col?)
        & (args :len 4 :guard (every? number-arg? args))]
-      (result op lat-col-ref lon-col-ref args))))
+      (result op lat-col-ref lon-col-ref args)
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private BooleanFilterParts
   [:map
@@ -466,7 +476,10 @@
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?) & (args :len 0 :guard (every? boolean? args))]
        ;; exactly 1 argument
        [(op :guard #{:=})                 _ (col-ref :guard boolean-col?) & (args :len 1 :guard (every? boolean? args))])
-      {:operator op, :column (ref->col col-ref), :values (vec args)})))
+      {:operator op, :column (ref->col col-ref), :values (vec args)}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private SpecificDateFilterParts
   [:map
@@ -507,7 +520,10 @@
 
        ;; exactly 2 arguments
        [(op :guard #{:between}) _ (col-ref :guard date-col?) & (args :len 2 :guard (every? string? args))])
-      (result op col-ref args))))
+      (result op col-ref args)
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private RelativeDateFilterParts
   [:map
@@ -563,7 +579,10 @@
        :unit         unit
        :offset-value offset-value
        :offset-unit  offset-unit
-       :options      {}})))
+       :options      {}}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private ExcludeDateFilterParts
   [:map
@@ -618,7 +637,10 @@
 
       ;; with `:mode`
       [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
-      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private TimeFilterParts
   [:map
@@ -653,7 +675,10 @@
        [(op :guard #{:between})           _ (col-ref :guard time-col?) & (args :len 2 :guard (every? string? args))])
       (let [values (mapv u.time/coerce-to-time args)]
         (when (every? u.time/valid? values)
-          {:operator op, :column (ref->col col-ref), :values values})))))
+          {:operator op, :column (ref->col col-ref), :values values}))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private DefaultFilterParts
   [:map
@@ -680,7 +705,9 @@
                              (not (lib.util/original-isa? % :type/TextLike)))]
     (lib.util.match/match-lite filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
-      {:operator op, :column (ref->col col-ref)})))
+      {:operator op, :column (ref->col col-ref)}
+
+      _ nil)))
 
 ;; ::lib.schema.expression/expression
 (def ^:private JoinConditionParts
@@ -704,8 +731,7 @@
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
 
     ;; do not match inner clauses
-    _
-    nil))
+    _ nil))
 
 (mu/defn join-condition-lhs-or-rhs-literal? :- :boolean
   "Whether this LHS or RHS expression is a `:value` clause."

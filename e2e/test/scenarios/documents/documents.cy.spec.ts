@@ -4,12 +4,19 @@ import {
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers/api";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
+  PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
-} from "e2e/support/test-visualizer-data";
+  SCALAR_CARD,
+  STEP_COLUMN_CARD,
+} from "e2e/support/test-visualization-data";
 import type { Document } from "metabase-types/api";
 
 const { H } = cy;
@@ -548,6 +555,9 @@ describe("documents", () => {
       beforeEach(() => {
         H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY);
         H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT);
+        H.createQuestion(PIVOT_TABLE_CARD);
+        H.createNativeQuestion(STEP_COLUMN_CARD);
+        H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS);
         // Need to get this one to simulate recent activity
         H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE).then(
           ({ body: { id } }) => cy.request("POST", `/api/card/${id}/query`),
@@ -806,6 +816,192 @@ describe("documents", () => {
             cy.log(`${ogHeight}, ${newHeight}`);
 
             expect(newHeight).to.be.lessThan(ogHeight as number);
+          });
+        });
+      });
+
+      const PADDING_CARD = 1;
+      type ChartCard =
+        | (StructuredQuestionDetails & { name: string })
+        | (NativeQuestionDetails & { name: string });
+      type ChartSpec = {
+        label: string;
+        card: ChartCard;
+        paddingX: number;
+        selector: string;
+      };
+
+      const isNativeQuestion = (
+        question: ChartCard,
+      ): question is NativeQuestionDetails & { name: string } =>
+        "native" in question;
+
+      const createQuestionForCard = (
+        question: ChartCard,
+        nameOverride?: string,
+      ) => {
+        const details = nameOverride
+          ? { ...question, name: nameOverride }
+          : question;
+        return isNativeQuestion(details)
+          ? H.createNativeQuestion(details)
+          : H.createQuestion(details);
+      };
+
+      const chartTypes: ChartSpec[] = [
+        {
+          label: "line",
+          card: ACCOUNTS_COUNT_BY_CREATED_AT,
+          paddingX: 16 + PADDING_CARD,
+          selector: "[data-testid='chart-container'] > :first-child",
+        },
+        {
+          label: "pie",
+          card: PRODUCTS_COUNT_BY_CATEGORY_PIE,
+          paddingX: 14 + PADDING_CARD,
+          selector: "[data-testid='chart-with-legend']",
+        },
+      ];
+
+      const assertChartMatchesContainerWidth = (
+        cardName: string,
+        paddingX: number,
+        selector: string,
+      ) => {
+        H.getDocumentCard(cardName).then(($card) => {
+          const cardWidth = $card.width()!;
+          cy.wrap($card).find(selector).as("chart");
+
+          cy.get("@chart")
+            .should("exist")
+            .then(($chart) => {
+              const width = $chart.width()!;
+              expect(width + paddingX * 2).to.equal(cardWidth);
+            });
+        });
+      };
+
+      it("keeps chart widths in sync during flex resize", () => {
+        const cardIds: Record<string, { firstId: number; secondId: number }> =
+          {};
+
+        // Create all questions first
+        chartTypes.forEach(({ label, card }) => {
+          const secondCardName = `${card.name} (copy)`;
+
+          cy.then(() =>
+            createQuestionForCard(card).then(({ body }) => {
+              cardIds[label] = { firstId: body.id, secondId: 0 };
+            }),
+          );
+
+          cy.then(() =>
+            createQuestionForCard(card, secondCardName).then(({ body }) => {
+              cardIds[label].secondId = body.id;
+            }),
+          );
+        });
+
+        cy.then(() => {
+          const content = chartTypes.map(({ label }) => ({
+            type: "resizeNode",
+            attrs: {
+              height: 350,
+              minHeight: 280,
+              _id: `flex-${label}`,
+            },
+            content: [
+              {
+                type: "flexContainer",
+                attrs: {
+                  _id: `flex-${label}-container`,
+                  columnWidths: [50, 50],
+                },
+                content: [
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: cardIds[label].firstId,
+                      name: null,
+                      _id: `flex-${label}-card-1`,
+                    },
+                  },
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: cardIds[label].secondId,
+                      name: null,
+                      _id: `flex-${label}-card-2`,
+                    },
+                  },
+                ],
+              },
+            ],
+          }));
+
+          return H.createDocument({
+            name: "Flex chart width document",
+            document: {
+              type: "doc",
+              content,
+            },
+            collection_id: null,
+            idAlias: "flexDocumentId",
+          });
+        });
+
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+        H.visitDocument("@flexDocumentId");
+
+        // Wait for all cards to load (16 chart types × 2 cards each = 32 queries)
+        for (let i = 0; i < chartTypes.length * 2; i++) {
+          cy.wait("@cardQuery", { timeout: 15000 });
+        }
+
+        chartTypes.forEach(({ card, paddingX, selector }) => {
+          const firstCardName = card.name;
+          const secondCardName = `${card.name} (copy)`;
+
+          const firstCardChart =
+            H.getDocumentCard(firstCardName).find(selector);
+          const secondCardChart =
+            H.getDocumentCard(secondCardName).find(selector);
+
+          firstCardChart.should("exist");
+          secondCardChart.should("exist");
+
+          const flexContainer = H.getFlexContainerForCard(firstCardName);
+          const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+
+          handles.eq(0).then(($handle) => {
+            cy.wrap($handle).realMouseDown({
+              button: "left",
+              position: "center",
+            });
+
+            const steps = [10, 40, 60, -100, -10, -40, -60];
+            steps.forEach((deltaX) => {
+              cy.wrap($handle).realMouseMove(deltaX, 0, {
+                position: "center",
+              });
+
+              assertChartMatchesContainerWidth(
+                firstCardName,
+                paddingX,
+                selector,
+              );
+              assertChartMatchesContainerWidth(
+                secondCardName,
+                paddingX,
+                selector,
+              );
+            });
+
+            cy.wrap($handle).realMouseUp({
+              button: "left",
+              position: "center",
+            });
           });
         });
       });
