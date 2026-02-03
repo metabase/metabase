@@ -24,7 +24,7 @@ git clone https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-r
 if [ "$SKIP_START" = false ]; then
   echo "Starting python-runner..."
   cd python-runner
-  git checkout origin/memory_improvements
+  git checkout origin/memory_improvements_2
   make run-ci 1> ../python-runner.out.log 2> ../python-runner.err.log
   make logs 1>> ../python-runner.out.log 2>> ../python-runner.err.log &
   cd ..
