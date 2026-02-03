@@ -48,3 +48,13 @@
   [_driver _query _replacements]
   (throw (java.lang.UnsupportedOperationException. "Not implemented."))
   #_(replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver query))
+
+(defmulti referenced-tables-raw-impl
+  "Parser specific implementation of [[referenced-tables-raw]]. Do not use directly."
+  {:arglists '([parser driver sql-str])}
+  #'parser-dispatch)
+
+(defn referenced-tables-raw
+  "Given a driver and sql string, returns a set of form #{{:schema <name> :table <name>}...}."
+  [driver sql-str]
+  (referenced-tables-raw-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-str))

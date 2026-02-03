@@ -186,7 +186,7 @@
             (assoc-in acc [(:schema table) (:name table)]
                       (u/for-map
                        [field (lib.metadata/fields mp (:id table))]
-                        [(:name field) field])))
+                       [(:name field) field])))
           {}
           (lib.metadata/tables mp)))
 
@@ -271,3 +271,12 @@
 (defmethod sql-tools/returned-columns-impl :sqlglot
   [_parser driver query]
   (returned-columns driver query))
+
+(defmethod sql-tools/referenced-tables-raw-impl :sqlglot
+  [_parser driver sql-str]
+  (let [dialect (driver->dialect driver)
+        ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
+        ;; Convert to [{:schema ... :table ...} ...] for table-match-clause
+        table-tuples (sql-parsing/referenced-tables dialect sql-str)
+        tables (mapv (fn [[_catalog schema table]] {:schema schema :table table}) table-tuples)]
+    tables))

@@ -169,3 +169,7 @@
 (defmethod sql-tools/validate-query-impl :macaw
   [_parser driver query]
   (validate-query driver query))
+
+(defmethod sql-tools/referenced-tables-raw-impl :macaw
+  [_parser _driver sql-str]
+  (vec (:tables (macaw/query->tables sql-str {:mode :compound-select}))))
