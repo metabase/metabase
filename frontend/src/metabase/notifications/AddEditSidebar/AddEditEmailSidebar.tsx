@@ -26,7 +26,6 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
-  ChannelSpecs,
   Dashboard,
   DashboardSubscription,
   ScheduleSettings,
