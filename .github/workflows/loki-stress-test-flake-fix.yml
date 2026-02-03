@@ -9,10 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       stories_filter:
-        description: "Regex pattern to filter stories (leave empty for auto-detection from changed files)"
+        description: "Regex pattern to filter stories (e.g. 'DataGrid' or 'static-viz|viz')"
         type: string
-        required: false
-        default: ""
+        required: true
       burn_in:
         description: "Number of times to run the test (e.g. 50)"
         type: string
@@ -28,42 +27,35 @@ jobs:
       stories_filter: ${{ steps.detect.outputs.stories_filter }}
       should_run: ${{ steps.detect.outputs.should_run }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Detect changed story files
         id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # If manual trigger with filter provided, use it directly
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.stories_filter }}" ]]; then
-            echo "Using manually provided filter: ${{ inputs.stories_filter }}"
+          # If manual trigger, use provided filter
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "stories_filter=${{ inputs.stories_filter }}" >> $GITHUB_OUTPUT
             echo "should_run=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Determine the base ref for comparison
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASE_REF="origin/${{ github.base_ref }}"
-          else
-            BASE_REF="origin/${{ github.event.repository.default_branch }}"
-          fi
-
-          echo "Comparing against: $BASE_REF"
-
-          # Extract component names from changed story filenames (e.g., Button.stories.tsx -> Button)
-          FILTER=$(git diff --name-only "$BASE_REF"...HEAD -- '*.stories.tsx' 2>/dev/null \
-            || git diff --name-only "$BASE_REF" HEAD -- '*.stories.tsx' 2>/dev/null \
-            | xargs -n1 basename 2>/dev/null \
+          # Get changed story files from PR (pull_request trigger)
+          FILTER=$( \
+            gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path' \
+            | grep '\.stories\.tsx$' \
+            | xargs -n1 basename \
             | sed 's/\.stories\.tsx$//' \
             | sort -u \
-            | paste -sd'|')
+            | paste -sd'|' \
+          )
 
           echo "Generated stories filter: $FILTER"
-          echo "stories_filter=${FILTER:-}" >> $GITHUB_OUTPUT
-          echo "should_run=$([[ -n "$FILTER" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "stories_filter=$FILTER" >> $GITHUB_OUTPUT
+          if [[ -n "$FILTER" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
 
   workflow-summary:
     name: Stress test inputs
