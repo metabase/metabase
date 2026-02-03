@@ -1,7 +1,7 @@
 import { type FocusEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
+import { useListUserRecipientsQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { isEmail } from "metabase/lib/email";
 import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
@@ -25,7 +25,7 @@ export const UserInput = ({
   ...props
 }: Props) => {
   const [search, setSearch] = useState(email ?? "");
-  const { data: usersData } = useListUsersQuery();
+  const { data: usersData } = useListUserRecipientsQuery();
   const users = useMemo(() => usersData?.data ?? [], [usersData]);
   const data = useMemo(
     () => getData(search, users, unknownUserLabel),
