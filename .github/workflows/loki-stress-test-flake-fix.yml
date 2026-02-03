@@ -48,66 +48,22 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE_REF="origin/${{ github.base_ref }}"
           else
-            # For workflow_dispatch, compare against default branch
             BASE_REF="origin/${{ github.event.repository.default_branch }}"
           fi
 
           echo "Comparing against: $BASE_REF"
 
-          # Find changed story files
-          CHANGED_FILES=$(git diff --name-only "$BASE_REF"...HEAD -- '*.stories.tsx' 2>/dev/null || git diff --name-only "$BASE_REF" HEAD -- '*.stories.tsx' 2>/dev/null || echo "")
+          # Extract component names from changed story filenames (e.g., Button.stories.tsx -> Button)
+          FILTER=$(git diff --name-only "$BASE_REF"...HEAD -- '*.stories.tsx' 2>/dev/null \
+            || git diff --name-only "$BASE_REF" HEAD -- '*.stories.tsx' 2>/dev/null \
+            | xargs -n1 basename 2>/dev/null \
+            | sed 's/\.stories\.tsx$//' \
+            | sort -u \
+            | paste -sd'|')
 
-          if [[ -z "$CHANGED_FILES" ]]; then
-            echo "No changed story files detected"
-            echo "stories_filter=" >> $GITHUB_OUTPUT
-            echo "should_run=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo "Changed story files:"
-          echo "$CHANGED_FILES"
-          echo ""
-
-          # Extract story titles from changed files
-          PATTERNS=()
-          while IFS= read -r file; do
-            if [[ -z "$file" || ! -f "$file" ]]; then
-              continue
-            fi
-
-            echo "Processing: $file"
-
-            # Try to extract title from the story file
-            TITLE=$(grep -oP "title:\s*['\"][^'\"]+['\"]" "$file" 2>/dev/null | head -1 | sed "s/title:[[:space:]]*['\"]//;s/['\"]$//")
-
-            if [[ -n "$TITLE" ]]; then
-              echo "  Found title: $TITLE"
-              # Escape special regex characters and add to patterns
-              ESCAPED_TITLE=$(echo "$TITLE" | sed 's/[[\.*^$()+?{|]/\\&/g')
-              PATTERNS+=("$ESCAPED_TITLE")
-            else
-              # Fallback: extract component name from filename
-              COMPONENT_NAME=$(basename "$file" .stories.tsx)
-              echo "  Using filename fallback: $COMPONENT_NAME"
-              PATTERNS+=("$COMPONENT_NAME")
-            fi
-          done <<< "$CHANGED_FILES"
-
-          if [[ ${#PATTERNS[@]} -eq 0 ]]; then
-            echo "No patterns extracted"
-            echo "stories_filter=" >> $GITHUB_OUTPUT
-            echo "should_run=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Remove duplicates and combine patterns with OR (|)
-          UNIQUE_PATTERNS=($(printf '%s\n' "${PATTERNS[@]}" | sort -u))
-          FILTER=$(IFS='|'; echo "${UNIQUE_PATTERNS[*]}")
-
-          echo ""
           echo "Generated stories filter: $FILTER"
-          echo "stories_filter=$FILTER" >> $GITHUB_OUTPUT
-          echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "stories_filter=${FILTER:-}" >> $GITHUB_OUTPUT
+          echo "should_run=$([[ -n "$FILTER" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
 
   workflow-summary:
     name: Stress test inputs
