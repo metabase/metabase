@@ -675,8 +675,7 @@
 
 (deftest ^:parallel transform-name-native-query-table-references-test
   (testing "should find name-based native query transform references"
-    (let [table (meta/table-metadata :orders)
-          transform {:id 1
+    (let [transform {:id 1
                      :target {:type :table
                               :schema "transform-schema"
                               :name "transform-name"}}
@@ -687,8 +686,7 @@
 
 (deftest ^:parallel transform-name-schema-native-query-table-references-test
   (testing "should find name and schema-based native query transform references"
-    (let [table (meta/table-metadata :orders)
-          transform {:id 1
+    (let [transform {:id 1
                      :target {:type :table
                               :schema "transform-schema"
                               :name "transform-name"}}

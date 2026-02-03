@@ -455,18 +455,18 @@
 (defn- find-table-or-transform-for-tag
   "Given a table template tag, find a matching table or transform."
   [tables transforms {:keys [table-id table-name table-schema] :as tag}]
-  (let [matches? (fn [name schema]
-                   (and (= name table-name)
+  (let [matches? (fn [current-name current-schema]
+                   (and (= current-name table-name)
                         (or (not table-schema)
-                            (= schema table-schema))))]
+                            (= current-schema table-schema))))]
     (cond
       table-id {:table table-id}
-      table-name (or (some (fn [{:keys [name schema id]}]
-                             (when (matches? name schema)
-                               {:table id}))
+      table-name (or (some (fn [table]
+                             (when (matches? (:name table) (:schema table))
+                               {:table (:id table)}))
                            tables)
-                     (some (fn [{:keys [id] {:keys [name schema]} :target}]
-                             (when (matches? name schema)
+                     (some (fn [{:keys [id target]}]
+                             (when (matches? (:name target) (:schema target))
                                {:transform id}))
                            transforms))
       :else (throw (ex-info "Table tag missing both table-id and table-name"
