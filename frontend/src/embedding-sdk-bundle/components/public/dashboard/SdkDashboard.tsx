@@ -307,7 +307,7 @@ const SdkDashboardInner = ({
     (opts: Parameters<typeof baseOnNavigateToNewCardFromDashboard>[0]) => {
       baseOnNavigateToNewCardFromDashboard(opts);
       sdkNavigation?.push({
-        type: "placeholder-question-drill",
+        type: "virtual-question-drill",
         onPop: () => onNavigateBackToDashboard(),
       });
     },

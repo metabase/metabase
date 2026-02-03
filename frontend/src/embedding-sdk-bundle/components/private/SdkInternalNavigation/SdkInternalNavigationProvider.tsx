@@ -59,7 +59,7 @@ const SdkInternalNavigationProviderInner = ({
   const pop = useCallback(() => {
     setStack((prev) => {
       const poppedEntry = prev.at(-1);
-      // Call onPop for placeholder entries (types starting with "placeholder-")
+      // Call onPop for placeholder entries (types starting with "virtual-")
       if (poppedEntry && "onPop" in poppedEntry && poppedEntry.onPop) {
         poppedEntry.onPop();
       }
@@ -89,11 +89,11 @@ const SdkInternalNavigationProviderInner = ({
 
       // If we're already on a placeholder adhoc question, just update its path instead of pushing
       // otherwise we'll have an entry for each filter change done from drills
-      if (currentEntry?.type === "placeholder-adhoc-question") {
+      if (currentEntry?.type === "virtual-adhoc-question") {
         setStack((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
-            type: "placeholder-adhoc-question",
+            type: "virtual-adhoc-question",
             questionPath: url,
             name: nextCard.name || t`Question`,
           };
@@ -101,7 +101,7 @@ const SdkInternalNavigationProviderInner = ({
         });
       } else {
         push({
-          type: "placeholder-adhoc-question",
+          type: "virtual-adhoc-question",
           questionPath: url,
           name: nextCard.name || t`Question`,
         });
