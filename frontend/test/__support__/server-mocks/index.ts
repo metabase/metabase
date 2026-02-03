@@ -9,6 +9,7 @@ export * from "./automagic-dashboards";
 export * from "./bookmark";
 export * from "./bug-report";
 export * from "./card";
+export * from "./cloud-proxy";
 export * from "./collection";
 export * from "./comment";
 export * from "./constants";
