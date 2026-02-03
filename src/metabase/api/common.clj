@@ -192,11 +192,16 @@
   []
   (check-403 *is-superuser?*))
 
+(defn is-data-analyst?
+  "Returns a boolean representing whether the current user is a data analyst (or superuser)."
+  []
+  (or *is-superuser?* *is-data-analyst?*))
+
 (defn check-data-analyst
   "Check that `*current-user*` is a data analyst (or superuser) or throw a 403.
   Superusers are automatically considered data analysts."
   []
-  (check-403 (or *is-superuser?* *is-data-analyst?*)))
+  (check-403 (is-data-analyst?)))
 
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.

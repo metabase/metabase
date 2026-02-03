@@ -487,19 +487,14 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.util/enabled-source-types)
-        enabled-clause (if (seq enabled-types)
-                         [:in :source_type enabled-types]
-                         [:=
-                          [:inline 0]
-                          [:inline 1]])]
+  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
-              enabled-clause
-              (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
+              (if (seq enabled-types)
+                [:in :source_type enabled-types]
                 [:=
                  [:inline 0]
                  [:inline 1]])]}))

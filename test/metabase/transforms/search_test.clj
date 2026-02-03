@@ -28,7 +28,7 @@
 (defn- fetch-one [model & clauses]
   (apply t2/select-one (search.index/active-table) :model model clauses))
 
-(defn- ingest-then-fetch!
+(defn ingest-then-fetch!
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
   (fetch-one model :name entity-name))
@@ -50,7 +50,7 @@
    :last_editor_id      nil
    :verified            nil})
 
-(defn- index-entity
+(defn index-entity
   [entity]
   (merge default-index-entity entity))
 
@@ -75,27 +75,6 @@
                       :model_created_at now
                       :model_updated_at now})
                     ingested-transform))))))
-
-    (mt/when-ee-evailable
-     (testing "A simple Python transform gets properly ingested & indexed for search"
-       (let [now (t/truncate-to (t/offset-date-time) :millis)]
-         (mt/with-temp [:model/Transform {transform-id :id} {:name        "Test Python transform"
-                                                             :description "A Python test transform"
-                                                             :source      {:type "python"
-                                                                           :source-database (mt/id)
-                                                                           :body "import pandas as pd\n"}
-                                                             :target      {:database (mt/id)}
-                                                             :created_at  now
-                                                             :updated_at  now}]
-           (let [ingested-transform (ingest-then-fetch! "transform" "Test Python transform")]
-             (is (=? (index-entity
-                      {:model            "transform"
-                       :model_id         (str transform-id)
-                       :name             "Test Python transform"
-                       :database_id      (mt/id)
-                       :model_created_at now
-                       :model_updated_at now})
-                     ingested-transform)))))))
 
     (testing "A simple MBQL transform gets properly ingested & indexed for search"
       (let [now (t/truncate-to (t/offset-date-time) :millis)]

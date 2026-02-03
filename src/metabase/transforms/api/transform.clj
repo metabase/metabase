@@ -51,10 +51,6 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
-(defn- check-is-data-analyst
-  []
-  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
-
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
 
@@ -99,15 +95,10 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
-(defn- check-feature-enabled-404!
-  [transform]
-  (api/check-404 (transforms.util/check-feature-enabled transform)))
-
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (check-is-data-analyst)
-  (let [enabled-types (transforms.util/enabled-source-types)]
+  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
     (api/check-404 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
                                                   :order-by [[:id :asc]]})]
@@ -277,7 +268,6 @@
   [id]
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
-    (check-feature-enabled-404! transform)
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
@@ -361,7 +351,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (check-is-data-analyst)
+  (api/check-data-analyst)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))

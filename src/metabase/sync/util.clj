@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -37,7 +36,7 @@
 (defn- transforms-enabled?
   "Whether any transforms are enabled."
   []
-  (or (not config/ee-available?)
+  (or (not (premium-features/is-hosted?))
       (premium-features/has-feature? :transforms)))
 
 (defn is-temp-transform-table?

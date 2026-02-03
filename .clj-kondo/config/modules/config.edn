@@ -2032,7 +2032,7 @@
    :uses #{premium-features}}
 
   enterprise/data-studio
-  {:team "Gadget"
+  {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections

@@ -24,9 +24,9 @@
 
 (defmethod mi/can-read? :model/TransformJob
   ([_instance]
-   (or api/*is-superuser?* api/*is-data-analyst?*))
+   (api/is-data-analyst?))
   ([_model _pk]
-   (or api/*is-superuser?* api/*is-data-analyst?*)))
+   (api/is-data-analyst?)))
 
 (defmethod mi/can-write? :model/TransformJob
   ([instance]

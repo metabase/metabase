@@ -60,16 +60,6 @@
     (can-write? search-ctx instance)
     true))
 
-(defmethod check-permissions-for-model :transform
-  [search-ctx instance]
-  (and (:is-superuser? search-ctx)
-       (let [enabled-types (:enabled-transform-source-types search-ctx)
-             source-type   (some-> (:source_type instance) name)]
-         (contains? enabled-types source-type))
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
-
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
@@ -321,9 +311,9 @@
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
-  (let [models                          (if (seq models) models search.config/all-models)
-        engine                          (parse-engine search-engine)
-        fvalue                          (fn [filter-key] (search.config/filter-default engine context filter-key))
+  (let [models (if (seq models) models search.config/all-models)
+        engine (parse-engine search-engine)
+        fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
         ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
                         :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
