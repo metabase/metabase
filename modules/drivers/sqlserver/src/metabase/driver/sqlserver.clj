@@ -1087,7 +1087,6 @@
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
 
-<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1151,7 +1150,6 @@
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
                                         (:schema table) (:name table) username)]))))
-=======
+
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "llm/prompts/dialects/sqlserver.md")
->>>>>>> master

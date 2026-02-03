@@ -4,6 +4,15 @@
   [transform]
   (-> transform :source :type keyword))
 
+(defmulti source-db-id
+  "Return the ID of the source database for a given `transform`. The source database is where the data originates from
+  before being transformed and written to the target destination.
+
+  NOTE: Currently returns a single database ID, but we may want to change this to return multiple database IDs in the
+  future since transforms can have multiple input sources."
+  {:added "0.57.0" :arglists '([transform])}
+  transform->transform-type)
+
 (defmulti target-db-id
   "Return the ID of the target database for a given `transform`. The target database is the destination where the
   transformed data will be written. Often this is the same database as the source database."

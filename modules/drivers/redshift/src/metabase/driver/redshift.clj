@@ -697,7 +697,6 @@
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
 
-<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -754,7 +753,6 @@
           (.addBatch ^Statement stmt
                      ^String (format "DROP USER IF EXISTS \"%s\"" username))
           (.executeBatch ^Statement stmt))))))
-=======
+
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
   "llm/prompts/dialects/redshift.md")
->>>>>>> master

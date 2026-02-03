@@ -359,7 +359,6 @@
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
 
-<<<<<<< HEAD
 ;;; ------------------------------------------ Workspace Isolation ------------------------------------------
 
 (defmethod driver/init-workspace-isolation! :clickhouse
@@ -406,7 +405,7 @@
                      (format "DROP USER IF EXISTS `%s`" username)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
-=======
+
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
   [driver database]
   (merge
@@ -417,4 +416,3 @@
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "llm/prompts/dialects/clickhouse.md")
->>>>>>> master

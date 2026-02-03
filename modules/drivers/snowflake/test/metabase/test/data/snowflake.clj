@@ -13,6 +13,7 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.sql PreparedStatement ResultSet)

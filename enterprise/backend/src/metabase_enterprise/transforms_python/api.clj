@@ -8,17 +8,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-<<<<<<< HEAD
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli.schema :as ms]))
-=======
    [metabase.permissions.core :as perms]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
->>>>>>> master
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
@@ -69,13 +62,8 @@
     :or   {output_row_limit    100
            per_input_row_limit 100}}
    :- [:map
-<<<<<<< HEAD
-       [:code                       :string]
-       [:source_tables              [:map-of :string :int]]
-=======
        [:code                                 :string]
        [:source_tables                        [:map-of {:min 1} :string :int]]
->>>>>>> master
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (vals source_tables)])]

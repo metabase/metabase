@@ -100,22 +100,10 @@
 
 (defn get-transforms
   "Get a list of transforms."
-<<<<<<< HEAD
   [& {:keys [last_run_start_time last_run_statuses tag_ids type]}]
-  (api/check-superuser)
+  (check-is-data-analyst)
   (let [where      (when type [:in :source_type (map #(if (= % "query") "mbql" %) type)])
         transforms (t2/select :model/Transform {:where (or where true) :order-by [[:id :asc]]})]
-    (into []
-          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map python-source-table-ref->table-id))
-          (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))))
-=======
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (check-is-data-analyst)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
                (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
@@ -124,7 +112,6 @@
                      (map #(update % :last_run transforms.util/localize-run-timestamps))
                      (map python-source-table-ref->table-id)))
          transforms.util/add-source-readable)))
->>>>>>> master
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -275,29 +262,9 @@
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-<<<<<<< HEAD
-  (-> (create-transform! body) python-source-table-ref->table-id))
-=======
-  (let [transform (t2/with-transaction [_]
-                    (let [tag-ids (:tag_ids body)
-                          ;; Set owner_user_id to current user if not explicitly provided
-                          owner-user-id (when-not (:owner_email body)
-                                          (or (:owner_user_id body) api/*current-user-id*))
-                          transform (t2/insert-returning-instance!
-                                     :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id :owner_email])
-                                            :creator_id api/*current-user-id*
-                                            :owner_user_id owner-user-id))]
-                      ;; Add tag associations if provided
-                      (when (seq tag-ids)
-                        (transform.model/update-transform-tags! (:id transform) tag-ids))
-                      ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator :owner)))]
-    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    (-> transform
-        python-source-table-ref->table-id
-        transforms.util/add-source-readable)))
->>>>>>> master
+  (-> (create-transform! body)
+      python-source-table-ref->table-id
+      transforms.util/add-source-readable))
 
 (defn get-transform
   "Get a specific transform."
@@ -442,8 +409,10 @@
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
+  (api/write-check :model/Transform id)
   (update-transform! id body))
 
 (defn delete-transform!
@@ -519,7 +488,6 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (run-transform! (api/write-check :model/Transform id)))
 
 (defn- simple-native-query?

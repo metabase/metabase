@@ -1316,7 +1316,6 @@
         value (nippy/thaw-from-in! data-input)]
     (doto (PGobject.) (.setType type) (.setValue value))))
 
-<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1387,7 +1386,6 @@
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
-=======
+
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "llm/prompts/dialects/postgresql.md")
->>>>>>> master

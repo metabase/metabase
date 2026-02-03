@@ -170,13 +170,6 @@
 
 ;; Follows similar logic to `transfer-file-to-db :table`
 (defmethod driver/run-transform! [:sql :table]
-<<<<<<< HEAD
-  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
-  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
-                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    (log/tracef "Executing transform queries: %s" (pr-str queries))
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
-=======
   [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
   (let [table-exists? (driver/table-exists? driver database
                                             {:schema (namespace output-table)
@@ -197,7 +190,6 @@
       ;; Drop then create, no atomicity
       :else
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
->>>>>>> master
 
 (defmethod driver/run-transform! [:sql :table-incremental]
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]

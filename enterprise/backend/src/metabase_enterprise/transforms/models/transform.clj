@@ -101,7 +101,6 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-<<<<<<< HEAD
   (let [target-db-id (transforms.i/target-db-id transform)
         ;; This is defensive code to cope with some tests for remote sync, where we deserialize a transform
         ;; with a concrete database id within it, for a potentially non-existent database.
@@ -115,33 +114,22 @@
         (assoc-in [:target :database] target-db-id)
         (assoc
          :source_type (transforms.util/transform-source-type source)
-         :target_db_id (when valid-db-id? target-db-id)))))
-=======
-  (assoc transform
-         :source_type (transforms.util/transform-source-type source)
-         :source_database_id (or source_database_id (transforms.i/source-db-id transform))))
->>>>>>> master
+         :target_db_id (when valid-db-id? target-db-id)
+         :source_database_id (or source_database_id (transforms.i/source-db-id transform))))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-<<<<<<< HEAD
   (cond-> transform
     source
-    (assoc :source_type (transforms.util/transform-source-type source))
+    (assoc :source_type (transforms.util/transform-source-type source)
+           :source_database_id (or source_database_id (transforms.i/source-db-id transform)))
 
     (or (:source (t2/changes transform)) (:target (t2/changes transform)))
     ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
     (assoc :target_db_id (transforms.i/target-db-id transform))))
-=======
-  (if source
-    (assoc transform
-           :source_type (transforms.util/transform-source-type source)
-           :source_database_id (or source_database_id (transforms.i/source-db-id transform)))
-    transform))
->>>>>>> master
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -334,28 +322,16 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-<<<<<<< HEAD
    :skip      [:dependency_analysis_version :source_type :target_db_id]
-   :transform {:created_at    (serdes/date)
-               :creator_id    (serdes/fk :model/User)
-               :owner_user_id (serdes/fk :model/User)
-               :collection_id (serdes/fk :model/Collection)
-               :source        {:export #(update % :query serdes/export-mbql)
-                               :import #(update % :query serdes/import-mbql)}
-               :target        {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
-=======
-   :skip      [:dependency_analysis_version :source_type]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
-               :collection_id      (serdes/fk :model/Collection)
                :owner_user_id      (serdes/fk :model/User)
+               :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database :name)
                :source             {:export #(update % :query serdes/export-mbql)
                                     :import #(update % :query serdes/import-mbql)}
                :target             {:export serdes/export-mbql :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
->>>>>>> master
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]

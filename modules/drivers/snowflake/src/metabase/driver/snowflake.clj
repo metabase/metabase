@@ -966,7 +966,6 @@
   [driver [_ field arg options]]
   (string-filter driver :endswith field arg options))
 
-<<<<<<< HEAD
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1041,7 +1040,6 @@
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
                                         db-name (:schema table) (:name table) role-name)]))))
-=======
+
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "llm/prompts/dialects/snowflake.md")
->>>>>>> master
