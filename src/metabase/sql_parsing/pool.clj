@@ -288,6 +288,6 @@
 (defn python-context
   "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
   []
-  (if #_config/is-dev? false
+  (if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
     (acquire-dev-context)
     (acquire-context @python-context-pool)))
