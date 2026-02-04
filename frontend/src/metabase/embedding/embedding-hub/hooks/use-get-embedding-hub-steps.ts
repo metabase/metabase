@@ -81,8 +81,8 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const SETUP_TENANTS: EmbeddingHubStep = {
-      id: "setup-tenants",
+    const DATA_PERMISSIONS_AND_ENABLE_TENANTS: EmbeddingHubStep = {
+      id: "data-permissions-and-enable-tenants",
       title: t`Pick a strategy for users and permissions`,
       actions: [
         {
@@ -90,9 +90,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
           to: "/admin/embedding/setup-guide/permissions",
           variant: "outline",
-
-          // TODO(EMB-1265): update this to "setup-permissions-and-tenants"
-          stepId: "setup-tenants",
+          stepId: "data-permissions-and-enable-tenants",
         },
       ],
     };
@@ -136,7 +134,9 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ADD_DATA,
       CREATE_DASHBOARD,
       TEST_EMBED,
-      ...(isTenantsFeatureAvailable ? [SETUP_TENANTS] : []),
+      ...(isTenantsFeatureAvailable
+        ? [DATA_PERMISSIONS_AND_ENABLE_TENANTS]
+        : []),
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];

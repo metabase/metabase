@@ -142,20 +142,6 @@ describe("EmbeddingHub", () => {
     );
   });
 
-  it("has correct href link for Configure data permissions card", async () => {
-    setup();
-
-    const configureDataPermissionsLink = screen.getByRole("link", {
-      name: /configure data permissions/i,
-    });
-    expect(configureDataPermissionsLink).toBeInTheDocument();
-
-    expect(configureDataPermissionsLink).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/permissions/embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=configure-row-column-security&source_plan=oss#one-database-for-all-customers-commingled-setups",
-    );
-  });
-
   it("shows success banner when first 3 steps are completed", async () => {
     setup({
       checklist: {
@@ -166,7 +152,7 @@ describe("EmbeddingHub", () => {
         "configure-row-column-security": false,
         "embed-production": false,
         "secure-embeds": false,
-        "setup-tenants": false,
+        "data-permissions-and-enable-tenants": false,
       },
     });
 

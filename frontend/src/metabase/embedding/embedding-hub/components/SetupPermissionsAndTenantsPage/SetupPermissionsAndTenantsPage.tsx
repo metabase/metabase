@@ -1,8 +1,10 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
@@ -11,6 +13,35 @@ import S from "./SetupPermissionsAndTenantsPage.module.css";
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
+  const { data: checklist } = useGetEmbeddingHubChecklistQuery();
+
+  // The "Which data segregation strategy does your database use?"
+  // is a purely UI step for choosing which strategy to use.
+  const [isDataSegregationSelected, _setIsDataSegregationSelected] =
+    useState(false);
+
+  const completedSteps = useMemo(() => {
+    const isDataSegregationComplete =
+      checklist?.["setup-data-segregation-strategy"] ?? false;
+    const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
+    const isTenantsCreated = checklist?.["create-tenants"] ?? false;
+
+    return {
+      "enable-tenants": isTenantsEnabled,
+
+      // When data segregation is finally configured, we permanently
+      // mark this step as done. Otherwise rely on UI state.
+      "data-segregation":
+        isDataSegregationSelected || isDataSegregationComplete,
+
+      "select-data": isDataSegregationComplete,
+      "create-tenants": isTenantsCreated,
+
+      summary:
+        isTenantsEnabled && isDataSegregationComplete && isTenantsCreated,
+    };
+  }, [checklist, isDataSegregationSelected]);
+
   return (
     <Stack mx="auto" gap="sm" maw={800}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
@@ -24,8 +55,7 @@ export const SetupPermissionsAndTenantsPage = () => {
         {t`Configure data permissions and enable tenants`}
       </Title>
 
-      {/* TODO(EMB-1266): implement completed and locked steps logic */}
-      <OnboardingStepper completedSteps={{}} lockedSteps={{}}>
+      <OnboardingStepper completedSteps={completedSteps} lockedSteps={{}}>
         <OnboardingStepper.Step
           stepId="enable-tenants"
           title={t`Enable multi-tenant user strategy`}

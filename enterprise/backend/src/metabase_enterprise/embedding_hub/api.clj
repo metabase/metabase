@@ -53,21 +53,55 @@
                                                               :where  [:= :is_sample true]}]]
                                     [:is :collection_id nil]]]}))
 
-(defn- embedding-hub-checklist []
-  {"add-data"                      (has-user-added-database?)
-   "create-dashboard"              (has-user-created-dashboard?)
-   "create-models"                 (has-user-created-models?)
-   "configure-row-column-security" (has-configured-sandboxes?)
-   "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
-   "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
-   "secure-embeds"                 (has-configured-sso?)
-   "setup-tenants"                 (perms/use-tenants)})
+(defn- has-user-created-tenants? []
+  (t2/exists? :model/Tenant :is_active true))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/checklist"
+(defn- has-configured-data-segregation-strategy? []
+  ;; Check if any of the 3 data segregation strategies are enabled:
+  ;; 1. Row and Column Level Security (Sandboxing)
+  ;; 2. Connection Impersonation
+  ;; 3. Database Routing
+  (or (has-configured-sandboxes?)
+      (t2/exists? :model/ConnectionImpersonation)
+      (t2/exists? :model/DatabaseRouter)))
+
+(defn- embedding-hub-checklist []
+  (let [enable-tenants?                 (perms/use-tenants)
+        create-tenants?                 (has-user-created-tenants?)
+        setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
+    ;; for the main embedding hub checklist
+    {"add-data"                          (has-user-added-database?)
+     "create-dashboard"                  (has-user-created-dashboard?)
+     "create-models"                     (has-user-created-models?)
+     "configure-row-column-security"     (has-configured-sandboxes?)
+     "create-test-embed"                 (embedding.settings/embedding-hub-test-embed-snippet-created)
+     "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
+     "secure-embeds"                     (has-configured-sso?)
+     "data-permissions-and-enable-tenants" (and enable-tenants?
+                                                create-tenants?
+                                                setup-data-segregation-strategy?)
+
+     ;; for the "configure data permissions and enable tenants" sub-checklist page
+     "enable-tenants"                    enable-tenants?
+     "create-tenants"                    create-tenants?
+     "setup-data-segregation-strategy"   setup-data-segregation-strategy?}))
+
+(def ^:private EmbeddingHubChecklist
+  "Schema for the embedding hub checklist response."
+  [:map {:closed true}
+   ["add-data"                             :boolean]
+   ["create-dashboard"                     :boolean]
+   ["create-models"                        :boolean]
+   ["configure-row-column-security"        :boolean]
+   ["create-test-embed"                    :boolean]
+   ["embed-production"                     :boolean]
+   ["secure-embeds"                        :boolean]
+   ["data-permissions-and-enable-tenants"  :boolean]
+   ["enable-tenants"                       :boolean]
+   ["create-tenants"                       :boolean]
+   ["setup-data-segregation-strategy"      :boolean]])
+
+(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklist
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []
   (embedding-hub-checklist))
