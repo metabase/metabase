@@ -40,7 +40,7 @@ export const LensNavigation = ({
     style={{ alignSelf: "flex-start" }}
   >
     <Stack gap="md">
-      <Title order={4}>{t`Available lenses`}</Title>
+      <Title order={4}>{t`Inspect`}</Title>
       {parentLenses.length > 0 && (
         <>
           <Stack gap="sm">
