@@ -78,9 +78,8 @@
             (is (= "Premium features required for this transform type are not enabled." response))))))))
 
 (deftest list-transforms-404-without-feature-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:hosting}
-      (mt/user-http-request :crowberto :get 404 "transform"))))
+  (mt/with-premium-features #{:hosting}
+    (mt/user-http-request :crowberto :get 403 "transform")))
 
 (deftest get-transform-404-without-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -401,14 +400,14 @@
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-hydrate-collection-test
-  (testing "GET /api/ee/transform/run - hydrates collection on transform"
+  (testing "GET /api/transform/run - hydrates collection on transform"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Subfolder" :namespace :transforms}
                      :model/Transform {transform-in-collection-id :id} {:collection_id collection-id}
                      :model/Transform {transform-in-root-id :id} {:collection_id nil}
                      :model/TransformRun {run-in-collection-id :id} {:transform_id transform-in-collection-id}
                      :model/TransformRun {run-in-root-id :id} {:transform_id transform-in-root-id}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+        (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                              :transform_ids [transform-in-collection-id
                                                              transform-in-root-id])
               runs-by-id (m/index-by :id (:data response))]
