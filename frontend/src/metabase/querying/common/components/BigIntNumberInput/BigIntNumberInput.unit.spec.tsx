@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { NumberValue } from "metabase/lib/number";
 
-import { NumberFilterInput } from "./NumberFilterInput";
+import { BigIntNumberInput } from "./BigIntNumberInput";
 
 type SetupOpts = {
   value?: NumberValue | null;
@@ -11,7 +11,7 @@ type SetupOpts = {
 
 function setup({ value = null }: SetupOpts = {}) {
   const onChange = jest.fn();
-  renderWithProviders(<NumberFilterInput value={value} onChange={onChange} />);
+  renderWithProviders(<BigIntNumberInput value={value} onChange={onChange} />);
 
   const input = screen.getByRole("textbox");
   return { input, onChange };

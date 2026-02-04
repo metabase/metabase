@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { NumberFilterInput } from "metabase/querying/common/components/NumberFilterInput";
+import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -156,7 +156,7 @@ function NumberValueInput({
   if (valueCount === 1) {
     return (
       <Flex p="md">
-        <NumberFilterInput
+        <BigIntNumberInput
           value={values[0]}
           placeholder={t`Enter a number`}
           autoFocus={autoFocus}
@@ -171,14 +171,14 @@ function NumberValueInput({
   if (valueCount === 2) {
     return (
       <Flex align="center" justify="center" p="md">
-        <NumberFilterInput
+        <BigIntNumberInput
           value={values[0]}
           placeholder={t`Min`}
           autoFocus={autoFocus}
           onChange={(newValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberFilterInput
+        <BigIntNumberInput
           value={values[1]}
           placeholder={t`Max`}
           onChange={(newValue) => onChange([values[0], newValue])}

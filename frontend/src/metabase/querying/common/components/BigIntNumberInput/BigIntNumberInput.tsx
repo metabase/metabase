@@ -4,13 +4,13 @@ import { forwardRef, useLayoutEffect, useState } from "react";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import { TextInput, type TextInputProps } from "metabase/ui";
 
-type NumberFilterInputProps = Omit<TextInputProps, "value" | "onChange"> & {
+type BigIntNumberInputProps = Omit<TextInputProps, "value" | "onChange"> & {
   value: NumberValue | null;
   onChange: (value: NumberValue | null) => void;
 };
 
-export const NumberFilterInput = forwardRef(function NumberFilterInput(
-  { value, onChange, onFocus, onBlur, ...props }: NumberFilterInputProps,
+export const BigIntNumberInput = forwardRef(function BigIntNumberInput(
+  { value, onChange, onFocus, onBlur, ...props }: BigIntNumberInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const [inputValue, setInputValue] = useState(formatValue(value));
