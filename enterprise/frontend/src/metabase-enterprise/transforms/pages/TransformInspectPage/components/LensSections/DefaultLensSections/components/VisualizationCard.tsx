@@ -1,7 +1,10 @@
+import { Link } from "react-router";
+
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Card, Loader, Stack, Title } from "metabase/ui";
+import { Box, Card, Icon, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type {
@@ -68,20 +71,38 @@ export const VisualizationCard = ({
   const rawSeries = buildRawSeries(data, card, displayType, displaySettings);
   const isLoading = isMetadataLoading || isDataLoading;
 
+  const questionUrl = rawSeries?.[0]?.card
+    ? Urls.serializedQuestion(rawSeries[0].card)
+    : undefined;
+
+  const getHref = questionUrl ? () => questionUrl : undefined;
+
+  const onChangeCardAndRun = questionUrl
+    ? () => window.open(questionUrl, "_blank")
+    : undefined;
+
+  const actionButtons = questionUrl ? (
+    <Link to={questionUrl} target="_blank">
+      <Icon name="external" />
+    </Link>
+  ) : null;
+
   return (
     <Card p="md" shadow="none" withBorder>
       <Stack gap="sm">
-        <Title order={5} lineClamp={1}>
-          {card.title}
-        </Title>
-
         {isLoading || !rawSeries ? (
           <Stack gap="sm" align="center" justify="center" h={height}>
             <Loader size="sm" />
           </Stack>
         ) : (
           <Box h={height}>
-            <Visualization rawSeries={rawSeries} />
+            <Visualization
+              rawSeries={rawSeries}
+              showTitle={true}
+              actionButtons={actionButtons}
+              getHref={getHref}
+              onChangeCardAndRun={onChangeCardAndRun}
+            />
           </Box>
         )}
 
