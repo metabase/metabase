@@ -298,6 +298,7 @@
         join-clause     (paged-runs-join-clause params)
         count-options   (m/assoc-some {} :where where-clause)
         query-options   (m/assoc-some {:order-by order-by :offset offset :limit limit}
+                                      :select (when join-clause [:transform_run.*])
                                       :where where-clause
                                       :left-join join-clause)
         runs            (t2/select :model/TransformRun query-options)
