@@ -61,6 +61,7 @@
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:csv-model-card?         {:optional true} [:maybe :boolean]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in

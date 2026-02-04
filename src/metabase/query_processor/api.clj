@@ -72,10 +72,15 @@
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema :table_id]
+                                          :id source-card-id))
+          csv-model-card? (and (= (:type source-card) :model)
+                               (:table_id source-card)
+                               (t2/exists? :model/Table :id (:table_id source-card) :is_upload true))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
-                                  :card-id     source-card-id}
+                                  :card-id     source-card-id
+                                  :csv-model-card? csv-model-card?}
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]

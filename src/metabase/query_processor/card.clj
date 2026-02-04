@@ -324,7 +324,7 @@
   (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
-                                                   :parameters]
+                                                   :parameters :table_id]
                                                   :id card-id))
         parameters (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
@@ -344,12 +344,17 @@
                                              (merge
                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
                                               middleware))))
+        ;; Check if this is a CSV-upload backed model (model with is_upload table)
+        csv-model-card? (and (= (:type card) :model)
+                             (:table_id card)
+                             (t2/exists? :model/Table :id (:table_id card) :is_upload true))
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context
                             :card-id                card-id
                             :card-name              (:name card)
                             :dashboard-id           dashboard-id
-                            :visualization-settings merged-viz}
+                            :visualization-settings merged-viz
+                            :csv-model-card?         csv-model-card?}
                      (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)

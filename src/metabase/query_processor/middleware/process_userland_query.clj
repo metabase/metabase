@@ -111,6 +111,8 @@
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
+       (when (:csv_model_card? execution-info)
+         (analytics/inc! :metabase-csv-model/query {:status "success"}))
        (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
@@ -123,7 +125,7 @@
 (mu/defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id csv-model-card?]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
@@ -152,7 +154,8 @@
      :started_at        (t/zoned-date-time)
      :running_time      0
      :result_rows       0
-     :start_time_millis (System/currentTimeMillis)}))
+     :start_time_millis (System/currentTimeMillis)
+     :csv_model_card?   csv-model-card?}))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

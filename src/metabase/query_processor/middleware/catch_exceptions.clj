@@ -146,7 +146,10 @@
               (when-not query-canceled?
                 (log/errorf "Error processing query: %s\n%s"
                             (or (:error formatted-exception) "Error running query")
-                            (u/pprint-to-str formatted-exception)))
+                            (u/pprint-to-str formatted-exception))
+                (tap> {:info (:info query)})
+                (when (get-in query [:info :csv-model-card?])
+                  (analytics/inc! :metabase-csv-model/query {:status "failure"})))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]

@@ -269,6 +269,9 @@
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
+   (prometheus/counter :metabase-csv-model/query
+                       {:description "Did a CSV-upload backed model query succeed or fail"
+                        :labels [:status]})
 
    (prometheus/histogram :metabase-remote-sync/export-duration-ms
                          {:description "Duration in milliseconds that remote-sync exports took."
