@@ -1876,3 +1876,22 @@
               (is (= (cond-> [daily-run-id hourly-run-id monthly-run-id weekly-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
+
+(deftest get-runs-hydrate-collection-test
+  (testing "GET /api/ee/transform/run - hydrates collection on transform"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Subfolder" :namespace :transforms}
+                     :model/Transform {transform-in-collection-id :id} {:collection_id collection-id}
+                     :model/Transform {transform-in-root-id :id} {:collection_id nil}
+                     :model/TransformRun {run-in-collection-id :id} {:transform_id transform-in-collection-id}
+                     :model/TransformRun {run-in-root-id :id} {:transform_id transform-in-root-id}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
+                                             :transform_ids [transform-in-collection-id
+                                                             transform-in-root-id])
+              runs-by-id (m/index-by :id (:data response))]
+          (testing "transform in explicit collection has that collection hydrated"
+            (is (= "Subfolder"
+                   (get-in (runs-by-id run-in-collection-id) [:transform :collection :name]))))
+          (testing "transform in root collection has root collection hydrated"
+            (is (= "Transforms"
+                   (get-in (runs-by-id run-in-root-id) [:transform :collection :name])))))))))

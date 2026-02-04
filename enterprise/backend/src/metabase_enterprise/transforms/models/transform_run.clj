@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as cancel]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -290,17 +291,19 @@
 
   Follows the conventions used by the FE."
   [{:keys [offset limit] :as params}]
-  (let [offset        (or offset 0)
-        limit         (or limit 20)
-        order-by      (paged-runs-order-by-clause params)
-        where-clause  (paged-runs-where-clause params)
-        join-clause   (paged-runs-join-clause params)
-        count-options (m/assoc-some {} :where where-clause)
-        query-options (m/assoc-some {:order-by order-by :offset offset :limit limit}
-                                    :where where-clause
-                                    :left-join join-clause)
-        runs          (t2/select :model/TransformRun query-options)]
-    {:data   (t2/hydrate runs [:transform :transform_tag_ids])
+  (let [offset          (or offset 0)
+        limit           (or limit 20)
+        order-by        (paged-runs-order-by-clause params)
+        where-clause    (paged-runs-where-clause params)
+        join-clause     (paged-runs-join-clause params)
+        count-options   (m/assoc-some {} :where where-clause)
+        query-options   (m/assoc-some {:order-by order-by :offset offset :limit limit}
+                                      :where where-clause
+                                      :left-join join-clause)
+        runs            (t2/select :model/TransformRun query-options)
+        root-collection (collection.root/hydrated-root-collection :transforms)]
+    {:data   (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
+                  (map #(update % :transform collection.root/hydrate-root-collection root-collection)))
      :limit  limit
      :offset offset
      :total  (t2/count :model/TransformRun count-options)}))
