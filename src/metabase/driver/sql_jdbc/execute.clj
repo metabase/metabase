@@ -19,7 +19,6 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -279,26 +278,10 @@
     {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
     (complement :connection)]])
 
-(defn- db-or-id-or-spec->db
-  [db-or-id-or-spec]
-  (cond
-    (integer? db-or-id-or-spec)
-    (driver-api/with-metadata-provider db-or-id-or-spec
-      (driver-api/database (driver-api/metadata-provider)))
-
-    (u/id db-or-id-or-spec)
-    db-or-id-or-spec
-
-    :else
-    nil))
-
-(defn- impersonated-connection-spec
+(defn- impersonated-connection-pool-spec
   [driver db-or-id-or-spec {:keys [impersonation-key]}]
-  (when impersonation-key
-    (when-let [database (db-or-id-or-spec->db db-or-id-or-spec)]
-      (when (driver.u/supports? driver :connection-impersonation/credentials database)
-        (when-let [details (driver/impersonated-connection-details driver database impersonation-key)]
-          (sql-jdbc.conn/connection-details->spec driver details))))))
+  (when (seq impersonation-key)
+    (sql-jdbc.conn/impersonated-connection-pool-spec driver db-or-id-or-spec impersonation-key)))
 
 (mu/defn do-with-resolved-connection-data-source :- (driver-api/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
@@ -371,15 +354,14 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (let [impersonation-spec (impersonated-connection-spec driver db-or-id-or-spec options)
+      (let [impersonation-pool (impersonated-connection-pool-spec driver db-or-id-or-spec options)
             get-conn (^:once fn* []
-                       (if impersonation-spec
-                         #_{:clj-kondo/ignore [:discouraged-var]}
+                       (if impersonation-pool
                          (do
-                           (log/infof "Using impersonated connection for %s on database %s"
+                           (log/infof "Using impersonated connection pool for %s on database %s"
                                       (:impersonation-key options)
-                                      (:id db-or-id-or-spec))
-                           (jdbc/get-connection impersonation-spec))
+                                      (u/id db-or-id-or-spec))
+                           (.getConnection ^DataSource (:datasource impersonation-pool)))
                          (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))))]
         (if (:keep-open? options)
           (f (get-conn))

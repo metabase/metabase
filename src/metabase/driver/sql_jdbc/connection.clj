@@ -211,7 +211,7 @@
   (ssh/close-tunnel! pool-spec))
 
 (def ^:private swapped-pool-ttl-minutes
-  "Time-to-live in minutes for swapped connection pools.
+  "Time-to-live in minutes for swapped and impersonated connection pools.
   Pools are evicted after this duration of inactivity (no access)."
   15)
 
@@ -237,10 +237,50 @@
              nil))))
       (build)))
 
+(defonce ^:private ^Cache ^{:doc "A Guava cache of impersonated connection pools with TTL-based expiration,
+  keyed by [database-id, impersonation-key]. Pools are evicted after inactivity."}
+  impersonation-connection-pools
+  (.. (CacheBuilder/newBuilder)
+      (expireAfterAccess swapped-pool-ttl-minutes TimeUnit/MINUTES)
+      (removalListener
+       (reify com.google.common.cache.RemovalListener
+         (^void onRemoval [_ ^RemovalNotification rn]
+           (let [[database-id impersonation-key] (.getKey rn)
+                 pool-spec                      (.getValue rn)]
+             (log/debugf "Evicting impersonation pool for database %d key %s (cause: %s)"
+                         database-id impersonation-key (.getCause rn))
+             (destroy-pool! database-id pool-spec)
+             nil))))
+      (build)))
+
 (defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-swapped) details, keyed by Database `:id`.
   This is used to detect when database details have been updated in the application database."}
   database-id->jdbc-spec-hash
   (atom {}))
+
+(defn- db-or-id->database
+  "Resolve a Database map from a database instance, metadata database, raw map, or id. Returns nil if not resolvable."
+  [db-or-id]
+  (cond
+    (driver-api/instance-of? :model/Database db-or-id)
+    (driver-api/instance->metadata db-or-id :metadata/database)
+
+    (= (:lib/type db-or-id) :metadata/database)
+    db-or-id
+
+    (and (map? db-or-id) (:engine db-or-id) (:details db-or-id))
+    db-or-id
+
+    (integer? db-or-id)
+    (driver-api/with-metadata-provider db-or-id
+      (driver-api/database (driver-api/metadata-provider)))
+
+    (u/id db-or-id)
+    (driver-api/with-metadata-provider (u/the-id db-or-id)
+      (driver-api/database (driver-api/metadata-provider)))
+
+    :else
+    nil))
 
 (mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
@@ -269,8 +309,30 @@
   (swap! database-id->jdbc-spec-hash assoc database-id details-hash)
   nil)
 
+(defn invalidate-impersonation-pool!
+  "Invalidate a single impersonation connection pool for `database` and `impersonation-key`."
+  [database impersonation-key]
+  (when (seq impersonation-key)
+    (let [db-id    (u/the-id database)
+          cache-key [db-id impersonation-key]]
+      (log/debugf "Invalidating impersonation pool for database %d key %s" db-id impersonation-key)
+      (.invalidate ^Cache impersonation-connection-pools cache-key))))
+
+(defn invalidate-impersonation-pools-for-db!
+  "Invalidate all impersonation connection pools for the given database."
+  [database]
+  (let [db-id (u/the-id database)
+        cache-keys (filter (fn [[cached-db-id _impersonation-key]]
+                             (= cached-db-id db-id))
+                           (keys (.asMap ^Cache impersonation-connection-pools)))]
+    (log/debugf "Invalidating impersonation pools for database %d (count: %d)"
+                db-id (count cache-keys))
+    (doseq [cache-key cache-keys]
+      (.invalidate ^Cache impersonation-connection-pools cache-key))))
+
 (defn invalidate-pool-for-db!
-  "Invalidates all connection pools for the given database (canonical and swapped) by closing them and removing from cache."
+  "Invalidates all connection pools for the given database (canonical, swapped, and impersonated)
+  by closing them and removing from cache."
   [database]
   (let [db-id (u/the-id database)
         has-canonical? (contains? @database-id->connection-pool db-id)
@@ -286,7 +348,9 @@
       (swap! database-id->connection-pool dissoc db-id))
     ;; Clear all swapped pools for this DB (removal listener will call destroy-pool!)
     (doseq [cache-key swapped-keys]
-      (.invalidate ^Cache swapped-connection-pools cache-key))))
+      (.invalidate ^Cache swapped-connection-pools cache-key))
+    ;; Clear impersonation pools for this DB
+    (invalidate-impersonation-pools-for-db! database)))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
@@ -378,6 +442,95 @@
       (do
         (log/debugf "Using existing swapped connection pool for database %d" id)
         existing))))
+
+(defn- impersonation-connection-pool-properties
+  "Connection pool properties for impersonated connections."
+  [driver database impersonation-key]
+  (assoc (data-warehouse-connection-pool-properties driver database)
+         "dataSourceName" (format "db-%d-%s-impersonation-%s"
+                                  (u/the-id database)
+                                  (name driver)
+                                  impersonation-key)))
+
+(defn- impersonation-spec-info
+  "Return a map with impersonated connection details, spec, and spec hash."
+  [driver database impersonation-key]
+  (when-let [details (driver/impersonated-connection-details driver database impersonation-key)]
+    (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details
+                               driver
+                               (update details :port #(or % (default-ssh-tunnel-target-port driver))))
+          details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
+                               driver
+                               (u/the-id database)
+                               details-with-tunnel)
+          spec                (connection-details->spec driver details-with-auth)]
+      {:details   details-with-auth
+       :spec      spec
+       :spec-hash (hash spec)})))
+
+(defn- create-impersonated-pool!
+  "Create a new C3P0 pool for impersonated connection details."
+  [{:keys [id] :as database} impersonation-key {:keys [details spec spec-hash]}]
+  (log/debug (u/format-color :cyan "Creating new impersonation connection pool for %s database %s (%s) ..."
+                             (:engine database) id impersonation-key))
+  (let [db-with-details (assoc database :details details)
+        properties      (impersonation-connection-pool-properties (:engine database) db-with-details impersonation-key)]
+    (assoc
+     (merge
+      (connection-pool-spec spec properties)
+      (select-internal-keys-for-spec details)
+      (select-internal-keys-for-spec spec)
+      (select-keys details [:password-expiry-timestamp]))
+     :impersonation-spec-hash spec-hash)))
+
+(defn- get-impersonated-pool
+  "Get or create an impersonated connection pool from the Guava cache.
+  Pools are keyed by [database-id, impersonation-key]."
+  [driver database impersonation-key]
+  (let [db-id     (u/the-id database)
+        cache-key [db-id impersonation-key]
+        spec-info (impersonation-spec-info driver database impersonation-key)
+        existing  (.getIfPresent ^Cache impersonation-connection-pools cache-key)]
+    (when spec-info
+      (cond
+        ;; No existing pool - create a new one
+        (nil? existing)
+        (.get ^Cache impersonation-connection-pools
+              cache-key
+              (reify java.util.concurrent.Callable
+                (call [_]
+                  (create-impersonated-pool! (assoc database :engine driver)
+                                             impersonation-key
+                                             spec-info))))
+
+        ;; Existing pool is stale (impersonated credentials or details changed)
+        (not= (:impersonation-spec-hash existing) (:spec-hash spec-info))
+        (do
+          (log/debugf "Impersonation connection pool for database %d key %s is stale, recreating"
+                      db-id impersonation-key)
+          (.invalidate ^Cache impersonation-connection-pools cache-key)
+          (recur driver database impersonation-key))
+
+        ;; Existing pool is invalid (password expired, tunnel closed) - invalidate and recreate
+        (nil? (get-pool-if-valid existing db-id true))
+        (do
+          (log/debugf "Impersonation connection pool for database %d key %s is invalid, recreating"
+                      db-id impersonation-key)
+          (.invalidate ^Cache impersonation-connection-pools cache-key)
+          (recur driver database impersonation-key))
+
+        ;; Existing pool is valid - use it
+        :else
+        existing))))
+
+(defn impersonated-connection-pool-spec
+  "Return a pooled JDBC connection spec for an impersonated connection, or nil if not applicable."
+  [driver db-or-id-or-spec impersonation-key]
+  (when (seq impersonation-key)
+    (when-let [database (db-or-id->database db-or-id-or-spec)]
+      (driver-api/check-allowed-access! (u/the-id database))
+      (when (driver.u/supports? driver :connection-impersonation/credentials database)
+        (get-impersonated-pool driver database impersonation-key)))))
 
 (defn- canonical-pool-hash-changed?
   "Check if the canonical pool's hash differs from the expected hash.

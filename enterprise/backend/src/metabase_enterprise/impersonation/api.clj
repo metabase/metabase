@@ -4,6 +4,7 @@
    [metabase-enterprise.impersonation.credentials :as impersonation.credentials]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.secrets.core :as secret]
    [metabase.util.i18n :refer [tru]]
@@ -118,6 +119,7 @@
           (if existing
             (t2/update! :model/DatabaseImpersonationCredential :id (:id existing) update-map)
             (t2/insert! :model/DatabaseImpersonationCredential update-map))
+          (sql-jdbc.conn/invalidate-impersonation-pool! db_id trimmed-key)
           (credential->response (impersonation.credentials/credential-for-key db_id trimmed-key))))
 
       :oauth-m2m
@@ -141,6 +143,7 @@
           (if existing
             (t2/update! :model/DatabaseImpersonationCredential :id (:id existing) update-map)
             (t2/insert! :model/DatabaseImpersonationCredential update-map))
+          (sql-jdbc.conn/invalidate-impersonation-pool! db_id trimmed-key)
           (credential->response (impersonation.credentials/credential-for-key db_id trimmed-key))))
 
       (throw (ex-info (tru "Unsupported impersonation auth type: {0}." (name auth-type))
@@ -159,7 +162,8 @@
   (let [credential (api/check-404 (t2/select-one :model/DatabaseImpersonationCredential :id id))]
     (delete-secret! (:token_secret_id credential))
     (delete-secret! (:oauth_secret_id credential))
-    (t2/delete! :model/DatabaseImpersonationCredential :id id))
+    (t2/delete! :model/DatabaseImpersonationCredential :id id)
+    (sql-jdbc.conn/invalidate-impersonation-pool! (:db_id credential) (:key credential)))
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
