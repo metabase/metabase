@@ -112,6 +112,12 @@
   [_parser driver query]
   (referenced-fields driver query))
 
+;;;; field-references
+
+(defmethod sql-tools/field-references-impl :sqlglot
+  [_parser driver sql-string]
+  (sql-parsing/field-references (driver->dialect driver) sql-string))
+
 ;;;; Validation
 
 (defn- process-error-dispatch [_driver {:keys [type]}]

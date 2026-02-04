@@ -38,6 +38,26 @@
   [driver native-query]
   (referenced-fields-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
+(defmulti field-references-impl
+  "Parser specific implementation of [[field-references]]. Do not use directly.
+
+  Returns a map with:
+  - :used-fields - set of field specs from WHERE, JOIN ON, GROUP BY, ORDER BY
+  - :returned-fields - vector of field specs from SELECT clause (ordered)
+  - :errors - set of validation errors"
+  {:arglists '([parser driver sql-string])}
+  parser-dispatch)
+
+(defn field-references
+  "Return field references for SQL string.
+
+  Returns a map with:
+  - :used-fields - set of field specs
+  - :returned-fields - vector of field specs
+  - :errors - set of validation errors"
+  [driver sql-string]
+  (field-references-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string))
+
 (defmulti validate-query-impl
   "Parser specific implementation of [[validate-query]]. Do not use directly."
   {:arglists '([parser driver native-query])}

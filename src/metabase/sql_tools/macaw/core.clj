@@ -103,6 +103,15 @@
   [_parser driver query]
   (referenced-tables driver query))
 
+;;;; field-references
+
+(defmethod sql-tools/field-references-impl :macaw
+  [_parser driver sql-string]
+  (-> sql-string
+      (parsed-query driver)
+      macaw/->ast
+      (->> (sql-tools.macaw.references/field-references driver))))
+
 ;;;; returned-columns
 
 (defmulti ^:private resolve-field
@@ -204,11 +213,7 @@
 
 (defn- returned-columns
   [driver native-query]
-  (let [{:keys [returned-fields]} (-> native-query
-                                      lib/raw-native-query
-                                      (parsed-query driver)
-                                      macaw/->ast
-                                      (->> (sql-tools.macaw.references/field-references driver)))]
+  (let [{:keys [returned-fields]} (sql-tools/field-references driver (lib/raw-native-query native-query))]
     (mapcat #(->> (resolve-field driver native-query %)
                   (keep :col))
             returned-fields)))
@@ -220,11 +225,7 @@
 (defn- referenced-fields
   "Extract fields referenced (used) in a native query - fields in WHERE, JOIN ON, etc."
   [driver native-query]
-  (let [{:keys [used-fields]} (-> native-query
-                                  lib/raw-native-query
-                                  (parsed-query driver)
-                                  macaw/->ast
-                                  (->> (sql-tools.macaw.references/field-references driver)))]
+  (let [{:keys [used-fields]} (sql-tools/field-references driver (lib/raw-native-query native-query))]
     (into #{}
           (mapcat #(->> (resolve-field driver native-query %)
                         (keep :col)))
@@ -237,11 +238,7 @@
 (defn validate-query
   "Validate native query. TODO: limits; what this can and can not do."
   [driver native-query]
-  (let [{:keys [used-fields returned-fields errors]} (-> native-query
-                                                         lib/raw-native-query
-                                                         (parsed-query driver)
-                                                         macaw/->ast
-                                                         (->> (sql-tools.macaw.references/field-references driver)))
+  (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver (lib/raw-native-query native-query))
         check-fields #(mapcat (fn [col-spec]
                                 (->> (resolve-field driver (lib/->metadata-provider native-query) col-spec)
                                      (keep :error)))
@@ -249,6 +246,9 @@
     (-> errors
         (into (check-fields used-fields))
         (into (check-fields returned-fields)))))
+
+(comment
+  (defn field-references [driver query]))
 
 (defmethod sql-tools/validate-query-impl :macaw
   [_parser driver query]
