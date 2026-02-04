@@ -77,17 +77,36 @@
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
-  (let [creds   (bigquery.common/database-details->service-account-credential details)
+  (let [creds   (bigquery.common/get-credentials details)
+        ;; createScopedRequired returns true for ServiceAccountCredentials, but may return false for other
+        ;; credential types (e.g., ComputeEngineCredentials already have scopes from metadata service)
+        scoped-creds (if (.createScopedRequired creds)
+                       (.createScoped creds bigquery-scopes)
+                       creds)
         mb-version (:tag driver-api/mb-version-info)
         run-mode   (name driver-api/run-mode)
         user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
         bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes))
-                  (.setHeaderProvider header-provider))]
+                  (.setCredentials scoped-creds)
+                  (.setHeaderProvider header-provider))
+        ;; For ADC/WIF, project ID must be explicitly set since it can't be inferred from credentials
+        project-id (or (:project-id details)
+                       (bigquery.common/database-details->credential-project-id details))]
+    ;; Validate project-id is set when using ADC or WIF (which don't embed project-id in credentials)
+    (when (and (nil? project-id)
+               (bigquery.common/use-application-default-credentials? details))
+      (throw (ex-info (tru "Project ID is required when using Application Default Credentials (ADC). Please specify the Project ID in the database configuration.")
+                      {:type :missing-required-project-id})))
+    (when (and (nil? project-id)
+               (seq (:credential-config-json details)))
+      (throw (ex-info (tru "Project ID is required when using Workload Identity Federation. Please specify the Project ID in the database configuration.")
+                      {:type :missing-required-project-id})))
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
+    (when project-id
+      (.setProjectId bq-bldr project-id))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

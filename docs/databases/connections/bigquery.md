@@ -62,6 +62,14 @@ Each BigQuery dataset will have a **Project ID**. You can find this ID via the [
 
 The JSON file contains the credentials your Metabase application will need to access BigQuery datasets, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
+You can leave this field empty if you're using [Application Default Credentials](#application-default-credentials-adc) or [Workload Identity Federation](#workload-identity-federation).
+
+### Credential Configuration (JSON)
+
+Use this field for [Workload Identity Federation](#workload-identity-federation) configurations. This is an alternative to the service account JSON file that allows authentication from external identity providers (like Azure AD, AWS, or Kubernetes).
+
+Leave this field empty if you're using a service account JSON file or Application Default Credentials from the environment.
+
 ### Datasets
 
 You can specify which BigQuery datasets you want to sync and scan. Options are:
@@ -172,6 +180,68 @@ With database routing, an admin can build a question once using one database, an
 Database routing for BigQuery works between BigQuery **projects** with identical schemas.
 
 See [Database routing](../../permissions/database-routing.md).
+
+## Alternative authentication methods
+
+In addition to service account JSON files, Metabase supports other Google Cloud authentication methods that are useful in cloud-native environments.
+
+### Application Default Credentials (ADC)
+
+Application Default Credentials (ADC) allow Metabase to authenticate without explicitly providing credentials in the connection settings. ADC automatically finds credentials from the environment.
+
+ADC works in the following scenarios:
+
+- **Google Kubernetes Engine (GKE) Workload Identity**: When running Metabase on GKE with Workload Identity enabled, the pod automatically receives credentials from the Kubernetes service account.
+- **Google Compute Engine (GCE)**: When running on a GCE instance with an attached service account.
+- **Local development**: When you've run `gcloud auth application-default login`.
+- **GOOGLE_APPLICATION_CREDENTIALS environment variable**: When you've set this variable to point to a service account JSON file.
+
+To use ADC:
+
+1. Leave both **Service account JSON file** and **Credential Configuration (JSON)** fields empty.
+2. Enter the **Project ID** (required when using ADC).
+3. Ensure your environment is configured with valid Google Cloud credentials.
+
+### Workload Identity Federation
+
+Workload Identity Federation allows external identity providers (such as Azure AD, AWS, or Kubernetes OIDC) to authenticate with Google Cloud without using service account keys.
+
+This is useful when:
+
+- Running Metabase on Azure Kubernetes Service (AKS) and accessing BigQuery.
+- Running Metabase on AWS EKS and accessing BigQuery.
+- Running on any Kubernetes cluster with OIDC tokens.
+
+To use Workload Identity Federation:
+
+1. [Set up Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) in your Google Cloud project.
+2. Create a credential configuration file using the Google Cloud CLI:
+   ```bash
+   gcloud iam workload-identity-pools create-cred-config \
+     projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID \
+     --service-account=SERVICE_ACCOUNT_EMAIL \
+     --output-file=credential-config.json \
+     --credential-source-file=/path/to/oidc/token
+   ```
+3. Copy the contents of the generated JSON file.
+4. Paste it into the **Credential Configuration (JSON)** field in Metabase.
+5. Enter the **Project ID** (required when using Workload Identity Federation).
+
+The credential configuration JSON will look something like:
+
+```json
+{
+  "type": "external_account",
+  "audience": "//iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID",
+  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+  "token_url": "https://sts.googleapis.com/v1/token",
+  "credential_source": {
+    "file": "/var/run/secrets/tokens/gcp-token"
+  }
+}
+```
+
+> When using Workload Identity Federation, the token file path in `credential_source.file` must be accessible to the Metabase process. In Kubernetes, this is typically a projected service account token volume.
 
 ## Danger zone
 

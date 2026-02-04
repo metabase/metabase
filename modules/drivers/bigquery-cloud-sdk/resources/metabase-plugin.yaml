@@ -6,18 +6,22 @@ driver:
   name: bigquery-cloud-sdk
   display-name: BigQuery
   lazy-load: true
-  parent:
-    - sql
+  parent: sql
   connection-properties:
     - name: project-id
       display-name: Project ID (override)
-      helper-text: Project ID to be used for authentication. You can omit this field if you are only querying datasets owned by your organization.
+      helper-text: Project ID for billing and API calls. Required when using ADC or Workload Identity Federation.
       required: false
       placeholder: 1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u
     - name: service-account-json
       display-name: Service account JSON file
-      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset.
-      required: true
+      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset. Leave empty to use Application Default Credentials (ADC) or Workload Identity Federation.
+      required: false
+      type: textFile
+    - name: credential-config-json
+      display-name: Credential Configuration (JSON)
+      helper-text: Workload Identity Federation configuration JSON. Leave empty to use service account or ADC.
+      required: false
       type: textFile
     - name: dataset-filters
       type: schema-filters
