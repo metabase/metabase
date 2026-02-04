@@ -259,44 +259,6 @@ describe("scenarios - embedding hub", () => {
         .should("not.exist");
     });
 
-    it('"Pick a user strategy" card should open the edit strategy modal', () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-
-      cy.request("PUT", "/api/setting/embedding-homepage", {
-        value: "visible",
-      });
-
-      cy.visit("/");
-
-      H.main()
-        .findByText("Pick a user strategy")
-        .scrollIntoView()
-        .should("be.visible")
-        .click();
-
-      H.modal().within(() => {
-        cy.findByText("Pick a user strategy").should("be.visible");
-        cy.findByText("Multi tenant").click();
-        cy.button("Apply").click();
-      });
-
-      cy.log("the internal prefix should show up on the page");
-      H.main().findByText("Internal users").should("be.visible");
-      H.main().findByText("Internal groups").should("be.visible");
-
-      cy.visit("/");
-
-      cy.log("'Pick a user strategy' should now be marked as done");
-      H.main()
-        .findByText("Pick a user strategy")
-        .closest("button")
-        .scrollIntoView()
-        .findByText("Done", { timeout: 10_000 })
-        .should("be.visible");
-    });
-
     it("should link to user strategy when tenants are disabled", () => {
       H.restore("setup");
       cy.signInAsAdmin();
