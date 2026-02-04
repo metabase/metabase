@@ -4540,7 +4540,9 @@
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+  (defn handle-broken-subscription-notification!
+    "Handles the notification logic for broken subscriptions.i"
+    [{:keys [disable-links? email-body-re match-email-body-re?]}]
     (let [param {:name "Source"
                  :slug "source"
                  :id   "_SOURCE_PARAM_ID_"
@@ -4571,10 +4573,11 @@
                                                                                          [:field (mt/id :people :source)
                                                                                           {:base-type :type/Text}]]}]}
 
-           :model/Pulse {bad-pulse-id :id} {:name         "Bad Pulse"
-                                            :dashboard_id dash-id
-                                            :creator_id   (mt/user->id :trashbird)
-                                            :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
+                                            :dashboard_id  dash-id
+                                            :creator_id    (mt/user->id :trashbird)
+                                            :parameters    [(assoc param :value ["Twitter", "Facebook"])]
+                                            :disable_links disable-links?}
            :model/PulseCard _ {:pulse_id          bad-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -4585,11 +4588,12 @@
                                            :user_id          (mt/user->id :rasta)}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}
-           ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
+                     ;; Broken slack pulse
+           :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
+                                                  :dashboard_id  dash-id
+                                                  :creator_id    (mt/user->id :trashbird)
+                                                  :parameters    [(assoc param :value ["LinkedIn"])]
+                                                  :disable_links disable-links?}
            :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -4597,7 +4601,7 @@
                                   :pulse_id     bad-slack-pulse-id
                                   :details      {:channel "#my-channel"}
                                   :enabled      true}
-           ;; Non broken pulse
+                     ;; Non broken pulse
            :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
                                              :dashboard_id dash-id
                                              :creator_id   (mt/user->id :trashbird)}
@@ -4619,8 +4623,8 @@
                                                             :rasta :put 200 (str "dashboard/" dash-id)
                                                             {:parameters []}))
                   title            (format "Subscription to %s removed" dashboard-name)
-                  ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
-                  ;; as "We've Noticed a New Metabase Login, Rasta".
+                            ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
+                            ;; as "We've Noticed a New Metabase Login, Rasta".
                   inbox            (update-vals
                                     @mt/inbox
                                     (fn [messages]
@@ -4630,8 +4634,8 @@
                                        (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
                                                           (str/includes? title)))))
                                      (testing "The second email (about the broken slack pulse) was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                          (str/includes? "#my-channel"))))))]
+                                       (is (= match-email-body-re? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                                           (str/includes? email-body-re))))))]
               (testing "The dashboard parameters were removed"
                 (is (empty? parameters)))
               (testing "The broken pulse was archived"
@@ -4643,7 +4647,25 @@
                        (set (keys inbox)))))
               (testing "Notification emails were sent to the dashboard and pulse creators"
                 (emails-received? "rasta@metabase.com")
-                (emails-received? "trashbird@metabase.com")))))))))
+                (emails-received? "trashbird@metabase.com"))))))))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+    (handle-broken-subscription-notification!
+     {:disable-links?       false
+      :email-body-re        "#my-channel"
+      :match-email-body-re? true}))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
+    (handle-broken-subscription-notification!
+     {:disable-links?       false
+      :email-body-re        "href="
+      :match-email-body-re? true}))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
+    (handle-broken-subscription-notification!
+     {:disable-links?       true
+      :email-body-re        "href="
+      :match-email-body-re? false})))
 
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
