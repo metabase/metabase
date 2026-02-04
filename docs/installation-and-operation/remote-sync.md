@@ -164,7 +164,7 @@ At this point, you should be all set up. Exit Admin settings, then reload your b
 
 ### 8. Configure transforms syncing (optional)
 
-To version control your data transformation logic, you can sync your [Transforms](../data-modeling/transforms.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
+To version control your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 
 ## An example dev-to-production workflow
 

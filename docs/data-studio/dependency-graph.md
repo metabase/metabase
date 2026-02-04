@@ -15,7 +15,7 @@ The dependency graph tracks the relationships between:
 - [Questions](../questions/introduction.md)
 - [Models](../data-modeling/models.md)
 - [Snippets](../questions/native-editor/snippets.md)
-- [Transforms](transforms-overview.md)
+- [Transforms](./transforms/transforms-overview.md)
 - [Metrics](../data-modeling/metrics.md)
 - [Dashboards](../dashboards/introduction.md)
 - [Documents](../documents/introduction.md)

@@ -39,7 +39,7 @@ You can:
 
 Tables published to the Library appear first in the Data section when people choose data sources, nudging them toward trusted data.
 
-You must explicitly publish tables to the Library. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](transforms-overview.md).
+You must explicitly publish tables to the Library. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](./transforms/transforms-overview.md).
 
 Tables published to the Library remain available via the data browser as well.
 
