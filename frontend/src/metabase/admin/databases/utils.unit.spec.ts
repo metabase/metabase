@@ -14,118 +14,82 @@ describe("database routing utility functions", () => {
   ];
 
   describe("hasDbRoutingEnabled", () => {
-    it("returns false for database without router_user_attribute", () => {
-      expect(hasDbRoutingEnabled({ router_user_attribute: null })).toBe(false);
-      expect(hasDbRoutingEnabled({ router_user_attribute: undefined })).toBe(
-        false,
-      );
-    });
-
-    it("returns true for database with router_user_attribute", () => {
-      expect(hasDbRoutingEnabled({ router_user_attribute: "department" })).toBe(
-        true,
-      );
-      expect(hasDbRoutingEnabled({ router_user_attribute: "team" })).toBe(true);
-    });
+    it.each([
+      [null, false],
+      [undefined, false],
+      ["department", true],
+      ["team", true],
+    ])(
+      "returns %s when router_user_attribute is %s",
+      (router_user_attribute, expected) => {
+        expect(hasDbRoutingEnabled({ router_user_attribute })).toBe(expected);
+      },
+    );
   });
 
   describe("questionUsesRoutingEnabledDatabase", () => {
-    it("returns false for question without database_id", () => {
-      const question = { database_id: undefined };
+    it.each([
+      ["without database_id", { database_id: undefined }, false],
+      ["using database without routing", { database_id: 1 }, false],
+      ["using database with routing", { database_id: 2 }, true],
+      ["using non-existent database", { database_id: 999 }, false],
+    ])("returns %s for question %s", (_, question, expected) => {
       expect(questionUsesRoutingEnabledDatabase(question, mockDatabases)).toBe(
-        false,
-      );
-    });
-
-    it("returns false for question using database without routing", () => {
-      const question = { database_id: 1 };
-      expect(questionUsesRoutingEnabledDatabase(question, mockDatabases)).toBe(
-        false,
-      );
-    });
-
-    it("returns true for question using database with routing", () => {
-      const question = { database_id: 2 };
-      expect(questionUsesRoutingEnabledDatabase(question, mockDatabases)).toBe(
-        true,
-      );
-    });
-
-    it("returns false for question using non-existent database", () => {
-      const question = { database_id: 999 };
-      expect(questionUsesRoutingEnabledDatabase(question, mockDatabases)).toBe(
-        false,
+        expected,
       );
     });
   });
 
   describe("dashboardUsesRoutingEnabledDatabases", () => {
-    it("returns false for dashboard without dashcards", () => {
-      const dashboard = { dashcards: [] };
+    it.each([
+      ["without dashcards", { dashcards: [] }, false],
+      [
+        "with cards using non-routing databases",
+        {
+          dashcards: [
+            {
+              card: { database_id: 1 } as Card,
+            } as any,
+          ],
+        },
+        false,
+      ],
+      [
+        "with main card using routing-enabled database",
+        {
+          dashcards: [{ card: { database_id: 2 } as Card }],
+        },
+        true,
+      ],
+      [
+        "with series card using routing-enabled database",
+        {
+          dashcards: [
+            {
+              card: { database_id: 1 } as Card,
+              series: [{ database_id: 2 } as Card],
+            } as any,
+          ],
+        },
+        true,
+      ],
+      [
+        "with mixed cards where some use routing",
+        {
+          dashcards: [
+            { card: { database_id: 1 } as Card },
+            { card: { database_id: 2 } as Card },
+          ],
+        },
+        true,
+      ],
+    ])("returns %s for dashboard %s", (_, dashboard, expected) => {
       expect(
-        dashboardUsesRoutingEnabledDatabases(dashboard, mockDatabases),
-      ).toBe(false);
-    });
-
-    it("returns false for dashboard with cards using non-routing databases", () => {
-      const dashboard = {
-        dashcards: [
-          {
-            card: { database_id: 1 } as Card,
-            series: [{ database_id: 1 } as Card],
-          } as any, // Use any to avoid complex typing for test
-        ],
-      } as Pick<Dashboard, "dashcards">;
-
-      expect(
-        dashboardUsesRoutingEnabledDatabases(dashboard, mockDatabases),
-      ).toBe(false);
-    });
-
-    it("returns true for dashboard with main card using routing-enabled database", () => {
-      const dashboard = {
-        dashcards: [
-          {
-            card: { database_id: 2 } as Card,
-          },
-        ],
-      } as Pick<Dashboard, "dashcards">;
-
-      expect(
-        dashboardUsesRoutingEnabledDatabases(dashboard, mockDatabases),
-      ).toBe(true);
-    });
-
-    it("returns true for dashboard with series card using routing-enabled database", () => {
-      const dashboard = {
-        dashcards: [
-          {
-            card: { database_id: 1 } as Card,
-            series: [{ database_id: 2 } as Card],
-          } as any, // Use any to avoid complex typing for test
-        ],
-      } as Pick<Dashboard, "dashcards">;
-
-      expect(
-        dashboardUsesRoutingEnabledDatabases(dashboard, mockDatabases),
-      ).toBe(true);
-    });
-
-    it("returns true for dashboard with mixed cards where some use routing", () => {
-      const dashboard = {
-        dashcards: [
-          {
-            card: { database_id: 1 } as Card, // no routing
-          },
-          {
-            card: { database_id: 2 } as Card, // has routing
-          },
-        ],
-      } as Pick<Dashboard, "dashcards">;
-
-      expect(
-        dashboardUsesRoutingEnabledDatabases(dashboard, mockDatabases),
-      ).toBe(true);
+        dashboardUsesRoutingEnabledDatabases(
+          dashboard as Pick<Dashboard, "dashcards">,
+          mockDatabases,
+        ),
+      ).toBe(expected);
     });
   });
 });
