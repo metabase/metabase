@@ -70,7 +70,7 @@ Once you've [set up the Python runner](#set-up-a-python-runner):
 
 ## Run a Python transform
 
-See [Run a transform](transforms.md#run-a-transform). You'll see logs for a transform run (including the output of any `print()` statements you included in the `transform()` code) on the transform's page.
+See [Run a transform](transforms-overview.md#run-a-transform). You'll see logs for a transform run (including the output of any `print()` statements you included in the `transform()` code) on the transform's page.
 
 ## Available Python packages
 
@@ -125,7 +125,6 @@ To make a Python transforms incremental:
 
 - The transform function must return a single `pandas` DataFrame. Other data manipulation and DataFrame libraries like `polars` or `pyspark` are not supported.
 - Transform preview only uses 100 input rows from each input table.
-  Unlike [Query transforms](./query-transforms.md), where you select an _output_ column as the column to check for new values, with Python transforms, you have to select a column from the _input_ tables as the column to check for new values.
 - Only a [limited set of packages](#available-python-packages) are available for import. You can't install additional packages.
 - Because Python transforms use `pandas`, all data manipulation is done in memory. The available memory is determined by the Python execution add-on. For large datasets, consider using [query-based transforms](./query-transforms.md) that run in your database.
 - Only one Python transform can be run at any given time.
