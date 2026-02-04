@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding",
     "hash": "6480c0f338e7f9d4a072710399aa999702686bd2"
+  },
+  "upstream": {
+    "branch": "emb-1291-lock-steps-2-5-in-data-permissions-setup-checklist"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69135,
+        "gqlID": "PR_kwDOAczgH87BkBBt"
+      }
+    }
   }
 }
