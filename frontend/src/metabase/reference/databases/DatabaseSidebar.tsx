@@ -1,6 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
+import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -8,8 +7,19 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
+import type { Database } from "metabase-types/api";
 
-const DatabaseSidebar = ({ database, style, className }) => (
+interface DatabaseSidebarProps {
+  database: Database;
+  className?: string;
+  style?: CSSProperties;
+}
+
+const DatabaseSidebar = ({
+  database,
+  style,
+  className,
+}: DatabaseSidebarProps) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div>
@@ -37,11 +47,6 @@ const DatabaseSidebar = ({ database, style, className }) => (
     </ul>
   </div>
 );
-DatabaseSidebar.propTypes = {
-  database: PropTypes.object,
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(DatabaseSidebar);
