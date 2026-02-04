@@ -78,7 +78,7 @@
   [model-key instances]
   (spec/batch-model-editable? model-key instances))
 
-(defenterprise batch-model-eligible-for-remote-sync?
+(defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.
    Returns a map of instance-id -> eligible? boolean."
   :feature :none

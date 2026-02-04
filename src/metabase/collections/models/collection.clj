@@ -1211,7 +1211,7 @@
                                       ;; Nested models (DashboardCard, etc.) - all are eligible
                                       (assoc acc model-name ids)
                                       ;; Check eligibility via batch function
-                                      (let [eligibility-map (remote-sync/batch-model-eligible-for-remote-sync? model-key instances)
+                                      (let [eligibility-map (remote-sync/batch-model-eligible? model-key instances)
                                             eligible (into #{} (keep (fn [[iid eligible?]] (when eligible? iid))) eligibility-map)]
                                         (assoc acc model-name eligible)))))
                                 {}
@@ -1274,7 +1274,7 @@
                          descendant-ids (set (get descendants key))]
                    :when (seq descendant-ids)]
                (let [instances (select-for-eligibility-check m descendant-ids)
-                     eligibility-map (remote-sync/batch-model-eligible-for-remote-sync? m instances)]
+                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
                  (into #{}
                        (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
                        eligibility-map)))))

@@ -262,7 +262,7 @@
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
 
-;;; ------------------------------------------- batch-model-eligible-for-remote-sync? Tests -------------------------------------------
+;;; ------------------------------------------- batch-model-eligible? Tests -------------------------------------------
 
 (deftest batch-model-eligible-for-remote-sync-cards-in-remote-synced-collection-test
   (testing "returns true for cards in remote-synced collection"
@@ -270,14 +270,14 @@
                    :model/Card card1 {:collection_id coll-id}
                    :model/Card card2 {:collection_id coll-id}]
       (is (= {(:id card1) true, (:id card2) true}
-             (core/batch-model-eligible-for-remote-sync? :model/Card [card1 card2]))))))
+             (core/batch-model-eligible? :model/Card [card1 card2]))))))
 
 (deftest batch-model-eligible-for-remote-sync-cards-not-in-remote-synced-collection-test
   (testing "returns false for cards NOT in remote-synced collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced false}
                    :model/Card card {:collection_id coll-id}]
       (is (= {(:id card) false}
-             (core/batch-model-eligible-for-remote-sync? :model/Card [card]))))))
+             (core/batch-model-eligible? :model/Card [card]))))))
 
 (deftest batch-model-eligible-for-remote-sync-snippets-library-synced-test
   (testing "snippets eligible when Library is synced"
@@ -287,7 +287,7 @@
                                                         :content "SELECT 1"
                                                         :collection_id snippet-coll-id}]
         (is (= {(:id snippet) true}
-               (core/batch-model-eligible-for-remote-sync? :model/NativeQuerySnippet [snippet])))))))
+               (core/batch-model-eligible? :model/NativeQuerySnippet [snippet])))))))
 
 (deftest batch-model-eligible-for-remote-sync-snippets-library-not-synced-test
   (testing "snippets NOT eligible when Library is not synced"
@@ -297,9 +297,9 @@
                                                         :content "SELECT 1"
                                                         :collection_id snippet-coll-id}]
         (is (= {(:id snippet) false}
-               (core/batch-model-eligible-for-remote-sync? :model/NativeQuerySnippet [snippet])))))))
+               (core/batch-model-eligible? :model/NativeQuerySnippet [snippet])))))))
 
 (deftest batch-model-eligible-for-remote-sync-unknown-model-test
   (testing "unknown model returns false for all instances"
     (is (= {1 false, 2 false}
-           (core/batch-model-eligible-for-remote-sync? :model/UnknownModel [{:id 1} {:id 2}])))))
+           (core/batch-model-eligible? :model/UnknownModel [{:id 1} {:id 2}])))))

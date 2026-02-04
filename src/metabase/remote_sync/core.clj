@@ -49,7 +49,7 @@
   [_model-key instances]
   (into {} (map (fn [inst] [(:id inst) true])) instances))
 
-(defenterprise batch-model-eligible-for-remote-sync?
+(defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.
    Returns a map of instance-id -> eligible? boolean.
 
