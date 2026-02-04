@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "restack"
+      ],
+      "branch": "emb-1290-implement-enable-tenants-and-create-shared-collection-button"
+    }
+  ]
 }
