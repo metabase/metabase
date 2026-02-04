@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1258-create-onboarding-accordion-component-for-use-in-setup-guide",
-    "hash": "fac3601fbb9d25e8b713a4117129d5d0e636ccc6"
+    "hash": "7db60cd5550877735949bb3124cce5b671e1659d"
   },
   "upstream": {
     "branch": "integration-embedding-onboarding-improvements"
