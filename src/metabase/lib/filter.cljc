@@ -3,11 +3,9 @@
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
-   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -443,12 +441,6 @@
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
-(mu/defn add-column-operators :- ColumnWithOperators
-  "Extend the column metadata with the available operators if any."
-  [column :- ::lib.schema.metadata/column]
-  (let [operators (lib.filter.operator/filter-operators column)]
-    (m/assoc-some column :operators (perf/not-empty operators))))
-
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
   [a-filter]
@@ -482,10 +474,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-   (let [columns (sequence
-                  (comp (map add-column-operators)
-                        (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number options))
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number options)
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)
@@ -517,23 +506,6 @@
     (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
                                    (map lib.common/->op-arg args)))))
 
-(mu/defn filter-operator :- ::lib.schema.filter/operator
-  "Return the filter operator of the boolean expression `filter-clause`
-  at `stage-number` in `query`.
-  If `stage-number` is omitted, the last stage is used."
-  ([query a-filter-clause]
-   (filter-operator query -1 a-filter-clause))
-
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    a-filter-clause :- ::lib.schema.expression/boolean]
-   (let [[op _ first-arg] a-filter-clause
-         columns (lib.metadata.calculation/visible-columns query stage-number)
-         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
-     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (lib.filter.operator/filter-operators col))
-                      (lib.filter.operator/operator-def op)))))
-
 (def ^:private FilterParts
   [:map
    [:lib/type [:= :mbql/filter-parts]]
@@ -555,9 +527,7 @@
          columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
-      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                               (lib.filter.operator/filter-operators col))
-                                 (lib.filter.operator/operator-def op))
+      :operator op
       :options  options
-      :column   (some-> col add-column-operators)
+      :column   col
       :args     (vec rest-args)})))

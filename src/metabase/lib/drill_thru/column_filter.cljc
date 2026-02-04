@@ -23,13 +23,11 @@
   (:require
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.stage :as lib.stage]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -93,20 +91,14 @@
              (nil? value))
     ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
     (when-let [drill-details (prepare-query-for-drill-addition query stage-number column column-ref :filter)]
-      (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
-                         (-> (lib.filter.operator/filter-operators column)
-                             first
-                             (assoc :lib/type :operator/filter)))]
-        (merge
-         drill-details
-         {:lib/type   :metabase.lib.drill-thru/drill-thru
-          :type       :drill-thru/column-filter
-          :initial-op initial-op})))))
+      (merge
+       drill-details
+       {:lib/type   :metabase.lib.drill-thru/drill-thru
+        :type       :drill-thru/column-filter}))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-filter
-  [_query _stage-number {:keys [initial-op]}]
-  {:type       :drill-thru/column-filter
-   :initial-op initial-op})
+  [_query _stage-number _drill-thru]
+  {:type :drill-thru/column-filter})
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-filter :- ::lib.schema/query
   [query                            :- ::lib.schema/query

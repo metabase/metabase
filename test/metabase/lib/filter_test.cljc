@@ -7,7 +7,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -307,91 +306,6 @@
           filter-clause (lib/filter-clause eq-op id-col 123)]
       (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
               filter-clause)))))
-
-(deftest ^:parallel filter-clause-support-keywords-and-strings-test
-  (are [tag] (=? [:= {} [:field {} (meta/id :venues :id)] 1]
-                 (lib/filter-clause tag (meta/field-metadata :venues :id) 1))
-    :=
-    "="))
-
-(deftest ^:parallel filter-operator-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                                 [(lib/=
-                                                   (meta/field-metadata :checkins :user-id)
-                                                   (meta/field-metadata :users :id))])
-                                (lib/with-join-fields :all)))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
-                                                 [(lib/=
-                                                   (meta/field-metadata :checkins :venue-id)
-                                                   (meta/field-metadata :venues :id))])
-                                (lib/with-join-fields :all))))]
-    (doseq [col (lib/filterable-columns query)
-            op (lib/filterable-column-operators col)
-            :let [filter-clause (case (:short op)
-                                  :between (lib/filter-clause op col col col)
-                                  (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
-                                  (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
-                                  :inside (lib/filter-clause op col 12 34 56 78 90)
-                                  (:< :>) (lib/filter-clause op col col)
-                                  (lib/filter-clause op col 123))]]
-      (testing (str (:short op) " with " (:name col))
-        (is (= op
-               (lib/filter-operator query filter-clause)))))))
-
-(deftest ^:parallel filter-operators-test
-  (testing "Boolean category"
-    (is (= [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
-            {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
-            {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}]
-           (lib.filter.operator/filter-operators
-            {:description nil,
-             :lib/type :metadata/column,
-             :base-type :type/Boolean,
-             :semantic-type :type/Category,
-             :table-id 7,
-             :name "TRIAL_CONVERTED",
-             :coercion-strategy nil,
-             :lib/source :source/table-defaults,
-             :lib/source-column-alias "TRIAL_CONVERTED",
-             :settings nil,
-             :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
-             :nfc-path nil,
-             :database-type "BOOLEAN",
-             :effective-type :type/Boolean,
-             :fk-target-field-id nil,
-             :id 14,
-             :parent-id nil,
-             :visibility-type :normal,
-             :lib/desired-column-alias "TRIAL_CONVERTED",
-             :display-name "Trial Converted",
-             :position 10,
-             :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
-  (testing "should return text-like operators for text-like PKs and FKs"
-    (doseq [semantic-type [:type/PK :type/FK]
-            :let [column {:description nil,
-                          :lib/type :metadata/column,
-                          :base-type :type/MongoBSONID,
-                          :semantic-type semantic-type
-                          :table-id 7,
-                          :name "ID",
-                          :coercion-strategy nil,
-                          :lib/source :source/table-defaults,
-                          :lib/source-column-alias "ID",
-                          :settings nil,
-                          :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
-                          :nfc-path nil,
-                          :database-type "STRING",
-                          :effective-type :type/MongoBSONID,
-                          :fk-target-field-id nil,
-                          :id 14,
-                          :parent-id nil,
-                          :visibility-type :normal,
-                          :lib/desired-column-alias "ID",
-                          :display-name "ID",
-                          :position 10}]]
-      (is (= [:= :!= :is-empty :not-empty]
-             (mapv :short (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
@@ -861,8 +775,6 @@
     (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
-      (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})
-              (lib/filterable-column-operators col)))
       (is (=? [[:= {} (lib.options/update-options (lib/ref col) dissoc :lib/uuid) v]]
               (lib/filters query')))
       (is (=? {:operator :=

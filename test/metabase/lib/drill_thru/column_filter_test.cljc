@@ -65,7 +65,6 @@
     :query-type  :unaggregated
     :column-name "ID"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators key-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-2
@@ -75,7 +74,6 @@
     :query-type  :unaggregated
     :column-name "USER_ID"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators key-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-3
@@ -85,7 +83,6 @@
     :query-type  :unaggregated
     :column-name "TAX"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators number-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-4
@@ -95,7 +92,6 @@
     :query-type  :unaggregated
     :column-name "DISCOUNT"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators number-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-5
@@ -105,7 +101,6 @@
     :query-type  :unaggregated
     :column-name "CREATED_AT"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op nil
                   :column     {:operators temporal-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-6
@@ -115,7 +110,6 @@
     :query-type  :unaggregated
     :column-name "QUANTITY"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators number-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-7
@@ -125,7 +119,6 @@
     :query-type  :aggregated
     :column-name "PRODUCT_ID"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators key-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-8
@@ -135,7 +128,6 @@
     :query-type  :aggregated
     :column-name "PRODUCT_ID"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
                   :column     {:operators key-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-9
@@ -145,7 +137,6 @@
     :query-type  :aggregated
     :column-name "CREATED_AT"
     :expected    {:type       :drill-thru/column-filter
-                  :initial-op nil
                   :column     {:operators temporal-ops}}}))
 
 (deftest ^:parallel returns-column-filter-test-10
@@ -156,7 +147,6 @@
       :query-type  :aggregated
       :column-name "count"
       :expected    {:type       :drill-thru/column-filter
-                    :initial-op {:short :=}
                     :column     {:operators number-ops}}})))
 
 (deftest ^:parallel returns-column-filter-test-11
@@ -167,7 +157,6 @@
       :query-type  :aggregated
       :column-name "max"
       :expected    {:type       :drill-thru/column-filter
-                    :initial-op {:short :=}
                     :column     {:operators number-ops}}})))
 
 (deftest ^:parallel column-filter-not-returned-for-nil-dimension-test
@@ -358,11 +347,9 @@
                             drills  (lib/available-drill-thrus query -1 context)]
                         (m/find-first #(= (:type %) :drill-thru/column-filter) drills)))]
       (is (=? {:type :drill-thru/column-filter
-               :initial-op {:short :=}
                :column     {:operators text-ops}}
               (colfilter pk)))
       (is (=? {:type :drill-thru/column-filter
-               :initial-op {:short :=}
                :column     {:operators text-ops}}
               (colfilter fk))))))
 
@@ -410,7 +397,6 @@
       :column-name    "VENDOR"
       :drill-type     :drill-thru/column-filter
       :expected       {:type       :drill-thru/column-filter
-                       :initial-op {:short :=}
                        :column     {:lib/type :metadata/column
                                     :name "VENDOR"}}
       :drill-args     ["contains" "Acme"]
@@ -448,5 +434,4 @@
           :column-name  "ID_2"
           :custom-query query
           :expected     {:type       :drill-thru/column-filter
-                         :initial-op {:short :=}
                          :column     {:lib/type :metadata/column}}}))))
