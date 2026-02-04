@@ -113,8 +113,7 @@
 
 (comment
   (parse-options {:modules '[sql-parsing]})
-  (parse-options {:module 'sql-parsing})
-  )
+  (parse-options {:module 'sql-parsing}))
 
 (defn find-tests
   "Find all tests, in case you wish to run them yourself."
