@@ -1077,7 +1077,9 @@ describe("issue 49882", () => {
 
   it(
     "does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)",
-    { defaultCommandTimeout: 15000, timeout: 60000 },
+    {
+      defaultCommandTimeout: 15000, // makes test less flaky
+    },
     () => {
       // This test used to use keyboard shortcuts to cut and paste but this
       // seem impossible to emulate with CodeMirror in Cypress, so it's using

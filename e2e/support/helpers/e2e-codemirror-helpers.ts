@@ -43,7 +43,7 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     },
     type(
       text: string,
-      { focus = true, delay = 25, allowFastSet = false }: TypeOptions = {},
+      { focus = true, delay = 10, allowFastSet = false }: TypeOptions = {},
     ) {
       if (focus) {
         helpers.focus();
@@ -80,64 +80,50 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
             return;
 
           case "{clear}":
-            helpers.clear();
-            return;
+            return helpers.clear();
 
           case "{selectall}":
-            helpers.selectAll();
-            return;
+            return helpers.selectAll();
 
           case "{leftarrow}":
-            cy.realPress(["ArrowLeft"]);
-            return;
+            return cy.realPress(["ArrowLeft"]);
 
           case "{rightarrow}":
-            cy.realPress(["ArrowRight"]);
-            return;
+            return cy.realPress(["ArrowRight"]);
 
           case "{downarrow}":
-            cy.realPress(["ArrowDown"]);
-            return;
+            return cy.realPress(["ArrowDown"]);
 
           case "{uparrow}":
-            cy.realPress(["ArrowUp"]);
-            return;
+            return cy.realPress(["ArrowUp"]);
 
           case "{enter}":
-            cy.realPress(["Enter"]);
-            return;
+            return cy.realPress(["Enter"]);
 
           case "{home}":
           case "{movetostart}":
-            cy.realPress(["Home"]);
-            return;
+            return cy.realPress(["Home"]);
 
           case "{end}":
           case "{movetoend}":
-            cy.realPress(["End"]);
-            return;
+            return cy.realPress(["End"]);
 
           case "{backspace}":
-            cy.realPress(["Backspace"]);
-            return;
+            return cy.realPress(["Backspace"]);
 
           case "{tab}":
-            cy.realPress(["Tab"]);
-            return;
+            return cy.realPress(["Tab"]);
 
           case "{nextcompletion}":
             cy.wait(50);
-            cy.realPress([metaKey, "j"]);
-            return;
+            return cy.realPress([metaKey, "j"]);
 
           case "{prevcompletion}":
             cy.wait(50);
-            cy.realPress([metaKey, "k"]);
-            return;
+            return cy.realPress([metaKey, "k"]);
 
           case "{{}":
-            cy.realType("{");
-            return;
+            return cy.realType("{");
         }
 
         if (part.startsWith("{") && part.endsWith("}")) {
