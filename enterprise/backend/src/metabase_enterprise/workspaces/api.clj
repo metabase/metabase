@@ -27,6 +27,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.transforms.core :as transforms]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
@@ -86,7 +87,7 @@
   [db-id]
   (let [database (api/check-400 (t2/select-one :model/Database db-id)
                                 (deferred-tru "The target database cannot be found."))]
-    (api/check (transforms.util/check-feature-enabled nil)
+    (api/check (transforms.gating/any-transforms-enabled?)
                [402 (deferred-tru "Premium features required for transforms are not enabled.")])
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
