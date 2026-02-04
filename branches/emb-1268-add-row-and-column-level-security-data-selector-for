@@ -2,5 +2,8 @@
   "base": {
     "name": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding",
     "hash": "58e35355f9942712641a6018d504be03a5cfafe2"
+  },
+  "upstream": {
+    "branch": "emb-1268-add-row-and-column-level-security-data-selector-for"
   }
 }
