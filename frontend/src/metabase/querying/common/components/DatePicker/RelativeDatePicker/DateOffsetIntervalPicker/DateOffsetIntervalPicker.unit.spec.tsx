@@ -2,13 +2,13 @@ import _userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
+
+import { DATE_PICKER_UNITS } from "../../../../constants";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/common/types";
-
+} from "../../../../types";
 import type { DatePickerSubmitButtonProps } from "../../types";
 
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";

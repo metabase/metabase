@@ -2,13 +2,6 @@ import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import type {
-  DatePickerExtractionUnit,
-  DatePickerOperator,
-  DatePickerUnit,
-  ExcludeDatePickerOperator,
-  ExcludeDatePickerValue,
-} from "metabase/querying/common/types";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -21,6 +14,13 @@ import {
   Text,
 } from "metabase/ui";
 
+import type {
+  DatePickerExtractionUnit,
+  DatePickerOperator,
+  DatePickerUnit,
+  ExcludeDatePickerOperator,
+  ExcludeDatePickerValue,
+} from "../../../types";
 import { MIN_WIDTH } from "../constants";
 import type { DatePickerSubmitButtonProps } from "../types";
 import { renderDefaultSubmitButton } from "../utils";

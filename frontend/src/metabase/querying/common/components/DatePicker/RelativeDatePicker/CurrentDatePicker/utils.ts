@@ -2,7 +2,7 @@ import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/common/types";
+} from "../../../../types";
 
 import { UNIT_GROUPS } from "./constants";
 

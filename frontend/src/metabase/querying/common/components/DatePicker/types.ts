@@ -1,4 +1,4 @@
-import type { DatePickerValue } from "metabase/querying/common/types";
+import type { DatePickerValue } from "../../types";
 
 export type DatePickerSubmitButtonProps = {
   value: DatePickerValue;

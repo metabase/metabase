@@ -3,17 +3,17 @@ import type { ReactNode } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase-types/store/mocks";
+
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
-} from "metabase/querying/common/constants";
+} from "../../../constants";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   ExcludeDatePickerValue,
-} from "metabase/querying/common/types";
-import { createMockState } from "metabase-types/store/mocks";
-
+} from "../../../types";
 import type { DatePickerSubmitButtonProps } from "../types";
 
 import { ExcludeDatePicker } from "./ExcludeDatePicker";

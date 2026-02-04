@@ -2,14 +2,14 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { DATE_PICKER_OPERATORS } from "metabase/querying/common/constants";
+import { Button, Stack } from "metabase/ui";
+
+import { DATE_PICKER_OPERATORS } from "../../../constants";
 import type {
   DatePickerOperator,
   DatePickerUnit,
   DatePickerValue,
-} from "metabase/querying/common/types";
-import { Button, Stack } from "metabase/ui";
-
+} from "../../../types";
 import { DateOperatorPicker } from "../DateOperatorPicker";
 import { CurrentDatePicker } from "../RelativeDatePicker/CurrentDatePicker";
 import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPicker/SimpleDateIntervalPicker";

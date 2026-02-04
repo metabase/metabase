@@ -1,7 +1,4 @@
-import type {
-  DatePickerOperator,
-  DatePickerValueType,
-} from "metabase/querying/common/types";
+import type { DatePickerOperator, DatePickerValueType } from "../../../types";
 
 export interface TypeOption {
   label: string;

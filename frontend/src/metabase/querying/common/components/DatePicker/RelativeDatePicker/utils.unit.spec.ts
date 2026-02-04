@@ -2,7 +2,7 @@ import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/common/types";
+} from "../../../types";
 
 import { CURRENT_TAB, LAST_TAB, NEXT_TAB } from "./constants";
 import type { Tab } from "./types";

@@ -1,8 +1,9 @@
+import * as Lib from "metabase-lib";
+
 import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/common/types";
-import * as Lib from "metabase-lib";
+} from "../../../../types";
 
 import { DEFAULT_OFFSETS } from "./constants";
 

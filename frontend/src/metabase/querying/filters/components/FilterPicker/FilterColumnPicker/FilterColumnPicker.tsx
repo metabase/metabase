@@ -18,10 +18,10 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { getGroupName } from "../../../utils/groups";
 import { WIDTH } from "../constants";
 import type {
   ColumnListItem,

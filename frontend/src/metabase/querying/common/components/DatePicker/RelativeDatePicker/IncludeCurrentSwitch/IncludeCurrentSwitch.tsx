@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import type { RelativeDatePickerValue } from "metabase/querying/common/types";
 import { Switch } from "metabase/ui";
 
+import type { RelativeDatePickerValue } from "../../../../types";
 import {
   getIncludeCurrent,
   getIncludeCurrentLabel,

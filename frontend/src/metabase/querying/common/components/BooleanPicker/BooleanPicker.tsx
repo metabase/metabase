@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { BooleanFilterValue } from "metabase/querying/common/types";
 import { Button, Icon, Radio, Stack } from "metabase/ui";
+
+import type { BooleanFilterValue } from "../../types";
 
 type BooleanPickerProps = {
   value: BooleanFilterValue;

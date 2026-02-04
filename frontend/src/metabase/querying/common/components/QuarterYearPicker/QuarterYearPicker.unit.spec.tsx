@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import type { QuarterYearPickerValue } from "metabase/querying/common/types";
+
+import type { QuarterYearPickerValue } from "../../types";
 
 import { QuarterYearPicker } from "./QuarterYearPicker";
 

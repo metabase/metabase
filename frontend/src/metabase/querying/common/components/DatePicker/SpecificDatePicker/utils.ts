@@ -6,7 +6,7 @@ import type {
   DatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
-} from "metabase/querying/common/types";
+} from "../../../types";
 
 import { TABS } from "./constants";
 import type { Tab } from "./types";

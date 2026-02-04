@@ -1,7 +1,8 @@
 import { isMatching } from "ts-pattern";
 
-import type { RelativeDatePickerValue } from "metabase/querying/common/types";
 import { Button, Divider, SimpleGrid, Stack, Title } from "metabase/ui";
+
+import type { RelativeDatePickerValue } from "../../types";
 
 import type { Shortcut } from "./types";
 import { getShortcutGroups } from "./utils";

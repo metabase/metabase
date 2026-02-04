@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import { NumberFilterInput } from "metabase/querying/common/components/NumberFilterInput";
-import {
-  type NumberOrEmptyValue,
-  useCoordinateFilter,
-} from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import {
+  type NumberOrEmptyValue,
+  useCoordinateFilter,
+} from "../../../hooks/use-coordinate-filter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";

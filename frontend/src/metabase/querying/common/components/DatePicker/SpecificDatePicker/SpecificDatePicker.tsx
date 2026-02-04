@@ -1,12 +1,12 @@
 import { type ReactNode, useMemo, useState } from "react";
 
+import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "metabase/querying/common/types";
-import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
-
+} from "../../../types";
 import type { DatePickerSubmitButtonProps } from "../types";
 import { renderDefaultSubmitButton } from "../utils";
 

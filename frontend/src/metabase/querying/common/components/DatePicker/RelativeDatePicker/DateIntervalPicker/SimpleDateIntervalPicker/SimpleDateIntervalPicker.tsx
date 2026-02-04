@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { NumberInputWithFallbackValue } from "metabase/querying/common/components/DatePicker/NumberInputWithFallbackValue";
+import { Group, Select } from "metabase/ui";
+
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/common/types";
-import { Group, Select } from "metabase/ui";
-
+} from "../../../../../types";
+import { NumberInputWithFallbackValue } from "../../../NumberInputWithFallbackValue";
 import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";
 import { getInterval, getUnitOptions, setInterval } from "../../utils";
 import { setUnit } from "../utils";

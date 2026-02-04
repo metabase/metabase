@@ -1,12 +1,12 @@
 import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
+import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
+
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/common/types";
-import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
-
+} from "../../../../types";
 import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";

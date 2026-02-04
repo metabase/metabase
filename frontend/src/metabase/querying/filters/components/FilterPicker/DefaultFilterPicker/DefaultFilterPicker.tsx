@@ -1,10 +1,10 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
-import { useDefaultFilter } from "metabase/querying/filters/hooks/use-default-filter";
 import { Box, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { useDefaultFilter } from "../../../hooks/use-default-filter";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";

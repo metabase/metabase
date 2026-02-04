@@ -1,7 +1,8 @@
 import dayjs from "dayjs";
 
-import type { MonthYearPickerValue } from "metabase/querying/common/types";
 import { Box, type DateValue, MonthPicker } from "metabase/ui";
+
+import type { MonthYearPickerValue } from "../../types";
 
 type MonthYearPickerProps = {
   value?: MonthYearPickerValue;
