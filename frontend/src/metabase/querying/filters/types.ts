@@ -16,7 +16,7 @@ export interface ColumnItem {
   stageIndex: number;
 }
 
-export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
+export type FilterOperatorOption<T extends Lib.FilterOperator> = {
   operator: T;
   displayName: string;
 };

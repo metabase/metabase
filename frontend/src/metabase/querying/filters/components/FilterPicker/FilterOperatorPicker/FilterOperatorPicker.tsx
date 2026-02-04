@@ -7,7 +7,7 @@ import type { FilterOperatorOption } from "../../../types";
 
 import S from "./FilterOperatorPicker.module.css";
 
-interface FilterOperatorPickerProps<T extends Lib.FilterOperatorName> {
+interface FilterOperatorPickerProps<T extends Lib.FilterOperator> {
   value: T;
   options: FilterOperatorOption<T>[];
   onChange: (operator: T) => void;

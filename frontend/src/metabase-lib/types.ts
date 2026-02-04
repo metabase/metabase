@@ -304,7 +304,7 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-export type FilterOperatorName =
+export type FilterOperator =
   | StringFilterOperator
   | NumberFilterOperator
   | BooleanFilterOperator
@@ -379,7 +379,7 @@ export type DatetimeMode =
   | "unix-nanoseconds";
 
 export type FilterOperatorDisplayInfo = {
-  shortName: FilterOperatorName;
+  shortName: FilterOperator;
   displayName: string;
   longDisplayName: string;
   default?: boolean;
