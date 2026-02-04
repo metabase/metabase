@@ -40,6 +40,8 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -1607,7 +1609,7 @@
 
 (defn- test-connection-details! [engine details]
   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
-    (#'api.database/test-connection-details engine details)))
+    (warehouses/test-connection-details engine details)))
 
 (deftest validate-database-test
   (testing "POST /api/database/validate"
@@ -1651,12 +1653,12 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (with-redefs [api.database/test-database-connection (fn [_ details & _]
-                                                            (swap! call-count inc)
-                                                            (swap! ssl-values conj (:ssl details))
-                                                            (if @valid? nil {:valid false}))]
+      (with-redefs [warehouses/test-database-connection (fn [_ details & _]
+                                                          (swap! call-count inc)
+                                                          (swap! ssl-values conj (:ssl details))
+                                                          (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
-          (#'api.database/test-connection-details "postgres" {:ssl true})
+          (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))
 
@@ -1664,7 +1666,7 @@
         (reset! ssl-values [])
 
         (testing "with SSL disabled, try twice (once with, once without SSL)"
-          (#'api.database/test-connection-details "postgres" {:ssl false})
+          (#'warehouses.util/test-connection-details "postgres" {:ssl false})
           (is (= 2 @call-count))
           (is (= [true false] @ssl-values)))
 
@@ -1672,7 +1674,7 @@
         (reset! ssl-values [])
 
         (testing "with SSL unspecified, try twice (once with, once without SSL)"
-          (#'api.database/test-connection-details "postgres" {})
+          (#'warehouses.util/test-connection-details "postgres" {})
           (is (= 2 @call-count))
           (is (= [true nil] @ssl-values)))
 
@@ -1682,7 +1684,7 @@
 
         (testing "with SSL disabled, but working try once (since SSL work we don't try without SSL)"
           (is (= {:ssl true}
-                 (#'api.database/test-connection-details "postgres" {:ssl false})))
+                 (#'warehouses.util/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
 

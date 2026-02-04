@@ -1,9 +1,9 @@
 (ns metabase.users-rest.api
   "/api/user endpoints"
   (:require
+   [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -12,34 +12,23 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.tenants.core :as tenants]
+   [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn check-self-or-superuser
-  "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
-  [user-id]
-  {:pre [(integer? user-id)]}
-  (api/check-403
-   (or
-    (= user-id api/*current-user-id*)
-    api/*is-superuser?*)))
 
 (defn check-not-internal-user
   "Check that `user-id` is not the id of the Internal User."
@@ -47,41 +36,6 @@
   {:pre [(integer? user-id)]}
   (api/check (not= user-id config/internal-mb-user-id)
              [400 (tru "Not able to modify the internal user")]))
-
-(defn- fetch-user [& query-criteria]
-  (apply t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) query-criteria))
-
-(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
-  (when (and new-groups-or-ids
-             (not (= (user/group-ids user-or-id)
-                     (set (map u/the-id new-groups-or-ids)))))
-    (api/check-superuser)
-    (user/set-permissions-groups! user-or-id new-groups-or-ids)))
-
-(mr/def ::user-group-membership
-  "Group Membership info of a User.
-  In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  [:map
-   [:id ms/PositiveInt]
-   [:is_group_manager
-    {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
-    :boolean]])
-
-(mu/defn- maybe-set-user-group-memberships!
-  [user-or-id
-   new-user-group-memberships :- [:maybe [:sequential ::user-group-membership]]
-   & [is-superuser?]]
-  (when new-user-group-memberships
-    ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
-    ;; agrees with is_superuser -- don't want to have ambiguous behavior
-    (when (some? is-superuser?)
-      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms/admin-group))))
-                  "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
-    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                    config/ee-available?
-                    (requiring-resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
-      (f user-or-id new-user-group-memberships)
-      (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
 (defn- updated-user-name [user-before-update changes]
   (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
@@ -173,11 +127,6 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn filter-clauses-without-paging
-  "Given a where clause, return a clause that can be used to count."
-  [clauses]
-  (dissoc clauses :order-by :limit :offset))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -262,7 +211,7 @@
      :total  (-> (t2/query
                   (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                           :from   :core_user}
-                         (filter-clauses-without-paging clauses)))
+                         (users/filter-clauses-without-paging clauses)))
                  first
                  :count)
      :limit  (request/limit)
@@ -299,7 +248,7 @@
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                     :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
@@ -308,10 +257,10 @@
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                              :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                              :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)
                               :offset (request/offset)}))
-          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
+          (just-me [] {:data   [(users/fetch-user :id api/*current-user-id*)]
                        :total  1
                        :limit  (request/limit)
                        :offset (request/offset)})]
@@ -443,44 +392,16 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (try
-    (check-self-or-superuser id)
+    (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
-  (-> (api/check-404 (fetch-user :id id))
+  (-> (api/check-404 (users/fetch-user :id id))
       (t2/hydrate :user_group_memberships)
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn invite-user
-  "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships source] :as body}]
-  (api/check-superuser)
-  (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
-              "email" (tru "Email address already in use."))
-  (api/checkp (not (and (:tenant_id body)
-                        (not (setting/get :use-tenants))))
-              "tenant_id"
-              (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
-  (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id
-                       (notification/with-skip-sending-notification (boolean (:tenant_id body))
-                         (user/create-and-invite-user!
-                          (u/select-keys-when body
-                                              :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
-                          @api/*current-user*
-                          (= source "setup"))))]
-      (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (when (= source "setup")
-        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
-      (analytics/track-event! :snowplow/invite
-                              {:event           :invite-sent
-                               :invited-user-id new-user-id
-                               :source          (or source "admin")})
-      (-> (fetch-user :id new-user-id)
-          (t2/hydrate :user_group_memberships)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -496,9 +417,13 @@
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
-            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]
+            [:source                 {:optional true, :default :admin} [:maybe keyword?]]
             [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
-  (invite-user body))
+  (users/invite-user! (set/rename-keys body {:first_name             :first-name
+                                             :last_name              :last-name
+                                             :user_group_memberships :user-group-memberships
+                                             :login_attributes       :login-attributes
+                                             :tenant_id              :tenant-id})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -559,12 +484,12 @@
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
        [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (try
-    (check-self-or-superuser id)
+    (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
-  (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
+  (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (when (contains? body :email)
       (api/check-403 (valid-email-update? user-before-update email)))
@@ -605,8 +530,8 @@
             (if is_data_analyst
               (perms/add-user-to-group! id data-analyst-group-id)
               (perms/remove-user-from-group! id data-analyst-group-id)))))
-      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
-  (-> (fetch-user :id id)
+      (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+  (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -624,7 +549,7 @@
                                :ldap   (when (sso/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
-  (fetch-user :id (u/the-id existing-user)))
+  (users/fetch-user :id (u/the-id existing-user)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -664,7 +589,7 @@
    {:keys [password old_password]} :- [:map
                                        [:password ms/ValidPassword]]
    request]
-  (check-self-or-superuser id)
+  (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
                                     :id id,
                                     :type :personal,
@@ -718,7 +643,7 @@
   [{:keys [id modal]} :- [:map
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]]
-  (check-self-or-superuser id)
+  (users/check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}
