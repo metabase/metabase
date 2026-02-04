@@ -547,18 +547,18 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     describe("Filtering", () => {
-      it("should filter tables by visibility type", () => {
+      it("should filter tables by visibility layer", () => {
         updateTableAttributes({
           databaseId: SAMPLE_DB_ID,
           displayName: "Orders",
-          attributes: { data_layer: "gold" },
-        }).as("goldTableId");
+          attributes: { data_layer: "final" },
+        }).as("finalTableId");
 
         updateTableAttributes({
           databaseId: SAMPLE_DB_ID,
           displayName: "Products",
-          attributes: { data_layer: "silver" },
-        }).as("silverTableId");
+          attributes: { data_layer: "hidden" },
+        }).as("hiddenTableId");
 
         H.DataModel.visitDataStudio();
 
@@ -569,7 +569,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.TablePicker.getFilterForm().should("not.exist");
 
         TablePicker.openFilterPopover();
-        TablePicker.selectFilterOption("Visibility type", "Gold");
+        TablePicker.selectFilterOption("Visibility layer", "Final");
         TablePicker.applyFilters();
         H.expectUnstructuredSnowplowEvent({
           event: "data_studio_table_picker_filters_applied",
@@ -578,8 +578,8 @@ describe("scenarios > data studio > datamodel", () => {
           event: "data_studio_table_picker_search_performed",
         });
 
-        cy.get<TableId>("@goldTableId").then(expectTableVisible);
-        cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
+        cy.get<TableId>("@finalTableId").then(expectTableVisible);
+        cy.get<TableId>("@hiddenTableId").then(expectTableNotVisible);
       });
 
       it("should filter tables owned by unspecified", () => {
@@ -3524,7 +3524,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       H.DataModel.TableSection.getVisibilityTypeInput().click();
-      H.popover().findByText("Copper").click();
+      H.popover().findByText("Hidden").click();
       cy.wait("@updateTable");
 
       FieldSection.getPreviewButton().click();
