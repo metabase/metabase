@@ -24,4 +24,5 @@ export type GraphSelection = {
 export type GraphContextType = {
   selection: GraphSelection | null;
   setSelection: (selection: GraphSelection | null) => void;
+  openLinksInNewTab: boolean;
 };

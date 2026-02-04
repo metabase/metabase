@@ -103,14 +103,17 @@ const init = async () => {
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
-  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
+  const frontendPort = process.env.MB_FRONTEND_DEV_PORT || 8080;
+  const isFrontendRunning = shell(`lsof -ti:${frontendPort} || echo ''`, {
+    quiet: true,
+  });
   if (
     !isFrontendRunning &&
     options.CYPRESS_TESTING_TYPE === "e2e" &&
     !runningFromJar
   ) {
     printBold(
-      "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
+      `⚠️⚠️ You don't have your frontend running on port ${frontendPort}. You should probably run yarn build-hot ⚠️⚠️`,
     );
   }
 
@@ -138,9 +141,11 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
     "🧹 Containers are running in background. If you wish to stop them, run:\n`docker compose -f ./e2e/test/scenarios/docker-compose.yml down`",
   );
 
-  typeof exitCode === "number"
-    ? process.exit(exitCode)
-    : process.exit(SUCCESS_EXIT_CODE);
+  if (typeof exitCode === "number") {
+    process.exit(exitCode);
+  } else {
+    process.exit(SUCCESS_EXIT_CODE);
+  }
 };
 
 init()

@@ -308,6 +308,8 @@ import metabot_sad_component from "./metabot_sad.svg?component";
 import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
+import mode_component from "./mode.svg?component";
+import mode_source from "./mode.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -368,6 +370,8 @@ import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
 import publish_component from "./publish.svg?component";
 import publish_source from "./publish.svg?source";
+import published_component from "./published.svg?component";
+import published_source from "./published.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
@@ -1145,6 +1149,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: metric_component,
       source: metric_source,
     },
+    mode: {
+      component: mode_component,
+      source: mode_source,
+    },
     model: {
       component: model_component,
       source: model_source,
@@ -1260,6 +1268,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     publish: {
       component: publish_component,
       source: publish_source,
+    },
+    published: {
+      component: published_component,
+      source: published_source,
     },
     pulse: {
       component: pulse_component,
@@ -1812,6 +1824,7 @@ export type IconName =
   | "metabot"
   | "metabot_sad"
   | "metric"
+  | "mode"
   | "model"
   | "model_with_badge"
   | "moon"
@@ -1839,6 +1852,7 @@ export type IconName =
   | "popular"
   | "progress"
   | "publish"
+  | "published"
   | "pulse"
   | "receipt"
   | "recents"

@@ -1,14 +1,17 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
+  setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
+  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -54,6 +57,14 @@ const createRemoteSyncSettings = ({
   "remote-sync-transforms": transforms,
 });
 
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+export const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
+
 // ============================================================================
 // Endpoint Setup Functions
 // ============================================================================
@@ -68,9 +79,11 @@ const setupRemoteSyncSettingsEndpoints = (
 const setupDirtyEndpoints = ({
   dirty = [],
   collections = [],
+  hasWorkspacesFeature = false,
 }: {
   dirty?: RemoteSyncEntity[];
   collections?: Collection[];
+  hasWorkspacesFeature?: boolean;
 } = {}) => {
   const changedCollections: Record<number, boolean> = {};
   for (const entity of dirty) {
@@ -86,6 +99,18 @@ const setupDirtyEndpoints = ({
   });
 
   setupCollectionsEndpoints({ collections });
+
+  mockHasPremiumFeature.mockImplementation((feature) => {
+    if (feature === "workspaces") {
+      return hasWorkspacesFeature;
+    }
+    // Allow other features to pass (e.g., remote_sync for git sync tests)
+    return true;
+  });
+
+  if (hasWorkspacesFeature) {
+    setupWorkspacesEndpoint([]);
+  }
 };
 
 const setupNavbarEndpoints = (isOpened = true) => {
@@ -161,6 +186,7 @@ interface SetupOpts {
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
+  hasWorkspacesFeature?: boolean;
 }
 
 export const setup = ({
@@ -171,6 +197,7 @@ export const setup = ({
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
   isNavbarOpened = true,
+  hasWorkspacesFeature = false,
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -199,8 +226,9 @@ export const setup = ({
 
   setupSettingsEndpoints([]);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
-  setupDirtyEndpoints({ dirty, collections });
+  setupDirtyEndpoints({ dirty, collections, hasWorkspacesFeature });
   setupNavbarEndpoints(isNavbarOpened);
+  setupLibraryEndpoints(false);
 
   renderDataStudioLayout({
     isAdmin,

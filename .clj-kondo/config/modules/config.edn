@@ -547,6 +547,11 @@
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
+           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. I've added it to make
+           ;; tests pass as we are using it directly with ee/workspaces module. I believe later, when workspaces
+           ;; are in better state quality wise, it should become part of the driver api and that should be used
+           ;; instead of calling directly into the normalize module.
+           metabase.driver.sql.normalize
            metabase.driver.sql.query-processor
            metabase.driver.sql.util
            metabase.driver.sync
@@ -776,6 +781,23 @@
            settings
            util}}
 
+  llm
+  {:team "Metabot"
+   :api  #{metabase.llm.api
+           metabase.llm.init}
+   :uses #{analytics
+           api
+           driver
+           lib
+           lib-be
+           models
+           premium-features
+           request
+           settings
+           sync
+           util
+           warehouse-schema}}
+
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api
@@ -863,6 +885,7 @@
            models
            permissions
            premium-features
+           remote-sync
            util}}
 
   notification
@@ -880,6 +903,7 @@
            config
            dashboards
            driver
+           embedding
            events
            models
            parameters
@@ -1912,6 +1936,14 @@
            util
            enterprise/harbormaster}}
 
+  enterprise/cloud-proxy
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-proxy.api}
+   :uses #{api
+           premium-features
+           util
+           enterprise/harbormaster}}
+
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.routes}
@@ -2262,6 +2294,7 @@
            native-query-snippets
            permissions
            premium-features
+           remote-sync
            util}}
 
   enterprise/sso
@@ -2329,6 +2362,7 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
+           metabase-enterprise.transforms.execute
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.interface
@@ -2361,7 +2395,8 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.init}
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.python-runner}
    :uses #{analytics
            api
            app-db
@@ -2384,7 +2419,29 @@
            models
            premium-features
            upload
-           util}}}
+           util}}
+
+  enterprise/workspaces
+  {:team "Metabot"
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.init}
+   :uses #{api
+           api-keys
+           config
+           driver
+           events
+           lib
+           lib-be
+           models
+           queries
+           ;; NOTE: we will remove this once we get "pure transforms" module.
+           query-processor
+           request
+           settings
+           system
+           util
+           enterprise/transforms
+           enterprise/transforms-python}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

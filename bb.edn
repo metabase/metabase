@@ -209,18 +209,20 @@
              (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc "Quickly run tests locally. Pass dirs/files as arguments to run them."
+  {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
    :examples [["./bin/mage run-tests" "launch interactive test picker"]
               ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
-              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
-              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and test/metabase/api_keys"]
+              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]
+              ["./bin/mage run-tests metabase.config-test" "run all tests in the metabase.config-test namespace (by name)"]
+              ["./bin/mage run-tests metabase.config-test/config-test" "run a single test by namespace/test-name"]]
    ;; TODO: add option to select files as well as dirs from fzf with styles
    :options [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
                 ;; all, file, dir
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
-                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
+                [:string {:name "file-dir-ns-or-test" :description "Files, directories (recursive), namespaces, or namespace/test-name to test"}]]
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 
@@ -327,12 +329,13 @@
                          "Cloud driver + its files changed"
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
-                        ["7"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["8"
+                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["8"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["9"
                          (str (pr-str driver-triggers) " module deps affected")
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["9"    "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]])))))
+                        ["10"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]])))))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
              [nil "--is-master-or-release MASTER_OR_RELEASE"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]

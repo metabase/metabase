@@ -1,6 +1,7 @@
 import { c, msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import type { NamedUser } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
@@ -12,9 +13,8 @@ import type {
   DependencyId,
   DependencyNode,
   DependencyType,
-  LastEditInfo,
+  Field,
   Transform,
-  UserInfo,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -37,7 +37,10 @@ export function isSameNode(
   return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
-export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+export function getNodeId(
+  id: DependencyId | string,
+  type: DependencyType | string,
+): NodeId {
   return `${id}-${type}`;
 }
 
@@ -56,6 +59,7 @@ export function getNodeDescription(node: DependencyNode): string | null {
   switch (node.type) {
     case "document":
     case "sandbox":
+    case "workspace-transform":
       return null;
     default:
       return node.data.description ?? "";
@@ -97,6 +101,8 @@ export function getNodeIconWithType(
     case "table":
       return "table";
     case "transform":
+      return "transform";
+    case "workspace-transform":
       return "transform";
     case "snippet":
       return "snippet";
@@ -149,20 +155,31 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
+    case "workspace-transform": {
+      const workspaceId = node.data.workspace_id;
+      const refId = node.data.ref_id;
+      if (workspaceId == null) {
+        return null;
+      }
+      return {
+        label: t`View this workspace transform`,
+        url: Urls.dataStudioWorkspace(workspaceId, refId),
+      };
+    }
     case "dashboard":
       return {
-        label: `View this dashboard`,
+        label: t`View this dashboard`,
         url: Urls.dashboard({ id: node.id, name: node.data.name }),
       };
     case "document":
       return {
-        label: `View this document`,
+        label: t`View this document`,
         url: Urls.document({ id: node.id }),
       };
     case "sandbox":
       if (node.data.table != null) {
         return {
-          label: `View this permission`,
+          label: t`View this permission`,
           url: Urls.tableDataPermissions(
             node.data.table.db_id,
             node.data.table.schema,
@@ -328,8 +345,29 @@ export function getNodeLocationInfo(
       }
       return null;
     case "transform":
+    case "workspace-transform":
     case "sandbox":
       return null;
+  }
+}
+
+export function getNodeOwner(node: DependencyNode): NamedUser | null {
+  switch (node.type) {
+    case "table":
+    case "transform":
+      return node.data.owner ?? null;
+    default:
+      return null;
+  }
+}
+
+export function canNodeHaveOwner(type: DependencyType): boolean {
+  switch (type) {
+    case "table":
+    case "transform":
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -343,13 +381,12 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "snippet":
     case "transform":
       return node.data.created_at;
-    case "table":
-    case "sandbox":
+    default:
       return null;
   }
 }
 
-export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
+export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
@@ -359,8 +396,7 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "snippet":
     case "transform":
       return node.data.creator ?? null;
-    case "table":
-    case "sandbox":
+    default:
       return null;
   }
 }
@@ -370,45 +406,28 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
+    default:
       return null;
   }
 }
 
-export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
+export function getNodeLastEditedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"] ?? null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
+    default:
       return null;
   }
 }
 
-export function canHaveViewCount(type: DependencyType): boolean {
+export function canNodeHaveViewCount(type: DependencyType): boolean {
   switch (type) {
     case "card":
     case "dashboard":
     case "document":
       return true;
-    case "table":
-    case "transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
-    case "measure":
+    default:
       return false;
   }
 }
@@ -418,13 +437,8 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "card":
     case "dashboard":
     case "document":
-      return node.data.view_count ?? null;
-    case "table":
-    case "measure":
-    case "transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
+      return node.data.view_count ?? 0;
+    default:
       return null;
   }
 }
@@ -438,6 +452,40 @@ export function getNodeTransform(node: DependencyNode): Transform | null {
     return node.data.transform ?? null;
   }
   return null;
+}
+
+export function getNodeFields(node: DependencyNode): Field[] | null {
+  switch (node.type) {
+    case "card":
+      return node.data.result_metadata ?? [];
+    case "table":
+      return node.data.fields ?? [];
+    case "transform":
+    case "sandbox":
+      return node.data.table?.fields ?? [];
+    case "workspace-transform":
+      return [];
+    case "snippet":
+    case "dashboard":
+    case "document":
+    case "segment":
+    case "measure":
+      return null;
+    default:
+      return null;
+  }
+}
+
+export function getNodeFieldsLabel(fieldCount = 0) {
+  return fieldCount === 1 ? t`Field` : t`Fields`;
+}
+
+export function getNodeFieldsLabelWithCount(fieldCount: number) {
+  return ngettext(
+    msgid`${fieldCount} field`,
+    `${fieldCount} fields`,
+    fieldCount,
+  );
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {
@@ -474,6 +522,8 @@ export function getDependencyGroupType(
       return "table";
     case "transform":
       return "transform";
+    case "workspace-transform":
+      return "workspace-transform";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -503,6 +553,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Table`, color: "brand" };
     case "transform":
       return { label: t`Transform`, color: "warning" };
+    case "workspace-transform":
+      return { label: t`Workspace transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
@@ -650,6 +702,8 @@ export function getDependentGroupLabel({
         `${count} measures`,
         count,
       );
+    default:
+      return ngettext(msgid`${count} entity`, `${count} entities`, count);
   }
 }
 
@@ -808,51 +862,6 @@ export function getDependentErrorNodesCount(
     );
   });
   return nodeIds.size;
-}
-
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function parseNumber(value: unknown): number | undefined {
-  if (typeof value === "string" && value.trim() !== "") {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : undefined;
-  }
-}
-
-export function parseBoolean(value: unknown): boolean | undefined {
-  switch (value) {
-    case "true":
-      return true;
-    case "false":
-      return false;
-    default:
-      return undefined;
-  }
-}
-
-export function parseEnum<T extends string>(
-  value: unknown,
-  items: readonly T[],
-): T | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const item = items.find((item) => item === value);
-  return item != null ? item : undefined;
-}
-
-export function parseList<T>(
-  value: unknown,
-  parseItem: (item: unknown) => T | undefined,
-): T[] | undefined {
-  if (value != null) {
-    const array = Array.isArray(value) ? value : [value];
-    return array.map(parseItem).filter((item) => item != null);
-  } else {
-    return undefined;
-  }
 }
 
 export function getSearchQuery(searchValue: string): string | undefined {

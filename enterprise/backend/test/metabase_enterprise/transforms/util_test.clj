@@ -1,11 +1,11 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
   "Tests for transform utility functions."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -19,17 +19,16 @@
       (let [driver driver/*driver*]
 
         (testing "Basic table name generation"
-          (let [result (transforms.util/temp-table-name driver nil)
+          (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
-            (is (str/starts-with? table-name "mb_transform_temp_table_"))
-            (is (re-matches #"mb_transform_temp_table_\d+" table-name))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
 
         (testing "Table name preserves namespace when present"
-          (let [result (transforms.util/temp-table-name driver "schema")]
+          (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
-            (is (str/starts-with? (name result) "mb_transform_temp_table_"))))))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" (name result)))))))))
 
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
@@ -37,7 +36,7 @@
       (let [driver driver/*driver*
             db-id (mt/id)
 
-            table-name (transforms.util/temp-table-name driver nil)
+            table-name (driver.u/temp-table-name driver :test_table)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
@@ -58,9 +57,9 @@
                   nil)))))))))
 
 (deftest is-temp-transform-tables-test
-  (testing "tables with shcema"
-    (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
-          table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
+  (testing "tables with schema"
+    (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
+          table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
       (mt/with-premium-features #{}
         (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
         (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
@@ -111,6 +110,47 @@
                 (catch Exception _e
                   ;; Ignore cleanup errors
                   nil)))))))))
+
+;;; ------------------------------------------------------------
+;;; Filter xf tests
+;;; ------------------------------------------------------------
+
+(deftest ^:parallel matching-timestamp?-test
+  (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
+    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+          field-path          [:start_time]
+          range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
+          range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
+          range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
+
+      (testing "with both start and end bounds"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
+          nil   nil                       ; missing field returns nil
+          true  "2024-01-15T12:00:00Z"    ; timestamp in middle of range
+          false "2023-12-15T12:00:00Z"    ; timestamp before range
+          false "2024-02-15T12:00:00Z"    ; timestamp after range
+          true  "2024-01-01T00:00:00Z"    ; start boundary is inclusive
+          true  "2024-02-01T00:00:00Z"))  ; end boundary is inclusive too 🤷
+
+      (testing "with only start bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-start-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp after start
+          true  "2024-02-15T12:00:00Z"    ; any timestamp after start
+          false "2023-12-15T12:00:00Z"))  ; timestamp before start
+
+      (testing "with only end bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-end-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp before end
+          true  "2023-12-15T12:00:00Z"    ; any timestamp before end
+          false "2024-02-15T12:00:00Z"))  ; timestamp after end
+
+      (testing "returns nil when field value is missing"
+        (are [job] (nil? (matching-timestamp? job field-path range-jan-feb))
+          {}
+          {:other "value"})))))
 
 ;;; ------------------------------------------------- Source Table Resolution Tests ----------------------------------
 

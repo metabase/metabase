@@ -13,7 +13,7 @@ module.exports = {
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
-      "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+      "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,

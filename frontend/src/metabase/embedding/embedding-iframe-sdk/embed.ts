@@ -497,6 +497,7 @@ function createCustomElement<Arr extends readonly string[]>(
 const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
   "token",
+  "auto-refresh-interval",
   "with-title",
   "with-downloads",
   "with-subscriptions",
@@ -510,6 +511,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "token",
   "with-title",
   "with-downloads",
+  "with-alerts",
   "drills",
   "initial-sql-parameters",
   "hidden-parameters",
@@ -531,6 +533,8 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
 
 const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
   "layout",
+  "is-save-enabled",
+  "target-collection",
 ]);
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it

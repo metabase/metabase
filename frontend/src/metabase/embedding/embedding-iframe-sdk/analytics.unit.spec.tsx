@@ -203,6 +203,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               with_downloads: { true: 0, false: 1 },
               with_title: { true: 1, false: 0 },
               is_save_enabled: { true: 0, false: 1 },
+              with_alerts: { true: 0, false: 1 },
             },
           }),
         );
@@ -219,6 +220,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 "with-downloads": false,
                 "with-title": true,
                 "is-save-enabled": false,
+                "with-alerts": false,
               }),
             ]),
           ),
@@ -229,6 +231,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               with_downloads: { true: 0, false: 1 },
               with_title: { true: 1, false: 0 },
               is_save_enabled: { true: 0, false: 1 },
+              with_alerts: { true: 0, false: 1 },
             },
           }),
         );
@@ -243,6 +246,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 "with-downloads": true,
                 "with-title": false,
                 "is-save-enabled": true,
+                "with-alerts": true,
               }),
             ]),
           ),
@@ -253,6 +257,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               with_downloads: { true: 1, false: 0 },
               with_title: { true: 0, false: 1 },
               is_save_enabled: { true: 1, false: 0 },
+              with_alerts: { true: 1, false: 0 },
             },
           }),
         );
@@ -268,6 +273,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 "with-downloads": true,
                 "with-title": false,
                 "is-save-enabled": true,
+                "with-alerts": true,
               }),
             ]),
           ),
@@ -278,6 +284,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               with_downloads: { true: 1, false: 2 },
               with_title: { true: 2, false: 1 },
               is_save_enabled: { true: 1, false: 2 },
+              with_alerts: { true: 1, false: 2 },
             },
           }),
         );

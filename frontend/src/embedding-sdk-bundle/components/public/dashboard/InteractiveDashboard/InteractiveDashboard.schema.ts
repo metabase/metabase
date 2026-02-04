@@ -50,6 +50,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
     .noUnknown(),
   renderDrillThroughQuestion: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
+  autoRefreshInterval: Yup.mixed().optional(),
   withCardTitle: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withSubscriptions: Yup.mixed().optional(),

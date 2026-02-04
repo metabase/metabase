@@ -33,27 +33,26 @@
 
 (def data-layers
   "Valid values for `Table.data_layer`.
-  :gold   - highest quality, fully visible, synced
-  :silver - high quality, visible, synced
-  :bronze - acceptable quality, visible, synced
-  :copper - low quality, hidden, not synced"
-  #{:gold :silver :bronze :copper})
+  :final     - tables published for downstream consumption
+  :internal  - acceptable quality, visible, synced
+  :hidden    - low quality, hidden, not synced"
+  #{:final :internal :hidden})
 
 (defn- visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
-    :copper
-    :gold))
+    :hidden
+    :internal))
 
 (defn- data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
   (case data-layer
-    :copper :hidden
-    ;; gold, silver, bronze all map to visible (nil)
+    :hidden :hidden
+    ;; internal,final all map to visible (nil)
     nil))
 
 (def field-orderings
@@ -161,7 +160,7 @@
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :bronze}]
+                  :data_layer   :internal}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -339,6 +338,25 @@
      #(u/index-by :id mi/can-write? tables-with-collection)
      :id
      {:default false})))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :owner]
+  "Add owner (user) to a table. If owner_user_id is set, fetches the user.
+   If owner_email is set instead, returns a map with just the email."
+  [_model _k tables]
+  (if-not (seq tables)
+    tables
+    (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
+          id->owner (when (seq owner-user-ids)
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        :id [:in owner-user-ids]))]
+      (for [table tables]
+        (assoc table :owner
+               (cond
+                 (:owner_user_id table)
+                 (get id->owner (:owner_user_id table))
+
+                 (:owner_email table)
+                 {:email (:owner_email table)}))))))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 

@@ -1,5 +1,3 @@
-/*eslint-env node */
-
 import { diffWords } from "diff";
 import PropTypes from "prop-types";
 import { Component } from "react";

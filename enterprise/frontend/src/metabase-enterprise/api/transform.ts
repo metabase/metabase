@@ -72,7 +72,11 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), tag("table")]),
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("table"),
+          listTag("transform-run"),
+        ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
@@ -151,7 +155,10 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform")]),
+        invalidateTags(error, [
+          listTag("transform"),
+          listTag("external-transform"),
+        ]),
     }),
     updateTransform: builder.mutation<Transform, UpdateTransformRequest>({
       query: ({ id, ...body }) => ({
@@ -191,8 +198,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/transform/${id}`,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform")]),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
     }),
     deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({

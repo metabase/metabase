@@ -74,6 +74,7 @@ export type DashboardEmbedOptions = StrictUnion<
   componentName: "metabase-dashboard";
 
   drills?: boolean;
+  autoRefreshInterval?: number;
   withTitle?: boolean;
   withDownloads?: boolean;
   withSubscriptions?: boolean;
@@ -95,6 +96,7 @@ export type QuestionEmbedOptions = StrictUnion<
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withAlerts?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
   isSaveEnabled?: boolean;
@@ -160,6 +162,16 @@ export interface MetabotEmbedOptions {
 
   /** Layout mode for the metabot interface */
   layout?: "auto" | "sidebar" | "stacked";
+
+  /**
+   * The collection to save a question to
+   */
+  targetCollection?: CollectionId;
+
+  /**
+   * Whether the save button is enabled
+   */
+  isSaveEnabled?: boolean;
 
   // incompatible options
   template?: never;

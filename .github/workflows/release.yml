@@ -326,10 +326,11 @@ jobs:
             const { getExtraTagsForVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
+            const latestMajorVersion = '${{ vars.LATEST_MAJOR_VERSION }}';
 
-            const extra_tags = getExtraTagsForVersion({ version });
+            const extra_tags = getExtraTagsForVersion({ version, latestMajorVersion });
 
-            console.log({ extra_tags });
+            console.log({ extra_tags, latestMajorVersion });
             core.setOutput('extra_tags', JSON.stringify(extra_tags));
 
   add-extra-tags:
@@ -347,9 +348,11 @@ jobs:
     with:
       version: ${{ inputs.version }}
       tag_name: ${{ matrix.tag }}
-      tag_ee: ${{ contains(matrix.tag, 'v1') }}
-      tag_oss: ${{ contains(matrix.tag, 'v0') }}
-      dot-x-tag: true
+      # For version tags (v0.x, v1.x), apply to matching edition only
+      # For non-version tags like "latest", apply to both editions
+      tag_ee: ${{ contains(matrix.tag, 'v1') || !startsWith(matrix.tag, 'v') }}
+      tag_oss: ${{ contains(matrix.tag, 'v0') || !startsWith(matrix.tag, 'v') }}
+      dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
     if: ${{ !inputs.auto }}
@@ -423,19 +426,6 @@ jobs:
                 auto: 'true', // always auto-merge
               }
             });
-
-  # updates the llms.txt asynchronously.
-  # release does not need to wait for this PR to be merged,
-  # because the llms.txt is in the main git repo.
-  trigger-update-llms-txt:
-    # do not trigger llms.txt update on automatic patch releases
-    if: ${{ !inputs.auto }}
-    needs: add-extra-tags
-    uses: ./.github/workflows/llms-txt-generate.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      branch: ${{ github.ref_name }}
 
   draft-release-notes:
     if: ${{ !inputs.auto }}

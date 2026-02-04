@@ -4,7 +4,7 @@ import { ReduxProvider } from "__support__/storybook";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Modal } from "metabase/ui";
 
-import { type UpsellBigCardProps, _UpsellBigCard } from "./UpsellBigCard";
+import { UpsellBigCardInner, type UpsellBigCardProps } from "./UpsellBigCard";
 import S from "./Upsells.module.css";
 
 const args = {
@@ -38,7 +38,7 @@ const argTypes = {
 const DefaultTemplate = (args: Omit<UpsellBigCardProps, "onClick">) => (
   <ReduxProvider>
     <Box>
-      <_UpsellBigCard {...args} buttonLink="https://www.metabase.com" />
+      <UpsellBigCardInner {...args} buttonLink="https://www.metabase.com" />
     </Box>
   </ReduxProvider>
 );
@@ -50,7 +50,7 @@ const SecondaryTemplate = ({
 }: Omit<UpsellBigCardProps, "onClick">) => (
   <ReduxProvider>
     <Box>
-      <_UpsellBigCard {...args} buttonLink="https://www.metabase.com">
+      <UpsellBigCardInner {...args} buttonLink="https://www.metabase.com">
         {children}
         <ExternalLink
           className={S.SecondaryCTALink}
@@ -58,7 +58,7 @@ const SecondaryTemplate = ({
         >
           Learn more
         </ExternalLink>
-      </_UpsellBigCard>
+      </UpsellBigCardInner>
     </Box>
   </ReduxProvider>
 );
@@ -78,7 +78,7 @@ const ModalTemplate = ({
         I am just a basic Mantine modal.
       </Modal>
       <Box>
-        <_UpsellBigCard {...args} onClick={() => setOpened(true)}>
+        <UpsellBigCardInner {...args} onClick={() => setOpened(true)}>
           {children}
           <ExternalLink
             className={S.SecondaryCTALink}
@@ -86,7 +86,7 @@ const ModalTemplate = ({
           >
             Learn more
           </ExternalLink>
-        </_UpsellBigCard>
+        </UpsellBigCardInner>
       </Box>
     </ReduxProvider>
   );
@@ -94,7 +94,7 @@ const ModalTemplate = ({
 
 export default {
   title: "Patterns/Upsells/BigCard",
-  component: _UpsellBigCard,
+  component: UpsellBigCardInner,
   args,
   argTypes,
 };

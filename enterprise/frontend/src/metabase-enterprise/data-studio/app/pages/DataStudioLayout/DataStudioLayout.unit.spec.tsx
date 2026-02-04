@@ -3,6 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
+import { mockHasPremiumFeature, setup } from "./DataStudioLayout.setup.spec";
+
 // Mock useHasTokenFeature to return true for required features
 jest.mock(
   "metabase/common/hooks/use-has-token-feature/use-has-token-feature",
@@ -19,8 +21,6 @@ jest.mock(
     },
   }),
 );
-
-import { setup } from "./DataStudioLayout.setup.spec";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -120,7 +120,6 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByText("Library")).toBeInTheDocument();
-      expect(screen.getByText("Exit")).toBeInTheDocument();
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
@@ -208,6 +207,36 @@ describe("DataStudioLayout", () => {
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("workspaces feature", () => {
+    afterEach(() => {
+      mockHasPremiumFeature.mockReset();
+    });
+
+    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
+      setup({ hasWorkspacesFeature: false, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId("workspaces-section"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
+    });
+
+    it("should render WorkspacesSection when workspaces feature is available", async () => {
+      setup({ hasWorkspacesFeature: true, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
+      expect(screen.getByText("Workspaces")).toBeInTheDocument();
     });
   });
 });

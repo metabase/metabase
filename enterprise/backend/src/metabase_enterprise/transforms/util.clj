@@ -41,10 +41,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const transform-temp-table-prefix
-  "Prefix used for temporary tables created during transform execution."
-  "mb_transform_temp_table")
-
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [_driver {:keys [schema name]}]
@@ -268,11 +264,15 @@
   [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (transforms.i/target-db-id transform)
-          {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-transform-target! driver database target)
-      (log/info "Deactivating  target " (pr-str target) "for transform" id)
-      (deactivate-table! database target))))
+          database-id (transforms.i/target-db-id transform)]
+      (when database-id
+        (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
+          (do
+            (driver/drop-transform-target! driver database target)
+            (log/info "Deactivating  target " (pr-str target) "for transform" id)
+            (deactivate-table! database target))
+          (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
+                     (pr-str target) id database-id))))))
 
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
@@ -499,21 +499,6 @@
   (log/infof "Dropping table %s" table-name)
   (driver/drop-table! driver database-id table-name))
 
-(defn temp-table-name
-  "Generate a temporary table name with current timestamp in milliseconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
-  [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (keyword schema table-name)))
-
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
    This is a simpler, composable operation that only handles renaming."
@@ -526,7 +511,7 @@
   :feature :transforms
   [table]
   (when-let [table-name (:name table)]
-    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
+    (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix)))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"
@@ -621,42 +606,38 @@
                         :ref   v})]
     (when (seq unresolved)
       (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
-                      {:unresolved unresolved})))
+                      {:unresolved unresolved
+                       :transform-message "Input table not found"})))
     resolved))
 
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
   (when-let [field-instant (->instant (get-in job field-path))]
-    (let [start-instant (some-> start u.date/parse ->instant)
-          end-instant (some-> end u.date/parse ->instant)]
-      (and (or (nil? start)
-               (not (.isBefore field-instant start-instant)))
-           (or (nil? end)
-               (.isAfter end-instant field-instant))))))
+    (let [parse #(-> % u.date/parse ->instant)]
+      ;; logic here is to find when it's not matching and invert this
+      (not (or (and start (.isBefore field-instant (parse start)))
+               (and end   (.isAfter field-instant (parse end))))))))
 
 (defn ->date-field-filter-xf
   "Returns an xform for a date filter."
   [field-path filter-value]
-  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
-    (if range
-      (filter #(matching-timestamp? % field-path range))
-      identity)))
+  (if-let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
+    (filter #(matching-timestamp? % field-path range))
+    identity))
 
 (defn ->status-filter-xf
   "Returns an xform for a transform run status filter."
   [field-path statuses]
-  (let [statuses (->> statuses (map keyword) set not-empty)]
-    (if statuses
-      (filter #(statuses (get-in % field-path)))
-      identity)))
+  (if-let [statuses (->> statuses (map keyword) set not-empty)]
+    (filter #(statuses (get-in % field-path)))
+    identity))
 
 (defn ->tag-filter-xf
   "Returns an xform for a transform tag filter."
   [field-path tag-ids]
-  (let [tag-ids (-> tag-ids set not-empty)]
-    (if tag-ids
-      (filter #(some tag-ids (get-in % field-path)))
-      identity)))
+  (if-let [tag-ids (-> tag-ids set not-empty)]
+    (filter #(some tag-ids (get-in % field-path)))
+    identity))
 
 (def ^:private metabase-index-prefix "mb_transform_idx_")
 

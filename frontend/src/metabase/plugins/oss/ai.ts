@@ -1,27 +1,32 @@
 import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
-import type { Extension } from "@uiw/react-codemirror";
 import type { ComponentType } from "react";
 import React from "react";
 
 import type { MetabotContext } from "metabase/metabot";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CollectionId,
   DashCardId,
-  DatasetQuery,
+  DatabaseId,
+  GenerateSqlResponse,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
+  ReferencedEntityId,
   SearchModel,
   Timeline,
   TimelineEvent,
   VisualizationDisplay,
 } from "metabase-types/api";
-import type { AdminPath, State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<Record<string, never>>;
+  FixSqlQueryButton: ComponentType<{
+    rawSql?: string | null;
+    errorMessage?: string | null;
+  }>;
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -61,52 +66,49 @@ type PluginMetabotType = {
     hide?: boolean;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
+  MetabotChat: (props: {
+    config?: PluginMetabotConfig;
+  }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
-  getAdminPaths: () => AdminPath[];
-  getAdminRoutes: () => React.ReactElement;
+  getAdminRoutes: (() => JSX.Element[]) | null;
   getMetabotRoutes: () => React.ReactElement | null;
-  MetabotAdminPage: ComponentType;
   getMetabotQueryBuilderRoute: () => React.ReactElement | null;
   getNewMenuItemAIExploration: (
     hasDataAccess: boolean,
     collectionId?: CollectionId,
   ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, conversation_id: string) => boolean;
-  MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
-  MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
-  useInlineSQLPrompt: (
-    question: Question,
-    bufferId: string,
-  ) => {
-    portalElement: React.ReactPortal | null;
-    extensions: Extension[];
-    proposedQuestion: Question | undefined;
-    handleAcceptProposed?: (datasetQuery: DatasetQuery) => void;
-    handleRejectProposed?: () => void;
-  } | void;
   useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
     MetabotGenerateContentResponse,
     MetabotGenerateContentRequest,
     BaseQueryFn
   >;
   MetabotThinkingStyles: { [key: string]: string };
+  useMetabotSQLSuggestion: (options: {
+    databaseId: DatabaseId | null;
+    bufferId: string;
+    onGenerated?: (result?: GenerateSqlResponse) => void;
+  }) => {
+    source: string | undefined;
+    isLoading: boolean;
+    generate: (options: {
+      prompt: string;
+      sourceSql?: string;
+      referencedEntities?: ReferencedEntityId[];
+    }) => Promise<void>;
+    error: string | undefined;
+    cancelRequest: () => void;
+    clear: () => void;
+    reject: () => void;
+    reset: () => void;
+    suggestionModels: SuggestionModel[];
+  };
 };
-
-const getDefaultMetabotContextValue = (): MetabotContext => ({
-  prompt: "",
-  setPrompt: () => {},
-  promptInputRef: undefined,
-  getChatContext: () => ({}) as any,
-  registerChatContextProvider: () => () => {},
-});
-
-const defaultMetabotContextValue: MetabotContext =
-  getDefaultMetabotContextValue();
 
 const getDefaultPluginAiSqlFixer = (): PluginAiSqlFixer => ({
   FixSqlQueryButton: PluginPlaceholder,
@@ -124,9 +126,24 @@ const getDefaultPluginAIEntityAnalysis = (): PluginAIEntityAnalysis => ({
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
   getDefaultPluginAIEntityAnalysis();
 
+const getDefaultMetabotContextValue = (): MetabotContext => ({
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+  suggestionActions: null,
+  setSuggestionActions: () => {},
+});
+
+const defaultMetabotContextValue: MetabotContext =
+  getDefaultMetabotContextValue();
+
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
   isEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
+    null as React.ReactElement | null,
+  MetabotChat: (_props: { config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
@@ -138,22 +155,26 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
         children,
       );
   },
-  getAdminPaths: () => [],
-  getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
+  getAdminRoutes: null,
   getMetabotRoutes: () => null,
-  MetabotAdminPage: () => `placeholder`,
   getMetabotQueryBuilderRoute: () => null,
   getNewMenuItemAIExploration: () => undefined,
   getMetabotVisible: () => false,
-  MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
-  MetabotAdminAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
-  useInlineSQLPrompt: () => {},
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
+  useMetabotSQLSuggestion: (options) => {
+    // lazy require to avoid loading metabase/api and its cljs dependencies at
+    // module init time. without this the jest unit tests will break.
+    const {
+      useMetabotSQLSuggestion,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+    } = require("metabase/metabot/hooks/use-metabot-sql-suggestion");
+    return useMetabotSQLSuggestion(options);
+  },
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 

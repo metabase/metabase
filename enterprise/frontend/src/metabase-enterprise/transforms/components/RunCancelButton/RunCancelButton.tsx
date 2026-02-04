@@ -16,7 +16,7 @@ export function RunCancelButton({
   transform,
 }: {
   transform?: Transform;
-  status: TransformRunStatus;
+  status: TransformRunStatus | null;
 }) {
   const isRunning = status === "started";
   const [
