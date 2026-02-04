@@ -2,11 +2,16 @@
   "Unmatched Rows lens - analyze rows that failed to join.
 
    This is a drill-down lens triggered from join-analysis when
-   null counts are significant. It shows sample unmatched rows
-   from the SOURCE table where the join didn't match.
+   null counts are significant. For each outer join, it shows two types of samples:
+
+   1. 'Truly unmatched' - rows where LHS key exists but no RHS match was found
+      (LHS IS NOT NULL AND RHS IS NULL)
+   2. 'Null source key' - rows where LHS key is NULL (can't match anything)
+      (LHS IS NULL)
 
    For a query like: orders LEFT JOIN customers ON orders.customer_id = customers.id
-   We show orders rows where there's no matching customer.
+   - Card 1: Orders with a customer_id that doesn't exist in customers
+   - Card 2: Orders with NULL customer_id (no customer specified)
 
    Trigger: join-step card shows > 5% null rate
    Alert: shown when > 20% null rate
@@ -90,16 +95,12 @@
   [join-structure alias]
   (some #(when (= (:alias %) alias) (:source-table %)) join-structure))
 
-(defn- make-unmatched-rows-query
-  "Build a query that returns rows from the LHS that didn't match in join N.
+(defn- make-base-unmatched-query
+  "Build base query structure for unmatched rows analysis.
+   Returns {:query <base-query> :lhs-field :rhs-field :lhs-fields :base-fields} or nil.
 
-   Determines the LHS table by inspecting the join condition's LHS field:
-   - If LHS field has no join-alias → base table
-   - If LHS field has a join-alias → the table from that join
-
-   Strategy: Take the original query with N joins, strip aggregations,
-   select fields from the LHS table, add a filter for IS NULL on the RHS join key,
-   add a limit."
+   - lhs-fields: columns from the LHS of this join (useful for truly-unmatched)
+   - base-fields: columns from the base table (useful for null-source-key when LHS is from a LEFT JOIN)"
   [ctx step]
   (let [{:keys [preprocessed-query join-structure db-id]} ctx
         join (nth join-structure (dec step))
@@ -112,50 +113,92 @@
                        (find-table-for-join-alias join-structure lhs-join-alias)
                        (get-in preprocessed-query [:stages 0 :source-table]))
         lhs-fields (when lhs-table-id
-                     (get-table-field-refs db-id lhs-table-id lhs-join-alias))]
+                     (get-table-field-refs db-id lhs-table-id lhs-join-alias))
+        ;; Base table fields (always non-NULL for null-source-key case)
+        base-table-id (get-in preprocessed-query [:stages 0 :source-table])
+        base-fields (get-table-field-refs db-id base-table-id nil)]
     (when (and rhs-field lhs-field lhs-fields)
-      (-> preprocessed-query
-          (query-with-n-joins step)
-          (update-in [:stages 0] (fn [stage]
-                                   (-> stage
-                                       ;; Keep source and joins, remove aggregations/breakouts
-                                       (select-keys [:lib/type :source-table])
-                                       ;; Add back the stripped joins
-                                       (assoc :joins (mapv strip-join-to-essentials
-                                                           (take step (get-in preprocessed-query [:stages 0 :joins]))))
-                                       ;; Select fields from LHS table
-                                       (assoc :fields lhs-fields)
-                                       ;; Filter for unmatched: RHS key IS NULL but LHS key IS NOT NULL
-                                       ;; (excludes rows where the LHS entity doesn't exist at all)
-                                       (assoc :filters [[:not-null
-                                                         {:lib/uuid (str (random-uuid))}
-                                                         (fresh-uuid-field-ref lhs-field)]
-                                                        [:is-null
-                                                         {:lib/uuid (str (random-uuid))}
-                                                         (fresh-uuid-field-ref rhs-field)]])
-                                       ;; Limit results
-                                       (assoc :limit 100))))))))
+      {:base-query (-> preprocessed-query
+                       (query-with-n-joins step)
+                       (update-in [:stages 0] (fn [stage]
+                                                (-> stage
+                                                    (select-keys [:lib/type :source-table])
+                                                    (assoc :joins (mapv strip-join-to-essentials
+                                                                        (take step (get-in preprocessed-query [:stages 0 :joins]))))
+                                                    (assoc :limit 100)))))
+       :lhs-field lhs-field
+       :rhs-field rhs-field
+       :lhs-fields lhs-fields
+       :base-fields base-fields})))
+
+(defn- make-truly-unmatched-query
+  "Build a query for rows where LHS key exists but no RHS match was found.
+   (LHS IS NOT NULL AND RHS IS NULL)
+   Shows LHS columns since those have actual data."
+  [ctx step]
+  (when-let [{:keys [base-query lhs-field rhs-field lhs-fields]} (make-base-unmatched-query ctx step)]
+    (-> base-query
+        (assoc-in [:stages 0 :fields] lhs-fields)
+        (assoc-in [:stages 0 :filters]
+                  [[:not-null {:lib/uuid (str (random-uuid))} (fresh-uuid-field-ref lhs-field)]
+                   [:is-null {:lib/uuid (str (random-uuid))} (fresh-uuid-field-ref rhs-field)]]))))
+
+(defn- make-null-source-key-query
+  "Build a query for rows where LHS key is NULL (no key to match on).
+   (LHS IS NULL)
+   Shows base table columns since LHS columns may all be NULL if LHS came from a LEFT JOIN."
+  [ctx step]
+  (when-let [{:keys [base-query lhs-field base-fields]} (make-base-unmatched-query ctx step)]
+    (-> base-query
+        (assoc-in [:stages 0 :fields] base-fields)
+        (assoc-in [:stages 0 :filters]
+                  [[:is-null {:lib/uuid (str (random-uuid))} (fresh-uuid-field-ref lhs-field)]]))))
 
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
-(defn- sample-card-for-join
-  "Generate a sample card for unmatched rows of a specific join."
+(defn- truly-unmatched-card
+  "Generate a card for rows where LHS key exists but RHS didn't match."
   [ctx step]
   (let [{:keys [join-structure]} ctx
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
     (when is-outer?
-      (when-let [query (make-unmatched-rows-query ctx step)]
-        {:id            (str "unmatched-sample-" step)
+      (when-let [query (make-truly-unmatched-query ctx step)]
+        {:id            (str "truly-unmatched-" step)
          :section-id    "samples"
-         :title         (str "Sample of 100 unmatched rows for join: " alias)
+         :title         (str alias ": Rows with key but no match")
          :display       :table
          :dataset-query query
-         :metadata      {:card-type     :unmatched-sample
+         :metadata      {:card-type     :truly-unmatched
                          :join-step     step
                          :join-alias    alias
                          :join-strategy strategy}}))))
+
+(defn- null-source-key-card
+  "Generate a card for rows where LHS key is NULL."
+  [ctx step]
+  (let [{:keys [join-structure]} ctx
+        join (nth join-structure (dec step))
+        {:keys [alias strategy]} join
+        is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
+    (when is-outer?
+      (when-let [query (make-null-source-key-query ctx step)]
+        {:id            (str "null-source-key-" step)
+         :section-id    "samples"
+         :title         (str alias ": Rows with NULL source key")
+         :display       :table
+         :dataset-query query
+         :metadata      {:card-type     :null-source-key
+                         :join-step     step
+                         :join-alias    alias
+                         :join-strategy strategy}}))))
+
+(defn- cards-for-join
+  "Generate both unmatched cards for a specific join step."
+  [ctx step]
+  (keep identity [(truly-unmatched-card ctx step)
+                  (null-source-key-card ctx step)]))
 
 (defn- all-cards
   "Generate sample cards for all outer joins, optionally filtered by join-step."
@@ -165,9 +208,9 @@
         requested-step (some-> (:join-step params) str parse-long)
         join-count (count join-structure)]
     (into []
-          (keep (fn [step]
-                  (when (or (nil? requested-step) (= step requested-step))
-                    (sample-card-for-join ctx step))))
+          (mapcat (fn [step]
+                    (when (or (nil? requested-step) (= step requested-step))
+                      (cards-for-join ctx step))))
           (range 1 (inc join-count)))))
 
 ;;; -------------------------------------------------- Lens Implementation --------------------------------------------------
@@ -190,7 +233,8 @@
 (defmethod lens.core/make-lens :unmatched-rows
   [_ ctx params]
   (let [cards (all-cards ctx params)
-        join-count (count cards)
+        outer-join-count (count (filter #(contains? #{:left-join :right-join :full-join} (:strategy %))
+                                        (:join-structure ctx)))
         requested-step (:join-step params)
         title (if requested-step
                 (str "Unmatched Rows - Join " requested-step)
@@ -198,8 +242,9 @@
     {:id           "unmatched-rows"
      :display-name title
      :summary      (if (seq cards)
-                     {:text       (str "Sample unmatched rows for " join-count " outer join(s)")
-                      :highlights [{:label "Outer Joins" :value join-count}]}
+                     {:text       (str "Analyzing unmatched rows for " outer-join-count " outer join(s)")
+                      :highlights [{:label "Outer Joins" :value outer-join-count}
+                                   {:label "Sample Cards" :value (count cards)}]}
                      {:text       "No outer joins with detectable join conditions"
                       :highlights []})
      :sections     [{:id     "samples"
