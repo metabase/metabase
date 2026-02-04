@@ -4588,7 +4588,7 @@
                                            :user_id          (mt/user->id :rasta)}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}
-                     ;; Broken slack pulse
+           ;; Broken slack pulse
            :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
                                                   :dashboard_id  dash-id
                                                   :creator_id    (mt/user->id :trashbird)
@@ -4601,7 +4601,7 @@
                                   :pulse_id     bad-slack-pulse-id
                                   :details      {:channel "#my-channel"}
                                   :enabled      true}
-                     ;; Non broken pulse
+           ;; Non broken pulse
            :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
                                              :dashboard_id dash-id
                                              :creator_id   (mt/user->id :trashbird)}
@@ -4623,8 +4623,8 @@
                                                             :rasta :put 200 (str "dashboard/" dash-id)
                                                             {:parameters []}))
                   title            (format "Subscription to %s removed" dashboard-name)
-                            ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
-                            ;; as "We've Noticed a New Metabase Login, Rasta".
+                                   ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
+                                   ;; as "We've Noticed a New Metabase Login, Rasta".
                   inbox            (update-vals
                                     @mt/inbox
                                     (fn [messages]
