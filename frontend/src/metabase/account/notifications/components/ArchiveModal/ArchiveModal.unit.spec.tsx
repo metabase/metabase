@@ -1,42 +1,24 @@
 import { render, screen, waitFor } from "__support__/ui";
+import {
+  createMockAlert,
+  createMockChannel,
+} from "metabase-types/api/mocks/alert";
+import { createMockDashboardSubscription } from "metabase-types/api/mocks/pulse";
+import { createMockUser } from "metabase-types/api/mocks/user";
 
 import ArchiveModal from "./ArchiveModal";
 
-const getAlert = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({
-  creator,
-  channels,
-  created_at: "2021-05-08T02:02:07.441Z",
-});
-
-const getPulse = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({
-  creator,
-  channels,
-  created_at: "2021-05-08T02:02:07.441Z",
-});
-
-const getUser = ({ id = 1 } = {}) => ({
-  id,
-  common_name: "John Doe",
-});
-
-const getChannel = ({
-  channel_type = "email",
-  schedule_type = "hourly",
-  recipients = [getUser()],
-} = {}) => {
-  return {
-    channel_type,
-    schedule_type,
-    recipients,
-    schedule_hour: 8,
-    schedule_day: "mon",
-    schedule_frame: "first",
-  };
-};
-
 describe("ArchiveModal", () => {
   it("should render an email alert", () => {
-    const alert = getAlert();
+    const alert = createMockAlert({
+      created_at: "2021-05-08T02:02:07.441Z",
+      channels: [
+        createMockChannel({
+          channel_type: "email",
+          recipients: [createMockUser()],
+        }),
+      ],
+    });
 
     render(<ArchiveModal item={alert} type="alert" />);
 
@@ -48,14 +30,22 @@ describe("ArchiveModal", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("It’s currently being sent to 1 email.", {
+      screen.getByText("It's currently being sent to 1 email.", {
         exact: false,
       }),
     ).toBeInTheDocument();
   });
 
   it("should render an email pulse", () => {
-    const pulse = getPulse();
+    const pulse = createMockDashboardSubscription({
+      created_at: "2021-05-08T02:02:07.441Z",
+      channels: [
+        createMockChannel({
+          channel_type: "email",
+          recipients: [createMockUser()],
+        }),
+      ],
+    });
 
     render(<ArchiveModal item={pulse} type="pulse" />);
 
@@ -67,15 +57,20 @@ describe("ArchiveModal", () => {
       screen.getByText("May 8, 2021", { exact: false }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("It’s currently being sent to 1 email.", {
+      screen.getByText("It's currently being sent to 1 email.", {
         exact: false,
       }),
     ).toBeInTheDocument();
   });
 
   it("should render a slack pulse", () => {
-    const pulse = getPulse({
-      channels: [getChannel({ channel_type: "slack" })],
+    const pulse = createMockDashboardSubscription({
+      channels: [
+        createMockChannel({
+          channel_type: "slack",
+          recipients: [createMockUser()],
+        }),
+      ],
     });
 
     render(<ArchiveModal item={pulse} type="pulse" />);
@@ -86,15 +81,15 @@ describe("ArchiveModal", () => {
   });
 
   it("should render an alert with both email and slack channels", () => {
-    const alert = getAlert({
+    const alert = createMockAlert({
       channels: [
-        getChannel({
+        createMockChannel({
           channel_type: "email",
-          recipients: [getUser(), getUser()],
+          recipients: [createMockUser(), createMockUser()],
         }),
-        getChannel({
+        createMockChannel({
           channel_type: "slack",
-          recipients: [getUser(), getUser(), getUser()],
+          recipients: [createMockUser(), createMockUser(), createMockUser()],
         }),
       ],
     });
@@ -107,11 +102,11 @@ describe("ArchiveModal", () => {
   });
 
   it("should close on submit", async () => {
-    const alert = getAlert();
+    const alert = createMockAlert();
     const onArchive = jest.fn();
     const onClose = jest.fn();
 
-    onArchive.mockResolvedValue();
+    onArchive.mockResolvedValue(undefined);
 
     render(
       <ArchiveModal
@@ -131,11 +126,14 @@ describe("ArchiveModal", () => {
   });
 
   it("should not close on a submit error", async () => {
-    const alert = getAlert();
+    const alert = createMockAlert();
     const onArchive = jest.fn();
     const onClose = jest.fn();
 
-    onArchive.mockRejectedValue({ data: { message: "An error occurred" } });
+    onArchive.mockRejectedValue({
+      status: 500,
+      data: { message: "An error occurred" },
+    });
 
     render(
       <ArchiveModal

@@ -314,7 +314,9 @@ export const formatChannelDetails = ({ channel_type, details }: Channel) => {
   }
 };
 
-export const formatChannelRecipients = (item: Alert) => {
+export const formatChannelRecipients = (
+  item: Alert | DashboardSubscription,
+) => {
   const emailCount = getRecipientsCount(item, "email");
   const slackCount = getRecipientsCount(item, "slack");
 
@@ -340,7 +342,7 @@ export const formatChannelRecipients = (item: Alert) => {
 };
 
 export const getRecipientsCount = (
-  item: Alert,
+  item: Alert | DashboardSubscription,
   channelType: "email" | "slack",
 ) => {
   return item.channels
