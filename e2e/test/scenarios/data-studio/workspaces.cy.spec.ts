@@ -1706,12 +1706,10 @@ describe("scenarios > data studio > workspaces", () => {
         .findByRole("menuitem", { name: /New workspace/ })
         .should("be.disabled")
         .trigger("mouseenter", { force: true }); // in CI realHover() does not work with disabled elements
-      H.tooltip()
-        .should("be.visible")
-        .and(
-          "contain.text",
-          "Transforms referencing other questions cannot be edited in a workspace.",
-        );
+      H.tooltip().should(
+        "contain.text",
+        "Transforms referencing other questions cannot be edited in a workspace.",
+      );
 
       cy.log("Edit transform to remove model reference");
       H.popover().findByText("Edit definition").click();
