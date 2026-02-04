@@ -6,9 +6,9 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.honey-sql-2 :as h2x]
@@ -97,7 +97,9 @@
                  (count all-creators) (count recipients))
       (doseq [creator recipients]
         (try
-          (messages/send-creator-sentiment-email! creator (blob creator))
+          (events/publish-event! :event/email.creator-sentiment
+                                 {:user creator
+                                  :blob (blob creator)})
           (catch Throwable e
             (log/error e "Problem sending creator sentiment email:")))))))
 

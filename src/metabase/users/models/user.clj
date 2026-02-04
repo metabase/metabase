@@ -491,7 +491,9 @@
   (u/prog1 (t2/insert-returning-instance! :model/User new-user)
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
-      ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
+      (events/publish-event! :event/email.user-joined-admin-notification
+                             {:new-user     <>
+                              :google-auth? true}))))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."

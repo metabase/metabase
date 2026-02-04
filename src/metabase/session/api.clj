@@ -6,7 +6,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.channel.email.messages :as messages]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -178,20 +177,28 @@
 (defn- forgot-password-impl
   [email]
   (future
-    (when-let [{user-id      :id
-                sso-source   :sso_source
-                is-active?   :is_active :as user}
+    (when-let [{user-id    :id
+                sso-source :sso_source
+                is-active? :is_active :as user}
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
       (if (password-reset-disabled? user-id sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token. Some cases for Google SSO
         ;; are exempted see `password-reset-allowed?`
-        (messages/send-password-reset-email! email sso-source nil is-active?)
+        (events/publish-event! :event/email.password-reset
+                               {:email              email
+                                :sso-source         sso-source
+                                :password-reset-url nil
+                                :is-active?         is-active?})
         (let [reset-token        (auth-identity/create-password-reset! user-id)
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email nil password-reset-url is-active?)))
+          (events/publish-event! :event/email.password-reset
+                                 {:email              email
+                                  :sso-source         nil
+                                  :password-reset-url password-reset-url
+                                  :is-active?         is-active?})))
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 

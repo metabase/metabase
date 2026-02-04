@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
@@ -144,8 +143,10 @@
       (when-let [recipients-except-creator (->> (all-email-recipients notification)
                                                 (remove current-user?)
                                                 seq)]
-        (messages/send-you-were-added-card-notification-email!
-         (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*)))))
+        (events/publish-event! :event/email.you-were-added-card-notification
+                               {:notification      (update notification :payload t2/hydrate :card)
+                                :added-user-emails recipients-except-creator
+                                :adder             @api/*current-user*})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -183,18 +184,30 @@
       (cond
         ;; Notification was just archived - notify all users they were unsubscribed
         (and was-active? (not is-active?))
-        (messages/send-you-were-removed-notification-card-email! notification old-emails current-user)
+        (events/publish-event! :event/email.you-were-removed-notification-card
+                               {:notification   notification
+                                :removed-emails old-emails
+                                :actor          current-user})
 
         ;; Notification was just unarchived - notify all users they were added
         (and (not was-active?) is-active?)
-        (messages/send-you-were-added-card-notification-email! notification new-emails @api/*current-user*)
+        (events/publish-event! :event/email.you-were-added-card-notification
+                               {:notification      notification
+                                :added-user-emails new-emails
+                                :adder             @api/*current-user*})
 
         (not= old-emails new-emails)
         (let [[removed-recipients added-recipients _] (diff old-emails new-emails)]
           (when (seq removed-recipients)
-            (messages/send-you-were-removed-notification-card-email! notification removed-recipients current-user))
+            (events/publish-event! :event/email.you-were-removed-notification-card
+                                   {:notification   notification
+                                    :removed-emails removed-recipients
+                                    :actor          current-user}))
           (when (seq added-recipients)
-            (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
+            (events/publish-event! :event/email.you-were-added-card-notification
+                                   {:notification      notification
+                                    :added-user-emails added-recipients
+                                    :adder             @api/*current-user*})))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -267,10 +280,10 @@
     (u/prog1 (get-notification notification-id)
       (when (card-notification? <>)
         (u/ignore-exceptions
-          (messages/send-you-unsubscribed-notification-card-email!
-           (update <> :payload t2/hydrate :card)
-           [(:email @api/*current-user*)])))
-      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
+          (events/publish-event! :event/email.you-unsubscribed-notification-card
+                                 {:notification        (update <> :payload t2/hydrate :card)
+                                  :unsubscribed-emails [(:email @api/*current-user*)]})))
+      (events/publish-event! :event/notification-unsubscribe {:object  {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

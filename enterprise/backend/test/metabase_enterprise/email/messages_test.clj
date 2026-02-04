@@ -1,7 +1,7 @@
 (ns metabase-enterprise.email.messages-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel.email.internal :as email.internal]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
@@ -16,15 +16,15 @@
       (perms/grant-application-permissions! group :monitoring)
       (testing "Users with monitoring but no `manage-database` permission do not receive"
         (mt/with-premium-features #{:advanced-permissions}
-          (is (= (set (#'messages/all-admin-recipients))
-                 (set (#'messages/admin-or-ee-monitoring-details-emails db-id))))))
+          (is (= (set (#'email.internal/all-admin-recipients))
+                 (set (#'email.internal/admin-or-ee-monitoring-details-emails db-id))))))
       (testing "Users with both `monitoring` and `manage-database` permission DO receive"
         (data-perms/set-database-permission! group db-id :perms/manage-database :yes)
         (mt/with-premium-features #{:advanced-permissions}
-          (is (= (conj (set (#'messages/all-admin-recipients))
+          (is (= (conj (set (#'email.internal/all-admin-recipients))
                        (:email user))
-                 (set (#'messages/admin-or-ee-monitoring-details-emails db-id))))))
+                 (set (#'email.internal/admin-or-ee-monitoring-details-emails db-id))))))
       (testing "Only send to admin users if advanced-permissions is disabled"
         (mt/with-premium-features #{}
-          (is (= (set (#'messages/all-admin-recipients))
-                 (set (#'messages/admin-or-ee-monitoring-details-emails db-id)))))))))
+          (is (= (set (#'email.internal/all-admin-recipients))
+                 (set (#'email.internal/admin-or-ee-monitoring-details-emails db-id)))))))))
