@@ -178,6 +178,8 @@
           used-module                          (when (set? uses)
                                                  uses)]
     (is (not (rest-module? used-module))
-        (format "Do not use '-rest' modules (%s) in other, non'-rest' modules (%s) -- they should be leaf nodes"
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
                 used-module
-                module))))
+                module
+                used-module
+                (symbol (str/replace used-module #"-rest$" ""))))))

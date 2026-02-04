@@ -75,6 +75,9 @@
         (contains? module-api-namespaces ns-symb)
         (contains? module-friends current-module))))
 
+(defn- rest-module? [module]
+  (str/ends-with? module "-rest"))
+
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
   error type if there is one, otherwise `nil` if there are no errors."
@@ -93,4 +96,12 @@
         (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
                 required-namespace
                 required-module
-                required-module)))))
+                required-module)
+
+        (and (not (rest-module? current-module))
+             (rest-module? required-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+                required-module
+                current-module
+                required-module
+                (symbol (str/replace required-module #"-rest$" "")))))))
