@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1290-implement-enable-tenants-and-create-shared-collection-button",
-    "hash": "408e9385cb2bb742b87ca5a5d1beb09dd9fbc940"
+    "hash": "8468270c098ba9326ad5458472dcd987c935233f"
   },
   "upstream": {
     "branch": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding"
