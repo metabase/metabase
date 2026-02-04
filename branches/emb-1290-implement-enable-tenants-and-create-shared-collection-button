@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-1266-add-backend-completion-checks-for-data-segregation-and",
-    "hash": "ae30a3696062799af95ad26fef35bd9141fb79bc"
+    "name": "integration-embedding-onboarding-improvements",
+    "hash": "85228d814aa1440cd293b4fae462b1fdc468e8f7"
   },
   "upstream": {
     "branch": "emb-1290-implement-enable-tenants-and-create-shared-collection-button"
