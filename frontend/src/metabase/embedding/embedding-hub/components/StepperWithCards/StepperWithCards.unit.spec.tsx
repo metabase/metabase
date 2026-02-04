@@ -160,7 +160,7 @@ describe("StepperWithCards", () => {
     );
   });
 
-  it("should disable locked cards", () => {
+  it("should disable locked cards", async () => {
     const mockClickAction = jest.fn();
     const steps = createMockSteps([
       {
