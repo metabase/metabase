@@ -133,8 +133,9 @@
   (when-let [[_ alias field-name] (re-find #"^(.+)__(.+)$" name)]
     {:alias alias :field-name field-name}))
 
-(defn- match-columns
-  "Find columns that relate between input and output tables."
+(defn- match-columns-by-name
+  "Find columns that relate between input and output tables using name-based matching.
+   Used for native queries where we don't have field IDs."
   [sources target join-structure]
   (let [alias->source-table (into {} (map (juxt :alias :source-table) join-structure))
         source-fields (for [{:keys [table-id table-name fields]} sources
@@ -157,6 +158,67 @@
        :input-columns (mapv #(select-keys % [:source-table-id :source-table-name :name :id])
                             matching)})))
 
+(defn- match-columns-mbql
+  "Match columns using field metadata from preprocessed MBQL query.
+   Uses lib/returned-columns which provides field IDs and table IDs directly."
+  [preprocessed-query sources target]
+  (let [;; Get returned columns with full metadata including :id, :table-id, ::lib.join/join-alias
+        returned-cols (lib/returned-columns preprocessed-query)
+
+        ;; Index source fields by field ID for fast lookup
+        source-field-by-id (into {}
+                                 (for [{:keys [table-id table-name fields]} sources
+                                       field fields
+                                       :when (:id field)]
+                                   [(:id field)
+                                    (assoc field
+                                           :source-table-id table-id
+                                           :source-table-name table-name)]))
+
+        ;; Index source tables by table-id for name lookup
+        table-id->name (into {} (map (juxt :table-id :table-name) sources))]
+
+    (for [target-field (:fields target)
+          :let [target-name (:name target-field)
+                ;; Find returned column matching this target field
+                ;; Try :lib/desired-column-alias first (e.g., "Cities__country"), fall back to :name
+                returned-col (or (some #(when (= (:lib/desired-column-alias %) target-name) %)
+                                       returned-cols)
+                                 (some #(when (= (:name %) target-name) %)
+                                       returned-cols))
+                ;; Get field ID and table ID directly from lib metadata
+                field-id (:id returned-col)
+                source-table-id (:table-id returned-col)
+                join-alias (:metabase.lib.join/join-alias returned-col)
+                ;; Look up source field by ID
+                source-field (when field-id (source-field-by-id field-id))
+                source-table-name (or (:source-table-name source-field)
+                                      (table-id->name source-table-id))]
+          :when (or source-field source-table-id)]
+      {:output-column     target-name
+       :output-field      target-field
+       :field-id          field-id
+       :source-table-id   source-table-id
+       :source-table-name source-table-name
+       :join-alias        join-alias
+       :input-columns     (if source-field
+                            [(select-keys source-field
+                                          [:source-table-id :source-table-name :name :id])]
+                            ;; For joined fields where we have table-id from lib metadata
+                            [{:source-table-id   source-table-id
+                              :source-table-name source-table-name
+                              :name              (:name returned-col)
+                              :id                field-id}])})))
+
+(defn- match-columns
+  "Find columns that relate between input and output tables.
+   Uses field ID-based matching for MBQL queries (more accurate),
+   falls back to name-based matching for native queries."
+  [sources target {:keys [preprocessed-query join-structure]}]
+  (if preprocessed-query
+    (match-columns-mbql preprocessed-query sources target)
+    (match-columns-by-name sources target join-structure)))
+
 ;;; -------------------------------------------------- Context Building --------------------------------------------------
 
 (defn build-context
@@ -173,7 +235,7 @@
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)
-                         (seq (match-columns sources-info target-info join-structure)))]
+                         (seq (match-columns sources-info target-info query-info)))]
     {:transform           transform
      :source-type         source-type
      :sources             sources-info
