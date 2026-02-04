@@ -427,19 +427,6 @@ jobs:
               }
             });
 
-  # updates the llms.txt asynchronously.
-  # release does not need to wait for this PR to be merged,
-  # because the llms.txt is in the main git repo.
-  trigger-update-llms-txt:
-    # do not trigger llms.txt update on automatic patch releases
-    if: ${{ !inputs.auto }}
-    needs: add-extra-tags
-    uses: ./.github/workflows/llms-txt-generate.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      branch: ${{ github.ref_name }}
-
   draft-release-notes:
     if: ${{ !inputs.auto }}
     needs: add-extra-tags
