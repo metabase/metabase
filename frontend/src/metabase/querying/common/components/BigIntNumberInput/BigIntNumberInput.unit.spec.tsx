@@ -17,7 +17,7 @@ function setup({ value = null }: SetupOpts = {}) {
   return { input, onChange };
 }
 
-describe("NumberFilterInput", () => {
+describe("BigIntNumberInput", () => {
   it("should display an empty value", () => {
     const { input } = setup({ value: null });
     expect(input).toHaveDisplayValue("");
