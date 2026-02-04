@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
@@ -87,8 +86,7 @@
 (defn- hydrate-dimensions
   "Hydrate dimensions onto a metric by computing from visible-columns and reconciling with persisted."
   [metric]
-  (let [database-id       (:database_id metric)
-        mp                (lib-be/application-database-metadata-provider database-id)
+  (let [mp                (lib-metric/metadata-provider)
         metric-with-type  (assoc metric :lib/type :metadata/metric)]
     (lib-metric/hydrate-dimensions mp metric-with-type)))
 
