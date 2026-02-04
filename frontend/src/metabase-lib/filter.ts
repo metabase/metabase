@@ -14,7 +14,6 @@ import type {
   ExcludeDateFilterParts,
   ExpressionClause,
   FilterClause,
-  FilterOperator,
   FilterParts,
   Filterable,
   NumberFilterParts,
@@ -36,12 +35,6 @@ export function filterableColumns(
   opts?: FilterableColumnsOpts,
 ): ColumnMetadata[] {
   return ML.filterable_columns(query, stageIndex, opts);
-}
-
-export function filterableColumnOperators(
-  column: ColumnMetadata,
-): FilterOperator[] {
-  return ML.filterable_column_operators(column);
 }
 
 export function filter(

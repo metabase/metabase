@@ -51,16 +51,6 @@ export function isDatePickerExtractionUnit(
   return units.includes(unit);
 }
 
-export function getDatePickerOperators(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): DatePickerOperator[] {
-  return Lib.filterableColumnOperators(column)
-    .map((operator) => Lib.displayInfo(query, stageIndex, operator).shortName)
-    .filter(isDatePickerOperator);
-}
-
 export function getDatePickerUnits(
   query: Lib.Query,
   stageIndex: number,

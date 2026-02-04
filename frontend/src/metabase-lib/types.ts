@@ -304,9 +304,6 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-declare const FilterOperatorSymbol: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperatorSymbol };
-
 export type FilterOperatorName =
   | StringFilterOperator
   | NumberFilterOperator

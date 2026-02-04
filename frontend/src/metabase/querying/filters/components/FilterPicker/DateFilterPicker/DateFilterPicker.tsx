@@ -25,13 +25,12 @@ export function DateFilterPicker({
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
-  const { value, availableOperators, availableUnits, getFilterClause } =
-    useDateFilter({
-      query,
-      stageIndex,
-      column,
-      filter,
-    });
+  const { value, availableUnits, getFilterClause } = useDateFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleChange = (value: DatePickerValue) => {
     onChange(getFilterClause(value), { run: true });
@@ -45,7 +44,6 @@ export function DateFilterPicker({
     <div data-testid="date-filter-picker">
       <DatePicker
         value={value}
-        availableOperators={availableOperators}
         availableUnits={availableUnits}
         renderSubmitButton={({ value, isDisabled }) => {
           if (!withSubmitButton) {

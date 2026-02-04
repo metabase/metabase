@@ -34,10 +34,7 @@ export function useCoordinateFilter({
     [query, stageIndex, filter],
   );
 
-  const availableOptions = useMemo(
-    () => getAvailableOptions(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const availableOptions = useMemo(() => getAvailableOptions(column), [column]);
 
   const availableColumns = useMemo(
     () => getAvailableColumns(query, stageIndex, column),

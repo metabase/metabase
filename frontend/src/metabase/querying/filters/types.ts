@@ -18,6 +18,7 @@ export interface ColumnItem {
 
 export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
   operator: T;
+  displayName: string;
 };
 
 export type DatePickerOperator =
