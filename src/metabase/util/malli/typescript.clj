@@ -13,6 +13,44 @@
 
 (set! *warn-on-reflection* true)
 
+;; Dynamic var to collect registry schema references during type generation.
+;; When bound to an atom, registry refs are recorded so we can generate type aliases.
+(def ^:dynamic *registry-refs* nil)
+
+(defn- record-registry-ref!
+  "Record a registry schema reference for later type alias generation."
+  [schema-keyword]
+  (when *registry-refs*
+    (swap! *registry-refs* conj schema-keyword)))
+
+(defn- registry-type-name
+  "Convert a qualified keyword like ::lib.schema/query to a TypeScript type name like Lib_Schema_Query.
+   Handles special characters that are invalid in TypeScript identifiers."
+  [kw]
+  (let [;; Map special characters to readable names
+        special-char-map {"!" "Bang"
+                          "=" "Eq"
+                          "+" "Plus"
+                          "-" "_"
+                          "*" "Star"
+                          "/" "Slash"
+                          "<" "Lt"
+                          ">" "Gt"
+                          "?" "Q"
+                          "." "_"}
+        munge-char (fn [c]
+                     (get special-char-map (str c) (str c)))
+        munge-part (fn [s]
+                     (let [munged (->> s
+                                       (map munge-char)
+                                       (apply str))]
+                       ;; Capitalize after underscores and at start
+                       (->> (str/split munged #"_")
+                            (remove str/blank?)
+                            (map str/capitalize)
+                            (str/join "_"))))]
+    (str (munge-part (namespace kw)) "_" (munge-part (name kw)))))
+
 (defn normalize-schema [schema]
   (when-not (vector? schema)
     (throw (ex-info "Expected to get schema vector" {:schema schema})))
@@ -211,8 +249,13 @@
 (defmethod -schema->ts :ref
   [schema]
   (let [t (first (mc/children schema))]
-    ;; should just go to default fallback and deref there
-    (schema->ts t)))
+    ;; If this is a qualified keyword (registry ref), output type name and record it
+    (if (and (keyword? t) (namespace t))
+      (do
+        (record-registry-ref! t)
+        (registry-type-name t))
+      ;; Otherwise fall through to resolve the schema
+      (schema->ts t))))
 
 (defmethod -schema->ts :fn
   [schema]
@@ -225,8 +268,11 @@
   [schema]
   (let [t (mc/type schema)]
     (cond
+      ;; For qualified keyword schemas (registry refs), output type name and record it
       (and (keyword? t) (namespace t))
-      (schema->ts (mr/resolve-schema schema))
+      (do
+        (record-registry-ref! t)
+        (registry-type-name t))
 
       (:typescript (mc/properties schema))
       (:typescript (mc/properties schema))
@@ -250,23 +296,36 @@
 
 (def ^:dynamic *seen* #{})
 
-(def schema->ts
+;; Dynamic var to bypass memoization (for type alias expansion)
+(def ^:dynamic *bypass-memoization* false)
+
+(defn- schema->ts-impl
+  "Core implementation of schema->ts (non-memoized)."
+  [schema]
+  (when (*seen* schema)
+    (throw (ex-info "Circular schema reference" {::unsupported true
+                                                 :schema       schema})))
+  (try
+    (binding [*seen* (conj *seen* schema)]
+      (-schema->ts (mc/schema schema)))
+    (catch Exception e
+      (cond
+        (::unsupported (ex-data e))      "unknown"
+        (instance? StackOverflowError e) "unknown"
+        :else                            (throw e)))))
+
+(def ^:private schema->ts-memoized
+  "Memoized version of schema->ts-impl."
+  (memoize schema->ts-impl))
+
+(defn schema->ts
   "Convert a Malli schema to TypeScript type definition.
-   Dispatches on the schema type (keyword)."
-  (memoize
-   (fn
-     [schema]
-     (when (*seen* schema)
-       (throw (ex-info "wtf" {::unsupported true
-                              :schema       schema})))
-     (try
-       (binding [*seen* (conj *seen* schema)]
-         (-schema->ts (mc/schema schema)))
-       (catch Exception e
-         (cond
-           (::unsupported (ex-data e))      "unknown"
-           (instance? StackOverflowError e) "unknown"
-           :else                            (throw e)))))))
+   Dispatches on the schema type (keyword).
+   Uses memoization unless *bypass-memoization* is true."
+  [schema]
+  (if *bypass-memoization*
+    (schema->ts-impl schema)
+    (schema->ts-memoized schema)))
 
 (defn generate-typescript-interface
   "Generate a TypeScript interface definition from a Malli schema."
@@ -448,10 +507,74 @@
      (fn->ts defmeta)
      (const->ts defmeta))))
 
+(defn- registry-schema?
+  "Check if a keyword refers to a valid schema in the Malli registry."
+  [kw]
+  (try
+    (some? (mr/resolve-schema kw))
+    (catch Exception _
+      false)))
+
+(defn- expand-schema-for-alias
+  "Expand a registry schema to its full TypeScript representation for type alias generation.
+   Bypasses memoization and disables ref collection to avoid infinite loops."
+  [schema-kw]
+  (binding [*registry-refs*      nil              ; Don't collect new refs
+            *bypass-memoization* true             ; Bypass cache to get full expansion
+            *seen*               #{}]
+    (try
+      (schema->ts (mr/resolve-schema schema-kw))
+      (catch Exception e
+        (if (::unsupported (ex-data e))
+          "unknown"
+          (throw e))))))
+
+(defn- generate-type-aliases
+  "Generate TypeScript type aliases for a set of registry schema keywords.
+   Iteratively expands to find all transitively referenced schemas."
+  [initial-refs]
+  ;; Filter to only valid registry schemas
+  (let [valid-refs (into #{} (filter registry-schema?) initial-refs)]
+    (loop [pending-refs valid-refs
+           processed    #{}
+           aliases      []]
+      (if (empty? pending-refs)
+        (str/join "\n\n" aliases)
+        (let [current-ref (first pending-refs)
+              remaining   (disj pending-refs current-ref)]
+          (if (processed current-ref)
+            (recur remaining processed aliases)
+            ;; Expand this ref and collect any new refs it discovers
+            (let [new-refs-atom (atom #{})
+                  type-def     (binding [*registry-refs*      new-refs-atom
+                                         *bypass-memoization* true
+                                         *seen*               #{}]
+                                 (try
+                                   (schema->ts (mr/resolve-schema current-ref))
+                                   (catch Exception e
+                                     (log/warn "Failed to expand schema for type alias"
+                                               {:schema current-ref :error (.getMessage e)})
+                                     "unknown")))
+                  type-name    (registry-type-name current-ref)
+                  alias-decl   (str "type " type-name " = " type-def ";")
+                  ;; Filter new refs to only valid registry schemas, exclude self-refs
+                  new-refs     (->> @new-refs-atom
+                                    (remove #(= % current-ref))
+                                    (filter registry-schema?)
+                                    set)]
+              (recur (into remaining (remove processed new-refs))
+                     (conj processed current-ref)
+                     (conj aliases alias-decl)))))))))
+
 (defn- ts-content [defs]
-  (->> (vals defs)
-       (map def->ts)
-       (str/join "\n\n")))
+  (binding [*registry-refs* (atom #{})]
+    (let [fn-defs (->> (vals defs)
+                       (map def->ts)
+                       (str/join "\n\n"))
+          type-aliases (generate-type-aliases @*registry-refs*)]
+      (if (seq type-aliases)
+        (str "// Type aliases for registry schemas\n" type-aliases "\n\n" fn-defs)
+        fn-defs))))
 
 (comment
   (requiring-resolve 'metabase.lib.binning/with-binning-option-type)
@@ -460,21 +583,37 @@
 
   (fn->ts (meta #'metabase.lib.binning.util/resolve-options)))
 
+(defn- try-require-ns
+  "Try to require a namespace on the Clojure side. Returns true if successful, false if the namespace
+   doesn't exist (e.g., .cljs only files). Logs a debug message on failure."
+  [ns]
+  (try
+    (require ns)
+    true
+    (catch java.io.FileNotFoundException _
+      (log/debug "Skipping cljs-only namespace" {:ns ns})
+      false)))
+
 (defn produce-dts
   {:shadow.build/stage :flush}
   [state]
-  (let [nses  (get-in state [:compiler-env ::ana/namespaces])
-        total (count nses)]
-    (doseq [[i [ns {:keys [defs]}]] (map-indexed vector nses)
-            :let                    [defs (m/filter-vals :schema defs)]]
-      (log/info "Compiling TypeScript defs" {:ns ns :number (str (inc i) "/" total) :defs (count defs)})
-      (when (seq defs)
-        (let [t (u/start-timer)]
-          (require ns)
-          (log/debug "Loading ns completed" {:ns ns :time (u/since-ms t)}))
-        (let [t     (u/start-timer)
-              fname (comp/munge (str ns))
-              f     (b.data/output-file state (str fname ".d.ts"))]
-          (spit f (ts-content defs))
-          (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))))
+  (let [nses       (get-in state [:compiler-env ::ana/namespaces])
+        total      (count nses)
+        nses-defs  (keep (fn [[ns {:keys [defs]}]]
+                           (let [defs (m/filter-vals :schema defs)]
+                             (when (seq defs)
+                               [ns defs])))
+                         nses)
+        defs-count (count nses-defs)]
+    (log/info "Compiling TypeScript defs" {:namespaces defs-count :total total})
+    (doseq [[ns defs] nses-defs]
+      (let [t (u/start-timer)]
+        (try-require-ns ns)
+        (log/debug "Loading ns completed" {:ns ns :time (u/since-ms t)}))
+      (let [t     (u/start-timer)
+            fname (comp/munge (str ns))
+            f     (b.data/output-file state (str fname ".d.ts"))]
+        (spit f (ts-content defs))
+        (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))
+    (log/info "TypeScript defs compilation complete" {:namespaces defs-count}))
   state)
