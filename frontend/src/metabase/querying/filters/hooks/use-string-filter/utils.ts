@@ -56,12 +56,9 @@ export function getDefaultOperator(
   if (
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
+    Lib.isStringLike(column) ||
     fieldValuesInfo.hasFieldValues !== "none"
   ) {
-    return "=";
-  }
-
-  if (Lib.isStringLike(column)) {
     return "=";
   }
 
