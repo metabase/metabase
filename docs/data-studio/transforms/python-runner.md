@@ -7,7 +7,7 @@ summary: Configure self-hosted Python execution environment to run Python transf
 
 > Self-hosted Python transforms require self-hosted Pro or Enterprise plan with the Transforms add-on.
 
-To run Python transforms from a self-hosted Metabase, you'll need to configure a separate self-hosted execution environment. If you're using Metabase Cloud, you only need to add the Transforms add-on.
+To run Python transforms from a self-hosted Metabase, you'll need to configure a separate self-hosted execution environment. If you're using Metabase Cloud, you'll need to buy the Transforms add-on.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ To run Python transforms from a self-hosted Metabase, you'll need to configure a
 
 ## Quickstart
 
-The simplest way to try the Python Runner is using its built-in S3 server (not for production):
+The simplest way to try the Python Runner is to use the built-in S3 server (not for production):
 
 ```bash
 # Create a Docker network for the containers to communicate
@@ -110,11 +110,11 @@ These settings can also be configured in the Metabase UI at **Admin Settings** >
 
 ---
 
-# Using Docker Compose
+## Using Docker Compose
 
 Docker Compose simplifies managing multiple containers. Below are example configurations for different scenarios.
 
-## Simple setup with LocalStack
+### Simple setup with LocalStack
 
 For simple setup and local testing, you can use LocalStack to simulate S3:
 
@@ -172,7 +172,7 @@ Then run
 docker compose up -d
 ```
 
-## Production setup
+### Production setup
 
 For production, use an external S3-compatible storage service:
 

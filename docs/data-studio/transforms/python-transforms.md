@@ -30,7 +30,7 @@ Only one Python transform can run in the execution environment at once.
 
 To execute Python transforms, you'll need a _Python runner_ - a dedicated environment for running Python code.
 
-If you're on Metabase Cloud, all you need it to add the **Transforms add-on**, and you'll be good to go.
+If you're on Metabase Cloud, get the **Transforms add-on**, and you're good to go.
 
 If you're self-hosting Metabase, you'll need to set up a self-hosted Python runner, see [Python runner](python-runner.md).
 
