@@ -1699,18 +1699,17 @@ describe("scenarios > data studio > workspaces", () => {
         cy.button("Save").click();
       });
 
-      // TODO (Kamil 2026-02-02) -- the tooltip assertions are flaky https://linear.app/metabase/issue/GDGT-1620
-      // cy.log("Verify Edit transform button is disabled");
-      // cy.findByRole("button", { name: /Edit/ }).click();
-      // cy.wait("@checkoutWorkspace");
-      // H.popover().contains("New workspace").should("be.disabled");
-      // H.popover().contains("New workspace").realHover();
-      // H.tooltip().should(
-      //   "contain.text",
-      //   "Transforms referencing other questions cannot be edited in a workspace.",
-      // );
-      // cy.log("Close tooltip");
-      // cy.get("body").click();
+      cy.log("Verify Edit transform button is disabled");
+      cy.findByRole("button", { name: /Edit/ }).click();
+      cy.wait("@checkoutWorkspace");
+      H.popover().contains("New workspace").should("be.disabled");
+      H.popover().contains("New workspace").realHover();
+      H.tooltip().should(
+        "contain.text",
+        "Transforms referencing other questions cannot be edited in a workspace.",
+      );
+      cy.log("Close tooltip");
+      cy.get("body").click();
 
       cy.log("Edit transform to remove model reference");
       Transforms.clickEditDefinition();
