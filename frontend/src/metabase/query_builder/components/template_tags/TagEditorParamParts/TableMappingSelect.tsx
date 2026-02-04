@@ -39,6 +39,7 @@ export function TableMappingSelect({
         selectedTableId={tableId}
         setSourceTableFn={onChange}
         isInitiallyOpen={tableId == null}
+        isMantine
       />
     </InputContainer>
   );
