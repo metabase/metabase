@@ -351,7 +351,7 @@
 
 (defmulti ^:private filter-clause->intervals
   "Generate query intervals as appropriate from a `filter-clause` containing a temporal `:field`. `:intervals` are
-  specified seperately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
+  specified separately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
   returns a sequence of min/max datetime tuples; like `[#t 2019-01-01 #t 2019-10-01]`; for irrelevant filter
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
@@ -1042,7 +1042,7 @@
       [:field (id :guard pos-int?) _opts]
       (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
 
-;; Handle order by timstamp field
+;; Handle order by timestamp field
 (defmethod handle-order-by ::grouped-timeseries
   [_ {[[direction field]] :order-by} druid-query]
   (let [can-sort? (if (temporal-field? field)
@@ -1089,7 +1089,7 @@
    (fn
      ([druid-query]
       ;; If you specify nil or empty `:columns` Druid will just return all of the ones available. In cases where
-      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column intead.
+      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column instead.
       ;; Druid happily returns `nil` for the column in every row, and it will get auto-filtered out of the results
       ;; so the User will never see it.
       (update-in druid-query [:query :columns] #(or (seq %) [:___dummy])))

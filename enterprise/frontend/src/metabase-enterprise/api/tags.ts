@@ -9,25 +9,31 @@ import {
   provideTableTags,
   provideUserTags,
 } from "metabase/api/tags";
-import type {
-  BulkTableInfo,
-  BulkTableSelectionInfo,
-  CardDependencyNode,
-  DashboardDependencyNode,
-  DependencyGraph,
-  DependencyNode,
-  DocumentDependencyNode,
-  PythonLibrary,
-  SandboxDependencyNode,
-  SegmentDependencyNode,
-  SnippetDependencyNode,
-  SupportAccessGrant,
-  TableDependencyNode,
-  Transform,
-  TransformDependencyNode,
-  TransformJob,
-  TransformRun,
-  TransformTag,
+import {
+  type BulkTableInfo,
+  type BulkTableSelectionInfo,
+  type CardDependencyNode,
+  DEPENDENCY_TYPES,
+  type DashboardDependencyNode,
+  type DependencyGraph,
+  type DependencyNode,
+  type DocumentDependencyNode,
+  type ExternalTransform,
+  type MeasureDependencyNode,
+  type PythonLibrary,
+  type SandboxDependencyNode,
+  type SegmentDependencyNode,
+  type SnippetDependencyNode,
+  type SupportAccessGrant,
+  type TableDependencyNode,
+  type Transform,
+  type TransformDependencyNode,
+  type TransformJob,
+  type TransformRun,
+  type TransformTag,
+  type Workspace,
+  type WorkspaceAllowedDatabase,
+  type WorkspaceItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -42,13 +48,19 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "workspace-transforms",
+  "workspace-transform",
+  "workspace-tables",
+  "external-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
   "collection-is-dirty",
   "remote-sync-branches",
   "remote-sync-current-task",
+  "remote-sync-has-remote-changes",
   "python-transform-library",
+  "workspace",
   "support-access-grant",
   "support-access-grant-current",
   "library-collection",
@@ -80,6 +92,18 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
+}
+
+export function provideWorkspacesTags(
+  workspaces: Workspace[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
+}
+
+export function provideWorkspaceTags(
+  workspace: Workspace | WorkspaceItem,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("workspace", workspace.id)];
 }
 
 export function provideTransformTags(
@@ -122,6 +146,21 @@ export function provideTransformTagListTags(
   tags: TransformTag[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideExternalTransformTags(
+  transform: ExternalTransform,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("external-transform", transform.id)];
+}
+
+export function provideExternalTransformListTags(
+  transforms: ExternalTransform[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("external-transform"),
+    ...transforms.flatMap(provideExternalTransformTags),
+  ];
 }
 
 export function provideTransformJobTags(
@@ -235,6 +274,16 @@ function provideSegmentDependencyNodeTags(
   ];
 }
 
+function provideMeasureDependencyNodeTags(
+  node: MeasureDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("measure", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -255,15 +304,16 @@ export function provideDependencyNodeTags(
       return provideSandboxDependencyNodeTags(node);
     case "segment":
       return provideSegmentDependencyNodeTags(node);
+    case "measure":
+      return provideMeasureDependencyNodeTags(node);
+    case "workspace-transform":
+      return [idTag("workspace-transform", node.id)];
   }
 }
 
 export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
   return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
+    ...DEPENDENCY_TYPES.map(listTag),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }
@@ -305,5 +355,14 @@ export function provideBulkTableSelectionInfoTags({
     ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
     ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
     ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideWorkspaceAllowedDatabaseTags(
+  databases: WorkspaceAllowedDatabase[],
+) {
+  return [
+    listTag("database"),
+    ...databases.map((db) => idTag("database", db.id)),
   ];
 }

@@ -1,16 +1,17 @@
-import { useMemo } from "react";
+import { useFormikContext } from "formik";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
+import _ from "underscore";
+import type * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
-  useListDatabaseSchemasQuery,
+  useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -18,46 +19,43 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { slugify } from "metabase/lib/formatting/url";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
-import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import {
+  QueryComplexityWarning,
+  useQueryComplexityChecks,
+} from "metabase-enterprise/transforms/components/QueryComplexityWarning";
 import type {
-  CreateTransformRequest,
+  QueryComplexity,
+  SchemaName,
   Transform,
   TransformSource,
+  WorkspaceTransform,
 } from "metabase-types/api";
 
-import { trackTransformCreated } from "../../../analytics";
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
 import { TargetNameInput } from "./TargetNameInput";
+import type { NewTransformValues } from "./form";
+import { useCreateTransform } from "./hooks";
 
-function getValidationSchema() {
-  return Yup.object({
-    name: Yup.string().required(Errors.required),
-    targetName: Yup.string().required(Errors.required),
-    targetSchema: Yup.string().nullable().defined(),
-    incremental: Yup.boolean().required(),
-    // For native queries, use checkpointFilter (plain string)
-    checkpointFilter: Yup.string().nullable(),
-    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
-    checkpointFilterUniqueKey: Yup.string().nullable(),
-    sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-    targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
-  });
-}
+export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
 
-export type NewTransformValues = Yup.InferType<
-  ReturnType<typeof getValidationSchema>
->;
+type SchemasFilter = (schema: SchemaName) => boolean;
 
 type CreateTransformModalProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
+  onCreate?: (transform: Transform) => void;
   onClose: () => void;
+  schemasFilter?: SchemasFilter;
+  validationSchemaExtension?: ValidationSchemaExtension;
+  handleSubmit?: (
+    values: NewTransformValues,
+  ) => Promise<Transform | WorkspaceTransform>;
+  targetDescription?: string;
+  validateOnMount?: boolean;
+  showIncrementalSettings?: boolean;
 };
 
 export function CreateTransformModal({
@@ -65,33 +63,13 @@ export function CreateTransformModal({
   defaultValues,
   onCreate,
   onClose,
+  schemasFilter,
+  validationSchemaExtension,
+  handleSubmit,
+  targetDescription,
+  validateOnMount,
+  showIncrementalSettings,
 }: CreateTransformModalProps) {
-  return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <CreateTransformForm
-        source={source}
-        defaultValues={defaultValues}
-        onCreate={onCreate}
-        onClose={onClose}
-      />
-    </Modal>
-  );
-}
-
-type CreateTransformFormProps = {
-  source: TransformSource;
-  defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
-  onClose: () => void;
-};
-
-function CreateTransformForm({
-  source,
-  defaultValues,
-  onCreate,
-  onClose,
-}: CreateTransformFormProps) {
-  const [sendToast] = useToast();
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
@@ -102,161 +80,142 @@ function CreateTransformForm({
   } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
 
   const {
-    data: schemas = [],
+    data: fetchedSchemas = [],
     isLoading: isSchemasLoading,
     error: schemasError,
-  } = useListDatabaseSchemasQuery(
-    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
-  );
+  } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
+  const schemas = useMemo(() => {
+    return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);
+  }, [schemasFilter, fetchedSchemas]);
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
 
-  const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, defaultValues),
-    [schemas, defaultValues],
-  );
+  const {
+    initialValues,
+    validationSchema: defaultSchema,
+    createTransform,
+  } = useCreateTransform(schemas, defaultValues);
 
-  const validationSchema = useMemo(() => getValidationSchema(), []);
+  const validationSchema = useMemo(
+    () =>
+      validationSchemaExtension
+        ? defaultSchema.shape(validationSchemaExtension)
+        : defaultSchema,
+    [validationSchemaExtension, defaultSchema],
+  );
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const handleSubmit = async (values: NewTransformValues) => {
+  const defaultHandleSubmit = async (values: NewTransformValues) => {
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    const request = getCreateRequest(source, values, databaseId);
-    try {
-      const transform = await createTransform(request).unwrap();
-      trackTransformCreated({ transformId: transform.id });
-      onCreate(transform);
-    } catch (error) {
-      sendToast({
-        message: getErrorMessage(error, t`Failed to create transform`),
-        icon: "warning",
-      });
+    const transform = await createTransform(databaseId, source, values);
+    onCreate?.(transform);
+  };
+
+  return (
+    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit || defaultHandleSubmit}
+        validateOnMount={validateOnMount}
+      >
+        <CreateTransformForm
+          source={source}
+          supportsSchemas={supportsSchemas}
+          schemas={schemas}
+          onClose={onClose}
+          targetDescription={targetDescription}
+          showIncrementalSettings={showIncrementalSettings}
+        />
+      </FormProvider>
+    </Modal>
+  );
+}
+
+type CreateTransformFormFieldsProps = {
+  source: TransformSource;
+  supportsSchemas: boolean | undefined;
+  schemas: string[];
+  onClose: () => void;
+  targetDescription?: string;
+  showIncrementalSettings?: boolean;
+};
+
+function CreateTransformForm({
+  source,
+  supportsSchemas,
+  schemas,
+  onClose,
+  targetDescription,
+  showIncrementalSettings = true,
+}: CreateTransformFormFieldsProps) {
+  const { values, setFieldValue } = useFormikContext<NewTransformValues>();
+  const { checkComplexity } = useQueryComplexityChecks();
+  const [complexity, setComplexity] = useState<QueryComplexity | undefined>();
+
+  const handleIncrementalChange = async (value: boolean) => {
+    setFieldValue("incremental", value);
+    if (value) {
+      const complexity = await checkComplexity(source);
+      setComplexity(complexity);
+    } else {
+      setComplexity(undefined);
     }
   };
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      validationSchema={validationSchema}
-      onSubmit={handleSubmit}
-    >
-      <Form>
-        <Stack gap="lg" mt="sm">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`My Great Transform`}
-            data-autofocus
+    <Form>
+      <Stack gap="lg" mt="sm">
+        <FormTextInput
+          name="name"
+          label={t`Name`}
+          placeholder={t`My Great Transform`}
+          data-autofocus
+        />
+        {supportsSchemas && (
+          <SchemaFormSelect
+            name="targetSchema"
+            label={t`Schema`}
+            data={schemas}
           />
-          {supportsSchemas && (
-            <SchemaFormSelect
-              name="targetSchema"
-              label={t`Schema`}
-              data={schemas}
-            />
-          )}
-          <TargetNameInput />
-          <IncrementalTransformSettings source={source} />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
-            <FormSubmitButton label={t`Save`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
-    </FormProvider>
+        )}
+        <TargetNameInput description={targetDescription} />
+        <FormCollectionPicker
+          name="collection_id"
+          title={t`Collection`}
+          collectionPickerModalProps={{ namespaces: ["transforms"] }}
+          style={{ marginBottom: 0 }}
+        />
+        {showIncrementalSettings && (
+          <IncrementalTransformSettings
+            source={source}
+            incremental={values.incremental}
+            onIncrementalChange={handleIncrementalChange}
+          />
+        )}
+        {complexity && (
+          <QueryComplexityWarning complexity={complexity} variant="standout" />
+        )}
+        <Group>
+          <Box flex={1}>
+            <FormErrorMessage />
+          </Box>
+          <Button onClick={onClose}>{t`Back`}</Button>
+          <FormSubmitButton
+            label={complexity ? t`Save anyway` : t`Save`}
+            variant="filled"
+            color={complexity ? "saturated-red" : undefined}
+          />
+        </Group>
+      </Stack>
+    </Form>
   );
-}
-
-function getInitialValues(
-  schemas: string[],
-  defaultValues: Partial<NewTransformValues>,
-): NewTransformValues {
-  return {
-    name: "",
-    targetSchema: schemas?.[0] || null,
-    ...defaultValues,
-    targetName: defaultValues.targetName
-      ? defaultValues.targetName
-      : defaultValues.name
-        ? slugify(defaultValues.name)
-        : "",
-    checkpointFilter: null,
-    checkpointFilterUniqueKey: null,
-    incremental: false,
-    sourceStrategy: "checkpoint",
-    targetStrategy: "append",
-  };
-}
-
-function getCreateRequest(
-  source: TransformSource,
-  {
-    name,
-    targetName,
-    targetSchema,
-    incremental,
-    checkpointFilter,
-    checkpointFilterUniqueKey,
-    sourceStrategy,
-    targetStrategy,
-  }: NewTransformValues,
-  databaseId: number,
-): CreateTransformRequest {
-  // Build the source with incremental strategy if enabled
-  let transformSource: TransformSource;
-  if (incremental) {
-    // For native queries, use checkpoint-filter (plain string)
-    // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
-    const strategyFields = checkpointFilter
-      ? { "checkpoint-filter": checkpointFilter }
-      : checkpointFilterUniqueKey
-        ? { "checkpoint-filter-unique-key": checkpointFilterUniqueKey }
-        : {};
-
-    transformSource = {
-      ...source,
-      "source-incremental-strategy": {
-        type: sourceStrategy,
-        ...strategyFields,
-      },
-    };
-  } else {
-    transformSource = source;
-  }
-
-  // Build the target with incremental strategy if enabled
-  const transformTarget: CreateTransformRequest["target"] = incremental
-    ? {
-        type: "table-incremental",
-        name: targetName,
-        schema: targetSchema,
-        database: databaseId,
-        "target-incremental-strategy": {
-          type: targetStrategy,
-        },
-      }
-    : {
-        type: "table",
-        name: targetName,
-        schema: targetSchema ?? null,
-        database: databaseId,
-      };
-
-  return {
-    name,
-    source: transformSource,
-    target: transformTarget,
-  };
 }

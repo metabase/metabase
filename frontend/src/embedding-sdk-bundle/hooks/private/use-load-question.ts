@@ -20,6 +20,7 @@ import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-stat
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
@@ -59,7 +60,7 @@ export interface LoadQuestionHookResult {
 
 type UseLoadQuestionParams = LoadSdkQuestionParams & {
   isGuestEmbed: boolean;
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
 };
 
 export function useLoadQuestion({

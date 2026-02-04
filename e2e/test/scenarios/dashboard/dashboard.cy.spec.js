@@ -93,9 +93,7 @@ describe("scenarios > dashboard", () => {
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Databases").click();
-        cy.findByPlaceholderText("Search this database or everywhere…").type(
-          "Pro",
-        );
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
@@ -125,62 +123,6 @@ describe("scenarios > dashboard", () => {
         .and("not.contain", newQuestionName);
     });
 
-    it(
-      "should create new dashboard inside a collection created on the go",
-      // Increased height to avoid scrolling when opening a collection picker
-      { viewportHeight: 1000 },
-      () => {
-        cy.intercept("POST", "api/collection").as("createCollection");
-        cy.visit("/");
-        cy.findByTestId("home-page").should(
-          "contain",
-          "Try out these sample x-rays to see what Metabase can do.",
-        );
-        H.closeNavigationSidebar();
-        H.appBar().findByText("New").click();
-        H.popover().findByText("Dashboard").should("be.visible").click();
-        const NEW_DASHBOARD = "Foo";
-        cy.findByTestId("new-dashboard-modal").then((modal) => {
-          cy.findByRole("heading", { name: "New dashboard" });
-          cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
-          cy.findByTestId("collection-picker-button")
-            .should("have.text", "Our analytics")
-            .click();
-        });
-
-        H.entityPickerModal()
-          .findByRole("tab", { name: /Collections/ })
-          .click();
-        H.entityPickerModal()
-          .findByText("New collection")
-          .click({ force: true });
-        const NEW_COLLECTION = "Bar";
-        H.collectionOnTheGoModal().within(() => {
-          cy.findByText("Create a new collection");
-          cy.findByPlaceholderText(/My new collection/)
-            .type(NEW_COLLECTION)
-            .blur();
-          cy.findByText("Create").click();
-          cy.wait("@createCollection");
-        });
-        H.entityPickerModal().within(() => {
-          cy.findByText(NEW_COLLECTION).click();
-          cy.button("Select").click();
-        });
-        H.modal().within(() => {
-          cy.findByText("New dashboard");
-          cy.findByTestId("collection-picker-button").should(
-            "have.text",
-            NEW_COLLECTION,
-          );
-          cy.button("Create").click();
-        });
-
-        H.saveDashboard({ awaitRequest: false });
-        cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
-      },
-    );
-
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
 
@@ -192,9 +134,9 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByTestId("dashboard-and-collection-picker-button").click();
       });
-      H.entityPickerModal().within(() => {
-        cy.findByText("First collection").click();
-        cy.findByText("Select this collection").click();
+      H.pickEntity({
+        path: ["Our analytics", "First collection"],
+        select: true,
       });
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
@@ -205,9 +147,6 @@ describe("scenarios > dashboard", () => {
 
       H.checkSavedToCollectionQuestionToast(true);
 
-      H.entityPickerModal()
-        .findByRole("tab", { name: /Dashboards/ })
-        .click();
       H.entityPickerModal().findByText("New dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
@@ -313,7 +252,6 @@ describe("scenarios > dashboard", () => {
         H.openDashboardMenu();
         H.popover().findByText("Move").click();
         H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -332,7 +270,6 @@ describe("scenarios > dashboard", () => {
         H.openDashboardMenu();
         H.popover().findByText("Move").click();
         H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
@@ -806,7 +743,7 @@ describe("scenarios > dashboard", () => {
     H.saveDashboard();
 
     cy.log("Assert that the selected filter is present in the dashboard");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Location", { exact: false }).should("be.visible");
   });
 
@@ -837,14 +774,14 @@ describe("scenarios > dashboard", () => {
 
     cy.visit("/collection/root");
     // enter newly created dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("dash:11007").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
     // add previously created question to it
     cy.findByLabelText("Edit dashboard").click();
     H.openQuestionsSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
     H.setFilter("Date picker", "All Options");
@@ -869,9 +806,9 @@ describe("scenarios > dashboard", () => {
     // and connect it to the card
     H.selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
@@ -975,9 +912,9 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("COUNT(*)").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update a dashboard filter").click();
 
     checkOptionsForFilter("ID");
@@ -1100,9 +1037,9 @@ describe("scenarios > dashboard", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.wait("@queryMetadata");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 
@@ -1125,7 +1062,7 @@ describe("scenarios > dashboard", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
     assertScrollBarExists();
 
@@ -1831,31 +1768,31 @@ describe("scenarios > dashboard > permissions", () => {
   it("should let admins view all cards in a dashboard", () => {
     H.visitDashboard(dashboardId);
     // Admin can see both questions
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
     H.visitDashboard(dashboardId);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
     H.visitDashboard(dashboardId);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
@@ -1976,7 +1913,7 @@ describe("scenarios > dashboard > entity id support", () => {
 });
 
 function validateIFrame(src, index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.getDashboardCards()
     .get("iframe")
     .eq(index)

@@ -29,6 +29,7 @@
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -79,7 +80,7 @@
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
 ;;; annoying
 (mr/def ::unique-key
-  "Unique indentifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
+  "Unique identifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
   [:tuple
    #_method ::method
    #_route  string?
@@ -635,11 +636,18 @@
 
 (mr/def ::ns-endpoints [:map-of ::unique-key ::info])
 
+(mr/def ::route-metadata
+  "Metadata declared on a route via defendpoint, e.g. `{:access :workspace}`."
+  :map)
+
 (mr/def ::handler-map
-  [:map-of ::method [:sequential [:tuple (ms/InstanceOfClass clout.core.CompiledRoute) ::handler]]])
+  [:map-of ::method [:sequential [:tuple
+                                  (ms/InstanceOfClass clout.core.CompiledRoute)
+                                  ::handler
+                                  [:maybe ::route-metadata]]]])
 
 (mu/defn- ns-handler-map :- ::handler-map
-  "Build a map of method => [[clout-route handler]+] used to power the combined ns handler built
+  "Build a map of method => [[clout-route handler metadata]+] used to power the combined ns handler built
   by [[build-ns-handler]]."
   [endpoints :- ::ns-endpoints]
   (->> endpoints
@@ -649,7 +657,8 @@
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
                                                    (get-in route [:form :route :regexes] {}))
-                              (:handler route)])
+                              (:handler route)
+                              (get-in route [:form :metadata])])
                            routes)))))
 
 (defn- decode-route-params [route-params]
@@ -660,7 +669,7 @@
 
     [request' handler]
 
-  (Request is updated to include parsed Clout parameters.)"
+  (Request is updated to include parsed Clout parameters and route metadata.)"
   [handler-map :- ::handler-map
    request      :- ::request]
   (let [request-method (:request-method request)
@@ -669,9 +678,11 @@
         request        (cond-> request
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler]]
+    (some (fn [[route handler metadata]]
             (when-let [route-params (clout/route-matches route request)]
-              [(assoc request :route-params (decode-route-params route-params))
+              [(-> request
+                   (assoc :route-params (decode-route-params route-params))
+                   (assoc :route-metadata metadata))
                handler]))
           handlers)))
 
@@ -708,7 +719,16 @@
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
-         (-> metadata update-info rebuild-handler))))))
+         (-> metadata update-info rebuild-handler))))
+    ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
+    ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
+    (when (config/config-bool :mb-enable-openapi-auto-regen)
+      (try
+        (events/publish-event! :event/api-handler-update
+                               {:api.docs/request-rebuild
+                                (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
+        (catch Throwable e
+          (log/debug e "Failed to publish api-handler-update event"))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

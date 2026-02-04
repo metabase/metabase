@@ -36,6 +36,7 @@ export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
 export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -198,6 +199,10 @@ type CommonAggregation =
 
 export type MetricAgg = ["metric", CardId];
 
+export type MeasureAgg =
+  | ["measure", { "display-name"?: string }, CardId]
+  | ["measure", CardId];
+
 type InlineExpressionAgg = [
   "aggregation-options",
   CommonAggregation,
@@ -207,7 +212,11 @@ type InlineExpressionAgg = [
 /**
  * An aggregation MBQL clause
  */
-export type Aggregation = CommonAggregation | MetricAgg | InlineExpressionAgg;
+export type Aggregation =
+  | CommonAggregation
+  | MetricAgg
+  | MeasureAgg
+  | InlineExpressionAgg;
 
 type BreakoutClause = Breakout[];
 export type Breakout = ConcreteFieldReference;

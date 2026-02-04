@@ -5,9 +5,9 @@ import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
+import { Button } from "metabase/common/components/Button";
 import { FormFooter } from "metabase/common/components/FormFooter";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
 import { Dashboards } from "metabase/entities/dashboards";
 import {
   Form,
@@ -134,7 +134,6 @@ function CopyDashboardForm({
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
           entityType="dashboard"
-          savingModel="dashboard"
         />
 
         {!hideShallowCopy && (

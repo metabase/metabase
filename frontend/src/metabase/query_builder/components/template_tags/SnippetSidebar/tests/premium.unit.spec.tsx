@@ -11,7 +11,7 @@ import { setup as baseSetup } from "./setup";
 
 async function setup(options: SetupOpts = {}) {
   await baseSetup({
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["snippets"],
     tokenFeatures: { snippet_collections: true },
     ...options,
   });

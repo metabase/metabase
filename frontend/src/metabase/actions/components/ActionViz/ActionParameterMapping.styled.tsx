@@ -12,7 +12,7 @@ interface ParameterFormLabelProps {
 }
 
 export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
-  color: ${(props) => (props.error ? color("error") : color("text-medium"))};
+  color: ${(props) => (props.error ? color("error") : color("text-secondary"))};
   font-size: 0.75rem;
   display: flex;
   gap: var(--mantine-spacing-sm);
@@ -22,8 +22,8 @@ export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
 `;
 
 export const ParameterFormBadge = styled.span`
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-medium);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-tertiary);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border-radius: var(--mantine-spacing-xs);
 `;

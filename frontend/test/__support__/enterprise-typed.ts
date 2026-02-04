@@ -51,9 +51,10 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   google_drive: "metabase-enterprise/google_drive",
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
+  tenants: "metabase-enterprise/tenants",
 
   // Embedding SDK specific plugins
-  sdk_subscriptions: "embedding-sdk-ee/subscriptions",
+  sdk_notifications: "embedding-sdk-ee/notifications",
 };
 
 export type ENTERPRISE_PLUGIN_NAME =

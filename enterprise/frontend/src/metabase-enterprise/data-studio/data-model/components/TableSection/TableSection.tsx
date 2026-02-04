@@ -6,9 +6,9 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
@@ -34,8 +34,10 @@ import {
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
+import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
@@ -47,6 +49,7 @@ interface Props {
   table: Table;
   activeFieldId?: FieldId;
   activeTab: DataStudioTableMetadataTab;
+  canPublish: boolean;
   hasLibrary: boolean;
   onSyncOptionsClick: () => void;
 }
@@ -57,6 +60,7 @@ const TableSectionBase = ({
   table,
   activeFieldId,
   activeTab,
+  canPublish,
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
@@ -69,6 +73,7 @@ const TableSectionBase = ({
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -198,7 +203,7 @@ const TableSectionBase = ({
 
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box className={S.header} px="lg" mt="lg">
+      <Box className={S.header}>
         <NameDescriptionInput
           description={table.description ?? ""}
           descriptionPlaceholder={t`Give this table a description`}
@@ -211,8 +216,8 @@ const TableSectionBase = ({
         />
       </Box>
 
-      <Box px="lg">
-        <Group justify="stretch" gap="sm">
+      <Group justify="stretch" gap="sm">
+        {canPublish && !remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"
@@ -223,51 +228,43 @@ const TableSectionBase = ({
           >
             {table.is_published ? t`Unpublish` : t`Publish`}
           </Button>
+        )}
+        <Button
+          flex="1"
+          leftSection={<Icon name="settings" />}
+          onClick={onSyncOptionsClick}
+        >
+          {t`Sync settings`}
+        </Button>
+        <Tooltip label={t`Dependency graph`}>
           <Button
-            flex="1"
-            leftSection={<Icon name="settings" />}
-            onClick={onSyncOptionsClick}
-          >
-            {t`Sync settings`}
-          </Button>
-          <Tooltip label={t`Dependency graph`}>
-            <Button
-              component={ForwardRefLink}
-              to={dependencyGraph({
-                entry: { id: Number(table.id), type: "table" },
-              })}
-              p="sm"
-              leftSection={<Icon name="network" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
-              aria-label={t`Dependency graph`}
-            />
-          </Tooltip>
-          <Box style={{ flexGrow: 0, width: 40 }}>
-            <TableLink table={table} />
-          </Box>
-        </Group>
-      </Box>
-
-      <Box px="lg">
-        <TableAttributesEditSingle table={table} />
-      </Box>
-
-      <Box px="lg">
-        <TableSectionGroup title={t`Metadata`}>
-          <TableMetadata table={table} />
-        </TableSectionGroup>
-      </Box>
-
-      {table.is_published && (
-        <Box px="lg">
-          <TableCollection table={table} />
+            component={ForwardRefLink}
+            to={dependencyGraph({
+              entry: { id: Number(table.id), type: "table" },
+            })}
+            p="sm"
+            leftSection={<Icon name="dependencies" />}
+            style={{
+              flexGrow: 0,
+              width: 40,
+            }}
+            aria-label={t`Dependency graph`}
+          />
+        </Tooltip>
+        <Box style={{ flexGrow: 0, width: 40 }}>
+          <TableLink table={table} />
         </Box>
-      )}
+      </Group>
 
-      <Box px="lg">
+      <TableAttributesEditSingle table={table} />
+
+      <TableSectionGroup title={t`Metadata`}>
+        <TableMetadata table={table} />
+      </TableSectionGroup>
+
+      {table.is_published && <TableCollection table={table} />}
+
+      <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
             <Tabs.Tab
@@ -278,6 +275,10 @@ const TableSectionBase = ({
               value="segments"
               leftSection={<Icon name="segment2" />}
             >{t`Segments`}</Tabs.Tab>
+            <Tabs.Tab
+              value="measures"
+              leftSection={<Icon name="sum" />}
+            >{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="field">
@@ -312,7 +313,11 @@ const TableSectionBase = ({
               </Group>
 
               {!hasFields && (
-                <EmptyState message={t`This table has no fields`} />
+                <EmptyState
+                  className={S.EmptyState}
+                  message={t`This table has no fields`}
+                  spacing="sm"
+                />
               )}
 
               {hasFields && (
@@ -350,8 +355,13 @@ const TableSectionBase = ({
           <Tabs.Panel value="segments">
             <SegmentList table={table} />
           </Tabs.Panel>
+
+          <Tabs.Panel value="measures">
+            <MeasureList table={table} />
+          </Tabs.Panel>
         </Tabs>
       </Box>
+
       <CreateLibraryModal
         title={t`First, let's create your Library`}
         explanatorySentence={t`This is where published tables will go.`}

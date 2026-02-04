@@ -28,8 +28,8 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       to: Urls.transformRun(id),
     },
     {
-      label: t`Target`,
-      to: Urls.transformTarget(id),
+      label: t`Settings`,
+      to: Urls.transformSettings(id),
     },
   ];
 

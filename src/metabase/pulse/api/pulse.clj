@@ -18,6 +18,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -125,7 +126,18 @@
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
-    (t2/hydrate pulses :can_write)))
+    (mapv
+     (fn [pulse]
+       (update pulse :cards
+               (fn [cards]
+                 (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
+                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                                     api/*current-user-id*)
+                                                                :no :none
+                                                                :ten-thousand-rows :limited
+                                                                :one-million-rows :full
+                                                                :full :full))) cards))))
+     (t2/hydrate pulses :can_write))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -148,7 +160,8 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
+       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+   request]
   (perms/check-has-application-permission :subscription false)
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
@@ -156,7 +169,8 @@
                     :collection_id       collection-id
                     :collection_position collection-position
                     :dashboard_id        dashboard-id
-                    :parameters          parameters}]
+                    :parameters          parameters
+                    :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}]
     (api/create-check :model/Pulse (assoc pulse-data :cards cards))
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
@@ -428,9 +442,11 @@
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
+                                         [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+   request]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
@@ -440,8 +456,12 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (notification/with-default-options {:notification/sync? true}
-    (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
+  (let [pulse (-> body
+                  (assoc :creator_id api/*current-user-id*)
+                  (assoc :disable_links
+                         (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)))]
+    (notification/with-default-options {:notification/sync? true}
+      (pulse.send/send-pulse! pulse)))
   {:ok true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
@@ -32,15 +32,15 @@ import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
 export interface SetupOpts {
   card?: Card;
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
   user?: Partial<User>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
   user,
-  hasEnterprisePlugins = false,
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -62,11 +62,11 @@ export const setup = async ({
   const question = checkNotNull(getQuestion(state));
   const onSave = jest.fn();
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
-  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
+  setupTokenStatusEndpoint({ valid: enterprisePlugins.length > 0 });
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

@@ -1,14 +1,19 @@
 import { useMemo } from "react";
 
 import { FormSelect } from "metabase/forms";
-import type { SelectOption } from "metabase/ui";
+import type {
+  DataAttributes,
+  InputDescriptionProps,
+  SelectOption,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 type KeysetColumnSelectProps = {
   name: string;
   label: string;
   placeholder: string;
-  description: string;
+  description: React.ReactNode;
+  descriptionProps?: InputDescriptionProps & DataAttributes;
   query: Lib.Query | null;
   disabled?: boolean;
 };
@@ -18,6 +23,7 @@ export function KeysetColumnSelect({
   label,
   placeholder,
   description,
+  descriptionProps,
   query,
   disabled,
 }: KeysetColumnSelectProps) {
@@ -83,6 +89,7 @@ export function KeysetColumnSelect({
       data={columnOptions}
       searchable
       disabled={disabled || columnOptions.length === 0}
+      descriptionProps={descriptionProps}
     />
   );
 }

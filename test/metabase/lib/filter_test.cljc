@@ -7,7 +7,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -238,11 +237,7 @@
                                 (lib/with-join-fields :all))))
         columns (into []
                       (lib.field.util/add-source-and-desired-aliases-xform query)
-                      (lib/filterable-columns query))
-        pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
-        temporal-operators [:!= := :< :> :between :is-null :not-null]
-        coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
-        text-operators [:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with]]
+                      (lib/filterable-columns query))]
     (is (= ["ID"
             "NAME"
             "LAST_LOGIN"
@@ -258,164 +253,7 @@
             "Venues__PRICE"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
-           (map :lib/desired-column-alias columns)))
-    (testing "Operators are attached to proper columns"
-      (is (=? {"ID" pk-operators,
-               "NAME" text-operators,
-               "Venues__PRICE" pk-operators
-               "Venues__LATITUDE" coordinate-operators
-               "LAST_LOGIN" temporal-operators}
-              (into {} (for [col columns]
-                         [(:lib/desired-column-alias col) (mapv :short (lib/filterable-column-operators col))])))))
-    (testing "Type specific display names"
-      (let [display-info-by-type-and-op (->> columns
-                                             (map (juxt :lib/desired-column-alias
-                                                        (fn [col]
-                                                          (->> col
-                                                               lib/filterable-column-operators
-                                                               (map (comp (juxt :short-name identity)
-                                                                          #(lib/display-info query %)))
-                                                               (into {})))))
-                                             (into {}))]
-        (is (=? {"ID"            {"="       {:display-name "=", :long-display-name "Is"}
-                                  "is-null" {:display-name "Is empty", :long-display-name "Is empty"}
-                                  ">"       {:display-name ">", :long-display-name "Greater than"}
-                                  ">="      {:display-name "≥", :long-display-name "Greater than or equal to"}}
-                 "NAME"          {"="        {:display-name "=", :long-display-name "Is"}
-                                  "is-empty" {:display-name "Is empty", :long-display-name "Is empty"}}
-                 "LAST_LOGIN"    {"!=" {:display-name "≠", :long-display-name "Excludes"}
-                                  ">"  {:display-name ">", :long-display-name "After"}}
-                 "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
-                                  "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
-                display-info-by-type-and-op))))))
-
-(deftest ^:parallel filter-clause-test
-  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
-        [first-col] (lib/filterable-columns query)
-        new-filter (lib/filter-clause
-                    (first (lib/filterable-column-operators first-col))
-                    first-col
-                    515)]
-    (is (=? [[:= {} [:field {} (meta/id :users :id)] 515]]
-            (-> query
-                (lib/filter new-filter)
-                lib/filters))))
-  (testing "standalone clause"
-    (let [query (lib.tu/venues-query)
-          [id-col] (lib/filterable-columns query)
-          [eq-op] (lib/filterable-column-operators id-col)
-          filter-clause (lib/filter-clause eq-op id-col 123)]
-      (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
-              filter-clause)))))
-
-(deftest ^:parallel filter-clause-support-keywords-and-strings-test
-  (are [tag] (=? [:= {} [:field {} (meta/id :venues :id)] 1]
-                 (lib/filter-clause tag (meta/field-metadata :venues :id) 1))
-    :=
-    "="))
-
-(deftest ^:parallel filter-operator-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                                 [(lib/=
-                                                   (meta/field-metadata :checkins :user-id)
-                                                   (meta/field-metadata :users :id))])
-                                (lib/with-join-fields :all)))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
-                                                 [(lib/=
-                                                   (meta/field-metadata :checkins :venue-id)
-                                                   (meta/field-metadata :venues :id))])
-                                (lib/with-join-fields :all))))]
-    (doseq [col (lib/filterable-columns query)
-            op (lib/filterable-column-operators col)
-            :let [filter-clause (case (:short op)
-                                  :between (lib/filter-clause op col col col)
-                                  (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
-                                  (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
-                                  :inside (lib/filter-clause op col 12 34 56 78 90)
-                                  (:< :>) (lib/filter-clause op col col)
-                                  (lib/filter-clause op col 123))]]
-      (testing (str (:short op) " with " (:name col))
-        (is (= op
-               (lib/filter-operator query filter-clause)))))))
-
-(deftest ^:parallel filter-operators-test
-  (testing "Boolean category"
-    (is (= [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
-            {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
-            {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}]
-           (lib.filter.operator/filter-operators
-            {:description nil,
-             :lib/type :metadata/column,
-             :base-type :type/Boolean,
-             :semantic-type :type/Category,
-             :table-id 7,
-             :name "TRIAL_CONVERTED",
-             :coercion-strategy nil,
-             :lib/source :source/table-defaults,
-             :lib/source-column-alias "TRIAL_CONVERTED",
-             :settings nil,
-             :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
-             :nfc-path nil,
-             :database-type "BOOLEAN",
-             :effective-type :type/Boolean,
-             :fk-target-field-id nil,
-             :id 14,
-             :parent-id nil,
-             :visibility-type :normal,
-             :lib/desired-column-alias "TRIAL_CONVERTED",
-             :display-name "Trial Converted",
-             :position 10,
-             :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
-  (testing "should return text-like operators for text-like PKs and FKs"
-    (doseq [semantic-type [:type/PK :type/FK]
-            :let [column {:description nil,
-                          :lib/type :metadata/column,
-                          :base-type :type/MongoBSONID,
-                          :semantic-type semantic-type
-                          :table-id 7,
-                          :name "ID",
-                          :coercion-strategy nil,
-                          :lib/source :source/table-defaults,
-                          :lib/source-column-alias "ID",
-                          :settings nil,
-                          :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
-                          :nfc-path nil,
-                          :database-type "STRING",
-                          :effective-type :type/MongoBSONID,
-                          :fk-target-field-id nil,
-                          :id 14,
-                          :parent-id nil,
-                          :visibility-type :normal,
-                          :lib/desired-column-alias "ID",
-                          :display-name "ID",
-                          :position 10}]]
-      (is (= [:= :!= :is-empty :not-empty]
-             (mapv :short (lib.filter.operator/filter-operators column)))))))
-
-(deftest ^:parallel replace-filter-clause-test
-  (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
-    (let [query           (lib/query meta/metadata-provider (meta/table-metadata :users))
-          [first-col]     (lib/filterable-columns query)
-          query           (lib/filter query (lib/filter-clause
-                                             (first (lib/filterable-column-operators first-col))
-                                             first-col
-                                             515))
-          [filter-clause] (lib/filters query)
-          external-op     (lib/external-op filter-clause)]
-      (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :users :id)] 515]]}]}
-              query))
-      (is (=? [:= {} [:field {} (meta/id :users :id)] 515]
-              filter-clause))
-      (is (=? {:operator "="
-               :lib/type :lib/external-op
-               :args     [[:field {} (meta/id :users :id)]
-                          515]}
-              external-op))
-      (let [external-op' (assoc external-op :operator "!=")
-            query'       (lib/replace-clause query filter-clause external-op')]
-        (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
-                query'))))))
+           (map :lib/desired-column-alias columns)))))
 
 (def ^:private last-online-time
   (assoc (meta/field-metadata :people :birth-date)
@@ -861,8 +699,6 @@
     (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
-      (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})
-              (lib/filterable-column-operators col)))
       (is (=? [[:= {} (lib.options/update-options (lib/ref col) dissoc :lib/uuid) v]]
               (lib/filters query')))
       (is (=? {:operator :=
@@ -926,9 +762,50 @@
   (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS;")]
     (is (= "Created At is Jan 1 – Dec 31, 2023"
            (lib/display-name query [:= {:lib/uuid "79e513f8-af80-4c15-96b6-e72eff7f37cc"}
-                                    [:field {:effective-type :type/Integer
+                                    [:field {:effective-type :type/DateTime
                                              :base-type      :type/DateTime
                                              :temporal-unit  :year
                                              :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
                                      "CREATED_AT"]
                                     "2023-01-01T00:00:00Z"])))))
+
+(deftest ^:parallel describe-filter-operator-test
+  (testing "default variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator))
+      "Is"                       :=
+      "Is not"                   :!=
+      "Contains"                 :contains
+      "Does not contain"         :does-not-contain
+      "Starts with"              :starts-with
+      "Ends with"                :ends-with
+      "Is empty"                 :is-empty
+      "Not empty"                :not-empty
+      "Greater than"             :>
+      "Less than"                :<
+      "Between"                  :between
+      "Greater than or equal to" :>=
+      "Less than or equal to"    :<=
+      "Is empty"                 :is-null
+      "Not empty"                :not-null
+      "Inside"                   :inside))
+  (testing "explicit :default variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator :default))
+      "Is"           :=
+      "Is not"       :!=
+      "Greater than" :>
+      "Less than"    :<))
+  (testing ":number variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator :number))
+      "Equal to"     :=
+      "Not equal to" :!=
+      "Greater than" :>
+      "Less than"    :<))
+  (testing ":temporal variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator :temporal))
+      "Is"       :=
+      "Is not"   :!=
+      "After"    :>
+      "Before"   :<
+      "Between"  :between
+      "Is empty" :is-null
+      "Not empty" :not-null)))

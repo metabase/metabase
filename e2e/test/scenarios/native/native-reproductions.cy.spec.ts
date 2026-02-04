@@ -40,7 +40,7 @@ describe("issue 11727", { tags: "@external" }, () => {
     cy.findByTestId("query-builder-main")
       .findByText("Doing science...")
       .should("be.visible");
-    cy.get("body").type("{cmd}{enter}");
+    cy.realPress([H.metaKey, "Enter"]);
     cy.findByTestId("query-builder-main")
       .findByText("Here's where your results will appear")
       .should("be.visible");
@@ -682,8 +682,7 @@ describe("issue 59110", () => {
 
     H.NativeEditor.get().then((editor) => {
       const { height } = editor[0].getBoundingClientRect();
-      const SLOPPY_CLICK_THRESHOLD = 30;
-      const diff = height - SLOPPY_CLICK_THRESHOLD;
+      const diff = height + 20;
 
       cy.log("drag the border to hide the editor");
 
@@ -698,12 +697,11 @@ describe("issue 59110", () => {
           .trigger("mousemove", {
             clientX: coordsDrag.x,
             clientY: coordsDrag.y - diff,
-          })
-          .trigger("mouseup");
+          });
       });
     });
 
-    H.NativeEditor.get().should("not.be.visible");
+    H.NativeEditor.get().should("not.exist");
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)
       .should("be.visible")
@@ -762,7 +760,9 @@ describe("issue 60719", () => {
 
 describe("issue 59356", () => {
   function typeRunShortcut() {
-    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
   }
 
   function getLoader() {
@@ -915,7 +915,7 @@ describe("issue 66745", () => {
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
-      // eslint-disable-next-line no-unscoped-text-selectors
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors
       cy.findByText("Something’s gone wrong").should("not.exist");
 
       cy.findByTestId("query-visualization-root").within(() => {
@@ -930,6 +930,87 @@ describe("issue 66745", () => {
           .eq(1)
           .should("have.value", "Total");
       });
+    });
+  });
+});
+
+describe("issue 51717", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should open question info sidebar when variables sidebar is already open (metabase#51717)", () => {
+    H.createNativeQuestion(
+      {
+        name: "42",
+        native: { query: "select 42" },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+
+    cy.log("Open variables sidebar");
+    cy.findByTestId("native-query-editor-action-buttons")
+      .should("be.visible")
+      .findByLabelText("Variables")
+      .click();
+    cy.findByTestId("sidebar-right")
+      .should("be.visible")
+      .and("contain", "Variables and parameters");
+
+    cy.log("Info sidebar is opened");
+    H.openQuestionInfoSidesheet();
+    cy.findByTestId("sidesheet")
+      .as("infoSidebar")
+      .should("be.visible")
+      .and("contain", "Info");
+
+    cy.log("Make sure info sidebar is interactive (on top of the stack)");
+    cy.get("@infoSidebar").findByRole("tab", { name: "History" }).click();
+    cy.get("@infoSidebar").should("contain", "You created this");
+  });
+});
+
+describe("issue 59075", () => {
+  const WINDOW_HEIGHT = 1000;
+  const BUTTON_INDEX = 0;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewNativeQuestion();
+    cy.viewport(1024, WINDOW_HEIGHT);
+  });
+
+  it("should not be possible to resize the native query editor too far (metabase#59075)", () => {
+    cy.findByTestId("drag-handle").then((handle) => {
+      const coordsDrag = handle[0].getBoundingClientRect();
+
+      cy.wrap(handle)
+        .trigger("mousedown", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: coordsDrag.y,
+          force: true,
+        })
+        // Drag to the bottom of the screen
+        .trigger("mousemove", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: WINDOW_HEIGHT + 10,
+          force: true,
+        })
+        .trigger("mouseup");
+    });
+
+    H.NativeEditor.get().then((editor) => {
+      const { bottom } = editor.get()[0].getBoundingClientRect();
+      cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
     });
   });
 });

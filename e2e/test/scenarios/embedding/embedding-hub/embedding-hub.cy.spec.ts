@@ -36,8 +36,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByText("Choose a table to generate a dashboard").should(
           "be.visible",
         );
-        // Click on the first available table
-        H.entityPickerModalItem(3, "Accounts").click();
+        H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
       cy.log("Should navigate to auto dashboard creation");
@@ -165,7 +164,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production")
+        .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
         .closest("button")
@@ -176,7 +175,7 @@ describe("scenarios - embedding hub", () => {
       cy.reload();
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production")
+        .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
         .closest("button")
@@ -260,7 +259,7 @@ describe("scenarios - embedding hub", () => {
         .should("not.exist");
     });
 
-    it('"Set up tenants" card should navigate to admin settings', () => {
+    it('"Pick a user strategy" card should open the edit strategy modal', () => {
       H.restore("setup");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
@@ -271,33 +270,31 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/");
 
-      H.main().findByText("Set up tenants").should("be.visible").click();
+      H.main()
+        .findByText("Pick a user strategy")
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
 
       H.modal().within(() => {
-        cy.findByText("User strategy").should("be.visible");
+        cy.findByText("Pick a user strategy").should("be.visible");
         cy.findByText("Multi tenant").click();
         cy.button("Apply").click();
       });
 
       cy.log("the internal prefix should show up on the page");
-      H.main()
-        .findAllByText("Internal users")
-        .should("have.length", 2)
-        .should("be.visible");
+      H.main().findByText("Internal users").should("be.visible");
+      H.main().findByText("Internal groups").should("be.visible");
 
       cy.visit("/");
 
-      cy.log("'Set up tenants' should now be marked as done");
+      cy.log("'Pick a user strategy' should now be marked as done");
       H.main()
-        .findByText("Set up tenants")
+        .findByText("Pick a user strategy")
         .closest("button")
         .scrollIntoView()
         .findByText("Done", { timeout: 10_000 })
         .should("be.visible");
-
-      cy.log("clicking on tenants should go to tenants page");
-      H.main().findByText("Set up tenants").click();
-      cy.url().should("include", "/admin/tenants");
     });
 
     it("should link to user strategy when tenants are disabled", () => {
@@ -328,7 +325,7 @@ describe("scenarios - embedding hub", () => {
         .scrollIntoView()
         .should("be.visible")
         .closest("a")
-        .should("have.attr", "href", "/admin/tenants");
+        .should("have.attr", "href", "/admin/people/tenants");
     });
   });
 });

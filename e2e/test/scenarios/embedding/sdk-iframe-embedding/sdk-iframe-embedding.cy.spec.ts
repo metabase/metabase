@@ -8,7 +8,7 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > embedding > sdk iframe embedding", () => {
+describe("scenarios > embedding > modular embedding", () => {
   beforeEach(() => {
     H.prepareSdkIframeEmbedTest({ signOut: true });
   });
@@ -208,29 +208,26 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
           },
         },
       ],
-      onVisitPage: () => {
-        cy.window().then((win) => {
-          const element = win.document!.querySelector("metabase-question")!;
-          element.addEventListener("ready", () => {
-            win.document!.body.setAttribute(
-              "data-consumer-event-triggered",
-              "true",
-            );
-          });
+      onVisitPage: (win) => {
+        const element = win.document.querySelector("metabase-question")!;
+        element.addEventListener("ready", () => {
+          win.document.body.setAttribute(
+            "data-consumer-event-triggered",
+            "true",
+          );
         });
+
+        // assert that the attribute is not set at the start
+        const attrValue = win.document.body.getAttribute(
+          "data-consumer-event-triggered",
+        );
+        expect(attrValue).to.not.equal("true");
       },
     });
 
-    cy.log("ready event should not be fired before the page loads");
-    cy.get("body").should(
-      "not.have.attr",
-      "data-consumer-event-triggered",
-      "true",
-    );
-
     cy.wait("@getCardQuery");
 
-    cy.log("ready event should be fired after the page loads");
+    cy.log("ready event should be fired after the iframe is loaded");
     cy.get("iframe").should("be.visible");
     cy.get("body").should("have.attr", "data-consumer-event-triggered", "true");
 
@@ -271,6 +268,76 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
 
+  describe("auto-refreshing dashboard", () => {
+    /**
+     * Unfortunately, cy.clock() doesn't seem to work with mocking the timing inside the iframe,
+     * so we have to use real timeouts here.
+     */
+    it('does not automatically refresh the dashboard when "auto-refresh-interval" is not set', () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      cy.get("@getDashCardQuery.all").then((requests) => {
+        cy.wrap(requests.length).as("initialRequestCount");
+      });
+
+      cy.log("wait for the retrigger");
+      cy.wait(1000);
+      cy.get("@initialRequestCount").then((initialRequestCount) => {
+        cy.get("@getDashCardQuery.all").should(
+          "have.length",
+          initialRequestCount,
+        );
+      });
+    });
+
+    it('automatically refresh the dashboard when "auto-refresh-interval" is set', () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+              autoRefreshInterval: 1,
+            },
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      cy.get("@getDashCardQuery.all").then((requests) => {
+        cy.wrap(requests.length).as("initialRequestCount");
+      });
+
+      cy.log("wait for the retrigger");
+      cy.get("@initialRequestCount").then((initialRequestCount) => {
+        cy.get("@getDashCardQuery.all").should(
+          "have.length.above",
+          initialRequestCount,
+        );
+      });
+    });
+  });
+
   it("CSP nonces are set for custom expression styles (EMB-707)", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
@@ -308,129 +375,138 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.findByRole("button", { name: "Cancel" }).click();
     });
   });
-});
 
-describe("scenarios > embedding > Modular embedding", () => {
-  beforeEach(() => {
-    H.resetSnowplow();
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["jwt"],
-      signOut: false,
+  describe("analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.prepareSdkIframeEmbedTest({
+        enabledAuthMethods: ["jwt"],
+        signOut: false,
+      });
+      H.enableTracking();
     });
-    H.enableTracking();
-  });
 
-  it("should send an modular embedding usage event", () => {
-    cy.signOut();
-    cy.visit("http://localhost:4000");
-    const frame = H.loadSdkIframeEmbedTestPage({
-      origin: "http://different-than-metabase-instance.com",
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
+    it("should send an modular embedding usage event", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+              "with-subscriptions": true,
+            },
           },
-        },
-        {
-          component: "metabase-question",
-          attributes: {
-            questionId: ORDERS_QUESTION_ID,
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: ORDERS_QUESTION_ID,
+            },
           },
-        },
-        {
-          component: "metabase-question",
-          attributes: {
-            questionId: "new",
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: "new",
+            },
           },
-        },
-        {
-          component: "metabase-browser",
-          attributes: {},
-        },
-      ],
-      selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
-    });
+          {
+            component: "metabase-browser",
+            attributes: {},
+          },
+        ],
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
+      });
 
-    frame.within(() => {
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findByText("Orders").should("be.visible");
-      H.assertTableRowsCount(2000);
-    });
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "setup",
-      global: {
-        auth_method: "sso",
-      },
-      dashboard: {
-        with_title: {
-          false: 0,
-          true: 1,
-        },
-        with_downloads: {
-          false: 1,
-          true: 0,
-        },
-        drills: {
-          false: 0,
-          true: 1,
-        },
-      },
-      question: {
-        drills: {
-          false: 0,
-          true: 1,
-        },
-        with_downloads: {
-          false: 1,
-          true: 0,
-        },
-        with_title: {
-          false: 0,
-          true: 1,
-        },
-        is_save_enabled: {
-          false: 1,
-          true: 0,
-        },
-      },
-      exploration: {
-        is_save_enabled: {
-          false: 1,
-          true: 0,
-        },
-      },
-      browser: {
-        read_only: {
-          false: 0,
-          true: 1,
-        },
-      },
-    });
-  });
-
-  it("should not send an modular embedding usage event in the preview", () => {
-    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
-
-    H.openEmbedJsModal();
-    H.embedModalEnableEmbedding();
-
-    H.waitForSimpleEmbedIframesToLoad();
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Orders").should("be.visible");
-    });
-
-    H.expectUnstructuredSnowplowEvent(
-      {
+      H.expectUnstructuredSnowplowEvent({
         event: "setup",
         global: {
-          auth_method: "session",
+          auth_method: "sso",
         },
-      },
-      // Expect that the usage event shouldn't be sent
-      0,
-    );
+        dashboard: {
+          with_title: {
+            false: 0,
+            true: 1,
+          },
+          with_downloads: {
+            false: 1,
+            true: 0,
+          },
+          drills: {
+            false: 0,
+            true: 1,
+          },
+          with_subscriptions: {
+            false: 0,
+            true: 1,
+          },
+        },
+        question: {
+          drills: {
+            false: 0,
+            true: 1,
+          },
+          with_downloads: {
+            false: 1,
+            true: 0,
+          },
+          with_title: {
+            false: 0,
+            true: 1,
+          },
+          is_save_enabled: {
+            false: 1,
+            true: 0,
+          },
+          with_alerts: {
+            false: 1,
+            true: 0,
+          },
+        },
+        exploration: {
+          is_save_enabled: {
+            false: 1,
+            true: 0,
+          },
+        },
+        browser: {
+          read_only: {
+            false: 0,
+            true: 1,
+          },
+        },
+      });
+    });
+
+    it("should not send an modular embedding usage event in the preview", () => {
+      cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+      H.openEmbedJsModal();
+      H.embedModalEnableEmbedding();
+
+      H.waitForSimpleEmbedIframesToLoad();
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Orders").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "setup",
+          global: {
+            auth_method: "session",
+          },
+        },
+        // Expect that the usage event shouldn't be sent
+        0,
+      );
+    });
   });
 });
 

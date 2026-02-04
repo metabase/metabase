@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.table :as api.table]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -16,7 +17,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest publish-table-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:data-studio :audit-app}
     (without-library
      (testing "POST /api/ee/data-studio/table/(un)publish-table"
        (testing "publishes tables into the library-data collection"
@@ -35,6 +36,11 @@
                          :collection_id collection-id
                          :is_published true}]
                        (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+             (testing "audit log entries are created for publish"
+               (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
+                       (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
+               (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :venues)}
+                       (mt/latest-audit-log-entry "table-publish" (mt/id :venues)))))
              (testing "unpublishing"
                (testing "normal users are not allowed"
                  (mt/user-http-request :rasta :post 403 "ee/data-studio/table/unpublish-tables"
@@ -44,22 +50,25 @@
                (is (=? {:display_name "Venues"
                         :collection_id nil
                         :is_published false}
-                       (t2/select-one :model/Table (mt/id :venues)))))))
-         (testing "deleting the collection unpublishes"
-           (is (=? {:display_name "Users"
-                    :collection_id nil
-                    :is_published false}
-                   (t2/select-one :model/Table (mt/id :users))))))
-       (testing "returns 404 when no library-data collection exists"
-         (is (= "Not found."
-                (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
-                                      {:table_ids [(mt/id :users)]}))))
-       (testing "returns 409 when multiple library-data collections exist"
-         (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
-                        :model/Collection _ {:type collection/library-data-collection-type}]
-           (is (= "Multiple library-data collections found."
-                  (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
-                                        {:table_ids [(mt/id :users)]})))))))))
+                       (t2/select-one :model/Table (mt/id :venues))))
+               (testing "audit log entry is created for unpublish"
+                 (is (=? {:topic :table-unpublish, :model "Table", :model_id (mt/id :venues)}
+                         (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues)))))))))
+       (testing "deleting the collection unpublishes"
+         (is (=? {:display_name "Users"
+                  :collection_id nil
+                  :is_published false}
+                 (t2/select-one :model/Table (mt/id :users))))))
+     (testing "returns 404 when no library-data collection exists"
+       (is (= "Not found."
+              (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
+                                    {:table_ids [(mt/id :users)]}))))
+     (testing "returns 409 when multiple library-data collections exist"
+       (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
+                      :model/Collection _ {:type collection/library-data-collection-type}]
+         (is (= "Multiple library-data collections found."
+                (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
+                                      {:table_ids [(mt/id :users)]}))))))))
 
 (deftest bulk-edit-visibility-sync-test
   (mt/with-premium-features #{:data-studio}
@@ -69,35 +78,88 @@
                      :model/Table    {table-2-id :id} {:db_id db-id}]
 
         (testing "updating data_layer syncs to visibility_type for all tables"
-        ;; Update two tables to gold, which should sync to nil visibility_type
+        ;; Update two tables to internal, which should sync to nil visibility_type
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                 {:table_ids  [table-1-id table-2-id]
-                                 :data_layer "gold"})
-          (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+                                 :data_layer "internal"})
+          (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
           (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-          (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
+          (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
           (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
 
-        (testing "updating data_layer to copper syncs to hidden visibility_type"
-        ;; Update one table back to copper, which should sync to :hidden
+        (testing "updating data_layer to hidden syncs to hidden visibility_type"
+        ;; Update one table back to hidden, which should sync to :hidden
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                 {:table_ids  [table-1-id]
-                                 :data_layer "copper"})
-          (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+                                 :data_layer "hidden"})
+          (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
           (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
 
         (testing "cannot update both visibility_type and data_layer at once"
           (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/edit"
                                 {:table_ids        [table-1-id]
                                  :visibility_type  "hidden"
-                                 :data_layer "copper"}))))))
+                                 :data_layer       "hidden"}))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
     (is (= "Data Studio is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/edit"
                                            {:table_ids  [(mt/id :users)]
-                                            :data_layer "gold"}))))))
+                                            :data_layer "final"}))))))
+
+(deftest data-analyst-can-access-endpoints-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
+      (let [data-analyst-group-id (:id (perms-group/data-analyst))]
+        (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
+                                                     :last_name "Analyst"
+                                                     :email "data-analyst@metabase.com"
+                                                     :is_data_analyst true}
+                       :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
+                       :model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id}
+                       :model/Collection _ {:type collection/library-data-collection-type}]
+          (testing "data analyst can edit tables"
+            (is (= {} (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/edit"
+                                            {:table_ids [table-id]
+                                             :data_layer "final"}))))
+          (testing "data analyst can get selection info"
+            (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/selection"
+                                            {:table_ids [table-id]}))))
+          (testing "data analyst can publish tables"
+            (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
+                                            {:table_ids [table-id]}))))
+          (testing "data analyst can unpublish tables"
+            (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
+                                            {:table_ids [table-id]})))))))))
+
+(deftest regular-user-cannot-access-data-studio-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Regular"
+                                                :last_name "User"
+                                                :email "regular-user@metabase.com"}
+                     :model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}
+                     :model/Collection _ {:type collection/library-data-collection-type}]
+        (testing "regular user cannot edit tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/edit"
+                                       {:table_ids [table-id]
+                                        :data_layer "final"}))))
+        (testing "regular user cannot get selection info"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/selection"
+                                       {:table_ids [table-id]}))))
+        (testing "regular user cannot publish tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/publish-tables"
+                                       {:table_ids [table-id]}))))
+        (testing "regular user cannot unpublish tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/unpublish-tables"
+                                       {:table_ids [table-id]}))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (mt/with-premium-features #{:data-studio}
@@ -253,51 +315,43 @@
         (testing "empty selectors returns no tables"
           (is (= nil (selectors->table-ids {}))))))))
 
-(deftest trigger-sync-on-data-layer-change-from-copper-test
+(deftest trigger-sync-on-data-layer-change-from-hidden-test
   (mt/with-premium-features #{:data-studio}
-    (testing "Changing data_layer from copper to another value triggers sync"
+    (testing "Changing data_layer from hidden to another value triggers sync"
       (mt/with-temp [:model/Database {db-id :id}      {}
-                     :model/Table    {copper-1 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {copper-2 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {copper-3 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {copper-4 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {gold-1 :id}     {:db_id db-id, :data_layer :gold}
-                     :model/Table    {gold-2 :id}     {:db_id db-id, :data_layer :gold}]
+                     :model/Table    {hidden-1 :id}   {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {hidden-2 :id}   {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {hidden-3 :id}   {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {internal-1 :id} {:db_id db-id, :data_layer :internal}
+                     :model/Table    {final-1 :id}    {:db_id db-id, :data_layer :final}]
         (let [synced-ids (atom #{})]
           (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
-            (testing "Changing from copper to gold triggers sync"
+            (testing "Changing from hidden to final triggers sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [copper-1 copper-2]
-                                     :data_layer "gold"})
-              (is (= #{copper-1 copper-2} @synced-ids)))
+                                    {:table_ids  [hidden-1 hidden-2]
+                                     :data_layer "final"})
+              (is (= #{hidden-1 hidden-2} @synced-ids)))
 
-            (testing "Changing from copper to silver triggers sync"
+            (testing "Changing from hidden to internal triggers sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [copper-3]
-                                     :data_layer "silver"})
-              (is (= #{copper-3} @synced-ids)))
+                                    {:table_ids  [hidden-3]
+                                     :data_layer "internal"})
+              (is (= #{hidden-3} @synced-ids)))
 
-            (testing "Changing from copper to bronze triggers sync"
+            (testing "Not changing from hidden does not trigger sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [copper-4]
-                                     :data_layer "bronze"})
-              (is (= #{copper-4} @synced-ids)))
-
-            (testing "Not changing from copper does not trigger sync"
-              (reset! synced-ids #{})
-              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [gold-1]
-                                     :data_layer "silver"})
+                                    {:table_ids  [internal-1]
+                                     :data_layer "final"})
               (is (= #{} @synced-ids)))
 
-            (testing "Changing to copper does not trigger sync"
+            (testing "Changing to hidden does not trigger sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [gold-2]
-                                     :data_layer "copper"})
+                                    {:table_ids  [final-1]
+                                     :data_layer "hidden"})
               (is (= #{} @synced-ids)))))))))
 
 (deftest bulk-edit-test
@@ -316,15 +370,15 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/data-studio/table/edit"
                                        {:database_ids [clojure jvm]
-                                        :data_layer   "copper"}))))
+                                        :data_layer   "hidden"}))))
 
         (testing "simple happy path updating with db ids"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                 {:database_ids   [clojure jvm]
-                                 :data_layer     "copper"
+                                 :data_layer     "hidden"
                                  :data_authority "authoritative"
                                  :data_source    "ingested"})
-          (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+          (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
           (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
           (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
 
@@ -333,13 +387,13 @@
                                 {:database_ids  [clojure]
                                  :table_ids     [classes]
                                  :schema_ids    [(format "%d:jre" jvm)]
-                                 :data_layer    "silver"})
-          (is (= {vars       :silver
-                  namespaces :silver
-                  beans      :copper
-                  classes    :silver
-                  gc         :silver
-                  jit        :silver}
+                                 :data_layer    "internal"})
+          (is (= {vars       :internal
+                  namespaces :internal
+                  beans      :hidden
+                  classes    :internal
+                  gc         :internal
+                  jit        :internal}
                  (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
 
         (testing "can update owner_email"

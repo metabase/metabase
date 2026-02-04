@@ -16,7 +16,7 @@ runs:
   using: "composite"
   steps:
     - name: Install Chrome v111
-      uses: browser-actions/setup-chrome@v1
+      uses: browser-actions/setup-chrome@v2
       with:
         # https://chromium.cypress.io/linux/stable/111.0.5563.146
         chrome-version: 1097615

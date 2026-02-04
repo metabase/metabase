@@ -1,7 +1,4 @@
-import _ from "underscore";
-
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
-import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -338,74 +335,6 @@ export const UtilApi = {
   },
 };
 
-export function setPublicQuestionEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setCardEndpoints({ base: publicBase, encodedUuid });
-}
-
-export function setPublicDashboardEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setDashboardEndpoints({ base: publicBase, encodedUuid });
-}
-
-/**
- * @param token {string}
- */
-export function setEmbedQuestionEndpoints(token) {
-  const encodedToken = encodeURIComponent(token);
-  setCardEndpoints({ base: getEmbedBase(), encodedToken });
-  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
-}
-
-/**
- * @param token {string}
- */
-export function setEmbedDashboardEndpoints(token) {
-  const encodedToken = encodeURIComponent(token);
-  setDashboardEndpoints({ base: getEmbedBase(), encodedToken });
-  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
-}
-
-function GET_with(url, omitKeys) {
-  return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
-}
-
-function setCardEndpoints({ base, encodedUuid, encodedToken }) {
-  const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
-
-  // RTK query
-  PLUGIN_API.getRemappedCardParameterValueUrl = (_cardId, parameterId) =>
-    `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  // legacy API
-  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "cardId",
-  ]);
-  CardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["cardId"],
-  );
-}
-
-function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
-  const prefix = `${base}/dashboard/${encodedUuid ?? encodedToken}`;
-
-  // RTK query
-  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
-    _dashboardId,
-    parameterId,
-  ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  // legacy API
-  DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "dashId",
-  ]);
-  DashboardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["dashId"],
-  );
-}
-
 export const ActionsApi = {
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
@@ -415,11 +344,4 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-};
-
-export const CacheConfigApi = {
-  list: GET("/api/cache"),
-  update: PUT("/api/cache"),
-  delete: DELETE("/api/cache"),
-  invalidate: POST("/api/cache/invalidate"),
 };

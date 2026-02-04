@@ -6,6 +6,7 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
+  ConcreteTableId,
   Engine,
   RelatedDashboardXRays,
   TransformId,
@@ -95,7 +96,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "indexed-entity"
     | "snippet"
     | "document"
-    | "table";
+    | "table"
+    | "transform";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -400,7 +402,7 @@ export type MetabotEvent =
 
 export type RevertVersionEvent = ValidateEvent<{
   event: "revert_version_clicked";
-  event_detail: "card" | "dashboard";
+  event_detail: "card" | "dashboard" | "document" | "transform";
 }>;
 
 export type LearnAboutDataClickedEvent = ValidateEvent<{
@@ -495,7 +497,7 @@ export type RemoteSyncPushChangesEvent = ValidateEvent<{
 
 export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
   event: "remote_sync_settings_changed";
-  triggered_from: "admin-settings";
+  triggered_from: "admin-settings" | "data-studio";
 }>;
 
 export type RemoteSyncDeactivatedEvent = ValidateEvent<{
@@ -527,7 +529,7 @@ export type DataStudioLibraryCreatedEvent = ValidateEvent<{
 
 export type DataStudioTablePublishedEvent = ValidateEvent<{
   event: "data_studio_table_published";
-  target_id: number | null;
+  target_id: ConcreteTableId | undefined;
 }>;
 
 export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
@@ -545,12 +547,63 @@ export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_applied";
+}>;
+
+export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_cleared";
+}>;
+
+export type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_search_performed";
+}>;
+
+export type DataStudioTableUnpublishedEvent = ValidateEvent<{
+  event: "data_studio_table_unpublished";
+  target_id: ConcreteTableId | undefined;
+}>;
+
+export type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{
+  event: "data_studio_bulk_sync_settings_clicked";
+}>;
+
+export type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
+  event: "data_studio_bulk_attribute_updated";
+  event_detail: "owner" | "layer" | "entity_type" | "data_source";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableSchemaSyncedEvent = ValidateEvent<{
+  event: "data_studio_table_schema_sync_started";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldsRescannedEvent = ValidateEvent<{
+  event: "data_studio_table_fields_rescan_started";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
+  event: "data_studio_table_field_values_discard_started";
+  result: "success" | "failure";
+}>;
+
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent
   | DataStudioGlossaryEditedEvent
-  | DataStudioGlossaryDeletedEvent;
+  | DataStudioGlossaryDeletedEvent
+  | DataStudioTablePickerFiltersAppliedEvent
+  | DataStudioTablePickerFiltersClearedEvent
+  | DataStudioTablePickerSearchPerformedEvent
+  | DataStudioTableUnpublishedEvent
+  | DataStudioBulkSyncSettingsClickedEvent
+  | DataStudioBulkAttributeUpdatedEvent
+  | DataStudioTableSchemaSyncedEvent
+  | DataStudioTableFieldsRescannedEvent
+  | DataStudioTableFieldValuesDiscardedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";

@@ -1,9 +1,9 @@
 import { c, t } from "ttag";
 
+import { getQuestionTitle } from "embedding-sdk-bundle/lib/sdk-question/get-question-title";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Anchor, Stack, Text } from "metabase/ui";
 
-import { getQuestionTitle } from "../QuestionTitle";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
@@ -58,15 +58,15 @@ export const DefaultViewTitle = ({
   }
 
   if (title === undefined || title === true) {
-    const originalName = originalQuestion?.displayName();
+    const originalName = tc(originalQuestion?.displayName());
 
-    const titleText = tc(getQuestionTitle({ question }));
+    const titleText = getQuestionTitle(question, tc);
 
     return (
       <DefaultViewTitleText
         title={
           titleText && (
-            <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+            <Text fw={700} c="text-primary" fz="xl">
               {titleText}
             </Text>
           )
@@ -85,7 +85,7 @@ export const DefaultViewTitle = ({
     return (
       <DefaultViewTitleText
         title={
-          <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+          <Text fw={700} c="text-primary" fz="xl">
             {titleText}
           </Text>
         }

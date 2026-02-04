@@ -1,5 +1,5 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { CollectionId, TableId } from "metabase-types/api";
+import type { CollectionId, ConcreteTableId } from "metabase-types/api";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   trackSimpleEvent({
@@ -8,10 +8,10 @@ export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   });
 };
 
-export const trackDataStudioTablePublished = (id: TableId | null) => {
+export const trackDataStudioTablePublished = (id?: ConcreteTableId) => {
   trackSimpleEvent({
     event: "data_studio_table_published",
-    target_id: id != null ? Number(id) : null,
+    target_id: id,
   });
 };
 
@@ -33,5 +33,74 @@ export const trackDataStudioGlossaryTermDeleted = (id: number | null) => {
   trackSimpleEvent({
     event: "data_studio_glossary_term_deleted",
     target_id: id,
+  });
+};
+
+export const trackDataStudioTablePickerFiltersApplied = () => {
+  trackSimpleEvent({
+    event: "data_studio_table_picker_filters_applied",
+  });
+};
+
+export const trackDataStudioTablePickerFiltersCleared = () => {
+  trackSimpleEvent({
+    event: "data_studio_table_picker_filters_cleared",
+  });
+};
+
+export const trackDataStudioTablePickerSearchPerformed = () => {
+  trackSimpleEvent({
+    event: "data_studio_table_picker_search_performed",
+  });
+};
+
+export const trackDataStudioTableUnpublished = (id?: ConcreteTableId) => {
+  trackSimpleEvent({
+    event: "data_studio_table_unpublished",
+    target_id: id,
+  });
+};
+
+export const trackDataStudioBulkSyncSettingsClicked = () => {
+  trackSimpleEvent({
+    event: "data_studio_bulk_sync_settings_clicked",
+  });
+};
+
+export const trackDataStudioBulkAttributeUpdated = (
+  attributeType: "owner" | "layer" | "entity_type" | "data_source",
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_bulk_attribute_updated",
+    event_detail: attributeType,
+    result,
+  });
+};
+
+export const trackDataStudioTableSchemaSyncStarted = (
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_schema_sync_started",
+    result,
+  });
+};
+
+export const trackDataStudioTableFieldsRescanStarted = (
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_fields_rescan_started",
+    result,
+  });
+};
+
+export const trackDataStudioTableFieldValuesDiscardStarted = (
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_field_values_discard_started",
+    result,
   });
 };

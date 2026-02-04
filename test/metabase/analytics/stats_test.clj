@@ -455,25 +455,25 @@
       (mt/with-temp [:model/Database _ {:engine :postgres}]
         (with-redefs [config/current-major-version (constantly 46)
                       config/current-minor-version (constantly 0)]
-          (is false? (@#'stats/csv-upload-available?)))
+          (is (false? (@#'stats/csv-upload-available?))))
 
         (with-redefs [config/current-major-version (constantly 47)
                       config/current-minor-version (constantly 1)]
-          (is true? (@#'stats/csv-upload-available?))))
+          (is (true? (@#'stats/csv-upload-available?))))))
 
-      (mt/with-temp [:model/Database _ {:engine :redshift}]
-        (with-redefs [config/current-major-version (constantly 49)
-                      config/current-minor-version (constantly 5)]
-          (is false? (@#'stats/csv-upload-available?)))
+    (mt/with-temp [:model/Database _ {:engine :redshift}]
+      (with-redefs [config/current-major-version (constantly 49)
+                    config/current-minor-version (constantly 5)]
+        (is (false? (@#'stats/csv-upload-available?))))
 
-        (with-redefs [config/current-major-version (constantly 49)
-                      config/current-minor-version (constantly 6)]
-          (is true? (@#'stats/csv-upload-available?))))
+      (with-redefs [config/current-major-version (constantly 49)
+                    config/current-minor-version (constantly 6)]
+        (is (true? (@#'stats/csv-upload-available?))))))
 
-      ;; If we can't detect the MB version, return nil
-      (with-redefs [config/current-major-version (constantly nil)
-                    config/current-minor-version (constantly nil)]
-        (is false? (@#'stats/csv-upload-available?))))))
+  ;; If we can't detect the MB version, return nil
+  (with-redefs [config/current-major-version (constantly nil)
+                config/current-minor-version (constantly nil)]
+    (is (false? (@#'stats/csv-upload-available?)))))
 
 (deftest starburst-legacy-test
   (testing "starburst with impersonation"
@@ -568,9 +568,7 @@
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
-    :session-timeout-config
-    :offer-metabase-ai
-    :offer-metabase-ai-tiered})
+    :session-timeout-config})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
@@ -639,3 +637,75 @@
         (is (=? {:documents {:total 2
                              :archived 1}}
                 (#'stats/document-metrics)))))))
+
+(deftest library-stats-test
+  (mt/with-empty-h2-app-db!
+    (testing "with no library collections"
+      (is (= {:library_data 0
+              :library_metrics 0}
+             (#'stats/library-stats))))
+
+    (testing "with library collections and data"
+      (mt/with-temp [:model/User       {user-id :id}         {:email      "test@example.com"
+                                                              :first_name "Test"
+                                                              :last_name  "User"}
+                     :model/Database   {db-id :id}           {:name   "Test DB"
+                                                              :engine :h2}
+                     :model/Collection {library-id :id}      {:name     "Library"
+                                                              :type     "library"
+                                                              :location "/"}
+                     :model/Collection {data-coll-id :id}    {:name     "Data"
+                                                              :type     "library-data"
+                                                              :location (format "/%d/" library-id)}
+                     :model/Collection {metrics-coll-id :id} {:name     "Metrics"
+                                                              :type     "library-metrics"
+                                                              :location (format "/%d/" library-id)}
+                     :model/Collection {sub-coll-id :id}     {:name     "Sub folder"
+                                                              :location (format "/%d/%d/" library-id metrics-coll-id)}
+                     ;; Published table in library-data collection
+                     :model/Table      _                     {:db_id         db-id
+                                                              :name          "published_table"
+                                                              :active        true
+                                                              :is_published  true
+                                                              :collection_id data-coll-id}
+                     ;; Unpublished table (should not count)
+                     :model/Table      _                     {:db_id        db-id
+                                                              :name         "unpublished_table"
+                                                              :active       true
+                                                              :is_published false}
+                     ;; Metric in library-metrics collection
+                     :model/Card       _                     {:name                   "Metric 1"
+                                                              :type                   :metric
+                                                              :collection_id          metrics-coll-id
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :dataset_query          {}
+                                                              :display                :table
+                                                              :visualization_settings {}}
+                     ;; Metric in sub-collection of library-metrics (should count)
+                     :model/Card       _                     {:name                   "Metric 2"
+                                                              :type                   :metric
+                                                              :collection_id          sub-coll-id
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :dataset_query          {}
+                                                              :display                :table
+                                                              :visualization_settings {}}
+                     ;; Metric outside library (should not count)
+                     :model/Card       _                     {:name                   "Metric 3"
+                                                              :type                   :metric
+                                                              :collection_id          nil
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :dataset_query          {}
+                                                              :display                :table
+                                                              :visualization_settings {}}]
+        (is (= {:library_data 1
+                :library_metrics 2}
+               (#'stats/library-stats)))))))
+
+(deftest transform-metrics-test
+  (testing "ee-transform-metrics should return zeros for OSS"
+    (mt/with-empty-h2-app-db!
+      (is (= {:transforms 0, :transform_runs_last_24h 0}
+             (stats/ee-transform-metrics))))))

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
    [metabase.driver :as driver]
@@ -20,8 +21,10 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -163,6 +166,31 @@
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
+
+(deftest tinyint-1-model-filter-test
+  (mt/test-driver :mysql
+    (mt/dataset tiny-int-ones
+      ;; trigger a full sync on this database so fields are categorized correctly
+      (sync/sync-database! (mt/db))
+      (testing "Can filter on TINYINT(1) boolean columns in models (metabase#65826)"
+        (let [mp (as-> (mt/metadata-provider) $mp
+                   (lib.tu/mock-metadata-provider $mp {:cards
+                                                       [{:id              1
+                                                         :name            "Test Model"
+                                                         :database-id     (mt/id)
+                                                         :type :model
+                                                         :dataset-query   (lib/query $mp (lib.metadata/table $mp (mt/id :number-of-cans)))}]}))
+              field-metadata (lib.card/saved-question-metadata mp 1)
+              boolean-col    (m/find-first #(= (:name %) "number-of-cans")
+                                           field-metadata)]
+          (testing "Model has boolean metadata"
+            (is (= :type/Boolean (:base-type boolean-col))))
+
+          (testing "Can query model with boolean filter"
+            (let [query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                          (lib/filter $q (lib/= (m/find-first #(= (:name %) "number-of-cans") (lib/fieldable-columns $q))
+                                                true)))]
+              (is (some? (mt/rows (qp/process-query query)))))))))))
 
 (tx/defdataset year-db
   [["years"
@@ -946,7 +974,8 @@
                                                  :password "password"
                                                  :ssl true
                                                  :additional-options "trustServerCertificate=true")]
-              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details
+                                                       :dbms_version {:flavor "MySQL"}}]
                 (testing "With partial_revokes OFF (default), metadata/table-writable-check is supported"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))

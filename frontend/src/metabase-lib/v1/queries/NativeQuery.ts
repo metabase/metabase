@@ -1,11 +1,9 @@
 import slugg from "slugg";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -24,6 +22,7 @@ import type {
 
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
+import Metadata from "../metadata/Metadata";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
@@ -295,30 +294,8 @@ export default class NativeQuery {
       .filter((cardId): cardId is number => cardId != null);
   }
 
-  private _validateTemplateTags() {
-    return this.templateTags()
-      .map((tag) => {
-        if (!tag["display-name"]) {
-          return new ValidationError(t`Missing widget label: ${tag.name}`);
-        }
-        const dimension = new TemplateTagDimension(
-          tag.name,
-          this.metadata(),
-          this,
-        );
-        if (!dimension) {
-          return new ValidationError(t`Invalid template tag: ${tag.name}`);
-        }
-
-        return dimension.validateTemplateTag();
-      })
-      .filter(
-        (maybeError): maybeError is ValidationError => maybeError != null,
-      );
-  }
-
   private _allTemplateTagsAreValid() {
-    const tagErrors = this._validateTemplateTags();
+    const tagErrors = Lib.validateTemplateTags(this._query());
     return tagErrors.length === 0;
   }
 
@@ -379,17 +356,24 @@ export default class NativeQuery {
     oldSnippet: NativeQuerySnippet,
     newSnippet: NativeQuerySnippet,
   ) {
+    // We need to update the metadata first to make sure the new snippet
+    // is correctly extracted from the query
+    let newQuery = new NativeQuery(this.question(), this.datasetQuery());
+
+    const metadata = new Metadata(this.metadata());
+    delete metadata.snippets[oldSnippet.id];
+    metadata.snippets[newSnippet.id] = newSnippet;
+    newQuery.question()._metadata = metadata;
+
     // if the snippet name has changed, we need to update it in the query
-    const newQuery =
+    newQuery =
       newSnippet.name !== oldSnippet.name
-        ? this.updateSnippetNames([newSnippet])
-        : this;
+        ? newQuery.updateSnippetNames([newSnippet])
+        : newQuery;
 
     // if the query has changed, it was already parsed; otherwise do the parsing
     // to expand snippet tags into the query tags
-    return newQuery === this
-      ? newQuery.setQueryText(newQuery.queryText())
-      : newQuery;
+    return newQuery.setQueryText(newQuery.queryText());
   }
 
   updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {

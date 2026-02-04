@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Route } from "react-router";
@@ -59,12 +60,15 @@ import {
   setChildTargetId,
   setCurrentDocument,
   setHasUnsavedChanges,
+  setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
+import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
   getDraftCards,
   getHasUnsavedChanges,
+  getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
@@ -73,6 +77,7 @@ import { getListCommentsQuery } from "../utils/api";
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
+import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
@@ -97,9 +102,11 @@ export const DocumentPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
+  const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
@@ -201,6 +208,14 @@ export const DocumentPage = ({
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
 
+  // Scroll to anchor block when navigating with URL hash
+  const blockId = location.hash ? location.hash.slice(1) : null;
+  useScrollToAnchor({
+    blockId,
+    editorContainerRef,
+    isLoading: isDocumentLoading,
+  });
+
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
@@ -263,10 +278,16 @@ export const DocumentPage = ({
       trackDocumentBookmark();
     }
 
-    isBookmarked
-      ? deleteBookmark({ type: "document", id: documentId })
-      : createBookmark({ type: "document", id: documentId });
+    if (isBookmarked) {
+      deleteBookmark({ type: "document", id: documentId });
+    } else {
+      createBookmark({ type: "document", id: documentId });
+    }
   }, [isBookmarked, deleteBookmark, createBookmark, documentId]);
+
+  const handleShowHistory = useCallback(() => {
+    dispatch(setIsHistorySidebarOpen(true));
+  }, [dispatch]);
 
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
@@ -381,7 +402,11 @@ export const DocumentPage = ({
           return;
         }
 
-        isNewDocument ? setCollectionPickerMode("save") : handleSave();
+        if (isNewDocument) {
+          setCollectionPickerMode("save");
+        } else {
+          handleSave();
+        }
       }
     };
 
@@ -455,6 +480,7 @@ export const DocumentPage = ({
               onMove={() => setCollectionPickerMode("move")}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
+              onShowHistory={handleShowHistory}
               hasComments={hasComments}
             />
             <Editor
@@ -465,6 +491,7 @@ export const DocumentPage = ({
               onChange={handleChange}
               editable={canWrite}
               isLoading={isDocumentLoading}
+              editorContainerRef={editorContainerRef}
             />
           </Box>
         </Box>
@@ -484,10 +511,6 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            options={{
-              showPersonalCollections: true,
-              showRootCollection: true,
-            }}
             entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
@@ -524,6 +547,14 @@ export const DocumentPage = ({
           onClose={() => forceUpdate()}
         />
       </Box>
+      {isHistorySidebarOpen && documentData && (
+        <Box className={styles.sidebar} data-testid="document-history-sidebar">
+          <DocumentRevisionHistorySidebar
+            document={documentData}
+            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

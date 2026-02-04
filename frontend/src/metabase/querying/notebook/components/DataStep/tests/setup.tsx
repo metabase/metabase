@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
@@ -22,16 +22,18 @@ export interface SetupOpts {
   step?: NotebookStep;
   readOnly?: boolean;
   isEmbeddingSdk?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 export const setup = ({
   step = createMockNotebookStep(),
   readOnly = false,
   isEmbeddingSdk = false,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
 }: SetupOpts = {}) => {
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 

@@ -4,7 +4,6 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockSeries,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -51,7 +50,6 @@ describe("getMissingColumnsFromVisualizationSettings", () => {
       display: "bar",
       settings: {},
     };
-    createMockSeries;
 
     const rawSeries = [
       ...createMockSeriesWithCols(1, ["col1"]),

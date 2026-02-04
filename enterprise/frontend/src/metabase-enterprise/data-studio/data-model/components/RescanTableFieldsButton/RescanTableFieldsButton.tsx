@@ -4,6 +4,7 @@ import { useTemporaryState } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
 import { useRescanTablesFieldValuesMutation } from "metabase-enterprise/api";
+import { trackDataStudioTableFieldsRescanStarted } from "metabase-enterprise/data-studio/analytics";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {
@@ -36,8 +37,10 @@ export const RescanTableFieldsButton = ({
 
     if (error) {
       sendErrorToast(t`Failed to start scan`);
+      trackDataStudioTableFieldsRescanStarted("failure");
     } else {
       setStarted(true);
+      trackDataStudioTableFieldsRescanStarted("success");
     }
   };
 

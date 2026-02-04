@@ -8,8 +8,14 @@ interface Props {
 
 export function Error({ message }: Props) {
   return (
-    <Stack align="center" color="text-light" h="100%" justify="center" p="xl">
-      <Box bg="bg-medium" className={S.error} mt="lg" p="md">
+    <Stack
+      align="center"
+      color="text-tertiary"
+      h="100%"
+      justify="center"
+      p="xl"
+    >
+      <Box bg="background-tertiary" className={S.error} mt="lg" p="md">
         <Icon name="warning" size={16} />
       </Box>
 

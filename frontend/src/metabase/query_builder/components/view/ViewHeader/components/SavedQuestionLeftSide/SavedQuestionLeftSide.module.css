@@ -1,12 +1,12 @@
 .badge {
-  background: var(--mb-color-bg-medium);
+  background: var(--mb-color-background-tertiary);
   border-radius: 0.25rem;
   user-select: none;
 }
 
 .StyledLastEditInfoLabel {
   /* LastEditInfoLabel uses emotion with higher specificity */
-  color: var(--mb-color-text-light) !important;
+  color: var(--mb-color-text-tertiary) !important;
 
   @media screen and (max-width: 40em) {
     margin-left: 0;

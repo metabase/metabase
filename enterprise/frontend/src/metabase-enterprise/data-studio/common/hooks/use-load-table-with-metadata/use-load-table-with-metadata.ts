@@ -23,18 +23,12 @@ export function useLoadTableWithMetadata(
     isLoading,
     error,
   } = useGetTableQueryMetadataQuery(
-    tableId != null
-      ? { id: tableId, include_editable_data_model: true }
-      : skipToken,
+    tableId != null ? { id: tableId } : skipToken,
   );
 
   useEffect(() => {
     if (includeForeignTables && table) {
-      dispatch(
-        fetchForeignTablesMetadata(table, {
-          include_editable_data_model: true,
-        }),
-      );
+      dispatch(fetchForeignTablesMetadata(table));
     }
   }, [dispatch, table, includeForeignTables]);
 

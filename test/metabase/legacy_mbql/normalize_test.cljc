@@ -43,6 +43,12 @@
     (is (= {:aggregation [[:+ [:metric 10] 1]]}
            (mbql.normalize/normalize ::mbql.s/MBQLQuery {:aggregation ["+" ["METRIC" 10] 1]})))))
 
+;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
+(deftest ^:parallel normalize-measure-test
+  (testing "MEASURES shouldn't get normalized in some kind of wacky way"
+    (is (= {:aggregation [[:+ [:measure 10] 1]]}
+           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:aggregation ["+" ["MEASURE" 10] 1]})))))
+
 (deftest ^:parallel normalize-test-4
   (testing "Nor should SEGMENTS"
     (is (= {:filter [:= [:+ [:segment 10] 1] 10]}
@@ -777,9 +783,12 @@
 
 (deftest ^:parallel canonicalize-aggregations-test-11
   (normalize-tests
-   "subclauses of `:aggregation-options` should get canonicalized correctly"
+   "subclauses of `:aggregation-options` should get canonicalized correctly; unwrap :aggregation-options with empty options"
    {{:query {:aggregation [[:aggregation-options [:sum 10] {}]]}}
-    {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {}]]}}}))
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}
+
+    {:query {:aggregation [[:aggregation-options [:sum 10] nil]]}}
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}}))
 
 (deftest ^:parallel canonicalize-aggregations-test-12
   (normalize-tests
@@ -800,6 +809,12 @@
   (normalize-tests
    "METRICS shouldn't get canonicalized in some kind of wacky way"
    {{:query {:aggregation [:+ [:metric 1] 2]}} {:query {:aggregation [[:+ [:metric 1] 2]]}}}))
+
+;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
+(deftest ^:parallel canonicalize-aggregations-measure-test
+  (normalize-tests
+   "MEASURES shouldn't get canonicalized in some kind of wacky way"
+   {{:query {:aggregation [:+ [:measure 1] 2]}} {:query {:aggregation [[:+ [:measure 1] 2]]}}}))
 
 (deftest ^:parallel canonicalize-aggregations-test-15
   (normalize-tests

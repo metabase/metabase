@@ -18,7 +18,7 @@
       );
     }
 
-    /* this pevents the divider between the button group from changing color */
+    /* this prevents the divider between the button group from changing color */
     &:hover&.FiltersActive {
       border-right-color: var(--mb-color-border);
     }
@@ -48,7 +48,7 @@
     &:hover,
     &[data-expanded="true"] {
       .FilterCountChip {
-        color: var(--mb-color-text-selected);
+        color: var(--mb-color-text-primary-inverse);
         background-color: var(--mb-color-filter);
       }
     }
@@ -108,26 +108,6 @@
   }
 }
 
-.ToggleNativeQueryButton {
-  transition:
-    background 300ms linear,
-    border 300ms linear;
-
-  &:hover:not([data-active="true"]) {
-    color: var(--mb-color-brand);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-brand) 40%,
-      var(--mb-color-white)
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-brand) 15%,
-      var(--mb-color-white)
-    );
-  }
-}
-
 .BackButton {
   color: var(--mb-color-brand);
   padding: 0.75rem;
@@ -137,7 +117,7 @@
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 }
@@ -156,7 +136,7 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 }
 
@@ -185,13 +165,13 @@
 }
 
 .ViewRunButtonWithTooltip {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     color: var(--mb-color-brand);
 
     &.isDirty {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 }
@@ -222,7 +202,7 @@
 
     &:hover {
       color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
+      background-color: var(--mb-color-background-tertiary);
     }
   }
 }

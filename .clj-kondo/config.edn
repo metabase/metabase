@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- { ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -50,13 +50,15 @@
   ;; disabled linters
   ;;
 
-  :redundant-ignore {:level :off}    ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
+  :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
 
   ;;
   ;; globally-enabled custom linters
   ;;
   :metabase/check-defmulti-arglists                          {:level :warning}
+  :metabase/check-def-check-not-uppercase-name               {:level :warning}
+  :metabase/check-def-no-underscores                         {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
@@ -65,8 +67,8 @@
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
+  :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
   :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
@@ -178,6 +180,11 @@
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; Workspace isolation functions are safe in parallel tests because they operate on
+     ;; isolated, test-specific workspaces and databases that don't affect other tests
+     metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
+     metabase-enterprise.workspaces.isolation/ensure-database-isolation!
+     metabase-enterprise.workspaces.test-util/create-ready-ws!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
@@ -191,7 +198,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -219,7 +226,8 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match]}                    ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match
+                                    metabase.lib.util.match/match-lite]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -238,7 +246,6 @@
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
     (metabase.lib.util.match/match-lite)
-    (metabase.lib.util.match/match-lite-recursive)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)
@@ -299,7 +306,8 @@
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
-   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
+   macaw.core/parsed-query                            {:message "Use metabase.driver.util/parsed-query instead of macaw.core/parsed-query"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -422,6 +430,8 @@
   metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
   metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
   metabase-enterprise.transforms.execute/with-transform-lifecycle                       clojure.core/let
+  metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
+  metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -510,7 +520,16 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/def                                                                                                          hooks.clojure.core.def/lint-def
+   clojure.core/definterface                                                                                                 hooks.clojure.core.def/lint-def
+   clojure.core/defmacro                                                                                                     hooks.clojure.core.defmacro/lint-defmacro
    clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
+   clojure.core/defn                                                                                                         hooks.clojure.core.defn/lint-defn
+   clojure.core/defn-                                                                                                        hooks.clojure.core.defn/lint-defn
+   clojure.core/defonce                                                                                                      hooks.clojure.core.def/lint-def
+   clojure.core/defprotocol                                                                                                  hooks.clojure.core.def/lint-def
+   clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
+   clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -522,8 +541,10 @@
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
+   metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
+   metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
@@ -758,22 +779,17 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def                              {:level :off}
-    :missing-docstring                       {:level :off}
-    :private-call                            {:level :off}
-    :metabase/defsetting-must-specify-export {:level :off}
-    :metabase/defsetting-namespace           {:level :off}
+   {:inline-def                                          {:level :off}
+    :missing-docstring                                   {:level :off}
+    :private-call                                        {:level :off}
+    :metabase/defsetting-must-specify-export             {:level :off}
+    :metabase/defsetting-namespace                       {:level :off}
+    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn
 
     :discouraged-var
     {metabase.driver/database-supports? {:level :off}
      metabase.lib.convert/->legacy-MBQL {:level :off}
-     metabase.lib.core/->legacy-MBQL    {:level :off}}}
-
-   :hooks
-   {:analyze-call
-    {clojure.core/defmacro hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn     hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn-    hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation}}}
+     metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
   source-namespaces
   {:linters

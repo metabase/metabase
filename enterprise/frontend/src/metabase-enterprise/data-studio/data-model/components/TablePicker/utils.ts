@@ -1,19 +1,37 @@
-import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
-import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
+import type { DatabaseId, TableId } from "metabase-types/api";
+
+import { getSchemaId } from "./bulk-selection.utils";
+import { UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,
   FilterState,
-  FlatItem,
-  ItemType,
-  NodeKey,
   RootNode,
+  SchemaNode,
+  TableNode,
+  TablePickerTreeNode,
   TreeNode,
   TreePath,
 } from "./types";
 
-export function hasChildren(type: ItemType): boolean {
-  return type !== "table";
+export function getDatabases(tree: RootNode): DatabaseNode[] {
+  return tree.children;
+}
+
+export function getSchemas(tree: RootNode): SchemaNode[] {
+  return getDatabases(tree).flatMap((db) => db.children);
+}
+
+export function getTables(tree: RootNode): TableNode[] {
+  return getSchemas(tree).flatMap((schema) => schema.children);
+}
+
+export function getTreeMap(tree: RootNode): Map<string, TreeNode> {
+  return new Map(
+    [...getDatabases(tree), ...getSchemas(tree), ...getTables(tree)].map(
+      (n) => [n.key, n],
+    ),
+  );
 }
 
 // Returns a new state object with all the nodes along the path expanded.
@@ -43,102 +61,18 @@ export function expandPath(
   };
 }
 
-/**
- * Convert a TreeNode into a flat list of items
- * that can easily be rendered using virtualization.
- *
- * This does other things like removing nameless schemas
- * from the tree and adding loading nodes.
- */
-export function flatten(
-  node: TreeNode,
-  opts: {
-    addLoadingNodes?: boolean;
-    isExpanded?: (key: string) => boolean;
-    isSingleSchema?: boolean;
-    level?: number;
-    parent?: NodeKey;
-    canFlattenSingleSchema?: boolean;
-    selection?: NodeSelection;
-  } = {},
-): FlatItem[] {
-  const {
-    addLoadingNodes,
-    isExpanded,
-    isSingleSchema,
-    canFlattenSingleSchema,
-    level = 0,
-    parent,
-    selection,
-  } = opts;
-  if (node.type === "root") {
-    // root node doesn't render a title and is always expanded
-    if (addLoadingNodes && node.children.length === 0) {
-      return [
-        loadingItem("database", level),
-        loadingItem("database", level),
-        loadingItem("database", level),
-      ];
-    }
-    return sort(node.children).flatMap((child) => flatten(child, opts));
-  }
-
-  const isSelected = selection ? isItemSelected(node, selection) : "no";
-
-  if (
-    node.type === "schema" &&
-    (node.label === UNNAMED_SCHEMA_NAME ||
-      (isSingleSchema && canFlattenSingleSchema))
-  ) {
-    // Hide nameless schemas in the tree
-    return [
-      ...sort(node.children).flatMap((child) =>
-        flatten(child, {
-          ...opts,
-          level,
-          parent,
-        }),
-      ),
-    ];
-  }
-
-  if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent, isSelected }];
-  }
-
-  if (addLoadingNodes && node.children.length === 0) {
-    const childType = CHILD_TYPES[node.type];
-    if (!childType) {
-      return [{ ...node, level, parent, isSelected }];
-    }
-    return [
-      { ...node, isExpanded: true, level, parent, isSelected },
-      loadingItem(childType, level + 1, node),
-    ];
-  }
-
-  return [
-    { ...node, isExpanded: true, level, parent, isSelected },
-    ...sort(node.children).flatMap((child) =>
-      flatten(child, {
-        ...opts,
-        level: level + 1,
-        parent: node.key,
-        isSingleSchema: node.type === "database" && node.children.length === 1,
-      }),
-    ),
-  ];
-}
-
-export function sort(nodes: TreeNode[]): TreeNode[] {
-  return Array.from(nodes).sort((a, b) => {
-    return a.label.localeCompare(b.label);
-  });
+export function sort<T extends TreeNode>(nodes: readonly T[]): T[] {
+  return [...nodes].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
  * Merge two TreeNodes together.
  */
+export function merge(a: RootNode, b: RootNode): RootNode;
+export function merge(
+  a: TreeNode | undefined,
+  b: TreeNode | undefined,
+): TreeNode;
 export function merge(
   a: TreeNode | undefined,
   b: TreeNode | undefined,
@@ -157,18 +91,14 @@ export function merge(
   const children = [];
 
   for (let index = 0; index < len; index++) {
-    const aa = a.children?.[index];
-    const bb = b.children?.[index];
-    children.push(merge(aa, bb));
+    const childA = a.children?.[index];
+    const childB = b.children?.[index];
+    children.push(merge(childA, childB));
   }
 
-  return {
-    ...a,
-    ...b,
-    // @ts-expect-error: we can't type the child node here correctly
-    // without checking all the combinations, just assume we are right.
-    children,
-  };
+  const merged = { ...a, ...b };
+  (merged as { children: TreeNode[] }).children = children;
+  return merged;
 }
 
 /**
@@ -199,40 +129,142 @@ export function rootNode(children: DatabaseNode[] = []): RootNode {
   });
 }
 
-export function loadingItem(
-  type: ItemType,
-  level: number,
-  parent?: TreeNode,
-): FlatItem {
+export function getFiltersCount(filters: FilterState): number {
+  return [
+    filters.dataSource != null,
+    filters.dataLayer != null,
+    filters.ownerEmail != null || filters.ownerUserId != null,
+    filters.unusedOnly === true,
+  ].filter(Boolean).length;
+}
+
+export function transformToTreeTableFormat(
+  tree: RootNode,
+  canFlattenSingleSchema = true,
+): TablePickerTreeNode[] {
+  return sort(tree.children).map((database) =>
+    transformDatabaseNode(database, canFlattenSingleSchema),
+  );
+}
+
+function transformDatabaseNode(
+  database: DatabaseNode,
+  canFlattenSingleSchema: boolean,
+): TablePickerTreeNode {
+  const { databaseId } = database.value;
+  const isSingleSchema = database.children.length === 1;
+  const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
+
+  let children: TablePickerTreeNode[];
+  if (shouldFlattenSingleSchema) {
+    children = sort(database.children[0].children).map(transformTableNode);
+  } else {
+    children = sort(database.children).flatMap((schema) => {
+      if (schema.label === UNNAMED_SCHEMA_NAME) {
+        return sort(schema.children).map(transformTableNode);
+      }
+      return [transformSchemaNode(schema)];
+    });
+  }
+
   return {
-    type,
-    level,
-    value: parent?.type === "root" ? undefined : parent?.value,
-    parent: parent?.type === "root" ? undefined : parent?.key,
-    isLoading: true,
-    key: Math.random().toString(),
+    id: `db:${databaseId}`,
+    type: "database",
+    name: database.label,
+    nodeKey: database.key,
+    databaseId,
+    children,
+  };
+}
+
+function transformSchemaNode(schema: SchemaNode): TablePickerTreeNode {
+  const { databaseId, schemaName } = schema.value;
+
+  return {
+    id: `schema:${databaseId}:${schemaName}`,
+    type: "schema",
+    name: schema.label,
+    nodeKey: schema.key,
+    databaseId,
+    schemaName,
+    children: sort(schema.children).map(transformTableNode),
+  };
+}
+
+function transformTableNode(table: TableNode): TablePickerTreeNode {
+  const { databaseId, schemaName, tableId } = table.value;
+
+  return {
+    id: `table:${tableId}`,
+    type: "table",
+    name: table.label,
+    nodeKey: table.key,
+    databaseId,
+    schemaName,
+    tableId,
+    table: table.table,
+    isDisabled: table.disabled,
     children: [],
   };
 }
 
-export function getFiltersCount(filters: FilterState): number {
-  let count = 0;
+export function nodeToTreePath(node: TablePickerTreeNode): TreePath {
+  return {
+    databaseId: node.databaseId,
+    schemaName: node.schemaName,
+    tableId: node.tableId,
+  };
+}
 
-  if (filters.dataSource != null) {
-    ++count;
-  }
+export function findSelectedTableNodes(
+  tree: RootNode,
+  selectedTables: Set<TableId>,
+): TableNode[] {
+  return getTables(tree).filter((table) =>
+    selectedTables.has(table.value.tableId),
+  );
+}
 
-  if (filters.dataLayer != null) {
-    ++count;
-  }
+export function getExpandedSelectedSchemas(
+  tree: RootNode,
+  selectedSchemas: Set<string>,
+  isExpanded: (key: string) => boolean,
+): SchemaNode[] {
+  return getSchemas(tree).filter(
+    (schema) =>
+      selectedSchemas.has(getSchemaId(schema)) &&
+      isExpanded(schema.key) &&
+      schema.children.length > 0,
+  );
+}
 
-  if (filters.ownerEmail != null || filters.ownerUserId != null) {
-    ++count;
-  }
+export function getExpandedSelectedDatabases(
+  tree: RootNode,
+  selectedDatabases: Set<DatabaseId>,
+  isExpanded: (key: string) => boolean,
+): DatabaseNode[] {
+  return getDatabases(tree).filter(
+    (db) =>
+      selectedDatabases.has(db.value.databaseId) &&
+      isExpanded(db.key) &&
+      db.children.length > 0,
+  );
+}
 
-  if (filters.unusedOnly === true) {
-    ++count;
-  }
+export function hasManuallySelectedTables(
+  schema: SchemaNode,
+  selectedTables: Set<TableId>,
+): boolean {
+  return schema.children.some((table) =>
+    selectedTables.has(table.value.tableId),
+  );
+}
 
-  return count;
+export function hasManuallySelectedSchemas(
+  database: DatabaseNode,
+  selectedSchemas: Set<string>,
+): boolean {
+  return database.children.some((schema) =>
+    selectedSchemas.has(getSchemaId(schema)),
+  );
 }

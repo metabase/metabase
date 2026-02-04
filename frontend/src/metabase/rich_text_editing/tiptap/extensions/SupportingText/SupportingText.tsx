@@ -35,10 +35,12 @@ import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./SupportingText.module.css";
 
+const SUPPORTING_TEXT_NODE_NAME = "supportingText";
+
 export const SupportingText = Node.create<{
   HTMLAttributes: Record<string, any>;
 }>({
-  name: "supportingText",
+  name: SUPPORTING_TEXT_NODE_NAME,
   group: "block",
   content: "(paragraph|heading|bulletList|orderedList|blockquote|codeBlock)+",
   draggable: true,
@@ -60,7 +62,7 @@ export const SupportingText = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'div[data-type="supportingText"]',
+        tag: `div[data-type="${SUPPORTING_TEXT_NODE_NAME}"]`,
       },
     ];
   },
@@ -69,7 +71,7 @@ export const SupportingText = Node.create<{
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
-        "data-type": this.name,
+        "data-type": SUPPORTING_TEXT_NODE_NAME,
       }),
       0,
     ];
@@ -175,6 +177,7 @@ const SupportingTextComponent = ({
     <NodeViewWrapper
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
+      data-type={SUPPORTING_TEXT_NODE_NAME}
       onDragOver={handleDragOver}
       onDrop={() => setDragState({ isDraggedOver: false, side: null })}
       onCut={onCutOrCopy}
@@ -215,7 +218,9 @@ const SupportingTextComponent = ({
           className={S.handle}
           onClick={() => {
             const pos = getPos();
-            pos && editor.commands.setNodeSelection(pos);
+            if (pos) {
+              editor.commands.setNodeSelection(pos);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === "Backspace" || e.key === "Delete") {

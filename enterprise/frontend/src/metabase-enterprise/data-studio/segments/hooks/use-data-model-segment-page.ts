@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import {
   skipToken,
-  useDeleteSegmentMutation,
   useGetSegmentQuery,
+  useUpdateSegmentMutation,
 } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -25,7 +25,7 @@ type DataModelSegmentPageParams = {
 export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const [deleteSegment] = useDeleteSegmentMutation();
+  const [updateSegment] = useUpdateSegmentMutation();
 
   const databaseId = Number(params.databaseId);
   const schemaName = getSchemaName(params.schemaId);
@@ -51,8 +51,9 @@ export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
       return;
     }
 
-    const { error } = await deleteSegment({
+    const { error } = await updateSegment({
       id: segment.id,
+      archived: true,
       revision_message: t`Removed from Data Studio`,
     });
 
@@ -76,7 +77,7 @@ export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
     tableId,
     schemaName,
     databaseId,
-    deleteSegment,
+    updateSegment,
     dispatch,
     sendSuccessToast,
     sendErrorToast,

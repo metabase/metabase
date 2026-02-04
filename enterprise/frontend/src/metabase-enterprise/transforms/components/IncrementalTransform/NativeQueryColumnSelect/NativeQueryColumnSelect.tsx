@@ -2,24 +2,32 @@ import { useEffect, useState } from "react";
 import { useLatest } from "react-use";
 
 import { FormSelect, FormTextInput } from "metabase/forms";
-import { Loader } from "metabase/ui";
+import {
+  type DataAttributes,
+  type InputDescriptionProps,
+  Loader,
+} from "metabase/ui";
 import { useExtractColumnsFromQueryMutation } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
 
 type NativeQueryColumnSelectProps = {
   name: string;
   label: string;
-  description: string;
+  description: React.ReactNode;
+  descriptionProps?: InputDescriptionProps & DataAttributes;
   placeholder: string;
   query: Lib.Query;
+  disabled?: boolean;
 };
 
 export function NativeQueryColumnSelect({
   name,
   label,
   description,
+  descriptionProps,
   placeholder,
   query,
+  disabled,
 }: NativeQueryColumnSelectProps) {
   const [columns, setColumns] = useState<string[] | null>(null);
   const [extractColumns, { isLoading }] = useExtractColumnsFromQueryMutation();
@@ -69,7 +77,7 @@ export function NativeQueryColumnSelect({
       <FormSelect
         name={name}
         rightSection={isLoading ? <Loader size="sm" /> : null}
-        disabled={isLoading}
+        disabled={disabled || isLoading}
         label={label}
         description={description}
         placeholder={placeholder}
@@ -85,6 +93,8 @@ export function NativeQueryColumnSelect({
       label={label}
       placeholder={placeholder}
       description={description}
+      descriptionProps={descriptionProps}
+      disabled={disabled}
     />
   );
 }

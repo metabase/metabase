@@ -211,12 +211,12 @@ describe("MetabotPurchasePage", () => {
     await expectStoreUserTrialPage();
 
     const metabase_ai_tier3 = screen.getByRole("radio", {
-      name: /up to 3456 requests\/month/,
+      name: /up to 3456 requests\/year/,
     });
     expect(metabase_ai_tier3).toBeVisible();
     expect(metabase_ai_tier3).toHaveAccessibleName(/\$333\/year/);
     const metabase_ai_tier4 = screen.getByRole("radio", {
-      name: /up to 4567 requests\/month/,
+      name: /up to 4567 requests\/year/,
     });
     expect(metabase_ai_tier4).toBeVisible();
     expect(metabase_ai_tier4).toHaveAccessibleName(/\$444\/year/);
@@ -272,9 +272,9 @@ describe("MetabotPurchasePage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai-tiered$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.quantity).toEqual(4567);
-    expect(cloudAddOnsRequest?.body?.terms_of_service).toEqual(true);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.quantity).toEqual(4567);
+    expect(cloudAddOnsRequest!.body.terms_of_service).toEqual(true);
 
     setupRefreshableProperties({
       current_user_matches_store_user: true,
@@ -313,8 +313,8 @@ describe("MetabotPurchasePage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai-tiered$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.quantity).toEqual(3456);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.quantity).toEqual(3456);
   });
 
   it("reports validation errors", async () => {

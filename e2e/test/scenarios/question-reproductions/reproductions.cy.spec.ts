@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -964,10 +964,7 @@ describe("issue 55631", () => {
       cy.findByLabelText("Where do you want to save this?").click();
     });
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("First collection").click();
-      cy.button("Select this collection").click();
-    });
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     H.modal().within(() => {
       cy.button("Save").click();
@@ -1406,11 +1403,212 @@ describe("issue 13347", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
 
-    H.entityPickerModalLevel(1).within(() => {
+    H.entityPickerModalItem(1, "Sample Database").click();
+
+    H.entityPickerModalLevel(2).within(() => {
       cy.findByText("Orders").should("exist");
 
       cy.findByText("13347 structured").should("not.exist");
       cy.findByText("13347 native").should("not.exist");
     });
   });
+});
+
+describe("issue #47005", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsNormalUser();
+
+    H.createCardWithQuery({
+      name: "Question A",
+      query: {
+        databaseId: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+          },
+        ],
+      },
+    }).then(({ body: question }) => {
+      H.createCardWithQuery(
+        {
+          name: "Question B",
+          metadata: {
+            cardIds: [question.id],
+          },
+          query: {
+            databaseId: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: {
+                  type: "card",
+                  id: question.id,
+                },
+              },
+            ],
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+  });
+
+  it("should show the collection of the base question in breadcrumbs (metabase#47005)", () => {
+    cy.findAllByTestId("head-crumbs-container")
+      .filter(":contains(Question A)")
+      .findByText("Our analytics")
+      .should("be.visible");
+  });
+});
+
+describe("issue 66210", () => {
+  const METRIC_NAME = "66210 metric";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createCardWithQuery({
+      name: METRIC_NAME,
+      type: "metric",
+      query: {
+        databaseId: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [
+              {
+                name: "Count",
+                value: {
+                  type: "operator",
+                  operator: "count",
+                  args: [],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    cy.visit("/");
+  });
+
+  it("should not allow you to join on metrics", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
+    H.entityPickerModalItem(1, "Orders").click();
+    H.join();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
+  });
+});
+
+describe("issue #67903", () => {
+  beforeEach(() => {
+    cy.viewport(1000, 800);
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show preview table headers on top of other elements (metabase#67903)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+    H.getNotebookStep("data").findByTestId("step-preview-button").click();
+    H.queryBuilderHeader().findByLabelText("View SQL").click();
+    cy.findByTestId("table-header").should("not.be.visible");
+  });
+});
+
+describe("issue 68574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE CREATED_AT > {{ start }}",
+        "template-tags": {
+          start: {
+            type: "date",
+            name: "start",
+            "display-name": "Start",
+            id: "1",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "start",
+          required: true,
+          name: "Start",
+          type: "date/single",
+          target: ["variable", ["template-tag", "start"]],
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { wrapId: true });
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#68574)", () => {
+    updateFormattingSettings({
+      date_style: "D MMMM, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("1 January, 2024");
+
+    cy.log("change the date format");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Monday, January 1, 2024");
+
+    cy.log("enable date abbreviation");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: true,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Mon, Jan 1, 2024");
+
+    cy.log("even when the setting is unset, it should render a valid format");
+    updateFormattingSettings(undefined);
+    visitQuestion("2024-01-01");
+    assertParameterFormat("January 1, 2024");
+  });
+
+  function updateFormattingSettings(settings: any) {
+    H.updateSetting("custom-formatting", {
+      "type/Temporal": settings,
+    });
+  }
+
+  function visitQuestion(value: string) {
+    cy.get("@questionId").then((id) => {
+      cy.visit(`/question/${id}?start=${value}`);
+    });
+  }
+
+  function assertParameterFormat(value: string) {
+    cy.findByTestId("parameter-value-widget-target")
+      .should("be.visible")
+      .should("contain.text", value);
+  }
 });

@@ -70,6 +70,7 @@ export {
   PLUGIN_DB_ROUTING,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
+  PLUGIN_WORKSPACES,
 } from "./oss/database";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
@@ -144,12 +145,13 @@ export { PLUGIN_TENANTS } from "./oss/tenants";
 // Re-export types that are used by other files
 export type {
   GetAuthProviders,
+  GitSyncSetupMenuItemProps,
   PluginGroupManagersType,
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
 // Export a single reinitialize function that calls all individual reinitialize functions
-import { reinitialize as reinitializeDashboardSubscriptionsSdk } from "../../embedding-sdk-bundle/components/public/subscriptions";
+import { reinitialize as reinitializeNotificationsSdk } from "../../embedding-sdk-bundle/components/public/notifications";
 
 import { reinitialize as reinitializeAi } from "./oss/ai";
 import { reinitialize as reinitializeApi } from "./oss/api";
@@ -189,7 +191,7 @@ import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
  * so reinitializing them all ensures that dependencies are correctly set up.
  */
 export function reinitialize() {
-  reinitializeDashboardSubscriptionsSdk();
+  reinitializeNotificationsSdk();
 
   reinitializeAi();
   reinitializeApi();

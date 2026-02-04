@@ -4,10 +4,11 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { DraftTransformSource, TransformId } from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 type Props = {
   handleCancel: VoidFunction;
@@ -15,8 +16,9 @@ type Props = {
   isDirty: boolean;
   isEditMode: boolean;
   isSaving: boolean;
+  readOnly?: boolean;
   source: DraftTransformSource;
-  transformId: TransformId;
+  transform: Transform;
 };
 
 export const TransformPaneHeaderActions = (props: Props) => {
@@ -27,9 +29,11 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
-    transformId,
+    transform,
+    readOnly,
   } = props;
   const metadata = useSelector(getMetadata);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
@@ -49,8 +53,14 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isPythonTransform && !isNative && !isEditMode) {
-    return <EditDefinitionButton transformId={transformId} />;
+  if (
+    !readOnly &&
+    !isPythonTransform &&
+    !isNative &&
+    !isEditMode &&
+    !isRemoteSyncReadOnly
+  ) {
+    return <EditDefinitionButton transformId={transform.id} />;
   }
 
   if (!isEditMode && isNative) {
@@ -59,7 +69,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
 
   return (
     <PaneHeaderActions
-      alwaysVisible={!isPythonTransform && isEditMode}
+      alwaysVisible={isEditMode}
       errorMessage={validationResult.errorMessage}
       isDirty={isDirty}
       isSaving={isSaving}

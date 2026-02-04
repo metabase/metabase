@@ -133,8 +133,6 @@ export const createMockTokenFeatures = (
   ai_entity_analysis: false,
   ai_sql_fixer: false,
   ai_sql_generation: false,
-  offer_metabase_ai: false,
-  offer_metabase_ai_tiered: false,
   database_routing: false,
   development_mode: false,
   table_data_editing: false,
@@ -145,6 +143,7 @@ export const createMockTokenFeatures = (
   data_studio: false,
   "support-users": false,
   tenants: false,
+  workspaces: false,
   ...opts,
 });
 
@@ -170,7 +169,7 @@ export const createMockSettings = (
   "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
-  // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is a mock
   "application-name": "Metabase",
   "application-favicon-url": "",
   "available-fonts": [],
@@ -230,6 +229,7 @@ export const createMockSettings = (
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
+  "llm-anthropic-model": "",
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
@@ -266,7 +266,7 @@ export const createMockSettings = (
    * This is a derived setting and it reads either from an env, or from the list
    * of databases. It checks whether there is a db with `is_sample` property.
    * You probably don't want to set this directly in tests because it can get out
-   * of sync with the database state (whch should be a source of truth).
+   * of sync with the database state (which should be a source of truth).
    */
   "has-sample-database?": undefined,
   "has-user-setup": true,
@@ -309,6 +309,7 @@ export const createMockSettings = (
   "ldap-group-mappings": null,
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
+  "llm-sql-generation-enabled": false,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
@@ -391,7 +392,6 @@ export const createMockSettings = (
   "setup-license-active-at-setup": false,
   "embedding-hub-test-embed-snippet-created": false,
   "embedding-hub-production-embed-snippet-created": false,
-  "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
   "check-for-updates": true,

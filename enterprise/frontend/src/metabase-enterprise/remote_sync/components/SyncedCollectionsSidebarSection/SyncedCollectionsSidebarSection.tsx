@@ -1,7 +1,7 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useAdminSetting } from "metabase/api/utils";
 import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,
@@ -10,9 +10,9 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import type { SyncedCollectionsSidebarSectionProps } from "metabase/plugins/types";
 import { Box, Flex, Group, Text } from "metabase/ui";
-import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 
-import { REMOTE_SYNC_KEY } from "../../constants";
+import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
+import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 
 import { CollectionSyncStatusBadge } from "./CollectionSyncStatusBadge";
 
@@ -23,24 +23,20 @@ export const SyncedCollectionsSidebarSection = ({
 }: SyncedCollectionsSidebarSectionProps) => {
   const hasSyncedCollections = syncedCollections.length > 0;
 
-  const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
+  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
+  const { dirty, isCollectionDirty } = useRemoteSyncDirtyState();
 
-  const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
-    skip: !isRemoteSyncEnabled,
-    refetchOnFocus: true,
-  });
-
-  const changedCollections = dirtyData?.changedCollections ?? {};
-  const hasEntityRemoved = dirtyData?.dirty?.some(
-    (entity) => entity.sync_status === "removed",
+  const hasEntityRemoved = useMemo(
+    () => dirty.some((entity) => entity.sync_status === "removed"),
+    [dirty],
   );
 
   const showChangesBadge = (itemId?: number | string) => {
-    if (!changedCollections || typeof itemId !== "number") {
+    if (typeof itemId !== "number") {
       return false;
     }
 
-    const collectionIsUpdated = !!changedCollections[itemId];
+    const collectionIsUpdated = isCollectionDirty(itemId);
     const hasSingleRootCollection = syncedCollections.length === 1;
 
     return (
@@ -53,7 +49,7 @@ export const SyncedCollectionsSidebarSection = ({
     );
   };
 
-  if (!isRemoteSyncEnabled) {
+  if (!isGitSyncVisible) {
     return null;
   }
 
@@ -69,7 +65,7 @@ export const SyncedCollectionsSidebarSection = ({
         </Flex>
 
         {!hasSyncedCollections && (
-          <Text c="text-light" fz="sm" ta="center">
+          <Text c="text-tertiary" fz="sm" ta="center">
             {t`No synced collections`}
           </Text>
         )}

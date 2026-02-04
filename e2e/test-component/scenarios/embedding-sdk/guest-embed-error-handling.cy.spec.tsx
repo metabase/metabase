@@ -1,7 +1,12 @@
+import { MetabotQuestion } from "@metabase/embedding-sdk-react";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mountGuestEmbedQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  mountGuestEmbedQuestion,
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -86,6 +91,18 @@ describe("scenarios > embedding-sdk > guest-embed-error-handling", () => {
           "A valid JWT token is required to be passed in guest embeds mode.",
         ).should("be.visible");
       });
+    });
+  });
+
+  it("should show an error when a component does not support guest embed", () => {
+    mountSdkContent(<MetabotQuestion />, {
+      sdkProviderProps: { authConfig: { isGuest: true } },
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("This component does not support guest embeds").should(
+        "be.visible",
+      );
     });
   });
 });

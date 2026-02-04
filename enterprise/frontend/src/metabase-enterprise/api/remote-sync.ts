@@ -3,6 +3,7 @@ import type {
   ExportChangesRequest,
   ExportChangesResponse,
   GetBranchesResponse,
+  HasRemoteChangesResponse,
   ImportFromBranchRequest,
   ImportFromBranchResponse,
   RemoteSyncChangesResponse,
@@ -78,6 +79,13 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
+    getHasRemoteChanges: builder.query<HasRemoteChangesResponse, void>({
+      query: () => ({
+        url: `/api/ee/remote-sync/has-remote-changes`,
+        method: "GET",
+      }),
+      providesTags: () => [tag("remote-sync-has-remote-changes")],
+    }),
     updateRemoteSyncSettings: builder.mutation<
       UpdateRemoteSyncConfigurationResponse,
       RemoteSyncConfigurationSettings
@@ -91,6 +99,11 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
         // Invalidate collection list to refresh is_remote_synced values
         listTag("collection"),
+        // Invalidate library collection to refresh is_remote_synced value
+        tag("library-collection"),
+        // Invalidate dirty state to refetch after settings change
+        tag("collection-dirty-entities"),
+        tag("collection-is-dirty"),
       ],
     }),
     getBranches: builder.query<GetBranchesResponse, void>({
@@ -133,6 +146,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetRemoteSyncChangesQuery,
   useGetRemoteSyncHasChangesQuery,
+  useGetHasRemoteChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
   useExportChangesMutation,
   useGetBranchesQuery,

@@ -4,17 +4,19 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import SchedulePicker, {
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import {
   type ScheduleChangeProp,
+  SchedulePicker,
 } from "metabase/common/components/SchedulePicker";
-import SendTestPulse from "metabase/common/components/SendTestPulse";
-import Toggle from "metabase/common/components/Toggle";
+import { SendTestPulse } from "metabase/common/components/SendTestPulse";
+import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";
-import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
+import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { canAccessSettings } from "metabase/selectors/user";
@@ -26,7 +28,6 @@ import type {
   ChannelSpec,
   Dashboard,
   DashboardSubscription,
-  Pulse,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
@@ -55,7 +56,7 @@ interface AddEditEmailSidebarProps {
   ) => void;
   testPulse: () => void;
   toggleSkipIfEmpty: () => void;
-  setPulse: (pulse: Pulse) => void;
+  setPulse: (pulse: DashboardSubscription) => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
 }
@@ -84,6 +85,11 @@ export const AddEditEmailSidebar = ({
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
+
+  // Return true if the results of all cards can be downloaded
+  const allowDownload = pulse.cards?.every(
+    (card) => card.download_perms !== DataPermissionValue.NONE,
+  );
 
   useEffect(() => {
     if (isEmbeddingSdk()) {
@@ -187,6 +193,7 @@ export const AddEditEmailSidebar = ({
           cards={pulse.cards}
           pulse={pulse}
           setPulse={setPulse}
+          allowDownload={allowDownload}
         />
         {pulse.id != null && (
           <DeleteSubscriptionAction

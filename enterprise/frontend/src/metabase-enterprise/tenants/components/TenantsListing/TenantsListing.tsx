@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/people/constants";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { regexpEscape } from "metabase/lib/string";
@@ -27,6 +27,8 @@ import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
 import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
 
+import { TenantsListingEmptyState } from "../TenantsListingEmptyState";
+
 interface TenantsListingProps {
   tenants: Tenant[];
   isAdmin: boolean;
@@ -34,6 +36,7 @@ interface TenantsListingProps {
   searchInputValue: string;
   setSearchInputValue: (value: string) => void;
   status: ActiveStatus;
+  hasNoTenants: boolean;
 }
 
 export const TenantsListing = ({
@@ -43,17 +46,24 @@ export const TenantsListing = ({
   setSearchInputValue,
   status,
   children,
+  hasNoTenants,
 }: TenantsListingProps) => {
   const dispatch = useDispatch();
 
   const openNewTenantModal = () => {
-    dispatch(push(Urls.newTenant()));
+    const param = hasNoTenants ? "?onboarding=true" : "";
+
+    dispatch(push(Urls.newTenant() + param));
   };
 
   const filteredTenants = useMemo(() => {
     const filter = new RegExp(`\\b${regexpEscape(searchInputValue)}`, "i");
     return tenants.filter((g) => filter.test(g.name));
   }, [searchInputValue, tenants]);
+
+  if (hasNoTenants) {
+    return <TenantsListingEmptyState onCreateTenant={openNewTenantModal} />;
+  }
 
   return (
     <div>
@@ -107,13 +117,13 @@ export const TenantsListing = ({
 
       {((tenants.length !== 0 && filteredTenants.length === 0) ||
         (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
           {t`No matching tenants found.`}
         </Text>
       )}
 
       {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
           {t`Add your first tenant to get started.`}
         </Text>
       )}
@@ -132,7 +142,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
     <Menu shadow="md" width={200} position="bottom-end">
       <Menu.Target>
         <UnstyledButton>
-          <Icon c="text-light" name="ellipsis" />
+          <Icon c="text-tertiary" name="ellipsis" />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

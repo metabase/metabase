@@ -120,8 +120,12 @@
                        (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
-    (let [card         (card query (:source-card stage))
-          card-stages  (get-in card [:dataset-query :stages])
+    (let [card          (card query (:source-card stage))
+          card-stages   (get-in card [:dataset-query :stages])
+          model?        (= (:type card) :model)
+          native-model? (when model?
+                          (-> (lib.card/card->underlying-query query card)
+                              (lib.util/native-stage? -1)))
           ;; TODO this information WAS used
           ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
           ;; -- do we still need it? -- Cam
@@ -130,7 +134,8 @@
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model))
+                                   :source-query/model? model?)
+                            (cond-> model? (assoc :source-query/native-model? native-model?))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 

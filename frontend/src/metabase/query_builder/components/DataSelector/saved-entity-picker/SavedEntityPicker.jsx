@@ -18,7 +18,7 @@ import {
 import { connect } from "metabase/lib/redux";
 import { Box, Icon } from "metabase/ui";
 
-import SavedEntityList from "./SavedEntityList";
+import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
 
@@ -46,7 +46,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
   ...PERSONAL_COLLECTIONS,
 };
 
-function SavedEntityPicker({
+function SavedEntityPickerInner({
   type,
   onBack,
   onSelect,
@@ -89,7 +89,7 @@ function SavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, modelFilter),
+      ...buildCollectionTree(preparedCollections, { modelFilter }),
     ];
   }, [collections, rootCollection, currentUser, type]);
 
@@ -139,11 +139,11 @@ function SavedEntityPicker({
   );
 }
 
-SavedEntityPicker.propTypes = propTypes;
+SavedEntityPickerInner.propTypes = propTypes;
 
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
-export default _.compose(
+export const SavedEntityPicker = _.compose(
   Collections.load({
     id: () => "root",
     entityAlias: "rootCollection",
@@ -153,4 +153,4 @@ export default _.compose(
     query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),
-)(SavedEntityPicker);
+)(SavedEntityPickerInner);

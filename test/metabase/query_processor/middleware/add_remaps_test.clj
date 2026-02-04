@@ -400,10 +400,13 @@
 (deftest ^:parallel multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)\n"
     (let [mp                                        (-> meta/metadata-provider
-                                                        (lib.tu/remap-metadata-provider (meta/field-metadata :venues :category-id)
-                                                                                        (meta/field-metadata :categories :name))
-                                                        (lib.tu/remap-metadata-provider (meta/field-metadata :venues :id)
-                                                                                        (meta/field-metadata :categories :name)))
+                                                        (lib.tu/merged-mock-metadata-provider
+                                                         {:fields [{:id (meta/id :venues :id)
+                                                                    :fk-target-field-id (meta/id :categories :id)}]})
+                                                        (lib.tu/remap-metadata-provider (meta/id :venues :category-id)
+                                                                                        (meta/id :categories :name))
+                                                        (lib.tu/remap-metadata-provider (meta/id :venues :id)
+                                                                                        (meta/id :categories :name)))
           query                                     (lib/query
                                                      mp
                                                      (lib.tu.macros/mbql-query venues

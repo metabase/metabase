@@ -14,15 +14,16 @@ import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
 
-import { DependenciesSection } from "./DependenciesSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
+import { TransformsSection } from "./TransformsSection";
 import type { TransformJobInfo } from "./types";
 
 type JobEditorProps = {
   job: TransformJobInfo;
   menu?: ReactNode;
   actions?: ReactNode;
+  readOnly?: boolean;
   onNameChange: (name: string) => void;
   onScheduleChange: (
     schedule: string,
@@ -35,6 +36,7 @@ export function JobEditor({
   job,
   menu,
   actions,
+  readOnly,
   onNameChange,
   onScheduleChange,
   onTagListChange,
@@ -47,6 +49,7 @@ export function JobEditor({
             initialValue={job.name}
             maxLength={NAME_MAX_LENGTH}
             onChange={onNameChange}
+            readOnly={readOnly}
           />
         }
         py={0}
@@ -63,9 +66,17 @@ export function JobEditor({
         data-testid="jobs-header"
       />
       <Stack gap="3.5rem">
-        <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
-        <TagSection job={job} onTagsChange={onTagListChange} />
-        {job.id != null && <DependenciesSection jobId={job.id} />}
+        <ScheduleSection
+          job={job}
+          readOnly={readOnly}
+          onScheduleChange={onScheduleChange}
+        />
+        <TagSection
+          job={job}
+          readOnly={readOnly}
+          onTagsChange={onTagListChange}
+        />
+        {job.id != null && <TransformsSection jobId={job.id} />}
       </Stack>
     </PageContainer>
   );

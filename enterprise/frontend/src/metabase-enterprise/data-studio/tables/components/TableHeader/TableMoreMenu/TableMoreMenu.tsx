@@ -3,10 +3,11 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
 
 type TableModalType = "unpublish";
@@ -18,6 +19,7 @@ type TableMoreMenuProps = {
 export function TableMoreMenu({ table }: TableMoreMenuProps) {
   const dispatch = useDispatch();
   const [modalType, setModalType] = useState<TableModalType>();
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const handleUnpublish = () => {
     setModalType(undefined);
@@ -28,7 +30,7 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon size="sm">
+          <ActionIcon size="sm" aria-label={t`Show table options`}>
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
@@ -41,12 +43,14 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
           >
             {c("A verb, not a noun").t`View`}
           </Menu.Item>
-          <Menu.Item
-            leftSection={<Icon name="unpublish" />}
-            onClick={() => setModalType("unpublish")}
-          >
-            {t`Unpublish`}
-          </Menu.Item>
+          {!remoteSyncReadOnly && (
+            <Menu.Item
+              leftSection={<Icon name="unpublish" />}
+              onClick={() => setModalType("unpublish")}
+            >
+              {t`Unpublish`}
+            </Menu.Item>
+          )}
         </Menu.Dropdown>
       </Menu>
       <UnpublishTablesModal

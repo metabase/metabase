@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { StackProps } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Transform } from "metabase-types/api";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";
@@ -16,6 +19,7 @@ type TransformHeaderProps = {
   actions?: ReactNode;
   hasMenu?: boolean;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transform: Transform;
 } & Omit<StackProps, "title">;
 
@@ -24,19 +28,41 @@ export function TransformHeader({
   actions,
   hasMenu = true,
   isEditMode = false,
+  readOnly,
   ...restProps
 }: TransformHeaderProps) {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: transform.collection_id,
+    namespace: "transforms",
+  });
+
   return (
     <PaneHeader
-      title={<TransformNameInput transform={transform} />}
+      title={<TransformNameInput transform={transform} readOnly={readOnly} />}
       icon="transform"
-      menu={hasMenu && <TransformMoreMenu transform={transform} />}
+      menu={
+        hasMenu && (
+          <TransformMoreMenu
+            readOnly={readOnly || isRemoteSyncReadOnly}
+            transform={transform}
+          />
+        )
+      }
       tabs={!isEditMode && <TransformTabs transform={transform} />}
       actions={actions}
       data-testid="transforms-header"
       breadcrumbs={
-        <DataStudioBreadcrumbs>
+        <DataStudioBreadcrumbs loading={isLoadingPath}>
           <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          {path?.map((folder) => (
+            <Link
+              key={folder.id}
+              to={`${Urls.transformList()}?collectionId=${folder.id}`}
+            >
+              {folder.name}
+            </Link>
+          ))}
           {transform.name}
         </DataStudioBreadcrumbs>
       }

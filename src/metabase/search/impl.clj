@@ -254,6 +254,7 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
+   [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
@@ -296,6 +297,7 @@
            include-dashboard-questions?
            include-metadata?
            is-superuser?
+           is-data-analyst?
            last-edited-at
            last-edited-by
            limit
@@ -329,6 +331,7 @@
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
+                        :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
@@ -370,7 +373,9 @@
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-system-collection-name))
+    collection/maybe-localize-system-collection-name
+    :always
+    collection/maybe-localize-tenant-collection-name))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]

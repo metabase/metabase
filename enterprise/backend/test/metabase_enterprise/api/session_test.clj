@@ -34,8 +34,6 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
-                              :offer-metabase-ai
-                              :offer-metabase-ai-tiered
                               :official-collections
                               :query-reference-validation
                               :remote-sync
@@ -49,6 +47,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :sso-slack
                               :support-users
                               :transforms
                               :transforms-python
@@ -57,7 +56,8 @@
                               :collection-cleanup
                               :database-routing
                               :tenants
-                              :cloud-custom-smtp}
+                              :cloud-custom-smtp
+                              :workspaces}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -82,8 +82,6 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
-            :offer_metabase_ai              true
-            :offer_metabase_ai_tiered       true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true
@@ -97,6 +95,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
             :transforms                     true
@@ -109,5 +108,6 @@
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false
-            :dependencies                   false}
+            :dependencies                   false
+            :workspaces                     true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

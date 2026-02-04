@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
-import QueryButton from "metabase/common/components/QueryButton";
+import { QueryButton } from "metabase/common/components/QueryButton";
 import D from "metabase/reference/components/Detail.module.css";
 
 import S from "./UsefulQuestions.module.css";
@@ -25,4 +25,5 @@ UsefulQuestions.propTypes = {
   questions: PropTypes.array.isRequired,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(UsefulQuestions);

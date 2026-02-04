@@ -22,6 +22,7 @@ interface Table {
 describe("bulk table operations", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     cy.intercept("POST", "/api/ee/data-studio/table/sync-schema").as(
@@ -35,7 +36,7 @@ describe("bulk table operations", () => {
     );
     cy.intercept(
       "GET",
-      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
+      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
     ).as("getSchema");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
@@ -63,6 +64,9 @@ describe("bulk table operations", () => {
     cy.findByRole("heading", { name: /2 tables selected/ });
 
     cy.findByRole("button", { name: /Sync settings/ }).click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_bulk_sync_settings_clicked",
+    });
     cy.findByRole("button", { name: /Sync table schemas/ }).click();
     cy.findByRole("button", { name: /Sync triggered!/ }).should("be.visible");
     cy.get<number[]>("@tableIds").then((tableIds) => {
@@ -72,6 +76,10 @@ describe("bulk table operations", () => {
           expect(response?.statusCode).to.eq(204);
         },
       );
+    });
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_table_schema_sync_started",
+      result: "success",
     });
 
     cy.findByRole("button", { name: /Re-scan tables/ }).click();
@@ -85,6 +93,10 @@ describe("bulk table operations", () => {
         },
       );
     });
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_table_fields_rescan_started",
+      result: "success",
+    });
 
     cy.findByRole("button", { name: /Discard cached field values/ }).click();
     cy.findByRole("button", { name: /Discard triggered!/ }).should(
@@ -97,6 +109,10 @@ describe("bulk table operations", () => {
         expect(request.body.table_ids).to.deep.eq(tableIds);
         expect(response?.statusCode).to.eq(204);
       });
+    });
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_table_field_values_discard_started",
+      result: "success",
     });
   });
 
@@ -134,6 +150,9 @@ describe("bulk table operations", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish these tables").click();
       cy.wait("@unpublishTables");
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_unpublished",
+      });
       H.DataStudio.nav().findByLabelText("Library").click();
 
       H.DataStudio.Library.libraryPage().within(() => {
@@ -155,15 +174,35 @@ describe("bulk table operations", () => {
 
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_bulk_attribute_updated",
+      event_detail: "owner",
+      result: "success",
+    });
 
-    H.selectHasValue("Visibility type", "").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectHasValue("Visibility layer", "").click();
+    H.selectDropdown().contains("Final").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_bulk_attribute_updated",
+      event_detail: "layer",
+      result: "success",
+    });
 
     H.selectHasValue("Entity type", "").click();
     H.selectDropdown().contains("Person").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_bulk_attribute_updated",
+      event_detail: "entity_type",
+      result: "success",
+    });
 
     H.selectHasValue("Source", "").click();
     H.selectDropdown().contains("Ingested").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_bulk_attribute_updated",
+      event_detail: "data_source",
+      result: "success",
+    });
     H.undoToastList().should("have.length", 4);
     TablePicker.getTable("Orders")
       .findByTestId("table-owner")
@@ -206,7 +245,10 @@ describe("bulk table operations", () => {
 
         cy.log("publish and check publish state column");
 
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Accounts")
+          .find('input[type="checkbox"]')
+          .scrollIntoView()
+          .check();
         TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
@@ -235,16 +277,6 @@ describe("bulk table operations", () => {
         });
 
         cy.log("publish and check publish state column");
-
-        /**
-         * we need to wait a little until TableAttributesEditBulk component is destroyed (see enterprise/frontend/src/metabase-enterprise/data-studio/data-model/components/TablePicker/components/SearchNew.tsx:153)
-         * Otherwise, the button will be found, but it will be immediately removed.
-         * And then we have to reselect because when there is a filter rows are unselected after a change
-         */
-        cy.findByRole("button", { name: /Publish/ }).should("not.exist");
-
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
-        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
         cy.wait("@publishTables");
@@ -272,8 +304,8 @@ describe("bulk table operations", () => {
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
 
-    H.selectHasValue("Visibility type", "").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectHasValue("Visibility layer", "").click();
+    H.selectDropdown().contains("Final").click();
 
     H.selectHasValue("Entity type", "").click();
     H.selectDropdown().contains("Person").click();
@@ -316,8 +348,8 @@ describe("bulk table operations", () => {
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
 
-    H.selectHasValue("Visibility type", "").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectHasValue("Visibility layer", "").click();
+    H.selectDropdown().contains("Final").click();
 
     H.selectHasValue("Entity type", "").click();
     H.selectDropdown().contains("Person").click();

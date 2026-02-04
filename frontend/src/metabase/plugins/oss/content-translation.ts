@@ -4,11 +4,13 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
   getDictionaryBasePath: null as string | null,
-  setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
+  setEndpointsForAuthEmbedding: () => {},
+  setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
     T = string | null | undefined,
@@ -19,6 +21,15 @@ const getDefaultPluginContentTranslation = () => ({
     obj: T,
     _tc: ContentTranslationFunction,
   ) => obj,
+  translateColumnDisplayName: (
+    displayName: string,
+    _tc: ContentTranslationFunction,
+  ): string => displayName,
+  getTranslatedFilterDisplayName: (
+    displayName: string,
+    _tc: ContentTranslationFunction,
+    _columnDisplayName: string | undefined,
+  ): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>

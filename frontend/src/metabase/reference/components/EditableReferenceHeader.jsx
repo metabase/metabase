@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
@@ -63,7 +63,7 @@ const EditableReferenceHeader = ({
             <Ellipsified
               key="1"
               className={!headerLink && CS.flexFull}
-              tooltipMaxWidth="auto"
+              tooltipProps={{ w: "auto" }}
             >
               {name === "Details"
                 ? hasDisplayName
@@ -112,4 +112,5 @@ EditableReferenceHeader.propTypes = {
   nameFormField: PropTypes.object,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(EditableReferenceHeader);

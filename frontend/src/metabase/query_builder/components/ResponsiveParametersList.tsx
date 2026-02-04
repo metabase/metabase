@@ -2,8 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
+import { Button } from "metabase/common/components/Button";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { Box, Flex } from "metabase/ui";
 import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
@@ -16,7 +16,6 @@ interface ResponsiveParametersListProps {
     parametersList?: string;
   };
   cardId?: CardId;
-  token?: string | null;
   dashboardId?: DashboardId;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
@@ -29,7 +28,6 @@ interface ResponsiveParametersListProps {
 export const ResponsiveParametersList = ({
   classNames,
   cardId,
-  token,
   dashboardId,
   parameters,
   setParameterValue,
@@ -101,7 +99,6 @@ export const ResponsiveParametersList = ({
           )}
           cardId={cardId}
           dashboardId={dashboardId}
-          token={token}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}

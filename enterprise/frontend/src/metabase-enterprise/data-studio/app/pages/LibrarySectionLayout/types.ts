@@ -6,21 +6,41 @@ import type {
   CollectionNamespace,
 } from "metabase-types/api";
 
+export type LibrarySectionType = "data" | "metrics" | "snippets";
+
+export type EmptyStateData = {
+  model: "empty-state";
+  sectionType: LibrarySectionType;
+  description: string;
+  actionLabel: string;
+  actionUrl?: string;
+};
+
+export type TreeItemModel = CollectionItemModel | "empty-state";
+
 export type TreeItem = {
+  id: string;
   name: string;
   icon: IconName;
   updatedAt?: string;
-  model: CollectionItemModel;
-  data: (Collection | Omit<CollectionItem, "getUrl">) & {
-    model: CollectionItem["model"];
-    namespace?: CollectionNamespace;
-  };
+  model: TreeItemModel;
+  data:
+    | ((Collection | Omit<CollectionItem, "getUrl">) & {
+        model: CollectionItem["model"];
+        namespace?: CollectionNamespace | null;
+      })
+    | EmptyStateData;
   children?: TreeItem[];
-  id: number | string;
 };
 
 export const isCollection = (
   c: Collection | Omit<CollectionItem, "getUrl">,
 ): c is Collection => {
   return Object.keys(c).includes("namespace");
+};
+
+export const isEmptyStateData = (
+  data: TreeItem["data"],
+): data is EmptyStateData => {
+  return data.model === "empty-state";
 };

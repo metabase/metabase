@@ -9,8 +9,8 @@ import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
+import { AppSwitcher } from "../AppSwitcher";
 import NewItemButton from "../NewItemButton";
-import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
@@ -30,7 +30,7 @@ export interface AppBarLargeProps {
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
@@ -48,12 +48,14 @@ const AppBarLarge = ({
   isSearchVisible,
   isEmbeddingIframe,
   isNewButtonVisible,
-  isProfileLinkVisible,
+  isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const { isVisible: isGitSyncVisible } =
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
   return (
     <AppBarRoot
@@ -73,6 +75,7 @@ const AppBarLarge = ({
         <AppBarLogo
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
+          isGitSyncVisible={isGitSyncVisible}
         />
         <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
@@ -91,7 +94,7 @@ const AppBarLarge = ({
           ) : null}
         </AppBarInfoContainer>
       </Flex>
-      {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
+      {(isSearchVisible || isNewButtonVisible || isAppSwitcherVisible) && (
         <Flex
           align="center"
           gap="sm"
@@ -103,9 +106,9 @@ const AppBarLarge = ({
             (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
-          {isProfileLinkVisible && (
-            <Box c="var(--mb-color-text-primary)" aria-label={t`Settings menu`}>
-              <ProfileLink />
+          {isAppSwitcherVisible && (
+            <Box c="text-primary" aria-label={t`Settings menu`}>
+              <AppSwitcher />
             </Box>
           )}
         </Flex>

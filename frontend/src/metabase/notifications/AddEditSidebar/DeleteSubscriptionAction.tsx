@@ -6,15 +6,9 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
-import type { Channel, Pulse } from "metabase-types/api";
+import type { Channel, DashboardSubscription } from "metabase-types/api";
 
-interface PulseWithMetadata extends Pulse {
-  id?: number | null;
-  archived?: boolean;
-  name?: string;
-}
-
-function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
+function getConfirmItems(pulse: DashboardSubscription): ReactNode[] {
   return pulse.channels.map((c: Channel, index: number) =>
     c.channel_type === "email" ? (
       <span key={index}>
@@ -50,7 +44,7 @@ function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
 }
 
 interface DeleteSubscriptionActionProps {
-  pulse: PulseWithMetadata;
+  pulse: DashboardSubscription;
   handleArchive: () => void;
 }
 
@@ -80,7 +74,7 @@ export function DeleteSubscriptionAction({
   return (
     <>
       <Flex className={cx(CS.borderTop, CS.pt1, CS.pb3)} justify="flex-end">
-        <Button variant="subtle" c="text-light" onClick={openModal}>
+        <Button variant="subtle" c="text-tertiary" onClick={openModal}>
           {t`Delete this subscription`}
         </Button>
       </Flex>

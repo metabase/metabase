@@ -11,7 +11,7 @@ const setupPremium = (opts?: SetupOpts) => {
   setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({ official_collections: true }),
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["collections"],
   });
 };
 

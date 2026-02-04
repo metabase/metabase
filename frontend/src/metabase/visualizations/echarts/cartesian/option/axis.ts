@@ -5,12 +5,12 @@ import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
-  Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   TimeSeriesXAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getPaddedAxisLabel } from "metabase/visualizations/echarts/cartesian/option/utils";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -30,15 +30,12 @@ export const getAxisNameGap = (ticksWidth: number): number => {
 };
 
 const getCustomAxisRange = (
-  axisExtent: Extent,
   customMin: number | null,
   customMax: number | null,
   isNormalized: boolean | undefined,
 ) => {
-  const [extentMin, extentMax] = axisExtent;
-
   // If this is a normalized range, respect custom min & max
-  // This also accomodates non-normalized custom min & max values
+  // This also accommodates non-normalized custom min & max values
   // Allows users to supply e.g. 10 for 10% min as opposed to 0.1
   if (isNormalized) {
     return {
@@ -47,14 +44,7 @@ const getCustomAxisRange = (
     };
   }
 
-  // if min/max are not specified or within series extents return `undefined`
-  // so that ECharts compute a rounded range automatically
-  const finalMin =
-    customMin != null && customMin < extentMin ? customMin : undefined;
-  const finalMax =
-    customMax != null && customMax > extentMax ? customMax : undefined;
-
-  return { min: finalMin, max: finalMax };
+  return { min: customMin, max: customMax };
 };
 
 export const getYAxisRange = (
@@ -72,12 +62,7 @@ export const getYAxisRange = (
     yAxisScaleTransforms,
   );
 
-  return getCustomAxisRange(
-    axisModel.extent,
-    customMin,
-    customMax,
-    axisModel.isNormalized,
-  );
+  return getCustomAxisRange(customMin, customMax, axisModel.isNormalized);
 };
 
 export const getAxisNameDefaultOption = (
@@ -274,7 +259,7 @@ export const buildNumericDimensionAxis = (
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
         }
-        return ` ${formatter(fromEChartsAxisValue(rawValue))} `;
+        return getPaddedAxisLabel(formatter(fromEChartsAxisValue(rawValue)));
       },
     },
     ...(isPadded
@@ -314,7 +299,9 @@ export const buildTimeSeriesDimensionAxis = (
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
-          return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]"))} `; // spaces force padding between ticks
+          return getPaddedAxisLabel(
+            formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")),
+          );
         }
         return "";
       },
@@ -363,10 +350,10 @@ export const buildCategoricalDimensionAxis = (
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
         if (isNumericBaseType(column) && numberValue !== null) {
-          return ` ${formatter(numberValue)} `;
+          return getPaddedAxisLabel(formatter(numberValue));
         }
 
-        return ` ${formatter(value)} `; // spaces force padding between ticks
+        return getPaddedAxisLabel(formatter(value));
       },
     },
   };

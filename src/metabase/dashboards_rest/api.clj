@@ -298,6 +298,26 @@
 ;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
 ;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
 
+(defn- set-download-perms-on-dashcards
+  "Set each dashcard's nested :card map :download_perms based on the current user's actual permissions."
+  [dashboard]
+  (update dashboard :dashcards
+          (fn [dashcards]
+            (vec (for [dashcard dashcards]
+                   (update dashcard :card
+                           (fn [card]
+                             (when card
+                               (let [dataset-query (or (:dataset_query card)
+                                                       (t2/select-one-fn :dataset_query :model/Card :id (:id card)))
+                                     download-level (when dataset-query
+                                                      (perms/download-perms-level dataset-query api/*current-user-id*))]
+                                 (assoc card :download_perms (case download-level
+                                                               :no :none
+                                                               :ten-thousand-rows :limited
+                                                               :one-million-rows :full
+                                                               :full :full
+                                                               :none)))))))))))
+
 ;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
   "Get Dashboard with ID."
@@ -311,7 +331,8 @@
         collection.root/hydrate-root-collection
         hide-unreadable-cards
         add-query-average-durations
-        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
+        (api/present-in-trash-if-archived-directly (collection/trash-collection-id))
+        set-download-perms-on-dashcards)))
 
 (def ^:private get-dashboard-fn
   (memoize/ttl (fn [dashboard-load-id]
@@ -991,11 +1012,18 @@
              (let [{current-dashcards :dashcards
                     current-tabs      :tabs
                     :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
-                   _                                         (when (and (seq current-tabs)
+                   new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+                   dashcards                                 (if (= 1 (count new-tabs))
+                                                               (let [single-tab-id (-> new-tabs first :id)]
+                                                                 (mapv #(if (nil? (:dashboard_tab_id %))
+                                                                          (assoc % :dashboard_tab_id single-tab-id)
+                                                                          %)
+                                                                       dashcards))
+                                                               dashcards)
+                   _                                         (when (and (seq new-tabs)
                                                                         (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
                                                                (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                                                                                {:status-code 400})))
-                   new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                    {:keys [old->new-tab-id
                            deleted-tab-ids]
                     :as   tabs-changes-stats}                (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)

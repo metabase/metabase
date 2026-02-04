@@ -92,21 +92,23 @@
   (lib.computed/with-cache-ephemeral* query [:expression-metadata/by-ref stage-number expression-ref-clause
                                              (lib.metadata.calculation/cacheable-options {})]
     (fn []
-      (merge {:lib/type                :metadata/column
+      (let [base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
+        (merge {:lib/type                :metadata/column
               ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
               ;; of the expression definition??
-              :lib/source-uuid         (:lib/uuid opts)
-              :name                    expression-name
-              :lib/expression-name     expression-name
-              :lib/source-column-alias expression-name
-              :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-              :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-              :lib/source              :source/expressions}
-             (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-               {:metabase.lib.field/temporal-unit unit})
-             (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+                :lib/source-uuid         (:lib/uuid opts)
+                :name                    expression-name
+                :lib/expression-name     expression-name
+                :lib/source-column-alias expression-name
+                :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+                :base-type               base-type
+                :effective-type          (or (:effective-type opts) base-type)
+                :lib/source              :source/expressions}
                (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                 {:inherited-temporal-unit unit}))))))
+                 {:metabase.lib.field/temporal-unit unit})
+               (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+                 (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+                   {:inherited-temporal-unit unit})))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -696,11 +698,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

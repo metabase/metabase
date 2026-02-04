@@ -10,7 +10,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
 import type {
@@ -125,7 +124,6 @@ export const Documents = createEntity({
 
   objectSelectors: {
     getName: (document: Document) => document && document.name,
-    getUrl: (document: Document) => document && Urls.document(document),
     getColor: () => color("brand"),
   },
 });

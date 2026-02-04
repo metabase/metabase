@@ -1,31 +1,6 @@
 // @ts-check
-
-const esmPackages = [
-  "ccount",
-  "character-entities-html4",
-  "comma-separated-tokens",
-  "d3-*",
-  "d3",
-  "devlop",
-  "echarts",
-  "fetch-mock",
-  "hast.*",
-  "html-void-elements",
-  "is-absolute-url",
-  "jose",
-  "property-information",
-  "rehype-external-links",
-  "space-separated-tokens",
-  "stringify-entities",
-  "unist-util-visit-parents",
-  "unist-util-visit",
-  "vfile-location",
-  "vfile-message",
-  "vfile",
-  "web-namespaces",
-  "zrender",
-  "zwitch",
-];
+/** eslint-disable-next-line import/no-commonjs */
+const esmPackages = require("./jest.esm-packages.js");
 
 const baseConfig = {
   moduleNameMapper: {
@@ -35,10 +10,8 @@ const baseConfig = {
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
-    "react-markdown":
-      "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)":
-      "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+      "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
       "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
     "csv-stringify/browser/esm/sync":
@@ -48,19 +21,19 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
-    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/plugins/noop.js",
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/plugins/noop.ts",
     /**
      * SDK iframe embedding imports the embedding sdk and its components.
      * We want to exclude the SDK from the main app's bundle to reduce the bundle size.
      */
     "sdk-iframe-embedding-ee-plugins":
-      "<rootDir>/frontend/src/metabase/lib/noop.js",
-    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+      "<rootDir>/frontend/src/metabase/lib/noop.ts",
+    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
-    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.ts",
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
@@ -152,10 +125,16 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/frontend/lint/tests",
       ],
+    },
+    {
+      displayName: "lint-rules",
+      testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
+      testEnvironment: "node",
+      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],
 };
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = config;

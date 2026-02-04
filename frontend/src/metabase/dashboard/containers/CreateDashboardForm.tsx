@@ -4,8 +4,8 @@ import * as Yup from "yup";
 
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
 import { Collections } from "metabase/entities/collections";
 import {
   Form,
@@ -126,7 +126,6 @@ export function CreateDashboardForm({
             title={t`Which collection should this go in?`}
             filterPersonalCollections={filterPersonalCollections}
             entityType="dashboard"
-            savingModel="dashboard"
           />
           <FormFooter>
             <FormErrorMessage inline />

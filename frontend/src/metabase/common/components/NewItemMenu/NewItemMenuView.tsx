@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
@@ -25,7 +26,7 @@ export interface NewItemMenuProps {
   onCloseNavbar: () => void;
 }
 
-const NewItemMenuView = ({
+export const NewItemMenuView = ({
   collectionId,
   trigger,
   hasDataAccess,
@@ -42,6 +43,14 @@ const NewItemMenuView = ({
 
   const menuItems = useMemo(() => {
     const items = [];
+
+    const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
+      hasDataAccess,
+      collectionId,
+    );
+    if (aiExplorationItem) {
+      items.push(aiExplorationItem);
+    }
 
     if (hasDataAccess) {
       items.push(
@@ -130,6 +139,3 @@ const NewItemMenuView = ({
     </Menu>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NewItemMenuView;

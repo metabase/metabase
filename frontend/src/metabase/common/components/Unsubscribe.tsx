@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import {
@@ -140,7 +140,7 @@ function SuccessfulRequestWrapper({
   return (
     <Stack align="center">
       <CheckmarkIcon name="check" size={30} />
-      <Text fw={700} c="text-medium" mb="0.75rem" ta="center">
+      <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
       <Button primary onClick={action}>

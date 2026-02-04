@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
@@ -827,6 +828,19 @@
              Exception
              (collection/perms-for-archiving input)))))))
 
+(deftest perms-for-archiving-excludes-archived-descendants-test
+  (testing "Archived descendants should be excluded from permission requirements"
+    (with-collection-hierarchy! [{:keys [a], :as collections}]
+      ;; Archive C and all its descendants (D, E, F, G)
+      (t2/update! :model/Collection {:id [:in (map u/the-id [(:c collections) (:d collections) (:e collections)
+                                                             (:f collections) (:g collections)])]}
+                  {:archived true})
+      ;; Now archiving A should only require perms for A and B (not C, D, E, F, G which are archived)
+      (is (= #{"/collection/A/"
+               "/collection/B/"}
+             (->> (collection/perms-for-archiving a)
+                  (perms-path-ids->names collections)))))))
+
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
 ;; `*` marks the things that require permissions in charts below!
@@ -927,6 +941,22 @@
         (is (thrown?
              Exception
              (collection/perms-for-moving collection new-parent)))))))
+
+(deftest perms-for-moving-excludes-archived-descendants-test
+  (testing "Archived descendants should be excluded from permission requirements"
+    (with-collection-hierarchy! [{:keys [a b], :as collections}]
+      ;; Archive C and all its descendants (D, E, F, G)
+      (t2/update! :model/Collection {:id [:in (map u/the-id [(:c collections) (:d collections) (:e collections)
+                                                             (:f collections) (:g collections)])]}
+                  {:archived true})
+      ;; Create a destination collection outside the hierarchy
+      (mt/with-temp [:model/Collection destination {:name "Destination"}]
+        ;; Now moving A to destination should only require perms for A, B (non-archived descendant), and destination
+        ;; Not C, D, E, F, G which are archived
+        (is (= #{(perms/collection-readwrite-path a)
+                 (perms/collection-readwrite-path b)
+                 (perms/collection-readwrite-path destination)}
+               (collection/perms-for-moving a destination)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
@@ -3306,3 +3336,49 @@
     (let [collection (t2/select-one :model/Collection id)]
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))
+
+(deftest serdes-descendants-includes-published-tables-test
+  (testing "Collection descendants includes published tables"
+    (mt/with-temp [:model/Database   db              {:name "Test DB"}
+                   :model/Collection coll            {:name "Test Collection"}
+                   :model/Table      pub-table       {:name          "Published Table"
+                                                      :db_id         (:id db)
+                                                      :is_published  true
+                                                      :collection_id (:id coll)}
+                   :model/Table      unpub-table     {:name          "Unpublished Table"
+                                                      :db_id         (:id db)
+                                                      :is_published  false}
+                   :model/Table      other-coll-table {:name          "Other Collection Table"
+                                                       :db_id         (:id db)
+                                                       :is_published  true
+                                                       :collection_id nil}]
+      (let [descendants (serdes/descendants "Collection" (:id coll) {})]
+        (testing "published table in collection is included"
+          (is (contains? descendants ["Table" (:id pub-table)])))
+        (testing "unpublished table is not included"
+          (is (not (contains? descendants ["Table" (:id unpub-table)]))))
+        (testing "published table in different collection is not included"
+          (is (not (contains? descendants ["Table" (:id other-coll-table)]))))))))
+
+(deftest serdes-descendants-skip-archived-tables-test
+  (testing "Collection descendants with skip-archived handles published tables"
+    (mt/with-temp [:model/Database   db             {:name "Test DB"}
+                   :model/Collection coll           {:name "Test Collection"}
+                   :model/Table      active-table   {:name          "Active Published Table"
+                                                     :db_id         (:id db)
+                                                     :is_published  true
+                                                     :collection_id (:id coll)
+                                                     :archived_at   nil}
+                   :model/Table      archived-table {:name          "Archived Published Table"
+                                                     :db_id         (:id db)
+                                                     :is_published  true
+                                                     :collection_id (:id coll)
+                                                     :archived_at   (t/instant)}]
+      (testing "archived tables are excluded when skip-archived: true"
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Table" (:id active-table)]))
+          (is (not (contains? descendants ["Table" (:id archived-table)])))))
+      (testing "archived tables are included when skip-archived: false"
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived false})]
+          (is (contains? descendants ["Table" (:id active-table)]))
+          (is (contains? descendants ["Table" (:id archived-table)])))))))

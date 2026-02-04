@@ -74,7 +74,7 @@
     true
     (catch Exception e
       (let [data (ex-data e)]
-        ;; throw an appriopriate error if it's a connection error
+        ;; throw an appropriate error if it's a connection error
         (if (= ::http/unexceptional-status (:type data))
           (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
                                                                 :request-body   (maybe-parse-json (:body data))}))

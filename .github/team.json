@@ -86,14 +86,13 @@
         "eliotmetabase",
         "npfitz",
         "johnswanson",
-        "iethree",
         "nvoxland",
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander",
         "andsalves",
-        "gantoreno"
+        "kevinkelleher12",
+        "undrfined"
       ]
     },
     {
@@ -109,6 +108,16 @@
         "stasgavrylov",
         "uladzimirdev",
         "egorgrushin"
+      ]
+    },
+    {
+      "name": "Growth Eng",
+      "label": ".Team/GrowthEng",
+      "members": [
+        "iethree",
+        "bpander",
+        "gantoreno",
+        "losrebellos"
       ]
     }
   ]

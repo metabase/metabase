@@ -21,4 +21,5 @@ export interface DocumentsState {
   childTargetId: string | undefined;
   hoveredChildTargetId: string | undefined;
   hasUnsavedChanges: boolean;
+  isHistorySidebarOpen: boolean;
 }

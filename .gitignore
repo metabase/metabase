@@ -21,7 +21,8 @@
 /*.mv.db
 /*.trace.db
 /.babel_cache
-/.env
+/.env*
+!/.env.example
 /.envrc
 /.lein-env
 /.lein-failures
@@ -104,6 +105,7 @@ dev/serialization_deltas/
 *.tsbuildinfo
 /trace-output/
 /temp-types/
+/frontend/src/metabase-types/openapi
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
@@ -164,3 +166,4 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+

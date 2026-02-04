@@ -4,7 +4,6 @@
   Actual implementation for [[metabase.api.macros/defendpoint]] endpoints lives
   in [[metabase.api.macros.defendpoint.open-api]]. "
   (:require
-   [metabase.config.core :as config]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -62,8 +61,7 @@
 
 (mr/def ::spec.info
   [:map
-   [:title   [:= "Metabase API"]]
-   [:version [:= (:tag config/mb-version-info)]]])
+   [:title   [:= "Metabase API"]]])
 
 (mr/def ::path
   :string)
@@ -98,7 +96,7 @@
    [:map
 
     [:type [:= :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid"]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid" :date-time "date-time"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
@@ -325,8 +323,7 @@
   {:closed true}
   (merge
    {:openapi "3.1.0"
-    :info    {:title   "Metabase API"
-              :version (:tag config/mb-version-info)}}
+    :info    {:title   "Metabase API"}}
    (open-api-spec handler "/api")))
 
 #_:clj-kondo/ignore

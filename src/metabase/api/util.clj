@@ -1,5 +1,5 @@
 (ns metabase.api.util
-  "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
+  "Random utility endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
   (:require
    [metabase.api.macros :as api.macros]

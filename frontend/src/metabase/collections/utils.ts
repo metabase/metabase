@@ -9,6 +9,7 @@ import {
   type CollectionItem,
   type CollectionItemModel,
   type CollectionType,
+  type User,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -44,6 +45,19 @@ export function isDedicatedTenantCollectionRoot(
   return collection.type === "tenant-specific-root-collection";
 }
 
+export function isDedicatedTenantCollectionOfUser({
+  user,
+  collection,
+}: {
+  user: User;
+  collection: Collection;
+}): boolean {
+  return (
+    user.tenant_collection_id !== null &&
+    user.tenant_collection_id === collection.id
+  );
+}
+
 export function isPersonalCollection(
   collection: Pick<Collection, "is_personal">,
 ) {
@@ -68,13 +82,17 @@ export function isPublicCollection(
   return !isPersonalCollection(collection);
 }
 
-export function isEditableCollection(collection: Collection) {
+export function isEditableCollection(
+  collection: Collection,
+  { currentUser }: { currentUser: User },
+) {
   return (
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
     !isTrashedCollection(collection) &&
-    !isLibraryCollection(collection)
+    !isLibraryCollection(collection) &&
+    !isDedicatedTenantCollectionOfUser({ user: currentUser, collection })
   );
 }
 
@@ -173,7 +191,7 @@ export function isItemMetric(item: CollectionItem) {
   return item.model === "metric";
 }
 
-export function isItemCollection(item: CollectionItem) {
+export function isItemCollection(item: Pick<CollectionItem, "model">) {
   return item.model === "collection";
 }
 

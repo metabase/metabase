@@ -1,5 +1,6 @@
 const { H } = cy;
 
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -11,7 +12,13 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import type { CardId, FieldReference } from "metabase-types/api";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import type {
+  CardId,
+  FieldReference,
+  GroupPermissions,
+  NativePermissions,
+} from "metabase-types/api";
 
 const {
   ORDERS,
@@ -47,7 +54,7 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
     return H.tableHeaderColumn(name);
   }
@@ -106,7 +113,7 @@ describe("issue 29943", () => {
   });
 });
 
-describe("issue 35711", () => {
+describe("issues with metadata editing on models with custom expressions", () => {
   const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
   const DISCOUNT_FIELD_REF: FieldReference = [
@@ -120,9 +127,10 @@ describe("issue 35711", () => {
   function reorderTaxAndTotalColumns() {
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Tax");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
+    H.tableHeaderColumn("Total").as("totalColumn");
 
     // drag & drop the Total column 80 px to the left to switch it with Tax column
-    H.moveDnDKitElement(H.tableHeaderColumn("Total"), { horizontal: -80 });
+    H.moveDnDKitElementByAlias("@totalColumn", { horizontal: -80 });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
@@ -141,7 +149,7 @@ describe("issue 35711", () => {
     cy.signInAsAdmin();
   });
 
-  it("can edit metadata of a model with a custom column (metabase#35711)", () => {
+  it("can edit metadata of a model with a custom column (metabase#35711, metabase#39993)", () => {
     H.createQuestion(
       {
         type: "model",
@@ -547,7 +555,7 @@ describe("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -953,45 +961,6 @@ describe("issue 43088", () => {
   });
 });
 
-describe("issue 39993", () => {
-  const columnName = "Exp";
-
-  const modelDetails: StructuredQuestionDetails = {
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-      fields: [
-        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-        ["expression", columnName, { "base-type": "type/Integer" }],
-      ],
-      expressions: { [columnName]: ["+", 1, 1] },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
-  });
-
-  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
-    H.createQuestion(modelDetails).then(({ body: card }) =>
-      H.visitModel(card.id),
-    );
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-    cy.log("drag & drop the custom column 100 px to the left");
-    H.moveDnDKitElement(H.tableHeaderColumn(columnName), {
-      horizontal: -100,
-    });
-    cy.button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
-  });
-});
-
 describe("issue 34574", () => {
   beforeEach(() => {
     H.restore();
@@ -1109,11 +1078,8 @@ describe("issue 35840", () => {
     cy.signInAsNormalUser();
   });
 
-  function checkColumnMapping(entityTab: string, entityName: string) {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(entityTab).click();
-      cy.findByText(entityName).click();
-    });
+  function checkColumnMapping(path: string[]) {
+    H.pickEntity({ path, select: true });
     H.modal().findByText("Pick a column…").click();
     H.popover().findAllByText("Category").eq(0).click();
     H.modal().within(() => {
@@ -1138,11 +1104,11 @@ describe("issue 35840", () => {
       cy.findByText("From another model or question").click();
       cy.findByText("Pick a model or question…").click();
     });
-    checkColumnMapping("Models", modelName);
+    checkColumnMapping(["Our analytics", modelName]);
 
     cy.log("Use model-based question for dropdown source");
     H.modal().findByText(modelName).click();
-    checkColumnMapping("Questions", questionName);
+    checkColumnMapping(["Our analytics", questionName]);
   });
 });
 
@@ -1154,12 +1120,15 @@ describe("issue 36161", () => {
   });
 
   it("should allow to override metadata for custom columns (metabase#36161)", () => {
-    H.visitModel(ORDERS_MODEL_ID);
-    cy.wait("@dataset");
+    cy.log("Go straight to model query definition");
+    cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+    H.tableInteractiveBody().should("be.visible").and("contain", "37.65");
 
-    H.openQuestionActions("Edit query definition");
+    cy.log("Deselect all columns (except for ID)");
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").click();
+
+    cy.log("Add two custom columns based on the ID");
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
     H.popover().button("Done").click();
@@ -1168,6 +1137,8 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
+
+    cy.log("Rename custom columns");
     cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
@@ -1175,6 +1146,7 @@ describe("issue 36161", () => {
     H.renameColumn("ID3", "ID3 custom");
     H.saveMetadataChanges();
 
+    cy.log("Assert that the renamed columns appear in filter options");
     H.openNotebook();
     H.getNotebookStep("data").button("Filter").click();
     H.popover().within(() => {
@@ -1917,7 +1889,7 @@ describe("Issue 56913", () => {
   });
 });
 
-describe.skip("issue 45919", () => {
+describe("issue 45919", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1929,7 +1901,8 @@ describe.skip("issue 45919", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().findByText("People").click();
+    H.popover().findByText("Sample Database").click();
+    H.popover().findByText("People").click();
     H.runButtonOverlay().click();
     H.tableInteractive().should("be.visible");
     cy.findByTestId("dataset-edit-bar").button("Save").click();
@@ -1989,5 +1962,140 @@ describe("issue 50915", () => {
     H.getNotebookStep("data")
       .findByText("Orders + People")
       .should("be.visible");
+  });
+});
+
+describe("issue 38747", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow you to drill through with entity qualified ids", () => {
+    cy.visit("/model/new");
+    cy.findByRole("link", { name: /notebook editor/ }).click();
+
+    H.miniPickerBrowseAll().click();
+    H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
+    H.runButtonInOverlay().click();
+
+    // Wait for the query to run so we can click the columns "button"
+    // ... It's actually a list item, so we can't check to see if it's
+    // actually disabled in any sane way
+    H.tableInteractive().should("exist");
+
+    H.datasetEditBar().findByText("Columns").click();
+    cy.findAllByTestId("model-column-header-content")
+      .contains("Vendor")
+      .click();
+
+    cy.findByPlaceholderText("Select a semantic type").click();
+    H.popover().findByText("Entity Key").click();
+    H.datasetEditBar().button("Save").click();
+
+    H.modal().button("Save").click();
+
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
+      waitForAnimations: false,
+    });
+
+    // Assert that we're at an adhoc question with aproprate filters
+    cy.location("pathname").should("equal", "/question");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "Vendor is Nolan-Wolff",
+    );
+    H.tableInteractive().should("have.attr", "data-rows-count", "1");
+  });
+});
+
+describe("issue 67680", () => {
+  function setTablePermissions(createQueriesPermission: NativePermissions) {
+    const permissions: GroupPermissions = {
+      [SAMPLE_DB_ID]: {
+        "view-data": {
+          public: {
+            [ORDERS_ID]: DataPermissionValue.BLOCKED,
+            [PRODUCTS_ID]: DataPermissionValue.UNRESTRICTED,
+          },
+        },
+        "create-queries": createQueriesPermission,
+      },
+    };
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: permissions,
+      [USER_GROUPS.DATA_GROUP]: permissions,
+      [USER_GROUPS.COLLECTION_GROUP]: permissions,
+    });
+  }
+
+  function setTablePermissionsWithCreateQueries() {
+    setTablePermissions(DataPermissionValue.QUERY_BUILDER);
+  }
+
+  function setTablePermissionsWithoutCreateQueries() {
+    setTablePermissions(DataPermissionValue.NO);
+  }
+
+  function updateModelSourceTableWithResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.runButtonInOverlay().click();
+    H.tableInteractiveHeader().findByText("Category").should("be.visible");
+    H.saveMetadataChanges();
+  }
+
+  function updateModelSourceTableWithoutResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.saveMetadataChanges();
+  }
+
+  function verifyNormalUserCanAccessModel() {
+    cy.signInAsNormalUser();
+    H.visitModel(ORDERS_MODEL_ID);
+    H.assertQueryBuilderRowCount(200);
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+  });
+
+  describe("when the user has create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+  });
+
+  describe("when the user does not have create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithoutCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
   });
 });

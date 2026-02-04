@@ -119,72 +119,6 @@ export const getQueryBuilderMode = createSelector(
   (uiControls) => uiControls.queryBuilderMode,
 );
 
-const getCardResultMetadata = createSelector(
-  [getCard],
-  (card) => card?.result_metadata,
-);
-
-const getModelMetadataDiff = createSelector(
-  [getCardResultMetadata, getMetadataDiff, getQueryBuilderMode],
-  (resultMetadata, metadataDiff, queryBuilderMode) => {
-    if (!resultMetadata || queryBuilderMode !== "dataset") {
-      return metadataDiff;
-    }
-
-    return {
-      ...metadataDiff,
-      ...Object.fromEntries(
-        resultMetadata.map((column) => [
-          column.name,
-          {
-            ...getWritableColumnProperties(column),
-            ...metadataDiff[column.name],
-          },
-        ]),
-      ),
-    };
-  },
-);
-
-export const getQueryResults = createSelector(
-  [getRawQueryResults, getModelMetadataDiff],
-  (queryResults, metadataDiff) => {
-    if (!Array.isArray(queryResults) || !queryResults.length) {
-      return null;
-    }
-
-    const [result] = queryResults;
-    if (result.error || !result?.data?.results_metadata) {
-      return queryResults;
-    }
-    const { cols, results_metadata } = result.data;
-
-    function applyMetadataDiff(column) {
-      const columnDiff = metadataDiff[column.name];
-      return columnDiff ? merge(column, columnDiff) : column;
-    }
-
-    return [
-      {
-        ...result,
-        data: {
-          ...result.data,
-          cols: cols.map(applyMetadataDiff),
-          results_metadata: {
-            ...results_metadata,
-            columns: results_metadata.columns.map(applyMetadataDiff),
-          },
-        },
-      },
-    ];
-  },
-);
-
-export const getFirstQueryResult = createSelector(
-  [getQueryResults],
-  (results) => (Array.isArray(results) ? results[0] : null),
-);
-
 export const getQueryStartTime = (state) => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
@@ -218,34 +152,6 @@ export const getParameters = createSelector(
 const getLastRunDatasetQuery = createSelector(
   [getLastRunCard],
   (card) => card && card.dataset_query,
-);
-
-const getLastRunParameters = createSelector(
-  [getFirstQueryResult],
-  (queryResult) =>
-    (queryResult &&
-      queryResult.json_query &&
-      queryResult.json_query.parameters) ||
-    [],
-);
-const getLastRunParameterValues = createSelector(
-  [getLastRunParameters],
-  (parameters) => parameters.map((parameter) => parameter.value),
-);
-const getNextRunParameterValues = createSelector(
-  [getParameters],
-  (parameters) =>
-    parameters.map((parameter) =>
-      // parameters are "normalized" immediately before a query run, so in order
-      // to compare current parameters to previously-used parameters we need
-      // to run parameters through this normalization function
-      normalizeParameterValue(parameter.type, parameter.value),
-    ),
-);
-
-export const getNextRunParameters = createSelector(
-  [getParameters],
-  (parameters) => normalizeParameters(parameters),
 );
 
 export const getPreviousQueryBuilderMode = createSelector(
@@ -307,6 +213,109 @@ export const getQuestion = createSelector(
     const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
     return isEditable ? composedQuestion : question;
   },
+);
+
+/**
+ * Returns whether the current question is a native query
+ */
+export const getIsNative = createSelector(
+  [getQuestion],
+  (question) => question && Lib.queryDisplayInfo(question.query()).isNative,
+);
+
+const getCardResultMetadata = createSelector(
+  [getCard],
+  (card) => card?.result_metadata,
+);
+
+const getModelMetadataDiff = createSelector(
+  [getCardResultMetadata, getMetadataDiff, getQueryBuilderMode, getIsNative],
+  (resultMetadata, metadataDiff, queryBuilderMode, isNative) => {
+    if (!resultMetadata || queryBuilderMode !== "dataset") {
+      return metadataDiff;
+    }
+
+    return {
+      ...metadataDiff,
+      ...Object.fromEntries(
+        resultMetadata.map((column) => [
+          column.name,
+          {
+            ...getWritableColumnProperties(column, isNative),
+            ...metadataDiff[column.name],
+          },
+        ]),
+      ),
+    };
+  },
+);
+
+export const getQueryResults = createSelector(
+  [getRawQueryResults, getModelMetadataDiff],
+  (queryResults, metadataDiff) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return null;
+    }
+
+    const [result] = queryResults;
+    if (result.error || !result?.data?.results_metadata) {
+      return queryResults;
+    }
+    const { cols, results_metadata } = result.data;
+
+    function applyMetadataDiff(column) {
+      const columnDiff = metadataDiff[column.name];
+      return columnDiff ? merge(column, columnDiff) : column;
+    }
+
+    return [
+      {
+        ...result,
+        data: {
+          ...result.data,
+          cols: cols.map(applyMetadataDiff),
+          results_metadata: {
+            ...results_metadata,
+            columns: results_metadata.columns.map(applyMetadataDiff),
+          },
+        },
+      },
+    ];
+  },
+);
+
+export const getFirstQueryResult = createSelector(
+  [getQueryResults],
+  (results) => (Array.isArray(results) ? results[0] : null),
+);
+
+const getLastRunParameters = createSelector(
+  [getFirstQueryResult],
+  (queryResult) =>
+    (queryResult &&
+      queryResult.json_query &&
+      queryResult.json_query.parameters) ||
+    [],
+);
+
+const getLastRunParameterValues = createSelector(
+  [getLastRunParameters],
+  (parameters) => parameters.map((parameter) => parameter.value),
+);
+const getNextRunParameterValues = createSelector(
+  [getParameters],
+  (parameters) =>
+    parameters.map((parameter) =>
+      // parameters are "normalized" immediately before a query run, so in order
+      // to compare current parameters to previously-used parameters we need
+      // to run parameters through this normalization function
+      normalizeParameterValue(parameter.type, parameter.value),
+    ),
+);
+
+export const getNextRunParameters = createSelector(
+  [getParameters],
+  (parameters) => normalizeParameters(parameters),
 );
 
 export const getTableId = createSelector([getQuestion], (question) => {
@@ -480,7 +489,7 @@ export const getIsResultDirty = createSelector(
     getTableMetadata,
   ],
   (
-    question,
+    currentQuestion,
     originalQuestion,
     lastRunQuestion,
     lastParameters,
@@ -489,15 +498,15 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
-
+      !!currentQuestion &&
+      Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
     return (
       haveParametersChanged ||
       (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
-          currentQuestion: question,
+          currentQuestion,
           tableMetadata,
         }))
     );
@@ -707,14 +716,6 @@ export const getTransformedVisualization = createSelector(
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
   (series) => series && getComputedSettingsForSeries(series),
-);
-
-/**
- * Returns whether the current question is a native query
- */
-export const getIsNative = createSelector(
-  [getQuestion],
-  (question) => question && Lib.queryDisplayInfo(question.query()).isNative,
 );
 
 /**
@@ -1087,9 +1088,6 @@ export const getSubmittableQuestion = (state, question) => {
 
   return submittableQuestion;
 };
-
-export const getIsNotebookNativePreviewShown = (state) =>
-  getSetting(state, "notebook-native-preview-shown");
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");

@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 
 import { CopyWidgetButton } from "./CopyWidget.styled";
 
-export default class CopyWidget extends Component {
+export class CopyWidget extends Component {
   render() {
     const { value, onChange, style, ...props } = this.props;
     return (

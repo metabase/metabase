@@ -2,14 +2,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
+import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  CollectionNamespace,
   Database,
   DatabaseId,
   DraftTransformSource,
   Transform,
+  TransformRun,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
@@ -32,8 +35,10 @@ export function parseTimestampWithTimezone(
   }
 }
 
-export function formatStatus(status: TransformRunStatus) {
+export function formatStatus(status: TransformRunStatus | null) {
   switch (status) {
+    case null:
+      return t`Unknown`;
     case "started":
       return t`In progress`;
     case "succeeded":
@@ -84,48 +89,12 @@ export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
   return null;
 }
 
-export function parseList<T>(
-  value: unknown,
-  parseItem: (value: unknown) => T | undefined,
-): T[] | undefined {
-  if (typeof value === "string") {
-    const item = parseItem(value);
-    return item != null ? [item] : [];
-  }
-  if (Array.isArray(value)) {
-    return value.map(parseItem).filter(isNotNull);
-  }
-  return undefined;
+export function getTransformRunName(run: TransformRun): string {
+  return run.transform?.name ?? t`Unknown transform`;
 }
 
-export function parseInteger(value: unknown) {
-  return typeof value === "string" ? parseInt(value, 10) : undefined;
-}
-
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function parseRunStatus(value: unknown): TransformRunStatus | undefined {
-  switch (value) {
-    case "started":
-    case "succeeded":
-    case "failed":
-    case "timeout":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
-  switch (value) {
-    case "manual":
-    case "cron":
-      return value;
-    default:
-      return undefined;
-  }
+export function isErrorStatus(status: TransformRunStatus | null) {
+  return status === "failed" || status === "timeout";
 }
 
 export function isTransformRunning(transform: Transform) {
@@ -170,7 +139,28 @@ export function isSameSource(
   return false;
 }
 
-export function isNotDraftSource(
+export function isSourceEmpty(
+  source: DraftTransformSource,
+  databaseId: DatabaseId,
+  metadata: Metadata,
+): boolean {
+  if (source.type !== "query") {
+    return false;
+  }
+
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const query = Lib.fromJsQuery(metadataProvider, source.query);
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  if (!isNative) {
+    return false;
+  }
+
+  const nativeQuery = Lib.rawNativeQuery(query);
+  return !nativeQuery?.trim();
+}
+
+export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
   return source.type !== "python" || source["source-database"] != null;
@@ -204,3 +194,44 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
 
   return { isValid: Lib.canSave(query, "question") };
 }
+
+export const getLibQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  if (source.type !== "query") {
+    return null;
+  }
+  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+};
+
+// Check if this is an MBQL query (not native SQL or Python)
+export const isMbqlQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  const query = getLibQuery(source, metadata);
+  if (!query) {
+    return false;
+  }
+  return !Lib.queryDisplayInfo(query).isNative;
+};
+
+export const getRootCollectionItem = ({
+  namespace,
+}: {
+  namespace: CollectionNamespace;
+}): OmniPickerCollectionItem | null => {
+  if (namespace === "transforms") {
+    return {
+      model: "collection",
+      id: "root",
+      namespace: "transforms",
+      location: "/",
+      name: t`Transforms`,
+      here: ["collection"],
+      below: ["table", "metric"],
+    };
+  }
+  return null;
+};

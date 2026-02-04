@@ -18,10 +18,12 @@ serdes/meta:
 - {id: public, model: Schema}
 - {id: v_dashboardcard, model: Table}
 archived_at: null
+collection_id: null
 data_authority: unconfigured
-data_layer: bronze
+data_layer: internal
 data_source: null
 database_require_filter: null
 deactivated_at: null
+is_published: false
 owner_email: null
 owner_user_id: null

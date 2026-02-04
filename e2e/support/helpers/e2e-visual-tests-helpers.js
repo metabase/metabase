@@ -1,6 +1,6 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/lib/colors";
-import { Icons } from "metabase/ui";
+import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
 import {
@@ -60,7 +60,7 @@ export function getXYTransform(element) {
 export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    getColor(isSelected ? "brand" : "text-light"),
+    getColor(isSelected ? "brand" : "text-tertiary"),
   );
   const dataUri = svgToDataUri(iconSvg);
 
@@ -195,7 +195,7 @@ export function assertTooltipRow(
   name,
   { color, value, secondaryValue, index } = {},
 ) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByText(name)
     .eq(index ?? 0)
     .parent("tr")

@@ -542,14 +542,15 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         (cond-> #{"action" "collection" "document" "model_index_value" "report_card" "report_dashboard" "segment"}
+  {"core_user"         (cond-> #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment"}
                          config/ee-available? (conj "transform"))
    "model_index"       #{"model_index_value"}
-   "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
-   "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}
+   "metabase_database" #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"          #{"action" "model_index_value" "report_card"}
-   "report_card"       #{"action" "model_index_value" "report_card"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
+   "report_card"       #{"action" "model_index_value"}
+   "report_dashboard"  #{"action" "model_index_value" "report_card"}
+   "workspace"         #{"collection"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants
@@ -570,7 +571,7 @@
 
 (deftest auto-refresh-test
   (when (search/supports-index?)
-    (binding [search.index/*index-version-id* "auto-refresh-test"]
+    (binding [search.spec/*testing-only-index-version-hash* "auto-refresh-test"]
       (try
         (reset! @#'search.index/next-sync-at nil)
         (search.index/reset-index!)
@@ -578,7 +579,7 @@
               active-after  (search.index/gen-table-name)
               pending-after (search.index/gen-table-name)
               period        @#'search.index/sync-tracking-period
-              version       @#'search.index/*index-version-id*]
+              version       (search.spec/index-version-hash)]
           (search-index-metadata/create-pending! :appdb version active-after)
           (search.index/create-table! active-after)
           (search-index-metadata/active-pending! :appdb version)
@@ -595,14 +596,14 @@
 
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
-    (binding [search.index/*index-version-id* "pending-timeout-test"]
+    (binding [search.spec/*testing-only-index-version-hash* "pending-timeout-test"]
       (try
         (reset! @#'search.index/next-sync-at nil)
         (search.index/reset-index!)
         (let [active-table (search.index/active-table)
               pending-old  (search.index/gen-table-name)
               pending-new  (search.index/gen-table-name)
-              version      @#'search.index/*index-version-id*]
+              version      (search.spec/index-version-hash)]
 
           ;; Set up old pending table (more than a day old)
           (search.index/create-table! pending-old)
@@ -632,10 +633,10 @@
 
 (deftest when-index-created
   (when (search/supports-index?)
-    (binding [search.index/*index-version-id* "index-age-test"]
+    (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
       (try
         (let [table-name (search.index/gen-table-name)
-              version @#'search.index/*index-version-id*]
+              version (search.spec/index-version-hash)]
 
           (testing "Nil age if no active table"
             (is (nil? (#'search.index/when-index-created))))

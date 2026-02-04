@@ -39,9 +39,12 @@
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   disable-perms-cache
+  download-perms-level
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  is-superuser?
+  is-data-analyst?
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
@@ -70,7 +73,7 @@
   visible-table-filter-with-cte
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
-  audit-namespace-clause
+  namespace-clause
   can-read-audit-helper
   current-user-has-application-permissions?
   grant-application-permissions!
@@ -85,7 +88,8 @@
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
   non-magic-groups
-  all-users-magic-group-type]
+  all-users-magic-group-type
+  sync-data-analyst-group-for-oss!]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!
@@ -104,7 +108,9 @@
   collection-path?]
  [metabase.permissions.user
   user-permissions-set
-  user->tenant-collection-and-descendant-ids]
+  user->tenant-collection-and-descendant-ids
+  has-any-transforms-permission?
+  has-db-transforms-permission?]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers
@@ -124,6 +130,7 @@
   graph
   update-graph!]
  [metabase.permissions.published-tables
+  can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
   user-has-published-table-permission-for-database?])
@@ -133,6 +140,7 @@
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
 (p/import-def metabase.permissions.models.permissions-group/admin                        admin-group)
+(p/import-def metabase.permissions.models.permissions-group/data-analyst                 data-analyst-group)
 (p/import-def metabase.permissions.models.application-permissions-revision/latest-id     latest-application-permissions-revision-id)
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)

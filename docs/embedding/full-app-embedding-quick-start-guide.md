@@ -2,6 +2,8 @@
 title: "Full app embedding quickstart"
 redirect_from:
   - /docs/latest/embedding/interactive-embedding-quickstart
+  - /docs/latest/embedding/interactive-embedding-quickstart-guide
+  - /docs/latest/embedding/interactive-embedding-quick-start-guide
 ---
 
 # Full app embedding quickstart
@@ -13,6 +15,8 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 {% include shared/in-page-promo-embedding-workshop.html %}
 
 ## Prerequisites
+
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true%}
 
 - You have an app that you can embed Metabase in.
 - You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://store.metabase.com/checkout/embedding). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
@@ -72,7 +76,7 @@ Here you'll need to input some values for your SSO to work.
 You'll want to declare up two constants in your app:
 
 - `METABASE_JWT_SHARED_SECRET`, paste the JWT signing key that you got from your Metabase here.
-- `METABASE_SITE_URL`, which points to your Metabase's root path.
+- `METABASE_SITE_URL`, which points to your Metabase instance's root path.
 
 ```javascript
 const METABASE_JWT_SHARED_SECRET = "YOURSIGNINGKEY";
@@ -121,7 +125,7 @@ You'll need to add a route to sign people in to your Metabase via SSO using JWT.
 {% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sso-route" %}
 ```
 
-If the person has never signed in to Metabase before, Metabase will create an account for them.
+Metabase creates an account for first-time sign-ins.
 
 ### CHECKPOINT: sign in to your Metabase using SSO
 

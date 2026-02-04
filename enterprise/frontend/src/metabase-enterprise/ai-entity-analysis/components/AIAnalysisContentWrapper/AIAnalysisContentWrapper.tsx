@@ -32,7 +32,7 @@ export function AIAnalysisContentWrapper({
             <CopyButton
               value={explanation}
               aria-label={t`Copy`}
-              style={{ color: "var(--mb-color-text-medium)" }}
+              style={{ color: "var(--mb-color-text-secondary)" }}
             />
           )}
           {onClose && (
@@ -42,7 +42,7 @@ export function AIAnalysisContentWrapper({
               p={4}
               onClick={onClose}
               aria-label={t`Close`}
-              color="text-medium"
+              c="text-secondary"
             >
               <Icon name="close" size={16} />
             </Button>

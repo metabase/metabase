@@ -18,7 +18,7 @@
      (js->clj (js/JSON.parse x))))
 
 (defn- ensure-consistent-type
-  "Convert Clojure value that may have ambigous type into canonical type to ensure it can be used as a key.
+  "Convert Clojure value that may have ambiguous type into canonical type to ensure it can be used as a key.
   Does nothing in CLJS."
   [x]
   #?(:cljs x

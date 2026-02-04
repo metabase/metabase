@@ -5,6 +5,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -21,6 +22,8 @@ import type {
   DashboardCard,
   Parameter,
 } from "metabase-types/api";
+
+const { WEB_PORT } = WEBMAIL_CONFIG;
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -351,6 +354,33 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         expect(
           interception.response?.headers?.["content-disposition"],
         ).not.to.include('filename="query_result_');
+      });
+    });
+  });
+
+  describe("subscriptions", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      cy.signOut();
+    });
+
+    it("should not include links to Metabase", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard dashboardId={dashboardId} withSubscriptions />,
+        );
+
+        cy.button("Subscriptions").click();
+        H.clickSend();
+        const emailUrl = `http://localhost:${WEB_PORT}/email`;
+        cy.request("GET", emailUrl).then(({ body }) => {
+          const latest = body.slice(-1)[0];
+          cy.request(`${emailUrl}/${latest.id}/html`).then(({ body }) => {
+            expect(body).to.include("Orders in a dashboard");
+            expect(body).not.to.include("href=");
+          });
+        });
       });
     });
   });

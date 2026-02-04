@@ -1,74 +1,88 @@
-import { useDebouncedValue } from "@mantine/hooks";
-import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import type { TreeTableColumnDef } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Flex,
+  Icon,
+  Stack,
+  TextInput,
+  TreeTable,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
 
-  const { data: jobs, error, isLoading } = useListTransformJobsQuery({});
+  const { data: jobs = [], error, isLoading } = useListTransformJobsQuery({});
 
-  const filteredJobs = useMemo(() => {
-    if (!jobs) {
-      return [];
-    }
+  const handleRowActivate = useCallback(
+    (row: { original: TransformJob }) => {
+      dispatch(push(Urls.transformJob(row.original.id)));
+    },
+    [dispatch],
+  );
 
-    if (!debouncedSearchQuery) {
-      return jobs;
-    }
-
-    const query = debouncedSearchQuery.toLowerCase();
-    return jobs.filter((job) => job.name.toLowerCase().includes(query));
-  }, [jobs, debouncedSearchQuery]);
-
-  const handleSelect = (item: TransformJob) => {
-    dispatch(push(Urls.transformJob(item.id)));
-  };
-
-  const jobColumnDef = useMemo<ColumnDef<TransformJob, ReactNode>[]>(
+  const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
     () => [
       {
+        id: "name",
         accessorKey: "name",
         header: t`Name`,
-        meta: {
-          width: "auto",
-        },
+        minWidth: 120,
+        cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
       },
       {
+        id: "last_run",
         accessorFn: (job) => job.last_run?.start_time,
         header: t`Last Run`,
-        meta: {
-          width: "auto",
-        },
-        cell: ({ row: { original: job } }) =>
-          job.last_run ? (
-            <>
-              {job.last_run.status === "failed" ? t`Failed` : t`Last run`}
-              <DateTime value={job.last_run.start_time} />
-            </>
+        minWidth: 120,
+        cell: ({ row }) =>
+          row.original.last_run ? (
+            <Ellipsified>
+              {row.original.last_run.status === "failed"
+                ? t`Failed`
+                : t`Last run`}{" "}
+              <DateTime value={row.original.last_run.start_time} />
+            </Ellipsified>
           ) : null,
       },
     ],
     [],
   );
+
+  const treeTableInstance = useTreeTableInstance({
+    data: jobs,
+    columns: jobColumnDef,
+    getNodeId: (node) => String(node.id),
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+    onRowActivate: handleRowActivate,
+  });
+
+  let emptyMessage = null;
+  if (jobs.length === 0) {
+    emptyMessage = t`No jobs yet`;
+  } else if (searchQuery) {
+    emptyMessage = t`No jobs found`;
+  }
 
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
@@ -99,21 +113,19 @@ export const JobListPage = () => {
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>
-          {isLoading ? (
-            <ListLoadingState />
-          ) : filteredJobs.length === 0 ? (
-            <ListEmptyState
-              label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
-            />
-          ) : (
-            <Card withBorder p={0}>
-              <Table
-                data={filteredJobs}
-                columns={jobColumnDef}
-                onSelect={handleSelect}
+          <Card withBorder p={0}>
+            {isLoading ? (
+              <TreeTableSkeleton columnWidths={[0.6, 0.3]} />
+            ) : (
+              <TreeTable
+                instance={treeTableInstance}
+                emptyState={
+                  emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
+                }
+                onRowClick={handleRowActivate}
               />
-            </Card>
-          )}
+            )}
+          </Card>
         </Flex>
       </Stack>
     </PageContainer>

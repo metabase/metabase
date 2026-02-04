@@ -1,6 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
+import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -12,8 +14,17 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "metabase/metadata/components";
-import { Box, Center, Flex, Stack } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
 import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { trackMetadataChange } from "../../analytics";
@@ -54,9 +65,13 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
   }
 
   return (
-    <PageContainer data-testid="table-fields-page" gap="md">
-      <TableHeader table={table} />
-      <Flex className={S.body} flex={1}>
+    <PageContainer data-testid="table-fields-page" gap="md" px={0} pb={0}>
+      <TableHeader table={table} px="3.5rem" />
+      <Flex
+        className={S.body}
+        flex={1}
+        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+      >
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection
             /**
@@ -70,12 +85,42 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               Urls.dataStudioTableFields(tableId, fieldId)
             }
             onSyncOptionsClick={openSyncModal}
-            px={0}
+            pl="3.5rem"
             pr="lg"
           />
         </Stack>
         {field != null && (
-          <Stack className={S.column} flex="9 1 0" miw={320} maw={680} mih={0}>
+          <Stack
+            className={S.column}
+            flex="9 1 0"
+            miw={320}
+            maw={680}
+            mih={0}
+            px="lg"
+            gap="0"
+            pos="relative"
+          >
+            <Group
+              justify="space-between"
+              pt="lg"
+              pb="md"
+              data-testid="field-section-header"
+              pos="sticky"
+              top={0}
+              className={S.header}
+              bg="background-secondary"
+            >
+              <Text fw="bold">{t`Field Details`}</Text>
+              <Button
+                component={ForwardRefLink}
+                to={Urls.dataStudioTableFields(table.id)}
+                onClick={closePreview}
+                leftSection={<Icon name="close" c="text-secondary" />}
+                variant="subtle"
+                size="compact-sm"
+                p="sm"
+              />
+            </Group>
             <FieldSection
               /**
                * Make sure internal component state is reset when changing tables.

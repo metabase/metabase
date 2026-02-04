@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -18,6 +19,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
 export interface PaneHeaderProps extends Omit<StackProps, "title"> {
@@ -26,7 +28,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  breadcrumbs?: ReactNode;
+  breadcrumbs: ReactNode;
   showMetabotButton?: boolean;
 }
 
@@ -43,16 +45,14 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      {(breadcrumbs || showMetabotButton) && (
-        <Flex mb="lg" mt="md" h="2rem" w="100%">
-          {breadcrumbs}
-          {showMetabotButton && (
-            <Box ml="auto">
-              <PLUGIN_METABOT.MetabotDataStudioButton />
-            </Box>
-          )}
-        </Flex>
-      )}
+      <Flex mb="lg" mt="md" w="100%">
+        {breadcrumbs}
+
+        <Group ml="auto" gap="md">
+          {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
+          <AppSwitcher className={S.ProfileLink} />
+        </Group>
+      </Flex>
       <Group
         className={className}
         gap="sm"
@@ -92,6 +92,7 @@ type PaneHeaderInputProps = {
   placeholder?: string;
   maxLength?: number;
   isOptional?: boolean;
+  readOnly?: boolean;
   "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
@@ -103,6 +104,7 @@ export function PaneHeaderInput({
   maxLength,
   "data-testid": dataTestId,
   isOptional,
+  readOnly = false,
   onChange,
   onContentChange,
 }: PaneHeaderInputProps) {
@@ -118,6 +120,7 @@ export function PaneHeaderInput({
       px={isOptional ? "xs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
       isOptional={isOptional}
+      isDisabled={readOnly}
       data-testid={dataTestId}
       onChange={onChange}
       onContentChange={onContentChange}
@@ -132,7 +135,9 @@ type PaneHeaderTabsProps = {
 
 export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
   const { pathname } = useSelector(getLocation);
-  const backgroundColor = withBackground ? "bg-secondary" : "transparent";
+  const backgroundColor = withBackground
+    ? "background-secondary"
+    : "transparent";
 
   return (
     <Group gap="sm">
@@ -145,7 +150,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             size="sm"
             radius="xl"
             c={isSelected ? "brand" : undefined}
-            bg={isSelected ? "brand-light" : backgroundColor}
+            bg={isSelected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
           >

@@ -93,11 +93,11 @@ Starting with Metabase 57, the SDK consists of two parts:
 
 Start with one of the quickstarts, then see these pages for more info on components, theming, and more.
 
-- [Authentication](./authentication.md)
+- [Authentication](../authentication.md)
 - [Questions](./questions.md)
 - [AI chat](./ai-chat.md)
 - [Dashboards](./dashboards.md)
-- [Appearance](./appearance.md)
+- [Appearance](../appearance.md)
 - [Collections](./collections.md)
 - [Plugins](./plugins.md)
 - [Config](./config.md)
@@ -107,16 +107,6 @@ Start with one of the quickstarts, then see these pages for more info on compone
 ## Modular embedding SDK source code
 
 You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
-
-## Changelog
-
-View the SDK's changelog:
-
-- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## Modular embedding SDK on npm
 

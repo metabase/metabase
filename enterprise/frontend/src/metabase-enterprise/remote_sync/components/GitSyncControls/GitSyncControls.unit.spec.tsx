@@ -15,6 +15,7 @@ import {
 const setup = ({
   isAdmin = true,
   remoteSyncEnabled = true,
+  hasRemoteChanges = true,
   currentBranch = "main",
   syncType = "read-write",
   dirty = [],
@@ -22,12 +23,13 @@ const setup = ({
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
+  hasRemoteChanges?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
 } = {}) => {
-  setupRemoteSyncEndpoints({ branches, dirty });
+  setupRemoteSyncEndpoints({ branches, dirty, hasRemoteChanges });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
@@ -41,6 +43,11 @@ const setup = ({
   });
 };
 
+const findOption = (name: RegExp) => screen.findByRole("option", { name });
+const getBranchButton = (name: RegExp) => screen.getByRole("button", { name });
+const queryBranchButton = (name: RegExp) =>
+  screen.queryByRole("button", { name });
+
 describe("GitSyncControls", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -52,9 +59,7 @@ describe("GitSyncControls", () => {
 
       // Wait a tick to ensure component has rendered
       await waitFor(() => {
-        expect(
-          screen.queryByTestId("git-sync-controls"),
-        ).not.toBeInTheDocument();
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
       });
     });
 
@@ -62,9 +67,7 @@ describe("GitSyncControls", () => {
       setup({ isAdmin: false });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId("git-sync-controls"),
-        ).not.toBeInTheDocument();
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
       });
     });
 
@@ -72,9 +75,7 @@ describe("GitSyncControls", () => {
       setup({ currentBranch: null });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId("git-sync-controls"),
-        ).not.toBeInTheDocument();
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
       });
     });
 
@@ -82,9 +83,7 @@ describe("GitSyncControls", () => {
       setup({ syncType: "read-only" });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId("git-sync-controls"),
-        ).not.toBeInTheDocument();
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
       });
     });
 
@@ -92,55 +91,97 @@ describe("GitSyncControls", () => {
       setup();
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
     });
   });
 
-  describe("branch picker integration", () => {
+  describe("git sync button", () => {
     it("should display current branch name", async () => {
       setup({ currentBranch: "main" });
-
       await waitFor(() => {
-        expect(screen.getByTestId("branch-picker-button")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
-      expect(screen.getByText("main")).toBeInTheDocument();
     });
 
     it("should display different branch name", async () => {
       setup({ currentBranch: "develop" });
+      await waitFor(() => {
+        expect(getBranchButton(/develop/)).toBeInTheDocument();
+      });
+
+      expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+    });
+
+    it("should open dropdown when clicked", async () => {
+      setup();
 
       await waitFor(() => {
-        expect(screen.getByText("develop")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+
+      await userEvent.click(getBranchButton(/main/));
+
+      expect(await findOption(/Push changes/)).toBeInTheDocument();
+      expect(await findOption(/Pull changes/)).toBeInTheDocument();
+      expect(await findOption(/Switch branch/)).toBeInTheDocument();
+    });
+  });
+
+  describe("push option", () => {
+    it("should be enabled when there are changes", async () => {
+      setup({ dirty: [createMockDirtyEntity()] });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+
+      expect(await findOption(/Push changes/)).toBeEnabled();
+    });
+
+    it("should be disabled and show proper tooltip when there are no changes", async () => {
+      setup({ dirty: [] });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Push changes/)).toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
+
+      await userEvent.hover(await findOption(/Push changes/));
+      expect(
+        await screen.findByRole("tooltip", { name: "No changes to push" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should open push modal when clicked with changes", async () => {
+      setup({ dirty: [createMockDirtyEntity()] });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Push changes/));
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
       });
     });
   });
 
-  describe("pull button", () => {
-    it("should render pull button", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(screen.getByTestId("git-pull-button")).toBeInTheDocument();
-      });
-    });
-
-    it("should have correct aria-label", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText("Pull from Git")).toBeInTheDocument();
-      });
-    });
-
+  describe("pull option", () => {
     it("should call import mutation when clicked", async () => {
       setup();
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-pull-button")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
-
-      await userEvent.click(screen.getByTestId("git-pull-button"));
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Pull changes/));
 
       await waitFor(() => {
         expect(
@@ -148,102 +189,48 @@ describe("GitSyncControls", () => {
         ).toBe(true);
       });
     });
-  });
 
-  describe("push button", () => {
-    it("should render push button", async () => {
-      setup();
+    it("is enabled when there are changes to pull", async () => {
+      setup({ hasRemoteChanges: true });
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
     });
 
-    it("should have correct aria-label", async () => {
-      setup();
+    it("is disabled when there are no changes to pull", async () => {
+      setup({ hasRemoteChanges: false });
 
       await waitFor(() => {
-        expect(screen.getByLabelText("Push to Git")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
-    });
-
-    it("should be disabled when there are no changes", async () => {
-      setup({ dirty: [] });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeDisabled();
-      });
-    });
-
-    it("should be enabled when there are changes", async () => {
-      setup({
-        dirty: [createMockDirtyEntity()],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeEnabled();
-      });
-    });
-
-    it("should open push modal when clicked with changes", async () => {
-      setup({
-        dirty: [createMockDirtyEntity()],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeEnabled();
-      });
-
-      await userEvent.click(screen.getByTestId("git-push-button"));
-
-      await waitFor(() => {
-        // The PushChangesModal should be rendered
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
     });
   });
 
-  describe("pill structure", () => {
-    it("should render all three sections (branch picker, pull, push)", async () => {
-      setup();
+  describe("switch branch option", () => {
+    it("should show branch dropdown when switch branch is clicked", async () => {
+      setup({ branches: ["main", "develop", "feature-1"] });
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
-      expect(screen.getByTestId("branch-picker-button")).toBeInTheDocument();
-      expect(screen.getByTestId("git-pull-button")).toBeInTheDocument();
-      expect(screen.getByTestId("git-push-button")).toBeInTheDocument();
-    });
-  });
-
-  describe("dirty state detection", () => {
-    it("should detect dirty state with updated entity", async () => {
-      setup({
-        dirty: [createMockDirtyEntity({ sync_status: "update" })],
-      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Switch branch/));
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeEnabled();
-      });
-    });
-
-    it("should detect dirty state with created entity", async () => {
-      setup({
-        dirty: [createMockDirtyEntity({ sync_status: "create" })],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeEnabled();
-      });
-    });
-
-    it("should detect dirty state with deleted entity", async () => {
-      setup({
-        dirty: [createMockDirtyEntity({ sync_status: "delete" })],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("git-push-button")).toBeEnabled();
+        expect(
+          screen.getByPlaceholderText("Find or create a branch..."),
+        ).toBeInTheDocument();
       });
     });
   });

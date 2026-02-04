@@ -26,7 +26,7 @@
 
 ;;; AI SDK support
 
-(def TYPE-PREFIX
+(def type-prefix
   "AI SDK type to prefix, same names as in FE or ai-service"
   ;; NOTE: if we ever get prefix longer than 2 chars, you need to fix parsing to be more generic
   {:TEXT           "0:"
@@ -38,22 +38,22 @@
    :TOOL_CALL      "9:"
    :TOOL_RESULT    "a:"})
 
-(def PREFIX-TYPE "AI SDK prefix to type" (set/map-invert TYPE-PREFIX))
+(def prefix-type "AI SDK prefix to type" (set/map-invert type-prefix))
 
 (defn aisdk->messages
   "Convert AI SDK line format into an array of parsed messages."
   [role lines]
   (into [] (comp
-            (map (fn [line] [(get PREFIX-TYPE (subs line 0 2)) (json/decode+kw (subs line 2))]))
+            (map (fn [line] [(get prefix-type (subs line 0 2)) (json/decode+kw (subs line 2))]))
             (partition-by first)
             (mapcat (fn [block]
                       (let [type (ffirst block)]
                         (case type
-                          :TEXT           [{:role    role
+                          (:TEXT
+                           :ERROR)        [{:role    role
                                             :_type   type
                                             :content (transduce (map second) str block)}]
-                          (:DATA
-                           :ERROR)        (map #(-> (second %) (assoc :_type type)) block)
+                          :DATA           (map #(-> (second %) (assoc :_type type)) block)
                           :TOOL_CALL      [{:role       role
                                             :_type      type
                                             :tool_calls (map (fn [[_ v]]

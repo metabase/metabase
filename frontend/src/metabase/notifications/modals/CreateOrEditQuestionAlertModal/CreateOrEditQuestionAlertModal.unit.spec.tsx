@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -10,7 +10,7 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals";
 import type {
   ChannelApiResponse,
   Notification,
@@ -30,7 +30,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
-describe("CreateOrEditQuestionAlertModal", () => {
+describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
   it("should display first available channel by default - Email", async () => {
     setup({
       isAdmin: true,
@@ -407,7 +407,8 @@ function setup({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("advanced_permissions");
+  setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
     display: "line",
@@ -453,7 +454,7 @@ function setup({
 
   if (editingNotification) {
     renderWithProviders(
-      <CreateOrEditQuestionAlertModal
+      <CreateOrEditQuestionAlertModalWithQuestion
         editingNotification={editingNotification}
         onAlertUpdated={onAlertUpdatedMock}
         onClose={jest.fn()}
@@ -464,7 +465,7 @@ function setup({
   }
 
   renderWithProviders(
-    <CreateOrEditQuestionAlertModal
+    <CreateOrEditQuestionAlertModalWithQuestion
       onAlertCreated={onAlertCreatedMock}
       onClose={jest.fn()}
     />,

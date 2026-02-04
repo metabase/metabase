@@ -3,11 +3,9 @@
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
-   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -188,7 +186,10 @@
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} does not contain {1}" (->display-name x) (if (string? y) y (->display-name y))))
-        (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args))))))
+        (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args)))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
@@ -212,7 +213,10 @@
       (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
 
       [:>= _ x y]
-      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y)))))
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
@@ -248,7 +252,10 @@
       (i18n/tru "{0} is between {1} and {2}"
                 (->display-name x)
                 (->display-name y)
-                (->display-name z)))))
+                (->display-name z))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method :during
   [query stage-number [_tag _opts expr value unit] style]
@@ -412,7 +419,7 @@
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.
-  If `stage-number` is omitted, the last stage is used. Logicaly, the
+  If `stage-number` is omitted, the last stage is used. Logically, the
   filter attached to the query is the conjunction of the expressions
   in the returned list. If the returned list is empty, then there is no
   filter attached to the query.
@@ -422,24 +429,6 @@
     stage-number :- [:maybe :int]]
    (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ColumnWithOperators
-  "Malli schema for ColumnMetadata extended with the list of applicable operators."
-  [:merge
-   [:ref ::lib.schema.metadata/column]
-   [:map
-    [:operators {:optional true} [:sequential [:ref ::lib.schema.filter/operator]]]]])
-
-(mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
-  "Returns the operators for which `filterable-column` is applicable."
-  [filterable-column :- ColumnWithOperators]
-  (:operators filterable-column))
-
-(mu/defn add-column-operators :- ColumnWithOperators
-  "Extend the column metadata with the available operators if any."
-  [column :- ::lib.schema.metadata/column]
-  (let [operators (lib.filter.operator/filter-operators column)]
-    (m/assoc-some column :operators (perf/not-empty operators))))
-
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
   [a-filter]
@@ -448,7 +437,7 @@
     (when (lib.util/ref-clause? leading-arg)
       leading-arg)))
 
-(mu/defn filterable-columns :- [:maybe [:sequential ColumnWithOperators]]
+(mu/defn filterable-columns :- [:maybe [:sequential [:ref ::lib.schema.metadata/column]]]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -468,10 +457,12 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [columns (sequence
-                  (comp (map add-column-operators)
-                        (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number))
+   (filterable-columns query stage-number nil))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number options)
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)
@@ -503,34 +494,17 @@
     (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
                                    (map lib.common/->op-arg args)))))
 
-(mu/defn filter-operator :- ::lib.schema.filter/operator
-  "Return the filter operator of the boolean expression `filter-clause`
-  at `stage-number` in `query`.
-  If `stage-number` is omitted, the last stage is used."
-  ([query a-filter-clause]
-   (filter-operator query -1 a-filter-clause))
-
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    a-filter-clause :- ::lib.schema.expression/boolean]
-   (let [[op _ first-arg] a-filter-clause
-         columns (lib.metadata.calculation/visible-columns query stage-number)
-         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
-     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (lib.filter.operator/filter-operators col))
-                      (lib.filter.operator/operator-def op)))))
-
 (def ^:private FilterParts
   [:map
    [:lib/type [:= :mbql/filter-parts]]
-   [:operator ::lib.schema.filter/operator]
+   [:operator :keyword]
    [:options ::lib.schema.common/options]
-   [:column [:maybe ColumnWithOperators]]
+   [:column [:maybe [:ref ::lib.schema.metadata/column]]]
    [:args [:sequential :any]]])
 
 (mu/defn filter-parts :- FilterParts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
-  Might obsolate [[filter-operator]]."
+  Might obsolete [[filter-operator]]."
   ([query a-filter-clause]
    (filter-parts query -1 a-filter-clause))
 
@@ -541,9 +515,44 @@
          columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
-      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                               (lib.filter.operator/filter-operators col))
-                                 (lib.filter.operator/operator-def op))
+      :operator op
       :options  options
-      :column   (some-> col add-column-operators)
+      :column   col
       :args     (vec rest-args)})))
+
+(mu/defn describe-filter-operator :- :string
+  "Returns a human-readable display name for a filter `operator` keyword.
+
+  `variant` controls how certain operators are displayed:
+  - `:default` (the default) — uses \"Is\" / \"Is not\", \"Greater than\" / \"Less than\"
+  - `:number` — uses \"Equal to\" / \"Not equal to\" for `:=` and `:!=`
+  - `:temporal` — uses \"After\" / \"Before\" for `:>` and `:<`"
+  ([operator :- :keyword]
+   (describe-filter-operator operator :default))
+  ([operator :- :keyword
+    variant   :- [:enum :default :number :temporal]]
+   (clojure.core/case operator
+     :=                (if (clojure.core/= variant :number)
+                         (i18n/tru "Equal to")
+                         (i18n/tru "Is"))
+     :!=               (if (clojure.core/= variant :number)
+                         (i18n/tru "Not equal to")
+                         (i18n/tru "Is not"))
+     :contains         (i18n/tru "Contains")
+     :does-not-contain (i18n/tru "Does not contain")
+     :starts-with      (i18n/tru "Starts with")
+     :ends-with        (i18n/tru "Ends with")
+     :is-empty         (i18n/tru "Is empty")
+     :not-empty        (i18n/tru "Not empty")
+     :>                (if (clojure.core/= variant :temporal)
+                         (i18n/tru "After")
+                         (i18n/tru "Greater than"))
+     :<                (if (clojure.core/= variant :temporal)
+                         (i18n/tru "Before")
+                         (i18n/tru "Less than"))
+     :between          (i18n/tru "Between")
+     :>=               (i18n/tru "Greater than or equal to")
+     :<=               (i18n/tru "Less than or equal to")
+     :is-null          (i18n/tru "Is empty")
+     :not-null         (i18n/tru "Not empty")
+     :inside           (i18n/tru "Inside"))))

@@ -28,6 +28,7 @@
    :dataset           :model/Card
    :dimension         :model/Dimension
    :document          :model/Document
+   :measure           :model/Measure
    :metric            :model/Card
    :permissions-group :model/PermissionsGroup
    :pulse             :model/Pulse

@@ -606,6 +606,64 @@ describe("parameters/utils/mapping-options", () => {
       expect(options.length).toBeGreaterThan(0);
     });
   });
+
+  describe("includeSensitiveFields option", () => {
+    const sensitiveFieldId = 9999;
+    const database = createSampleDatabase();
+    const ordersTable = createOrdersTable({
+      fields: [
+        ...createOrdersTable().fields,
+        {
+          id: sensitiveFieldId,
+          table_id: ORDERS_ID,
+          name: "SECRET_FIELD",
+          display_name: "Secret Field",
+          base_type: "type/Text",
+          semantic_type: null,
+          visibility_type: "sensitive",
+        },
+      ],
+    });
+    database.tables = database.tables.map((t) =>
+      t.id === ORDERS_ID ? ordersTable : t,
+    );
+
+    const metadata = createMockMetadata({ databases: [database] }, undefined, {
+      includeSensitiveFields: true,
+    });
+    const card = structured({ "source-table": ORDERS_ID });
+    const question = new Question(card, metadata);
+
+    it("should exclude sensitive fields by default", () => {
+      const options = getParameterMappingOptions(
+        question,
+        { type: "string/=" },
+        card,
+      );
+
+      const sensitiveOption = options.find(
+        (opt) => opt.name === "Secret Field",
+      );
+      expect(sensitiveOption).toBeUndefined();
+    });
+
+    it("should include sensitive fields when includeSensitiveFields is true", () => {
+      const options = getParameterMappingOptions(
+        question,
+        { type: "string/=" },
+        card,
+        null,
+        null,
+        { includeSensitiveFields: true },
+      );
+
+      const sensitiveOption = options.find(
+        (opt) => opt.name === "Secret Field",
+      );
+      expect(sensitiveOption).toBeDefined();
+      expect(sensitiveOption.name).toBe("Secret Field");
+    });
+  });
 });
 
 describe("getMappingOptionByTarget", () => {

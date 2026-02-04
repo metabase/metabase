@@ -31,6 +31,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.measure :as lib.measure]
    [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.column]
@@ -43,6 +44,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
+   [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -107,6 +109,7 @@
          metabase.lib.schema/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         lib.measure/keep-me
          metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
@@ -157,7 +160,8 @@
   breakouts-metadata
   remove-all-breakouts]
  [metabase.lib.card
-  card->underlying-query]
+  card->underlying-query
+  model-preserved-keys]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -286,10 +290,8 @@
   filter
   filters
   filterable-columns
-  filterable-column-operators
-  filter-clause
-  filter-operator
   filter-parts
+  describe-filter-operator
   and
   or
   not
@@ -417,6 +419,8 @@
   parameter-target-is-dimension?
   parameter-target-template-tag-name
   update-parameter-target-dimension-options]
+ [lib.parameters.parse
+  match-and-normalize-tag-name]
  [lib.parse
   parse]
  [lib.query
@@ -449,7 +453,12 @@
  [metabase.lib.schema.util
   remove-lib-uuids]
  [lib.segment
-  available-segments]
+  available-segments
+  check-segment-overwrite]
+ [lib.measure
+  available-measures
+  check-measure-cycles
+  check-measure-overwrite]
  [metabase.lib.serialize
   prepare-for-serialization]
  [lib.stage
@@ -492,11 +501,18 @@
   unique-name-generator
   unique-name-generator-with-options]
  [lib.validate
-  find-bad-refs]
+  duplicate-column-error
+  find-bad-refs
+  find-bad-refs-with-source
+  missing-column-error
+  missing-table-alias-error
+  syntax-error
+  validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
+  all-measure-ids
   all-segment-ids
   all-source-card-ids
   all-source-table-ids

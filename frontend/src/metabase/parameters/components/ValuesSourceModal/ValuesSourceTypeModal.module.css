@@ -1,5 +1,5 @@
 .info {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border-radius: var(--default-border-radius);
 }
 
@@ -25,7 +25,7 @@
 
 .ModalLabel {
   display: block;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-bottom: 0.5rem;
   font-weight: bold;
 }
@@ -36,13 +36,13 @@
 }
 
 .ModalHelpMessage {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-top: 0.25rem;
   margin-left: 1.25rem;
 }
 
 .ModalErrorMessage {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding: 1rem;
   border: 1px solid var(--mb-color-error);
   border-radius: 0.5rem;
@@ -56,8 +56,8 @@
   padding: 2rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-bg-light);
-  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
   font-weight: bold;
   line-height: 1.5rem;
   text-align: center;

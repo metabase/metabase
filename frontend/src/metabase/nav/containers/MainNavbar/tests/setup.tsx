@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
@@ -50,7 +50,7 @@ export type SetupOpts = {
   models?: ModelResult[];
   canCurateRootCollection?: boolean;
   instanceCreationDate?: string;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   hasDWHAttached?: boolean;
   isEmbeddingIframe?: boolean;
   hasWhitelabelToken?: boolean;
@@ -83,7 +83,7 @@ export async function setup({
   withAdditionalDatabase = true,
   canCurateRootCollection = false,
   instanceCreationDate = dayjs().toISOString(),
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   hasDWHAttached = false,
   isEmbeddingIframe,
   hasWhitelabelToken,
@@ -201,8 +201,10 @@ export async function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(

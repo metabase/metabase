@@ -110,7 +110,7 @@
       (finally
         (.. lock writeLock unlock)
         ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
-        ;; and a backend server started with `dev/start!` the snapshots are always missing columms added by DB
+        ;; and a backend server started with `dev/start!` the snapshots are always missing columns added by DB
         ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
         ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
         ;; years to run because we're wasting a bunch of time initializing Liquibase and checking for unrun migrations
@@ -130,6 +130,8 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  ;; reset the system clock, in case `/set-time` was called without cleanup
+  (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex! {:async? false})
@@ -140,7 +142,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/echo"
-  "Simple echo hander. Fails when you POST with `?fail=true`."
+  "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
@@ -177,7 +179,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/echo"
-  "Simple echo hander. Fails when you GET with `?fail=true`."
+  "Simple echo handler. Fails when you GET with `?fail=true`."
   [_route-params
    {:keys [fail body]} :- [:map
                            [:fail {:default false} ms/BooleanValue]

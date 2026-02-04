@@ -159,33 +159,6 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
       });
     });
 
-    it("Metabot chat should be controlled from the native editor", () => {
-      H.startNewNativeQuestion();
-      H.NativeEditor.get().should("be.visible");
-
-      cy.findByTestId("native-query-top-bar")
-        .findByLabelText("Open Metabot chat")
-        .should("be.enabled")
-        .click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "metabot_chat_opened",
-        triggered_from: "native_editor",
-      });
-
-      cy.findByTestId("native-query-top-bar")
-        .findByLabelText("Close Metabot chat")
-        .should("be.enabled")
-        .click();
-      cy.log("We don't track closing the chat");
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "metabot_chat_opened",
-          triggered_from: "native_editor",
-        },
-        1,
-      );
-    });
-
     describe("Metabot chat", () => {
       beforeEach(() => {
         cy.visit("/");

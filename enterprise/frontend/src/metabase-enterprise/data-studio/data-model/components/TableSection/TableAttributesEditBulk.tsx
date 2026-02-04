@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -10,9 +12,14 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
+import {
+  trackDataStudioBulkAttributeUpdated,
+  trackDataStudioBulkSyncSettingsClicked,
+} from "metabase-enterprise/data-studio/analytics";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -26,6 +33,7 @@ import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
 type TableAttributesEditBulkProps = {
+  canPublish: boolean;
   hasLibrary: boolean;
   onUpdate: () => void;
 };
@@ -33,9 +41,11 @@ type TableAttributesEditBulkProps = {
 type TableModalType = "library" | "publish" | "unpublish" | "sync";
 
 export function TableAttributesEditBulk({
+  canPublish,
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const {
     selectedDatabases,
     selectedSchemas,
@@ -52,6 +62,9 @@ export function TableAttributesEditBulk({
   const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
   const [modalType, setModalType] = useState<TableModalType>();
+  const previousTables = usePrevious(selectedTables);
+  const previousSchemas = usePrevious(selectedSchemas);
+  const previousDatabases = usePrevious(selectedDatabases);
 
   const hasOnlyTablesSelected =
     selectedTables.size > 0 &&
@@ -84,6 +97,21 @@ export function TableAttributesEditBulk({
           : (email ?? undefined),
       owner_user_id: userId === "unknown" ? null : (userId ?? undefined),
     });
+
+    const result = error ? "failure" : "success";
+
+    if (email !== undefined || userId !== undefined) {
+      trackDataStudioBulkAttributeUpdated("owner", result);
+    }
+    if (dataLayer !== undefined) {
+      trackDataStudioBulkAttributeUpdated("layer", result);
+    }
+    if (entityType !== undefined) {
+      trackDataStudioBulkAttributeUpdated("entity_type", result);
+    }
+    if (dataSource !== undefined) {
+      trackDataStudioBulkAttributeUpdated("data_source", result);
+    }
 
     if (error) {
       sendErrorToast(t`Failed to update items`);
@@ -119,19 +147,37 @@ export function TableAttributesEditBulk({
   };
 
   useEffect(() => {
-    setDataLayer(null);
-    setDataSource(null);
-    setEmail(null);
-    setEntityType(null);
-    setUserId(null);
-  }, [selectedTables, selectedSchemas, selectedDatabases]);
+    if (!previousTables || !previousSchemas || !previousDatabases) {
+      return;
+    }
+
+    const shouldReset =
+      !isSubsetOf(selectedTables, previousTables) ||
+      !isSubsetOf(selectedSchemas, previousSchemas) ||
+      !isSubsetOf(selectedDatabases, previousDatabases);
+
+    if (shouldReset) {
+      setDataLayer(null);
+      setDataSource(null);
+      setEmail(null);
+      setEntityType(null);
+      setUserId(null);
+    }
+  }, [
+    previousDatabases,
+    previousSchemas,
+    previousTables,
+    selectedDatabases,
+    selectedSchemas,
+    selectedTables,
+  ]);
 
   return (
     <>
       <Stack gap="md">
         <Group
           align="center"
-          c="text-light"
+          c="text-tertiary"
           gap={10}
           flex="1"
           fs="lg"
@@ -143,7 +189,7 @@ export function TableAttributesEditBulk({
         >
           <Title
             order={4}
-            c="text-dark"
+            c="text-primary"
             style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
             <Icon name="collection2" size={20} />
@@ -155,15 +201,17 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            <Button
-              flex={1}
-              p="sm"
-              leftSection={<Icon name="publish" />}
-              onClick={() => setModalType(hasLibrary ? "publish" : "library")}
-            >
-              {t`Publish`}
-            </Button>
-            {hasLibrary && (
+            {canPublish && !remoteSyncReadOnly && (
+              <Button
+                flex={1}
+                p="sm"
+                leftSection={<Icon name="publish" />}
+                onClick={() => setModalType(hasLibrary ? "publish" : "library")}
+              >
+                {t`Publish`}
+              </Button>
+            )}
+            {canPublish && !remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
                 p="sm"
@@ -176,7 +224,10 @@ export function TableAttributesEditBulk({
             <Button
               flex={1}
               leftSection={<Icon name="settings" />}
-              onClick={() => setModalType("sync")}
+              onClick={() => {
+                trackDataStudioBulkSyncSettingsClicked();
+                setModalType("sync");
+              }}
             >
               {t`Sync settings`}
             </Button>
@@ -293,4 +344,8 @@ export function TableAttributesEditBulk({
       />
     </>
   );
+}
+
+function isSubsetOf<T>(subset: Set<T>, superset: Set<T>): boolean {
+  return Array.from(subset).every((element) => superset.has(element));
 }

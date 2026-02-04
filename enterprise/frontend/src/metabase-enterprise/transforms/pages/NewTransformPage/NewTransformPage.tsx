@@ -4,11 +4,7 @@ import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,6 +20,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -35,7 +32,7 @@ import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { getValidationResult, isNotDraftSource } from "../../utils";
+import { getValidationResult, isCompleteSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
@@ -53,12 +50,12 @@ type NewTransformPageProps = {
 
 function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   const {
-    data: databases,
-    isLoading,
-    error,
-  } = useListDatabasesQuery({ include_analytics: true });
+    transformsDatabases,
+    isLoadingDatabases: isLoading,
+    databasesError: error,
+  } = useTransformPermissions();
 
-  if (isLoading || error != null || databases == null) {
+  if (isLoading || error != null || transformsDatabases == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -69,7 +66,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   return (
     <NewTransformPageBody
       initialSource={initialSource}
-      databases={databases.data}
+      databases={transformsDatabases}
       route={route}
     />
   );
@@ -147,10 +144,11 @@ function NewTransformPageBody({
               {t`New transform`}
             </DataStudioBreadcrumbs>
           }
+          showMetabotButton
         />
         <Box
           w="100%"
-          bg="bg-white"
+          bg="background-primary"
           bdrs="md"
           bd="1px solid var(--mb-color-border)"
           flex={1}
@@ -164,13 +162,14 @@ function NewTransformPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
+              isEditMode
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
             />
           ) : (
             <TransformEditor
+              isEditMode
               source={source}
               proposedSource={
                 proposedSource?.type === "query" ? proposedSource : undefined
@@ -185,7 +184,7 @@ function NewTransformPageBody({
           )}
         </Box>
       </PageContainer>
-      {isModalOpened && isNotDraftSource(source) && (
+      {isModalOpened && isCompleteSource(source) && (
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}

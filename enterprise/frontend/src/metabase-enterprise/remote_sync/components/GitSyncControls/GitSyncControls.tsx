@@ -1,21 +1,18 @@
-import { useCallback, useMemo, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
-import { isSyncedCollection } from "metabase/collections/utils";
 import { useToast } from "metabase/common/hooks";
-import { buildCollectionTree } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Icon, Loader, Tooltip } from "metabase/ui";
+import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
 import {
-  useGetRemoteSyncChangesQuery,
+  useGetHasRemoteChangesQuery,
   useImportChangesMutation,
 } from "metabase-enterprise/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
-import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../../constants";
+import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
+import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import { type SyncError, parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
@@ -24,13 +21,14 @@ import {
   type SyncConflictVariant,
 } from "../SyncConflictModal";
 
-import { BranchPicker } from "./BranchPicker";
+import { BranchDropdown } from "./BranchDropdown";
+import S from "./GitSyncControls.module.css";
+import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
+
+type DropdownView = "options" | "branch";
 
 export const GitSyncControls = () => {
-  const isAdmin = useSelector(getUserIsAdmin);
-  const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
-  const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
-  const { value: syncType } = useAdminSetting(TYPE_KEY);
+  const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -39,32 +37,26 @@ export const GitSyncControls = () => {
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
-  const [showPushModal, setShowPushModal] = useState(false);
+  const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
+  const [dropdownView, setDropdownView] = useState<DropdownView>("options");
+  const combobox = useCombobox();
 
-  const { data: dirtyData, refetch: refetchDirty } =
-    useGetRemoteSyncChangesQuery(undefined, {
-      skip: !isRemoteSyncEnabled,
-      refetchOnFocus: true,
+  const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
+
+  const { data: hasRemoteChangesData, isLoading: isFetchingRemoteChanges } =
+    useGetHasRemoteChangesQuery(undefined, {
+      refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
+      skip: !combobox.dropdownOpened,
     });
-
-  // Fetch collections to filter synced ones for the push modal
-  const { data: collections = [] } = useListCollectionsTreeQuery(
-    {
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    },
-    { skip: !isRemoteSyncEnabled },
-  );
-
-  const syncedCollections = useMemo(() => {
-    const synced = collections.filter(isSyncedCollection);
-    return buildCollectionTree(synced);
-  }, [collections]);
+  const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
   const isSwitchingBranch = !!nextBranch;
-  const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
-  const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
+  const isLoading =
+    isSyncTaskRunning ||
+    isSwitchingBranch ||
+    isImporting ||
+    isFetchingRemoteChanges;
 
   const changeBranch = useCallback(
     async (branch: string | null, isNewBranch?: boolean) => {
@@ -116,6 +108,11 @@ export const GitSyncControls = () => {
     [currentBranch, changeBranch, refetchDirty, sendToast],
   );
 
+  const handlePushClick = useCallback(() => {
+    togglePushModal();
+    combobox.closeDropdown();
+  }, [combobox, togglePushModal]);
+
   const handlePullClick = useCallback(async () => {
     if (!currentBranch) {
       return;
@@ -127,11 +124,6 @@ export const GitSyncControls = () => {
       trackPullChanges({
         triggeredFrom: "app-bar",
         force: false,
-      });
-
-      sendToast({
-        message: t`Your branch is now up to date with remote`,
-        icon: "check",
       });
     } catch (error) {
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
@@ -146,87 +138,95 @@ export const GitSyncControls = () => {
         icon: "warning",
       });
     }
-  }, [currentBranch, importChanges, sendToast]);
 
-  const handlePushClick = useCallback(() => {
-    setShowPushModal(true);
-  }, []);
-
-  const handleClosePushModal = useCallback(() => {
-    setShowPushModal(false);
-  }, []);
+    combobox.closeDropdown();
+  }, [combobox, currentBranch, importChanges, sendToast]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
     setSyncConflictVariant(undefined);
     setNextBranch(null);
   }, []);
 
-  // Don't render if remote sync is not enabled, user is not admin, or not in read-write mode
-  if (
-    !isRemoteSyncEnabled ||
-    !isAdmin ||
-    !currentBranch ||
-    syncType !== "read-write"
-  ) {
+  const handleSwitchBranchClick = useCallback(() => {
+    setDropdownView("branch");
+  }, []);
+
+  if (!isVisible || !currentBranch) {
     return null;
   }
 
   return (
     <>
-      <Button.Group data-testid="git-sync-controls" mr="2rem">
-        <BranchPicker
-          isLoading={isLoading}
-          value={currentBranch}
-          onChange={handleBranchSelect}
-          baseBranch={currentBranch}
-        />
-
-        <Tooltip label={t`Pull from Git`}>
+      <Combobox
+        disabled={isLoading}
+        position="bottom-start"
+        store={combobox}
+        width={280}
+        withinPortal
+      >
+        <Combobox.Target>
           <Button
-            variant="default"
+            p="sm"
             size="compact-sm"
-            px="0.5rem"
-            py="1rem"
-            onClick={handlePullClick}
+            bd="none"
+            mr="lg"
             disabled={isLoading}
-            aria-label={t`Pull from Git`}
-            data-testid="git-pull-button"
+            onClick={() => {
+              setDropdownView("options");
+              combobox.toggleDropdown();
+            }}
             leftSection={
-              isImporting ? (
+              <Icon name="git_branch" c="text-secondary" size={14} />
+            }
+            rightSection={
+              isLoading ? (
                 <Loader size="xs" />
               ) : (
-                <Icon name="arrow_down" size={16} />
+                <Icon
+                  name="chevrondown"
+                  c="text-secondary"
+                  size={8}
+                  className={cx(S.chevronIcon, {
+                    [S.opened]: combobox.dropdownOpened,
+                  })}
+                />
               )
             }
-          />
-        </Tooltip>
+            data-testid="git-sync-controls"
+          >
+            <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
+              {currentBranch}
+            </Text>
+          </Button>
+        </Combobox.Target>
 
-        <Tooltip label={isDirty ? t`Push to Git` : t`No changes to push`}>
-          <Button
-            variant="default"
-            size="compact-sm"
-            px="0.5rem"
-            py="1rem"
-            onClick={handlePushClick}
-            disabled={isLoading || !isDirty}
-            aria-label={t`Push to Git`}
-            data-testid="git-push-button"
-            leftSection={<Icon name="arrow_up" size={16} />}
+        {dropdownView === "options" ? (
+          <GitSyncOptionsDropdown
+            isPullDisabled={!hasRemoteChanges}
+            isPushDisabled={!isDirty || isLoading}
+            onPullClick={handlePullClick}
+            onPushClick={handlePushClick}
+            onSwitchBranchClick={handleSwitchBranchClick}
           />
-        </Tooltip>
-      </Button.Group>
+        ) : (
+          <BranchDropdown
+            baseBranch={currentBranch}
+            combobox={combobox}
+            onChange={handleBranchSelect}
+            value={currentBranch}
+          />
+        )}
+      </Combobox>
 
       {showPushModal && (
         <PushChangesModal
-          onClose={handleClosePushModal}
-          collections={syncedCollections}
           currentBranch={currentBranch}
+          onClose={togglePushModal}
         />
       )}
 
       {syncConflictVariant && (
         <SyncConflictModal
-          collections={syncedCollections}
           currentBranch={currentBranch}
           nextBranch={nextBranch}
           onClose={handleCloseSyncConflictModal}

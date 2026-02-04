@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetSlackManifestQuery } from "metabase/api";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Divider, Icon, Stack, Text, Title } from "metabase/ui";
 
@@ -58,7 +58,7 @@ const SetupHeader = ({
           </Markdown>
         </Text>
       ) : (
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {t`Bring the power of Metabase to your Slack #channels.`}{" "}
           {t`Follow these steps to connect to Slack:`}
         </Text>

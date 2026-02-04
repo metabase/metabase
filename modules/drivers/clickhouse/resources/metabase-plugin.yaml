@@ -8,10 +8,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
-    - merge:
-        - port
-        - default: 8123
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - host
+          - merge:
+              - port
+              - default: 8123
     - user
     - password
     - name: enable-multiple-db
@@ -33,9 +36,11 @@ driver:
       placeholder: >-
         database_1, database_2
       helper-text: Optionally filter which databases are visible.
-
-    - ssl
-    - ssh-tunnel
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssl
+        - ssh-tunnel
     - advanced-options-start
     - name: use-no-proxy
       display-name: Disable system wide proxy settings

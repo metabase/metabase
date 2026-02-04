@@ -69,13 +69,12 @@ result_metadata:
   settings: null
   visibility_type: normal
 visualization_settings: {column_settings: null, table.cell_column: group_name, table.pivot_column: group_id}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: lTp-ATFsCUFEr9I0fMEaO, label: group_members, model: Card}
 archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: null
 type: model

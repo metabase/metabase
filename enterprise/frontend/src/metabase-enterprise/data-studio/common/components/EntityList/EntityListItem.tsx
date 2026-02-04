@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Card, Flex, Icon, Stack, Text } from "metabase/ui";
 
@@ -10,7 +11,7 @@ type EntityListItemProps = {
   name: string;
   description?: string | null;
   icon: IconName;
-  iconColor?: string;
+  iconColor?: ColorName;
   href: string;
 };
 

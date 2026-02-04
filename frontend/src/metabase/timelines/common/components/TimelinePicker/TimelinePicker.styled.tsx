@@ -16,7 +16,7 @@ export const CardBody = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1rem;
   font-weight: bold;
   margin-bottom: 0.125rem;
@@ -24,13 +24,13 @@ export const CardTitle = styled.div`
 `;
 
 export const CardDescription = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
   word-wrap: break-word;
 `;
 
 export const CardIcon = styled(Icon)`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   width: 1rem;
   height: 1rem;
 `;
@@ -48,7 +48,7 @@ export const CardIconContainer = styled.div`
 
 export const CardAside = styled.div`
   flex: 0 0 auto;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 0.75rem;
 `;
 
@@ -60,7 +60,7 @@ const selectedStyles = css`
   background-color: var(--mb-color-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 
   ${CardIcon} {
@@ -68,8 +68,8 @@ const selectedStyles = css`
   }
 
   ${CardIconContainer} {
-    border-color: var(--mb-color-bg-white);
-    background-color: var(--mb-color-bg-white);
+    border-color: var(--mb-color-background-primary);
+    background-color: var(--mb-color-background-primary);
   }
 `;
 

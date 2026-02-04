@@ -11,7 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
-export default class LeafletMap extends Component {
+export class LeafletMap extends Component {
   constructor(props) {
     super(props);
 
@@ -84,51 +84,76 @@ export default class LeafletMap extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { bounds, settings, zoomControl } = this.props;
+    const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
-    if (zoomControl === false) {
-      this.map.removeControl(this.map.zoomControl);
-    } else {
-      this.map.addControl(this.map.zoomControl);
+    if (prevProps.zoomControl !== zoomControl) {
+      if (zoomControl === false) {
+        this.map.zoomControl?.remove();
+      } else if (this.map.zoomControl) {
+        this.map.zoomControl.addTo(this.map);
+      }
     }
 
-    if (
-      !prevProps ||
-      prevProps.points !== this.props.points ||
-      prevProps.width !== this.props.width ||
-      prevProps.height !== this.props.height
-    ) {
-      this.map.invalidateSize();
+    const isInitialUpdate = !prevProps;
+    const pointsChanged = prevProps && prevProps.points !== this.props.points;
+    const dimensionsChanged =
+      prevProps &&
+      (prevProps.width !== this.props.width ||
+        prevProps.height !== this.props.height);
 
-      if (
-        settings["map.center_latitude"] != null ||
-        settings["map.center_longitude"] != null ||
-        settings["map.zoom"] != null
-      ) {
+    if (!isInitialUpdate && !pointsChanged && !dimensionsChanged) {
+      return;
+    }
+
+    this.map.invalidateSize();
+
+    const hasSavedView =
+      settings["map.center_latitude"] != null ||
+      settings["map.center_longitude"] != null ||
+      settings["map.zoom"] != null;
+
+    // Pure resize (no data change): preserve user's current view
+    if (!isInitialUpdate && !pointsChanged && dimensionsChanged) {
+      if (zoom != null) {
+        const currentCenter = this.map.getCenter();
         this.map.setView(
-          [settings["map.center_latitude"], settings["map.center_longitude"]],
-          settings["map.zoom"],
+          [lat ?? currentCenter.lat, lng ?? currentCenter.lng],
+          zoom,
         );
-      } else {
-        // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible
-        const latZoom = this.map.getBoundsZoom(
-          L.latLngBounds([
-            [bounds.getSouth(), 0],
-            [bounds.getNorth(), 0],
-          ]),
-        );
-        const lonZoom = this.map.getBoundsZoom(
-          L.latLngBounds([
-            [0, bounds.getWest()],
-            [0, bounds.getEast()],
-          ]),
-        );
-        const zoom = Math.min(latZoom, lonZoom);
-        // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work
-        this.map.fitBounds(bounds);
-        this.map.setZoom(zoom);
-        this.map.fitBounds(bounds);
       }
+      // Don't reset to saved settings or recalculate on pure resize
+      return;
+    }
+
+    // Initial update or data changed: apply saved settings if available
+    if (hasSavedView) {
+      this.map.setView(
+        [settings["map.center_latitude"], settings["map.center_longitude"]],
+        settings["map.zoom"],
+      );
+      return;
+    }
+
+    // No saved view: fit to data bounds
+    if (shouldRecalculateZoom(prevProps?.points, this.props.points)) {
+      // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible
+      const latZoom = this.map.getBoundsZoom(
+        L.latLngBounds([
+          [bounds.getSouth(), 0],
+          [bounds.getNorth(), 0],
+        ]),
+      );
+      const lonZoom = this.map.getBoundsZoom(
+        L.latLngBounds([
+          [0, bounds.getWest()],
+          [0, bounds.getEast()],
+        ]),
+      );
+      const zoom = Math.min(latZoom, lonZoom);
+      // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work
+      this.map.fitBounds(bounds);
+      this.map.setZoom(zoom);
+      this.map.fitBounds(bounds);
     }
   }
 
@@ -274,4 +299,16 @@ export default class LeafletMap extends Component {
     } = this.props;
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
+}
+
+/**
+ * Lightweight function to check if points have changed (e.g. due to filters)
+ * so that we should recalculate the zoom.
+ */
+function shouldRecalculateZoom(prevPoints, nextPoints) {
+  if (!prevPoints && !nextPoints) {
+    return false;
+  }
+
+  return !prevPoints || nextPoints !== prevPoints;
 }

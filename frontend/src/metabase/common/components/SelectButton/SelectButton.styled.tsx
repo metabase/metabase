@@ -13,9 +13,9 @@ interface SelectButtonRootProps {
 
 const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
-    return highlighted ? color("text-white") : color("text-dark");
+    return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-light");
+    return color("text-tertiary");
   }
 };
 
@@ -29,7 +29,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
     ${({ hasValue, highlighted }) =>
       hasValue && highlighted ? color("brand") : color("border")};
   background-color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("brand") : color("bg-white")};
+    hasValue && highlighted ? color("brand") : color("background-primary")};
   border-radius: var(--mantine-spacing-sm);
   font-weight: 700;
   min-width: 104px;
@@ -46,8 +46,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: var(--mb-color-bg-light);
-    color: var(--mb-color-text-medium);
+    background-color: var(--mb-color-background-secondary);
+    color: var(--mb-color-text-secondary);
     pointer-events: none;
   }
 `;
@@ -69,7 +69,9 @@ export const SelectButtonIcon = styled(
   display: flex;
   margin-left: auto;
   color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("text-white") : color("text-medium")};
+    hasValue && highlighted
+      ? color("text-primary-inverse")
+      : color("text-secondary")};
 `;
 
 export const SelectButtonContent = styled.span`

@@ -1,5 +1,5 @@
 .PrimaryToolbarButton:not([data-css-specificity-hack]) {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 
   &:hover {
     background: var(--mb-color-background-hover);

@@ -1,19 +1,27 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -33,10 +41,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const transform-temp-table-prefix
-  "Prefix used for temporary tables created during transform execution."
-  "mb_transform_temp_table")
-
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [_driver {:keys [schema name]}]
@@ -44,10 +48,15 @@
     (keyword schema name)
     (keyword name)))
 
+(defn transform-type
+  "Get the type of a transform"
+  [transform]
+  (-> transform :source :type keyword))
+
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."
   [transform]
-  (= :query (-> transform :source :type keyword)))
+  (= :query (transform-type transform)))
 
 (defn native-query-transform?
   "Check if this is a native query transform.
@@ -60,7 +69,14 @@
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
-  (= :python (-> transform :source :type keyword)))
+  (= :python (transform-type transform)))
+
+(defn transform-source-database
+  "Get the source database from a transform"
+  [transform]
+  (case (transform-type transform)
+    :query (-> transform :source :query :database)
+    :python (-> transform :source :source-database)))
 
 (defn normalize-transform
   "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
@@ -93,15 +109,76 @@
          (premium-features/has-feature? :transforms-python))
     (premium-features/has-feature? :transforms)))
 
+(defenterprise has-db-transforms-permission?
+  "Returns true if the given user has the transforms permission for the given source db."
+  :feature :transforms
+  [user-id database-id]
+  (or (perms/is-superuser? user-id)
+      (perms/user-has-permission-for-database? user-id
+                                               :perms/transforms
+                                               :yes
+                                               database-id)))
+
+(defenterprise has-any-transforms-permission?
+  "Returns true if the current user has the transforms permission for _any_ source db."
+  :feature :transforms
+  [user-id]
+  (or (perms/is-superuser? user-id)
+      (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
+
+(defn source-tables-readable?
+  "Check if the source tables/database in a transform are readable by the current user.
+  Returns true if the user can query all source tables (for python transforms) or the
+  source database (for query transforms)."
+  [transform]
+  (let [source (:source transform)]
+    (case (keyword (:type source))
+      :query
+      (if-let [db-id (get-in source [:query :database])]
+        (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
+        false)
+
+      :python
+      (let [source-tables (:source-tables source)]
+        (if (empty? source-tables)
+          true
+          (let [table-ids (into []
+                                (comp (map val)
+                                      (map #(cond
+                                              (int? %) %
+                                              (map? %) (:table_id %)
+                                              :else nil))
+                                      (filter some?))
+                                source-tables)]
+            (and (seq table-ids)
+                 (every? (fn [table-id]
+                           (when-let [table (t2/select-one :model/Table table-id)]
+                             (mi/can-query? table)))
+                         table-ids)))))
+
+      (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
+
+(defn add-source-readable
+  "Add :source_readable field to a transform or collection of transforms.
+  The field indicates whether the current user can read the source tables/database
+  referenced by the transform."
+  [transform-or-transforms]
+  (if (sequential? transform-or-transforms)
+    (mapv #(assoc % :source_readable (source-tables-readable? %))
+          transform-or-transforms)
+    (assoc transform-or-transforms :source_readable (source-tables-readable? transform-or-transforms))))
+
 (defn try-start-unless-already-running
-  "Start a transform run, throwing an informative error if already running."
-  [id run-method]
+  "Start a transform run, throwing an informative error if already running.
+   If `user-id` is provided, it will be stored with the run for attribution purposes."
+  [id run-method user-id]
   (try
-    (transform-run/start-run! id {:run_method run-method})
+    (transform-run/start-run! id (cond-> {:run_method run-method}
+                                   user-id (assoc :user_id user-id)))
     (catch java.sql.SQLException e
       (if (= (.getSQLState e) "23505")
         (throw (ex-info "Transform is already running"
-                        {:error :already-running
+                        {:error        :already-running
                          :transform-id id}
                         e))
         (throw e)))))
@@ -187,11 +264,15 @@
   [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (transforms.i/target-db-id transform)
-          {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-transform-target! driver database target)
-      (log/info "Deactivating  target " (pr-str target) "for transform" id)
-      (deactivate-table! database target))))
+          database-id (transforms.i/target-db-id transform)]
+      (when database-id
+        (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
+          (do
+            (driver/drop-transform-target! driver database target)
+            (log/info "Deactivating  target " (pr-str target) "for transform" id)
+            (deactivate-table! database target))
+          (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
+                     (pr-str target) id database-id))))))
 
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
@@ -208,6 +289,14 @@
   [source]
   (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
 
+(defn supported-incremental-filter-type?
+  "Returns true if the given base-type is supported for incremental filtering.
+
+  We only support temporal (timestamp/tz) and numeric (int/float) types."
+  [base-type]
+  (or (isa? base-type :type/Temporal)
+      (isa? base-type :type/Number)))
+
 (defn- source->checkpoint-filter-unique-key
   "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
   [query source-incremental-strategy]
@@ -217,24 +306,37 @@
   "Resolve the checkpoint filter column for an incremental transform.
 
   Tries to resolve the column using the unique key first.
-  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified."
+  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified.
+
+  Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
+  Throws an exception if the column type is not supported."
   [query source-incremental-strategy table metadata-provider]
-  (or
-   (source->checkpoint-filter-unique-key query source-incremental-strategy)
-   (when-let [field-name (-> source-incremental-strategy :checkpoint-filter)]
-     (when-let [field-id (t2/select-one-pk :model/Field
-                                           :table_id (:id table)
-                                           :name field-name)]
-       (lib.metadata/field metadata-provider field-id)))))
+  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key]} source-incremental-strategy]
+    (when-some [{column-name :name
+                 :keys [base-type]
+                 :as column}
+                (cond
+                  checkpoint-filter-unique-key
+                  (source->checkpoint-filter-unique-key query source-incremental-strategy)
+                  checkpoint-filter
+                  (when-some [field-id (t2/select-one-pk :model/Field
+                                                         :table_id (:id table)
+                                                         :name checkpoint-filter)]
+                    (lib.metadata/field metadata-provider field-id)))]
+      (when-not (supported-incremental-filter-type? base-type)
+        (throw (ex-info (str "Checkpoint column '" column-name "' has unsupported type " (pr-str base-type) ". "
+                             "Only numeric and temporal columns are supported for incremental filtering.")
+                        {:column-name column-name
+                         :base-type   base-type})))
+      column)))
 
 (defn next-checkpoint
   "Build a query to compute the MAX of the checkpoint column from the target table.
 
   Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
   or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
-  [transform-id]
-  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
-        db-id (transforms.i/target-db-id transform)]
+  [{:keys [source target] :as transform}]
+  (let [db-id (transforms.i/target-db-id transform)]
     (when (checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -307,11 +409,11 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [id source]}]
+  [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy] query-type :type} source]
     (case (keyword query-type)
       :query
-      (let [checkpoint (next-checkpoint id)
+      (let [checkpoint (next-checkpoint transform)
             query (:query source)
             driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
         (binding [driver/*compile-with-inline-parameters*
@@ -397,21 +499,6 @@
   (log/infof "Dropping table %s" table-name)
   (driver/drop-table! driver database-id table-name))
 
-(defn temp-table-name
-  "Generate a temporary table name with current timestamp in milliseconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
-  [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (keyword schema table-name)))
-
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
    This is a simpler, composable operation that only handles renaming."
@@ -424,7 +511,7 @@
   :feature :transforms
   [table]
   (when-let [table-name (:name table)]
-    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
+    (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix)))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"
@@ -433,36 +520,228 @@
       (some->> (:router-database-id db-or-id)
                (t2/exists? :model/DatabaseRouter :database_id))))
 
+;;; ------------------------------------------------- Source Table Resolution -----------------------------------------
+
+(def ^:private ^:const batch-lookup-chunk-size
+  "Maximum number of table refs to query at once to avoid SQL query size limits."
+  100)
+
+(defn batch-lookup-table-ids
+  "Batch lookup table IDs from ref maps. Returns {[db_id schema name] -> table_id}.
+  Queries the exact conjunction of each [database_id, schema, table] triple rather than
+  a Cartesian product of all values. Uses chunking to avoid query size limits."
+  [refs]
+  (when (seq refs)
+    (let [unique-refs (distinct (map (juxt :database_id :schema :table) refs))
+          ref->clause (fn [[db-id schema table-name]]
+                        [:and
+                         [:= :db_id db-id]
+                         (if (some? schema)
+                           [:= :schema schema]
+                           [:is :schema nil])
+                         [:= :name table-name]])
+          fetch-batch (fn [batch]
+                        (t2/select-fn->fn (juxt :db_id :schema :name) :id
+                                          [:model/Table :id :db_id :schema :name]
+                                          {:where (into [:or] (map ref->clause batch))}))]
+      (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
+
+(defn- source-table-ref->key
+  "Convert a source table ref map to a lookup key [db_id schema name]."
+  [{:keys [database_id schema table]}]
+  [database_id schema table])
+
+(defn- missing-table-id?
+  "Returns true if `v` is a source table ref map that needs table_id lookup."
+  [v]
+  (and (map? v) (nil? (:table_id v))))
+
+(defn normalize-source-tables
+  "Normalize source-tables to consistent map format {:database_id :schema :table :table_id}.
+
+  The old format stored just integer table IDs. New transforms store maps on write.
+  Old data is converted on read via transform-source-out for backwards compatibility.
+
+  Throws if an integer table ID references a non-existent table.
+  Map refs with non-existent tables get nil table_id (resolved later at execute time)."
+  [source-tables]
+  (let [int-table-ids    (into #{} (filter int?) (vals source-tables))
+        int-id->metadata (when (seq int-table-ids)
+                           (t2/select-pk->fn (fn [{:keys [db_id schema name]}]
+                                               {:database_id db_id :schema schema :table name})
+                                             [:model/Table :id :db_id :schema :name]
+                                             :id [:in int-table-ids]))
+        missing-ids      (when (seq int-table-ids)
+                           (remove int-id->metadata int-table-ids))
+        refs-needing-id  (filter missing-table-id? (vals source-tables))
+        ref-lookup       (or (batch-lookup-table-ids refs-needing-id) {})]
+    (when (seq missing-ids)
+      (throw (ex-info (str "Tables not found for ids: " (str/join ", " (sort missing-ids)))
+                      {:table_ids (vec missing-ids)})))
+    (update-vals source-tables
+                 (fn [v]
+                   (cond
+                     (int? v)     (assoc (int-id->metadata v) :table_id v)
+                     (:table_id v) v
+                     :else        (assoc v :table_id (ref-lookup (source-table-ref->key v))))))))
+
+(defn resolve-source-tables
+  "Resolve source-tables to {alias -> table_id}. Throws if any table not found.
+  For execute time - all entries must resolve to valid table IDs.
+  Handles both integer IDs (old format) and map refs (new format)."
+  [source-tables]
+  (let [needs-lookup (filter missing-table-id? (vals source-tables))
+        lookup       (or (batch-lookup-table-ids needs-lookup) {})
+        resolved     (u/for-map [[alias v] source-tables]
+                       [alias (if (int? v)
+                                v
+                                (or (:table_id v) (lookup (source-table-ref->key v))))])
+        unresolved   (for [[alias table-id] resolved
+                           :when (nil? table-id)
+                           :let [v (get source-tables alias)]]
+                       {:alias alias
+                        :table (if-let [schema (:schema v)]
+                                 (str schema "." (:table v))
+                                 (:table v))
+                        :ref   v})]
+    (when (seq unresolved)
+      (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
+                      {:unresolved unresolved
+                       :transform-message "Input table not found"})))
+    resolved))
+
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
   (when-let [field-instant (->instant (get-in job field-path))]
-    (let [start-instant (some-> start u.date/parse ->instant)
-          end-instant (some-> end u.date/parse ->instant)]
-      (and (or (nil? start)
-               (not (.isBefore field-instant start-instant)))
-           (or (nil? end)
-               (.isAfter end-instant field-instant))))))
+    (let [parse #(-> % u.date/parse ->instant)]
+      ;; logic here is to find when it's not matching and invert this
+      (not (or (and start (.isBefore field-instant (parse start)))
+               (and end   (.isAfter field-instant (parse end))))))))
 
 (defn ->date-field-filter-xf
   "Returns an xform for a date filter."
   [field-path filter-value]
-  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
-    (if range
-      (filter #(matching-timestamp? % field-path range))
-      identity)))
+  (if-let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
+    (filter #(matching-timestamp? % field-path range))
+    identity))
 
 (defn ->status-filter-xf
   "Returns an xform for a transform run status filter."
   [field-path statuses]
-  (let [statuses (->> statuses (map keyword) set not-empty)]
-    (if statuses
-      (filter #(statuses (get-in % field-path)))
-      identity)))
+  (if-let [statuses (->> statuses (map keyword) set not-empty)]
+    (filter #(statuses (get-in % field-path)))
+    identity))
 
 (defn ->tag-filter-xf
   "Returns an xform for a transform tag filter."
   [field-path tag-ids]
-  (let [tag-ids (-> tag-ids set not-empty)]
-    (if tag-ids
-      (filter #(some tag-ids (get-in % field-path)))
-      identity)))
+  (if-let [tag-ids (-> tag-ids set not-empty)]
+    (filter #(some tag-ids (get-in % field-path)))
+    identity))
+
+(def ^:private metabase-index-prefix "mb_transform_idx_")
+
+(defn- incremental-filter-index-name [schema table-name filter-column-name]
+  (let [prefix metabase-index-prefix
+        suffix (codecs/bytes->hex (buddy-hash/md5 (str/join "|" [schema table-name filter-column-name])))]
+    (str prefix suffix)))
+
+(defn- should-index-incremental-filter-column? [driver database]
+  (and (driver.u/supports? driver :describe-indexes database)
+       (driver.u/supports? driver :transforms/index-ddl database)))
+
+(defn- metabase-owned-index? [index]
+  (str/starts-with? (:index-name index) metabase-index-prefix))
+
+(defn- metabase-incremental-filter-index [filter-column target]
+  (let [table-name  (:name target)
+        schema      (:schema target)
+        filter-name (:name filter-column)]
+    ;; match the schema used by describe-table-indexes (:value denotes the column name, assumed leading column if a composite index)
+    {:index-name (incremental-filter-index-name schema table-name filter-name)
+     :value      filter-name}))
+
+(defn- decide-secondary-index-ddl
+  "Decides which indexes should be dropped/created on the target table.
+
+  e.g. Indexing the incremental :filter-column to accelerate MAX(target.checkpoint) queries on OLTP databases.
+
+  Indexes are represented as maps with at least the keys :index-name, :value.
+  This matches the form used by [[metabase.driver/describe-table-indexes]].
+
+  Returns a map:
+  :drop   - a vector of indexes that are redundant and should be dropped.
+  :create - a vector of desirable indexes that do not exist and that should be created.
+
+  Notes:
+  - If user covering indexes exist they should be reused.
+  - Will never drop user indexes.
+  - Indexes we previously created and are no longer required are dropped."
+  [{:keys [filter-column indexes target database]}]
+  (let [[mb-indexes user-indexes] ((juxt filter remove) metabase-owned-index? indexes)
+        default-mb-index    (when filter-column (metabase-incremental-filter-index filter-column target))
+        column-name         (:name filter-column)
+        existing-user-index (first (filter #(= (:value %) column-name) user-indexes))
+        existing-mb-index   (first (filter #(= (:index-name %) (:index-name default-mb-index)) mb-indexes))
+        driver              (:engine database)
+        intended-index      (when (should-index-incremental-filter-column? driver database)
+                              ;; Prefer reuse to not create redundant indexes
+                              (or existing-user-index default-mb-index))
+        drop                (if intended-index
+                              (remove #(= (:index-name intended-index) (:index-name %)) mb-indexes)
+                              mb-indexes)
+        create              (when (and intended-index
+                                       (not= (:index-name intended-index) (:index-name existing-user-index))
+                                       (not= (:index-name intended-index) (:index-name existing-mb-index)))
+                              [intended-index])]
+    {:drop   (vec drop)
+     :create (vec create)}))
+
+(defn execute-secondary-index-ddl-if-required!
+  "If target table index modifications are required, executes those CREATE/DROP commands.
+  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details."
+  [transform run-id database target]
+  (when (driver.u/supports? (:engine database) :describe-indexes database)
+    (let [driver     (:engine database)
+          indexes    (driver/describe-table-indexes driver database target)
+          checkpoint (next-checkpoint transform)
+          {:keys [drop create]}
+          (decide-secondary-index-ddl
+           {:filter-column (:filter-column checkpoint)
+            :database      database
+            :target        target
+            :indexes       indexes})]
+      (doseq [{:keys [index-name value]} drop]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :drop-incremental-filter-index]]
+          (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
+          (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name)))
+      (doseq [{:keys [index-name value]} create]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
+          (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
+          (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
+
+(mu/defn handle-transform-complete!
+  "Handles followup tasks for when a transform has completed.
+
+  Specifically, this syncs the target db, publishes a `:event/transform-run-complete` event, and potentially updates
+  the target table's index.
+
+  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details on the index handling."
+  [& {:keys [run-id transform db]}
+   :- [:map
+       [:run-id ::transforms.schema/run-id]
+       [:transform ::transforms.schema/transform]
+       [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
+  (let [target (:target transform)]
+    (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
+      (sync-target! target db)
+      ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+      (events/publish-event! :event/transform-run-complete
+                             {:object {:db-id (:id db)
+                                       :transform-id (:id transform)
+                                       :transform-type (keyword (:type target))
+                                       :output-schema (:schema target)
+                                       :output-table (qualified-table-name (:engine db) target)}})
+      ;; Creating an index after sync means the filter column is known in the appdb.
+      ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
+      (execute-secondary-index-ddl-if-required! transform run-id db target))))

@@ -25,7 +25,7 @@ export const FlexContainer: Node<{
 }> = Node.create({
   name: "flexContainer",
   group: "block",
-  content: "(supportingText | cardEmbed){1,3}", // Contains 1-3 CardEmbed or SupportingText nodes only
+  content: "(supportingText|cardEmbed){1,3}", // Contains 1-3 CardEmbed or SupportingText nodes only
   defining: true,
   draggable: false,
   selectable: false,

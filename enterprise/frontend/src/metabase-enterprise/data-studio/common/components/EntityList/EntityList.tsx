@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { IconName } from "metabase/ui";
 import { Button, Group, Icon, Stack, Title } from "metabase/ui";
@@ -15,8 +15,8 @@ type EntityListProps<T> = {
   items: T[];
   title: string;
   emptyState: EntityListEmptyState;
-  newButtonLabel: string;
-  newButtonUrl: string;
+  newButtonLabel?: string;
+  newButtonUrl?: string;
   renderItem: (item: T) => ReactNode;
 };
 
@@ -32,9 +32,11 @@ export function EntityList<T>({
     <Stack gap="md">
       <Group justify="space-between" wrap="nowrap">
         <Title order={4}>{title}</Title>
-        <Button component={ForwardRefLink} to={newButtonUrl} variant="filled">
-          {newButtonLabel}
-        </Button>
+        {newButtonLabel && newButtonUrl && (
+          <Button component={ForwardRefLink} to={newButtonUrl} variant="filled">
+            {newButtonLabel}
+          </Button>
+        )}
       </Group>
 
       {items.length === 0 ? (

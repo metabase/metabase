@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import EditableText from "metabase/common/components/EditableText";
-import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import {
+  PaneHeader,
+  PaneHeaderInput,
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";
 
@@ -25,15 +27,12 @@ export function NewSegmentHeader({
     <PaneHeader
       data-testid="segment-pane-header"
       title={
-        <EditableText
+        <PaneHeaderInput
           initialValue=""
-          placeholder={t`New segment`}
+          isOptional
           maxLength={SEGMENT_NAME_MAX_LENGTH}
-          p={0}
-          fw="bold"
-          fz="h3"
-          lh="h3"
           onContentChange={onNameChange}
+          placeholder={t`New segment`}
         />
       }
       menu={previewUrl && <SegmentMoreMenu previewUrl={previewUrl} />}

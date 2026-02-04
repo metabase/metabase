@@ -19,7 +19,8 @@
 
  [metabase.premium-features.token-check
    ;; TODO: move airgap code to a dedicated namespace?
-  airgap-check-user-count
+  assert-valid-airgap-user-count!
+  assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
   ee-feature-error
@@ -53,6 +54,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-data-studio?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
@@ -75,15 +77,15 @@
   enable-sso-ldap?
   enable-sso-saml?
   enable-support-users?
+  enable-sso-slack?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
+  enable-workspaces?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
-  offer-metabase-ai-trial?
-  offer-metabase-ai-paid?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

@@ -12,12 +12,13 @@
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.test-util :as tools.tu]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -83,7 +84,7 @@
                                                             :field_id    (-> table-id
                                                                              metabot-v3.tools.u/table-field-id-prefix
                                                                              (str 4)) ; name
-                                                            :limt        15}
+                                                            :limit       15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:statistics
                                    {:distinct_count 2499,
@@ -197,7 +198,7 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+        (let [filters [{:field_id "c2-7", :operation "greater-than", :value 50}
                        {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2-5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
@@ -234,7 +235,7 @@
                        :type :metric}]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
         (let [fid #(format "c%d-%d" metric-id %)
-              filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
+              filters [{:field_id (fid 0), :operation "greater-than", :value 50} ; ID
                        {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
                        {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
                        {:field_id (fid 7), :operation "month-equals", :values [4 5 9]}  ; Created At
@@ -249,21 +250,26 @@
                                                                 :filters   filters
                                                                 :group_by  breakouts}
                                               :conversation_id conversation-id})
-              query-id (-> response :structured_output :query_id)]
+              query-id (-> response :structured_output :query_id)
+              actual-query (-> response :structured_output :query lib-be/normalize-query)
+              id-col (lib.metadata/field mp (mt/id :products :id))
+              title-col (lib.metadata/field mp (mt/id :products :title))
+              rating-col (lib.metadata/field mp (mt/id :products :rating))
+              created-at-col (lib.metadata/field mp (mt/id :products :created_at))
+              expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/breakout (lib/with-temporal-bucket created-at-col :week))
+                                 (lib/breakout (lib/with-temporal-bucket created-at-col :day))
+                                 (lib/filter (lib/> id-col 50))
+                                 (lib/filter (lib/= title-col "3" "4"))
+                                 (lib/filter (lib/!= rating-col 3 4))
+                                 (lib/filter (lib/= (lib/get-month created-at-col) 4 5 9))
+                                 (lib/filter (lib/!= (lib/get-day created-at-col) 14 15 19))
+                                 (lib/filter (lib/= (lib/get-day-of-week created-at-col :iso) 1 7))
+                                 (lib/filter (lib/= (lib/get-year created-at-col) 2008)))]
           (is (=? {:structured_output
                    {:type "query"
                     :query_id string?
-                    :query (mt/mbql-query products
-                             {:aggregation [[:metric metric-id]]
-                              :breakout [!week.products.created_at !day.products.created_at]
-                              :filter [:and
-                                       [:> [:field %id {}] 50]
-                                       [:= [:field %title {}] "3" "4"]
-                                       [:!= [:field %rating {}] 3 4]
-                                       [:= [:get-month [:field %created_at {}]] 4 5 9]
-                                       [:!= [:get-day [:field %products.created_at {}]] 14 15 19]
-                                       [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
-                                       [:= [:get-year [:field %created_at {}]] 2008]]})
                     :result_columns
                     [{:field_id (str "q" query-id "-0")
                       :name "CREATED_AT"
@@ -284,8 +290,8 @@
                       :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
-                  (-> response
-                      (update-in [:structured_output :query] mbql.normalize/normalize)))))))))
+                  response))
+          (is (tools.tu/query= expected-query actual-query)))))))
 
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}
@@ -302,7 +308,7 @@
                                            :result-columns []}})]
         (let [fields [{:field_id "c2-8", :bucket "year-of-era"}
                       {:field_id "c2-9"}]
-              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+              filters [{:field_id "c2-7", :operation "greater-than", :value 50}
                        {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2-5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
@@ -344,7 +350,7 @@
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
         (let [fields []
-              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}]
+              filters [{:field_id "c2-7", :operation "greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
@@ -1071,7 +1077,7 @@
                                            :field_id    (-> table-id
                                                             metabot-v3.tools.u/table-field-id-prefix
                                                             (str 8)) ; quantity
-                                           :limt        15}
+                                           :limit       15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:values int-sequence?}
                :conversation_id conversation-id}
@@ -1284,6 +1290,7 @@
                      :model/Transform t3 {:name "Python Transform"
                                           :description "Simple python transform"
                                           :source {:type "python"
+                                                   :source-database (mt/id)
                                                    :body "print('hello world')"
                                                    :source-tables {}}
                                           :target {:type "table"
@@ -1321,6 +1328,7 @@
                                           :description "Simple Python transform"
                                           :source {:type "python"
                                                    :body "print('hello world')"
+                                                   :source-database (mt/id)
                                                    :source-tables {}}
                                           :target {:type "table"
                                                    :name "t2_table"
@@ -1348,7 +1356,7 @@
                                              :conversation_id conversation-id}))))))))))
 
 (deftest get-transform-python-library-details-test
-  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

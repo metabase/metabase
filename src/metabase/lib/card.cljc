@@ -142,7 +142,7 @@
   [:maybe [:sequential {:min 1} ::column]])
 
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
-  "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
+  "Used to track the ID of Cards we're resolving columns for, to avoid infinite recursion for Cards that have circular
   references between one another."
   #{})
 
@@ -159,6 +159,23 @@
                  (select-keys metadata-provider-col [:active]))))
             saved-metadata-cols))))
 
+(mu/defn card->underlying-query :- ::lib.schema/query
+  "Given a `card` return the underlying query that would be run if executing the Card directly. This is different from
+
+    (lib/query mp (lib.metadata/card mp card-id))
+
+  in that this creates a query based on the Card's `:dataset-query` (attaching `:result-metadata` to the last stage)
+  rather than a query that has an empty stage with a `:source-card`.
+
+  This is useful in cases where we want to splice in a Card's query directly (e.g., sanboxing) or for parameter
+  calculation purposes."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card                  :- ::lib.schema.metadata/card]
+  (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
+        {card-query :dataset-query, result-metadata :result-metadata} card]
+    (cond-> (lib.query/query mp card-query)
+      result-metadata (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.normalize/->normalized-stage-metadata result-metadata)))))
+
 (mu/defn- card-cols* :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
@@ -167,41 +184,46 @@
                       (not-empty (infer-returned-columns metadata-providerable card)))]
     (->card-metadata-columns metadata-providerable card cols)))
 
-(mu/defn- source-model-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "If `card` itself has a source card that is a Model, return that Model's columns."
+(mu/defn- source-model-card :- [:maybe ::lib.schema.metadata/card]
+  "If `card` itself has a source card that is a Model, return that source card."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
   (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
+      ;; TODO (eric 2026-01-29): this self-reference check is not reachable from the current callers.
+      ;; I suggest we delete this check.
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
           (when (= (:type source-card) :model)
-            (card-cols* metadata-providerable source-card)))))))
+            source-card))))))
 
-(def ^:private model-preserved-keys
+(mu/defn model-preserved-keys :- [:sequential :keyword]
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
-  can be merged on top."
-  [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type
-   :lib/source-display-name])
+  can be merged on top.
+
+  Returns `:id` for native models only."
+  [native-model? :- :boolean]
+  (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
+    native-model? (conj :id)))
 
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
-  "Merge metadata from source model metadata into result cols."
-  [result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]]
+  "Merge metadata from source model metadata into result cols.
+
+  Overrides `:id` for native models only."
+  [result-cols   :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   native-model? :- :boolean]
   (cond
-    (and (seq result-cols)
-         (empty? model-cols))
-    result-cols
+    (empty? model-cols)
+    (not-empty result-cols)
 
-    (and (empty? result-cols)
-         (seq model-cols))
-    model-cols
+    (empty? result-cols)
+    (not-empty model-cols)
 
-    (and (seq result-cols)
-         (seq model-cols))
+    :else ;; both not empty
     (let [name->model-col (m/index-by :name model-cols)]
       (mapv (fn [result-col]
               (merge
@@ -210,7 +232,7 @@
                ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
                (when-not (= (:lib/source result-col) :source/aggregations)
                  (when-let [model-col (get name->model-col (:name result-col))]
-                   (let [model-col     (u/select-non-nil-keys model-col model-preserved-keys)
+                   (let [model-col     (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
                          temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
                          binning       (lib.binning/binning result-col)
                          semantic-type ((some-fn model-col result-col) :semantic-type)]
@@ -225,10 +247,19 @@
    card                  :- ::lib.schema.metadata/card]
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
-      (let [result-cols (card-cols* metadata-providerable card)
+      (let [result-cols   (card-cols* metadata-providerable card)
             ;; don't pull in metadata from parent model if we ourself are a model
-            model-cols  (when-not (= (:type card) :model)
-                          (source-model-cols metadata-providerable card))]
+            model-card    (when-not (= (:type card) :model)
+                            (source-model-card metadata-providerable card))
+            model-cols    (when model-card
+                            (card-cols* metadata-providerable model-card))
+            ;; the BE passes metadata to the FE as virtual tables that contain `:type` and `:fields` but not `:dataset-query`
+            ;; in this case we should not override the `:id` and assume that the `card` metadata is up-to-date
+            ;; see (metabase#68012) for more details
+            native-model? (and (some? model-card)
+                               (some? (:dataset-query model-card))
+                               (-> (card->underlying-query metadata-providerable model-card)
+                                   (lib.util/native-stage? -1)))]
         (not-empty
          (into []
                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
@@ -236,7 +267,7 @@
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
                (cond-> result-cols
-                 (seq model-cols) (merge-model-metadata model-cols))))))))
+                 (seq model-cols) (merge-model-metadata model-cols native-model?))))))))
 
 (mu/defn saved-question-metadata :- ::maybe-columns
   "Metadata associated with a Saved Question with `card-id`."
@@ -279,20 +310,3 @@
   "Is the query's source-card a model?"
   [query :- ::lib.schema/query]
   (= (source-card-type query) :model))
-
-(mu/defn card->underlying-query :- ::lib.schema/query
-  "Given a `card` return the underlying query that would be run if executing the Card directly. This is different from
-
-    (lib/query mp (lib.metadata/card mp card-id))
-
-  in that this creates a query based on the Card's `:dataset-query` (attaching `:result-metadata` to the last stage)
-  rather than a query that has an empty stage with a `:source-card`.
-
-  This is useful in cases where we want to splice in a Card's query directly (e.g., sanboxing) or for parameter
-  calculation purposes."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- ::lib.schema.metadata/card]
-  (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
-        {card-query :dataset-query, result-metadata :result-metadata} card]
-    (cond-> (lib.query/query mp card-query)
-      result-metadata (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.normalize/->normalized-stage-metadata result-metadata)))))

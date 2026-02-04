@@ -1,0 +1,16 @@
+.item {
+  cursor: pointer;
+
+  &:hover,
+  &.active {
+    background-color: var(--mb-color-background-secondary);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.link {
+  white-space: normal;
+}

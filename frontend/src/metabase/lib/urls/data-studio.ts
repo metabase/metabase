@@ -3,6 +3,7 @@ import type {
   CollectionId,
   DatabaseId,
   FieldId,
+  MeasureId,
   NativeQuerySnippetId,
   SchemaName,
   SegmentId,
@@ -24,7 +25,11 @@ function getQueryString({ collectionId }: OptionalParams) {
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export const DATA_STUDIO_TABLE_METADATA_TABS = ["field", "segments"] as const;
+export const DATA_STUDIO_TABLE_METADATA_TABS = [
+  "field",
+  "segments",
+  "measures",
+] as const;
 export type DataStudioTableMetadataTab =
   (typeof DATA_STUDIO_TABLE_METADATA_TABS)[number];
 
@@ -171,6 +176,71 @@ export function newDataStudioDataModelSegment({
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/new`;
 }
 
+export function dataStudioTableMeasures(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/measures`;
+}
+
+export function dataStudioPublishedTableMeasureNew(tableId: TableId) {
+  return `${dataStudioTableMeasures(tableId)}/new`;
+}
+
+export function dataStudioPublishedTableMeasure(
+  tableId: TableId,
+  measureId: MeasureId,
+) {
+  return `${dataStudioTableMeasures(tableId)}/${measureId}`;
+}
+
+export function dataStudioPublishedTableMeasureDependencies(
+  tableId: TableId,
+  measureId: MeasureId,
+) {
+  return `${dataStudioPublishedTableMeasure(tableId, measureId)}/dependencies`;
+}
+
+type DataModelMeasureParams = {
+  databaseId: DatabaseId;
+  schemaName: SchemaName;
+  tableId: TableId;
+  measureId: MeasureId;
+};
+
+export function dataStudioDataModelMeasure({
+  databaseId,
+  schemaName,
+  tableId,
+  measureId,
+}: DataModelMeasureParams) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "measures" })}/${measureId}`;
+}
+
+export function dataStudioDataModelMeasureDependencies(
+  params: DataModelMeasureParams,
+) {
+  return `${dataStudioDataModelMeasure(params)}/dependencies`;
+}
+
+export function dataStudioDataModelMeasureRevisions(
+  params: DataModelMeasureParams,
+) {
+  return `${dataStudioDataModelMeasure(params)}/revisions`;
+}
+
+export function dataStudioPublishedTableMeasureRevisions(
+  tableId: TableId,
+  measureId: MeasureId,
+) {
+  return `${dataStudioPublishedTableMeasure(tableId, measureId)}/revisions`;
+}
+
+export function newDataStudioDataModelMeasure({
+  databaseId,
+  schemaName,
+  tableId,
+}: Omit<DataModelMeasureParams, "measureId">) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "measures" })}/new`;
+}
+
 export type NewDataStudioQueryModelParams = {
   collectionId?: CollectionId;
 };
@@ -211,12 +281,16 @@ export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
 
+export function dataStudioMetricCaching(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/caching`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }
 
-export function dataStudioCollection(collectionId: CollectionId) {
-  return `${dataStudioLibrary()}/collections/${collectionId}`;
+export function dataStudioGitSync() {
+  return `${dataStudio()}/git-sync`;
 }
 
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
@@ -229,4 +303,30 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 
 export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
+}
+
+export function dataStudioWorkspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function dataStudioWorkspace(
+  workspaceId: number,
+  transformId?: number | string,
+) {
+  if (transformId) {
+    return `${dataStudioWorkspaceList()}/${workspaceId}?transformId=${transformId}`;
+  }
+  return `${dataStudioWorkspaceList()}/${workspaceId}`;
+}
+
+export function dataStudioSegment(segmentId: SegmentId) {
+  return `${dataStudioLibrary()}/segments/${segmentId}`;
+}
+
+export function newDataStudioSegment(tableId: TableId) {
+  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
+}
+
+export function dataStudioSegmentDependencies(segmentId: SegmentId) {
+  return `${dataStudioSegment(segmentId)}/dependencies`;
 }

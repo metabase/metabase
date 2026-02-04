@@ -4,12 +4,19 @@ import {
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers/api";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
+  PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
-} from "e2e/support/test-visualizer-data";
+  SCALAR_CARD,
+  STEP_COLUMN_CARD,
+} from "e2e/support/test-visualization-data";
 import type { Document } from "metabase-types/api";
 
 const { H } = cy;
@@ -39,12 +46,7 @@ describe("documents", () => {
 
     cy.findByRole("button", { name: "Save" }).click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(0, "Our analytics").should(
-      "have.attr",
-      "data-active",
-      "true",
-    );
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
@@ -81,7 +83,6 @@ describe("documents", () => {
 
     H.popover().findByText("Move").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, "Our analytics")
       .should("have.attr", "data-active", "true")
       .click();
@@ -119,7 +120,6 @@ describe("documents", () => {
     );
 
     cy.findByTestId("collection-picker-button").click();
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, /Personal Collection/).click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
     H.modal().findByRole("button", { name: "Copy" }).click();
@@ -548,6 +548,9 @@ describe("documents", () => {
       beforeEach(() => {
         H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY);
         H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT);
+        H.createQuestion(PIVOT_TABLE_CARD);
+        H.createNativeQuestion(STEP_COLUMN_CARD);
+        H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS);
         // Need to get this one to simulate recent activity
         H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE).then(
           ({ body: { id } }) => cy.request("POST", `/api/card/${id}/query`),
@@ -605,7 +608,7 @@ describe("documents", () => {
 
         assertOnlyOneOptionActive(/Orders, Count$/, "mention");
 
-        H.documentSuggestionDialog()
+        H.documentMentionDialog()
           .findByRole("option", { name: /Browse all/ })
           .realHover();
 
@@ -667,28 +670,11 @@ describe("documents", () => {
         H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(/Browse all/).click();
 
-        H.entityPickerModalTab("Questions").click();
         H.entityPickerModalItem(1, PRODUCTS_AVERAGE_BY_CATEGORY.name).click();
+        H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
         H.getDocumentCard(PRODUCTS_AVERAGE_BY_CATEGORY.name).should("exist");
         cy.realPress("{downarrow}");
-
-        cy.log("dashboard question via entity picker");
-        H.addToDocument("/", false);
-
-        H.commandSuggestionItem("Chart").click();
-        H.commandSuggestionItem(/Browse all/).click();
-
-        H.entityPickerModalTab("Questions").click();
-        H.entityPickerModalItem(1, "Fancy Dashboard").click();
-        H.entityPickerModalItem(
-          2,
-          ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-        ).click();
-
-        H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
-          "exist",
-        );
 
         cy.log("change a cards display type");
         H.openDocumentCardMenu(ACCOUNTS_COUNT_BY_CREATED_AT.name);
@@ -725,7 +711,7 @@ describe("documents", () => {
           .should("have.length", 7);
 
         //Replace Card
-        H.openDocumentCardMenu(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+        H.openDocumentCardMenu(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
         H.popover().findByText("Replace").click();
 
         H.modal().within(() => {
@@ -734,6 +720,8 @@ describe("documents", () => {
           cy.findAllByPlaceholderText("Search…").click().type("Orders");
 
           cy.findAllByTestId("result-item").findByText("Orders").click();
+
+          cy.findByRole("button", { name: "Select" }).click();
         });
 
         cy.get("@documentId").then((id) => {
@@ -806,6 +794,192 @@ describe("documents", () => {
             cy.log(`${ogHeight}, ${newHeight}`);
 
             expect(newHeight).to.be.lessThan(ogHeight as number);
+          });
+        });
+      });
+
+      const PADDING_CARD = 1;
+      type ChartCard =
+        | (StructuredQuestionDetails & { name: string })
+        | (NativeQuestionDetails & { name: string });
+      type ChartSpec = {
+        label: string;
+        card: ChartCard;
+        paddingX: number;
+        selector: string;
+      };
+
+      const isNativeQuestion = (
+        question: ChartCard,
+      ): question is NativeQuestionDetails & { name: string } =>
+        "native" in question;
+
+      const createQuestionForCard = (
+        question: ChartCard,
+        nameOverride?: string,
+      ) => {
+        const details = nameOverride
+          ? { ...question, name: nameOverride }
+          : question;
+        return isNativeQuestion(details)
+          ? H.createNativeQuestion(details)
+          : H.createQuestion(details);
+      };
+
+      const chartTypes: ChartSpec[] = [
+        {
+          label: "line",
+          card: ACCOUNTS_COUNT_BY_CREATED_AT,
+          paddingX: 16 + PADDING_CARD,
+          selector: "[data-testid='chart-container'] > :first-child",
+        },
+        {
+          label: "pie",
+          card: PRODUCTS_COUNT_BY_CATEGORY_PIE,
+          paddingX: 14 + PADDING_CARD,
+          selector: "[data-testid='chart-with-legend']",
+        },
+      ];
+
+      const assertChartMatchesContainerWidth = (
+        cardName: string,
+        paddingX: number,
+        selector: string,
+      ) => {
+        H.getDocumentCard(cardName).then(($card) => {
+          const cardWidth = $card.width()!;
+          cy.wrap($card).find(selector).as("chart");
+
+          cy.get("@chart")
+            .should("exist")
+            .then(($chart) => {
+              const width = $chart.width()!;
+              expect(width + paddingX * 2).to.equal(cardWidth);
+            });
+        });
+      };
+
+      it("keeps chart widths in sync during flex resize", () => {
+        const cardIds: Record<string, { firstId: number; secondId: number }> =
+          {};
+
+        // Create all questions first
+        chartTypes.forEach(({ label, card }) => {
+          const secondCardName = `${card.name} (copy)`;
+
+          cy.then(() =>
+            createQuestionForCard(card).then(({ body }) => {
+              cardIds[label] = { firstId: body.id, secondId: 0 };
+            }),
+          );
+
+          cy.then(() =>
+            createQuestionForCard(card, secondCardName).then(({ body }) => {
+              cardIds[label].secondId = body.id;
+            }),
+          );
+        });
+
+        cy.then(() => {
+          const content = chartTypes.map(({ label }) => ({
+            type: "resizeNode",
+            attrs: {
+              height: 350,
+              minHeight: 280,
+              _id: `flex-${label}`,
+            },
+            content: [
+              {
+                type: "flexContainer",
+                attrs: {
+                  _id: `flex-${label}-container`,
+                  columnWidths: [50, 50],
+                },
+                content: [
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: cardIds[label].firstId,
+                      name: null,
+                      _id: `flex-${label}-card-1`,
+                    },
+                  },
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: cardIds[label].secondId,
+                      name: null,
+                      _id: `flex-${label}-card-2`,
+                    },
+                  },
+                ],
+              },
+            ],
+          }));
+
+          return H.createDocument({
+            name: "Flex chart width document",
+            document: {
+              type: "doc",
+              content,
+            },
+            collection_id: null,
+            idAlias: "flexDocumentId",
+          });
+        });
+
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+        H.visitDocument("@flexDocumentId");
+
+        // Wait for all cards to load (16 chart types × 2 cards each = 32 queries)
+        for (let i = 0; i < chartTypes.length * 2; i++) {
+          cy.wait("@cardQuery", { timeout: 15000 });
+        }
+
+        chartTypes.forEach(({ card, paddingX, selector }) => {
+          const firstCardName = card.name;
+          const secondCardName = `${card.name} (copy)`;
+
+          const firstCardChart =
+            H.getDocumentCard(firstCardName).find(selector);
+          const secondCardChart =
+            H.getDocumentCard(secondCardName).find(selector);
+
+          firstCardChart.should("exist");
+          secondCardChart.should("exist");
+
+          const flexContainer = H.getFlexContainerForCard(firstCardName);
+          const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+
+          handles.eq(0).then(($handle) => {
+            cy.wrap($handle).realMouseDown({
+              button: "left",
+              position: "center",
+            });
+
+            const steps = [10, 40, 60, -100, -10, -40, -60];
+            steps.forEach((deltaX) => {
+              cy.wrap($handle).realMouseMove(deltaX, 0, {
+                position: "center",
+              });
+
+              assertChartMatchesContainerWidth(
+                firstCardName,
+                paddingX,
+                selector,
+              );
+              assertChartMatchesContainerWidth(
+                secondCardName,
+                paddingX,
+                selector,
+              );
+            });
+
+            cy.wrap($handle).realMouseUp({
+              button: "left",
+              position: "center",
+            });
           });
         });
       });
@@ -1236,6 +1410,155 @@ describe("documents", () => {
     });
   });
 
+  describe("anchor links", () => {
+    // Helper to create filler paragraphs for scroll tests
+    const createFillerParagraphs = (count: number, startIndex: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        type: "paragraph",
+        attrs: { _id: `filler-paragraph-${startIndex + i}` },
+        content: [
+          {
+            type: "text",
+            text: `This is filler paragraph ${startIndex + i} to make the document long enough to require scrolling. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+          },
+        ],
+      }));
+
+    beforeEach(() => {
+      H.createDocument({
+        name: "Anchor Test Document",
+        document: {
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1, _id: "heading-block-1" },
+              content: [{ type: "text", text: "First Heading" }],
+            },
+            {
+              type: "paragraph",
+              attrs: { _id: "paragraph-block-1" },
+              content: [{ type: "text", text: "Some content here" }],
+            },
+            // Add filler content to ensure scrolling is needed
+            ...createFillerParagraphs(15, 1),
+            {
+              type: "heading",
+              attrs: { level: 2, _id: "heading-block-2" },
+              content: [{ type: "text", text: "Second Heading" }],
+            },
+            {
+              type: "paragraph",
+              attrs: { _id: "paragraph-block-2" },
+              content: [{ type: "text", text: "More content here" }],
+            },
+            // More filler to push blockquote down
+            ...createFillerParagraphs(10, 16),
+            {
+              type: "blockquote",
+              attrs: { _id: "blockquote-block-1" },
+              content: [
+                {
+                  type: "paragraph",
+                  attrs: { _id: "quote-paragraph" },
+                  content: [{ type: "text", text: "A nice quote" }],
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+    });
+
+    it("should show anchor link icon on left side when hovering over a heading", () => {
+      H.visitDocument("@documentId");
+
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Filter to visible one since all blocks have hidden buttons
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
+    });
+
+    it("should copy anchor URL to clipboard when clicking anchor link", () => {
+      H.visitDocument("@documentId");
+
+      cy.wrap(
+        Cypress.automation("remote:debugger:protocol", {
+          command: "Browser.grantPermissions",
+          params: {
+            permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
+            origin: window.location.origin,
+          },
+        }),
+      );
+
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Filter to visible one since all blocks have hidden buttons
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .click();
+
+      cy.get("body").findByText("Copied!").should("be.visible");
+
+      cy.window().then((win) => {
+        win.navigator.clipboard.readText().then((text) => {
+          expect(text).to.include("/document/");
+          expect(text).to.include("#heading-block-1");
+        });
+      });
+    });
+
+    it("should scroll to the correct block when navigating with anchor hash", () => {
+      cy.get("@documentId").then((documentId) => {
+        cy.visit(`/document/${documentId}#heading-block-2`);
+
+        H.documentContent()
+          .findByRole("heading", { name: "Second Heading" })
+          .should("be.visible");
+
+        H.documentContent()
+          .findByRole("heading", { name: "First Heading" })
+          .should("not.be.visible");
+      });
+    });
+
+    it("should still show comments menu on right side (regression check)", () => {
+      H.visitDocument("@documentId");
+
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Filter to visible one since all blocks have hidden menus
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
+
+      // Comments button uses ForwardRefLink, so it's a link role not button
+      cy.get('[data-testid="comments-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("link", { name: /comments/i })
+        .should("be.visible");
+    });
+  });
+
   describe("error handling", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup
@@ -1246,13 +1569,8 @@ describe("documents", () => {
       // make changes and attempt to save
       cy.findByRole("textbox", { name: "Document Title" }).type("Title");
       H.documentSaveButton().click();
-      H.entityPickerModalTab("Collections").click();
       cy.wait("@getCollection");
-      H.entityPickerModalItem(0, "Our analytics").should(
-        "have.attr",
-        "data-active",
-        "true",
-      );
+      H.entityPickerModalItem(0, "Our analytics").click();
       H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
       // assert error toast is visible and user can reattempt save
@@ -1284,6 +1602,87 @@ describe("documents", () => {
       H.documentSaveButton().should("be.visible");
     });
   });
+
+  describe("revision history", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/revision/revert").as("revert");
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+    });
+
+    it("should be able to view and revert document revisions", () => {
+      cy.log("Create a document with initial content");
+      H.createDocument({
+        name: "Revision Test Document",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "Initial content",
+                },
+              ],
+            },
+          ],
+        },
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.log("Make changes to create a revision");
+      cy.findByRole("textbox", { name: "Document Title" })
+        .clear()
+        .type("Updated Document Title");
+      H.documentContent().click();
+      H.addToDocument("Updated content");
+      H.documentSaveButton().click();
+
+      cy.log("Make another change");
+      H.documentContent().click();
+      H.addToDocument("More changes");
+      H.documentSaveButton().click();
+
+      cy.log("Open revision history");
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("History").click();
+
+      cy.wait("@revisionHistory");
+
+      cy.log("Verify revision history sidebar is open");
+      cy.findByTestId("document-history-list").should("be.visible");
+
+      cy.log("Verify revision entries are displayed");
+      cy.findByTestId("document-history-list")
+        .findByText(/created this/)
+        .should("be.visible");
+
+      cy.log("Revert to an earlier revision");
+      cy.intercept("GET", "/api/document/*").as("documentReload");
+      cy.findByTestId("document-history-list")
+        .findByText(/created this/)
+        .parent()
+        .within(() => {
+          cy.findByTestId("question-revert-button").click();
+        });
+      cy.wait(["@revert", "@documentReload"]);
+
+      cy.log("Verify document was reverted");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Revision Test Document",
+      );
+      H.documentContent().should("contain.text", "Initial content");
+      H.documentContent().should("not.contain.text", "Updated content");
+
+      cy.log("Verify revert entry appears in history");
+      cy.findByTestId("document-history-list")
+        .findByText(/reverted to an earlier version/)
+        .should("be.visible");
+    });
+  });
 });
 
 const assertOnlyOneOptionActive = (
@@ -1294,7 +1693,7 @@ const assertOnlyOneOptionActive = (
     dialog === "command"
       ? H.commandSuggestionDialog
       : dialog === "mention"
-        ? H.documentSuggestionDialog
+        ? H.documentMentionDialog
         : H.documentMetabotDialog;
 
   dialogContainer()

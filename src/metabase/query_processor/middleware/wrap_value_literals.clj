@@ -44,8 +44,9 @@
   (merge
    (when (lib.util/clause-of-type? clause :field)
      (type-info-from-col (lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)))
-   (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)]
-     {:base-type      expr-type
+   (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)
+         [_ {:keys [base-type]}] clause]
+     {:base-type      (or base-type expr-type)
       :effective-type expr-type})))
 
 ;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
@@ -228,6 +229,15 @@
 (defn- wrap-value-literals-in-clause
   [query path clause]
   (lib.util.match/match-lite clause
+    ;; two literals
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
+    (let [x-type (lib.schema.expression/type-of x)
+          y-type (lib.schema.expression/type-of y)]
+      [tag opts
+       (add-type-info x {:base-type x-type :effective-type x-type})
+       (add-type-info y {:base-type y-type :effective-type y-type})])
+
+    ;; field and literal
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
     [tag opts field (add-type-info x (*type-info* query path field))]
 
@@ -246,7 +256,10 @@
 
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
     (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
-      (into [tag opts field s] more))))
+      (into [tag opts field s] more))
+
+    ;; do not match inner clauses
+    _ nil))
 
 (mu/defn wrap-value-literals :- ::lib.schema/query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for

@@ -18,6 +18,7 @@ import type {
   SdkIframeQuestionEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
+import type { EntityToken } from "metabase-types/api/entity";
 
 export const buildEmbedAttributes = ({
   settings,
@@ -27,7 +28,7 @@ export const buildEmbedAttributes = ({
 }: {
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
-  token: string | null;
+  token: EntityToken | null;
   wrapWithQuotes: boolean;
 }) => {
   const isGuestEmbed = !!settings.isGuest;

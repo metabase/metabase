@@ -636,6 +636,14 @@
                :source-table 1}
     :type     :query}))
 
+;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
+(deftest ^:parallel round-trip-aggregation-with-measure-test
+  (test-round-trip
+   {:database 1
+    :query    {:aggregation  [[:+ [:measure 82] 1]]
+               :source-table 1}
+    :type     :query}))
+
 (deftest ^:parallel unclean-stage-round-trip-test
   (binding [lib.convert/*clean-query* false]
     (doseq [query
@@ -1659,7 +1667,7 @@
 (deftest ^:parallel case-schema-aggregation-test
   (is (= [:aggregation-options
           [:case
-           [[[:< [:aggregation 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
+           [[[:< [:aggregation 0 {:base-type :type/Float}] 0.591] "60%"]]]
           {:name "A", :display-name "B"}]
          (mbql.normalize/normalize :metabase.legacy-mbql.schema/aggregation-options
                                    ["aggregation-options"

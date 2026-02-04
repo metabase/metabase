@@ -3,7 +3,7 @@ import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import getAdminRoutes from "metabase/admin/routes";
+import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
@@ -21,7 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
@@ -189,6 +189,14 @@ export const getRoutes = (store) => {
             <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 
+          <Route path="collection/tenant-users" component={IsAdmin}>
+            <IndexRoute component={PLUGIN_TENANTS.TenantUsersList} />
+            <Route
+              path=":tenantId"
+              component={PLUGIN_TENANTS.TenantUsersPersonalCollectionList}
+            />
+          </Route>
+
           <Route path="collection/:slug" component={CollectionLanding}>
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} noWrap />
@@ -251,6 +259,7 @@ export const getRoutes = (store) => {
               })}
             />
             <IndexRoute component={QueryBuilder} />
+            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />

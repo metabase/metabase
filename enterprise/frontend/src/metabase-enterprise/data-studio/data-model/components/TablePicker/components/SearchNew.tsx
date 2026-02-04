@@ -1,36 +1,34 @@
 import { useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase-enterprise/data-studio/analytics";
 import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import type { RouteParams } from "../../../pages/DataModel/types";
-import {
-  toggleDatabaseSelection,
-  toggleSchemaSelection,
-} from "../bulk-selection.utils";
 import { useExpandedState } from "../hooks";
 import type {
   DatabaseNode,
   FilterState,
-  FlatItem,
   RootNode,
   SchemaNode,
   TableNode,
+  TreePath,
 } from "../types";
-import { isDatabaseItem, isSchemaItem, isTableNode } from "../types";
-import { flatten, rootNode, toKey } from "../utils";
+import { rootNode, toKey } from "../utils";
 
-import { TablePickerResults } from "./Results";
+import { TablePickerTreeTable } from "./TablePickerTreeTable";
 
 interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
+  onChange?: (path: TreePath) => void;
 }
 
 function buildResultTree(tables: Table[]): RootNode {
@@ -94,16 +92,20 @@ function buildResultTree(tables: Table[]): RootNode {
   return root;
 }
 
-export function SearchNew({ query, params, filters }: SearchNewProps) {
-  const {
-    selectedTables,
-    setSelectedTables,
-    selectedSchemas,
-    selectedDatabases,
-    resetSelection,
-  } = useSelection();
+export function SearchNew({
+  query,
+  params,
+  filters,
+  onChange,
+}: SearchNewProps) {
+  const { resetSelection, filterSelectedTables } = useSelection();
+
   const routeParams = parseRouteParams(params);
-  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
+  const {
+    data: tables,
+    isLoading: isLoadingTables,
+    isFetching: isFetchingTables,
+  } = useListTablesQuery({
     term: query,
     "data-layer": filters.dataLayer ?? undefined,
     "data-source":
@@ -119,13 +121,13 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
-  const { isExpanded: getIsExpanded, toggle } = useExpandedState(
-    {}, // we expand all nodes, so need to pass path to expand specific branch
-    {
-      defaultClosed: false,
-    },
+    useListDatabasesQuery();
+  const { isExpanded, toggle } = useExpandedState(
+    {},
+    { defaultExpanded: true },
   );
+
+  const previousIsFetchingTables = usePrevious(isFetchingTables);
 
   const allowedDatabaseIds = useMemo(
     () => new Set(databases?.data.map((database) => database.id) ?? []),
@@ -147,63 +149,23 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
     [filteredTables],
   );
 
-  // clear the selection when tables changes, to make sure that bulk operations
-  // are performed on the intended tables
+  useEffect(() => {
+    filterSelectedTables(filteredTables.map((table) => table.id));
+  }, [filteredTables, filterSelectedTables]);
+
   useEffect(() => {
     resetSelection();
-  }, [tables, resetSelection]);
+  }, [query, filters, resetSelection]);
 
-  const flatItems = flatten(resultTree, {
-    isExpanded: getIsExpanded,
-    addLoadingNodes: false,
-    canFlattenSingleSchema: true,
-    selection: {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    },
-  });
-
-  const handleItemToggle = (item: FlatItem) => {
-    const selection = {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    };
-
-    if (isDatabaseItem(item)) {
-      setSelectedTables(toggleDatabaseSelection(item, selection).tables);
+  useEffect(() => {
+    const startedFetching =
+      (previousIsFetchingTables === false ||
+        previousIsFetchingTables === undefined) &&
+      isFetchingTables === true;
+    if (startedFetching) {
+      trackDataStudioTablePickerSearchPerformed();
     }
-
-    if (isSchemaItem(item)) {
-      setSelectedTables(toggleSchemaSelection(item, selection).tables);
-    }
-    if (isTableNode(item)) {
-      setSelectedTables((prev) => {
-        const newSet = new Set(prev);
-        if (newSet.has(item.value.tableId)) {
-          newSet.delete(item.value.tableId);
-        } else {
-          newSet.add(item.value.tableId);
-        }
-        return newSet;
-      });
-    }
-  };
-
-  const handleRangeSelect = (items: FlatItem[]) => {
-    const tableItems = items.filter((item) => isTableNode(item) && item.table);
-
-    setSelectedTables((prev) => {
-      const newSet = new Set(prev);
-      tableItems.forEach((item) => {
-        if (isTableNode(item) && item.table) {
-          newSet.add(item.table.id);
-        }
-      });
-      return newSet;
-    });
-  };
+  }, [previousIsFetchingTables, isFetchingTables]);
 
   if (isLoading) {
     return (
@@ -216,18 +178,18 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   if (filteredTables.length === 0) {
     return (
       <Box p="xl">
-        <Text c="text.2">{t`No tables found`}</Text>
+        <Text c="text-tertiary">{t`No tables found`}</Text>
       </Box>
     );
   }
 
   return (
-    <TablePickerResults
-      items={flatItems}
+    <TablePickerTreeTable
+      tree={resultTree}
       path={routeParams}
-      onItemToggle={handleItemToggle}
-      toggle={toggle}
-      onRangeSelect={handleRangeSelect}
+      isExpanded={isExpanded}
+      onToggle={toggle}
+      onChange={onChange}
     />
   );
 }

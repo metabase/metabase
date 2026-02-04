@@ -48,8 +48,9 @@ export function renameColumn(oldName, newName) {
   tableInteractive()
     .findAllByTestId("header-cell")
     .contains(newName)
-    .scrollIntoView()
-    .should("be.visible");
+    .as("column")
+    .scrollIntoView();
+  cy.get("@column").should("be.visible");
 }
 
 export function setColumnType(oldType, newType) {

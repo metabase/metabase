@@ -3,20 +3,12 @@ import { match } from "ts-pattern";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type { LibraryCollectionType } from "metabase/plugins";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type {
   CollectionItem,
   CollectionItemModel,
   CollectionType,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
-// Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
-export function canAccessDataStudio(state: State) {
-  return getUserIsAdmin(state) && !getIsEmbeddingIframe(state);
-}
 
 export function getLibraryCollectionType(
   type: CollectionType | null | undefined,

@@ -6,7 +6,7 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import type { NewTransformValues } from "./CreateTransformModal/CreateTransformModal";
+import type { NewTransformValues } from "./CreateTransformModal/form";
 
 export function getInitialQuerySource(): QueryTransformSource {
   const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
@@ -30,6 +30,7 @@ export function getInitialPythonSource(): PythonTransformSourceDraft {
     "source-database": undefined,
     "source-tables": {},
     body: `# Write your Python transformation script here
+import common
 import pandas as pd
 
 def transform():

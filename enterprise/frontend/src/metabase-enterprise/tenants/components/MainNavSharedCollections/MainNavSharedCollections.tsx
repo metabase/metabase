@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   useCreateCollectionMutation,
   useListCollectionsQuery,
-  useListCollectionsTreeQuery,
 } from "metabase/api";
 import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
@@ -12,30 +11,39 @@ import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
-import { tenantSpecificCollections } from "metabase/lib/urls";
+import {
+  tenantSpecificCollections,
+  tenantUsersPersonalCollections,
+} from "metabase/lib/urls";
 import {
   PaddedSidebarLink,
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import type { Collection } from "metabase-types/api";
 
-export const MainNavSharedCollections = () => {
+export const MainNavSharedCollections = ({
+  canCreateSharedCollection,
+  sharedTenantCollections,
+}: {
+  canCreateSharedCollection: boolean;
+  sharedTenantCollections: Collection[] | undefined;
+}) => {
+  const isTenantUser = useSelector(getIsTenantUser);
+  if (isTenantUser) {
+    throw new Error(
+      "MainNavSharedCollections should not be rendered for tenant users",
+    );
+  }
+
   const [modalOpen, setModalOpen] = useState(false);
   const isTenantsEnabled = useSetting("use-tenants");
   const isAdmin = useSelector(getUserIsAdmin);
-  const currentUser = useSelector(getUser);
-
-  const { data: tenantCollections } = useListCollectionsTreeQuery(
-    { namespace: "shared-tenant-collection" },
-    {
-      skip: !isTenantsEnabled,
-    },
-  );
 
   // Fetch flat list of tenant collections to check if any are remote-synced
   const { data: tenantCollectionsList = [] } = useListCollectionsQuery(
@@ -56,9 +64,9 @@ export const MainNavSharedCollections = () => {
 
   const [createCollection] = useCreateCollectionMutation();
 
-  const tenantCollectionTree = useMemo(
-    () => buildCollectionTree(tenantCollections),
-    [tenantCollections],
+  const sharedTenantCollectionTree = useMemo(
+    () => buildCollectionTree(sharedTenantCollections),
+    [sharedTenantCollections],
   );
 
   const changedCollections = useMemo(
@@ -97,33 +105,27 @@ export const MainNavSharedCollections = () => {
     return null;
   }
 
-  const userTenantCollectionId = currentUser?.tenant_collection_id;
-  const hasVisibleTenantCollections = tenantCollectionTree.length > 0;
+  const hasVisibleSharedTenantCollections =
+    sharedTenantCollectionTree.length > 0;
+
   const shouldShowSharedCollectionsSection =
-    isAdmin || hasVisibleTenantCollections;
+    hasVisibleSharedTenantCollections || canCreateSharedCollection;
 
   return (
     <>
-      {userTenantCollectionId && (
-        <SidebarSection>
-          <SidebarHeading>{t`My tenant collection`}</SidebarHeading>
-          <PaddedSidebarLink
-            icon="folder"
-            url={`/collection/${userTenantCollectionId}`}
-          >
-            {t`My Tenant Collection`}
-          </PaddedSidebarLink>
-        </SidebarSection>
-      )}
-
       {shouldShowSharedCollectionsSection && (
         <SidebarSection>
-          <Flex align="center" justify="space-between">
+          <Flex
+            align="center"
+            justify="space-between"
+            // add spacing in place of the add button if it is hidden
+            mb={canCreateSharedCollection ? 0 : "sm"}
+          >
             <SidebarHeading>{t`External collections`}</SidebarHeading>
-            {isAdmin && (
+            {canCreateSharedCollection && (
               <Tooltip label={t`Create a shared collection`}>
                 <ActionIcon
-                  color="text-medium"
+                  c="text-secondary"
                   onClick={() => setModalOpen(true)}
                 >
                   <Icon name="add" />
@@ -132,7 +134,7 @@ export const MainNavSharedCollections = () => {
             )}
           </Flex>
           <Tree
-            data={tenantCollectionTree}
+            data={sharedTenantCollectionTree}
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="tenant-collection-tree"
@@ -143,6 +145,14 @@ export const MainNavSharedCollections = () => {
           {isAdmin && (
             <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
               {t`Tenant collections`}
+            </PaddedSidebarLink>
+          )}
+          {isAdmin && (
+            <PaddedSidebarLink
+              icon="group"
+              url={tenantUsersPersonalCollections()}
+            >
+              {t`Tenant users' personal collections`}
             </PaddedSidebarLink>
           )}
         </SidebarSection>

@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
 import type { SegmentTabUrls } from "../../types";
-import { getSegmentPreviewUrl } from "../../utils/get-segment-preview-url";
 
 type SegmentDependenciesPageProps = {
   segment: Segment;
@@ -29,7 +29,7 @@ export function SegmentDependenciesPage({
       <SegmentHeader
         segment={segment}
         tabUrls={tabUrls}
-        previewUrl={getSegmentPreviewUrl(segment)}
+        previewUrl={getDatasetQueryPreviewUrl(segment.definition)}
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />

@@ -44,18 +44,17 @@
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
    ;; to different namespaces via parameters.
-   [:or (perms/audit-namespace-clause :collection.namespace nil)
-    [:= :collection.namespace "tenant-specific"]
-    [:= :collection.namespace "shared-tenant-collection"]]])
+   (perms/namespace-clause :collection.namespace nil true)])
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.
    Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
-  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
+  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
   (mi/visible-filter-clause
    :model/Table
    table-id-col
    {:user-id current-user-id
-    :is-superuser? is-superuser?}
+    :is-superuser? is-superuser?
+    :is-data-analyst? is-data-analyst?}
    {:perms/view-data :unrestricted
     :perms/create-queries :query-builder}))

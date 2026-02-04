@@ -15,11 +15,14 @@
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
-  "Return an agent output for agent errors, re-throw `e` otherwise."
+  "Return an agent output for agent errors, re-throw `e` otherwise.
+   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
   [e]
-  (if (-> e ex-data :agent-error?)
-    {:output (ex-message e)}
-    (throw e)))
+  (let [{:keys [agent-error? status-code]} (ex-data e)]
+    (if agent-error?
+      (cond-> {:output (ex-message e)}
+        status-code (assoc :status-code status-code))
+      (throw e))))
 
 (defn convert-field-type
   "Return tool type for `column`."
@@ -86,19 +89,23 @@
   - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
   - field-index is the index within that model's visible columns
 
-  Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid.
+  Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid
+  or the input is not a string.
 
   Examples:
     (parse-field-id \"t154-1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
-    (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
+    (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}
+    (parse-field-id nil) => nil
+    (parse-field-id \"invalid\") => nil"
   [field-id]
-  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
-    {:model-tag model-tag
-     ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
-     :model-id (if (= model-tag "q")
-                 model-id
-                 (parse-long model-id))
-     :field-index (parse-long field-index)}))
+  (when (string? field-id)
+    (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
+      {:model-tag   model-tag
+       ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
+       :model-id    (if (= model-tag "q")
+                      model-id
+                      (parse-long model-id))
+       :field-index (parse-long field-index)})))
 
 (defn resolve-column
   "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
@@ -123,19 +130,22 @@
                   (re-matches expected-prefix field-id))
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
+                         :status-code 400
                          :field-id field-id
                          :expected-prefix expected-prefix})))
       (if-let [column (get columns field-index)]
         (assoc item :column column)
         (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
                         {:agent-error? true
+                         :status-code 404
                          :field-id field-id
                          :model-tag model-tag
                          :model-id model-id
                          :field-index field-index
                          :available-columns-count (count columns)}))))
-    (throw (ex-info (str "invalid field_id format: " field-id)
+    (throw (ex-info (str "Invalid field_id format: " field-id)
                     {:agent-error? true
+                     :status-code 400
                      :field-id field-id}))))
 
 (defn get-database
@@ -225,14 +235,6 @@
 
       (integer? limit)
       (assoc :limit limit))))
-
-(comment
-  (binding [api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (t2/select-fn-vec #(select-keys % [:id :name :type])
-                      :model/Card
-                      (metabot-metrics-and-models-query 1)))
-  -)
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.

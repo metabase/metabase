@@ -14,7 +14,7 @@ import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
 
-import { SectionBody } from "./HomeRecentSection.styled";
+import S from "./HomeRecentSection.module.css";
 
 export const HomeRecentSection = () => {
   const { data: recentItems = [], isLoading, error } = useListRecentsQuery();
@@ -29,7 +29,7 @@ export const HomeRecentSection = () => {
   return (
     <div>
       <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
-      <SectionBody>
+      <div className={S.SectionBody}>
         {recentsFilter(recentItems).map((item, index) => (
           <HomeModelCard
             key={index}
@@ -39,7 +39,7 @@ export const HomeRecentSection = () => {
           />
         ))}
         {hasHelpCard && <HomeHelpCard />}
-      </SectionBody>
+      </div>
     </div>
   );
 };

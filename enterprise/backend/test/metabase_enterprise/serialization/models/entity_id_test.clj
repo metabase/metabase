@@ -32,7 +32,9 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/ApiKey
+  #{:model/AnalysisFinding
+    :model/AnalysisFindingError
+    :model/ApiKey
     :model/AuthIdentity
     :model/HTTPAction
     :model/ImplicitAction
@@ -89,6 +91,7 @@
     :model/Session
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
@@ -97,7 +100,6 @@
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
-    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue
@@ -107,7 +109,19 @@
     :model/ConnectionImpersonation
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    ;; TODO (lbrdnk 2025-12-17) -- I've added rest of the workspace models here as Workspace was present. I believe
+    ;; going forward all of that will be available for export. We should revisit this later in the project.
+    :model/Workspace
+    :model/WorkspaceInput
+    :model/WorkspaceInputExternal
+    :model/WorkspaceLog
+    :model/WorkspaceMerge
+    :model/WorkspaceMergeTransform
+    :model/WorkspaceGraph
+    :model/WorkspaceOutput
+    :model/WorkspaceOutputExternal
+    :model/WorkspaceTransform})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)
@@ -116,7 +130,7 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "MetabotUseCase"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))

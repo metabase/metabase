@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import {
   skipToken,
-  useDeleteSegmentMutation,
   useGetSegmentQuery,
+  useUpdateSegmentMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
@@ -24,7 +24,7 @@ export function usePublishedTableSegmentPage(
 ) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [deleteSegment] = useDeleteSegmentMutation();
+  const [updateSegment] = useUpdateSegmentMutation();
 
   const tableId = Urls.extractEntityId(params.tableId);
   const segmentId = Urls.extractEntityId(params.segmentId);
@@ -48,8 +48,9 @@ export function usePublishedTableSegmentPage(
       return;
     }
 
-    const { error } = await deleteSegment({
+    const { error } = await updateSegment({
       id: segment.id,
+      archived: true,
       revision_message: t`Removed from Data Studio`,
     });
 
@@ -59,7 +60,7 @@ export function usePublishedTableSegmentPage(
       sendToast({ icon: "check", message: t`Segment removed` });
       dispatch(push(Urls.dataStudioTableSegments(tableId)));
     }
-  }, [segment, tableId, deleteSegment, dispatch, sendToast]);
+  }, [segment, tableId, updateSegment, dispatch, sendToast]);
 
   const isLoading = isLoadingSegment || isLoadingTable;
   const error = segmentError ?? tableError;

@@ -1,5 +1,6 @@
-export { rem, useCombobox, useMantineTheme } from "@mantine/core";
+export { rem, useCombobox, useMantineTheme, useMatches } from "@mantine/core";
 export type {
+  ComboboxStore,
   FloatingPosition,
   MantineSize,
   MantineStyleProps,
@@ -7,6 +8,8 @@ export type {
   MantineThemeOther,
   MantineThemeOverride,
   PolymorphicComponentProps,
+  MantineColorsTuple,
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
+
 export * from "./components";

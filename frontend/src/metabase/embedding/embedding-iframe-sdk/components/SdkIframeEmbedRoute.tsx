@@ -31,6 +31,7 @@ import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-b
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
+import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -99,12 +100,9 @@ export const SdkIframeEmbedRoute = () => {
     >
       <Stack
         mih="100vh"
-        bg={adjustedTheme?.colors?.background}
+        className={SdkIframeEmbedRouteS.Container}
         style={{
-          display: "grid",
-          width: "100%",
-          gridTemplateColumns: "1fr",
-          gridTemplateRows: "1fr auto",
+          backgroundColor: adjustedTheme?.colors?.background,
         }}
       >
         <SdkIframeEmbedView settings={embedSettings} />
@@ -171,7 +169,9 @@ const SdkIframeEmbedView = ({
           return (
             <StaticDashboard
               key={rerenderKey}
+              className={SdkIframeEmbedRouteS.Dashboard}
               {...entityProps}
+              autoRefreshInterval={settings.autoRefreshInterval}
               withTitle={settings.withTitle}
               withDownloads={settings.withDownloads}
               initialParameters={settings.initialParameters}
@@ -190,8 +190,10 @@ const SdkIframeEmbedView = ({
         (settings) => (
           <InteractiveDashboard
             key={rerenderKey}
+            className={SdkIframeEmbedRouteS.Dashboard}
             dashboardId={settings.dashboardId ?? null}
             token={settings.token}
+            autoRefreshInterval={settings.autoRefreshInterval}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
             withSubscriptions={settings.withSubscriptions}
@@ -206,7 +208,11 @@ const SdkIframeEmbedView = ({
         // Embedding based on a questionId (Metabase Account auth type) with disabled drills
         {
           componentName: "metabase-question",
-          questionId: P.intersection(P.nonNullable, P.not("new")),
+          questionId: P.intersection(
+            P.nonNullable,
+            P.not("new"),
+            P.not("new-native"),
+          ),
           drills: false,
         },
         // Embedding based on a token (Guest Embed auth type) with default/disabled drills
@@ -228,6 +234,7 @@ const SdkIframeEmbedView = ({
               key={rerenderKey}
               {...entityProps}
               withDownloads={settings.withDownloads}
+              withAlerts={settings.withAlerts}
               height="100%"
               initialSqlParameters={settings.initialSqlParameters}
               hiddenParameters={settings.hiddenParameters}
@@ -249,6 +256,7 @@ const SdkIframeEmbedView = ({
             questionId={settings.questionId ?? null}
             token={settings.token}
             withDownloads={settings.withDownloads}
+            withAlerts={settings.withAlerts}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}
             hiddenParameters={settings.hiddenParameters}
@@ -267,6 +275,8 @@ const SdkIframeEmbedView = ({
           <MetabotQuestion
             key={rerenderKey}
             layout={settings.layout}
+            isSaveEnabled={settings.isSaveEnabled}
+            targetCollection={settings.targetCollection}
             height="100%"
           />
         ),
@@ -285,7 +295,9 @@ const EmbedBrandingFooter = () => {
   }
 
   return (
-    <PublicComponentStylesWrapper>
+    <PublicComponentStylesWrapper
+      className={SdkIframeEmbedRouteS.BrandingFooter}
+    >
       <EmbeddingFooter variant="default" hasEmbedBranding />
     </PublicComponentStylesWrapper>
   );

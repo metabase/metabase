@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isLibraryCollection } from "metabase/collections/utils";
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useUserSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
@@ -12,6 +12,9 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
+import { useRemoteSyncDirtyState } from "metabase-enterprise/remote_sync/hooks/use-remote-sync-dirty-state";
 import type { Collection } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
@@ -29,17 +32,32 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
+  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
+  const { isCollectionDirty } = useRemoteSyncDirtyState();
+
   const libraryTree = useMemo(() => {
     const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
       return [];
     }
-    const tree = buildCollectionTree([libraryCollection], () => true);
+    const tree = buildCollectionTree([libraryCollection], {
+      modelFilter: () => true,
+    });
     if (tree.length === 0) {
       return [];
     }
     return tree[0].children || [];
   }, [collections]);
+
+  const showChangesBadge = useCallback(
+    (itemId?: number | string) => {
+      if (!isGitSyncVisible || typeof itemId !== "number") {
+        return false;
+      }
+      return isCollectionDirty(itemId);
+    },
+    [isGitSyncVisible, isCollectionDirty],
+  );
 
   if (libraryTree.length === 0) {
     return null;
@@ -64,6 +82,9 @@ export function NavbarLibrarySection({
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="library-collection-tree"
+            rightSection={(item) =>
+              showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
+            }
           />
         </CollapseSection>
       </ErrorBoundary>

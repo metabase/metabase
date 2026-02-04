@@ -205,13 +205,12 @@ visualization_settings:
     fieldRef: [aggregation, 0]
     name: count
   table.pivot_column: name_2
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: 57V11my5MYVnSlaJYM8cX, label: most_viewed_models, model: Card}
 archived_directly: false
 dashboard_id: IW64bVIFFkpldy410Pe5F
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

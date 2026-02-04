@@ -5,6 +5,7 @@ import {
   StaticDashboard,
 } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
@@ -14,11 +15,21 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import type { DashboardParameterMapping } from "metabase-types/api";
+
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > subscriptions", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
+    const parameter = {
+      id: "1b9cd9f1",
+      name: "Category",
+      slug: "category",
+      type: "string/=",
+      sectionId: "string",
+    };
     const textCard = getTextCardDetails({ col: 16, text: "Test text card" });
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
@@ -30,11 +41,19 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
       visualization_settings: {
         "card.title": "Test question card",
       },
+      parameter_mappings: [
+        {
+          parameter_id: parameter.id,
+          card_id: ORDERS_QUESTION_ID,
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+        } satisfies DashboardParameterMapping,
+      ],
     };
 
     createDashboard({
       name: "Embedding SDK Test Dashboard",
       dashcards: [questionCard, textCard],
+      parameters: [parameter],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
@@ -66,6 +85,11 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.icon("subscription").click();
         cy.findByText("Email this dashboard").should("be.visible");
 
+        cy.log("can customize filter values");
+        cy.findByRole("heading", {
+          name: "Set filter values for when this gets sent",
+        }).should("be.visible");
+
         cy.findByRole("button", { name: "Done" }).click();
         cy.wait("@createPulse");
 
@@ -91,6 +115,11 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.icon("subscription").click();
         cy.findByText("Email this dashboard").should("be.visible");
 
+        cy.log("can customize filter values");
+        cy.findByRole("heading", {
+          name: "Set filter values for when this gets sent",
+        }).should("be.visible");
+
         cy.findByRole("button", { name: "Done" }).click();
         cy.wait("@createPulse");
 
@@ -115,6 +144,11 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
         cy.icon("subscription").click();
         cy.findByText("Email this dashboard").should("be.visible");
+
+        cy.log("can customize filter values");
+        cy.findByRole("heading", {
+          name: "Set filter values for when this gets sent",
+        }).should("be.visible");
 
         cy.findByRole("button", { name: "Done" }).click();
         cy.wait("@createPulse");

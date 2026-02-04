@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 
 import { Stack } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
 import { SegmentRevisionHistory } from "../../components/SegmentRevisionHistory";
 import type { SegmentTabUrls } from "../../types";
-import { getSegmentPreviewUrl } from "../../utils/get-segment-preview-url";
 
 import S from "./SegmentRevisionHistoryPage.module.css";
 
@@ -29,7 +29,7 @@ export function SegmentRevisionHistoryPage({
       <SegmentHeader
         segment={segment}
         tabUrls={tabUrls}
-        previewUrl={getSegmentPreviewUrl(segment)}
+        previewUrl={getDatasetQueryPreviewUrl(segment.definition)}
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />

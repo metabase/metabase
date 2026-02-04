@@ -29,6 +29,15 @@ on:
         required: false
         type: number
 
+env:
+  DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+  JOB_NAME: ${{ inputs.name }}
+
 jobs:
   e2e-tests:
     runs-on: ${{ inputs.runner }}
@@ -36,21 +45,12 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
-      DISPLAY: ""
-      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      JOB_NAME: ${{ inputs.name }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,6 +104,9 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
@@ -113,6 +116,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
+        id: split-e2e
         if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
@@ -136,6 +140,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
+        id: tagged-e2e
         if: ${{ inputs.specs }}
         shell: bash
         env:
@@ -168,7 +173,8 @@ jobs:
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: |
+          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
           name: cypress-recording-${{ inputs.name }}-${{ inputs.edition }}
           path: |
@@ -178,10 +184,12 @@ jobs:
 
       - name: Upload Failed Tests
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: |
+          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
+          if-no-files-found: ignore
 
       - name: Extract chunk-specific changed timings
         id: extract-timings

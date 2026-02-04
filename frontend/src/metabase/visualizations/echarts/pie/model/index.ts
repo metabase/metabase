@@ -192,7 +192,7 @@ function aggregateChildrenSlices(
       value: otherTotal,
       rawValue: otherTotal,
       normalizedPercentage: Math.abs(otherTotal / node.value),
-      color: renderingContext.getColor("text-light"),
+      color: renderingContext.getColor("text-tertiary"),
       children: otherSliceChildren,
       visible: true,
       isOther: true,
@@ -334,7 +334,7 @@ export function getPieChartModel(
     if (!hasMultipleRings) {
       return hexColor;
     }
-    const accentKey = hexToAccentColorMap.get(hexColor);
+    const accentKey = hexToAccentColorMap.get(hexColor.toUpperCase());
     if (accentKey == null) {
       return hexColor;
     }
@@ -497,7 +497,7 @@ export function getPieChartModel(
       value: Math.abs(otherTotal),
       rawValue: otherTotal,
       normalizedPercentage: visible ? Math.abs(otherTotal / total) : 0,
-      color: renderingContext.getColor("text-light"),
+      color: renderingContext.getColor("text-tertiary"),
       column: colDescs.dimensionDesc.column,
       visible,
       children,
@@ -535,7 +535,7 @@ export function getPieChartModel(
       value: 1,
       rawValue: 0,
       normalizedPercentage: 0,
-      color: renderingContext.getColor("text-light"),
+      color: renderingContext.getColor("text-tertiary"),
       visible: true,
       column: colDescs.dimensionDesc.column,
       children: new Map(),

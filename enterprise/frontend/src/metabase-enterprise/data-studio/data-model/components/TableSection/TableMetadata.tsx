@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { useId } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
@@ -94,13 +95,18 @@ function MetadataRow({
 }) {
   const id = useId();
   return (
-    <Group justify="space-between">
-      <Text size="md" c="text-primary" id={id}>
+    <Group justify="space-between" gap="lg" wrap="nowrap">
+      <Text size="md" c="text-primary" id={id} flex="1 0 auto">
         {label}
       </Text>
-      <Text size="md" c="text-primary" aria-labelledby={id}>
+      <Ellipsified
+        size="md"
+        c="text-primary"
+        aria-labelledby={id}
+        tooltipProps={{ maw: "unset" }}
+      >
         {value}
-      </Text>
+      </Ellipsified>
     </Group>
   );
 }
