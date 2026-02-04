@@ -12,14 +12,17 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.render.core :as channel.render]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -363,9 +366,27 @@
   (perms/check-has-application-permission :setting)
   (slackbot-manifest (system/site-url)))
 
+(defn- setup-complete?
+  "Returns true if all required Slack settings are configured to process events."
+  []
+  (boolean
+   (and (premium-features/enable-sso-slack?)
+        (sso-settings/slack-connect-client-id)
+        (sso-settings/slack-connect-client-secret)
+        (metabot.settings/metabot-slack-signing-secret)
+        (metabot.settings/metabot-slack-bot-token)
+        (encryption/default-encryption-enabled?))))
+
+(defn- assert-setup-complete
+  "Asserts that all required Slack settings have been configured."
+  []
+  (when-not (setup-complete?)
+    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
+
 (api.macros/defendpoint :post "/events"
   "Respond to activities in Slack"
   [_route-params _query-params body request]
+  (assert-setup-complete)
   (assert-valid-slack-req request)
   ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
