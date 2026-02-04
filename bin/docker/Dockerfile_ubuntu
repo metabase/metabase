@@ -17,7 +17,7 @@ RUN apt-get update && \
   keytool -list -cacerts
 
 # add Metabase jar & add our run script to the image
-COPY ./metabase.jar ./run_metabase.sh /app/
+COPY ./target/uberjar/metabase.jar ./run_metabase.sh /app/
 
 # expose our default runtime port
 EXPOSE 3000
