@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,8 +7,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { ModalContent } from "metabase/common/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import type { Trigger } from "metabase-types/api";
 
-const renderTriggersTable = (triggers) => {
+const renderTriggersTable = (triggers?: Trigger[]) => {
   return (
     <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
@@ -49,15 +49,25 @@ const renderTriggersTable = (triggers) => {
   );
 };
 
-export const JobTriggersModal = (props) => {
+interface JobTriggersModalProps {
+  params: {
+    jobKey: string;
+  };
+  onClose: () => void;
+}
+
+export const JobTriggersModal = ({
+  params,
+  onClose,
+}: JobTriggersModalProps) => {
   const { data, error, isFetching } = useGetTasksInfoQuery();
 
-  const { jobKey } = props.params;
-  const jobs = jobKey && data?.jobs;
-  const job = jobs && _.findWhere(jobs, { key: jobKey });
+  const { jobKey } = params;
+  const jobs = data?.jobs;
+  const job = jobKey && jobs ? _.findWhere(jobs, { key: jobKey }) : undefined;
 
   return (
-    <ModalContent title={t`Triggers for ${jobKey}`} onClose={props.onClose}>
+    <ModalContent title={t`Triggers for ${jobKey}`} onClose={onClose}>
       <LoadingAndErrorWrapper loading={isFetching} error={error}>
         {() => renderTriggersTable(job?.triggers)}
       </LoadingAndErrorWrapper>
