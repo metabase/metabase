@@ -159,7 +159,6 @@ jobs:
 
             if yarn test-visual:loki \
               --reactUri file:./storybook-static \
-              --storiesFilter ".*" \
               --verboseRenderer; then
               echo "✅ Run $i passed"
             else
