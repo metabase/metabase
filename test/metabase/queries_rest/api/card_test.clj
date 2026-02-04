@@ -2131,8 +2131,6 @@
                                                                          [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :month}]
                                                                                              [:field (mt/id :checkins :date) {:temporal-unit :year}]])}))}))
 
-;; XXX: Add new tests here.
-
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (doseq [{:keys [message display]}
           [{:message "Changing display type from line to area should not delete alert"
