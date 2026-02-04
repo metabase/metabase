@@ -482,6 +482,7 @@
   ;; MB_METABOT_SLACK_SIGNING_SECRET
   ;; MB_SLACK_CONNECT_CLIENT_ID
   ;; MB_SLACK_CONNECT_CLIENT_SECRET
+  ;; MB_SLACK_CONNECT_ENABLED
   ;;
   ;; Optional, either: "link-only" or "sso" (default)
   ;; MB_SLACK_CONNECT_AUTHENTICATION_MODE
@@ -489,9 +490,12 @@
   ;; for verifying values are set:
   (metabot.settings/metabot-slack-signing-secret)
   (metabot.settings/metabot-slack-bot-token)
-  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-id))
-  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-secret))
-  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-authentication-mode))
+
+  ;; These are commented-out to avoid a kondo warning about using the sso.settings module
+  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-enabled))
+  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-id))
+  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-secret))
+  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-authentication-mode))
 
   ;; constants for hacking
   (def user-id "XXXXXXXXXXX") ; your slack user id (not the bot's)
