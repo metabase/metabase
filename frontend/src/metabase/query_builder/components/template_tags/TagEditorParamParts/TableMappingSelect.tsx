@@ -1,0 +1,45 @@
+import { t } from "ttag";
+
+import { SchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Text } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { TableId, TemplateTag } from "metabase-types/api";
+
+import { ContainerLabel, InputContainer } from "./TagEditorParam";
+
+export function TableMappingSelect({
+  tag,
+  database,
+  databases,
+  onChange,
+}: {
+  tag: TemplateTag;
+  database?: Database | null;
+  databases: Database[];
+  onChange: (tableId: TableId) => void;
+}) {
+  const tableId = tag["table-id"];
+
+  return (
+    <InputContainer>
+      <ContainerLabel>
+        {t`Table to map to`}
+        {tableId == null && (
+          <Text c="error" component="span" ml="xs">
+            {t`(required)`}
+          </Text>
+        )}
+      </ContainerLabel>
+
+      <SchemaAndTableDataSelector
+        databases={databases}
+        selectedDatabase={database || null}
+        selectedDatabaseId={database?.id || null}
+        selectedTable={tableId}
+        selectedTableId={tableId}
+        setSourceTableFn={onChange}
+        isInitiallyOpen={tableId == null}
+      />
+    </InputContainer>
+  );
+}

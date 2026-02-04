@@ -28,6 +28,7 @@ import type {
   Parameter,
   ParameterValuesConfig,
   RowValue,
+  TableId,
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
@@ -44,6 +45,7 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
+  TableMappingSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
@@ -268,6 +270,21 @@ class TagEditorParamInner extends Component<
     }
   };
 
+  setTable = (tableId: TableId) => {
+    const { tag, setTemplateTag } = this.props;
+
+    if (!_.isEqual(tag["table-id"], tableId)) {
+      const newTag: TemplateTag = {
+        ...tag,
+        "table-id": tableId,
+      };
+      setTemplateTag({
+        ...newTag,
+        options: getDefaultParameterOptions(newTag),
+      });
+    }
+  };
+
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
@@ -305,6 +322,7 @@ class TagEditorParamInner extends Component<
 
     const isDimension = tag.type === "dimension";
     const isTemporalUnit = tag.type === "temporal-unit";
+    const isTable = tag.type === "table";
     const field = Array.isArray(tag.dimension)
       ? metadata.field(tag.dimension[1])
       : null;
@@ -329,6 +347,15 @@ class TagEditorParamInner extends Component<
             database={database}
             databases={databases}
             setFieldFn={this.setDimension}
+          />
+        )}
+
+        {isTable && (
+          <TableMappingSelect
+            tag={tag}
+            database={database}
+            databases={databases}
+            onChange={this.setTable}
           />
         )}
 
