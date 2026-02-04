@@ -6,19 +6,23 @@ import {
   type EntityPickerProps,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
 import {
   ENTITY_PICKER_OPTIONS,
   ENTRY_PICKER_MODELS,
   RECENTS_CONTEXT,
 } from "./constants";
-import { getEntryPickerItem, getEntryPickerValue } from "./utils";
+import {
+  type PickerEntry,
+  getEntryPickerItem,
+  getEntryPickerValue,
+} from "./utils";
 
 type EntryPickerModalProps = {
   value: DependencyNode | null;
   models?: EntityPickerProps["models"];
-  onChange: (value: DependencyEntry) => void;
+  onChange: (value: PickerEntry) => void;
   onClose: () => void;
 };
 export function EntryPickerModal({

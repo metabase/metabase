@@ -33,5 +33,6 @@ export type ErdResponse = {
 };
 
 export type GetErdRequest =
-  | { "table-id": TableId; "model-id"?: never }
-  | { "table-id"?: never; "model-id": CardId };
+  | { "table-id": TableId; "model-id"?: never; "database-id"?: never; schema?: never }
+  | { "table-id"?: never; "model-id": CardId; "database-id"?: never; schema?: never }
+  | { "table-id"?: never; "model-id"?: never; "database-id": DatabaseId; schema?: string };

@@ -297,6 +297,14 @@ export function dataStudioErdModel(modelId: CardId) {
   return `${ROOT_URL}/schema-viewer?model-id=${modelId}`;
 }
 
+export function dataStudioErdDatabase(databaseId: DatabaseId) {
+  return `${ROOT_URL}/schema-viewer?database-id=${databaseId}`;
+}
+
+export function dataStudioErdSchema(databaseId: DatabaseId, schema: SchemaName) {
+  return `${ROOT_URL}/schema-viewer?database-id=${databaseId}&schema=${encodeURIComponent(schema)}`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }

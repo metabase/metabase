@@ -13,24 +13,22 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import * as Urls from "metabase/lib/urls";
-import {
-  Group,
-  Loader,
-  Stack,
-  Text,
-  useColorScheme,
-  useMantineTheme,
-} from "metabase/ui";
+import { Group, Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
   CardId,
-  DependencyEntry,
+  DatabaseId,
+  DependencyNode,
   GetErdRequest,
   SearchModel,
   TableId,
 } from "metabase-types/api";
 
-import { GraphEntryInput } from "../DependencyGraph/GraphEntryInput";
+import {
+  GraphEntryInput,
+  type PickerEntry,
+  type SelectedEntry,
+} from "../DependencyGraph/GraphEntryInput";
 
 import S from "./Erd.module.css";
 import { ErdEdge } from "./ErdEdge";
@@ -54,38 +52,45 @@ const PRO_OPTIONS = {
 };
 
 const ERD_SEARCH_MODELS: SearchModel[] = ["table", "dataset"];
-const ERD_PICKER_MODELS: ("table" | "dataset")[] = ["table", "dataset"];
+const ERD_PICKER_MODELS = ["table", "dataset"] as const;
 
 interface ErdProps {
   tableId: TableId | undefined;
   modelId: CardId | undefined;
+  databaseId: DatabaseId | undefined;
+  schema: string | undefined;
 }
 
-function getErdQueryParams(
-  tableId: TableId | undefined,
-  modelId: CardId | undefined,
-): GetErdRequest | typeof skipToken {
+function getErdQueryParams({
+  tableId,
+  modelId,
+  databaseId,
+  schema,
+}: ErdProps): GetErdRequest | typeof skipToken {
   if (modelId != null) {
     return { "model-id": modelId };
   }
   if (tableId != null) {
     return { "table-id": tableId };
   }
+  if (databaseId != null) {
+    return schema != null
+      ? { "database-id": databaseId, schema }
+      : { "database-id": databaseId };
+  }
   return skipToken;
 }
 
-export function Erd({ tableId, modelId }: ErdProps) {
+export function Erd({ tableId, modelId, databaseId, schema }: ErdProps) {
   const { data, isFetching, error } = useGetErdQuery(
-    getErdQueryParams(tableId, modelId),
+    getErdQueryParams({ tableId, modelId, databaseId, schema }),
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ErdFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ErdFlowEdge>([]);
   const { colorScheme } = useColorScheme();
   const palette = usePalette();
-  const theme = useMantineTheme();
-  console.log({ palette, colorScheme, theme });
-  const hasEntry = tableId != null || modelId != null;
+  const hasEntry = tableId != null || modelId != null || databaseId != null;
 
   const markerEnd = useMemo(
     () => ({ type: MarkerType.Arrow, strokeWidth: 2, color: palette.border }),
@@ -99,22 +104,77 @@ export function Erd({ tableId, modelId }: ErdProps) {
     return toFlowGraph(data, markerEnd);
   }, [data, markerEnd]);
 
+  // Find the focal node from the ERD data to display in the input
+  const entryNode: DependencyNode | null = useMemo(() => {
+    // Don't use cached data if there's no entry selected
+    if (!hasEntry || data == null) {
+      return null;
+    }
+    const focalNode = data.nodes.find((node) => node.is_focal);
+    if (focalNode != null) {
+      // Convert ERD node to DependencyNode format for display
+      return {
+        id: focalNode.table_id,
+        type: "table" as const,
+        data: {
+          name: focalNode.name,
+          display_name: focalNode.display_name,
+          db_id: focalNode.db_id,
+          schema: focalNode.schema,
+        },
+      };
+    }
+    return null;
+  }, [hasEntry, data]);
+
+  // For database/schema selections, create a simple selected entry for display
+  const selectedEntry: SelectedEntry | null = useMemo(() => {
+    // If we have a focal node, use that instead
+    if (entryNode != null) {
+      return null;
+    }
+    // Database/schema selection (no focal node)
+    if (databaseId != null && schema != null) {
+      return {
+        label: schema,
+        icon: "folder",
+      };
+    }
+    if (databaseId != null) {
+      return {
+        label: t`Database ${databaseId}`,
+        icon: "database",
+      };
+    }
+    return null;
+  }, [entryNode, databaseId, schema]);
+
   useEffect(() => {
-    if (graph != null) {
-      setNodes(graph.nodes);
-      setEdges(graph.edges);
-    } else {
+    // Clear everything when there's no entry selected
+    if (!hasEntry || error != null) {
       setNodes([]);
       setEdges([]);
+    } else if (graph != null) {
+      setNodes(graph.nodes);
+      setEdges(graph.edges);
     }
-  }, [graph, setNodes, setEdges]);
+  }, [hasEntry, graph, error, setNodes, setEdges]);
 
-  const getGraphUrl = useCallback((entry?: DependencyEntry) => {
+  const getGraphUrl = useCallback((entry?: PickerEntry) => {
     if (entry == null) {
       return Urls.dataStudioErdBase();
     }
     if (entry.type === "card") {
       return Urls.dataStudioErdModel(entry.id as CardId);
+    }
+    if (entry.type === "database") {
+      return Urls.dataStudioErdDatabase(entry.id as DatabaseId);
+    }
+    if (entry.type === "schema") {
+      return Urls.dataStudioErdSchema(
+        entry.databaseId as DatabaseId,
+        entry.schema as string,
+      );
     }
     return Urls.dataStudioErd(entry.id as TableId);
   }, []);
@@ -140,7 +200,8 @@ export function Erd({ tableId, modelId }: ErdProps) {
       <Panel className={S.entryInput} position="top-left">
         <Group gap="sm">
           <GraphEntryInput
-            node={null}
+            node={entryNode}
+            selectedEntry={selectedEntry}
             isGraphFetching={isFetching}
             getGraphUrl={getGraphUrl}
             allowedSearchModels={ERD_SEARCH_MODELS}
@@ -166,7 +227,7 @@ export function Erd({ tableId, modelId }: ErdProps) {
       {!hasEntry && !isFetching && error == null && (
         <Panel position="top-center">
           <Stack align="center" justify="center" pt="xl">
-            <Text c="text-tertiary">{t`Search for a table or model to view its ERD`}</Text>
+            <Text c="text-tertiary">{t`Search for a table or model to view its schema`}</Text>
           </Stack>
         </Panel>
       )}
