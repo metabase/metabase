@@ -37,6 +37,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "initialParameters",
     "hiddenParameters",
     "drills",
+    "enableEntityNavigation",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
