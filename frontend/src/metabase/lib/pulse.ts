@@ -21,6 +21,7 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -95,7 +96,7 @@ export function fieldsAreValid(channel: Channel, channelSpec?: ChannelSpec) {
 }
 
 function pulseChannelsAreValid(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscription | DraftDashboardSubscription,
   channelSpecs: Partial<ChannelSpecs>,
 ) {
   return (
@@ -124,7 +125,7 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
 }
 
 export function pulseIsValid(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscription | DraftDashboardSubscription,
   channelSpecs: ChannelSpecs,
 ) {
   return (
@@ -136,13 +137,15 @@ export function pulseIsValid(
 }
 
 export function dashboardPulseIsValid(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscription | DraftDashboardSubscription,
   channelSpecs: Partial<ChannelSpecs>,
 ) {
   return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
-export function emailIsEnabled(pulse: DashboardSubscription) {
+export function emailIsEnabled(
+  pulse: DashboardSubscription | DraftDashboardSubscription,
+) {
   return (
     pulse.channels.filter(
       (channel) => channel.channel_type === "email" && channel.enabled,
@@ -150,15 +153,14 @@ export function emailIsEnabled(pulse: DashboardSubscription) {
   );
 }
 
-export function cleanPulse(
-  pulse: DashboardSubscription,
-  channelSpecs: ChannelSpecs,
-) {
+export function cleanPulse<
+  T extends DashboardSubscription | DraftDashboardSubscription,
+>(pulse: T, channelSpecs: ChannelSpecs): T {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
     parameters: cleanPulseParameters(getPulseParameters(pulse)),
-  };
+  } as T;
 }
 
 function cleanPulseChannels(channels: Channel[], channelSpecs: ChannelSpecs) {
@@ -212,14 +214,16 @@ export function createChannel(
   };
 }
 
-export function getPulseParameters(pulse: DashboardSubscription) {
+export function getPulseParameters(
+  pulse: DashboardSubscription | DraftDashboardSubscription,
+) {
   return pulse?.parameters || [];
 }
 
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscription | DraftDashboardSubscription,
   parameters: Parameter[],
 ) {
   const parameterValues = getPulseParameters(pulse).reduce<
