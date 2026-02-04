@@ -1,7 +1,7 @@
 import type { ComboboxItem } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
-import { getFieldOptions } from "../utils";
+import { getFieldOptions } from "../../../utils";
 
 export function searchOptions(
   options: ComboboxItem[],

@@ -12,13 +12,13 @@ import {
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
+import { getFieldOption, getFieldOptions } from "../../../utils";
 import type {
   UseGetRemappedFieldValueArgs,
   UseGetRemappedFieldValueResult,
   UseSearchFieldValuesArgs,
   UseSearchFieldValuesResult,
 } from "../types";
-import { getFieldOption, getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
 import { getEmptyResultsMessage, shouldSearch } from "./utils";
