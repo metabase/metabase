@@ -7,7 +7,7 @@ import { PublicDocument } from "metabase/public/containers/PublicDocument";
 import { PublicOrEmbeddedDashboardPage } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
 
-export const getRoutes = (store) => {
+export const getRoutes = () => {
   return (
     <Route>
       <Route path="public" component={PublicApp}>
