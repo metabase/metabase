@@ -1,9 +1,0 @@
-{
-  "base": {
-    "name": "master",
-    "hash": "8824365c61dceed19f6efcae663e82d6e1c558d7"
-  },
-  "upstream": {
-    "branch": "emb-1258-create-onboarding-accordion-component-for-use-in-setup-guide"
-  }
-}
