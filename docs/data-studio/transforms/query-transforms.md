@@ -9,21 +9,19 @@ summary: Create Metabase questions and SQL queries to transform your data and wr
 
 With query-based transforms, you can write a query in SQL or Metabase's query builder, and then write the results of the query back into the database on schedule.
 
-For general information about Metabase transforms, see [Transforms](transforms.md).
+For general information about Metabase transforms, see [Transforms](transforms-overview.md).
 
-### How query-based transforms work
+## How query-based transforms work
 
-- In Metabase, you create a `SELECT` query either using SQL or Metabase's [graphical query builder](../questions/query-builder/editor.md).
+- In Metabase, you create a `SELECT` query either using SQL or Metabase's [graphical query builder](../../questions/query-builder/editor.md).
 - When the transform first runs, your _database_ executes the transform's query.
-- Your database writes the results of the query as a new table.
+- Your database writes the results of the query to a new table.
 - The new table is synced to Metabase.
-- On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
+- On subsequent transform runs, your database will overwrite that table with the updated results unless you [configure your transform to be incremental](#incremental-query-transforms).
 
 ## Create a query-based transform
 
-Currently, you can't convert between different transform types (e.g. a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
-
-To write a query-based transforms, you'll need to [Set up the Python runner]. Once you've set up the runner:
+Currently, you can't convert between different transform types (like converting a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
 
 1. Go to **Data studio > Transforms**
 
@@ -31,7 +29,7 @@ To write a query-based transforms, you'll need to [Set up the Python runner]. On
 
 3. Write your transform query as you would normally write a query in Metabase. See [Query builder](../../questions/query-builder/editor.md) and [SQL editor](../../questions/native-editor/writing-sql.md) documentation for more information.
 
-   Not all databases support transforms, see [Databases that support transforms](transforms.md#databases-that-support-transforms).
+   Not all databases support transforms, see [Databases that support transforms](transforms-overview.md#databases-that-support-transforms).
 
 4. To test your transform, press the "Run" button at the bottom of the editor.
 
@@ -49,7 +47,7 @@ To write a query-based transforms, you'll need to [Set up the Python runner]. On
 
 ## Run a query transform
 
-See [Run a transform](transforms.md#run-a-transform). You'll see logs for a transform run on the transform's page.
+See [Run a transform](transform-overview.md#run-a-transform). You'll see logs for a transform run on the transform's page.
 
 ## Incremental query transforms
 
@@ -57,7 +55,7 @@ By default, on every transform run after the first one, Metabase will process al
 
 ### Prerequisites for incremental transforms
 
-You data has to have certain structure for incremental transforms to work. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+Your data has to have certain structure for incremental transforms to work. See [Prerequisites for incremental transforms](transforms-overview.md#prerequisites-for-incremental-transforms).
 
 ### How incremental query transforms work
 
@@ -90,7 +88,7 @@ To make a query transform incremental:
 
    and then select `id` as the **Column to check for new values** in the incremental transform settings.
 
-   If you're using a timestamp column as a checkpoint, you'll need to expicitly cast it to timestamp:
+   If you're using a timestamp column as a checkpoint, you'll need to explicitly cast it to timestamp:
 
    ```sql
    SELECT created_at, total FROM orders

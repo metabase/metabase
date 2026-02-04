@@ -40,7 +40,7 @@ Transforms will create tables in your database, so the database user you use for
 Metabase supports two types of transforms: query-based transforms and Python transforms. You can write query-based transforms in SQL or Metabase Query builder, and they will run in your database. Python transforms are written in (unsurprisingly) Python and will run in a dedicated execution environment. For more details:
 
 - [How query-based transforms work](query-transforms.md#how-query-based-transforms-work)
-- [How Python transforms work](query-transforms.md#how-query-based-transforms-work)
+- [How Python transforms work](python-transforms.md#how-python-transforms-work)
 
 ## Permissions for transforms
 
@@ -48,7 +48,7 @@ If you are running Metabase Open Source/Starter, Admins (and only Admins) can se
 
 Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](../../permissions/data.md).
 
-To **see** the list of transforms on your instance, people need to be able to access [Data Studio](LINK), so they need to be either an Admin of a member of the special [Data Analyst group](../../people-and-groups/managing.md).
+To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin of a member of the special [Data Analyst group](../../people-and-groups/managing.md).
 
 To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
 
@@ -56,7 +56,7 @@ To **execute** transforms on a database, people additionally need to have the [T
 
 _Data Studio > Transforms_
 
-You can see all transforms on an instance:
+You can see all your Metabase's transforms:
 
 1. Make sure you have [appropriate permissions to see transforms](#permissions-for-transforms).
 2. Click on the **grid** icon on top right and go to **Data Studio**.
@@ -101,13 +101,15 @@ To create a transform:
 
 > Code generation for transforms requires the **Metabot AI** and **Transforms** add-ons.
 
-Metabot has special functionality to help you to write code for your transforms. You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
+You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
 1. Go to **Data studio > Transforms**.
 2. While in Transforms view, click on the Metabot icon in top right.
-3. Describe the transform that you'd like Metabot to write, for example "Create a Python transform that "
+3. Describe the transform that you'd like Metabot to write.
 
-Metabot will create a to-do list for itself that will show its thinking process, and t
+   You can specify which kind of transform you want (Python or SQL) and @-mention specific data sources to help Metabot understand your request.
+
+Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
 
 You can continue working with Metabot to refine your code. Metabot will suggest code changes, and give you the option of accepting or rejecting the changes.
 
@@ -125,14 +127,14 @@ _Data Studio > Transforms > Definition_
 
 To edit the transform's query or script:
 
-1. Make sure you have [permissions to edit transforms](LINK).
+1. Make sure you have [permissions to edit transforms](../../permissions/data.md).
 2. Go to **Data Studio > Transforms**.
 3. Find the transform you'd like to edit and click on "Edit definition" above the transform definition.
 4. Edit the query or script.
 
    See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information. You can [use Metabot](#use-metabot-to-generate-code-for-transforms) to help edit your transform.
 
-Once you change the transform's query or script, the next transform run (manual or scheduled) will use the updated query and write the results into the target table. If you have questions that query the transform's target table, they might break. For example, if your new transform query no longer includes a column that a downstream question was relying on, that question will break.
+Once you change the transform's query or script, the next transform run (manual or scheduled) will use the updated query and write the results into the target table. If you've changed the table's columns, and you have questions that query the table, they might break. For example, if your new transform query no longer includes a column that a downstream question was relying on, that question will break.
 
 ### Edit transform's target
 
@@ -144,9 +146,7 @@ To edit transform's target table, i.e., the table where the query results are wr
 
 ## Run a transform
 
-_Data Studio > Transforms > Run_
-
-You can run a transform manually or on schedule (e.g., hourly).
+You can run a transform manually or schedule the transform using tags and jobs.
 
 Running a transform for the first time will create and sync the table created by the transform, and you'll be able to edit the table's [metadata](./metadata-editing.md) and [permissions](../permissions/data.md). Subsequent runs will drop and recreate the table, unless you use [Incremental transforms](#incremental-transforms).
 
@@ -164,9 +164,9 @@ For Python transforms, you'll also see the transform's execution logs.
 
 _Data Studio > Transforms > Dependencies_
 
-Transform queries can use the data from other transforms, and query-based transforms can also reference Metabase questions and models. For example, you can have a transform that uses data from a `raw_events` table and writes to a `stg_events` table, and then create another transform that uses data from the `stg_events` table and writes to an `events` table. Metabase.
+Transform queries can use the data from other transforms, and query-based transforms can also reference Metabase questions and models. For example, you can have a transform that uses data from a `raw_events` table and writes to a `stg_events` table, and then create another transform that uses data from the `stg_events` table and writes to an `events` table.
 
-Metabase will track transform dependencies on other transforms, and execute transforms in reasonable order. So for example, if transform that creates the `events` table relies on the `stg_events` table which, in turn, is also created by a transform, then whenever you run transform generating `events`, the transform for `stg_events` will run as well.
+Metabase will track transform dependencies and execute transforms in a reasonable order. So for example, if transform B relies on a table created by transform A, Metabase will run transform A first, then run transform B.
 
 On Metabase Pro or Enterprise plans, you can see the transform dependencies graph by going to **Data Studio > Transforms** and go to **Dependencies** tab.
 
@@ -176,20 +176,20 @@ If a job includes a transform that depends on a table created by another transfo
 
 _Data Studio > Transforms > Settings_
 
-Incremental transforms allow you to only write the _new_ data to the database when the transform is executed. For example, you might have new transaction data coming in every day. You can Metabase transforms to only write data for transactions that haven't been processed before
+Incremental transforms only append new data since the previous transform run. For example, you might have new transaction data coming in every day, and run the transform nightly. With each run, the incremental transform would only write the rows added after the previous run the night before.
 
 ### Prerequisites for incremental transforms
 
 - There is a column in your data that Metabase can check for new values to determine which data is new. We'll refer to this as a "Checkpoint" column.
-- The checkpoint column has to be either numeric or timestamp, and has to have increasing values. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values. usually this will be some kind of "ID" or "Created At" column.
+- The checkpoint column has to have increasing values, like a sequential ID or timestamp column. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values.
 - The checkpoint column should be present in both input and output table.
-- Your schema is stable, meaning that the structure of the tables is not going to change from run to run
+- Your schema is stable, meaning that the structure of the tables is not going to change from run to run.
 
 ### Make a transform incremental
 
 Incremental transforms work differently for query-based transforms and Python transforms, so see [incremental query transforms](query-transforms.md#incremental-query-transforms) and [incremental Python transforms](./query-transforms.md#incremental-python-transforms) for more information.
 
-## Version transforms
+## Versioning transforms
 
 _Admin settings > General > Remote sync_
 

@@ -9,7 +9,7 @@ _Data Studio > Jobs_
 
 Jobs are scheduled runs of transforms based on the transform's tags.
 
-### Transform tags
+## Transform tags
 
 Add tags to transforms so that you can use jobs to run the transforms on a schedule. For example, you could add a "Nightly" tag to a transform, and have a job that runs all the transforms with the "Nightly" tag at midnight every day.
 
@@ -37,10 +37,8 @@ To create a new job, go to **Data Studio > Jobs**, and click on the **+New** but
 
 Jobs have two components: schedule and tags.
 
-- **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in the system's timezone.
+- **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in your Metabase's system timezone.
 - **Tags** determine _which_ transforms a job runs, not when the job runs. For example, you can create a `Weekdays` tag, add that tag to a few transforms, then create a job that runs all the transforms with the `Weekdays` tag every weekday at 9:05AM.
-
-  Job can use multiple tags, in which case, the job will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
 
 ## Jobs will run all dependent transforms
 
