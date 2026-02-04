@@ -105,7 +105,7 @@
             (let [response (mt/user-http-request :crowberto :put
                                                  (format "transform/%d" id)
                                                  (assoc-in transform [:source :body] "print('no features')"))]
-              (is (= "Premium features required for this transform type are not enabled." response)
+              (is (= "You don't have permissions to do that." response)
                   "Should return 403 without any features"))))))))
 
 (deftest run-python-transform-feature-flag-test
@@ -127,13 +127,13 @@
                                                 :database (mt/id)}}
                     created (mt/user-http-request :crowberto :post 200 "transform" transform-payload)]
                 (mt/with-premium-features #{}
-                  (let [response (mt/user-http-request :crowberto :post 402
+                  (let [response (mt/user-http-request :crowberto :post 403
                                                        (format "transform/%d/run" (:id created)))]
-                    (is (= "Premium features required for this transform type are not enabled." response))))
+                    (is (= "You don't have permissions to do that." response))))
                 (mt/with-premium-features #{:transforms}
                   (let [response (mt/user-http-request :crowberto :post
                                                        (format "transform/%d/run" (:id created)))]
-                    (is (= "Premium features required for this transform type are not enabled." response)
+                    (is (= "You don't have permissions to do that." response)
                         "Should return 403 without :transforms-python feature")))))))))))
 
 (deftest execute-python-transform-test
