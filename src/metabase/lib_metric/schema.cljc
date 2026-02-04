@@ -32,7 +32,7 @@
   "Schema for a dimension mapping."
   [:map
    [:type ::dimension-mapping.type]
-   [:table-id ::lib.schema.id/table]
+   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
    [:dimension-id ::dimension-id]
    [:target ::dimension-mapping.target]])
 
@@ -50,3 +50,30 @@
    [:= :dimension]
    ::dimension-reference.options
    ::dimension-id])
+
+;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
+;;; These schemas are used for storage format in the database.
+
+(mr/def ::dimension-status
+  "Status of a dimension indicating whether it's active or has issues.
+   - :status/active   - Column exists, dimension is usable
+   - :status/orphaned - Column was removed from schema, dimension preserved for reference"
+  [:enum :status/active :status/orphaned])
+
+(mr/def ::persisted-dimension
+  "Schema for a persisted dimension definition with status tracking.
+   Persisted dimensions include additional metadata about their status
+   and any issues that prevent them from being used.
+   Note: target field references are stored in dimension-mappings, not here."
+  [:map
+   [:id ::dimension-id]
+   [:name {:optional true} [:maybe :string]]
+   [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:status {:optional true} [:maybe ::dimension-status]]
+   [:status-message {:optional true} [:maybe :string]]])
+
+(mr/def ::persisted-dimensions
+  "Schema for a sequence of persisted dimensions."
+  [:sequential ::persisted-dimension])

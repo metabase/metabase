@@ -783,6 +783,7 @@
 
   lib-metric
   {:team "UX West"
+   :api  #{metabase.lib-metric.core}
    :uses #{lib
            util}}
 
@@ -834,6 +835,7 @@
            events
            lib
            lib-be
+           lib-metric
            models
            permissions
            remote-sync

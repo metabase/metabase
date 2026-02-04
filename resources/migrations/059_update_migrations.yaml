@@ -2933,6 +2933,82 @@ databaseChangeLog:
             constraintName: fk_transform_target_db_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v59.2026-02-03T21:43:00
+      author: epaget
+      comment: Add dimensions column to measure table
+      changes:
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: dimensions
+                  type: ${text.type}
+                  remarks: JSON array of persisted dimension definitions (id, display-name, types)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: measure
+            columnName: dimensions
+
+  - changeSet:
+      id: v59.2026-02-03T21:43:01
+      author: epaget
+      comment: Add dimension_mappings column to measure table
+      changes:
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: dimension_mappings
+                  type: ${text.type}
+                  remarks: JSON array of dimension-to-field mappings (dimension-id, target, table-id)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: measure
+            columnName: dimension_mappings
+
+  - changeSet:
+      id: v59.2026-02-03T21:43:02
+      author: epaget
+      comment: Add dimensions column to report_card table for metrics
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dimensions
+                  type: ${text.type}
+                  remarks: JSON array of persisted dimension definitions (id, display-name, types)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: dimensions
+
+  - changeSet:
+      id: v59.2026-02-03T21:43:03
+      author: epaget
+      comment: Add dimension_mappings column to report_card table for metrics
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dimension_mappings
+                  type: ${text.type}
+                  remarks: JSON array of dimension-to-field mappings (dimension-id, target, table-id)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: dimension_mappings
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
