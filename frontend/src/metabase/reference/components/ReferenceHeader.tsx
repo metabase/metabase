@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -8,17 +7,24 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import L from "metabase/common/components/List/List.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
+
+interface ReferenceHeaderProps {
+  name: string;
+  type?: string;
+  headerIcon?: IconName;
+  headerLink?: string;
+}
 
 const ReferenceHeader = ({
   name,
   type,
   headerIcon,
-  headerBody,
   headerLink,
-}) => (
+}: ReferenceHeaderProps) => (
   <div className={CS.wrapper}>
     <div className={cx(CS.relative, L.header)}>
       {headerIcon && (
@@ -29,7 +35,7 @@ const ReferenceHeader = ({
       <div className={S.headerBody}>
         <Ellipsified
           key="1"
-          className={!headerLink && CS.flexFull}
+          className={!headerLink ? CS.flexFull : undefined}
           tooltipProps={{ w: "auto" }}
         >
           {name}
@@ -54,14 +60,6 @@ const ReferenceHeader = ({
     </div>
   </div>
 );
-
-ReferenceHeader.propTypes = {
-  name: PropTypes.string.isRequired,
-  type: PropTypes.string,
-  headerIcon: PropTypes.string,
-  headerBody: PropTypes.string,
-  headerLink: PropTypes.string,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(ReferenceHeader);
