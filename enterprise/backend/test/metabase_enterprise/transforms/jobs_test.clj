@@ -43,6 +43,50 @@
     (is (= #{1 2 3}
            (#'jobs/get-deps ordering [1])))))
 
+(deftest job-transform-ids-test
+  (testing "single tag, single transform"
+    (mt/with-temp [:model/TransformTag tag {:name "tag-a"}
+                   :model/TransformJob job {:name "job-1" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                   :model/Transform t {:name "t1"}
+                   :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag) :position 0}]
+      (is (= #{(:id t)}
+             (#'jobs/job-transform-ids (:id job))))))
+
+  (testing "job has 2 tags, transform has only 1 — must still be found"
+    (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
+                   :model/TransformTag tag-b {:name "tag-b"}
+                   :model/TransformJob job {:name "job-2" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-a) :position 0}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-b) :position 1}
+                   :model/Transform t {:name "t2"}
+                   :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag-a) :position 0}]
+      (is (= #{(:id t)}
+             (#'jobs/job-transform-ids (:id job))))))
+
+  (testing "job has 2 tags, two transforms with different tag subsets — both found"
+    (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
+                   :model/TransformTag tag-b {:name "tag-b"}
+                   :model/TransformJob job {:name "job-3" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-a) :position 0}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-b) :position 1}
+                   :model/Transform t1 {:name "t3a"}
+                   :model/TransformTransformTag _ {:transform_id (:id t1) :tag_id (:id tag-a) :position 0}
+                   :model/Transform t2 {:name "t3b"}
+                   :model/TransformTransformTag _ {:transform_id (:id t2) :tag_id (:id tag-b) :position 0}]
+      (is (= #{(:id t1) (:id t2)}
+             (#'jobs/job-transform-ids (:id job))))))
+
+  (testing "job tag with no matching transforms — empty set"
+    (mt/with-temp [:model/TransformTag tag {:name "tag-orphan"}
+                   :model/TransformJob job {:name "job-4" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+      (is (= #{} (#'jobs/job-transform-ids (:id job))))))
+
+  (testing "job with no tags — empty set"
+    (mt/with-temp [:model/TransformJob job {:name "job-5" :schedule "0 0 * * * ? *"}]
+      (is (= #{} (#'jobs/job-transform-ids (:id job)))))))
+
 (deftest next-transform-test
   (let [ordering {1 #{2 3}
                   2 #{3 4}

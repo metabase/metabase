@@ -115,14 +115,11 @@
       {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
-  (t2/select-fn-set :transform_id
-                    :transform_job_transform_tag
-                    {:select    :transform_transform_tag.transform_id
-                     :from      :transform_job_transform_tag
-                     :left-join [:transform_transform_tag [:=
-                                                           :transform_transform_tag.tag_id
-                                                           :transform_job_transform_tag.tag_id]]
-                     :where     [:= :transform_job_transform_tag.job_id job-id]}))
+  (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
+    (if (seq tag-ids)
+      (or (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids])
+          #{})
+      #{})))
 
 (defn job-transforms
   "Return the transforms that are executed when running the job with ID `job-id`.
