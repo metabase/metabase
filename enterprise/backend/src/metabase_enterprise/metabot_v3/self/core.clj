@@ -288,35 +288,33 @@
     (let [active (volatile! {})] ;; tool-call-id -> {:chunks [...]} or {:task derefable}
       (fn
         ([result]
-         (let [tasks (keep :task (vals @active))]
-           (if (empty? tasks)
-             (rf result)
-             (rf (reduce rf result (mapcat deref tasks))))))
+         (let [{tasks  true
+                chunks false} (group-by #(contains? (val %) :task) @active)]
+           (when (seq chunks)
+             (log/warn "Multiple tool calls were not collected fully before stream finish"
+                       {:tool-calls (map first chunks)}))
+           (if-let [tasks (some->> (seq tasks) (map #(:task (second %))))]
+             (rf (reduce rf result (mapcat deref tasks)))
+             (rf result))))
 
         ([result {:keys [type toolCallId toolName] :as chunk}]
          (case type
            :tool-input-start
-           (do
-             (when (contains? tools toolName)
-               (vswap! active assoc toolCallId {:chunks [chunk]}))
-             (rf result chunk))
+           (when (contains? tools toolName)
+             (vswap! active assoc toolCallId {:chunks [chunk]}))
 
            :tool-input-delta
-           (do
-             (when-let [{:keys [chunks]} (get @active toolCallId)]
-               (vswap! active assoc-in [toolCallId :chunks] (conj chunks chunk)))
-             (rf result chunk))
+           (when (contains? @active toolCallId)
+             (vswap! active update-in [toolCallId :chunks] conj chunk))
 
            :tool-input-available
-           (do
-             (when-let [{:keys [chunks]} (get @active toolCallId)]
-               (let [tool-entry (get tools toolName)
-                     tool-fn    (if (map? tool-entry) (:fn tool-entry) tool-entry)
-                     ;; collect the chunks for the tool and run with it
-                     ;; Use bound-fn* to preserve dynamic bindings (e.g. *current-user-id*) in virtual thread
-                     task       (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool-fn chunks)))]
-                 (vswap! active assoc toolCallId {:task task})))
-             (rf result chunk))
+           (when-let [{:keys [chunks]} (get @active toolCallId)]
+             (let [tool    (get tools toolName)
+                   tool-fn (if (map? tool) (:fn tool) tool)
+                   task    (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool-fn chunks)))]
+               (vswap! active assoc toolCallId {:task task})))
 
-           ;; Default: pass through
-           (rf result chunk)))))))
+           ;; otherwise: do nothing
+           nil)
+
+         (rf result chunk))))))
