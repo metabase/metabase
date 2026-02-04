@@ -24,76 +24,46 @@ const {
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
-function createContext(place: string) {
-  return {
-    basePath: place === "admin" ? "/admin/datamodel" : "/data-studio/data",
-    visit: place === "admin" ? H.DataModel.visit : H.DataModel.visitDataStudio,
+const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
+type Area = (typeof areas)[number];
+
+function getBasePathForArea(area: Area) {
+  return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
+}
+
+function getCheckLocation(area: Area) {
+  return (path: string) => {
+    const basePath = getBasePathForArea(area)();
+    cy.location("pathname").should("eq", `${basePath}${path}`);
   };
 }
 
-/**
- * Context for data model tests that abstracts differences between admin and data studio areas.
- * Provides unified methods for visiting pages, checking locations, and getting analytics metadata.
- */
-class DataModelContext {
-  /**
-   * @param area - The area being tested, either "admin" or "data studio"
-   */
-  constructor(public readonly area: string) {
-    this.area = area;
-  }
+function getTriggeredFromArea(area: Area) {
+  return () => (area === "admin" ? "admin" : "data_studio");
+}
 
-  /**
-   * Returns the base path for the current area.
-   * @returns "/admin/datamodel" for admin area, "/data-studio/data" for data studio
-   */
-  get basePath() {
-    return this.area === "admin" ? "/admin/datamodel" : "/data-studio/data";
-  }
-
-  /**
-   * Visits the data model page using the appropriate method for the current area.
-   * @param args - Arguments passed to either H.DataModel.visit or H.DataModel.visitDataStudio
-   */
-  visit(
+function visitArea(area: Area) {
+  return (
     ...args:
       | Parameters<typeof H.DataModel.visit>
       | Parameters<typeof H.DataModel.visitDataStudio>
-  ) {
-    if (this.area === "admin") {
+  ) => {
+    if (area === "admin") {
       H.DataModel.visit(...args);
     } else {
       H.DataModel.visitDataStudio(...args);
     }
-  }
-
-  /**
-   * Asserts that the current URL pathname matches the expected path prefixed with basePath.
-   * @param path - The expected path suffix (e.g., "/database/1/schema/...")
-   */
-  checkLocation(path: string) {
-    cy.location("pathname").should("eq", `${this.basePath}${path}`);
-  }
-
-  /**
-   * Returns the triggered_from value for Snowplow analytics events.
-   * @returns "admin" for admin area, "data_studio" for data studio
-   */
-  getTriggeredFrom() {
-    return this.area === "admin" ? "admin" : "data_studio";
-  }
+  };
 }
-
-const areas: Array<"admin" | "data studio"> = ["admin", "data studio"];
-type Area = (typeof areas)[number];
 
 describe.each<Area>(areas)(
   "scenarios > admin > data model > %s",
   (area: Area) => {
-    let context: DataModelContext;
+    const visit = visitArea(area);
+    const checkLocation = getCheckLocation(area);
+    const getTriggeredFrom = getTriggeredFromArea(area);
 
     beforeEach(() => {
-      context = new DataModelContext(area);
       H.restore();
       H.resetSnowplow();
       cy.signInAsAdmin();
@@ -126,18 +96,18 @@ describe.each<Area>(areas)(
 
     describe("Data loading", () => {
       it("should show 404 if database does not exist (metabase#14652)", () => {
-        context.visit({ databaseId: 54321, skipWaiting: true });
+        visit({ databaseId: 54321, skipWaiting: true });
         cy.wait("@databases");
         cy.wait(100); // wait with assertions for React effects to kick in
 
         TablePicker.getDatabases().should("have.length", 1);
         TablePicker.getTables().should("have.length", 0);
         H.DataModel.get().findByText("Not found.").should("be.visible");
-        context.checkLocation("/database/54321");
+        checkLocation("/database/54321");
       });
 
       it("should show 404 if table does not exist", () => {
-        context.visit({
+        visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: 12345,
@@ -149,7 +119,7 @@ describe.each<Area>(areas)(
         TablePicker.getDatabases().should("have.length", 1);
         TablePicker.getTables().should("have.length", 8);
         H.DataModel.get().findByText("Not found.").should("be.visible");
-        context.checkLocation(
+        checkLocation(
           `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
         );
         if (area === "admin") {
@@ -162,7 +132,7 @@ describe.each<Area>(areas)(
         // We eliminate the flakiness by removing the need to scroll horizontally
         { viewportWidth: 1600 },
         () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -181,7 +151,7 @@ describe.each<Area>(areas)(
 
           TablePicker.getDatabases().should("have.length", 1);
           TablePicker.getTables().should("have.length", 8);
-          context.checkLocation(
+          checkLocation(
             `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
           );
 
@@ -198,13 +168,12 @@ describe.each<Area>(areas)(
         "should not show 404 error if database is not selected",
         { tags: ["@external"] },
         () => {
-          const context = createContext(area);
           H.restore("postgres-writable");
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
           cy.log("database not selected");
-          context.visit();
+          visit();
           H.DataModel.get()
             .findByText(/Not found/)
             .should("not.exist");
@@ -237,7 +206,7 @@ describe.each<Area>(areas)(
         });
 
         it("should allow to navigate databases, schemas, and tables", () => {
-          context.visit();
+          visit();
 
           cy.get("main")
             .findByText("No connected databases")
@@ -259,7 +228,7 @@ describe.each<Area>(areas)(
           H.restore("mysql-8");
           cy.signInAsAdmin();
 
-          context.visit();
+          visit();
 
           TablePicker.getDatabase("QA MySQL8").click();
           TablePicker.getTables().should("have.length", 4);
@@ -282,7 +251,7 @@ describe.each<Area>(areas)(
 
         it("should allow searching for tables", { tags: ["@external"] }, () => {
           H.restore("mysql-8");
-          context.visit();
+          visit();
 
           TablePicker.getSearchInput().type("rEvIeWs");
           TablePicker.getDatabases().should("have.length", 2);
@@ -306,7 +275,7 @@ describe.each<Area>(areas)(
           H.restore("mysql-8");
           cy.signInAsAdmin();
 
-          context.visit({
+          visit({
             databaseId: MYSQL_DB_ID,
             schemaId: MYSQL_DB_SCHEMA_ID,
           });
@@ -331,10 +300,10 @@ describe.each<Area>(areas)(
 
       describe("1 database, 1 schema", () => {
         it("should allow to navigate databases, schemas, and tables", () => {
-          context.visit();
+          visit();
 
           cy.log("should auto-open the only schema in the only database");
-          context.checkLocation(
+          checkLocation(
             `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
           );
 
@@ -345,7 +314,7 @@ describe.each<Area>(areas)(
           TableSection.get().should("not.exist");
           TablePicker.getTable("Orders").should("be.visible").click();
 
-          context.checkLocation(
+          checkLocation(
             `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
           );
           TableSection.get().should("be.visible");
@@ -354,7 +323,7 @@ describe.each<Area>(areas)(
           }
 
           TablePicker.getTable("Products").should("be.visible").click();
-          context.checkLocation(
+          checkLocation(
             `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PRODUCTS_ID}`,
           );
 
@@ -378,11 +347,11 @@ describe.each<Area>(areas)(
           });
 
           it("should allow to navigate databases, schemas, and tables", () => {
-            context.visit();
+            visit();
             if (area === "admin") {
-              context.checkLocation("/database");
+              checkLocation("/database");
             } else {
-              context.checkLocation("");
+              checkLocation("");
             }
 
             TablePicker.getDatabases().should("have.length", 2);
@@ -394,7 +363,7 @@ describe.each<Area>(areas)(
             TablePicker.getDatabase("Writable Postgres12")
               .should("be.visible")
               .click();
-            context.checkLocation(`/database/${WRITABLE_DB_ID}`);
+            checkLocation(`/database/${WRITABLE_DB_ID}`);
             TablePicker.getDatabases().should("have.length", 2);
             TablePicker.getSchemas().should("have.length", 2);
             TablePicker.getTables().should("have.length", 0);
@@ -403,7 +372,7 @@ describe.each<Area>(areas)(
 
             cy.log("open schema");
             TablePicker.getSchema("Domestic").click();
-            context.checkLocation(
+            checkLocation(
               `/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
             );
             TablePicker.getDatabases().should("have.length", 2);
@@ -513,7 +482,7 @@ describe.each<Area>(areas)(
 
     describe("Table section", () => {
       it("should show all tables in sample database and fields in orders table", () => {
-        context.visit({
+        visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -569,7 +538,7 @@ describe.each<Area>(areas)(
       });
 
       it("should be able to preview the table in the query builder", () => {
-        context.visit({
+        visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -579,7 +548,7 @@ describe.each<Area>(areas)(
       });
 
       it("should be able to see details of a table", () => {
-        context.visit({ databaseId: SAMPLE_DB_ID });
+        visit({ databaseId: SAMPLE_DB_ID });
 
         if (area === "admin") {
           verifyAdminTableSectionEmptyState();
@@ -606,7 +575,7 @@ describe.each<Area>(areas)(
         () => {
           H.restore("mysql-8");
 
-          context.visit({
+          visit({
             databaseId: MYSQL_DB_ID,
             schemaId: MYSQL_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -630,7 +599,7 @@ describe.each<Area>(areas)(
           );
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-          context.visit();
+          visit();
           TablePicker.getDatabase("Writable Postgres12").click();
           TablePicker.getSchema("Domestic").click();
           TablePicker.getTable("Animals").click();
@@ -644,7 +613,7 @@ describe.each<Area>(areas)(
 
       describe("Name and description", () => {
         it("should allow changing the table name", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -664,7 +633,7 @@ describe.each<Area>(areas)(
         });
 
         it("should allow changing the table description", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -689,7 +658,7 @@ describe.each<Area>(areas)(
         });
 
         it("should allow clearing the table description", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -710,7 +679,7 @@ describe.each<Area>(areas)(
 
       describe("Field name and description", () => {
         it("should allow changing the field name", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -739,7 +708,7 @@ describe.each<Area>(areas)(
         });
 
         it("should allow changing the field description", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -775,7 +744,7 @@ describe.each<Area>(areas)(
         });
 
         it("should allow clearing the field description", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -822,7 +791,7 @@ describe.each<Area>(areas)(
 
       describe("Name and description", () => {
         it("should allow changing the field name", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -852,7 +821,7 @@ describe.each<Area>(areas)(
         });
 
         it("should allow changing the field description", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -889,7 +858,7 @@ describe.each<Area>(areas)(
         });
 
         it("should remap FK display value from field section", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -922,7 +891,7 @@ describe.each<Area>(areas)(
 
       describe("Field values", () => {
         it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: PRODUCTS_ID,
@@ -953,7 +922,7 @@ describe.each<Area>(areas)(
         });
 
         it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: PRODUCTS_ID,
@@ -974,7 +943,7 @@ describe.each<Area>(areas)(
       describe("Data", () => {
         describe("Coercion strategy", () => {
           it("should allow you to cast a field to a data type", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: FEEDBACK_ID,
@@ -991,7 +960,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "type_casting",
-              triggered_from: context.getTriggeredFrom(),
+              triggered_from: getTriggeredFrom(),
             });
             verifyAndCloseToast("Casting enabled for Rating");
 
@@ -1020,7 +989,7 @@ describe.each<Area>(areas)(
           });
 
           it("should allow to enable, change, and disable coercion strategy", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: FEEDBACK_ID,
@@ -1093,7 +1062,7 @@ describe.each<Area>(areas)(
       describe("Metadata", () => {
         describe("Semantic type", () => {
           it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1109,7 +1078,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "semantic_type_change",
-              triggered_from: context.getTriggeredFrom(),
+              triggered_from: getTriggeredFrom(),
             });
             H.undoToast().should(
               "contain.text",
@@ -1136,7 +1105,7 @@ describe.each<Area>(areas)(
           });
 
           it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1189,7 +1158,7 @@ describe.each<Area>(areas)(
           });
 
           it("should allow to change the foreign key target", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1227,7 +1196,7 @@ describe.each<Area>(areas)(
           });
 
           it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1280,7 +1249,7 @@ describe.each<Area>(areas)(
           });
 
           it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1313,7 +1282,7 @@ describe.each<Area>(areas)(
           });
 
           it("should not let you change the type to 'Number' (metabase#16781)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1331,7 +1300,7 @@ describe.each<Area>(areas)(
             const viewportHeight = 400;
 
             cy.viewport(1280, viewportHeight);
-            context.visit({ databaseId: SAMPLE_DB_ID });
+            visit({ databaseId: SAMPLE_DB_ID });
             TablePicker.getTable("Reviews").scrollIntoView().click();
             TableSection.clickField("ID");
             FieldSection.getSemanticTypeInput().click();
@@ -1365,7 +1334,7 @@ describe.each<Area>(areas)(
                 tableName: "many_data_types",
               });
 
-              context.visit({ databaseId: WRITABLE_DB_ID });
+              visit({ databaseId: WRITABLE_DB_ID });
               TablePicker.getTable("Many Data Types").click();
               TableSection.clickField("Json → D");
               FieldSection.getSemanticTypeInput().click();
@@ -1407,7 +1376,7 @@ describe.each<Area>(areas)(
             cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
               visibility_type: "sensitive",
             });
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1422,7 +1391,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "visibility_change",
-              triggered_from: context.getTriggeredFrom(),
+              triggered_from: getTriggeredFrom(),
             });
             verifyAndCloseToast("Visibility of Tax updated");
             FieldSection.getVisibilityInput().should(
@@ -1457,7 +1426,7 @@ describe.each<Area>(areas)(
           });
 
           it("should let you change field visibility to 'Do not include'", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1503,7 +1472,7 @@ describe.each<Area>(areas)(
           });
 
           it("should let you change field visibility to 'Do not include' even if Preview is opened (metabase#61806)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1530,7 +1499,7 @@ describe.each<Area>(areas)(
           });
 
           it("should let you change field visibility to 'Only in detail views'", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1581,7 +1550,7 @@ describe.each<Area>(areas)(
             { tags: ["@external"] },
             () => {
               H.restore("mysql-8");
-              context.visit({
+              visit({
                 databaseId: MYSQL_DB_ID,
                 schemaId: MYSQL_DB_SCHEMA_ID,
                 tableId: ORDERS_ID,
@@ -1602,7 +1571,7 @@ describe.each<Area>(areas)(
 
         describe("Filtering", () => {
           it("should let you change filtering to 'Search box'", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1617,7 +1586,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "filtering_change",
-              triggered_from: context.getTriggeredFrom(),
+              triggered_from: getTriggeredFrom(),
             });
             verifyAndCloseToast("Filtering of Quantity updated");
 
@@ -1640,7 +1609,7 @@ describe.each<Area>(areas)(
           });
 
           it("should let you change filtering to 'Plain input box'", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1677,7 +1646,7 @@ describe.each<Area>(areas)(
             cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
               has_field_values: "none",
             });
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1712,7 +1681,7 @@ describe.each<Area>(areas)(
 
         describe("Display values", () => {
           it("should show tooltips explaining why remapping options are disabled", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: PRODUCTS_ID,
@@ -1764,7 +1733,7 @@ describe.each<Area>(areas)(
           });
 
           it("should let you change to 'Use foreign key' and change the target for field with fk", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -1789,7 +1758,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "display_values",
-              triggered_from: context.getTriggeredFrom(),
+              triggered_from: getTriggeredFrom(),
             });
             H.undoToast().should(
               "contain.text",
@@ -1836,7 +1805,7 @@ describe.each<Area>(areas)(
                     ({ body }) => {
                       const [schemaName] = body;
 
-                      context.visit({
+                      visit({
                         databaseId,
                         schemaId: `${databaseId}:${schemaName}`,
                         tableId: NUMBER_WITH_NULLS_ID,
@@ -1852,7 +1821,7 @@ describe.each<Area>(areas)(
                   H.expectUnstructuredSnowplowEvent({
                     event: "metadata_edited",
                     event_detail: "display_values",
-                    triggered_from: context.getTriggeredFrom(),
+                    triggered_from: getTriggeredFrom(),
                   });
                   H.undoToast().should(
                     "contain.text",
@@ -1891,7 +1860,7 @@ describe.each<Area>(areas)(
           });
 
           it("should correctly show remapped column value", () => {
-            context.visit({ databaseId: SAMPLE_DB_ID });
+            visit({ databaseId: SAMPLE_DB_ID });
 
             // edit "Product ID" column in "Orders" table
             TablePicker.getTable("Orders").click();
@@ -1948,7 +1917,7 @@ describe.each<Area>(areas)(
               5: "Perfecto",
             };
 
-            context.visit({ databaseId: SAMPLE_DB_ID });
+            visit({ databaseId: SAMPLE_DB_ID });
             // edit "Rating" values in "Reviews" table
             TablePicker.getTable("Reviews").click();
             TableSection.clickField("Rating");
@@ -2010,7 +1979,7 @@ describe.each<Area>(areas)(
           });
 
           it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: REVIEWS_ID,
@@ -2053,7 +2022,7 @@ describe.each<Area>(areas)(
           });
 
           it("should allow to map FK to date fields (metabase#7108)", () => {
-            context.visit({
+            visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -2120,7 +2089,7 @@ describe.each<Area>(areas)(
           });
 
           it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
-            context.visit({ databaseId: WRITABLE_DB_ID });
+            visit({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
 
             cy.log("json is unfolded initially and shows prefix");
@@ -2173,7 +2142,7 @@ describe.each<Area>(areas)(
             H.expectUnstructuredSnowplowEvent({
               event: "metadata_edited",
               event_detail: "json_unfolding",
-              triggered_from: context.getTriggeredFrom(),
+              triggered_from: getTriggeredFrom(),
             });
             H.undoToast().should(
               "contain.text",
@@ -2191,13 +2160,13 @@ describe.each<Area>(areas)(
             cy.button(/Sync triggered!/).should("be.visible");
 
             // Check json field is not unfolded
-            context.visit({ databaseId: WRITABLE_DB_ID });
+            visit({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
             TableSection.getField("Json → A").should("not.exist");
           });
 
           it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
-            context.visit({ databaseId: WRITABLE_DB_ID });
+            visit({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
             TableSection.clickField("Json → A");
 
@@ -2219,7 +2188,7 @@ describe.each<Area>(areas)(
           it("should smartly truncate prefix name", () => {
             const shortPrefix = "Short prefix";
             const longPrefix = "Legendarily long column prefix";
-            context.visit({ databaseId: WRITABLE_DB_ID });
+            visit({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
             TableSection.clickField("Json → A");
 
@@ -2286,7 +2255,7 @@ describe.each<Area>(areas)(
 
       describe("Formatting", () => {
         it("should let you to change field formatting", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2299,7 +2268,7 @@ describe.each<Area>(areas)(
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "formatting",
-            triggered_from: context.getTriggeredFrom(),
+            triggered_from: getTriggeredFrom(),
           });
           verifyAndCloseToast("Formatting of Quantity updated");
 
@@ -2316,7 +2285,7 @@ describe.each<Area>(areas)(
         });
 
         it("should only show currency formatting options for currency fields", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2331,7 +2300,7 @@ describe.each<Area>(areas)(
               cy.findByText("Currency label style").should("be.visible");
             });
 
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2361,7 +2330,7 @@ describe.each<Area>(areas)(
         });
 
         it("should save and obey field prefix formatting settings", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2401,7 +2370,7 @@ describe.each<Area>(areas)(
         });
 
         it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
-          context.visit({
+          visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2457,7 +2426,7 @@ describe.each<Area>(areas)(
       });
 
       it("shows toast errors and preview errors", () => {
-        context.visit({
+        visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2552,7 +2521,7 @@ describe.each<Area>(areas)(
         cy.log("JSON unfolding");
         // navigating away would cause onChange to be triggered in InputBlurChange and TextareaBlurChange
         // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
-        context.visit({ databaseId: WRITABLE_DB_ID });
+        visit({ databaseId: WRITABLE_DB_ID });
         TablePicker.getTable("Many Data Types").click();
         TableSection.clickField("Json");
         FieldSection.getUnfoldJsonInput().click();
@@ -2595,7 +2564,7 @@ describe.each<Area>(areas)(
       });
 
       it("allows to undo every action", () => {
-        context.visit({
+        visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
