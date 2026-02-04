@@ -77,10 +77,14 @@ export const VisualizationCard = ({
 
   const getHref = questionUrl ? () => questionUrl : undefined;
 
+  const onChangeCardAndRun = questionUrl
+    ? () => window.open(questionUrl, "_blank")
+    : undefined;
+
   const actionButtons = questionUrl ? (
     <Tooltip label="Open question">
       <Link to={questionUrl} target="_blank">
-        <Icon name="external" c="brand" />
+        <Icon name="external" />
       </Link>
     </Tooltip>
   ) : null;
@@ -99,6 +103,7 @@ export const VisualizationCard = ({
               showTitle={true}
               actionButtons={actionButtons}
               getHref={getHref}
+              onChangeCardAndRun={onChangeCardAndRun}
             />
           </Box>
         )}
