@@ -4541,7 +4541,7 @@
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (defn- test-handle-broken-subscription-notification!
-    [{:keys [disable-links? email-body-re match-email-body-re?]}]
+    [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
     (let [param {:name "Source"
                  :slug "source"
                  :id   "_SOURCE_PARAM_ID_"
@@ -4633,8 +4633,8 @@
                                        (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
                                                           (str/includes? title)))))
                                      (testing "The second email (about the broken slack pulse) was received"
-                                       (is (= match-email-body-re? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                                           (str/includes? email-body-re))))))]
+                                       (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                                                (str/includes? email-body-pattern))))))]
               (testing "The dashboard parameters were removed"
                 (is (empty? parameters)))
               (testing "The broken pulse was archived"
@@ -4650,21 +4650,21 @@
 
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
     (test-handle-broken-subscription-notification!
-     {:disable-links?       false
-      :email-body-re        "#my-channel"
-      :match-email-body-re? true}))
+     {:disable-links?            false
+      :email-body-pattern        "#my-channel"
+      :match-email-body-pattern? true}))
 
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
     (test-handle-broken-subscription-notification!
-     {:disable-links?       false
-      :email-body-re        "href="
-      :match-email-body-re? true}))
+     {:disable-links?            false
+      :email-body-pattern        "href="
+      :match-email-body-pattern? true}))
 
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
     (test-handle-broken-subscription-notification!
-     {:disable-links?       true
-      :email-body-re        "href="
-      :match-email-body-re? false})))
+     {:disable-links?            true
+      :email-body-pattern        "href="
+      :match-email-body-pattern? false})))
 
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
