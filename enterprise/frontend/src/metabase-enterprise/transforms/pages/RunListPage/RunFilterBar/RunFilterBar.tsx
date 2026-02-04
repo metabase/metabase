@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
+import type { RelativeIntervalDirection } from "metabase/querying/common/types";
 import { Group } from "metabase/ui";
 import type {
   Transform,

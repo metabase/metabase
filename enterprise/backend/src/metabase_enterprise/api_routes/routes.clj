@@ -16,6 +16,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
+   [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.data-studio.api]
@@ -112,6 +113,7 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
+   "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :data-studio)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)

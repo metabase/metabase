@@ -9,10 +9,10 @@ import {
 import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
+import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 

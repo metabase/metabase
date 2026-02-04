@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel estimate-sanity-test
+(deftest ^:parallel estimate-simplified-models-test
   (testing "known models calculate correct costs"
     (is (=? (=?/approx [0.030 0.0001])
             (costs/estimate {:model "anthropic/claude-opus-4-5"
@@ -36,7 +36,7 @@
 (deftest ^:parallel estimate-zero-tokens-test
   (testing "zero tokens returns zero cost"
     (is (= 0.0
-           (costs/estimate {:model "anthropic/claude-sonnet-4-5"
+           (costs/estimate {:model "claude-sonnet-4-5-20250929"
                             :prompt 0
                             :completion 0})))))
 
