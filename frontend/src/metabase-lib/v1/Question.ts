@@ -680,12 +680,10 @@ class Question {
       const origCardSerialized =
         originalQuestion &&
         originalQuestion._serializeForUrl({
-          includeEntityId: false,
           includeDatasetQuery: false,
           includeOriginalCardId: false,
         });
       const currentCardSerialized = this._serializeForUrl({
-        includeEntityId: false,
         includeDatasetQuery: false,
         includeOriginalCardId: false,
       });
@@ -727,7 +725,6 @@ class Question {
   static serializeCardForUrl(
     card: CardObject,
     options: {
-      includeEntityId?: boolean;
       includeDatasetQuery?: boolean;
       includeOriginalCardId?: boolean;
       includeDisplayIsLocked?: boolean;
@@ -735,7 +732,6 @@ class Question {
     },
   ) {
     const {
-      includeEntityId = true,
       includeDatasetQuery = true,
       includeOriginalCardId = true,
       includeDisplayIsLocked = false,
@@ -747,7 +743,6 @@ class Question {
       description: card.description,
       collection_id: card.collection_id,
       dashboard_id: card.dashboard_id,
-      ...(includeEntityId ? { entity_id: card.entity_id } : {}),
       ...(includeDatasetQuery ? { dataset_query: card.dataset_query } : {}),
       display: card.display,
       ...(_.isEmpty(card.parameters)
@@ -784,7 +779,6 @@ class Question {
   // Internal methods
   _serializeForUrl(
     options: {
-      includeEntityId?: boolean;
       includeDatasetQuery?: boolean;
       includeOriginalCardId?: boolean;
       includeDisplayIsLocked?: boolean;
