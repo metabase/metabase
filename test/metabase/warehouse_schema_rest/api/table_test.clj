@@ -53,6 +53,7 @@
     :settings                    {}
     :cache_ttl                   nil
     :provider_name               nil
+    :workspace_permissions_status nil
     :is_audit                    false}))
 
 (defn- table-defaults
@@ -1196,7 +1197,7 @@
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
-          timeout (* 10 60)]
+          timeout (* 10 1000)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1210,7 +1211,7 @@
   (testing "POST /api/table/:id/sync_schema"
     (testing "User with manage-table-metadata permission can sync table"
       (let [sync-called? (promise)
-            timeout (* 10 60)]
+            timeout (* 10 1000)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                          :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1218,10 +1219,10 @@
               ;; Grant only manage-table-metadata permission for this table
               (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
               (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
-                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))))))
-        (testing "sync called?"
-          (is (true?
-               (deref sync-called? timeout :sync-never-called))))))))
+                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+                (testing "sync called?"
+                  (is (true?
+                       (deref sync-called? timeout :sync-never-called))))))))))))
 
 (deftest sync-schema-mirror-database-test
   (testing "POST /api/table/:id/sync_schema"

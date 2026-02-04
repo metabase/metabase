@@ -491,6 +491,42 @@
       (is (every? #(= "Custom" (:display-name %)) cols))
       (is (every? #(= "model desc" (:description %)) cols)))))
 
+(deftest ^:parallel card->underlying-query-attaches-result-metadata-test
+  (let [venues-query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        result-meta (lib/returned-columns venues-query)
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [{:id 1
+                      :name "My Card"
+                      :type :question
+                      :database-id (meta/id)
+                      :dataset-query venues-query
+                      :result-metadata result-meta}]})
+        card (lib.metadata/card mp 1)
+        underlying (lib.card/card->underlying-query mp card)
+        last-stage (last (:stages underlying))]
+    (testing "result-metadata is attached as :lib/stage-metadata on the last stage"
+      (is (some? (:lib/stage-metadata last-stage)))
+      (is (= (count result-meta)
+             (count (:columns (:lib/stage-metadata last-stage)))))))
+  (testing "multi-stage query: metadata attaches to the last stage, not the first"
+    (let [two-stage-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                              lib/append-stage)
+          result-meta (lib/returned-columns two-stage-query)
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1
+                        :name "Two Stage Card"
+                        :type :question
+                        :database-id (meta/id)
+                        :dataset-query two-stage-query
+                        :result-metadata result-meta}]})
+          card (lib.metadata/card mp 1)
+          underlying (lib.card/card->underlying-query mp card)
+          stages (:stages underlying)]
+      (is (nil? (:lib/stage-metadata (first stages))))
+      (is (some? (:lib/stage-metadata (last stages)))))))
+
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
     (binding [lib.metadata.calculation/*display-name-style* :long]
@@ -671,6 +707,113 @@
                         :result-metadata (lib/returned-columns question-query)}]})
           adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
       (is (some? (lib/returned-columns adhoc-query))))))
+
+(deftest ^:parallel merge-model-metadata-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :display-name "Custom Foo"
+                         :description "A custom description"
+                         :semantic-type :type/Quantity)]
+    (testing "result-cols only, no model-cols"
+      (is (= [result-col]
+             (lib.card/merge-model-metadata [result-col] [] false))))
+    (testing "model-cols only, no result-cols"
+      (is (= [model-col]
+             (lib.card/merge-model-metadata [] [model-col] false))))
+    (testing "both present — model metadata merged onto result"
+      (is (=? [model-col]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
+(deftest ^:parallel merge-model-metadata-temporal-and-aggregation-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :display-name "Custom Foo"
+                         :semantic-type :type/Quantity)]
+    (testing "temporal unit appended to display name"
+      (let [temporal-result (assoc result-col
+                                   :base-type :type/Date
+                                   :effective-type :type/Date
+                                   :metabase.lib.field/temporal-unit :month)]
+        (is (=? [{:display-name "Custom Foo: Month"}]
+                (lib.card/merge-model-metadata [temporal-result] [model-col] false)))))
+    (testing "aggregation source columns are not overridden by model metadata"
+      (let [agg-result (assoc result-col
+                              :display-name "Sum of Foo"
+                              :lib/source :source/aggregations)]
+        (is (=? [{:display-name "Sum of Foo"}]
+                (lib.card/merge-model-metadata [agg-result] [model-col] false)))))))
+
+(deftest ^:parallel merge-model-metadata-binning-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :base-type :type/Float
+                    :effective-type :type/Float
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1
+                    :metabase.lib.field/binning {:strategy :num-bins :num-bins 10}}
+        model-col (assoc result-col
+                         :display-name "Custom Foo"
+                         :semantic-type :type/Quantity)]
+    (testing "binning appended to display name"
+      (is (=? [{:display-name "Custom Foo: 10 bins"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false)))))
+  (testing "bin-width with coordinate semantic type includes degree symbol"
+    (let [result-col {:lib/type :metadata/column
+                      :name "LAT"
+                      :base-type :type/Float
+                      :effective-type :type/Float
+                      :display-name "Latitude"
+                      :semantic-type :type/Latitude
+                      :lib/source :source/card
+                      :lib/card-id 1
+                      :metabase.lib.field/binning {:strategy :bin-width :bin-width 1.0}}
+          model-col (assoc result-col
+                           :display-name "Custom Lat")]
+      (is (=? [{:display-name "Custom Lat: 1°"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+
+(deftest ^:parallel merge-model-metadata-preserved-keys-test
+  (let [result-col {:lib/type :metadata/column
+                    :name "FOO"
+                    :id 100
+                    :base-type :type/Integer
+                    :effective-type :type/Integer
+                    :display-name "Foo"
+                    :lib/source :source/card
+                    :lib/card-id 1}
+        model-col (assoc result-col
+                         :id 200
+                         :display-name "Custom Foo"
+                         :settings {:show_mini_bar true}
+                         :visibility-type :details-only
+                         :fk-target-field-id 42
+                         :lib/source-display-name "Original Foo")]
+    (testing "all preserved keys flow from model to result"
+      (is (=? [{:display-name "Custom Foo"
+                :settings {:show_mini_bar true}
+                :visibility-type :details-only
+                :fk-target-field-id 42
+                :lib/source-display-name "Original Foo"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))
+    (testing "native model also preserves :id"
+      (is (=? [{:id 200}]
+              (lib.card/merge-model-metadata [result-col] [model-col] true))))
+    (testing "non-native model does not override :id"
+      (is (=? [{:id 100}]
+              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
 
 (deftest ^:parallel fallback-display-name-test
   (is (= "Question 42" (lib.card/fallback-display-name 42)))

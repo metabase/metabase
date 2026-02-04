@@ -96,7 +96,7 @@
    [:map
 
     [:type [:= :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid"]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid" :date-time "date-time"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])

@@ -468,7 +468,7 @@ describe("issue 59830", () => {
 
     H.createQuestion(questionDetails, { visitQuestion: true });
     cy.icon("warning").should("not.exist");
-    cy.findByTestId("visualization-placeholder").should("be.visible");
+    cy.findByTestId("chart-container").should("be.visible");
   });
 });
 
@@ -847,5 +847,68 @@ describe("UXW-2696", () => {
         getChartPoints().should("have.length.greaterThan", 0);
       });
     });
+  });
+});
+
+describe("issue #68819", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when renaming an aggregation changes sibling column deduplication (metabase#68819)", () => {
+    // Create a question with two Sum of Total aggregations
+    // These will be deduplicated as "sum" and "sum_2"
+    const questionDetails: StructuredQuestionDetails = {
+      display: "bar" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
+        ],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+      },
+      visualization_settings: {
+        "stackable.stack_type": "stacked",
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+        "graph.metrics": ["sum", "sum_2"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.echartsContainer().should("be.visible");
+
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByTestId("aggregate-step")
+      .findAllByTestId("notebook-cell-item")
+      .first()
+      .click();
+
+    cy.findByLabelText("Back").click();
+
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.nameInput().clear().type("Sum");
+    H.popover().button("Update").click();
+
+    H.saveSavedQuestion();
+
+    cy.button("Visualize").click();
+
+    // The bug would cause: TypeError: cannot read properties of undefined (reading 'name')
+    H.echartsContainer().should("be.visible");
+    cy.findByTestId("query-builder-main")
+      .findByText(/error/i)
+      .should("not.exist");
+
+    cy.reload();
+    H.echartsContainer().should("be.visible");
   });
 });
