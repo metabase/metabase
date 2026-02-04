@@ -88,9 +88,8 @@
   [results]
   (let [transform-ids (->> results
                            (filter #(= "transform" (:type %)))
-                           (map :id)
-                           seq)]
-    (if-not transform-ids
+                           (map :id))]
+    (if-not (seq transform-ids)
       results
       (let [readable-ids (->> (t2/select :model/Transform :id [:in transform-ids])
                               transforms.util/add-source-readable
