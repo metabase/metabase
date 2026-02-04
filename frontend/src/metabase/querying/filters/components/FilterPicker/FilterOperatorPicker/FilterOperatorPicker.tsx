@@ -13,7 +13,7 @@ interface FilterOperatorPickerProps<T extends Lib.FilterOperator> {
   onChange: (operator: T) => void;
 }
 
-export function FilterOperatorPicker<T extends string>({
+export function FilterOperatorPicker<T extends Lib.FilterOperator>({
   value,
   options,
   onChange,

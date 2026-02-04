@@ -18,13 +18,12 @@ export function SimpleDateFilterPicker({
   filter,
   onChange,
 }: SimpleDateFilterPickerProps) {
-  const { value, availableOperators, availableUnits, getFilterClause } =
-    useDateFilter({
-      query,
-      stageIndex,
-      column,
-      filter,
-    });
+  const { value, availableUnits, getFilterClause } = useDateFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleChange = (value: DatePickerValue | undefined) => {
     if (value) {
@@ -38,7 +37,6 @@ export function SimpleDateFilterPicker({
     <div data-testid="date-filter-picker">
       <SimpleDatePicker
         value={value}
-        availableOperators={availableOperators}
         availableUnits={availableUnits}
         onChange={handleChange}
       />

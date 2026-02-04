@@ -42,7 +42,7 @@ export function useCoordinateFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
+    filterParts ? filterParts.operator : getDefaultOperator(),
   );
   const [values, setValues] = useState(
     getDefaultValues(operator, filterParts ? filterParts.values : []),
