@@ -14,7 +14,7 @@ export function binning(
 }
 
 export function availableBinningStrategies(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _dimension: DimensionMetadata,
 ): BinningStrategy[] {
@@ -22,13 +22,11 @@ export function availableBinningStrategies(
 }
 
 export function isBinnable(
-  metricDefinition: MetricDefinition,
+  definition: MetricDefinition,
   source: SourceMetadata,
   dimension: DimensionMetadata,
 ): boolean {
-  return (
-    availableBinningStrategies(metricDefinition, source, dimension).length > 0
-  );
+  return availableBinningStrategies(definition, source, dimension).length > 0;
 }
 
 export function withBinning(
@@ -39,17 +37,13 @@ export function withBinning(
 }
 
 export function withDefaultBinning(
-  metricDefinition: MetricDefinition,
+  definition: MetricDefinition,
   source: SourceMetadata,
   dimension: DimensionMetadata,
 ): DimensionMetadata {
-  const strategies = availableBinningStrategies(
-    metricDefinition,
-    source,
-    dimension,
-  );
+  const strategies = availableBinningStrategies(definition, source, dimension);
   const defaultStrategy = strategies.find(
-    (strategy) => displayInfo(metricDefinition, strategy).default,
+    (strategy) => displayInfo(definition, strategy).default,
   );
   return defaultStrategy ? withBinning(dimension, defaultStrategy) : dimension;
 }

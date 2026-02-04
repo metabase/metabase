@@ -18,33 +18,33 @@ import type {
 } from "./types";
 
 export function filters(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
 ): FilterClause[] {
   throw new Error("Not implemented");
 }
 
 export function filterableMetrics(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
 ): MetricMetadata[] {
   throw new Error("Not implemented");
 }
 
 export function filterableMeasures(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
 ): MeasureMetadata[] {
   throw new Error("Not implemented");
 }
 
 export function filterableDimensions(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
 ): DimensionMetadata[] {
   throw new Error("Not implemented");
 }
 
 export function filter(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filter: FilterClause,
 ): MetricDefinition {
@@ -56,7 +56,7 @@ export function stringFilterClause(_parts: StringFilterParts): FilterClause {
 }
 
 export function stringFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): StringFilterParts | null {
@@ -68,7 +68,7 @@ export function numberFilterClause(_parts: NumberFilterParts): FilterClause {
 }
 
 export function numberFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): NumberFilterParts | null {
@@ -82,7 +82,7 @@ export function coordinateFilterClause(
 }
 
 export function coordinateFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): CoordinateFilterParts | null {
@@ -94,7 +94,7 @@ export function booleanFilterClause(_parts: BooleanFilterParts): FilterClause {
 }
 
 export function booleanFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): BooleanFilterParts | null {
@@ -108,7 +108,7 @@ export function specificDateFilterClause(
 }
 
 export function specificDateFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
@@ -122,7 +122,7 @@ export function relativeDateFilterClause(
 }
 
 export function relativeDateFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
@@ -136,7 +136,7 @@ export function excludeDateFilterClause(
 }
 
 export function excludeDateFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
@@ -148,7 +148,7 @@ export function timeFilterClause(_parts: TimeFilterParts): FilterClause {
 }
 
 export function timeFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): TimeFilterParts | null {
@@ -160,7 +160,7 @@ export function defaultFilterClause(_parts: DefaultFilterParts): FilterClause {
 }
 
 export function defaultFilterParts(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _filterClause: FilterClause,
 ): DefaultFilterParts | null {
@@ -168,19 +168,19 @@ export function defaultFilterParts(
 }
 
 export function filterParts(
-  metricDefinition: MetricDefinition,
+  definition: MetricDefinition,
   source: SourceMetadata,
   filterClause: FilterClause,
 ): FilterParts | null {
   return (
-    stringFilterParts(metricDefinition, source, filterClause) ??
-    numberFilterParts(metricDefinition, source, filterClause) ??
-    coordinateFilterParts(metricDefinition, source, filterClause) ??
-    booleanFilterParts(metricDefinition, source, filterClause) ??
-    specificDateFilterParts(metricDefinition, source, filterClause) ??
-    relativeDateFilterParts(metricDefinition, source, filterClause) ??
-    excludeDateFilterParts(metricDefinition, source, filterClause) ??
-    timeFilterParts(metricDefinition, source, filterClause) ??
-    defaultFilterParts(metricDefinition, source, filterClause)
+    stringFilterParts(definition, source, filterClause) ??
+    numberFilterParts(definition, source, filterClause) ??
+    coordinateFilterParts(definition, source, filterClause) ??
+    booleanFilterParts(definition, source, filterClause) ??
+    specificDateFilterParts(definition, source, filterClause) ??
+    relativeDateFilterParts(definition, source, filterClause) ??
+    excludeDateFilterParts(definition, source, filterClause) ??
+    timeFilterParts(definition, source, filterClause) ??
+    defaultFilterParts(definition, source, filterClause)
   );
 }

@@ -27,7 +27,7 @@ export function fromJsDefinition(
 }
 
 export function toJsDefinition(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
 ): JsMetricDefinition {
   throw new Error("Not implemented");
 }

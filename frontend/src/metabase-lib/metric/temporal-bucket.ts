@@ -14,7 +14,7 @@ export function temporalBucket(
 }
 
 export function availableTemporalBuckets(
-  _metricDefinition: MetricDefinition,
+  _definition: MetricDefinition,
   _source: SourceMetadata,
   _dimension: DimensionMetadata,
 ): TemporalBucket[] {
@@ -22,13 +22,11 @@ export function availableTemporalBuckets(
 }
 
 export function isTemporalBucketable(
-  metricDefinition: MetricDefinition,
+  definition: MetricDefinition,
   source: SourceMetadata,
   dimension: DimensionMetadata,
 ): boolean {
-  return (
-    availableTemporalBuckets(metricDefinition, source, dimension).length > 0
-  );
+  return availableTemporalBuckets(definition, source, dimension).length > 0;
 }
 
 export function withTemporalBucket(
@@ -39,21 +37,21 @@ export function withTemporalBucket(
 }
 
 export function withDefaultTemporalBucket(
-  metricDefinition: MetricDefinition,
+  definition: MetricDefinition,
   source: SourceMetadata,
   dimension: DimensionMetadata,
 ): DimensionMetadata {
-  const bucket = defaultTemporalBucket(metricDefinition, source, dimension);
+  const bucket = defaultTemporalBucket(definition, source, dimension);
   return bucket ? withTemporalBucket(dimension, bucket) : dimension;
 }
 
 export function defaultTemporalBucket(
-  metricDefinition: MetricDefinition,
+  definition: MetricDefinition,
   source: SourceMetadata,
   dimension: DimensionMetadata,
 ): TemporalBucket | null {
-  const buckets = availableTemporalBuckets(metricDefinition, source, dimension);
-  const bucket = buckets.find((b) => displayInfo(metricDefinition, b).default);
+  const buckets = availableTemporalBuckets(definition, source, dimension);
+  const bucket = buckets.find((b) => displayInfo(definition, b).default);
 
   return bucket ?? null;
 }
