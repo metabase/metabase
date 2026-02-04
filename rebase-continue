@@ -1,3 +1,12 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "onto",
+        "integration-embedding-onboarding-improvements"
+      ],
+      "branch": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding"
+    }
+  ]
 }
