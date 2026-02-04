@@ -19,12 +19,7 @@ type UrlBuilderOpts = {
 
 export function getUrl(
   question: Question,
-  {
-    originalQuestion,
-    query,
-    includeDisplayIsLocked,
-    creationType,
-  }: UrlBuilderOpts = {},
+  { originalQuestion, query, creationType }: UrlBuilderOpts = {},
 ) {
   question = question.omitTransientCardIds();
 
@@ -34,7 +29,7 @@ export function getUrl(
   ) {
     return Urls.question(null, {
       hash: question._serializeForUrl({
-        includeDisplayIsLocked,
+        includeDisplayIsLocked: true,
         creationType,
       }),
       query,
