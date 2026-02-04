@@ -1,6 +1,7 @@
 (ns metabase.sql-tools.core
   (:require
-   [metabase.sql-tools.settings :as sql-tools.settings]))
+   [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.util.malli :as mu]))
 
 (defn- parser-dispatch [parser & _args] parser)
 
@@ -48,14 +49,15 @@
   {:arglists '([parser driver sql-string])}
   parser-dispatch)
 
-(defn field-references
+(mu/defn field-references :- :metabase.sql-tools.macaw.references/field-references
   "Return field references for SQL string.
 
   Returns a map with:
   - :used-fields - set of field specs
   - :returned-fields - vector of field specs
   - :errors - set of validation errors"
-  [driver sql-string]
+  [driver :- :keyword
+   sql-string :- :string]
   (field-references-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string))
 
 (defmulti validate-query-impl
