@@ -232,36 +232,36 @@
                        (set (map :filename @image-calls))))
                 ;; Check image bytes match fake PNG
                 (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
-                            @image-calls)))))))))
+                            @image-calls))))))))))
 
-  (deftest user-not-linked-sends-auth-message-test
-    (testing "POST /events with unlinked user sends ephemeral auth message"
-      (with-slackbot-setup
-        (let [event-body {:type "event_callback"
-                          :event {:type "message"
-                                  :text "Hello!"
-                                  :user "U-UNKNOWN-USER"
-                                  :channel "C123"
-                                  :ts "1234567890.000001"}}]
-          (with-slackbot-mocks
-            {:ai-text "Should not be called"
-             :user-id ::no-user} ;; Simulate no linked user
-            (fn [{:keys [post-calls ephemeral-calls]}]
-              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
-                                        (slack-request-options event-body)
-                                        event-body)]
-                (is (= "ok" response))
+(deftest user-not-linked-sends-auth-message-test
+  (testing "POST /events with unlinked user sends ephemeral auth message"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello!"
+                                :user "U-UNKNOWN-USER"
+                                :channel "C123"
+                                :ts "1234567890.000001"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"
+           :user-id ::no-user} ;; Simulate no linked user
+          (fn [{:keys [post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
               ;; Wait for ephemeral message
-                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
-                         :done? true?
-                         :timeout-ms 5000})
-                (testing "no regular messages should be posted"
-                  (is (= 0 (count @post-calls))))
-                (testing "ephemeral auth message sent to user"
-                  (is (=? [{:user "U-UNKNOWN-USER"
-                            :channel "C123"
-                            :text #".*link your slack account.*"}]
-                          @ephemeral-calls)))))))))))
+              (u/poll {:thunk #(= 1 (count @ephemeral-calls))
+                       :done? true?
+                       :timeout-ms 5000})
+              (testing "no regular messages should be posted"
+                (is (= 0 (count @post-calls))))
+              (testing "ephemeral auth message sent to user"
+                (is (=? [{:user "U-UNKNOWN-USER"
+                          :channel "C123"
+                          :text #".*link your slack account.*"}]
+                        @ephemeral-calls))))))))))
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
