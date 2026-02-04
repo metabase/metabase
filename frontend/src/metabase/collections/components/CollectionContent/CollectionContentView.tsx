@@ -83,6 +83,7 @@ const CollectionContentViewInner = ({
   canCreateUploadInDb: boolean;
   visibleColumns?: CollectionContentTableColumn[];
 }) => {
+  console.log("CollectionContentView", { visibleColumns });
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
     null,
@@ -310,6 +311,7 @@ const CollectionContentViewInner = ({
             clear={clear}
             handleMove={handleMove}
             handleCopy={handleCopy}
+            visibleColumns={visibleColumns}
           />
           <CollectionBulkActions
             collection={collection}

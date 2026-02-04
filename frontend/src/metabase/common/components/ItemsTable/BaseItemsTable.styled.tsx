@@ -210,4 +210,15 @@ export const TBody = styled.tbody`
       }
     }
   }
+  tr:first-child {
+    td {
+      &:last-child {
+        border-start-end-radius: 8px;
+      }
+
+      &:first-of-type {
+        border-start-start-radius: 8px;
+      }
+    }
+  }
 `;

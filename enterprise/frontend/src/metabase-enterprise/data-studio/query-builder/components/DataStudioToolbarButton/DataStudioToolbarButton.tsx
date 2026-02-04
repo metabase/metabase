@@ -19,6 +19,8 @@ export const DataStudioToolbarButton = ({
     dispatch(openUrl(Urls.dataStudioMetric(question.id())));
   }, [question, dispatch]);
 
+  console.log({ isMetric, hasDataStuioAccess });
+
   if (!isMetric || !hasDataStuioAccess) {
     return null;
   }

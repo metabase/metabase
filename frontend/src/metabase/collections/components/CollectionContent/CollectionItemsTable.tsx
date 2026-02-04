@@ -18,7 +18,10 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import {
+  isLibraryCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -231,6 +234,8 @@ const CollectionItemsTableContentInner = ({
     [visibleColumns],
   );
 
+  const isLibrary = isLibraryCollection(collection);
+
   const hasPagination: boolean = total ? total > pageSize : false;
 
   const unselected = getIsSelected
@@ -271,6 +276,7 @@ const CollectionItemsTableContentInner = ({
         onSelectNone={clear}
         onClick={onClick}
         visibleColumnsMap={visibleColumnsMap}
+        headless={isLibrary}
       />
       <div
         className={cx(

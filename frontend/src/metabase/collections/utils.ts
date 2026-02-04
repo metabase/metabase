@@ -120,9 +120,9 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 }
 
 export function isLibraryCollection(
-  collection: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type">,
 ): boolean {
-  return PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type) != null;
+  return PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection?.type) != null;
 }
 
 export function isExamplesCollection(collection: Collection): boolean {

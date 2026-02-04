@@ -2,12 +2,13 @@ import { useCallback } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import type { OnToggleSelectedWithItem } from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { getIcon } from "metabase/lib/icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { getCanSelect } from "./utils";
 
 export type ItemRendererProps = {
   item: CollectionItem;
@@ -38,9 +39,7 @@ export const DefaultItemRenderer = ({
   onClick,
   visibleColumnsMap,
 }: ItemRendererProps) => {
-  const canSelect =
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    typeof onToggleSelected === "function";
+  const canSelect = getCanSelect(collection, onToggleSelected);
 
   const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
@@ -75,6 +74,7 @@ export const DefaultItemRenderer = ({
           testIdPrefix={testIdPrefix}
           onClick={onClick}
           includeDescription={!visibleColumnsMap["description"]}
+          includeTypeIcon={visibleColumnsMap["typeWithName"]}
         />
       )}
       {visibleColumnsMap["description"] && (
@@ -99,6 +99,9 @@ export const DefaultItemRenderer = ({
         />
       )}
       {visibleColumnsMap["archive"] && <Columns.Archive.Cell item={item} />}
+      {visibleColumnsMap["dataStudioLink"] && (
+        <Columns.DataStudioLink.Cell item={item} />
+      )}
       <Columns.RightEdge.Cell />
     </>
   );

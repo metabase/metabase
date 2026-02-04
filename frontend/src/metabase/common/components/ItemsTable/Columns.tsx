@@ -13,9 +13,9 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO, PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Group, Icon, Tooltip } from "metabase/ui";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,
@@ -36,6 +36,11 @@ import {
   RowActionsContainer,
   TableColumn,
 } from "./BaseItemsTable.styled";
+import { getIcon } from "metabase/lib/icon";
+import { ToolbarButton } from "../ToolbarButton";
+import { useDispatch } from "metabase/lib/redux";
+import { openUrl } from "metabase/redux/app";
+import { Urls } from "metabase-enterprise/urls";
 
 type HeaderProps = Omit<
   SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
@@ -143,8 +148,14 @@ export const Columns = {
     ),
   },
   Name: {
-    Col: ({ isInDragLayer }: { isInDragLayer: boolean }) => (
-      <col style={{ width: isInDragLayer ? "10rem" : undefined }} />
+    Col: ({
+      isInDragLayer,
+      width,
+    }: {
+      isInDragLayer: boolean;
+      width?: string;
+    }) => (
+      <col style={{ width: isInDragLayer ? "10rem" : width || undefined }} />
     ),
     Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
@@ -159,11 +170,13 @@ export const Columns = {
       item,
       testIdPrefix = "table",
       includeDescription = true,
+      includeTypeIcon = false,
       onClick,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
+      includeTypeIcon?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
       const tc = useTranslateContent();
@@ -171,22 +184,25 @@ export const Columns = {
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={tc(item.name)} variant="list" />
-            <PLUGIN_MODERATION.ModerationStatusIcon
-              size={16}
-              status={item.moderated_status}
-            />
-            {item.description && includeDescription && (
-              <DescriptionIcon
-                name="info"
+            <Group align="center" gap="sm">
+              {includeTypeIcon && <Icon name={getIcon(item).name} c="brand" />}
+              <EntityItem.Name name={tc(item.name)} variant="list" />
+              <PLUGIN_MODERATION.ModerationStatusIcon
                 size={16}
-                tooltip={
-                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                    {tc(item.description)}
-                  </Markdown>
-                }
+                status={item.moderated_status}
               />
-            )}
+              {item.description && includeDescription && (
+                <DescriptionIcon
+                  name="info"
+                  size={16}
+                  tooltip={
+                    <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                      {tc(item.description)}
+                    </Markdown>
+                  }
+                />
+              )}
+            </Group>
           </ItemLinkComponent>
         </ItemNameCell>
       );
@@ -376,5 +392,28 @@ export const Columns = {
     Header: () => <th></th>,
     Col: () => <col style={{ width: "1rem" }} />,
     Cell: () => <ItemCell />,
+  },
+  DataStudioLink: {
+    Col: () => <col style={{ width: "100px" }} />,
+    Cell: ({ item }: { item: CollectionItem }) => {
+      const dispatch = useDispatch();
+
+      const handleClick = () => {
+        dispatch(openUrl(Urls.dataStudioTable(item.id)));
+      };
+
+      return (
+        <ItemCell>
+          <RowActionsContainer>
+            <ToolbarButton
+              onClick={handleClick}
+              icon="data_studio"
+              aria-label={t`Open in Data Studio`}
+              tooltipLabel={t`Open in Data Studio`}
+            />
+          </RowActionsContainer>
+        </ItemCell>
+      );
+    },
   },
 };

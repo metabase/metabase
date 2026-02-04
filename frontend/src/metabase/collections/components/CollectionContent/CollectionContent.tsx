@@ -21,6 +21,7 @@ import type {
 } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
+import { isLibraryCollection } from "metabase/collections/utils";
 
 export function CollectionContent({
   collectionId,
@@ -83,6 +84,13 @@ export function CollectionContent({
     return <LoadingAndErrorWrapper loading />;
   }
 
+  const isLibrary = isLibraryCollection(collection);
+  const visibleColumns = isLibrary
+    ? ["typeWithName", "name", "description", "dataStudioLink"]
+    : undefined;
+
+  console.log({ isLibrary, visibleColumns });
+
   return (
     <CollectionContentView
       databases={databases}
@@ -96,6 +104,7 @@ export function CollectionContent({
       uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
       canCreateUploadInDb={canCreateUploadInDb}
+      visibleColumns={visibleColumns}
     />
   );
 }

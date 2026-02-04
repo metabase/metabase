@@ -1,7 +1,12 @@
+import { Collection } from "metabase-types/api";
 import type {
   CollectionContentTableColumn,
   CollectionContentTableColumnsMap,
 } from "metabase/collections/components/CollectionContent";
+import {
+  isLibraryCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import { type BreakpointName, breakpoints } from "metabase/ui/theme";
 
 export interface ResponsiveProps {
@@ -24,3 +29,11 @@ export const getVisibleColumnsMap = (
     result[item] = true;
     return result;
   }, {} as CollectionContentTableColumnsMap);
+
+export const getCanSelect = (
+  collection?: Collection,
+  onToggleSelected?: unknown,
+) =>
+  (collection?.can_write || isRootTrashCollection(collection)) &&
+  !isLibraryCollection(collection) &&
+  typeof onToggleSelected === "function";

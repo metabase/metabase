@@ -10,6 +10,7 @@ import type {
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
 import {
+  isLibraryCollection,
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
@@ -33,7 +34,7 @@ import {
   Table,
 } from "../BaseItemsTable.styled";
 import { Columns } from "../Columns";
-import type { ResponsiveProps } from "../utils";
+import { getCanSelect, type ResponsiveProps } from "../utils";
 
 export type SortableColumnHeaderProps<SortColumn extends string> = {
   name?: SortColumn;
@@ -156,9 +157,8 @@ export const BaseItemsTable = ({
   onClick,
   ...props
 }: BaseItemsTableProps) => {
-  const canSelect =
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    typeof onToggleSelected === "function";
+  const canSelect = getCanSelect(collection, onToggleSelected);
+
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
@@ -168,13 +168,19 @@ export const BaseItemsTable = ({
           {canSelect && <Columns.Select.Col />}
           {visibleColumnsMap["type"] && <Columns.Type.Col />}
           {visibleColumnsMap["name"] && (
-            <Columns.Name.Col isInDragLayer={isInDragLayer} />
+            <Columns.Name.Col
+              isInDragLayer={isInDragLayer}
+              width={visibleColumnsMap["typeWithName"] ? "24rem" : undefined}
+            />
           )}
           {visibleColumnsMap["description"] && <Columns.Description.Col />}
           {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
           {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
           {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
           {visibleColumnsMap["archive"] && <Columns.Archive.Col />}
+          {visibleColumnsMap["dataStudioLink"] && (
+            <Columns.DataStudioLink.Col />
+          )}
           <Columns.RightEdge.Col />
         </colgroup>
       )}

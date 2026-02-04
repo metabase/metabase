@@ -22,7 +22,7 @@ export type NavbarLibrarySectionProps = {
 export type LibraryCollectionType = "root" | "data" | "metrics";
 
 export type DataStudioToolbarButtonProps = {
-  question: Question;
+  question: Pick<Question, "type" | "id">;
 };
 
 type DataStudioPlugin = {
