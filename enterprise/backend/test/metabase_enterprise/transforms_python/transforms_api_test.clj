@@ -88,7 +88,7 @@
                                :source :body)))))))))))))
 
 (deftest update-python-transform-feature-flag-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "Updating a python transform requires both :transforms and :transforms-python features"
         (mt/with-temp [:model/Transform {id :id
@@ -109,7 +109,7 @@
                   "Should return 403 without any features"))))))))
 
 (deftest run-python-transform-feature-flag-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "Running a python transform requires both :transforms and :transforms-python features"
         (mt/with-premium-features #{:transforms :transforms-python}
