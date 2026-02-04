@@ -1,6 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
+import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -9,10 +8,23 @@ import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
+import type { Segment, User } from "metabase-types/api";
 
 import { trackReferenceXRayClicked } from "../analytics";
 
-const SegmentSidebar = ({ segment, user, style, className }) => (
+interface SegmentSidebarProps {
+  segment: Segment;
+  user?: User | null;
+  className?: string;
+  style?: CSSProperties;
+}
+
+const SegmentSidebar = ({
+  segment,
+  user,
+  style,
+  className,
+}: SegmentSidebarProps) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div>
@@ -63,13 +75,6 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
     </ul>
   </div>
 );
-
-SegmentSidebar.propTypes = {
-  segment: PropTypes.object,
-  user: PropTypes.object,
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(SegmentSidebar);
