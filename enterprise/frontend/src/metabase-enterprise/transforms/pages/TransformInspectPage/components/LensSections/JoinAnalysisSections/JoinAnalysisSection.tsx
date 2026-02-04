@@ -55,7 +55,7 @@ export const JoinAnalysisSection = ({
         <Stack gap="sm">
           {sortedJoinSteps.map((card) => {
             const tableCard = tableCountCards.find(
-              (card) => card.metadata?.join_step === card.metadata?.join_step,
+              (tc) => tc.metadata?.join_step === card.metadata?.join_step,
             );
             return (
               <JoinStepRowCard
