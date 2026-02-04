@@ -4,12 +4,15 @@ import { t } from "ttag";
 import { Box, Flex, Icon, Loader, Pill, Popover, TextInput } from "metabase/ui";
 import type { ConcreteTableId, RecentItem } from "metabase-types/api";
 
-import { useMetricMeasureSearch } from "../../hooks/use-metric-measure-search";
+import {
+  type MetricOrMeasureResult,
+  useMetricMeasureSearch,
+} from "../../hooks/use-metric-measure-search";
 
 import { MetricRecentsList } from "./MetricRecentsList";
 import { MetricResultItem } from "./MetricResultItem";
-import S from "./MetricSwapPopover.module.css";
 import type { SelectedMetric } from "./MetricSearchInput";
+import S from "./MetricSwapPopover.module.css";
 
 type MetricSwapPopoverProps = {
   metric: SelectedMetric;
@@ -17,7 +20,7 @@ type MetricSwapPopoverProps = {
   recents: RecentItem[];
   selectedMetricIds: Set<number>;
   selectedMeasureIds: Set<number>;
-  onSwap: (oldMetricId: number, newMetric: SelectedMetric) => void;
+  onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number) => void;
   onOpen?: () => void;
 };
@@ -37,11 +40,11 @@ export function MetricSwapPopover({
 
   const handleSelect = useCallback(
     (newMetric: SelectedMetric) => {
-      onSwap(metric.id, newMetric);
+      onSwap(metric, newMetric);
       setIsOpen(false);
       setSearchText("");
     },
-    [metric.id, onSwap],
+    [metric, onSwap],
   );
 
   const handleClose = useCallback(() => {
@@ -66,8 +69,7 @@ export function MetricSwapPopover({
         <Pill
           className={S.metricPill}
           withRemoveButton
-          onRemove={(e) => {
-            e.stopPropagation();
+          onRemove={() => {
             onRemove(metric.id);
           }}
           onClick={(e) => {
@@ -210,7 +212,7 @@ function SwapDropdownContent({
 }
 
 type SearchResultsProps = {
-  results: Array<{ id: number; name: string; model: string; table_name?: string | null; table_id?: number }>;
+  results: MetricOrMeasureResult[];
   isLoading: boolean;
   onSelectResult: (id: number, tableId?: ConcreteTableId) => void;
 };

@@ -53,6 +53,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   model: "model",
   card: "table2",
   segment: "segment",
+  measure: "ruler",
   metric: "metric",
   snippet: "snippet",
   nativequerysnippet: "snippet",

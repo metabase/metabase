@@ -1,38 +1,52 @@
 import { useCallback, useEffect, useRef } from "react";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { MetricsExplorerDisplayType } from "metabase-types/store/metrics-explorer";
 import type {
   MetricSourceId,
+  MetricsExplorerDisplayType,
   ProjectionConfig,
+  SerializedExplorerState,
+  SerializedSource,
 } from "metabase-types/store/metrics-explorer";
 
 import {
-  addMeasureSource,
-  addMetricSource,
+  addTab,
   initializeFromUrl,
   removeSource,
+  removeTab,
   setActiveTab,
+  setBinning,
   setDimensionOverride,
   setDisplayType,
   setProjectionConfig,
 } from "../metrics-explorer.slice";
 import {
   selectActiveTabId,
+  selectBaseQueries,
   selectDefaultProjectionConfig,
   selectDimensionOverrides,
   selectProjectionConfig,
   selectSourceDataById,
   selectSourceOrder,
+  selectStoredDimensionTabs,
   selectUrlState,
 } from "../selectors";
 import {
+  addMeasureAndFetch,
+  addMetricAndFetch,
   fetchAllResults,
   fetchMeasureSource,
   fetchMetricSource,
+  swapSource,
+  updateTabsForSource,
 } from "../thunks";
-import { serializedSourceToId } from "../utils/source-ids";
+import { createTabFromColumn } from "../utils/dimensions";
+import {
+  createMeasureSourceId,
+  createMetricSourceId,
+  serializedSourceToId,
+} from "../utils/source-ids";
 import {
   buildUrl,
   decodeState,
@@ -44,10 +58,13 @@ import {
  * Two-way sync:
  * 1. URL -> Redux: On mount/URL change, parse URL and update Redux
  * 2. Redux -> URL: On state change, update URL
+ *
+ * Also handles query param `?metricId=X` by converting to hash state.
  */
-export function useUrlSync(hash: string): void {
+export function useUrlSync(hash: string, search: string): void {
   const dispatch = useDispatch();
   const lastHashRef = useRef<string | null>(null);
+  const lastSearchRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
 
   const urlState = useSelector(selectUrlState);
@@ -57,12 +74,45 @@ export function useUrlSync(hash: string): void {
   const dimensionOverrides = useSelector(selectDimensionOverrides);
   const defaultProjectionConfig = useSelector(selectDefaultProjectionConfig);
   const activeTabId = useSelector(selectActiveTabId);
+  const baseQueries = useSelector(selectBaseQueries);
+  const storedDimensionTabs = useSelector(selectStoredDimensionTabs);
 
   // Track which sources have had fetch initiated to avoid double-fetching
   const fetchedSourcesRef = useRef<Set<MetricSourceId>>(new Set());
 
+  // Handle query param to hash conversion
+  useEffect(() => {
+    if (hash || search === lastSearchRef.current) {
+      return;
+    }
+    lastSearchRef.current = search;
+
+    const params = new URLSearchParams(search);
+    const metricId = params.get("metricId");
+
+    if (metricId) {
+      isInitializedRef.current = false;
+      lastHashRef.current = null;
+
+      const sources: SerializedSource[] = [
+        { type: "metric", id: parseInt(metricId, 10) },
+      ];
+
+      const initialState: SerializedExplorerState = { sources };
+      const newUrl = buildUrl(initialState);
+
+      dispatch(replace(newUrl));
+    }
+  }, [search, hash, dispatch]);
+
   // URL -> Redux: Initialize from URL on mount and when hash changes
   useEffect(() => {
+    // Skip if there's a metricId query param - let the query param effect handle it
+    const params = new URLSearchParams(search);
+    if (!hash && params.has("metricId")) {
+      return;
+    }
+
     // Skip if hash hasn't changed (prevents infinite loops)
     // Use null as initial value to distinguish "not initialized" from "empty hash"
     if (lastHashRef.current !== null && hash === lastHashRef.current) {
@@ -77,6 +127,8 @@ export function useUrlSync(hash: string): void {
       dimensionOverrides: newDimensionOverrides,
       displayType,
       activeTabId,
+      dimensionTabs,
+      binningByTab,
       serializedSources,
     } = serializedStateToReduxState(serializedState);
 
@@ -88,6 +140,8 @@ export function useUrlSync(hash: string): void {
         dimensionOverrides: newDimensionOverrides,
         displayType,
         activeTabId,
+        dimensionTabs,
+        binningByTab,
       }),
     );
 
@@ -95,23 +149,38 @@ export function useUrlSync(hash: string): void {
     for (const serializedSource of serializedSources) {
       const sourceId = serializedSourceToId(serializedSource);
 
-      // Only fetch if we haven't already initiated a fetch for this source
       if (!fetchedSourcesRef.current.has(sourceId)) {
         fetchedSourcesRef.current.add(sourceId);
         if (serializedSource.type === "metric") {
           dispatch(fetchMetricSource({ cardId: serializedSource.id }));
         } else {
-          dispatch(
-            fetchMeasureSource({
-              measureId: serializedSource.id,
-            }),
-          );
+          dispatch(fetchMeasureSource({ measureId: serializedSource.id }));
         }
       }
     }
 
     isInitializedRef.current = true;
-  }, [hash, dispatch]);
+  }, [hash, search, dispatch]);
+
+  // Update tabs when source queries become available (handles metadata load delay)
+  useEffect(() => {
+    for (const sourceId of sourceOrder) {
+      const query = baseQueries[sourceId];
+      if (!query) {
+        continue;
+      }
+
+      // Check if this source is already in any tab
+      const isInAnyTab = storedDimensionTabs.some(
+        (tab) => tab.columnsBySource[sourceId],
+      );
+
+      // If source has a query but isn't in tabs yet, update tabs
+      if (!isInAnyTab) {
+        dispatch(updateTabsForSource(sourceId));
+      }
+    }
+  }, [baseQueries, sourceOrder, storedDimensionTabs, dispatch]);
 
   // Redux -> URL: Update URL when state changes
   useEffect(() => {
@@ -156,19 +225,41 @@ export function useUrlSync(hash: string): void {
  */
 export function useExplorerActions() {
   const dispatch = useDispatch();
+  const baseQueries = useSelector(selectBaseQueries);
+  const sourceOrder = useSelector(selectSourceOrder);
 
   const handleAddMetric = useCallback(
     (cardId: number) => {
-      dispatch(addMetricSource({ cardId }));
-      dispatch(fetchMetricSource({ cardId }));
+      dispatch(addMetricAndFetch(cardId));
     },
     [dispatch],
   );
 
   const handleAddMeasure = useCallback(
-    (measureId: number, tableId: number) => {
-      dispatch(addMeasureSource({ measureId, tableId }));
-      dispatch(fetchMeasureSource({ measureId }));
+    (measureId: number) => {
+      dispatch(addMeasureAndFetch(measureId));
+    },
+    [dispatch],
+  );
+
+  const handleSwapSource = useCallback(
+    (
+      oldId: number,
+      oldType: "metric" | "measure",
+      newId: number,
+      newType: "metric" | "measure",
+    ) => {
+      const oldSourceId =
+        oldType === "metric"
+          ? createMetricSourceId(oldId)
+          : createMeasureSourceId(oldId);
+
+      const newSource =
+        newType === "metric"
+          ? { type: "metric" as const, cardId: newId }
+          : { type: "measure" as const, measureId: newId };
+
+      dispatch(swapSource(oldSourceId, newSource));
     },
     [dispatch],
   );
@@ -202,8 +293,47 @@ export function useExplorerActions() {
   );
 
   const handleSetActiveTab = useCallback(
-    (tabId: string, defaultDisplayType: MetricsExplorerDisplayType) => {
-      dispatch(setActiveTab({ tabId, defaultDisplayType }));
+    (
+      tabId: string,
+      defaultDisplayType: MetricsExplorerDisplayType,
+      defaultProjectionConfig: ProjectionConfig,
+    ) => {
+      dispatch(setActiveTab({ tabId, defaultDisplayType, defaultProjectionConfig }));
+    },
+    [dispatch],
+  );
+
+  const handleAddTab = useCallback(
+    (
+      columnName: string,
+      defaultDisplayType: MetricsExplorerDisplayType,
+      defaultProjectionConfig: ProjectionConfig,
+    ) => {
+      const tab = createTabFromColumn(columnName, baseQueries, sourceOrder);
+      if (tab) {
+        dispatch(addTab(tab));
+        dispatch(
+          setActiveTab({
+            tabId: tab.id,
+            defaultDisplayType,
+            defaultProjectionConfig,
+          }),
+        );
+      }
+    },
+    [dispatch, baseQueries, sourceOrder],
+  );
+
+  const handleRemoveTab = useCallback(
+    (tabId: string) => {
+      dispatch(removeTab(tabId));
+    },
+    [dispatch],
+  );
+
+  const handleSetBinning = useCallback(
+    (tabId: string, binningStrategy: string | null) => {
+      dispatch(setBinning({ tabId, binningStrategy }));
     },
     [dispatch],
   );
@@ -211,10 +341,14 @@ export function useExplorerActions() {
   return {
     addMetric: handleAddMetric,
     addMeasure: handleAddMeasure,
+    swapSource: handleSwapSource,
     removeSource: handleRemoveSource,
     setProjectionConfig: handleSetProjectionConfig,
     setDimensionOverride: handleSetDimensionOverride,
     setDisplayType: handleSetDisplayType,
     setActiveTab: handleSetActiveTab,
+    addTab: handleAddTab,
+    removeTab: handleRemoveTab,
+    setBinning: handleSetBinning,
   };
 }

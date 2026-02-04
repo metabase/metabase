@@ -316,7 +316,7 @@ export const getRoutes = (store) => {
             />
           </Route>
 
-          <Route path="metrics-explorer" component={MetricsExplorerPage} />
+          <Route path="explore" component={MetricsExplorerPage} />
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />

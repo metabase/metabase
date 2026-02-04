@@ -25,7 +25,7 @@ type MetricSearchInputProps = {
   selectedMeasureIds: Set<number>;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number) => void;
-  onSwapMetric: (oldMetricId: number, newMetric: SelectedMetric) => void;
+  onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   rightSection?: ReactNode;
   children: (props: {
     searchText: string;

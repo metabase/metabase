@@ -1,17 +1,21 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 
-import type { MetricsExplorerDisplayType } from "metabase-types/store/metrics-explorer";
 import type {
   AddMeasureSourcePayload,
   AddMetricSourcePayload,
   ClearDimensionOverridePayload,
   InitializeFromUrlPayload,
+  MetricSourceId,
+  MetricsExplorerDisplayType,
   MetricsExplorerState,
+  ProjectionConfig,
   RemoveSourcePayload,
   ReorderSourcesPayload,
+  SetBinningPayload,
   SetDimensionOverridePayload,
   SetProjectionConfigPayload,
+  StoredDimensionTab,
 } from "metabase-types/store/metrics-explorer";
 
 import {
@@ -29,6 +33,8 @@ function getInitialState(): MetricsExplorerState {
     dimensionOverrides: {},
     displayType: "line",
     activeTabId: "time",
+    dimensionTabs: [],
+    binningByTab: {},
 
     // Data cache (not persisted)
     sourceDataById: {},
@@ -58,12 +64,16 @@ const metricsExplorerSlice = createSlice({
         dimensionOverrides,
         displayType,
         activeTabId,
+        dimensionTabs,
+        binningByTab,
       } = action.payload;
       state.sourceOrder = sourceOrder;
       state.projectionConfig = projectionConfig;
       state.dimensionOverrides = dimensionOverrides;
       state.displayType = displayType;
       state.activeTabId = activeTabId;
+      state.dimensionTabs = dimensionTabs;
+      state.binningByTab = binningByTab;
       // Clear any stale data for sources not in the new order
       const sourceSet = new Set(sourceOrder);
       for (const sourceId of Object.keys(state.sourceDataById)) {
@@ -114,11 +124,26 @@ const metricsExplorerSlice = createSlice({
       delete state.loadingSourceIds[sourceId];
       delete state.loadingResultIds[sourceId];
 
-      // Clear projection config if no sources left
+      // Clean up tab column mappings for removed source
+      for (const tab of state.dimensionTabs) {
+        delete tab.columnsBySource[sourceId];
+      }
+      // Remove tabs that have no columns left
+      state.dimensionTabs = state.dimensionTabs.filter(
+        (tab) => Object.keys(tab.columnsBySource).length > 0,
+      );
+
+      // Clear state if no sources left
       if (state.sourceOrder.length === 0) {
         state.projectionConfig = null;
         state.displayType = "line";
         state.activeTabId = "time";
+        state.dimensionTabs = [];
+      }
+
+      // Switch active tab if it was removed
+      if (!state.dimensionTabs.some((tab) => tab.id === state.activeTabId)) {
+        state.activeTabId = state.dimensionTabs[0]?.id ?? "time";
       }
     },
 
@@ -171,21 +196,88 @@ const metricsExplorerSlice = createSlice({
     },
 
     /**
-     * Set the active dimension tab and update display type if needed.
+     * Set the active dimension tab and update display type and projection config.
      */
     setActiveTab: (
       state,
       action: PayloadAction<{
         tabId: string;
         defaultDisplayType: MetricsExplorerDisplayType;
+        defaultProjectionConfig: ProjectionConfig;
       }>,
     ) => {
-      const { tabId, defaultDisplayType } = action.payload;
+      const { tabId, defaultDisplayType, defaultProjectionConfig } = action.payload;
       state.activeTabId = tabId;
       // Clear dimension overrides when switching tabs
       state.dimensionOverrides = {};
-      // Update display type to appropriate default for this tab
+      // Update display type and projection config for this tab type
       state.displayType = defaultDisplayType;
+      state.projectionConfig = defaultProjectionConfig;
+    },
+
+    /**
+     * Set the initial dimension tabs (called when first source data loads).
+     */
+    setInitialTabs: (state, action: PayloadAction<StoredDimensionTab[]>) => {
+      if (state.dimensionTabs.length === 0) {
+        state.dimensionTabs = action.payload;
+        if (action.payload.length > 0 && state.activeTabId === "time") {
+          state.activeTabId = action.payload[0].id;
+        }
+      }
+    },
+
+    /**
+     * Add a new dimension tab.
+     */
+    addTab: (state, action: PayloadAction<StoredDimensionTab>) => {
+      const tab = action.payload;
+      if (!state.dimensionTabs.some((t) => t.id === tab.id)) {
+        state.dimensionTabs.push(tab);
+      }
+    },
+
+    /**
+     * Remove a dimension tab by ID.
+     */
+    removeTab: (state, action: PayloadAction<string>) => {
+      const tabId = action.payload;
+      state.dimensionTabs = state.dimensionTabs.filter((t) => t.id !== tabId);
+
+      // Switch active tab if the removed tab was active
+      if (state.activeTabId === tabId) {
+        state.activeTabId = state.dimensionTabs[0]?.id ?? "time";
+      }
+    },
+
+    /**
+     * Update column mappings for a tab when a source is added.
+     */
+    updateTabColumns: (
+      state,
+      action: PayloadAction<{
+        tabId: string;
+        sourceId: MetricSourceId;
+        columnName: string;
+      }>,
+    ) => {
+      const { tabId, sourceId, columnName } = action.payload;
+      const tab = state.dimensionTabs.find((t) => t.id === tabId);
+      if (tab) {
+        tab.columnsBySource[sourceId] = columnName;
+      }
+    },
+
+    /**
+     * Set binning strategy for a tab.
+     */
+    setBinning: (state, action: PayloadAction<SetBinningPayload>) => {
+      const { tabId, binningStrategy } = action.payload;
+      if (binningStrategy === null) {
+        delete state.binningByTab[tabId];
+      } else {
+        state.binningByTab[tabId] = binningStrategy;
+      }
     },
 
     /**
@@ -292,6 +384,11 @@ export const {
   clearDimensionOverride,
   setDisplayType,
   setActiveTab,
+  setInitialTabs,
+  addTab,
+  removeTab,
+  updateTabColumns,
+  setBinning,
   setError,
   reset,
 } = metricsExplorerSlice.actions;

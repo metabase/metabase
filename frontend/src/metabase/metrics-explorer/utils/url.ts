@@ -1,15 +1,24 @@
-import type { DateFilterSpec } from "metabase-lib";
-import * as Lib from "metabase-lib";
+import * as Yup from "yup";
+
 import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 import type {
+  DateFilterSpec,
   DimensionOverrides,
   MetricSourceId,
   MetricsExplorerDisplayType,
   ProjectionConfig,
   SerializedExplorerState,
   SerializedSource,
+  SerializedTab,
   SourceData,
+  StoredDimensionTab,
+} from "metabase-types/store/metrics-explorer";
+import {
+  createNumericProjectionConfig,
+  createTemporalProjectionConfig,
+  isTemporalProjectionConfig,
 } from "metabase-types/store/metrics-explorer";
 
 import {
@@ -36,32 +45,36 @@ function isMetricsExplorerDisplayType(
     value === "bar" ||
     value === "map" ||
     value === "row" ||
-    value === "pie"
+    value === "pie" ||
+    value === "scatter"
   );
 }
+
+const dateFilterSpecSchema = Yup.object({
+  type: Yup.string().oneOf(["relative", "specific", "exclude"]).required(),
+});
+
+const serializedTabSchema: Yup.ObjectSchema<SerializedTab> = Yup.object({
+  id: Yup.string().required().min(1),
+  type: Yup.string()
+    .oneOf(["time", "geo", "category", "boolean", "numeric"] as const)
+    .required(),
+  label: Yup.string().required().min(1),
+  cols: Yup.object().required(),
+});
 
 function isValidFilterSpec(value: unknown): value is DateFilterSpec {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const spec = value as Record<string, unknown>;
-  return (
-    spec.type === "relative" ||
-    spec.type === "specific" ||
-    spec.type === "exclude"
-  );
+  return dateFilterSpecSchema.isValidSync(value);
 }
 
-/**
- * Encode explorer state to a URL hash string.
- */
+function isValidSerializedTab(value: unknown): value is SerializedTab {
+  return serializedTabSchema.isValidSync(value);
+}
+
 export function encodeState(state: SerializedExplorerState): string {
   return btoa(JSON.stringify(state));
 }
 
-/**
- * Decode a URL hash string to explorer state.
- */
 export function decodeState(hash: string): SerializedExplorerState {
   const defaultState: SerializedExplorerState = { sources: [] };
 
@@ -70,12 +83,11 @@ export function decodeState(hash: string): SerializedExplorerState {
   }
 
   try {
-    const encoded = hash.slice(1); // Remove leading #
+    const encoded = hash.slice(1);
     const parsed = JSON.parse(atob(encoded));
 
     const result: SerializedExplorerState = { sources: [] };
 
-    // New format: sources array (handles both new and old abbreviated formats)
     if (Array.isArray(parsed.sources)) {
       result.sources = parsed.sources
         .map(normalizeSerializedSource)
@@ -94,9 +106,19 @@ export function decodeState(hash: string): SerializedExplorerState {
     }
 
     if (parsed.projection && typeof parsed.projection === "object") {
-      const { unit, filterSpec } = parsed.projection;
-      if (isTemporalUnit(unit)) {
-        result.projection = { unit };
+      const { type, unit, filterSpec, binningStrategy } = parsed.projection;
+
+      if (type === "numeric") {
+        result.projection = {
+          type: "numeric",
+          binningStrategy:
+            typeof binningStrategy === "string" || binningStrategy === null
+              ? binningStrategy
+              : null,
+        };
+      } else if (isTemporalUnit(unit)) {
+        // Both explicit type: "temporal" and backward compat (no type field)
+        result.projection = { type: "temporal", unit };
 
         if (isValidFilterSpec(filterSpec)) {
           result.projection.filterSpec = filterSpec;
@@ -130,15 +152,24 @@ export function decodeState(hash: string): SerializedExplorerState {
       result.activeTab = parsed.activeTab;
     }
 
+    if (Array.isArray(parsed.tabs)) {
+      const validTabs: SerializedTab[] = [];
+      for (const tab of parsed.tabs) {
+        if (isValidSerializedTab(tab)) {
+          validTabs.push(tab);
+        }
+      }
+      if (validTabs.length > 0) {
+        result.tabs = validTabs;
+      }
+    }
+
     return result;
   } catch {
     return defaultState;
   }
 }
 
-/**
- * Build URL path from explorer state.
- */
 export function buildUrl(state: SerializedExplorerState): string {
   if (state.sources.length === 0) {
     return Urls.metricsExplorer();
@@ -146,9 +177,6 @@ export function buildUrl(state: SerializedExplorerState): string {
   return Urls.metricsExplorer(encodeState(state));
 }
 
-/**
- * Convert Redux state to serialized URL state.
- */
 export function stateToSerializedState(
   sourceOrder: MetricSourceId[],
   sourceDataById: Record<MetricSourceId, SourceData>,
@@ -156,20 +184,18 @@ export function stateToSerializedState(
   dimensionOverrides: DimensionOverrides,
   displayType: MetricsExplorerDisplayType,
   activeTabId: string,
+  dimensionTabs: StoredDimensionTab[] = [],
 ): SerializedExplorerState {
   const state: SerializedExplorerState = { sources: [] };
 
-  // Convert source IDs to serialized format
   state.sources = sourceOrder
     .map((sourceId) => {
       const sourceData = sourceDataById[sourceId];
       if (!sourceData) {
-        // Still include it even if data not loaded yet
         const { type, id } = parseSourceId(sourceId);
         if (type === "metric") {
           return { type: "metric" as const, id };
         }
-        // For measures without data, we can't include them (need tableId)
         console.warn(
           `Measure source ${sourceId} dropped from URL: tableId not yet loaded`,
         );
@@ -178,7 +204,6 @@ export function stateToSerializedState(
       if (sourceData.type === "metric") {
         return metricIdToSerializedSource(sourceId);
       }
-      // Defensive check: ensure tableId exists for measures
       if (!sourceData.tableId) {
         console.warn(
           `Measure source ${sourceId} has no tableId in sourceData, skipping`,
@@ -189,15 +214,21 @@ export function stateToSerializedState(
     })
     .filter((s): s is SerializedSource => s !== null);
 
-  // Add projection config
   if (projectionConfig) {
-    state.projection = {
-      unit: projectionConfig.unit,
-      filterSpec: projectionConfig.filterSpec ?? undefined,
-    };
+    if (isTemporalProjectionConfig(projectionConfig)) {
+      state.projection = {
+        type: "temporal",
+        unit: projectionConfig.unit,
+        filterSpec: projectionConfig.filterSpec ?? undefined,
+      };
+    } else {
+      state.projection = {
+        type: "numeric",
+        binningStrategy: projectionConfig.binningStrategy,
+      };
+    }
   }
 
-  // Convert dimension overrides to numeric keys
   const numericDimensions: Record<number, string> = {};
   for (const [sourceId, columnName] of Object.entries(dimensionOverrides)) {
     const { id } = parseSourceId(sourceId as MetricSourceId);
@@ -207,22 +238,35 @@ export function stateToSerializedState(
     state.dimensions = numericDimensions;
   }
 
-  // Add display type (only if not default)
   if (displayType !== "line") {
     state.display = displayType;
   }
 
-  // Add active tab (only if not default "time")
   if (activeTabId !== "time") {
     state.activeTab = activeTabId;
+  }
+
+  if (dimensionTabs.length > 0) {
+    state.tabs = dimensionTabs.map((tab) => storedTabToSerializedTab(tab));
   }
 
   return state;
 }
 
-/**
- * Convert serialized URL state to Redux-compatible state values.
- */
+function storedTabToSerializedTab(tab: StoredDimensionTab): SerializedTab {
+  const cols: Record<number, string> = {};
+  for (const [sourceId, columnName] of Object.entries(tab.columnsBySource)) {
+    const { id } = parseSourceId(sourceId as MetricSourceId);
+    cols[id] = columnName;
+  }
+  return {
+    id: tab.id,
+    type: tab.type,
+    label: tab.label,
+    cols,
+  };
+}
+
 export function serializedStateToReduxState(
   serializedState: SerializedExplorerState,
 ): {
@@ -231,16 +275,21 @@ export function serializedStateToReduxState(
   dimensionOverrides: DimensionOverrides;
   displayType: MetricsExplorerDisplayType;
   activeTabId: string;
+  dimensionTabs: StoredDimensionTab[];
+  binningByTab: Record<string, string | null>;
   serializedSources: SerializedSource[];
 } {
   const sourceOrder = serializedState.sources.map(serializedSourceToId);
 
-  const projectionConfig: ProjectionConfig | null = serializedState.projection
-    ? {
-        unit: serializedState.projection.unit,
-        filterSpec: serializedState.projection.filterSpec ?? null,
-      }
-    : null;
+  let projectionConfig: ProjectionConfig | null = null;
+  if (serializedState.projection) {
+    const proj = serializedState.projection;
+    if (proj.type === "numeric") {
+      projectionConfig = createNumericProjectionConfig(proj.binningStrategy ?? null);
+    } else if (proj.unit) {
+      projectionConfig = createTemporalProjectionConfig(proj.unit, proj.filterSpec ?? null);
+    }
+  }
 
   const dimensionOverrides: DimensionOverrides = {};
   if (serializedState.dimensions) {
@@ -248,8 +297,6 @@ export function serializedStateToReduxState(
       serializedState.dimensions,
     )) {
       const id = parseInt(idStr, 10);
-      // We need to figure out if this is a metric or measure
-      // Look in the sources to determine the type
       const matchingSource = serializedState.sources.find((s) => s.id === id);
       if (matchingSource) {
         const sourceId = serializedSourceToId(matchingSource);
@@ -260,6 +307,11 @@ export function serializedStateToReduxState(
 
   const displayType = serializedState.display ?? "line";
   const activeTabId = serializedState.activeTab ?? "time";
+  const binningByTab: Record<string, string | null> = {};
+
+  const dimensionTabs: StoredDimensionTab[] = (serializedState.tabs ?? []).map(
+    (serializedTab) => serializedTabToStoredTab(serializedTab, serializedState.sources),
+  );
 
   return {
     sourceOrder,
@@ -267,6 +319,31 @@ export function serializedStateToReduxState(
     dimensionOverrides,
     displayType,
     activeTabId,
+    dimensionTabs,
+    binningByTab,
     serializedSources: serializedState.sources,
+  };
+}
+
+function serializedTabToStoredTab(
+  serializedTab: SerializedTab,
+  sources: SerializedSource[],
+): StoredDimensionTab {
+  const columnsBySource: Record<MetricSourceId, string> = {};
+
+  for (const [idStr, columnName] of Object.entries(serializedTab.cols)) {
+    const id = parseInt(idStr, 10);
+    const matchingSource = sources.find((s) => s.id === id);
+    if (matchingSource) {
+      const sourceId = serializedSourceToId(matchingSource);
+      columnsBySource[sourceId] = columnName;
+    }
+  }
+
+  return {
+    id: serializedTab.id,
+    type: serializedTab.type,
+    label: serializedTab.label,
+    columnsBySource,
   };
 }

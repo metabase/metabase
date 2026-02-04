@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { t } from "ttag";
 
 import { Box, Skeleton, Stack, Text } from "metabase/ui";
@@ -11,12 +12,16 @@ type MetricOrMeasureResult = SearchResult<number, "metric" | "measure">;
 type MetricSearchResultsProps = {
   results: MetricOrMeasureResult[];
   isLoading: boolean;
+  cursorIndex: number | null;
+  getRef: (item: MetricOrMeasureResult) => RefObject<HTMLElement> | undefined;
   onSelectResult: (id: number, tableId?: ConcreteTableId) => void;
 };
 
 export function MetricSearchResults({
   results,
   isLoading,
+  cursorIndex,
+  getRef,
   onSelectResult,
 }: MetricSearchResultsProps) {
   if (isLoading) {
@@ -43,12 +48,14 @@ export function MetricSearchResults({
   return (
     <Stack gap={0} p="sm">
       <Box mah={400} className={S.listbox}>
-        {results.map((item) => (
+        {results.map((item, index) => (
           <MetricResultItem
             key={`${item.model}-${item.id}`}
+            ref={getRef(item)}
             name={item.name}
             slug={item.table_name ?? undefined}
             icon={item.model === "metric" ? "metric" : "sum"}
+            active={cursorIndex === index}
             onClick={() =>
               onSelectResult(
                 item.id,

@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import _ from 'underscore';
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
@@ -11,6 +12,10 @@ import type { TemporalUnit } from "metabase-types/api";
 import type {
   MetricsExplorerDisplayType,
   ProjectionConfig,
+} from "metabase-types/store/metrics-explorer";
+import {
+  createNumericProjectionConfig,
+  createTemporalProjectionConfig,
 } from "metabase-types/store/metrics-explorer";
 
 import {
@@ -47,7 +52,7 @@ type MetricVisualizationProps = {
 };
 
 export function MetricVisualization({
-  projectionConfig,
+  projectionConfig: _projectionConfig,
   displayType,
   isLoading,
   error,
@@ -56,7 +61,6 @@ export function MetricVisualization({
   onDimensionOverrideChange,
   onDisplayTypeChange,
 }: MetricVisualizationProps) {
-  // Select data from Redux
   const rawSeries = useSelector(selectRawSeries);
   const dimensionItems = useSelector(selectDimensionItems);
   const questionForControls = useSelector(selectQuestionForControls);
@@ -109,12 +113,18 @@ export function MetricVisualization({
         ? extractFilterSpecFromQuery(newQuery, newBreakoutCol)
         : null;
 
-      onProjectionConfigChange({ unit, filterSpec });
+      onProjectionConfigChange(createTemporalProjectionConfig(unit, filterSpec));
     },
     [onProjectionConfigChange],
   );
 
-  // Get column filter based on active tab type
+  const handleBinningChange = useCallback(
+    (binningStrategy: string | null) => {
+      onProjectionConfigChange(createNumericProjectionConfig(binningStrategy));
+    },
+    [onProjectionConfigChange],
+  );
+
   const columnFilter = getColumnFilterForTabType(activeTabType);
 
   if (isLoading || error || rawSeries.length === 0) {
@@ -135,7 +145,7 @@ export function MetricVisualization({
                 isQueryBuilder={false}
                 showTitle
                 hideLegend
-                handleVisualizationClick={() => {}}
+                handleVisualizationClick={_.noop}
               />
             </DebouncedFrame>
           ))}
@@ -168,6 +178,7 @@ export function MetricVisualization({
             showTimeControls={showTimeControls}
             onDisplayTypeChange={onDisplayTypeChange}
             onQueryChange={handleQueryChange}
+            onBinningChange={handleBinningChange}
           />
         </div>
       )}
@@ -192,6 +203,8 @@ function getColumnFilterForTabType(
         !Lib.isForeignKey(col) &&
         !Lib.isURL(col) &&
         !isGeoColumn(col);
+    case "numeric":
+      return Lib.isNumeric;
     default:
       return Lib.isDateOrDateTime;
   }

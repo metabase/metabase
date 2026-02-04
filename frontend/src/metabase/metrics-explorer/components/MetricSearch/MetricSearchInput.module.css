@@ -6,8 +6,13 @@
   background-color: var(--mb-color-background-secondary);
   border: 1px solid var(--mb-color-border);
   border-radius: 1rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.25rem 0.5rem;
   cursor: text;
+  transition: border-color 150ms ease;
+}
+
+.inputWrapper:focus-within {
+  border-color: var(--mb-color-brand);
 }
 
 .inputContainer {

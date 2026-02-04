@@ -1,17 +1,35 @@
-.container {
+.removeButton {
+  margin-left: 4px;
+}
+
+.overflowButton {
+  margin-left: var(--mantine-spacing-xs);
+  color: var(--mb-color-text-medium);
+}
+
+.overflowButton:hover {
+  color: var(--mb-color-text-dark);
+}
+
+.overflowButton[data-active] {
+  color: var(--mb-color-brand);
+}
+
+.overflowMenuItem {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.tabs {
-  width: auto;
+.addButton {
+  margin-left: var(--mantine-spacing-xs);
+  color: var(--mb-color-text-medium);
 }
 
-.tabsList {
-  justify-content: flex-start;
+.addButton:hover {
+  color: var(--mb-color-text-dark);
 }
 
-.tabsList :global(.mantine-Tabs-tab) {
-  padding-inline: 1.5rem;
+.columnPicker {
+  color: var(--mb-color-brand);
 }

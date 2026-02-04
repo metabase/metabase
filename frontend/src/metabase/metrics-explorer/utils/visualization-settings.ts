@@ -55,6 +55,10 @@ const DISPLAY_TYPE_CONFIG: Record<MetricsExplorerDisplayType, DisplayTypeConfig>
     supportsMultipleSeries: true,
     getSettings: getChartSettings,
   },
+  scatter: {
+    supportsMultipleSeries: true,
+    getSettings: getScatterSettings,
+  },
   map: {
     supportsMultipleSeries: false,
     getSettings: getMapSettings,
@@ -73,13 +77,38 @@ export function supportsMultipleSeries(displayType: MetricsExplorerDisplayType):
 }
 
 /**
+ * Extract dimension and metric column names from result data.
+ */
+function extractDimensionsAndMetrics(resultData: Dataset["data"]): {
+  dimensions: string[];
+  metrics: string[];
+} {
+  const dimensions: string[] = [];
+  const metrics: string[] = [];
+
+  for (const col of resultData.cols) {
+    if (col.source === "breakout") {
+      dimensions.push(col.name);
+    } else if (col.source === "aggregation") {
+      metrics.push(col.name);
+    }
+  }
+
+  return { dimensions, metrics };
+}
+
+/**
  * Settings for chart types (line, area, bar, row).
  * Disables axis labels for cleaner display in the explorer.
  */
-function getChartSettings(): Record<string, unknown> {
+function getChartSettings({ resultData }: VisualizationContext): Record<string, unknown> {
+  const { dimensions, metrics } = extractDimensionsAndMetrics(resultData);
+
   return {
     "graph.x_axis.labels_enabled": false,
     "graph.y_axis.labels_enabled": false,
+    "graph.dimensions": dimensions,
+    "graph.metrics": metrics,
   };
 }
 
@@ -88,6 +117,21 @@ function getChartSettings(): Record<string, unknown> {
  */
 function getPieSettings(): Record<string, unknown> {
   return {};
+}
+
+/**
+ * Settings for scatter plot visualization.
+ */
+function getScatterSettings({ resultData }: VisualizationContext): Record<string, unknown> {
+  const { dimensions, metrics } = extractDimensionsAndMetrics(resultData);
+
+  return {
+    "graph.x_axis.labels_enabled": false,
+    "graph.y_axis.labels_enabled": false,
+    "graph.dimensions": dimensions,
+    "graph.metrics": metrics,
+    "scatter.bubble": null,
+  };
 }
 
 /**

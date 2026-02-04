@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
+import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import type { ConcreteTableId, RecentItem } from "metabase-types/api";
 
 import { useMetricMeasureSearch } from "../../hooks/use-metric-measure-search";
@@ -16,7 +17,7 @@ type MetricSearchProps = {
   metricColors: Record<number, string>;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number) => void;
-  onSwapMetric?: (oldMetricId: number, newMetric: SelectedMetric) => void;
+  onSwapMetric?: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   rightSection?: ReactNode;
 };
 
@@ -49,12 +50,12 @@ export function MetricSearch({
   );
 
   const handleSwapMetric = useCallback(
-    (oldMetricId: number, newMetric: SelectedMetric) => {
+    (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
       if (onSwapMetric) {
-        onSwapMetric(oldMetricId, newMetric);
+        onSwapMetric(oldMetric, newMetric);
       } else {
         // Default behavior: remove old and add new
-        onRemoveMetric(oldMetricId);
+        onRemoveMetric(oldMetric.id);
         onAddMetric(newMetric);
       }
     },
@@ -112,12 +113,19 @@ function SearchDropdownContent({
 }: SearchDropdownContentProps) {
   const { results, isLoading, isSearching } = useMetricMeasureSearch(searchText);
 
-  const filteredResults = (results ?? []).filter((r) =>
-    r.model === "metric"
-      ? !selectedMetricIds.has(r.id)
-      : !selectedMeasureIds.has(r.id),
+  const filteredResults = useMemo(
+    () =>
+      (results ?? []).filter((r) =>
+        r.model === "metric"
+          ? !selectedMetricIds.has(r.id)
+          : !selectedMeasureIds.has(r.id),
+      ),
+    [results, selectedMetricIds, selectedMeasureIds],
   );
-  const filteredRecents = recents.filter((r) => !selectedMetricIds.has(r.id));
+  const filteredRecents = useMemo(
+    () => recents.filter((r) => !selectedMetricIds.has(r.id)),
+    [recents, selectedMetricIds],
+  );
 
   const handleSelectResult = useCallback(
     (id: number, tableId?: ConcreteTableId) => {
@@ -144,11 +152,39 @@ function SearchDropdownContent({
     [recents, onSelect],
   );
 
+  const activeList = useMemo(
+    () => (isSearching ? filteredResults : filteredRecents),
+    [isSearching, filteredResults, filteredRecents],
+  );
+  const handleEnter = useCallback(
+    (item: (typeof activeList)[number]) => {
+      if (isSearching) {
+        const result = item as (typeof filteredResults)[number];
+        handleSelectResult(
+          result.id,
+          result.model === "measure"
+            ? (result.table_id as ConcreteTableId)
+            : undefined,
+        );
+      } else {
+        handleSelectFromRecents((item as (typeof filteredRecents)[number]).id);
+      }
+    },
+    [isSearching, handleSelectResult, handleSelectFromRecents],
+  );
+
+  const { cursorIndex, getRef } = useListKeyboardNavigation({
+    list: activeList,
+    onEnter: handleEnter,
+  });
+
   if (isSearching) {
     return (
       <MetricSearchResults
         results={filteredResults}
         isLoading={isLoading}
+        cursorIndex={cursorIndex}
+        getRef={getRef}
         onSelectResult={handleSelectResult}
       />
     );
@@ -162,6 +198,8 @@ function SearchDropdownContent({
   return (
     <MetricRecentsList
       recents={filteredRecents}
+      cursorIndex={cursorIndex}
+      getRef={getRef}
       onSelect={handleSelectFromRecents}
     />
   );

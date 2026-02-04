@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { t } from "ttag";
 
 import { Box, Stack, Text } from "metabase/ui";
@@ -8,11 +9,15 @@ import { MetricResultItem } from "./MetricResultItem";
 
 type MetricRecentsListProps = {
   recents: RecentItem[];
+  cursorIndex?: number | null;
+  getRef?: (item: RecentItem) => RefObject<HTMLElement> | undefined;
   onSelect: (metricId: number) => void;
 };
 
 export function MetricRecentsList({
   recents,
+  cursorIndex,
+  getRef,
   onSelect,
 }: MetricRecentsListProps) {
   return (
@@ -21,10 +26,12 @@ export function MetricRecentsList({
         {t`Recents`}
       </Text>
       <Box mah={400} className={S.listbox}>
-        {recents.map((item) => (
+        {recents.map((item, index) => (
           <MetricResultItem
             key={item.id}
+            ref={getRef?.(item)}
             name={item.name}
+            active={cursorIndex === index}
             onClick={() => onSelect(item.id)}
           />
         ))}

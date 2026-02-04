@@ -7,6 +7,7 @@ import {
   findFilterClause,
   findFilterColumn,
 } from "metabase/querying/filters/components/TimeseriesChrome/utils";
+import type { IconName } from "metabase/ui";
 import {
   ActionIcon,
   Button,
@@ -17,12 +18,12 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { IconName } from "metabase/ui";
 import type {
   DimensionTabType,
   MetricsExplorerDisplayType,
 } from "metabase-types/store/metrics-explorer";
 
+import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
 import S from "./MetricControls.module.css";
 
@@ -50,10 +51,19 @@ const CATEGORY_CHART_TYPES: ChartTypeOption[] = [
   { type: "pie", icon: "pie" },
 ];
 
+const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
+  { type: "line", icon: "line" },
+  { type: "area", icon: "area" },
+  { type: "bar", icon: "bar" },
+  { type: "scatter", icon: "bubble" },
+];
+
 function getChartTypesForTab(tabType: DimensionTabType | null): ChartTypeOption[] {
   switch (tabType) {
     case "geo":
       return GEO_CHART_TYPES;
+    case "numeric":
+      return NUMERIC_CHART_TYPES;
     case "category":
     case "boolean":
       return CATEGORY_CHART_TYPES;
@@ -69,6 +79,8 @@ function getDefaultDisplayTypeForTab(
   switch (tabType) {
     case "geo":
       return "map";
+    case "numeric":
+      return "bar";
     case "category":
     case "boolean":
     case "time":
@@ -92,6 +104,7 @@ interface MetricControlsProps {
   showTimeControls?: boolean;
   onDisplayTypeChange: (displayType: MetricsExplorerDisplayType) => void;
   onQueryChange: (query: Lib.Query) => void;
+  onBinningChange?: (binningStrategy: string | null) => void;
 }
 
 export function MetricControls({
@@ -101,11 +114,20 @@ export function MetricControls({
   showTimeControls = true,
   onDisplayTypeChange,
   onQueryChange,
+  onBinningChange,
 }: MetricControlsProps) {
   const query = question.query();
-  const timeseriesInfo = useTimeseriesInfo(query);
+  const breakoutInfo = useBreakoutInfo(query);
   const hasTimeseriesControls =
-    showTimeControls && timeseriesInfo.breakout && timeseriesInfo.filterColumn;
+    showTimeControls &&
+    breakoutInfo.breakout &&
+    breakoutInfo.filterColumn &&
+    breakoutInfo.isTemporalBucketable;
+  const hasBinningControls =
+    !hasTimeseriesControls &&
+    breakoutInfo.breakout &&
+    breakoutInfo.breakoutColumn &&
+    (breakoutInfo.isBinnable || breakoutInfo.hasBinning);
 
   const chartTypes = getChartTypesForTab(tabType);
   const effectiveDisplayType = isValidDisplayTypeForTab(displayType, tabType)
@@ -124,8 +146,18 @@ export function MetricControls({
           <Divider orientation="vertical" className={S.divider} />
           <TimeseriesControls
             query={query}
-            timeseriesInfo={timeseriesInfo}
+            breakoutInfo={breakoutInfo}
             onChange={onQueryChange}
+          />
+        </>
+      )}
+      {hasBinningControls && query && breakoutInfo.breakoutColumn && onBinningChange && (
+        <>
+          <Divider orientation="vertical" className={S.divider} />
+          <BinningControls
+            query={query}
+            breakoutInfo={breakoutInfo}
+            onBinningChange={onBinningChange}
           />
         </>
       )}
@@ -159,47 +191,69 @@ function ChartTypePicker({ chartTypes, value, onChange }: ChartTypePickerProps) 
   );
 }
 
-interface TimeseriesInfo {
+interface BreakoutInfo {
   breakout: Lib.BreakoutClause | undefined;
   breakoutColumn: Lib.ColumnMetadata | undefined;
   filterColumn: Lib.ColumnMetadata | undefined;
   filter: Lib.FilterClause | undefined;
   isTemporalBucketable: boolean;
+  isBinnable: boolean;
+  hasBinning: boolean;
 }
 
-function useTimeseriesInfo(query: Lib.Query): TimeseriesInfo {
+function useBreakoutInfo(query: Lib.Query): BreakoutInfo {
   return useMemo(() => {
-    const breakout = findBreakoutClause(query, STAGE_INDEX);
-    const breakoutColumn = breakout
-      ? (Lib.breakoutColumn(query, STAGE_INDEX, breakout) ?? undefined)
+    // Get all breakouts - findBreakoutClause only finds temporal ones
+    const allBreakouts = Lib.breakouts(query, STAGE_INDEX);
+    const firstBreakout = allBreakouts[0] as Lib.BreakoutClause | undefined;
+
+    // For temporal controls, use the temporal-specific finder
+    const temporalBreakout = findBreakoutClause(query, STAGE_INDEX);
+
+    const breakoutColumn = firstBreakout
+      ? (Lib.breakoutColumn(query, STAGE_INDEX, firstBreakout) ?? undefined)
       : undefined;
     const isTemporalBucketable = breakoutColumn
       ? Lib.isTemporalBucketable(query, STAGE_INDEX, breakoutColumn)
       : false;
-    const filterColumn = breakoutColumn
+    const isBinnable = breakoutColumn
+      ? Lib.isBinnable(query, STAGE_INDEX, breakoutColumn)
+      : false;
+    const hasBinning = firstBreakout ? Lib.binning(firstBreakout) !== null : false;
+
+    // Filter column only makes sense for temporal breakouts
+    const filterColumn = temporalBreakout && breakoutColumn
       ? findFilterColumn(query, STAGE_INDEX, breakoutColumn)
       : undefined;
     const filter = filterColumn
       ? findFilterClause(query, STAGE_INDEX, filterColumn)
       : undefined;
 
-    return { breakout, breakoutColumn, filterColumn, filter, isTemporalBucketable };
+    return {
+      breakout: firstBreakout,
+      breakoutColumn,
+      filterColumn,
+      filter,
+      isTemporalBucketable,
+      isBinnable,
+      hasBinning,
+    };
   }, [query]);
 }
 
 interface TimeseriesControlsProps {
   query: Lib.Query;
-  timeseriesInfo: TimeseriesInfo;
+  breakoutInfo: BreakoutInfo;
   onChange: (query: Lib.Query) => void;
 }
 
 function TimeseriesControls({
   query,
-  timeseriesInfo,
+  breakoutInfo,
   onChange,
 }: TimeseriesControlsProps) {
   const { breakout, breakoutColumn, filterColumn, filter, isTemporalBucketable } =
-    timeseriesInfo;
+    breakoutInfo;
 
   const handleFilterChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
@@ -241,6 +295,33 @@ function TimeseriesControls({
         </>
       )}
     </>
+  );
+}
+
+interface BinningControlsProps {
+  query: Lib.Query;
+  breakoutInfo: BreakoutInfo;
+  onBinningChange: (binningStrategy: string | null) => void;
+}
+
+function BinningControls({
+  query,
+  breakoutInfo,
+  onBinningChange,
+}: BinningControlsProps) {
+  const { breakout, breakoutColumn } = breakoutInfo;
+
+  if (!breakout || !breakoutColumn) {
+    return null;
+  }
+
+  return (
+    <BinningButton
+      query={query}
+      column={breakoutColumn}
+      breakout={breakout}
+      onBinningChange={onBinningChange}
+    />
   );
 }
 

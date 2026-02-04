@@ -1,8 +1,12 @@
-const ROOT_URL = "/metrics-explorer";
+const ROOT_URL = "/explore";
 
 export function metricsExplorer(hash?: string): string {
   if (hash) {
     return `${ROOT_URL}#${hash}`;
   }
   return ROOT_URL;
+}
+
+export function exploreMetric(metricId: number): string {
+  return `${ROOT_URL}?metricId=${metricId}`;
 }

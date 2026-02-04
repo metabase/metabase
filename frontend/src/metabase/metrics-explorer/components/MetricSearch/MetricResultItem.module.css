@@ -10,12 +10,8 @@
 }
 
 .resultItem[data-active] {
-  background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
-}
-
-.resultItem[data-active]:hover {
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-text-hover);
 }
 
 .icon {
@@ -24,7 +20,7 @@
 }
 
 .resultItem[data-active] .icon {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-hover);
 }
 
 .name {
@@ -39,8 +35,7 @@
 }
 
 .resultItem[data-active] .slug {
-  color: var(--mb-color-text-white);
-  opacity: 0.7;
+  color: var(--mb-color-text-tertiary);
 }
 
 .selectedIcon {
@@ -49,5 +44,5 @@
 }
 
 .resultItem[data-active] .selectedIcon {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-hover);
 }

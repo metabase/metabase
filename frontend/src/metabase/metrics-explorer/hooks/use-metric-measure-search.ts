@@ -2,7 +2,7 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { SearchResult } from "metabase-types/api";
 
-type MetricOrMeasureResult = SearchResult<number, "metric" | "measure">;
+export type MetricOrMeasureResult = SearchResult<number, "metric" | "measure">;
 
 interface UseMetricMeasureSearchResult {
   /** null when not searching, empty array when search returned no results */

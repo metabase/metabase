@@ -1,8 +1,8 @@
 import type * as Lib from "metabase-lib";
 import type {
-  RelativeDateFilter,
-  SpecificDateFilter,
-  ExcludeDateFilter,
+  ExcludeDateFilterParts,
+  RelativeDateFilterParts,
+  SpecificDateFilterParts,
 } from "metabase-lib";
 import type {
   Card,
@@ -12,7 +12,6 @@ import type {
   Dataset,
   Measure,
   MeasureId,
-  SingleSeries,
   Table,
   TemporalUnit,
 } from "metabase-types/api";
@@ -22,7 +21,7 @@ import type {
  */
 export type MetricsExplorerDisplayType = Extract<
   CardDisplayType,
-  "line" | "area" | "bar" | "map" | "row" | "pie"
+  "line" | "area" | "bar" | "map" | "row" | "pie" | "scatter"
 >;
 
 /**
@@ -34,10 +33,11 @@ export type MetricSourceId = `metric:${number}` | `measure:${number}`;
 /**
  * Dimension tab types for grouping metrics.
  */
-export type DimensionTabType = "time" | "geo" | "category" | "boolean";
+export type DimensionTabType = "time" | "geo" | "category" | "boolean" | "numeric";
 
 /**
  * Column info for a dimension tab, tracking which column from which source.
+ * This is the hydrated version with actual column metadata.
  */
 export interface DimensionTabColumn {
   sourceId: MetricSourceId;
@@ -46,13 +46,36 @@ export interface DimensionTabColumn {
 }
 
 /**
- * A dimension tab representing a groupable dimension across metrics.
+ * A stored dimension tab - the source of truth in Redux state.
+ * Uses column names instead of column metadata for serializability.
+ */
+export interface StoredDimensionTab {
+  id: string;
+  type: DimensionTabType;
+  label: string;
+  columnsBySource: Record<MetricSourceId, string>;
+}
+
+/**
+ * A hydrated dimension tab with resolved column metadata.
+ * Used for rendering and query building.
  */
 export interface DimensionTab {
-  id: string; // "time" or column name
+  id: string;
   type: DimensionTabType;
-  label: string; // Display name
+  label: string;
   columnsBySource: DimensionTabColumn[];
+}
+
+/**
+ * Serialized tab format for URL encoding.
+ * Uses numeric source IDs for compactness.
+ */
+export interface SerializedTab {
+  id: string;
+  type: DimensionTabType;
+  label: string;
+  cols: Record<number, string>;
 }
 
 /**
@@ -78,20 +101,96 @@ export type SourceData =
   | { type: "metric"; data: MetricData }
   | { type: "measure"; data: MeasureData; tableId: ConcreteTableId };
 
-/**
- * DateFilterSpec - reuses base filter types for abstract date filter configuration.
- */
+// Filter configuration without the column property (column is determined from query breakout)
+export type RelativeDateFilterSpec = Omit<RelativeDateFilterParts, "column">;
+export type SpecificDateFilterSpec = Omit<SpecificDateFilterParts, "column">;
+export type ExcludeDateFilterSpec = Omit<ExcludeDateFilterParts, "column">;
+
 export type DateFilterSpec =
-  | RelativeDateFilter
-  | SpecificDateFilter
-  | ExcludeDateFilter;
+  | RelativeDateFilterSpec
+  | SpecificDateFilterSpec
+  | ExcludeDateFilterSpec;
+
+export function isRelativeDateFilterSpec(
+  spec: DateFilterSpec,
+): spec is RelativeDateFilterSpec {
+  return "value" in spec && !("operator" in spec);
+}
+
+export function isSpecificDateFilterSpec(
+  spec: DateFilterSpec,
+): spec is SpecificDateFilterSpec {
+  return "hasTime" in spec;
+}
+
+export function isExcludeDateFilterSpec(
+  spec: DateFilterSpec,
+): spec is ExcludeDateFilterSpec {
+  return "operator" in spec && "values" in spec && !("hasTime" in spec);
+}
 
 /**
- * Projection config for temporal unit and date filter.
+ * Projection config for temporal dimensions (time series).
  */
-export interface ProjectionConfig {
+export interface TemporalProjectionConfig {
+  type: "temporal";
   unit: TemporalUnit;
   filterSpec: DateFilterSpec | null;
+}
+
+/**
+ * Projection config for numeric dimensions (binned).
+ * binningStrategy values:
+ * - null: Use default binning (Auto bin)
+ * - UNBINNED constant: No binning
+ * - string: Specific strategy name (e.g., "10 bins")
+ */
+export interface NumericProjectionConfig {
+  type: "numeric";
+  binningStrategy: string | null;
+}
+
+/**
+ * Union type for projection configs.
+ * Use type guards to narrow the type.
+ */
+export type ProjectionConfig = TemporalProjectionConfig | NumericProjectionConfig;
+
+/**
+ * Type guard for temporal projection config.
+ */
+export function isTemporalProjectionConfig(
+  config: ProjectionConfig,
+): config is TemporalProjectionConfig {
+  return config.type === "temporal";
+}
+
+/**
+ * Type guard for numeric projection config.
+ */
+export function isNumericProjectionConfig(
+  config: ProjectionConfig,
+): config is NumericProjectionConfig {
+  return config.type === "numeric";
+}
+
+/**
+ * Create a temporal projection config.
+ */
+export function createTemporalProjectionConfig(
+  unit: TemporalUnit,
+  filterSpec: DateFilterSpec | null = null,
+): TemporalProjectionConfig {
+  return { type: "temporal", unit, filterSpec };
+}
+
+/**
+ * Create a numeric projection config.
+ */
+export function createNumericProjectionConfig(
+  binningStrategy: string | null = null,
+): NumericProjectionConfig {
+  return { type: "numeric", binningStrategy };
 }
 
 /**
@@ -108,6 +207,12 @@ export interface SourceLoadingState {
 }
 
 /**
+ * Binning configuration for numeric dimensions.
+ * Stores the binning strategy name (e.g., "Auto binned", "10 bins") or null for unbinned.
+ */
+export type BinningConfig = Record<string, string | null>; // tabId -> binning strategy name
+
+/**
  * Main state shape for the metrics-explorer RTK slice.
  */
 export interface MetricsExplorerState {
@@ -116,7 +221,9 @@ export interface MetricsExplorerState {
   projectionConfig: ProjectionConfig | null;
   dimensionOverrides: DimensionOverrides;
   displayType: MetricsExplorerDisplayType;
-  activeTabId: string; // "time" or column name, defaults to "time"
+  activeTabId: string;
+  dimensionTabs: StoredDimensionTab[];
+  binningByTab: BinningConfig;
 
   // Data cache (not persisted to URL)
   sourceDataById: Record<MetricSourceId, SourceData>;
@@ -141,12 +248,15 @@ export type SerializedSource =
 export interface SerializedExplorerState {
   sources: SerializedSource[];
   projection?: {
-    unit: TemporalUnit;
+    type?: "temporal" | "numeric";
+    unit?: TemporalUnit;
     filterSpec?: DateFilterSpec;
+    binningStrategy?: string | null;
   };
   dimensions?: Record<number, string>;
   display?: MetricsExplorerDisplayType;
   activeTab?: string;
+  tabs?: SerializedTab[];
 }
 
 /**
@@ -183,7 +293,6 @@ export interface AddMetricSourcePayload {
  */
 export interface AddMeasureSourcePayload {
   measureId: MeasureId;
-  tableId: ConcreteTableId;
 }
 
 /**
@@ -195,6 +304,16 @@ export interface InitializeFromUrlPayload {
   dimensionOverrides: DimensionOverrides;
   displayType: MetricsExplorerDisplayType;
   activeTabId: string;
+  dimensionTabs: StoredDimensionTab[];
+  binningByTab: BinningConfig;
+}
+
+/**
+ * Payload for setting binning strategy for a tab.
+ */
+export interface SetBinningPayload {
+  tabId: string;
+  binningStrategy: string | null;
 }
 
 /**

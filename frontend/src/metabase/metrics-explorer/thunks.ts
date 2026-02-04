@@ -16,7 +16,24 @@ import type {
   MetricSourceId,
 } from "metabase-types/store/metrics-explorer";
 
-import { selectModifiedQueryForSource, selectSourceOrder } from "./selectors";
+import {
+  addMeasureSource,
+  addMetricSource,
+  removeSource,
+  setInitialTabs,
+  updateTabColumns,
+} from "./metrics-explorer.slice";
+import {
+  selectBaseQueries,
+  selectModifiedQueryForSource,
+  selectSourceOrder,
+  selectStoredDimensionTabs,
+} from "./selectors";
+import { computeDefaultTabs, findMatchingColumnForTab } from "./utils/dimensions";
+import {
+  createMeasureSourceId,
+  createMetricSourceId,
+} from "./utils/source-ids";
 
 // Module-level abort controller for cancelling in-flight fetchAllResults requests
 let currentFetchAllController: AbortController | null = null;
@@ -137,4 +154,89 @@ export const fetchAllResults =
 
     // Use allSettled to ensure we don't throw on aborted requests
     await Promise.allSettled(fetchPromises);
+  };
+
+/**
+ * Update tabs when a new source is loaded.
+ * - If no tabs exist, compute default tabs
+ * - If tabs exist, add the new source to relevant tabs
+ */
+export const updateTabsForSource =
+  (sourceId: MetricSourceId) =>
+  (dispatch: Dispatch, getState: GetState): void => {
+    const state = getState();
+    const storedTabs = selectStoredDimensionTabs(state);
+    const baseQueries = selectBaseQueries(state);
+    const sourceOrder = selectSourceOrder(state);
+
+    const query = baseQueries[sourceId];
+    if (!query) {
+      return;
+    }
+
+    if (storedTabs.length === 0) {
+      const defaultTabs = computeDefaultTabs(baseQueries, sourceOrder);
+      if (defaultTabs.length > 0) {
+        dispatch(setInitialTabs(defaultTabs));
+      }
+      return;
+    }
+
+    for (const tab of storedTabs) {
+      if (tab.columnsBySource[sourceId]) {
+        continue;
+      }
+
+      const matchingColumnName = findMatchingColumnForTab(query, tab);
+      if (matchingColumnName) {
+        dispatch(
+          updateTabColumns({
+            tabId: tab.id,
+            sourceId,
+            columnName: matchingColumnName,
+          }),
+        );
+      }
+    }
+  };
+
+/**
+ * Add a metric source and fetch its data.
+ * Tab updates are handled by an effect in useUrlSync that watches baseQueries.
+ */
+export const addMetricAndFetch =
+  (cardId: CardId) =>
+  async (dispatch: Dispatch): Promise<void> => {
+    dispatch(addMetricSource({ cardId }));
+    await dispatch(fetchMetricSource({ cardId }));
+  };
+
+/**
+ * Add a measure source and fetch its data.
+ * Tab updates are handled by an effect in useUrlSync that watches baseQueries.
+ */
+export const addMeasureAndFetch =
+  (measureId: MeasureId) =>
+  async (dispatch: Dispatch): Promise<void> => {
+    dispatch(addMeasureSource({ measureId }));
+    await dispatch(fetchMeasureSource({ measureId }));
+  };
+
+/**
+ * Swap one source for another atomically.
+ * Adds the new source first, then removes the old to preserve tabs.
+ */
+export const swapSource =
+  (
+    oldSourceId: MetricSourceId,
+    newSource: { type: "metric"; cardId: CardId } | { type: "measure"; measureId: MeasureId },
+  ) =>
+  async (dispatch: Dispatch): Promise<void> => {
+    if (newSource.type === "metric") {
+      await dispatch(addMetricAndFetch(newSource.cardId));
+    } else {
+      await dispatch(addMeasureAndFetch(newSource.measureId));
+    }
+
+    dispatch(removeSource({ sourceId: oldSourceId }));
   };

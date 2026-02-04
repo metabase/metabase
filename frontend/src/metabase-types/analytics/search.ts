@@ -34,6 +34,7 @@ type SearchContentType =
   | "card"
   | "dataset"
   | "segment"
+  | "measure"
   | "metric"
   | "collection"
   | "database"

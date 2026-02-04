@@ -1,33 +1,134 @@
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
-import type {
-  DimensionTabType,
-  ProjectionConfig,
-  SourceData,
+import {
+  type DimensionTabType,
+  type ProjectionConfig,
+  type SourceData,
+  type TemporalProjectionConfig,
+  createTemporalProjectionConfig,
+  isExcludeDateFilterSpec,
+  isNumericProjectionConfig,
+  isRelativeDateFilterSpec,
+  isSpecificDateFilterSpec,
+  isTemporalProjectionConfig,
 } from "metabase-types/store/metrics-explorer";
 
 const STAGE_INDEX = -1;
 
 /**
- * Check if a column with the given name exists in breakoutable columns.
+ * Sentinel value indicating "no binning" (unbinned).
+ * Distinguished from null which means "use default binning".
  */
-export function columnExistsInQuery(
-  query: Lib.Query,
-  columnName: string,
-): boolean {
-  const breakoutableCols = Lib.breakoutableColumns(query, STAGE_INDEX);
-  return breakoutableCols.some((col) => {
-    const info = Lib.displayInfo(query, STAGE_INDEX, col);
-    return info.name === columnName;
-  });
+export const UNBINNED = "__unbinned__" as const;
+
+// ============================================================
+// TAB TYPE CONFIGURATION - Declarative rules for each tab type
+// ============================================================
+
+/**
+ * Configuration for how each tab type handles column matching and projection application.
+ */
+interface TabTypeQueryConfig {
+  /**
+   * Applies the breakout for this tab type to a query.
+   * Returns the modified query with the appropriate breakout applied.
+   */
+  applyBreakout: (
+    query: Lib.Query,
+    columnName: string,
+    projectionConfig: ProjectionConfig | null,
+  ) => Lib.Query;
 }
 
 /**
- * Apply a dimension override to a query by replacing the breakout column.
- * Uses temporal bucket for time columns.
+ * Declarative configuration mapping tab types to their query building behavior.
  */
-export function applyDimensionOverride(
+const TAB_TYPE_QUERY_CONFIG: Record<DimensionTabType, TabTypeQueryConfig> = {
+  time: {
+    applyBreakout: (query, columnName, projectionConfig) => {
+      let result = applyTemporalBreakoutColumn(query, columnName);
+      if (projectionConfig && isTemporalProjectionConfig(projectionConfig)) {
+        result = applyTemporalUnit(result, projectionConfig.unit);
+        if (projectionConfig.filterSpec) {
+          result = applyDateFilter(result, projectionConfig.filterSpec);
+        }
+      }
+      return result;
+    },
+  },
+  geo: {
+    applyBreakout: (query, columnName) => {
+      return applySimpleBreakout(query, columnName);
+    },
+  },
+  boolean: {
+    applyBreakout: (query, columnName) => {
+      return applySimpleBreakout(query, columnName);
+    },
+  },
+  category: {
+    applyBreakout: (query, columnName) => {
+      return applySimpleBreakout(query, columnName);
+    },
+  },
+  numeric: {
+    applyBreakout: (query, columnName, projectionConfig) => {
+      const binningStrategy =
+        projectionConfig && isNumericProjectionConfig(projectionConfig)
+          ? projectionConfig.binningStrategy
+          : null;
+      return applyBinnedBreakout(query, columnName, binningStrategy);
+    },
+  },
+};
+
+// ============================================================
+// COLUMN UTILITIES
+// ============================================================
+
+/**
+ * Find a breakoutable column by name.
+ */
+function findBreakoutColumn(
+  query: Lib.Query,
+  columnName: string,
+): Lib.ColumnMetadata | null {
+  const breakoutableColumns = Lib.breakoutableColumns(query, STAGE_INDEX);
+  return (
+    breakoutableColumns.find((col) => {
+      const info = Lib.displayInfo(query, STAGE_INDEX, col);
+      return info.name === columnName;
+    }) ?? null
+  );
+}
+
+// ============================================================
+// BREAKOUT APPLICATION HELPERS
+// ============================================================
+
+/**
+ * Apply a simple breakout without any bucketing.
+ * Used for category, boolean, and geo tab types.
+ */
+function applySimpleBreakout(query: Lib.Query, columnName: string): Lib.Query {
+  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+  if (breakouts.length === 0) {
+    return query;
+  }
+
+  const targetColumn = findBreakoutColumn(query, columnName);
+  if (!targetColumn) {
+    return query;
+  }
+
+  return Lib.replaceClause(query, STAGE_INDEX, breakouts[0], targetColumn);
+}
+
+/**
+ * Apply a temporal breakout column (switching to a different date column).
+ */
+function applyTemporalBreakoutColumn(
   query: Lib.Query,
   columnName: string,
 ): Lib.Query {
@@ -35,14 +136,8 @@ export function applyDimensionOverride(
   if (breakouts.length === 0) {
     return query;
   }
-  const breakout = breakouts[0];
 
-  const breakoutableColumns = Lib.breakoutableColumns(query, STAGE_INDEX);
-  const targetColumn = breakoutableColumns.find((col) => {
-    const info = Lib.displayInfo(query, STAGE_INDEX, col);
-    return info.name === columnName;
-  });
-
+  const targetColumn = findBreakoutColumn(query, columnName);
   if (!targetColumn) {
     return query;
   }
@@ -53,53 +148,68 @@ export function applyDimensionOverride(
     targetColumn,
   );
 
-  return Lib.replaceClause(query, STAGE_INDEX, breakout, columnWithBucket);
+  return Lib.replaceClause(query, STAGE_INDEX, breakouts[0], columnWithBucket);
 }
 
 /**
- * Apply a non-temporal breakout by replacing with a raw column (no temporal bucket).
- * Used for category and boolean dimensions.
+ * Apply a binned breakout for numeric columns.
+ * Binning strategy values:
+ * - null: Use default binning (Auto bin) - applies the bucket with default: true
+ * - UNBINNED: No binning - column is used as-is
+ * - string: Specific strategy name (e.g., "10 bins", "50 bins")
  */
-export function applyNonTemporalBreakout(
+function applyBinnedBreakout(
   query: Lib.Query,
   columnName: string,
+  binningStrategy: string | null,
 ): Lib.Query {
   const breakouts = Lib.breakouts(query, STAGE_INDEX);
   if (breakouts.length === 0) {
     return query;
   }
-  const breakout = breakouts[0];
 
-  const breakoutableColumns = Lib.breakoutableColumns(query, STAGE_INDEX);
-  const targetColumn = breakoutableColumns.find((col) => {
-    const info = Lib.displayInfo(query, STAGE_INDEX, col);
-    return info.name === columnName;
-  });
-
+  const targetColumn = findBreakoutColumn(query, columnName);
   if (!targetColumn) {
     return query;
   }
 
-  // Use the column directly without any temporal bucket
-  return Lib.replaceClause(query, STAGE_INDEX, breakout, targetColumn);
-}
-
-/**
- * Apply dimension override if the column exists in the query.
- */
-export function applyDimensionOverrideIfValid(
-  query: Lib.Query,
-  columnName: string,
-): Lib.Query {
-  if (!columnExistsInQuery(query, columnName)) {
-    return query;
+  let columnWithBucket: Lib.ColumnMetadata;
+  if (binningStrategy === UNBINNED) {
+    // Explicit unbinned - no binning applied
+    columnWithBucket = Lib.withBinning(targetColumn, null);
+  } else if (binningStrategy !== null) {
+    // Specific strategy by name
+    const bucket = findBinningBucket(query, targetColumn, binningStrategy);
+    columnWithBucket = Lib.withBinning(targetColumn, bucket);
+  } else {
+    // null means "use default binning" - finds the bucket with default: true
+    columnWithBucket = Lib.withDefaultBinning(query, STAGE_INDEX, targetColumn);
   }
-  return applyDimensionOverride(query, columnName);
+
+  return Lib.replaceClause(query, STAGE_INDEX, breakouts[0], columnWithBucket);
 }
 
 /**
- * Find the first datetime column from breakoutable columns.
+ * Find a binning bucket by display name.
  */
+function findBinningBucket(
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
+  binningName: string | null,
+): Lib.Bucket | null {
+  if (binningName === null) {
+    return null;
+  }
+
+  const strategies = Lib.availableBinningStrategies(query, STAGE_INDEX, column);
+  const bucket = strategies.find((b) => {
+    const info = Lib.displayInfo(query, STAGE_INDEX, b);
+    return info.displayName === binningName;
+  });
+
+  return bucket ?? null;
+}
+
 function findFirstDatetimeColumn(
   query: Lib.Query,
 ): Lib.ColumnMetadata | null {
@@ -107,9 +217,6 @@ function findFirstDatetimeColumn(
   return columns.find((col) => Lib.isDateOrDateTime(col)) ?? null;
 }
 
-/**
- * Find a temporal bucket matching the given unit.
- */
 function findTemporalBucket(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
@@ -123,9 +230,6 @@ function findTemporalBucket(
   return bucket ?? null;
 }
 
-/**
- * Apply temporal unit to the first breakout.
- */
 function applyTemporalUnit(
   query: Lib.Query,
   unit: TemporalUnit,
@@ -150,33 +254,6 @@ function applyTemporalUnit(
   return Lib.replaceClause(query, STAGE_INDEX, breakout, columnWithBucket);
 }
 
-/**
- * Apply projection config (unit + filter) to a query.
- *
- * This function:
- * 1. Updates the breakout's temporal bucket
- * 2. Applies filterSpec if provided (does NOT check for existing filters)
- */
-export function applyProjectionConfigToQuery(
-  query: Lib.Query,
-  config: ProjectionConfig,
-): Lib.Query {
-  let result = query;
-
-  // 1. Apply temporal unit to first datetime breakout
-  result = applyTemporalUnit(result, config.unit);
-
-  // 2. Apply filter spec if present
-  if (config.filterSpec) {
-    result = applyDateFilter(result, config.filterSpec);
-  }
-
-  return result;
-}
-
-/**
- * Remove existing filters on the given column.
- */
 function removeFiltersOnColumn(
   query: Lib.Query,
   targetColumn: Lib.ColumnMetadata,
@@ -197,14 +274,10 @@ function removeFiltersOnColumn(
   return result;
 }
 
-/**
- * Apply a date filter to the query based on the filter spec.
- */
 function applyDateFilter(
   query: Lib.Query,
   filterSpec: NonNullable<ProjectionConfig["filterSpec"]>,
 ): Lib.Query {
-  // Find datetime column from first breakout
   const breakouts = Lib.breakouts(query, STAGE_INDEX);
   if (breakouts.length === 0) {
     return query;
@@ -215,11 +288,12 @@ function applyDateFilter(
     return query;
   }
 
-  // Remove existing filters on this column first
-  let result = removeFiltersOnColumn(query, column);
+  const result = removeFiltersOnColumn(query, column);
 
-  // Build filter clause from spec
-  const filterClause = buildFilterFromSpec(column, filterSpec);
+  // Filters should use unbucketed column to avoid temporal granularity in the filter clause
+  const unbucketedColumn = Lib.withTemporalBucket(column, null);
+
+  const filterClause = buildFilterFromSpec(unbucketedColumn, filterSpec);
   if (!filterClause) {
     return result;
   }
@@ -227,27 +301,22 @@ function applyDateFilter(
   return Lib.filter(result, STAGE_INDEX, filterClause);
 }
 
-/**
- * Build a filter clause from a filter spec.
- */
 function buildFilterFromSpec(
   column: Lib.ColumnMetadata,
   filterSpec: NonNullable<ProjectionConfig["filterSpec"]>,
 ): Lib.ExpressionClause | null {
-  // RelativeDateFilter: has "value" (number) and "unit", no "operator"
-  if ("value" in filterSpec && !("operator" in filterSpec)) {
+  if (isRelativeDateFilterSpec(filterSpec)) {
     return Lib.relativeDateFilterClause({
       column,
       value: filterSpec.value,
       unit: filterSpec.unit,
-      offsetValue: filterSpec.offsetValue ?? undefined,
-      offsetUnit: filterSpec.offsetUnit ?? undefined,
+      offsetValue: filterSpec.offsetValue,
+      offsetUnit: filterSpec.offsetUnit,
       options: filterSpec.options,
     });
   }
 
-  // SpecificDateFilter: has "operator", "values" (Date[]), "hasTime"
-  if ("hasTime" in filterSpec) {
+  if (isSpecificDateFilterSpec(filterSpec)) {
     return Lib.specificDateFilterClause({
       column,
       operator: filterSpec.operator,
@@ -256,12 +325,11 @@ function buildFilterFromSpec(
     });
   }
 
-  // ExcludeDateFilter: has "operator", "values" (number[]), optionally "unit"
-  if ("operator" in filterSpec && "values" in filterSpec) {
+  if (isExcludeDateFilterSpec(filterSpec)) {
     return Lib.excludeDateFilterClause({
       column,
       operator: filterSpec.operator,
-      unit: filterSpec.unit ?? undefined,
+      unit: filterSpec.unit,
       values: filterSpec.values,
     });
   }
@@ -269,9 +337,6 @@ function buildFilterFromSpec(
   return null;
 }
 
-/**
- * Extract the unit from an existing query's first breakout.
- */
 function extractUnitFromQuery(query: Lib.Query): TemporalUnit {
   const breakouts = Lib.breakouts(query, STAGE_INDEX);
   if (breakouts.length === 0) {
@@ -288,9 +353,6 @@ function extractUnitFromQuery(query: Lib.Query): TemporalUnit {
   return info.shortName as TemporalUnit;
 }
 
-/**
- * Extract filter spec from a query's filter on the given column.
- */
 export function extractFilterSpecFromQuery(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
@@ -299,7 +361,6 @@ export function extractFilterSpecFromQuery(
   const columnInfo = Lib.displayInfo(query, STAGE_INDEX, column);
 
   for (const filter of filters) {
-    // Try relative date filter
     const relParts = Lib.relativeDateFilterParts(query, STAGE_INDEX, filter);
     if (relParts && relParts.column) {
       const filterColInfo = Lib.displayInfo(query, STAGE_INDEX, relParts.column);
@@ -314,7 +375,6 @@ export function extractFilterSpecFromQuery(
       }
     }
 
-    // Try specific date filter
     const specParts = Lib.specificDateFilterParts(query, STAGE_INDEX, filter);
     if (specParts && specParts.column) {
       const filterColInfo = Lib.displayInfo(query, STAGE_INDEX, specParts.column);
@@ -327,7 +387,6 @@ export function extractFilterSpecFromQuery(
       }
     }
 
-    // Try exclude date filter
     const excParts = Lib.excludeDateFilterParts(query, STAGE_INDEX, filter);
     if (excParts && excParts.column) {
       const filterColInfo = Lib.displayInfo(query, STAGE_INDEX, excParts.column);
@@ -344,17 +403,12 @@ export function extractFilterSpecFromQuery(
   return null;
 }
 
-/**
- * Initialize projection config from an existing query.
- */
 export function initializeProjectionConfigFromQuery(
   query: Lib.Query,
-): ProjectionConfig {
+): TemporalProjectionConfig {
   const unit = extractUnitFromQuery(query);
-
-  // Extract filter spec from breakout column
   const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  let filterSpec: ProjectionConfig["filterSpec"] = null;
+  let filterSpec: TemporalProjectionConfig["filterSpec"] = null;
 
   if (breakouts.length > 0) {
     const column = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
@@ -363,13 +417,9 @@ export function initializeProjectionConfigFromQuery(
     }
   }
 
-  return { unit, filterSpec };
+  return createTemporalProjectionConfig(unit, filterSpec);
 }
 
-/**
- * Ensure a query has a datetime breakout.
- * If no breakout exists, find first datetime column and add as breakout with default bucket.
- */
 export function ensureDatetimeBreakout(query: Lib.Query): Lib.Query {
   const existingBreakouts = Lib.breakouts(query, STAGE_INDEX);
   if (existingBreakouts.length > 0) {
@@ -385,10 +435,6 @@ export function ensureDatetimeBreakout(query: Lib.Query): Lib.Query {
   return Lib.breakout(query, STAGE_INDEX, colWithBucket);
 }
 
-/**
- * Build a base query from a measure.
- * Creates a query with the measure as an aggregation and ensures a datetime breakout.
- */
 export function buildMeasureQuery(
   measureId: MeasureId,
   sourceData: SourceData & { type: "measure" },
@@ -408,44 +454,35 @@ export function buildMeasureQuery(
     return null;
   }
 
-  // Add the measure as an aggregation
   const queryWithMeasure = Lib.aggregate(baseQuery, STAGE_INDEX, measureMeta);
-
-  // Ensure the query has a datetime breakout
   return ensureDatetimeBreakout(queryWithMeasure);
 }
 
 /**
- * Apply both dimension override and projection config to a query.
- * For non-time tabs (category/boolean), applies a non-temporal breakout instead.
+ * Build a modified query for a specific tab type and column.
+ * Uses the declarative TAB_TYPE_QUERY_CONFIG to apply the appropriate breakout.
+ *
+ * @param baseQuery - The base query to modify
+ * @param projectionConfig - Temporal or numeric projection settings
+ * @param tabType - The type of dimension tab (time, geo, category, etc.)
+ * @param tabColumnName - The column name to use for the breakout
+ * @param dimensionOverride - Optional override for the column name
+ * @returns Modified query with appropriate breakout applied, or null if invalid
  */
 export function buildModifiedQuery(
   baseQuery: Lib.Query,
   projectionConfig: ProjectionConfig | null,
+  tabType: DimensionTabType | undefined,
+  tabColumnName: string | undefined,
   dimensionOverride?: string,
-  tabType?: DimensionTabType,
-  tabColumnName?: string,
-): Lib.Query {
-  let query = baseQuery;
-
-  // For non-time tabs, apply non-temporal breakout
-  if (tabType && tabType !== "time" && tabColumnName) {
-    // Apply dimension override if provided, otherwise use the tab's column
-    const columnName = dimensionOverride ?? tabColumnName;
-    query = applyNonTemporalBreakout(query, columnName);
-    // Skip projection config for non-time tabs (no filter/unit controls)
-    return query;
+): Lib.Query | null {
+  // Must have a tab type and column name to build a valid query
+  if (!tabType || !tabColumnName) {
+    return null;
   }
 
-  // Time tab: apply dimension override first (only if provided)
-  if (dimensionOverride !== undefined) {
-    query = applyDimensionOverrideIfValid(query, dimensionOverride);
-  }
+  const columnName = dimensionOverride ?? tabColumnName;
+  const config = TAB_TYPE_QUERY_CONFIG[tabType];
 
-  // Then apply projection config
-  if (projectionConfig) {
-    query = applyProjectionConfigToQuery(query, projectionConfig);
-  }
-
-  return query;
+  return config.applyBreakout(baseQuery, columnName, projectionConfig);
 }

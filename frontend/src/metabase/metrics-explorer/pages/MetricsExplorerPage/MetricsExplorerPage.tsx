@@ -3,8 +3,13 @@ import { useCallback } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { Flex, Stack } from "metabase/ui";
 import type {
+  DimensionTabType,
   MetricsExplorerDisplayType,
   ProjectionConfig,
+} from "metabase-types/store/metrics-explorer";
+import {
+  createNumericProjectionConfig,
+  createTemporalProjectionConfig,
 } from "metabase-types/store/metrics-explorer";
 
 import { DimensionTabs } from "../../components/DimensionTabs";
@@ -32,17 +37,29 @@ import {
   createMetricSourceId,
 } from "../../utils/source-ids";
 
+function getDefaultProjectionConfigForTab(
+  tabType: DimensionTabType | null,
+): ProjectionConfig {
+  switch (tabType) {
+    case "numeric":
+      return createNumericProjectionConfig(null);
+    case "time":
+    default:
+      return createTemporalProjectionConfig("month");
+  }
+}
+
 type MetricsExplorerPageProps = {
   location: {
     hash: string;
+    search: string;
   };
 };
 
 export function MetricsExplorerPage({
   location,
 }: MetricsExplorerPageProps): JSX.Element {
-  // Sync URL state with Redux
-  useUrlSync(location.hash);
+  useUrlSync(location.hash, location.search);
 
   // Get state from Redux
   const sourceOrder = useSelector(selectSourceOrder);
@@ -60,11 +77,14 @@ export function MetricsExplorerPage({
   const {
     addMetric,
     addMeasure,
+    swapSource,
     removeSource,
     setProjectionConfig,
     setDimensionOverride,
     setDisplayType,
     setActiveTab,
+    addTab,
+    removeTab,
   } = useExplorerActions();
 
   const handleAddMetric = useCallback(
@@ -79,11 +99,23 @@ export function MetricsExplorerPage({
 
       if (metric.sourceType === "metric") {
         addMetric(metric.id);
-      } else if (metric.tableId) {
-        addMeasure(metric.id, metric.tableId);
+      } else {
+        addMeasure(metric.id);
       }
     },
     [selectedMetrics, addMetric, addMeasure],
+  );
+
+  const handleSwapMetric = useCallback(
+    (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
+      swapSource(
+        oldMetric.id,
+        oldMetric.sourceType,
+        newMetric.id,
+        newMetric.sourceType,
+      );
+    },
+    [swapSource],
   );
 
   const handleRemoveMetric = useCallback(
@@ -131,9 +163,37 @@ export function MetricsExplorerPage({
       const tab = dimensionTabs.find((t) => t.id === tabId);
       const tabType = tab?.type ?? null;
       const defaultDisplayType = getDefaultDisplayTypeForTab(tabType);
-      setActiveTab(tabId, defaultDisplayType);
+      const defaultProjectionConfig = getDefaultProjectionConfigForTab(tabType);
+      setActiveTab(tabId, defaultDisplayType, defaultProjectionConfig);
     },
     [dimensionTabs, setActiveTab],
+  );
+
+  const handleAddTab = useCallback(
+    (columnName: string, tabType: DimensionTabType) => {
+      const defaultDisplayType = getDefaultDisplayTypeForTab(tabType);
+      const defaultProjectionConfig = getDefaultProjectionConfigForTab(tabType);
+      addTab(columnName, defaultDisplayType, defaultProjectionConfig);
+    },
+    [addTab],
+  );
+
+  const handleRemoveTab = useCallback(
+    (tabId: string) => {
+      // If removing the active tab, we need to switch to another tab with proper defaults
+      if (tabId === activeTabId) {
+        const remainingTabs = dimensionTabs.filter((t) => t.id !== tabId);
+        const newActiveTab = remainingTabs[0];
+        if (newActiveTab) {
+          const newTabType = newActiveTab.type;
+          const defaultDisplayType = getDefaultDisplayTypeForTab(newTabType);
+          const defaultProjectionConfig = getDefaultProjectionConfigForTab(newTabType);
+          setActiveTab(newActiveTab.id, defaultDisplayType, defaultProjectionConfig);
+        }
+      }
+      removeTab(tabId);
+    },
+    [removeTab, activeTabId, dimensionTabs, setActiveTab],
   );
 
   // Map selectedMetrics to SelectedMetric format (omit sourceId)
@@ -152,18 +212,21 @@ export function MetricsExplorerPage({
           metricColors={sourceColors}
           onAddMetric={handleAddMetric}
           onRemoveMetric={handleRemoveMetric}
+          onSwapMetric={handleSwapMetric}
         />
         {sourceOrder.length > 0 && (
           <DimensionTabs
             activeTabId={activeTabId}
             onTabChange={handleTabChange}
+            onAddTab={handleAddTab}
+            onRemoveTab={handleRemoveTab}
           />
         )}
       </Stack>
       <Flex flex="1 0 auto" direction="column">
         {sourceOrder.length > 0 ? (
           <MetricVisualization
-            projectionConfig={projectionConfig ?? { unit: "month", filterSpec: null }}
+            projectionConfig={projectionConfig ?? createTemporalProjectionConfig("month")}
             displayType={displayType}
             isLoading={isLoading || !projectionConfig}
             error={error}
