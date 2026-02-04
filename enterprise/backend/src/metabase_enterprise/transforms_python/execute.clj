@@ -128,9 +128,9 @@
       (let [ret (try
                   (thunk)
                   (catch Exception e
-                    (if (and (< attempt 5)
-                             (or (str/includes? (str e) "not found")
-                                 (str/includes? (str e) "Not found")))
+                    (if (and (< attempt 8)                  ; max wait is about 20 seconds
+                             (or (str/includes? (ex-message e) "not found")
+                                 (str/includes? (ex-message e) "Not found")))
                       (let [delay-ms (* 150 (Math/pow 2 attempt))]
                         (log/debugf "BigQuery operation failed (attempt %d), retrying in %dms" (inc attempt) delay-ms)
                         (Thread/sleep (long delay-ms))
@@ -161,6 +161,10 @@
   "Create a table from metadata and insert data from source."
   [driver db-id table-schema data-source]
   (transforms.util/create-table-from-schema! driver db-id table-schema)
+  (u/poll {:thunk       (driver/table-exists? driver (t2/select-one :model/Database db-id) (:name table-schema))
+           :done?       true?
+           :timeout-ms  30000
+           :interval-ms 500})
   (insert-data! driver db-id table-schema data-source))
 
 (defn- transfer-with-rename-tables-strategy!

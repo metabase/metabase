@@ -26,7 +26,7 @@
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
                  (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
-                 (assoc :schema (driver.sql/default-schema driver)))]
+                 (u/assoc-dissoc :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database

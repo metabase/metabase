@@ -904,10 +904,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- get-table-str [table]
-  (let [table-str (if (namespace table)
-                    (format "%s.%s" (namespace table) (name table))
-                    (name table))]
-    (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
+  (let [qn #(sql.u/quote-name :bigquery-cloud-sdk :table %)]
+    (if (namespace table)
+      (format "%s.%s" (qn (namespace table)) (qn (name table)))
+      (qn (name table)))))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
@@ -1035,6 +1035,7 @@
                          (keyword schema name)
                          (keyword name))
         drop-sql (first (driver/compile-drop-table driver qualified-name))]
+    (def drop-sql2 drop-sql)
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 

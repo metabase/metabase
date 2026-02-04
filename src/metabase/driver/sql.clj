@@ -8,8 +8,10 @@
    [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
@@ -17,6 +19,7 @@
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -163,6 +166,10 @@
   [driver database output-table transform-details conn-spec]
   (try
     (driver/drop-table! driver (:id database) output-table)
+    (u/poll {:thunk       (driver/table-exists? driver database output-table)
+             :done?       false?
+             :timeout-ms  30000
+             :interval-ms 500})
     {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
     (catch Exception e
       (log/error e "Failed to run transform using drop-create strategy")

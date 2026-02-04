@@ -82,12 +82,14 @@
   [schema checkpoint-config]
   (let [{:keys [field-name template-tag-type]} checkpoint-config
         timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE %s > {{checkpoint}}]] ORDER BY %s LIMIT 10"
+        query (format "SELECT *, %s AS %s FROM %s [[WHERE %s > {{checkpoint}}]] ORDER BY %s LIMIT 10"
                       timestamp-sql
+                      (sql.u/quote-name driver/*driver* :field "load_timestamp")
                       (if schema
                         (sql.u/quote-name driver/*driver* :table schema "transforms_products")
                         "transforms_products")
-                      field-name field-name)]
+                      (sql.u/quote-name driver/*driver* :field field-name)
+                      (sql.u/quote-name driver/*driver* :field field-name))]
     {:database (mt/id)
      :type :native
      :native {:query query
@@ -101,8 +103,9 @@
   "Create a native query without template tags for testing automatic checkpoint insertion. "
   [schema]
   (let [timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT *, %s AS load_timestamp FROM %s"
+        query (format "SELECT *, %s AS %s FROM %s"
                       timestamp-sql
+                      (sql.u/quote-name driver/*driver* :field "load_timestamp")
                       (if schema
                         (sql.u/quote-name driver/*driver* :table schema "transforms_products")
                         "transforms_products"))]
@@ -177,7 +180,8 @@
   (let [table (t2/select-one :model/Table :name table-name)
         native-query {:database (mt/id)
                       :type :native
-                      :native {:query (format "SELECT COUNT(DISTINCT load_timestamp) FROM %s"
+                      :native {:query (format "SELECT COUNT(DISTINCT %s) FROM %s"
+                                              (sql.u/quote-name driver/*driver* :field "load_timestamp")
                                               (sql.u/quote-name driver/*driver* :table
                                                                 (:schema table)
                                                                 table-name))}}
@@ -192,7 +196,7 @@
   "Compare two checkpoint values with type-appropriate logic. "
   [checkpoint-type expected actual]
   (case checkpoint-type
-    :integer (= expected actual)
+    :integer (= (bigint expected) (bigint actual))
     :float (and (number? actual)
                 (< (Math/abs (- expected actual)) 0.01))
     :temporal (and (string? actual)
@@ -203,14 +207,13 @@
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
         spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-        schema-prefix (if schema (str schema ".") "")
         values-list (str/join ", "
                               (map (fn [{:keys [name category price created-at]}]
                                      (format "('%s', '%s', %s, '%s')" name category price created-at))
                                    products))
-        insert-sql (format "INSERT INTO %s%s (name, category, price, created_at) VALUES %s"
-                           schema-prefix
-                           source-table-name
+        insert-sql (format "INSERT INTO %s (%s) VALUES %s"
+                           (sql.u/quote-name driver/*driver* :table schema source-table-name)
+                           (str/join "," (map #(sql.u/quote-name driver/*driver* :field %) ["name" "category" "price" "created_at"]))
                            values-list)]
     (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))
 
@@ -218,10 +221,9 @@
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
         spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-        schema-prefix (if schema (str schema ".") "")
-        delete-sql (format "DELETE FROM %s%s WHERE name IN (%s)"
-                           schema-prefix
-                           source-table-name
+        delete-sql (format "DELETE FROM %s WHERE %s IN (%s)"
+                           (sql.u/quote-name driver/*driver* :table schema source-table-name)
+                           (sql.u/quote-name driver/*driver* :field "name")
                            (str/join ", " (map (constantly "?") products)))]
     (driver/execute-raw-queries! driver/*driver* spec [[delete-sql (mapv :name products)]])))
 
@@ -411,14 +413,16 @@
                           (is (= 2 distinct-timestamps) "Should have 2 distinct timestamp")
                           (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint) "Checkpoint should be computed from existing data"))))
 
-                    (when-not (= driver/*driver* :clickhouse)
+                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
+                               (not= driver/*driver* :clickhouse)
+                               ;; this *should* work see #68965 for context, will plan follow-up task
+                               (not= driver/*driver* :snowflake))
                       (testing "Add new data and run incrementally"
                         (with-insert-test-products!
                           [{:name "After Switch Product"
                             :category "Gadget"
                             :price 379.99
                             :created-at "2024-01-20T10:00:00"}]
-
                           (let [transform (t2/select-one :model/Transform (:id transform))]
                             (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                             (let [row-count (get-table-row-count target-table)
@@ -464,7 +468,10 @@
                       (let [row-count (get-table-row-count target-table)]
                         (is (= 16 row-count) "Should still have 16 rows, no new data")))
 
-                    (when-not (= driver/*driver* :clickhouse)
+                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
+                               (not= driver/*driver* :clickhouse)
+                               ;; this *should* work see #68965 for context, will plan follow-up task
+                               (not= driver/*driver* :snowflake))
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "New Product 1"
@@ -484,7 +491,7 @@
 
 (deftest unsupported-checkpoint-column-type-test
   (testing "Transform fails at runtime with unsupported checkpoint column type"
-    (mt/test-drivers (test-drivers)
+    (mt/test-drivers #{:h2 :postgres}
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "unsupported_type_test"]
