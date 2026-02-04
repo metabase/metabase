@@ -167,7 +167,7 @@ export interface MetabotEmbedOptions {
   targetCollection?: CollectionId;
 
   /**
-   * Is the save button enabled
+   * Whether the save button is enabled
    */
   isSaveEnabled?: boolean;
 

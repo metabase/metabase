@@ -32,11 +32,11 @@ export interface MetabotQuestionProps extends CommonStylingProps {
 
   /**
    * Whether to show the save button.
-   **/
+   */
   isSaveEnabled?: boolean;
 
   /**
-   * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
+   * The collection to save the question to. This will hide the collection picker from the save modal.
    */
   targetCollection?: SdkCollectionId;
 }

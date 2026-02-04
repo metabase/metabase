@@ -62,7 +62,6 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     cy.request("POST", "/api/collection", {
       name: "first_collection",
       description: "First collection",
-      parent_id: undefined,
     }).then(({ body }) => {
       cy.wrap(body.id).as("collectionId");
     });
@@ -84,7 +83,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should allow saving a question", () => {
-    cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");
+    cy.intercept("POST", "/api/card").as("postCard");
 
     setup(metabotResponseWithNavigateTo);
 
