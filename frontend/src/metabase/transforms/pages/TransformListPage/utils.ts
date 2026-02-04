@@ -1,5 +1,5 @@
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import type { Collection, Transform } from "metabase-types/api";
+import type { Collection, CollectionId, Transform } from "metabase-types/api";
 
 import {
   type TreeNode,
@@ -15,7 +15,7 @@ export function buildTreeData(
     return [];
   }
 
-  const transformsByCollectionId = new Map<number | null, Transform[]>();
+  const transformsByCollectionId = new Map<CollectionId | null, Transform[]>();
   for (const transform of transforms ?? []) {
     const collectionId = transform.collection_id;
     if (!transformsByCollectionId.has(collectionId)) {

@@ -7,7 +7,7 @@
 
 (defn- tag-names
   [text]
-  (let [result (params/tag_names text)]
+  (let [result (params/tag-names text)]
     #?(:clj result
        :cljs (set (js->clj result)))))
 

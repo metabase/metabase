@@ -6,7 +6,7 @@ import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmb
 
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 
-export const getRoutes = (store) => (
+export const getRoutes = () => (
   <Route>
     <Route path="embed" component={PublicApp}>
       <Route path="question/:token" component={PublicOrEmbeddedQuestion} />
