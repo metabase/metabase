@@ -4,7 +4,7 @@ import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Card, Icon, Loader, Stack, Tooltip } from "metabase/ui";
+import { Box, Card, Icon, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type {
@@ -82,11 +82,9 @@ export const VisualizationCard = ({
     : undefined;
 
   const actionButtons = questionUrl ? (
-    <Tooltip label="Open question">
-      <Link to={questionUrl} target="_blank">
-        <Icon name="external" />
-      </Link>
-    </Tooltip>
+    <Link to={questionUrl} target="_blank">
+      <Icon name="external" />
+    </Link>
   ) : null;
 
   return (
