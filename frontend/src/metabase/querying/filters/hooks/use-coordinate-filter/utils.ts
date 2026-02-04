@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
@@ -9,38 +7,15 @@ import type {
   NumberOrEmptyValue,
 } from "./types";
 
-function getOperatorName(
-  operator: Lib.CoordinateFilterOperator,
-  column: Lib.ColumnMetadata,
-) {
-  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-
-  switch (operator) {
-    case "=":
-      return isKey ? t`Is` : t`Equal to`;
-    case "!=":
-      return isKey ? t`Is not` : t`Not equal to`;
-    case "inside":
-      return t`Inside`;
-    case ">":
-      return t`Greater than`;
-    case "<":
-      return t`Less than`;
-    case "between":
-      return t`Between`;
-    case ">=":
-      return t`Greater than or equal to`;
-    case "<=":
-      return t`Less than or equal to`;
-  }
-}
-
 export function getAvailableOptions(
   column: Lib.ColumnMetadata,
 ): CoordinateFilterOperatorOption[] {
+  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+  const variant = isKey ? "default" : "number";
+
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: getOperatorName(operator, column),
+    displayName: Lib.describeFilterOperator(operator, variant),
   }));
 }
 

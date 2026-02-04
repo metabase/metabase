@@ -519,3 +519,40 @@
       :options  options
       :column   col
       :args     (vec rest-args)})))
+
+(mu/defn describe-filter-operator :- :string
+  "Returns a human-readable display name for a filter `operator` keyword.
+
+  `variant` controls how certain operators are displayed:
+  - `:default` (the default) — uses \"Is\" / \"Is not\", \"Greater than\" / \"Less than\"
+  - `:number` — uses \"Equal to\" / \"Not equal to\" for `:=` and `:!=`
+  - `:temporal` — uses \"After\" / \"Before\" for `:>` and `:<`"
+  ([operator :- :keyword]
+   (describe-filter-operator operator :default))
+  ([operator :- :keyword
+    variant   :- [:enum :default :number :temporal]]
+   (clojure.core/case operator
+     :=                (if (clojure.core/= variant :number)
+                         (i18n/tru "Equal to")
+                         (i18n/tru "Is"))
+     :!=               (if (clojure.core/= variant :number)
+                         (i18n/tru "Not equal to")
+                         (i18n/tru "Is not"))
+     :contains         (i18n/tru "Contains")
+     :does-not-contain (i18n/tru "Does not contain")
+     :starts-with      (i18n/tru "Starts with")
+     :ends-with        (i18n/tru "Ends with")
+     :is-empty         (i18n/tru "Is empty")
+     :not-empty        (i18n/tru "Not empty")
+     :>                (if (clojure.core/= variant :temporal)
+                         (i18n/tru "After")
+                         (i18n/tru "Greater than"))
+     :<                (if (clojure.core/= variant :temporal)
+                         (i18n/tru "Before")
+                         (i18n/tru "Less than"))
+     :between          (i18n/tru "Between")
+     :>=               (i18n/tru "Greater than or equal to")
+     :<=               (i18n/tru "Less than or equal to")
+     :is-null          (i18n/tru "Is empty")
+     :not-null         (i18n/tru "Not empty")
+     :inside           (i18n/tru "Inside"))))

@@ -14,6 +14,8 @@ import type {
   ExcludeDateFilterParts,
   ExpressionClause,
   FilterClause,
+  FilterOperator,
+  FilterOperatorVariant,
   FilterParts,
   Filterable,
   NumberFilterParts,
@@ -342,4 +344,11 @@ export function updateTemporalFilter(
     start,
     end,
   );
+}
+
+export function describeFilterOperator(
+  operator: FilterOperator,
+  variant: FilterOperatorVariant = "default",
+): string {
+  return ML.describe_filter_operator(operator, variant);
 }

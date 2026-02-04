@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
@@ -7,25 +6,10 @@ import * as Lib from "metabase-lib";
 import { OPERATORS } from "./constants";
 import type { TimeFilterOperatorOption, TimeValue } from "./types";
 
-function getOperatorName(operator: Lib.TimeFilterOperator) {
-  switch (operator) {
-    case "<":
-      return t`Before`;
-    case ">":
-      return t`After`;
-    case "between":
-      return t`Between`;
-    case "is-null":
-      return t`Is empty`;
-    case "not-null":
-      return t`Not empty`;
-  }
-}
-
 export function getAvailableOptions(): TimeFilterOperatorOption[] {
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: getOperatorName(operator),
+    displayName: Lib.describeFilterOperator(operator, "temporal"),
   }));
 }
 

@@ -964,6 +964,18 @@
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
 
+(defn ^:export describe-filter-operator
+  "Returns a human-readable display name for a filter operator.
+
+  `operator` is a string like \"=\", \"!=\", \"contains\", etc.
+  `variant` is an optional string: \"default\" or \"equal-to\". Defaults to \"default\".
+
+  > **Code health:** Healthy"
+  ([operator]
+   (lib.core/describe-filter-operator (keyword operator)))
+  ([operator variant]
+   (lib.core/describe-filter-operator (keyword operator) (keyword variant))))
+
 ;; # Expressions
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported
 ;; to Clojure someday, but perhaps not - it's quite standalone and there's no use case for that logic in the BE.

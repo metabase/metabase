@@ -291,6 +291,7 @@
   filters
   filterable-columns
   filter-parts
+  describe-filter-operator
   and
   or
   not

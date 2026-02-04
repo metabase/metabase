@@ -1,45 +1,18 @@
-import { t } from "ttag";
-
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { OPERATORS } from "./constants";
 import type { NumberFilterOperatorOption, NumberOrEmptyValue } from "./types";
 
-function getOperatorName(
-  operator: Lib.NumberFilterOperator,
-  column: Lib.ColumnMetadata,
-) {
-  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-
-  switch (operator) {
-    case "=":
-      return isKey ? t`Is` : t`Equal to`;
-    case "!=":
-      return isKey ? t`Is not` : t`Not equal to`;
-    case ">":
-      return t`Greater than`;
-    case "<":
-      return t`Less than`;
-    case "between":
-      return t`Between`;
-    case ">=":
-      return t`Greater than or equal to`;
-    case "<=":
-      return t`Less than or equal to`;
-    case "is-null":
-      return t`Is empty`;
-    case "not-null":
-      return t`Not empty`;
-  }
-}
-
 export function getAvailableOptions(
   column: Lib.ColumnMetadata,
 ): NumberFilterOperatorOption[] {
+  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+  const variant = isKey ? "default" : "number";
+
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: getOperatorName(operator, column),
+    displayName: Lib.describeFilterOperator(operator, variant),
   }));
 }
 

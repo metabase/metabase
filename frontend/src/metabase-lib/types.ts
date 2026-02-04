@@ -312,6 +312,8 @@ export type FilterOperator =
   | ExcludeDateFilterOperator
   | CoordinateFilterOperator;
 
+export type FilterOperatorVariant = "default" | "number" | "temporal";
+
 export type StringFilterOperator =
   | "="
   | "!="
