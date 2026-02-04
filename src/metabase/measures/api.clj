@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -26,7 +27,9 @@
    [:created_at  :any]
    [:updated_at  :any]
    [:entity_id   {:optional true} [:maybe :string]]
-   [:creator     {:optional true} [:maybe :map]]])
+   [:creator     {:optional true} [:maybe :map]]
+   [:dimensions  {:optional true} [:maybe [:sequential :map]]]
+   [:dimension_mappings {:optional true} [:maybe [:sequential :map]]]])
 
 (defn- normalize-input-definition
   "Normalize measure definition from API input to MBQL5.
@@ -68,9 +71,19 @@
     (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
     (t2/hydrate measure :creator)))
 
+(defn- hydrate-dimensions
+  "Hydrate dimensions onto a measure by computing from visible-columns and reconciling with persisted."
+  [measure]
+  (let [table-id          (:table_id measure)
+        database-id       (t2/select-one-fn :db_id :model/Table :id table-id)
+        mp                (lib-be/application-database-metadata-provider database-id)
+        measure-with-type (assoc measure :lib/type :metadata/measure)]
+    (lib-metric/hydrate-dimensions mp measure-with-type)))
+
 (mu/defn- hydrated-measure [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Measure :id id))
-      (t2/hydrate :creator)))
+      (t2/hydrate :creator)
+      hydrate-dimensions))
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
@@ -83,7 +96,8 @@
   []
   (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
-    (t2/hydrate measures :creator :definition_description)))
+    (t2/hydrate measures :creator :definition_description)
+    (mapv hydrate-dimensions measures)))
 
 (defn- write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate

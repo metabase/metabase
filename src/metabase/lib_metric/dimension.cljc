@@ -1,0 +1,226 @@
+(ns metabase.lib-metric.dimension
+  "Core logic for computing and reconciling dimensions from dimensionable entities
+   (Measures, Metrics v2, future v3). Dimensions are computed from visible columns
+   and reconciled with persisted dimensions on each read."
+  (:require
+   [medley.core :as m]
+   [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
+
+;;; ------------------------------------------------- Target Comparison -------------------------------------------------
+
+(defn- normalize-target
+  "Normalize a target ref for comparison by removing transient options."
+  [[clause-type opts id-or-name]]
+  [clause-type
+   (dissoc opts :lib/uuid :effective-type :base-type)
+   id-or-name])
+
+(defn targets-equal?
+  "Compare two target refs for equality, ignoring transient options like :lib/uuid."
+  [target-a target-b]
+  (= (normalize-target target-a) (normalize-target target-b)))
+
+(defn- random-uuid-str []
+  (str (random-uuid)))
+
+;;; ------------------------------------------------- Dimension Computation -------------------------------------------------
+
+(mr/def ::computed-dimension
+  "A dimension computed from a visible column, before reconciliation.
+   The :id is nil until assigned during reconciliation."
+  [:map
+   [:id [:maybe ::lib-metric.schema/dimension-id]]
+   [:name :string]
+   [:display-name {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe :keyword]]
+   [:semantic-type {:optional true} [:maybe :keyword]]
+   [:lib/source {:optional true} [:maybe :keyword]]])
+
+(mr/def ::computed-pair
+  "A computed dimension paired with its mapping (before ID assignment)."
+  [:map
+   [:dimension ::computed-dimension]
+   [:mapping [:map
+              [:type ::lib-metric.schema/dimension-mapping.type]
+              [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
+              [:target ::lib-metric.schema/dimension-mapping.target]]]])
+
+(defn- column->computed-pair
+  "Convert a column to a dimension/mapping pair. IDs are nil until reconciliation.
+   The table-id is extracted from the column's metadata."
+  [column]
+  (let [target (lib/ref column)]
+    {:dimension (cond-> {:id   nil
+                         :name (:name column)}
+                  (:display-name column)   (assoc :display-name (:display-name column))
+                  (:effective-type column) (assoc :effective-type (:effective-type column))
+                  (:semantic-type column)  (assoc :semantic-type (:semantic-type column))
+                  (:lib/source column)     (assoc :lib/source (:lib/source column)))
+     :mapping   (cond-> {:type   :table
+                         :target target}
+                  (:table-id column) (assoc :table-id (:table-id column)))}))
+
+(defn- compute-dimension-pairs
+  "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
+   Only includes actual database fields, not expressions."
+  [metadata-providerable query]
+  (let [mp            (lib/->metadata-provider metadata-providerable)
+        query-with-mp (lib/query mp query)
+        columns       (lib/visible-columns
+                       query-with-mp
+                       -1
+                       {:include-implicitly-joinable?                 false
+                        :include-implicitly-joinable-for-source-card? false})]
+    (->> columns
+         (remove #(= :source/expressions (:lib/source %)))
+         (perf/mapv column->computed-pair))))
+
+;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
+
+(defn- orphaned-status-message
+  "Generate a human-readable status message for an orphaned dimension."
+  [dimension]
+  (i18n/tru "Column ''{0}'' no longer exists in the data source" (:name dimension)))
+
+(defn- find-persisted-by-target
+  "Find a persisted dimension by matching its mapping's target to the given target."
+  [target persisted-mappings persisted-dims-by-id]
+  (when-let [mapping (m/find-first #(targets-equal? target (:target %)) persisted-mappings)]
+    (get persisted-dims-by-id (:dimension-id mapping))))
+
+(defn- merge-persisted-modifications
+  "Merge user modifications from a persisted dimension into a computed dimension."
+  [computed-dim persisted-dim]
+  (if persisted-dim
+    (-> computed-dim
+        (merge (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type]))
+        (assoc :status :status/active)
+        (dissoc :status-message))
+    computed-dim))
+
+(defn- assign-ids-and-reconcile
+  "Assign IDs to computed dimensions by matching targets to persisted mappings.
+   Returns vector of {:dimension ... :mapping ...} with IDs assigned."
+  [computed-pairs persisted-dims persisted-mappings]
+  (let [persisted-dims-by-id (m/index-by :id persisted-dims)]
+    (perf/mapv (fn [{:keys [dimension mapping]}]
+                 (let [persisted-dim (find-persisted-by-target (:target mapping)
+                                                               persisted-mappings
+                                                               persisted-dims-by-id)
+                       dim-id        (or (:id persisted-dim) (random-uuid-str))
+                       merged-dim    (-> dimension
+                                         (assoc :id dim-id)
+                                         (merge-persisted-modifications persisted-dim))]
+                   {:dimension merged-dim
+                    :mapping   (assoc mapping :dimension-id dim-id)}))
+               computed-pairs)))
+
+(defn- find-orphaned-dimensions
+  "Find persisted dimensions whose targets no longer exist in computed pairs."
+  [computed-pairs persisted-dims persisted-mappings]
+  (let [computed-targets    (set (map (comp normalize-target :target :mapping) computed-pairs))
+        persisted-dims-by-id (m/index-by :id persisted-dims)]
+    (->> persisted-mappings
+         (remove #(contains? computed-targets (normalize-target (:target %))))
+         (keep (fn [orphan-mapping]
+                 (when-let [dim (get persisted-dims-by-id (:dimension-id orphan-mapping))]
+                   (when (:status dim)
+                     (-> dim
+                         (assoc :status :status/orphaned)
+                         (assoc :status-message (orphaned-status-message dim))))))))))
+
+(mu/defn reconcile-dimensions-and-mappings :- [:map
+                                               [:dimensions [:sequential ::lib-metric.schema/persisted-dimension]]
+                                               [:dimension-mappings [:sequential ::lib-metric.schema/dimension-mapping]]]
+  "Reconcile computed dimension pairs with persisted data by matching on target.
+   Returns {:dimensions [...] :dimension-mappings [...]}."
+  [computed-pairs    :- [:sequential ::computed-pair]
+   persisted-dims    :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
+   persisted-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
+  (let [reconciled-pairs (assign-ids-and-reconcile computed-pairs
+                                                   (or persisted-dims [])
+                                                   (or persisted-mappings []))
+        active-dims      (perf/mapv :dimension reconciled-pairs)
+        active-mappings  (perf/mapv :mapping reconciled-pairs)
+        orphaned-dims    (find-orphaned-dimensions computed-pairs
+                                                   (or persisted-dims [])
+                                                   (or persisted-mappings []))]
+    {:dimensions         (into active-dims orphaned-dims)
+     :dimension-mappings active-mappings}))
+
+(mu/defn extract-persisted-dimensions :- [:sequential ::lib-metric.schema/persisted-dimension]
+  "Extract dimensions that should be persisted to the database.
+   A dimension should be persisted if it has a status (either active or orphaned)."
+  [dimensions :- [:sequential ::lib-metric.schema/persisted-dimension]]
+  (filterv :status dimensions))
+
+(mu/defn dimensions-changed? :- :boolean
+  "Check if the persisted dimensions have changed between old and new sets."
+  [old-persisted :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
+   new-persisted :- [:sequential ::lib-metric.schema/persisted-dimension]]
+  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :status :status-message]
+        normalize    (fn [dims] (set (map #(perf/select-keys % persist-keys) dims)))]
+    (not= (normalize old-persisted) (normalize new-persisted))))
+
+(mu/defn mappings-changed? :- :boolean
+  "Check if the dimension mappings have changed between old and new sets."
+  [old-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]
+   new-mappings :- [:sequential ::lib-metric.schema/dimension-mapping]]
+  (let [normalize (fn [mappings]
+                    (set (map #(update % :target normalize-target) mappings)))]
+    (not= (normalize old-mappings) (normalize new-mappings))))
+
+;;; ------------------------------------------------- Multimethods -------------------------------------------------
+
+(defmulti dimensionable-query
+  "Returns the MBQL query for computing visible-columns for this entity."
+  {:arglists '([metadata-providerable entity])}
+  (fn [_metadata-providerable entity] (:lib/type entity)))
+
+(defmulti get-persisted-dimensions
+  "Returns the currently persisted dimensions from the entity."
+  {:arglists '([entity])}
+  :lib/type)
+
+(defmulti get-persisted-dimension-mappings
+  "Returns the currently persisted dimension mappings from the entity."
+  {:arglists '([entity])}
+  :lib/type)
+
+(defmulti save-dimensions!
+  "Persists dimensions and dimension-mappings to the entity's storage."
+  {:arglists '([entity dimensions dimension-mappings])}
+  (fn [entity _dimensions _dimension-mappings] (:lib/type entity)))
+
+;;; ------------------------------------------------- High-level API -------------------------------------------------
+
+(defn hydrate-dimensions
+  "Hydrate dimensions and dimension-mappings onto an entity by computing from
+   visible-columns and reconciling with persisted data.
+
+   Returns the entity with :dimensions and :dimension_mappings keys populated.
+   If no query is available, returns the entity unchanged."
+  [metadata-providerable entity]
+  (if-let [query (dimensionable-query metadata-providerable entity)]
+    (let [computed-pairs     (compute-dimension-pairs metadata-providerable query)
+          persisted-dims     (get-persisted-dimensions entity)
+          persisted-mappings (get-persisted-dimension-mappings entity)
+
+          {:keys [dimensions dimension-mappings]}
+          (reconcile-dimensions-and-mappings computed-pairs persisted-dims persisted-mappings)
+
+          old-persisted-dims (extract-persisted-dimensions (or persisted-dims []))
+          new-persisted-dims (extract-persisted-dimensions dimensions)]
+      (when (or (dimensions-changed? old-persisted-dims new-persisted-dims)
+                (mappings-changed? persisted-mappings dimension-mappings))
+        (save-dimensions! entity new-persisted-dims dimension-mappings))
+      (assoc entity
+             :dimensions dimensions
+             :dimension_mappings dimension-mappings))
+    entity))
