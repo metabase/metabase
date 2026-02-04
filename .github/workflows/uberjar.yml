@@ -44,7 +44,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           output-name: metabase-ee.jar
 
       - name: Try to fetch existing OSS artifact
@@ -52,7 +53,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-oss-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: oss
           output-name: metabase-oss.jar
 
       - name: Decide if build is needed
@@ -140,7 +142,7 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          edition: ${{ matrix.edition }}
 
   check-jar-health:
     runs-on: ubuntu-22.04
@@ -171,7 +173,8 @@ jobs:
       - name: Retrieve uberjar artifact
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: ${{ matrix.edition }}
       - name: Launch uberjar
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
