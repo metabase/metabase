@@ -1,17 +1,26 @@
-/* eslint "react/prop-types": "warn" */
-import PropTypes from "prop-types";
+import type { ReactNode } from "react";
 import { Fragment } from "react";
 
 import CS from "metabase/css/core/index.css";
+import type { TextProps } from "metabase/ui";
 import { Text } from "metabase/ui";
 
-export const BoldCode = ({ children, ...props }) => (
+interface BoldCodeProps extends TextProps {
+  children: ReactNode;
+}
+
+export const BoldCode = ({ children, ...props }: BoldCodeProps) => (
   <Text fw="bold" color="brand" component="span" {...props}>
     <code>{children}</code>
   </Text>
 );
 
-export const Code = ({ children, block }) => {
+interface CodeProps {
+  children: ReactNode;
+  block?: boolean;
+}
+
+export const Code = ({ children, block }: CodeProps) => {
   if (block) {
     return <div className={CS.textCode}>{children}</div>;
   } else if (typeof children === "string" && children.split(/\n/g).length > 1) {
@@ -30,13 +39,4 @@ export const Code = ({ children, block }) => {
   } else {
     return <span className={CS.textCode}>{children}</span>;
   }
-};
-
-BoldCode.propTypes = {
-  children: PropTypes.any.isRequired,
-};
-
-Code.propTypes = {
-  children: PropTypes.any.isRequired,
-  block: PropTypes.bool,
 };
