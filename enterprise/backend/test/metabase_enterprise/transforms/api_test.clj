@@ -2,6 +2,7 @@
   "EE-only tests for /api/transform feature gating."
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.permissions-group :as perms-group]
