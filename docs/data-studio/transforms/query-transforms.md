@@ -23,7 +23,7 @@ For general information about Metabase transforms, see [Transforms](transforms-o
 
 Currently, you can't convert between different transform types (like converting a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
 
-1. Go to **Data studio > Transforms**
+1. Go to **Data studio > Transforms**.
 
 2. Click **+ New** and pick "Query builder", "SQL", or "Copy of existing question".
 

@@ -33,7 +33,7 @@ Jobs run one or more transforms on schedule based on transform tags.
 
 To see all jobs, go to **Data Studio** and click on the **Jobs** at the bottom of the left sidebar.
 
-To create a new job, go to **Data Studio > Jobs**, and click on the **+ New** button in top right.
+To create a new job, go to **Data Studio > Jobs**, and click on the **+ New** button in the top right.
 
 Jobs have two components: schedule and tags.
 
@@ -46,7 +46,7 @@ If one transform depends on another, Metabase will run the dependency first, eve
 
 This means that you can explicitly tag transform A to run daily, and transform B hourly, but because transform B depends on transform A, transform A will _also_ run hourly (in addition to daily), despite not having the tag.
 
-You can see which transforms a job will run (and in which order) on the job's page in **Data Studio > Jobs**
+You can see which transforms a job will run (and in which order) on the job's page in **Data Studio > Jobs**.
 
 ## Runs
 

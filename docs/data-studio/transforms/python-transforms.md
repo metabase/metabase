@@ -5,7 +5,7 @@ summary: Use Python to wrangle your data in Metabase and write the results back 
 
 # Python transforms
 
-> Python transforms require the **Transforms add-on**
+> Python transforms require the **Transforms add-on**.
 
 Use Python to write [transforms](transforms-overview.md).
 
@@ -76,8 +76,8 @@ See [Run a transform](transforms-overview.md#run-a-transform). You'll see logs f
 
 You can import any of the following Python packages in Python transforms:
 
-- [`pandas`](https://pandas.pydata.org/);
-- Any dependencies of `pandas`, e.g. [`numpy`](https://numpy.org/);
+- [`pandas`](https://pandas.pydata.org/).
+- Any dependencies of `pandas`, e.g. [`numpy`](https://numpy.org/).
 - Any packages from the [Python standard library](https://docs.python.org/3/library/index.html), e.g. `json` or `datetime`.
 
 Due to security considerations for the Python execution environment, you won't be able to install or import any other packages.

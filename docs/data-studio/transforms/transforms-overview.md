@@ -77,7 +77,7 @@ To create a transform:
 
    You can create your transform using Metabase's [graphical query builder](../../questions/query-builder/editor.md), SQL, or Python.
 
-   For more information on transforms built with the query builder or SQL, see [query-based transforms](query-transforms.md). For more information on Python transforms, see and [Python transforms](python-transforms.md).
+   For more information on transforms built with the query builder or SQL, see [query-based transforms](query-transforms.md). For more information on Python transforms, see [Python transforms](python-transforms.md).
 
    If you select **Copy of a saved question** for the transform's source, you can copy the query of an existing Metabase question (either a SQL question or a query builder question) into your transform query. Metabase will only _copy_ the question's query. Later edits to that original question won't affect the transform's query.
 
