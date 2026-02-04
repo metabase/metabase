@@ -1,11 +1,8 @@
 {
   "plugins": ["@emotion"],
   "presets": [
-    "@babel/preset-env",
-    [
-      "@babel/preset-react",
-      { "runtime": "automatic" }
-    ],
+    ["@babel/preset-env", { "corejs": 3, "useBuiltIns": "usage" }],
+    ["@babel/preset-react", { "runtime": "automatic" }],
     "@babel/preset-typescript"
   ],
   "env": {
