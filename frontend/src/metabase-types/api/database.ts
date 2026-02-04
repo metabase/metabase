@@ -49,6 +49,7 @@ export type DatabaseFeature =
   | "nested-field-columns"
   | "advanced-math-expressions"
   | "connection-impersonation"
+  | "connection-impersonation/credentials"
   | "connection-impersonation-requires-role"
   | "native-requires-specified-collection"
   | "window-functions/offset"

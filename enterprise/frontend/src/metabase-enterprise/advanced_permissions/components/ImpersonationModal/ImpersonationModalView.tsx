@@ -73,19 +73,27 @@ export const ImpersonationModalView = ({
 
   // for redshift, we impersonate using users, not roles
   const impersonationUsesUsers = database.engine === "redshift";
+  const impersonationUsesCredentials = database.features?.includes(
+    "connection-impersonation/credentials",
+  );
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only shows for admins.
   const { url: permsDocsUrl } = useDocsUrl("permissions/data");
 
   const modalTitle = impersonationUsesUsers
     ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
       t`Map a Metabase user attribute to database users`
-    : t`Map a user attribute to database roles`;
+    : impersonationUsesCredentials
+      ? t`Map a user attribute to database credentials`
+      : t`Map a user attribute to database roles`;
 
   const modalMessage = impersonationUsesUsers
     ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
-    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
+    : impersonationUsesCredentials
+      ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+        t`When the person runs a query (including native queries), Metabase will use the database credentials stored in the user attribute to run the query.`
+      : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+        t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
     <ImpersonationModalViewRoot>
@@ -142,7 +150,9 @@ export const ImpersonationModalView = ({
       ) : (
         <>
           <Alert icon="warning" variant="warning">
-            {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
+            {impersonationUsesCredentials
+              ? t`To associate a user with database credentials, you'll need to give that user at least one user attribute.`
+              : t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
             <Link
               variant="brand"
               to="/admin/people"

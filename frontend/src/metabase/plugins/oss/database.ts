@@ -36,6 +36,15 @@ const getDefaultPluginDatabaseReplication = () => ({
 export const PLUGIN_DATABASE_REPLICATION =
   getDefaultPluginDatabaseReplication();
 
+const getDefaultPluginImpersonationCredentials = () => ({
+  DatabaseImpersonationCredentialsSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+});
+
+export const PLUGIN_DB_IMPERSONATION_CREDENTIALS =
+  getDefaultPluginImpersonationCredentials();
+
 const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
@@ -72,6 +81,10 @@ export function reinitialize() {
   Object.assign(
     PLUGIN_DATABASE_REPLICATION,
     getDefaultPluginDatabaseReplication(),
+  );
+  Object.assign(
+    PLUGIN_DB_IMPERSONATION_CREDENTIALS,
+    getDefaultPluginImpersonationCredentials(),
   );
   Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
   Object.assign(PLUGIN_WORKSPACES, getDefaultPluginWorkspaces());

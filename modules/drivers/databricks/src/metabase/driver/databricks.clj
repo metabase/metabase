@@ -43,6 +43,8 @@
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
+                              :connection-impersonation/credentials true
+                              :connection-impersonation        false
                               :describe-fields                 true
                               :describe-fks                    true
                               :expression-aggregations         true

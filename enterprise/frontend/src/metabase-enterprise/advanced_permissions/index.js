@@ -16,10 +16,12 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_DB_IMPERSONATION_CREDENTIALS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { DatabaseImpersonationCredentialsSection } from "./components/DatabaseImpersonationCredentialsSection";
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import {
   shouldRestrictNativeQueryPermissions,
@@ -67,13 +69,17 @@ export function initializePlugin() {
     PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions = (
       options,
       database,
-    ) => [
-      ...options,
-      ...(database.hasFeature("connection-impersonation")
-        ? [IMPERSONATED_PERMISSION_OPTION]
-        : []),
-      BLOCK_PERMISSION_OPTION,
-    ];
+    ) => {
+      const supportsImpersonation =
+        database.hasFeature("connection-impersonation") ||
+        database.hasFeature("connection-impersonation/credentials");
+
+      return [
+        ...options,
+        ...(supportsImpersonation ? [IMPERSONATED_PERMISSION_OPTION] : []),
+        BLOCK_PERMISSION_OPTION,
+      ];
+    };
 
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
       <ModalRoute
@@ -128,6 +134,9 @@ export function initializePlugin() {
 
     PLUGIN_REDUCERS.advancedPermissionsPlugin =
       advancedPermissionsSlice.reducer;
+
+    PLUGIN_DB_IMPERSONATION_CREDENTIALS.DatabaseImpersonationCredentialsSection =
+      DatabaseImpersonationCredentialsSection;
 
     PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
       (state, data) => {

@@ -7,6 +7,7 @@ export * from "./content-translation";
 export * from "./db-routing";
 export * from "./dependencies";
 export * from "./gdrive";
+export * from "./impersonation-credentials";
 export * from "./library";
 export * from "./metabot";
 export * from "./remote-sync";

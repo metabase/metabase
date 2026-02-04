@@ -60,6 +60,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
   "python-transform-library",
+  "impersonation-credentials",
   "workspace",
   "support-access-grant",
   "support-access-grant-current",

@@ -758,6 +758,9 @@
     ;; Does the driver require specifying the default connection role for connection impersonation to work?
     :connection-impersonation-requires-role
 
+    ;; Does the driver support connection impersonation via per-user credentials (e.g. tokens)?
+    :connection-impersonation/credentials
+
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection
 
@@ -1444,6 +1447,16 @@
   {:added "0.57.0", :arglists '([driver db])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti impersonated-connection-details
+  "Return a connection details map to use for credential-based impersonation, or nil if not applicable."
+  {:added "0.59.0", :arglists '([driver database impersonation-key])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod impersonated-connection-details :default
+  [_driver _database _impersonation-key]
+  nil)
 
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`

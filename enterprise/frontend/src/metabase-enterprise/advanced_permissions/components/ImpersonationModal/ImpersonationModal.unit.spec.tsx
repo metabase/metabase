@@ -132,6 +132,25 @@ describe("impersonation modal", () => {
     ).toBeInTheDocument();
   });
 
+  it("should refer to credentials for credential-based impersonation", async () => {
+    await setup({
+      databaseDetails: {
+        engine: "databricks",
+        features: ["connection-impersonation/credentials"],
+      },
+    });
+
+    expect(
+      await screen.findByText("Map a user attribute to database credentials"),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByText(
+        "When the person runs a query (including native queries), Metabase will use the database credentials stored in the user attribute to run the query.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should not update impersonation if it has not changed", async () => {
     const store = await setup({ userAttributes: ["foo"] });
 

@@ -17,6 +17,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_DATABASE_REPLICATION,
+  PLUGIN_DB_IMPERSONATION_CREDENTIALS,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WORKSPACES,
@@ -102,6 +103,10 @@ function DatabaseEditAppInner({
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
                   <DatabaseConnectionInfoSection database={database} />
+
+                  <PLUGIN_DB_IMPERSONATION_CREDENTIALS.DatabaseImpersonationCredentialsSection
+                    database={database}
+                  />
 
                   <DatabaseModelFeaturesSection
                     database={database}

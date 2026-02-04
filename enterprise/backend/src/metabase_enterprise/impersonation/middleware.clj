@@ -13,12 +13,13 @@
   ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
   [query]
-  (if-let [role (impersonation.driver/connection-impersonation-role
-                 (lib.metadata/database (qp.store/metadata-provider)))]
-    (do
-      (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-      (assoc query :impersonation/role role))
-    query))
+  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+    (if-let [role (impersonation.driver/connection-impersonation-role database)]
+      (do
+        (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
+        ;; Store only a non-secret impersonation key in the query map (e.g., a credential profile key).
+        (assoc query :impersonation/role role))
+      query)))
 
 (defenterprise apply-impersonation-postprocessing
   "Post-processing middleware. Binds the dynamic var"

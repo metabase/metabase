@@ -2933,6 +2933,88 @@ databaseChangeLog:
             constraintName: fk_transform_target_db_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v59.2026-02-03T20:00:00
+      author: rileythomp
+      comment: Create database impersonation credential profiles
+      changes:
+        - createTable:
+            tableName: database_impersonation_credentials
+            remarks: Credential profiles for credential-based connection impersonation
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: The database these credentials belong to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key
+                  type: varchar(254)
+                  remarks: Impersonation key used to select these credentials
+                  constraints:
+                    nullable: false
+              - column:
+                  name: auth_type
+                  type: varchar(32)
+                  remarks: Credential type (pat | oauth-m2m)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token_secret_id
+                  type: int
+                  remarks: Secret ID for PAT authentication
+                  constraints:
+                    nullable: true
+              - column:
+                  name: oauth_client_id
+                  type: varchar(254)
+                  remarks: OAuth client ID for M2M authentication
+                  constraints:
+                    nullable: true
+              - column:
+                  name: oauth_secret_id
+                  type: int
+                  remarks: Secret ID for OAuth M2M authentication
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this credential was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this credential was updated
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: database_impersonation_credentials
+            columnNames: db_id, key
+            constraintName: unique_database_impersonation_credentials_db_id_key
+        - createIndex:
+            tableName: database_impersonation_credentials
+            indexName: idx_database_impersonation_credentials_db_id
+            columns:
+              - column:
+                  name: db_id
+        - addForeignKeyConstraint:
+            baseTableName: database_impersonation_credentials
+            baseColumnNames: db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_database_impersonation_credentials_db_id
+            onDelete: CASCADE
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

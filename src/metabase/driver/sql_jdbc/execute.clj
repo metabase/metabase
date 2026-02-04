@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -63,6 +64,8 @@
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
+    ;; non-secret key used to resolve credential-based impersonation.
+    [:impersonation-key {:optional true} [:maybe :string]]
     ;; don't autoclose the connection
     [:keep-open? {:optional true} [:maybe :boolean]]]])
 
@@ -276,6 +279,27 @@
     {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
     (complement :connection)]])
 
+(defn- db-or-id-or-spec->db
+  [db-or-id-or-spec]
+  (cond
+    (integer? db-or-id-or-spec)
+    (driver-api/with-metadata-provider db-or-id-or-spec
+      (driver-api/database (driver-api/metadata-provider)))
+
+    (u/id db-or-id-or-spec)
+    db-or-id-or-spec
+
+    :else
+    nil))
+
+(defn- impersonated-connection-spec
+  [driver db-or-id-or-spec {:keys [impersonation-key]}]
+  (when impersonation-key
+    (when-let [database (db-or-id-or-spec->db db-or-id-or-spec)]
+      (when (driver.u/supports? driver :connection-impersonation/credentials database)
+        (when-let [details (driver/impersonated-connection-details driver database impersonation-key)]
+          (sql-jdbc.conn/connection-details->spec driver details))))))
+
 (mu/defn do-with-resolved-connection-data-source :- (driver-api/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
   for `db-or-id-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
@@ -347,7 +371,16 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (let [get-conn (^:once fn* [] (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options)))]
+      (let [impersonation-spec (impersonated-connection-spec driver db-or-id-or-spec options)
+            get-conn (^:once fn* []
+                       (if impersonation-spec
+                         #_{:clj-kondo/ignore [:discouraged-var]}
+                         (do
+                           (log/infof "Using impersonated connection for %s on database %s"
+                                      (:impersonation-key options)
+                                      (:id db-or-id-or-spec))
+                           (jdbc/get-connection impersonation-spec))
+                         (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]
@@ -766,6 +799,11 @@
                             :pulse}]
     (boolean (download-contexts context))))
 
+(defn- query-impersonation-key
+  [query]
+  (or (:impersonation/key query)
+      (:impersonation/role query)))
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
@@ -781,7 +819,8 @@
      driver
      (driver-api/database (driver-api/metadata-provider))
      {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
-      :download? (download? (-> outer-query :info :context))}
+      :download? (download? (-> outer-query :info :context))
+      :impersonation-key (query-impersonation-key outer-query)}
      (fn [^Connection conn]
        (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                    ^ResultSet rs (try
@@ -846,18 +885,19 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defmethod driver/execute-write-query! :sql-jdbc
-  [driver                                 :- :keyword
-   {{sql :query, :keys [params]} :native} :- [:map
-                                              [:type   [:= :native]]
-                                              [:native [:map
-                                                        [:query :string]]]]]
+  [driver :- :keyword
+   {{sql :query, :keys [params]} :native, :as query} :- [:map
+                                                         [:type   [:= :native]]
+                                                         [:native [:map
+                                                                   [:query :string]]]]]
   {:pre [(string? sql)]}
   (try
     (do-with-connection-with-options
      driver
      (driver-api/database (driver-api/metadata-provider))
      {:write? true
-      :session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))}
+      :session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
+      :impersonation-key (query-impersonation-key query)}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
          {:rows-affected (if (instance? PreparedStatement stmt)

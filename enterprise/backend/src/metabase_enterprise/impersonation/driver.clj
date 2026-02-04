@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.impersonation.credentials :as impersonation.credentials]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -144,3 +145,7 @@
       (catch Throwable e
         (log/debug e "Error setting role on connection")
         (throw e)))))
+
+(defmethod driver/impersonated-connection-details :databricks
+  [_driver database impersonation-key]
+  (impersonation.credentials/databricks-connection-details database impersonation-key))

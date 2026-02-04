@@ -5,6 +5,7 @@ import type {
 import type {
   CollectionId,
   DatabaseId,
+  ISO8601Time,
   SchemaName,
   TableId,
 } from "metabase-types/api";
@@ -136,4 +137,36 @@ export type Impersonation = {
   db_id: DatabaseId;
   group_id: GroupId;
   attribute: UserAttributeKey;
+};
+
+export type ImpersonationCredentialAuthType = "pat" | "oauth-m2m";
+
+export type DatabaseImpersonationCredential = {
+  id: number;
+  db_id: DatabaseId;
+  key: string;
+  auth_type: ImpersonationCredentialAuthType;
+  oauth_client_id?: string | null;
+  has_token?: boolean;
+  has_oauth_secret?: boolean;
+  created_at?: ISO8601Time;
+  updated_at?: ISO8601Time;
+};
+
+export type ListDatabaseImpersonationCredentialsRequest = {
+  db_id: DatabaseId;
+};
+
+export type UpsertDatabaseImpersonationCredentialRequest = {
+  db_id: DatabaseId;
+  key: string;
+  auth_type?: ImpersonationCredentialAuthType;
+  token?: string;
+  oauth_client_id?: string;
+  oauth_secret?: string;
+};
+
+export type DeleteDatabaseImpersonationCredentialRequest = {
+  id: number;
+  db_id: DatabaseId;
 };
