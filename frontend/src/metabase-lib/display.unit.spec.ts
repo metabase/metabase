@@ -11,13 +11,12 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { defaultDisplay } from "./display";
 import {
   createMetadataProvider,
   createTestNativeQuery,
   createTestQuery,
-} from "../test-helpers";
-
-import { defaultDisplay } from "./display";
+} from "./test-helpers";
 
 const ACCOUNTS_ID = 4;
 const ACCOUNTS_COUNTRY_ID = 56;
