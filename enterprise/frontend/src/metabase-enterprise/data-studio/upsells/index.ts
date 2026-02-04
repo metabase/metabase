@@ -1,10 +1,26 @@
-export { DataStudioUpsellPage } from "./DataStudioUpsellPage";
-export type { DataStudioUpsellPageProps } from "./DataStudioUpsellPage";
-export { DependenciesUpsellPage } from "./DependenciesUpsellPage";
-export { GitSyncUpsellPage } from "./GitSyncUpsellPage";
-export { LibraryUpsellPage } from "./LibraryUpsellPage";
-export { PythonTransformsUpsellModal } from "./PythonTransformsUpsellModal";
-export { TransformsPurchasePage } from "./TransformsPurchasePage";
-export { TransformsSettingUpModal } from "./TransformsSettingUpModal";
-export { TransformsUpsellPage } from "./TransformsUpsellPage";
-export { useTransformsBilling } from "./useTransformsBilling";
+// Components
+export {
+  LineDecorator,
+  PythonTransformsUpsellModal,
+  TransformsSettingUpModal,
+} from "./components";
+export type { LineDecoratorProps } from "./components";
+
+// Hooks
+export { useTransformsBilling } from "./hooks";
+
+// Pages
+export {
+  DataStudioUpsellPage,
+  DependenciesUpsellPage,
+  DependencyDiagnosticsUpsellPage,
+  GitSyncUpsellPage,
+  LibraryUpsellPage,
+  RemoteSyncUpsellPage,
+  TransformsPurchasePage,
+  TransformsUpsellPage,
+} from "./pages";
+export type {
+  DataStudioUpsellPageProps,
+  TransformsPurchasePageProps,
+} from "./pages";

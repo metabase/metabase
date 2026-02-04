@@ -20,14 +20,14 @@ import {
 } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
-import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "../common/components/PaneHeader";
-import { DottedBackground } from "../components/DottedBackground";
+import { DataStudioBreadcrumbs } from "../../../common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "../../../common/components/PaneHeader";
+import { DottedBackground } from "../../../components/DottedBackground";
+import { LineDecorator } from "../../components/LineDecorator";
+import { TransformsSettingUpModal } from "../../components/TransformsSettingUpModal";
+import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 
-import { LineDecorator } from "./LineDecorator";
 import S from "./TransformsPurchasePage.module.css";
-import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
-import { useTransformsBilling } from "./useTransformsBilling";
 
 type TransformTier = "basic" | "advanced";
 
@@ -69,6 +69,16 @@ export function TransformsPurchasePage({
   // - Trial user: show advanced only, $0 due today, "Add to trial"
   // - User with basic transforms: show advanced only, upgrade flow
   // - Regular user: show both tiers with radio selection
+  //
+  // TODO: There is also the case where the user is on a starter plan (no trial),
+  // but hasn't purchased any transforms add-on yet - the way HM works is that, if
+  // an add-on hasn't been purchased in the past, the first activation will be a 14
+  // day trial, but we currently don't have any way to ask HM if the add-on is eligible
+  // for a trial in order to show a "Try for free" CTA rather than the "Purchase" CTA.
+  //
+  // Without this, the worst case scenario is that the user thinks they purchased the
+  // add-on, but they actually got a 14 day trial, and they end up paying for the add-on
+  // after the trial ends, which is still a miscommunication.
   const showAdvancedOnly = isOnTrial || hasBasicTransforms;
   const isTrialFlow = isOnTrial && !hasBasicTransforms;
 

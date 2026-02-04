@@ -25,8 +25,10 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
-import { DependenciesUpsellPage } from "./upsells";
-import { DependencyDiagnosticsUpsellPage } from "./upsells/DependencyDiagnosticsUpsellPage";
+import {
+  DependenciesUpsellPage,
+  DependencyDiagnosticsUpsellPage,
+} from "./upsells";
 import { getDataStudioWorkspaceRoutes } from "./workspaces/routes";
 
 export function getDataStudioRoutes(

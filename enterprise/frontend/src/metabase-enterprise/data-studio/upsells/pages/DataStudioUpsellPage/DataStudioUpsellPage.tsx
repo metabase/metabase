@@ -24,12 +24,12 @@ import {
   Title,
 } from "metabase/ui";
 
-import { DataStudioBreadcrumbs } from "../common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "../common/components/PaneHeader";
-import { DottedBackground } from "../components/DottedBackground";
+import { DataStudioBreadcrumbs } from "../../../common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "../../../common/components/PaneHeader";
+import { DottedBackground } from "../../../components/DottedBackground";
+import { LineDecorator } from "../../components/LineDecorator";
 
 import S from "./DataStudioUpsellPage.module.css";
-import { LineDecorator } from "./LineDecorator";
 
 export type DataStudioUpsellPageProps = {
   campaign: string;
