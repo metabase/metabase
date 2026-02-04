@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
+import dayjs from "dayjs";
 import { Fragment, useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -55,15 +56,33 @@ export function TransformsPurchasePage({
     billingPeriodMonths,
     transformsProduct,
     pythonProduct,
+    isOnTrial,
+    trialEndDate,
+    hasBasicTransforms,
   } = useTransformsBilling();
 
   const hasData =
     billingPeriodMonths !== undefined && (transformsProduct || pythonProduct);
   const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`year`;
 
+  // Determine which scenario we're in:
+  // - Trial user: show advanced only, $0 due today, "Add to trial"
+  // - User with basic transforms: show advanced only, upgrade flow
+  // - Regular user: show both tiers with radio selection
+  const showAdvancedOnly = isOnTrial || hasBasicTransforms;
+  const isTrialFlow = isOnTrial && !hasBasicTransforms;
+
+  const formattedTrialEndDate = trialEndDate
+    ? dayjs(trialEndDate).format("MMMM D, YYYY")
+    : undefined;
+
   const handlePurchase = useCallback(async () => {
-    const productType =
-      selectedTier === "basic" ? "transforms-basic" : "transforms-advanced";
+    // When showing advanced only (trial or existing basic), always purchase advanced
+    const productType = showAdvancedOnly
+      ? "transforms-advanced"
+      : selectedTier === "basic"
+        ? "transforms-basic"
+        : "transforms-advanced";
     settingUpModalHandlers.open();
     try {
       await purchaseCloudAddOn({
@@ -72,7 +91,12 @@ export function TransformsPurchasePage({
     } catch {
       settingUpModalHandlers.close();
     }
-  }, [selectedTier, purchaseCloudAddOn, settingUpModalHandlers]);
+  }, [
+    showAdvancedOnly,
+    selectedTier,
+    purchaseCloudAddOn,
+    settingUpModalHandlers,
+  ]);
 
   if (error) {
     return (
@@ -117,8 +141,39 @@ export function TransformsPurchasePage({
     },
   ];
 
-  const selectedPrice =
-    selectedTier === "basic" ? transformsPrice : pythonPrice;
+  // When showing advanced only, always use python price
+  const selectedPrice = showAdvancedOnly
+    ? pythonPrice
+    : selectedTier === "basic"
+      ? transformsPrice
+      : pythonPrice;
+
+  // For trial flow, due today is $0
+  const dueToday = isTrialFlow ? 0 : selectedPrice;
+
+  // Get the advanced tier option for single-tier display
+  const advancedTierOption = tierOptions.find(
+    (option) => option.value === "advanced",
+  );
+
+  // Determine the title based on scenario
+  const getRightColumnTitle = () => {
+    if (isTrialFlow) {
+      return t`Add advanced transforms to your trial`;
+    }
+    if (hasBasicTransforms) {
+      return t`Add advanced transforms to your plan`;
+    }
+    return t`Add transforms to your plan`;
+  };
+
+  // Determine the button text
+  const getButtonText = () => {
+    if (isTrialFlow) {
+      return t`Add to trial`;
+    }
+    return t`Confirm purchase`;
+  };
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">
@@ -154,54 +209,79 @@ export function TransformsPurchasePage({
             </Stack>
             {/* Right Column - Purchase Card */}
             <Stack gap="lg" className={S.rightColumn} p="xl">
-              <Title order={3}>{t`Add transforms to your plan`}</Title>
-              <Radio.Group
-                value={selectedTier}
-                onChange={(value) => setSelectedTier(value as TransformTier)}
-              >
-                <Stack gap="md">
-                  {tierOptions.map((option) => (
-                    <Fragment key={option.value}>
-                      <Card
-                        withBorder
-                        p={0}
-                        radius="md"
-                        className={cx({
-                          [S.selectedTierOptionCard]:
-                            selectedTier === option.value,
-                        })}
-                      >
-                        <Radio.Card value={option.value} p="md" radius="md">
-                          <Flex direction="row" align="flex-start" gap="md">
-                            <Center mt={2}>
-                              <Radio.Indicator />
-                            </Center>
-                            <Flex direction="column" style={{ flex: 1 }}>
-                              <Group justify="space-between" align="flex-start">
-                                <Text fw="bold">{option.label}</Text>
-                                <Text fw="bold">{`$${option.price} / ${billingPeriod}`}</Text>
-                              </Group>
-                              {option.description && (
-                                <Text size="sm" c="text-secondary" mt="sm">
-                                  {option.description}
-                                </Text>
-                              )}
+              <Title order={3}>{getRightColumnTitle()}</Title>
+              {showAdvancedOnly && advancedTierOption ? (
+                // Single tier display (trial or upgrade from basic)
+                <Card withBorder p="md" radius="md">
+                  <Flex direction="column" style={{ flex: 1 }}>
+                    <Group justify="space-between" align="flex-start">
+                      <Text fw="bold">{advancedTierOption.label}</Text>
+                      <Text fw="bold">{`$${advancedTierOption.price} / ${billingPeriod}`}</Text>
+                    </Group>
+                    {advancedTierOption.description && (
+                      <Text size="sm" c="text-secondary" mt="sm">
+                        {advancedTierOption.description}
+                      </Text>
+                    )}
+                  </Flex>
+                </Card>
+              ) : (
+                // Multi-tier selection (regular user)
+                <Radio.Group
+                  value={selectedTier}
+                  onChange={(value) => setSelectedTier(value as TransformTier)}
+                >
+                  <Stack gap="md">
+                    {tierOptions.map((option) => (
+                      <Fragment key={option.value}>
+                        <Card
+                          withBorder
+                          p={0}
+                          radius="md"
+                          className={cx({
+                            [S.selectedTierOptionCard]:
+                              selectedTier === option.value,
+                          })}
+                        >
+                          <Radio.Card value={option.value} p="md" radius="md">
+                            <Flex direction="row" align="flex-start" gap="md">
+                              <Center mt={2}>
+                                <Radio.Indicator />
+                              </Center>
+                              <Flex direction="column" style={{ flex: 1 }}>
+                                <Group
+                                  justify="space-between"
+                                  align="flex-start"
+                                >
+                                  <Text fw="bold">{option.label}</Text>
+                                  <Text fw="bold">{`$${option.price} / ${billingPeriod}`}</Text>
+                                </Group>
+                                {option.description && (
+                                  <Text size="sm" c="text-secondary" mt="sm">
+                                    {option.description}
+                                  </Text>
+                                )}
+                              </Flex>
                             </Flex>
-                          </Flex>
-                        </Radio.Card>
-                      </Card>
-                    </Fragment>
-                  ))}
-                </Stack>
-              </Radio.Group>
+                          </Radio.Card>
+                        </Card>
+                      </Fragment>
+                    ))}
+                  </Stack>
+                </Radio.Group>
+              )}
               <Divider />
               <Stack gap="sm">
                 <Group justify="space-between">
                   <Text c="text-secondary">{t`Due today:`}</Text>
-                  <Text fw="bold">{`$${selectedPrice}`}</Text>
+                  <Text fw="bold">{`$${dueToday}`}</Text>
                 </Group>
                 <Group justify="space-between">
-                  <Text c="text-secondary">{t`New total cost`}</Text>
+                  <Text c="text-secondary">
+                    {isTrialFlow && formattedTrialEndDate
+                      ? t`New total cost starting ${formattedTrialEndDate}`
+                      : t`New total cost`}
+                  </Text>
                   <Text fw="bold">{`$${selectedPrice}`}</Text>
                 </Group>
               </Stack>
@@ -212,7 +292,7 @@ export function TransformsPurchasePage({
                 loading={isPurchasing}
                 fullWidth
               >
-                {t`Confirm purchase`}
+                {getButtonText()}
               </Button>
             </Stack>
           </Card>
@@ -224,7 +304,7 @@ export function TransformsPurchasePage({
           settingUpModalHandlers.close();
           window.location.reload();
         }}
-        isPython={selectedTier === "advanced"}
+        isPython={showAdvancedOnly || selectedTier === "advanced"}
       />
     </DottedBackground>
   );
