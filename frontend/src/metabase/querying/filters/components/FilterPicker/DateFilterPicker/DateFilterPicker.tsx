@@ -2,12 +2,11 @@ import { useMemo } from "react";
 
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
+import { FilterSubmitButton } from "metabase/querying/filters/components/FilterPicker/FilterSubmitButton";
+import type { FilterPickerWidgetProps } from "metabase/querying/filters/components/FilterPicker/types";
+import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import { useDateFilter } from "../../../hooks/use-date-filter";
-import { FilterSubmitButton } from "../FilterSubmitButton";
-import type { FilterPickerWidgetProps } from "../types";
 
 export function DateFilterPicker({
   query,

@@ -3,9 +3,11 @@ import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  setDatePart,
+  setTimePart,
+} from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import { DateInput, DatePicker, Stack, TimeInput } from "metabase/ui";
-
-import { setDatePart, setTimePart } from "../../utils";
 
 interface SingleDatePickerBodyProps {
   value: Date;

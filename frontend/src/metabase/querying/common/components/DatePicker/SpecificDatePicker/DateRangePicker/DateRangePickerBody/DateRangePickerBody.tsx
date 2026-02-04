@@ -2,6 +2,10 @@ import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  setDatePart,
+  setTimePart,
+} from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import type { DatesRangeValue } from "metabase/ui";
 import {
   DateInput,
@@ -11,8 +15,6 @@ import {
   Text,
   TimeInput,
 } from "metabase/ui";
-
-import { setDatePart, setTimePart } from "../../utils";
 
 import S from "./DateRangePickerBody.module.css";
 

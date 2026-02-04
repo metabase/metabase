@@ -5,14 +5,14 @@ import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_UNITS,
-} from "../../constants";
+} from "metabase/querying/common/constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerUnit,
   DatePickerValue,
   RelativeIntervalDirection,
-} from "../../types";
+} from "metabase/querying/common/types";
 
 import { DateShortcutPicker } from "./DateShortcutPicker";
 import { ExcludeDatePicker } from "./ExcludeDatePicker";

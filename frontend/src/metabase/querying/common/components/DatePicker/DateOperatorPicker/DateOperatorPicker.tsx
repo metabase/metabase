@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 
+import type {
+  DatePickerOperator,
+  DatePickerValue,
+} from "metabase/querying/common/types";
 import { Select } from "metabase/ui";
-
-import type { DatePickerOperator, DatePickerValue } from "../../../types";
 
 import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 

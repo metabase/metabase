@@ -2,6 +2,16 @@ import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { MIN_WIDTH } from "metabase/querying/common/components/DatePicker/constants";
+import type { DatePickerSubmitButtonProps } from "metabase/querying/common/components/DatePicker/types";
+import { renderDefaultSubmitButton } from "metabase/querying/common/components/DatePicker/utils";
+import type {
+  DatePickerExtractionUnit,
+  DatePickerOperator,
+  DatePickerUnit,
+  ExcludeDatePickerOperator,
+  ExcludeDatePickerValue,
+} from "metabase/querying/common/types";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -13,17 +23,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-
-import type {
-  DatePickerExtractionUnit,
-  DatePickerOperator,
-  DatePickerUnit,
-  ExcludeDatePickerOperator,
-  ExcludeDatePickerValue,
-} from "../../../types";
-import { MIN_WIDTH } from "../constants";
-import type { DatePickerSubmitButtonProps } from "../types";
-import { renderDefaultSubmitButton } from "../utils";
 
 import type { ExcludeValueOption } from "./types";
 import {

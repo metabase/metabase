@@ -2,15 +2,14 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import * as Lib from "metabase-lib";
-import { columnFinder } from "metabase-lib/test-helpers";
-
 import {
   createQuery,
   createQueryWithNumberFilter,
   findNumericColumn,
   storeInitialState,
-} from "../test-utils";
+} from "metabase/querying/filters/components/FilterPicker/test-utils";
+import * as Lib from "metabase-lib";
+import { columnFinder } from "metabase-lib/test-helpers";
 
 import { NumberFilterPicker } from "./NumberFilterPicker";
 

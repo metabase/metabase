@@ -1,8 +1,7 @@
 import { SimpleDatePicker } from "metabase/querying/common/components/DatePicker/SimpleDatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
+import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import type * as Lib from "metabase-lib";
-
-import { useDateFilter } from "../../../../hooks/use-date-filter";
 
 interface SimpleDateFilterPickerProps {
   query: Lib.Query;

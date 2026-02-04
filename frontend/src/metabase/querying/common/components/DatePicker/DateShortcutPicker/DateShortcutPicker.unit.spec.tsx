@@ -1,17 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
 import {
   DATE_PICKER_DIRECTIONS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_SHORTCUTS,
-} from "../../../constants";
+} from "metabase/querying/common/constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   RelativeIntervalDirection,
-} from "../../../types";
+} from "metabase/querying/common/types";
 
 import { DateShortcutPicker } from "./DateShortcutPicker";
 

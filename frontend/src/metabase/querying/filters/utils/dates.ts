@@ -21,11 +21,10 @@ import type {
   RelativeDatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
+import type { DateFilterDisplayOpts } from "metabase/querying/filters/types";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DateFormattingSettings } from "metabase-types/api";
-
-import type { DateFilterDisplayOpts } from "../types";
 
 export function isDatePickerOperator(
   operator: string,

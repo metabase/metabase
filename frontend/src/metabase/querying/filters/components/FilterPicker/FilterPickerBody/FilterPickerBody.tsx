@@ -1,16 +1,15 @@
 import cx from "classnames";
 
+import { BooleanFilterPicker } from "metabase/querying/filters/components/FilterPicker/BooleanFilterPicker";
+import { CoordinateFilterPicker } from "metabase/querying/filters/components/FilterPicker/CoordinateFilterPicker";
+import { DateFilterPicker } from "metabase/querying/filters/components/FilterPicker/DateFilterPicker";
+import { DefaultFilterPicker } from "metabase/querying/filters/components/FilterPicker/DefaultFilterPicker";
+import { NumberFilterPicker } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker";
+import { StringFilterPicker } from "metabase/querying/filters/components/FilterPicker/StringFilterPicker";
+import { TimeFilterPicker } from "metabase/querying/filters/components/FilterPicker/TimeFilterPicker";
+import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import { BooleanFilterPicker } from "../BooleanFilterPicker";
-import { CoordinateFilterPicker } from "../CoordinateFilterPicker";
-import { DateFilterPicker } from "../DateFilterPicker";
-import { DefaultFilterPicker } from "../DefaultFilterPicker";
-import { NumberFilterPicker } from "../NumberFilterPicker";
-import { StringFilterPicker } from "../StringFilterPicker";
-import { TimeFilterPicker } from "../TimeFilterPicker";
-import type { FilterChangeOpts } from "../types";
 
 import S from "./FilterPickerBody.module.css";
 

@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
+import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import { Button, Icon, Menu } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-
-import type { FilterOperatorOption } from "../../../types";
 
 import S from "./FilterOperatorPicker.module.css";
 

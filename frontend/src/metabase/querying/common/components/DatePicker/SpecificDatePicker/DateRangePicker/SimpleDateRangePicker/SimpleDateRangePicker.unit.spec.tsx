@@ -1,8 +1,7 @@
 import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-
-import type { DateRangePickerValue } from "../types";
+import type { DateRangePickerValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/DateRangePicker/types";
 
 import { SimpleDateRangePicker } from "./SimpleDateRangePicker";
 

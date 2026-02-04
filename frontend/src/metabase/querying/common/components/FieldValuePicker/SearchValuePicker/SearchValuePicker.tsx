@@ -2,6 +2,16 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import type {
+  UseGetRemappedFieldValueArgs,
+  UseGetRemappedFieldValueResult,
+  UseSearchFieldValuesArgs,
+  UseSearchFieldValuesResult,
+} from "metabase/querying/common/components/FieldValuePicker/types";
+import {
+  getFieldOption,
+  getFieldOptions,
+} from "metabase/querying/common/utils";
 import {
   type ComboboxItem,
   type ComboboxProps,
@@ -11,14 +21,6 @@ import {
   MultiAutocompleteValue,
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
-
-import { getFieldOption, getFieldOptions } from "../../../utils";
-import type {
-  UseGetRemappedFieldValueArgs,
-  UseGetRemappedFieldValueResult,
-  UseSearchFieldValuesArgs,
-  UseSearchFieldValuesResult,
-} from "../types";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
 import { getEmptyResultsMessage, shouldSearch } from "./utils";

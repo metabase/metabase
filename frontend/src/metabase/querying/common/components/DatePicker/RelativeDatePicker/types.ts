@@ -1,4 +1,4 @@
-import type { RelativeIntervalDirection } from "../../../types";
+import type { RelativeIntervalDirection } from "metabase/querying/common/types";
 
 export interface Tab {
   label: string;

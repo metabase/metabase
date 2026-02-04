@@ -1,4 +1,4 @@
-import type { RelativeDatePickerValue } from "../../types";
+import type { RelativeDatePickerValue } from "metabase/querying/common/types";
 
 export type ShortcutGroup = {
   label?: string;

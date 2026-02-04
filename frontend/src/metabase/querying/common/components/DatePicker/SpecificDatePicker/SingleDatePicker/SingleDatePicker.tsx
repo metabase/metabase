@@ -1,10 +1,9 @@
 import type { FormEvent, ReactNode } from "react";
 
+import { TimeToggle } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/TimeToggle";
+import { clearTimePart } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
+import { renderDefaultSubmitButton } from "metabase/querying/common/components/DatePicker/utils";
 import { Box, Divider, Group } from "metabase/ui";
-
-import { renderDefaultSubmitButton } from "../../utils";
-import { TimeToggle } from "../TimeToggle";
-import { clearTimePart } from "../utils";
 
 import { SingleDatePickerBody } from "./SingleDatePickerBody";
 import type { SingleDatePickerValue } from "./types";

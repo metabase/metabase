@@ -1,13 +1,16 @@
-import type { DatePickerOperator, DatePickerValue } from "../../../types";
-import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
+import { getExcludeOperatorValue } from "metabase/querying/common/components/DatePicker/ExcludeDatePicker/utils";
 import {
   getDirectionDefaultValue,
   setDirectionAndCoerceUnit,
-} from "../RelativeDatePicker/utils";
+} from "metabase/querying/common/components/DatePicker/RelativeDatePicker/utils";
 import {
   getOperatorDefaultValue,
   setOperator,
-} from "../SpecificDatePicker/utils";
+} from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
+import type {
+  DatePickerOperator,
+  DatePickerValue,
+} from "metabase/querying/common/types";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OperatorOption, OptionType } from "./types";

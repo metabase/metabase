@@ -1,15 +1,14 @@
 import { Fragment, type ReactNode, useMemo } from "react";
 
-import { Box, Button, Divider } from "metabase/ui";
-
+import { MIN_WIDTH } from "metabase/querying/common/components/DatePicker/constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValueType,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "../../../types";
-import { MIN_WIDTH } from "../constants";
+} from "metabase/querying/common/types";
+import { Box, Button, Divider } from "metabase/ui";
 
 import Styles from "./DateShortcutPicker.module.css";
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";

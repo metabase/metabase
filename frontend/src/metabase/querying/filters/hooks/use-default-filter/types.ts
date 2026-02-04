@@ -1,6 +1,5 @@
+import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import type * as Lib from "metabase-lib";
-
-import type { FilterOperatorOption } from "../../types";
 
 export type DefaultFilterOperatorOption =
   FilterOperatorOption<Lib.DefaultFilterOperator>;

@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import { isValidElement } from "react";
 
+import { FilterSubmitButton } from "metabase/querying/filters/components/FilterPicker/FilterSubmitButton";
 import { Box, Flex } from "metabase/ui";
-
-import { FilterSubmitButton } from "../FilterSubmitButton";
 
 import S from "./FilterPickerFooter.module.css";
 

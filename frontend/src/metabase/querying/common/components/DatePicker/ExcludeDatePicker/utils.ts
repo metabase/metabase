@@ -2,15 +2,14 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { DateFormattingSettings } from "metabase-types/api/settings";
-
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
-} from "../../../types";
+} from "metabase/querying/common/types";
+import type { DateFormattingSettings } from "metabase-types/api/settings";
 
 import { EXCLUDE_OPERATOR_OPTIONS, EXCLUDE_UNIT_OPTIONS } from "./constants";
 import type {

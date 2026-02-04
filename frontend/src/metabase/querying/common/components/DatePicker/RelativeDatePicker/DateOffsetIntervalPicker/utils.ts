@@ -1,14 +1,16 @@
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
-
+import {
+  getAvailableTruncationUnits,
+  getDirection,
+} from "metabase/querying/common/components/DatePicker/RelativeDatePicker/utils";
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "../../../../types";
-import { getAvailableTruncationUnits, getDirection } from "../utils";
+} from "metabase/querying/common/types";
+import * as Lib from "metabase-lib";
 
 export function getDirectionText(value: RelativeDatePickerValue): string {
   const direction = getDirection(value);

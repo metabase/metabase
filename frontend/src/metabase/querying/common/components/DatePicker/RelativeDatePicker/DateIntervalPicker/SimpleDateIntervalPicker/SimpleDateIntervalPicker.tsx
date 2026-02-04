@@ -1,15 +1,18 @@
 import { t } from "ttag";
 
-import { Group, Select } from "metabase/ui";
-
+import { NumberInputWithFallbackValue } from "metabase/querying/common/components/DatePicker/NumberInputWithFallbackValue";
+import { setUnit } from "metabase/querying/common/components/DatePicker/RelativeDatePicker/DateIntervalPicker/utils";
+import { IncludeCurrentSwitch } from "metabase/querying/common/components/DatePicker/RelativeDatePicker/IncludeCurrentSwitch";
+import {
+  getInterval,
+  getUnitOptions,
+  setInterval,
+} from "metabase/querying/common/components/DatePicker/RelativeDatePicker/utils";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "../../../../../types";
-import { NumberInputWithFallbackValue } from "../../../NumberInputWithFallbackValue";
-import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";
-import { getInterval, getUnitOptions, setInterval } from "../../utils";
-import { setUnit } from "../utils";
+} from "metabase/querying/common/types";
+import { Group, Select } from "metabase/ui";
 
 interface SimpleDateIntervalPickerProps {
   value: RelativeDatePickerValue;
