@@ -10,6 +10,7 @@ import Settings from "metabase/lib/settings";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 import type { FormError, NotificationType } from "../../types";
+
 import { ModalMessage } from "./ArchiveModal.styled";
 
 type ArchiveModalProps = {
