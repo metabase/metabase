@@ -92,12 +92,36 @@
    :exclude-directories excluded-directories
    :test-warn-time      3000})
 
+(defn module-folders
+  [modules]
+  (letfn [(n [m] (str/replace (name m) \- \_))]
+    (for [m modules]
+      (if (= "enterprise" (namespace m))
+        (str "enterprise/backend/test/metabase_enterprise/" (n m))
+        (str "test/metabase/" (n m))))))
+
+(defn parse-options
+  [options]
+  (let [base (merge (default-options) options)]
+    (cond-> base
+      (or (:modules options) (:module options))
+      (-> (assoc :only (let [modules (cond-> #{}
+                                       (:module options) (conj (:module options))
+                                       (:modules options) (into (:modules options)))]
+                         (module-folders modules)))
+          (dissoc :modules)))))
+
+(comment
+  (parse-options {:modules '[sql-parsing]})
+  (parse-options {:module 'sql-parsing})
+  )
+
 (defn find-tests
   "Find all tests, in case you wish to run them yourself."
   ([]
    (find-tests {}))
   ([options]
-   (hawk/find-tests-with-options (merge (default-options) options))))
+   (hawk/find-tests-with-options (parse-options options))))
 
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
@@ -110,10 +134,10 @@
   "Find and run tests from the REPL."
   [options]
   (initialize-all-fixtures)
-  (hawk/find-and-run-tests-repl (merge (default-options) options)))
+  (hawk/find-and-run-tests-repl (parse-options options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
   (initialize-all-fixtures)
-  (hawk/find-and-run-tests-cli (merge (default-options) options)))
+  (hawk/find-and-run-tests-cli (parse-options options)))
