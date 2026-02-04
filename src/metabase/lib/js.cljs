@@ -572,6 +572,18 @@
          parts (lib.util/parse-column-display-name-parts display-name patterns)]
      (to-array (map clj->js parts)))))
 
+(def ^:export column-display-name-separator
+  "Separator used for temporal bucket and binning suffixes (e.g., 'Total: Month', 'Price: 10 bins')."
+  lib.util/column-display-name-separator)
+
+(def ^:export join-display-name-separator
+  "Separator used for joined table column names (e.g., 'Products → Created At')."
+  lib.util/join-display-name-separator)
+
+(def ^:export implicit-join-display-name-separator
+  "Separator used for implicit join aliases (e.g., 'People - Product')."
+  lib.util/implicit-join-display-name-separator)
+
 (defn ^:export numeric-binning-strategies
   "Returns the list of binning options for numeric fields. These split the data evenly into a fixed number of bins.
   Returns opaque values that can be passed to [[display-info]] for rendering."

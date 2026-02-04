@@ -67,13 +67,17 @@ export const translateContentString: TranslateContentStringFunction = (
 
 export type ColumnDisplayNamePattern = (value: string) => string;
 
-// Patterns are locale-dependent (via i18n/tru), so fetch fresh each time
-const getAggregationPatterns = () => Lib.aggregationDisplayNamePatterns();
+/**
+ * The marker-based approach to find prefix/suffix in patterns.
+ */
+const VALUE_MARKER = "\u0000";
 
 const mightHavePattern = (displayName: string): boolean =>
-  displayName.includes(": ") ||
-  displayName.includes(" → ") ||
-  getAggregationPatterns().some((p) => displayName.startsWith(p.prefix));
+  displayName.includes(Lib.COLUMN_DISPLAY_NAME_SEPARATOR) ||
+  displayName.includes(Lib.JOIN_DISPLAY_NAME_SEPARATOR) ||
+  Lib.aggregationDisplayNamePatterns().some((p) =>
+    displayName.startsWith(p.prefix),
+  );
 
 /**
  * Translates a column display name by parsing it into parts and translating the translatable ones.
@@ -112,7 +116,7 @@ export const translateColumnDisplayName = (
   // Get parts from CLJ - it handles all the parsing complexity
   const parts = Lib.parseColumnDisplayNameParts(
     displayName,
-    getAggregationPatterns(),
+    Lib.aggregationDisplayNamePatterns(),
   );
 
   let anyChanged = false;
@@ -137,15 +141,6 @@ export const translateColumnDisplayName = (
   // In that case, translate the whole string.
   return anyChanged ? result : tc(displayName);
 };
-
-/**
- * Legacy pattern-based translation for backwards compatibility with tests.
- * Uses the marker-based approach to find prefix/suffix in patterns.
- */
-const VALUE_MARKER = "\u0000";
-const COLON_SEPARATOR = ": ";
-const JOIN_SEPARATOR = " → ";
-const IMPLICIT_JOIN_SEPARATOR = " - ";
 
 const translateColumnDisplayNameWithPatterns = (
   displayName: string,
@@ -177,12 +172,12 @@ const translateColumnDisplayNameWithPatterns = (
   }
 
   // Handle colon-separated patterns
-  const colonIndex = displayName.lastIndexOf(COLON_SEPARATOR);
+  const colonIndex = displayName.lastIndexOf(Lib.COLUMN_DISPLAY_NAME_SEPARATOR);
 
   if (colonIndex > 0) {
     const columnPart = displayName.substring(0, colonIndex);
     const suffixPart = displayName.substring(
-      colonIndex + COLON_SEPARATOR.length,
+      colonIndex + Lib.COLUMN_DISPLAY_NAME_SEPARATOR.length,
     );
     const translatedColumn = translateColumnDisplayNameWithPatterns(
       columnPart,
@@ -191,32 +186,34 @@ const translateColumnDisplayNameWithPatterns = (
     );
 
     if (translatedColumn !== columnPart) {
-      return translatedColumn + COLON_SEPARATOR + suffixPart;
+      return translatedColumn + Lib.COLUMN_DISPLAY_NAME_SEPARATOR + suffixPart;
     }
   }
 
   // Handle join patterns
-  const arrowIndex = displayName.indexOf(JOIN_SEPARATOR);
+  const arrowIndex = displayName.indexOf(Lib.JOIN_DISPLAY_NAME_SEPARATOR);
 
   if (arrowIndex > 0) {
     const joinAliasPart = displayName.substring(0, arrowIndex);
     const columnPart = displayName.substring(
-      arrowIndex + JOIN_SEPARATOR.length,
+      arrowIndex + Lib.JOIN_DISPLAY_NAME_SEPARATOR.length,
     );
 
-    const dashIndex = joinAliasPart.indexOf(IMPLICIT_JOIN_SEPARATOR);
+    const dashIndex = joinAliasPart.indexOf(
+      Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR,
+    );
 
     let translatedJoinAlias: string;
 
     if (dashIndex > 0) {
       const tablePart = joinAliasPart.substring(0, dashIndex);
       const fkPart = joinAliasPart.substring(
-        dashIndex + IMPLICIT_JOIN_SEPARATOR.length,
+        dashIndex + Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR.length,
       );
 
       translatedJoinAlias =
         translateColumnDisplayNameWithPatterns(tablePart, tc, patterns) +
-        IMPLICIT_JOIN_SEPARATOR +
+        Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR +
         translateColumnDisplayNameWithPatterns(fkPart, tc, patterns);
     } else {
       translatedJoinAlias = translateColumnDisplayNameWithPatterns(
@@ -228,7 +225,7 @@ const translateColumnDisplayNameWithPatterns = (
 
     return (
       translatedJoinAlias +
-      JOIN_SEPARATOR +
+      Lib.JOIN_DISPLAY_NAME_SEPARATOR +
       translateColumnDisplayNameWithPatterns(columnPart, tc, patterns)
     );
   }

@@ -64,3 +64,21 @@ export function parseColumnDisplayNameParts(
 ): DisplayNamePart[] {
   return ML.parse_column_display_name_parts(displayName, aggregationPatterns);
 }
+
+/**
+ * Separator used for temporal bucket and binning suffixes (e.g., "Total: Month", "Price: 10 bins").
+ */
+export const COLUMN_DISPLAY_NAME_SEPARATOR: string =
+  ML.column_display_name_separator;
+
+/**
+ * Separator used for joined table column names (e.g., "Products → Created At").
+ */
+export const JOIN_DISPLAY_NAME_SEPARATOR: string =
+  ML.join_display_name_separator;
+
+/**
+ * Separator used for implicit join aliases (e.g., "People - Product").
+ */
+export const IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR: string =
+  ML.implicit_join_display_name_separator;
