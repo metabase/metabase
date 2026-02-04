@@ -216,7 +216,7 @@
 
 (deftest merge-sets-transform-creator-from-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/merge sets transform creator_id from workspace_transform creator"
-    (mt/with-temp [:model/User user-a {:first_name "UserA" :last_name "Test" :email "user-a@test.com" :is_superuser true}
+    (mt/with-temp [:model/User user-a {:first_name "users" :last_name "Test" :email "user-a@test.com" :is_superuser true}
                    :model/User user-b {:first_name "UserB" :last_name "Test" :email "user-b@test.com" :is_superuser true}
                    :model/User user-c {:first_name "UserC" :last_name "Test" :email "user-c@test.com" :is_superuser true}]
       ;; mt/with-temp with users will trigger their cleanup and those tables fail with their fks to core_user
@@ -455,7 +455,7 @@
           (mt/user-http-request :crowberto :put 200
                                 (ws-url ws-id "/transform" ws-x-2-id)
                                 {:name "UPDATED 2"})]
-      (testing "Merging first of 2 workspace transfroms"
+      (testing "Merging first of 2 workspace transforms"
         (let [commit-msg "Single transform merge 1"
               resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform" ws-x-1-id "/merge")
                                          {:commit-message commit-msg})
@@ -485,7 +485,7 @@
                          :creator_id     (mt/user->id :crowberto)}
                         (t2/select-one :model/WorkspaceMerge
                                        :id (:workspace_merge_id merge-transform)))))))))
-      (testing "Merging last workspace transfrom"
+      (testing "Merging last workspace transform"
         (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform" ws-x-2-id "/merge"))
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
           (testing "Response"

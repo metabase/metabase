@@ -1147,30 +1147,30 @@
           dep-types (normalize-types dependent_types)
           card-types (normalize-types dependent_card_types)
           where-clause (cond-> [:and
-                                [:= :afe.source_entity_type (name entity-type)]
-                                [:= :afe.source_entity_id id]
+                                [:= :safe.source_entity_type (name entity-type)]
+                                [:= :safe.source_entity_id id]
                                 [:= :af.result false]
                                 (visible-entities-filter-clause
-                                 :afe.analyzed_entity_type
-                                 :afe.analyzed_entity_id
+                                 :safe.analyzed_entity_type
+                                 :safe.analyzed_entity_id
                                  {:include-archived-items :exclude})]
-                         dep-types  (conj [:in :afe.analyzed_entity_type dep-types])
+                         dep-types  (conj [:in :safe.analyzed_entity_type dep-types])
                          card-types (conj [:or
-                                           [:!= :afe.analyzed_entity_type [:inline "card"]]
+                                           [:!= :safe.analyzed_entity_type [:inline "card"]]
                                            [:in :rc.type card-types]]))
           broken-entity-pairs
-          (t2/query (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
-                                               [:afe.analyzed_entity_id :entity_id]]
+          (t2/query (cond-> {:select-distinct [[:safe.analyzed_entity_type :entity_type]
+                                               [:safe.analyzed_entity_id :entity_id]]
                              :from [[:analysis_finding_error :afe]]
                              :join [[:analysis_finding :af]
                                     [:and
-                                     [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
-                                     [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
+                                     [:= :af.analyzed_entity_type :safe.analyzed_entity_type]
+                                     [:= :af.analyzed_entity_id :safe.analyzed_entity_id]]]
                              :where where-clause}
                       card-types (assoc :left-join [[:report_card :rc]
                                                     [:and
-                                                     [:= :afe.analyzed_entity_type [:inline "card"]]
-                                                     [:= :rc.id :afe.analyzed_entity_id]]])))
+                                                     [:= :safe.analyzed_entity_type [:inline "card"]]
+                                                     [:= :rc.id :safe.analyzed_entity_id]]])))
           nodes (map (fn [{:keys [entity_type entity_id]}]
                        [(keyword entity_type) entity_id])
                      broken-entity-pairs)
