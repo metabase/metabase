@@ -131,6 +131,7 @@
                                          [:name {:optional true} :string]
                                          [:deleted {:optional true} :boolean]
                                          [:collection_id {:optional true} [:maybe pos-int?]]
+                                         [:collection {:optional true} [:maybe :map]]
                                          [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
 
 (defn- check-is-data-analyst
