@@ -72,8 +72,10 @@ export const VisualizationCard = ({
   const isLoading = isMetadataLoading || isDataLoading;
 
   const questionUrl = rawSeries?.[0]?.card
-    ? Urls.question(rawSeries[0].card)
+    ? Urls.serializedQuestion(rawSeries[0].card)
     : undefined;
+
+  const getHref = questionUrl ? () => questionUrl : undefined;
 
   const actionButtons = questionUrl ? (
     <Tooltip label="Open question">
@@ -96,6 +98,7 @@ export const VisualizationCard = ({
               rawSeries={rawSeries}
               showTitle={true}
               actionButtons={actionButtons}
+              getHref={getHref}
             />
           </Box>
         )}
