@@ -6,7 +6,9 @@ import type {
   ExcludeDateFilterParts,
   FilterClause,
   FilterParts,
+  MeasureMetadata,
   MetricDefinition,
+  MetricMetadata,
   NumberFilterParts,
   RelativeDateFilterParts,
   SourceMetadata,
@@ -19,6 +21,18 @@ export function filters(
   _metricDefinition: MetricDefinition,
   _source: SourceMetadata,
 ): FilterClause[] {
+  throw new Error("Not implemented");
+}
+
+export function filterableMetrics(
+  _metricDefinition: MetricDefinition,
+): MetricMetadata[] {
+  throw new Error("Not implemented");
+}
+
+export function filterableMeasures(
+  _metricDefinition: MetricDefinition,
+): MeasureMetadata[] {
   throw new Error("Not implemented");
 }
 
