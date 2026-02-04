@@ -1,14 +1,10 @@
-import type { DateRangePickerValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/DateRangePicker";
-import { SimpleDateRangePicker } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/DateRangePicker/SimpleDateRangePicker";
-import type { SingleDatePickerValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker";
-import { SimpleSingleDatePicker } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SimpleSingleDatePicker";
-import {
-  getDate,
-  isDateRange,
-  setDateTime,
-  setDateTimeRange,
-} from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import type { SpecificDatePickerValue } from "metabase/querying/common/types";
+
+import type { DateRangePickerValue } from "../DateRangePicker";
+import { SimpleDateRangePicker } from "../DateRangePicker/SimpleDateRangePicker";
+import type { SingleDatePickerValue } from "../SingleDatePicker";
+import { SimpleSingleDatePicker } from "../SingleDatePicker/SimpleSingleDatePicker";
+import { getDate, isDateRange, setDateTime, setDateTimeRange } from "../utils";
 
 interface SimpleSpecificDatePickerProps {
   value: SpecificDatePickerValue;

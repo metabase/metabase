@@ -2,15 +2,6 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { DateOperatorPicker } from "metabase/querying/common/components/DatePicker/DateOperatorPicker";
-import { CurrentDatePicker } from "metabase/querying/common/components/DatePicker/RelativeDatePicker/CurrentDatePicker";
-import { SimpleDateIntervalPicker } from "metabase/querying/common/components/DatePicker/RelativeDatePicker/DateIntervalPicker/SimpleDateIntervalPicker";
-import {
-  isIntervalValue,
-  isRelativeValue,
-} from "metabase/querying/common/components/DatePicker/RelativeDatePicker/utils";
-import { SimpleSpecificDatePicker } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/SimpleSpecificDatePicker";
-import { isSpecificValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import { DATE_PICKER_OPERATORS } from "metabase/querying/common/constants";
 import type {
   DatePickerOperator,
@@ -18,6 +9,13 @@ import type {
   DatePickerValue,
 } from "metabase/querying/common/types";
 import { Button, Stack } from "metabase/ui";
+
+import { DateOperatorPicker } from "../DateOperatorPicker";
+import { CurrentDatePicker } from "../RelativeDatePicker/CurrentDatePicker";
+import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPicker/SimpleDateIntervalPicker";
+import { isIntervalValue, isRelativeValue } from "../RelativeDatePicker/utils";
+import { SimpleSpecificDatePicker } from "../SpecificDatePicker/SimpleSpecificDatePicker";
+import { isSpecificValue } from "../SpecificDatePicker/utils";
 
 interface SimpleDatePickerProps {
   value?: DatePickerValue;

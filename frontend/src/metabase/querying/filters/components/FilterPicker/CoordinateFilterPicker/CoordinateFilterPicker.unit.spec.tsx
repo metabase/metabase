@@ -2,14 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithCoordinateFilter,
   findLatitudeColumn,
   findLongitudeColumn,
   storeInitialState,
-} from "metabase/querying/filters/components/FilterPicker/test-utils";
-import * as Lib from "metabase-lib";
+} from "../test-utils";
 
 import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
 

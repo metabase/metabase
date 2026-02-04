@@ -1,16 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
-import { NumberInputWithFallbackValue } from "metabase/querying/common/components/DatePicker/NumberInputWithFallbackValue";
-import { IncludeCurrentSwitch } from "metabase/querying/common/components/DatePicker/RelativeDatePicker/IncludeCurrentSwitch";
-import {
-  formatDateRange,
-  getInterval,
-  getUnitOptions,
-  setInterval,
-} from "metabase/querying/common/components/DatePicker/RelativeDatePicker/utils";
-import type { DatePickerSubmitButtonProps } from "metabase/querying/common/components/DatePicker/types";
-import { renderDefaultSubmitButton } from "metabase/querying/common/components/DatePicker/utils";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
@@ -25,6 +15,17 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue";
+import type { DatePickerSubmitButtonProps } from "../../types";
+import { renderDefaultSubmitButton } from "../../utils";
+import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
+import {
+  formatDateRange,
+  getInterval,
+  getUnitOptions,
+  setInterval,
+} from "../utils";
 
 import { setDefaultOffset, setUnit } from "./utils";
 

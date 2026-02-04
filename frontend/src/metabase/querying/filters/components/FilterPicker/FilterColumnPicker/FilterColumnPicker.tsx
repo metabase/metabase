@@ -18,15 +18,16 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { WIDTH } from "metabase/querying/filters/components/FilterPicker/constants";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
+import { DelayGroup, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
+
+import { WIDTH } from "../constants";
 import type {
   ColumnListItem,
   ExpressionClauseItem,
   SegmentListItem,
-} from "metabase/querying/filters/components/FilterPicker/types";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { DelayGroup, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
+} from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 

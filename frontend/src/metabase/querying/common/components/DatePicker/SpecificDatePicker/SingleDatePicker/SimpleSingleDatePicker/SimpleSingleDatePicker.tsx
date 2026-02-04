@@ -1,8 +1,9 @@
-import { SingleDatePickerBody } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody";
-import type { SingleDatePickerValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/types";
-import { TimeToggle } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/TimeToggle";
-import { clearTimePart } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import { Box, Stack } from "metabase/ui";
+
+import { TimeToggle } from "../../TimeToggle";
+import { clearTimePart } from "../../utils";
+import { SingleDatePickerBody } from "../SingleDatePickerBody";
+import type { SingleDatePickerValue } from "../types";
 
 interface SimpleSingleDatePickerProps {
   value: SingleDatePickerValue;

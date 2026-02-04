@@ -2,24 +2,19 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { FilterOperatorPicker } from "metabase/querying/filters/components/FilterPicker/FilterOperatorPicker";
-import { FilterPickerFooter } from "metabase/querying/filters/components/FilterPicker/FilterPickerFooter";
-import { FilterPickerHeader } from "metabase/querying/filters/components/FilterPicker/FilterPickerHeader";
-import { StringFilterValuePicker } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker";
-import {
-  COMBOBOX_PROPS,
-  WIDTH,
-} from "metabase/querying/filters/components/FilterPicker/constants";
-import type {
-  FilterChangeOpts,
-  FilterPickerWidgetProps,
-} from "metabase/querying/filters/components/FilterPicker/types";
 import {
   type OperatorType,
   useStringFilter,
 } from "metabase/querying/filters/hooks/use-string-filter";
 import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { StringFilterValuePicker } from "../FilterValuePicker";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
   autoFocus,

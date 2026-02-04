@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
+import type { RelativeDatePickerValue } from "metabase/querying/common/types";
+import { Switch } from "metabase/ui";
+
 import {
   getIncludeCurrent,
   getIncludeCurrentLabel,
   setIncludeCurrent,
-} from "metabase/querying/common/components/DatePicker/RelativeDatePicker/DateIntervalPicker/utils";
-import type { RelativeDatePickerValue } from "metabase/querying/common/types";
-import { Switch } from "metabase/ui";
+} from "../DateIntervalPicker/utils";
 
 interface IncludeCurrentSwitchProps {
   value: RelativeDatePickerValue;

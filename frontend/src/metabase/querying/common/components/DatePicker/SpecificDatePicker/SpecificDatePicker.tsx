@@ -1,13 +1,14 @@
 import { type ReactNode, useMemo, useState } from "react";
 
-import type { DatePickerSubmitButtonProps } from "metabase/querying/common/components/DatePicker/types";
-import { renderDefaultSubmitButton } from "metabase/querying/common/components/DatePicker/utils";
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+
+import type { DatePickerSubmitButtonProps } from "../types";
+import { renderDefaultSubmitButton } from "../utils";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {

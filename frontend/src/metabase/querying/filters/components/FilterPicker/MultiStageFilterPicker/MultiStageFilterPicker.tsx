@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 
-import { FilterColumnPicker } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
-import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
+import * as Lib from "metabase-lib";
+
+import { FilterColumnPicker } from "../FilterColumnPicker";
+import { FilterPickerBody } from "../FilterPickerBody";
 import type {
   ColumnListItem,
   FilterChangeOpts,
   SegmentListItem,
-} from "metabase/querying/filters/components/FilterPicker/types";
-import * as Lib from "metabase-lib";
+} from "../types";
 
 export type MultiStageFilterPickerProps = {
   query: Lib.Query;

@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { formatDateRange } from "metabase/querying/common/components/DatePicker/RelativeDatePicker/utils";
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
@@ -8,6 +7,8 @@ import type {
 } from "metabase/querying/common/types";
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { formatDateRange } from "../utils";
 
 import { getCurrentValue, getUnitGroups } from "./utils";
 

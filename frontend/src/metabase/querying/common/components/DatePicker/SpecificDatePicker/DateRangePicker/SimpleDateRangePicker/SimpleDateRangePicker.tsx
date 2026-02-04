@@ -1,8 +1,9 @@
-import { DateRangePickerBody } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/DateRangePicker/DateRangePickerBody";
-import type { DateRangePickerValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/DateRangePicker/types";
-import { TimeToggle } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/TimeToggle";
-import { clearTimePart } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import { Box, Stack } from "metabase/ui";
+
+import { TimeToggle } from "../../TimeToggle";
+import { clearTimePart } from "../../utils";
+import { DateRangePickerBody } from "../DateRangePickerBody";
+import type { DateRangePickerValue } from "../types";
 
 interface SimpleDateRangePickerProps {
   value: DateRangePickerValue;

@@ -12,18 +12,19 @@ import {
   within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import {
-  createQuery,
-  createQueryWithStringFilter,
-  findStringColumn,
-  storeInitialState,
-} from "metabase/querying/filters/components/FilterPicker/test-utils";
 import * as Lib from "metabase-lib";
 import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
+
+import {
+  createQuery,
+  createQueryWithStringFilter,
+  findStringColumn,
+  storeInitialState,
+} from "../test-utils";
 
 import { StringFilterPicker } from "./StringFilterPicker";
 

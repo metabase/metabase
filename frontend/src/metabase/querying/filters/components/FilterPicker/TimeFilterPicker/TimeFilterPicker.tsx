@@ -2,20 +2,18 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { FilterOperatorPicker } from "metabase/querying/filters/components/FilterPicker/FilterOperatorPicker";
-import { FilterPickerFooter } from "metabase/querying/filters/components/FilterPicker/FilterPickerFooter";
-import { FilterPickerHeader } from "metabase/querying/filters/components/FilterPicker/FilterPickerHeader";
-import { WIDTH } from "metabase/querying/filters/components/FilterPicker/constants";
-import type {
-  FilterChangeOpts,
-  FilterPickerWidgetProps,
-} from "metabase/querying/filters/components/FilterPicker/types";
 import {
   type TimeValue,
   useTimeFilter,
 } from "metabase/querying/filters/hooks/use-time-filter";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { WIDTH } from "../constants";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function TimeFilterPicker({
   autoFocus,

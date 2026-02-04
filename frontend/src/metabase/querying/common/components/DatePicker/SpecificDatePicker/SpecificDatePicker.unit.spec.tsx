@@ -2,7 +2,6 @@ import _userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { DatePickerSubmitButtonProps } from "metabase/querying/common/components/DatePicker/types";
 import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_UNITS,
@@ -12,6 +11,8 @@ import type {
   DatePickerUnit,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
+
+import type { DatePickerSubmitButtonProps } from "../types";
 
 import { SpecificDatePicker } from "./SpecificDatePicker";
 

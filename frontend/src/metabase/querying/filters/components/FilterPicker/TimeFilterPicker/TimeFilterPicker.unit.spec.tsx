@@ -3,12 +3,13 @@ import dayjs from "dayjs";
 
 import { render, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithTimeFilter,
   findTimeColumn,
-} from "metabase/querying/filters/components/FilterPicker/test-utils";
-import * as Lib from "metabase-lib";
+} from "../test-utils";
 
 import { TimeFilterPicker } from "./TimeFilterPicker";
 

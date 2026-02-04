@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DatePickerSubmitButtonProps } from "metabase/querying/common/components/DatePicker/types";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
@@ -14,6 +13,8 @@ import type {
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
 import { createMockState } from "metabase-types/store/mocks";
+
+import type { DatePickerSubmitButtonProps } from "../types";
 
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 

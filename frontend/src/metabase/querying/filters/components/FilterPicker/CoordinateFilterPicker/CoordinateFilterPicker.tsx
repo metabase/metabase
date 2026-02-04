@@ -4,24 +4,19 @@ import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
-import { FilterOperatorPicker } from "metabase/querying/filters/components/FilterPicker/FilterOperatorPicker";
-import { FilterPickerFooter } from "metabase/querying/filters/components/FilterPicker/FilterPickerFooter";
-import { FilterPickerHeader } from "metabase/querying/filters/components/FilterPicker/FilterPickerHeader";
-import { NumberFilterValuePicker } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker";
-import {
-  COMBOBOX_PROPS,
-  WIDTH,
-} from "metabase/querying/filters/components/FilterPicker/constants";
-import type {
-  FilterChangeOpts,
-  FilterPickerWidgetProps,
-} from "metabase/querying/filters/components/FilterPicker/types";
 import {
   type NumberOrEmptyValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { NumberFilterValuePicker } from "../FilterValuePicker";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 

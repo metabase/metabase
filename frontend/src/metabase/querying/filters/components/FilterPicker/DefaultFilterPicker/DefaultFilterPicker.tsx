@@ -1,16 +1,14 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
-import { FilterPickerFooter } from "metabase/querying/filters/components/FilterPicker/FilterPickerFooter";
-import { FilterPickerHeader } from "metabase/querying/filters/components/FilterPicker/FilterPickerHeader";
-import { WIDTH } from "metabase/querying/filters/components/FilterPicker/constants";
-import type {
-  FilterChangeOpts,
-  FilterPickerWidgetProps,
-} from "metabase/querying/filters/components/FilterPicker/types";
 import { useDefaultFilter } from "metabase/querying/filters/hooks/use-default-filter";
 import { Box, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
+import { WIDTH } from "../constants";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function DefaultFilterPicker({
   query,
