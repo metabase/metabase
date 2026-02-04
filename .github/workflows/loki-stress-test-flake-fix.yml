@@ -80,6 +80,32 @@ jobs:
           echo "story_files=$FILES" >> $GITHUB_OUTPUT
           echo "should_run=true" >> $GITHUB_OUTPUT
 
+  workflow-summary:
+    name: Summary
+    needs: detect-changed-stories
+    if: needs.detect-changed-stories.outputs.should_run == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo '## Loki Stress Test' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '**Branch:** `${{ github.head_ref || github.ref_name }}`' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '**Story files:**' >> $GITHUB_STEP_SUMMARY
+          echo '${{ needs.detect-changed-stories.outputs.story_files }}' | tr ',' '\n' | while read -r file; do
+            echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '**Burn-in:** ${{ inputs.burn_in || 50 }} runs' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo 'Triggered by PR #${{ github.event.pull_request.number }} from @${{ github.event.pull_request.user.login }}' >> $GITHUB_STEP_SUMMARY
+          else
+            echo 'Triggered manually by @${{ github.actor }}' >> $GITHUB_STEP_SUMMARY
+          fi
+
   stress-test-loki:
     needs: detect-changed-stories
     if: needs.detect-changed-stories.outputs.should_run == 'true'
