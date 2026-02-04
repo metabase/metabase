@@ -1,9 +1,0 @@
-{
-  "base": {
-    "name": "integration-embedding-onboarding-improvements",
-    "hash": "3d304dec46f485af471d2af0866054d94556b516"
-  },
-  "upstream": {
-    "branch": "emb-1264-add-new-metabot-card-on-cloud-for-embedding-hub"
-  }
-}
