@@ -118,9 +118,8 @@ Cypress.on("window:load", (window) => {
 if (isCI) {
   // cypress-terminal-report
   afterEach(() => {
-    cy.wait(50, { log: false }).then(() =>
-      cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
-    );
+    cy.wait(50, { log: false });
+    cy.addTestContext(Cypress.TerminalReport.getLogs("txt"));
   });
 
   // Fast failure notifications
