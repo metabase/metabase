@@ -18,7 +18,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.transforms.api :as transforms.api]
+   [metabase.transforms.api.transform :as transforms.api]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
