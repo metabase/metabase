@@ -8,7 +8,9 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { downloadToImage } from "metabase/redux/downloads";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Dataset } from "metabase-types/api";
 import {
@@ -31,6 +33,13 @@ import {
 } from "metabase-types/store/mocks";
 
 import { DashCardMenu } from "./DashCardMenu";
+
+jest.mock("metabase/redux/downloads", () => ({
+  ...jest.requireActual("metabase/redux/downloads"),
+  downloadToImage: jest.fn(() => ({ type: "MOCK_DOWNLOAD_TO_IMAGE" })),
+}));
+
+const mockDownloadToImage = downloadToImage as jest.Mock;
 
 const TEST_CARD = createMockCard({
   can_write: true,
@@ -178,6 +187,10 @@ const setup = ({
 };
 
 describe("DashCardMenu", () => {
+  beforeEach(() => {
+    mockDownloadToImage.mockClear();
+  });
+
   it("should display a link to the notebook editor", async () => {
     const { history } = setup();
 
@@ -246,6 +259,23 @@ describe("DashCardMenu", () => {
     expect(
       await screen.findByRole("heading", { name: /download/i }),
     ).toBeInTheDocument();
+  });
+
+  it("should dispatch a presentation screenshot export when clicking Save screenshot", async () => {
+    setup();
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Save screenshot"));
+
+    expect(mockDownloadToImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        opts: expect.objectContaining({
+          type: Urls.exportFormatPng,
+          imageExportStyle: "presentation",
+          dashcardId: expect.any(Number),
+        }),
+      }),
+    );
   });
 
   it("should not display query export options when query is running", async () => {

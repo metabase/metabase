@@ -205,6 +205,9 @@ const appendPresentationExportStyles = (
   const { legendText, valueText, tableText, tableLineHeight } = typography;
 
   const css = `
+    .${PRESENTATION_EXPORT_CLASS} .dc-chart .y-axis-label {
+      display: none !important;
+    }
     .${PRESENTATION_EXPORT_CLASS} .DashboardChartLegend {
       font-size: ${legendText}px !important;
       line-height: 1.3 !important;
