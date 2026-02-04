@@ -13,6 +13,22 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
+import type {
+  BooleanFilterOperator,
+  CoordinateFilterOperator,
+  DefaultFilterOperator,
+  ExcludeDateFilterOperator,
+  ExcludeDateFilterUnit,
+  NumberFilterOperator,
+  NumberFilterValue,
+  RelativeDateFilterOptions,
+  RelativeDateFilterUnit,
+  SpecificDateFilterOperator,
+  StringFilterOperator,
+  StringFilterOptions,
+  TimeFilterOperator,
+} from "../common";
+
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -314,62 +330,6 @@ export type FilterOperator =
 
 export type FilterOperatorVariant = "default" | "number" | "temporal";
 
-export type StringFilterOperator =
-  | "="
-  | "!="
-  | "contains"
-  | "does-not-contain"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with";
-
-export type NumberFilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | "between"
-  | ">="
-  | "<="
-  | "is-null"
-  | "not-null";
-
-export type CoordinateFilterOperator =
-  | "="
-  | "!="
-  | "inside"
-  | ">"
-  | "<"
-  | "between"
-  | ">="
-  | "<=";
-
-export type BooleanFilterOperator = "=" | "is-null" | "not-null";
-
-export type SpecificDateFilterOperator = "=" | ">" | "<" | "between";
-
-export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
-
-export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
-
-export type DefaultFilterOperator = "is-null" | "not-null";
-
-export type RelativeDateFilterUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "year";
-
-export type ExcludeDateFilterUnit =
-  | "hour-of-day"
-  | "day-of-week"
-  | "month-of-year"
-  | "quarter-of-year";
-
 export type DatetimeMode =
   | "iso"
   | "simple"
@@ -405,12 +365,6 @@ export type StringFilterParts = {
   options: StringFilterOptions;
 };
 
-export type StringFilterOptions = {
-  caseSensitive?: boolean;
-};
-
-export type NumberFilterValue = number | bigint;
-
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
@@ -444,10 +398,6 @@ export type RelativeDateFilterParts = {
   offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;
-};
-
-export type RelativeDateFilterOptions = {
-  includeCurrent?: boolean;
 };
 
 /*
