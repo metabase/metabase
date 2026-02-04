@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -134,3 +135,22 @@
                                      :dataset_query (mt/mbql-query venues)}]
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 (str "metric/" (:id card))))))))
+
+(deftest fetch-metric-saves-dimensions-on-read-test
+  (testing "GET /api/metric/:id saves dimensions and dimension_mappings to the database"
+    (mt/with-temp [:model/Card metric {:name          "Metric with Dimensions"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (testing "no dimensions saved initially"
+        (let [initial-card (t2/select-one :model/Card :id (:id metric))]
+          (is (nil? (:dimensions initial-card)))
+          (is (nil? (:dimension_mappings initial-card)))))
+      (testing "response contains dimensions with active status"
+        (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))]
+          (is (seq (:dimensions response)))
+          (is (seq (:dimension_mappings response)))
+          (is (every? #(= "status/active" (:status %)) (:dimensions response)))))
+      (testing "dimensions persisted to database"
+        (let [updated-card (t2/select-one :model/Card :id (:id metric))]
+          (is (seq (:dimensions updated-card)))
+          (is (seq (:dimension_mappings updated-card))))))))

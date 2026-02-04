@@ -95,18 +95,20 @@
     (get persisted-dims-by-id (:dimension-id mapping))))
 
 (defn- merge-persisted-modifications
-  "Merge user modifications from a persisted dimension into a computed dimension."
+  "Merge user modifications from a persisted dimension into a computed dimension.
+   Status is already assigned by assign-ids-and-reconcile, so we only merge
+   user customizations and clear any stale status-message."
   [computed-dim persisted-dim]
   (if persisted-dim
     (-> computed-dim
         (merge (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type]))
-        (assoc :status :status/active)
         (dissoc :status-message))
     computed-dim))
 
 (defn- assign-ids-and-reconcile
   "Assign IDs to computed dimensions by matching targets to persisted mappings.
-   Returns vector of {:dimension ... :mapping ...} with IDs assigned."
+   Returns vector of {:dimension ... :mapping ...} with IDs assigned.
+   All active dimensions are assigned :status/active so they will be persisted."
   [computed-pairs persisted-dims persisted-mappings]
   (let [persisted-dims-by-id (m/index-by :id persisted-dims)]
     (perf/mapv (fn [{:keys [dimension mapping]}]
@@ -116,6 +118,7 @@
                        dim-id        (or (:id persisted-dim) (random-uuid-str))
                        merged-dim    (-> dimension
                                          (assoc :id dim-id)
+                                         (assoc :status :status/active)
                                          (merge-persisted-modifications persisted-dim))]
                    {:dimension merged-dim
                     :mapping   (assoc mapping :dimension-id dim-id)}))
