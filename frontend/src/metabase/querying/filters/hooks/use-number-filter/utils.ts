@@ -1,51 +1,70 @@
+import { t } from "ttag";
+
 import { isNotNull } from "metabase/lib/types";
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberOrEmptyValue, OperatorOption } from "./types";
+import { OPERATORS } from "./constants";
+import type { NumberFilterOperatorOption, NumberOrEmptyValue } from "./types";
 
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
+function getOperatorName(
+  operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
 ) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+
+  switch (operator) {
+    case "=":
+      return isKey ? t`Is` : t`Equal to`;
+    case "!=":
+      return isKey ? t`Is not` : t`Not equal to`;
+    case ">":
+      return t`Greater than`;
+    case "<":
+      return t`Less than`;
+    case "between":
+      return t`Between`;
+    case ">=":
+      return t`Greater than or equal to`;
+    case "<=":
+      return t`Less than or equal to`;
+    case "is-null":
+      return t`Is empty`;
+    case "not-null":
+      return t`Not empty`;
+  }
+}
+
+export function getAvailableOptions(
+  column: Lib.ColumnMetadata,
+): NumberFilterOperatorOption[] {
+  return Object.values(OPERATORS).map(({ operator }) => ({
+    operator,
+    displayName: getOperatorName(operator, column),
+  }));
 }
 
 export function getOptionByOperator(operator: Lib.NumberFilterOperator) {
-  return OPERATOR_OPTIONS[operator];
+  return OPERATORS[operator];
 }
 
 export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
-  availableOptions: OperatorOption[],
 ): Lib.NumberFilterOperator {
   const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
-  const desiredOperator =
-    Lib.isPrimaryKey(column) ||
+  return Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
     fieldValuesInfo.hasFieldValues !== "none"
-      ? "="
-      : "between";
-  return getDefaultAvailableOperator(availableOptions, desiredOperator);
+    ? "="
+    : "between";
 }
 
 export function getDefaultValues(
   operator: Lib.NumberFilterOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  const { valueCount, hasMultipleValues } = OPERATORS[operator];
   if (hasMultipleValues) {
     return values.filter(isNotNull);
   }

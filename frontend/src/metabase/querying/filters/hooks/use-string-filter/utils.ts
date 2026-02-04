@@ -1,54 +1,83 @@
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
+import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { OperatorOption } from "./types";
+import { OPERATORS } from "./constants";
+import type { StringFilterOperatorOption } from "./types";
 
 function isNotEmpty(value: string) {
   return value.length > 0;
 }
 
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
+function getOperatorName(
+  operator: Lib.StringFilterOperator,
   column: Lib.ColumnMetadata,
 ) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+
+  switch (operator) {
+    case "=":
+      return isKey ? t`Is` : t`Equal to`;
+    case "!=":
+      return isKey ? t`Is not` : t`Not equal to`;
+    case "contains":
+      return t`Contains`;
+    case "does-not-contain":
+      return t`Does not contain`;
+    case "starts-with":
+      return t`Starts with`;
+    case "ends-with":
+      return t`Ends with`;
+    case "is-empty":
+      return t`Is empty`;
+    case "not-empty":
+      return t`Not empty`;
+  }
+}
+
+export function getAvailableOptions(
+  column: Lib.ColumnMetadata,
+): StringFilterOperatorOption[] {
+  const isStringLike = Lib.isStringLike(column);
+
+  return Object.values(OPERATORS)
+    .filter(({ type }) => !isStringLike || type !== "partial")
+    .map(({ operator }) => ({
+      operator,
+      displayName: getOperatorName(operator, column),
+    }));
 }
 
 export function getOptionByOperator(operator: Lib.StringFilterOperator) {
-  return OPERATOR_OPTIONS[operator];
+  return OPERATORS[operator];
 }
 
 export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
-  availableOptions: OperatorOption[],
 ): Lib.StringFilterOperator {
   const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
-  const desiredOperator =
+  if (
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
     fieldValuesInfo.hasFieldValues !== "none"
-      ? "="
-      : "contains";
-  return getDefaultAvailableOperator(availableOptions, desiredOperator);
+  ) {
+    return "=";
+  }
+
+  if (Lib.isStringLike(column)) {
+    return "=";
+  }
+
+  return "contains";
 }
 
 export function getDefaultValues(
   operator: Lib.StringFilterOperator,
   values: string[],
 ): string[] {
-  const { type } = OPERATOR_OPTIONS[operator];
+  const { type } = OPERATORS[operator];
   return type !== "empty" ? values.filter(isNotEmpty) : [];
 }
 
@@ -77,7 +106,7 @@ function getFilterParts(
   values: string[],
   options: Lib.StringFilterOptions,
 ): Lib.StringFilterParts | undefined {
-  const { type } = OPERATOR_OPTIONS[operator];
+  const { type } = OPERATORS[operator];
   if (values.length === 0 && type !== "empty") {
     return undefined;
   }

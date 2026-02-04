@@ -1,36 +1,40 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { OperatorOption, TimeValue } from "./types";
+import { OPERATORS } from "./constants";
+import type { TimeFilterOperatorOption, TimeValue } from "./types";
 
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+function getOperatorName(operator: Lib.TimeFilterOperator) {
+  switch (operator) {
+    case "<":
+      return t`Before`;
+    case ">":
+      return t`After`;
+    case "between":
+      return t`Between`;
+    case "is-null":
+      return t`Is empty`;
+    case "not-null":
+      return t`Not empty`;
+  }
+}
+
+export function getAvailableOptions(): TimeFilterOperatorOption[] {
+  return Object.values(OPERATORS).map(({ operator }) => ({
+    operator,
+    displayName: getOperatorName(operator),
+  }));
 }
 
 export function getOptionByOperator(operator: Lib.TimeFilterOperator) {
-  return OPERATOR_OPTIONS[operator];
+  return OPERATORS[operator];
 }
 
-export function getDefaultOperator(
-  availableOptions: OperatorOption[],
-): Lib.TimeFilterOperator {
-  return getDefaultAvailableOperator(availableOptions, "<");
+export function getDefaultOperator(): Lib.TimeFilterOperator {
+  return "<";
 }
 
 function getDefaultValue() {
@@ -41,7 +45,7 @@ export function getDefaultValues(
   operator: Lib.TimeFilterOperator,
   values: TimeValue[],
 ): TimeValue[] {
-  const { valueCount } = OPERATOR_OPTIONS[operator];
+  const { valueCount } = OPERATORS[operator];
 
   return Array(valueCount)
     .fill(getDefaultValue())

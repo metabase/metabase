@@ -1,32 +1,30 @@
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
+import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { OperatorOption } from "./types";
+import { OPERATORS } from "./constants";
+import type { DefaultFilterOperatorOption } from "./types";
 
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+function getOperatorName(operator: Lib.DefaultFilterOperator) {
+  switch (operator) {
+    case "is-null":
+      return t`Is empty`;
+    case "not-null":
+      return t`Not empty`;
+  }
+}
+
+export function getAvailableOptions(): DefaultFilterOperatorOption[] {
+  return Object.values(OPERATORS).map(({ operator }) => ({
+    operator,
+    displayName: getOperatorName(operator),
+  }));
 }
 
 export function getDefaultOperator(
-  availableOptions: OperatorOption[],
   hasInitialOperator: boolean,
 ): Lib.DefaultFilterOperator | undefined {
-  return hasInitialOperator
-    ? getDefaultAvailableOperator(availableOptions)
-    : undefined;
+  return hasInitialOperator ? "is-null" : undefined;
 }
 
 export function getFilterClause(
