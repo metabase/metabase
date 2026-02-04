@@ -1,17 +1,33 @@
 import {
   BaseEdge,
   type EdgeProps,
-  SmoothStepEdge,
+  getSmoothStepPath,
   useNodesInitialized,
 } from "@xyflow/react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
 
-export function ErdEdge(props: EdgeProps) {
+import type { ErdEdgeData } from "./types";
+
+const DASH_PATTERN = "6 4";
+
+export function ErdEdge(props: EdgeProps<ErdEdgeData>) {
   const palette = usePalette();
   const isInitialized = useNodesInitialized();
   const isSelfRef = props.source === props.target;
   const hiddenStyle = !isInitialized ? { visibility: "hidden" as const } : {};
+  const flowsFromFocal = props.data?.flowsFromFocal ?? false;
+
+  const animationClass = flowsFromFocal
+    ? "erd-edge-march-outward"
+    : "erd-edge-march-inward";
+
+  const style = {
+    strokeWidth: 1,
+    stroke: palette["border"],
+    strokeDasharray: DASH_PATTERN,
+    ...hiddenStyle,
+  };
 
   if (isSelfRef) {
     // Both handles on the right side of the node.
@@ -36,24 +52,27 @@ export function ErdEdge(props: EdgeProps) {
       <BaseEdge
         path={edgePath}
         markerEnd={props.markerEnd}
-        style={{
-          strokeWidth: 2,
-          stroke: palette["border"],
-          ...hiddenStyle,
-        }}
+        style={style}
+        className={animationClass}
       />
     );
   }
 
+  const [edgePath] = getSmoothStepPath({
+    sourceX: props.sourceX,
+    sourceY: props.sourceY,
+    sourcePosition: props.sourcePosition,
+    targetX: props.targetX,
+    targetY: props.targetY,
+    targetPosition: props.targetPosition,
+  });
+
   return (
-    <SmoothStepEdge
-      {...props}
-      style={{
-        ...props.style,
-        strokeWidth: 2,
-        stroke: palette["border"],
-        ...hiddenStyle,
-      }}
+    <BaseEdge
+      path={edgePath}
+      markerEnd={props.markerEnd}
+      style={style}
+      className={animationClass}
     />
   );
 }

@@ -286,15 +286,15 @@ export function dataStudioMetricCaching(cardId: CardId) {
 }
 
 export function dataStudioErdBase() {
-  return `${ROOT_URL}/erd`;
+  return `${ROOT_URL}/schema-viewer`;
 }
 
 export function dataStudioErd(tableId: TableId) {
-  return `${ROOT_URL}/erd?table-id=${tableId}`;
+  return `${ROOT_URL}/schema-viewer?table-id=${tableId}`;
 }
 
 export function dataStudioErdModel(modelId: CardId) {
-  return `${ROOT_URL}/erd?model-id=${modelId}`;
+  return `${ROOT_URL}/schema-viewer?model-id=${modelId}`;
 }
 
 export function dataStudioGlossary() {

@@ -84,7 +84,7 @@ export function getDataStudioRoutes(
           />
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="erd" component={ErdPage} />
+          <Route path="schema-viewer" component={ErdPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

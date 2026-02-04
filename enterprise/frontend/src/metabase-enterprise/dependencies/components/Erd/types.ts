@@ -7,4 +7,9 @@ export type ErdNodeData = ErdNode & {
   [key: string]: unknown;
 };
 export type ErdFlowNode = Node<ErdNodeData>;
-export type ErdFlowEdge = Edge;
+
+export type ErdEdgeData = {
+  /** True if edge flows away from focal node (focal is source) */
+  flowsFromFocal: boolean;
+};
+export type ErdFlowEdge = Edge<ErdEdgeData>;

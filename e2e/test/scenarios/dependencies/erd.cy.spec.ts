@@ -5,7 +5,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID, ACCOUNTS_ID } =
   SAMPLE_DATABASE;
 
-const ERD_URL = "/data-studio/erd";
+const ERD_URL = "/data-studio/schema-viewer";
 
 describe("scenarios > dependencies > ERD", () => {
   beforeEach(() => {
@@ -25,7 +25,7 @@ describe("scenarios > dependencies > ERD", () => {
     it("should navigate to ERD page from data studio nav", () => {
       cy.visit("/data-studio/library");
       H.DataStudio.nav().findByRole("link", { name: "ERD" }).click();
-      cy.url().should("include", "/data-studio/erd");
+      cy.url().should("include", "/data-studio/schema-viewer");
     });
 
     it("should highlight ERD nav link when on ERD page", () => {

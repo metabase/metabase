@@ -7,3 +7,21 @@
 .entryInput {
   z-index: 5;
 }
+
+@keyframes erd-edge-march {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: 20;
+  }
+}
+
+.reactFlow :global(.react-flow__edge-path.erd-edge-march-outward) {
+  animation: erd-edge-march 1s linear infinite reverse;
+}
+
+.reactFlow :global(.react-flow__edge-path.erd-edge-march-inward) {
+  animation: erd-edge-march 1s linear infinite;
+}

@@ -34,8 +34,13 @@ function toFlowNode(
   };
 }
 
-function toFlowEdge(edge: ErdEdge, markerEnd: EdgeMarker): ErdFlowEdge {
+function toFlowEdge(
+  edge: ErdEdge,
+  markerEnd: EdgeMarker,
+  focalTableId: TableId,
+): ErdFlowEdge {
   const isSelfRef = edge.source_table_id === edge.target_table_id;
+  const flowsFromFocal = edge.source_table_id === focalTableId;
   return {
     id: `edge-${edge.source_field_id}-${edge.target_field_id}`,
     source: `table-${edge.source_table_id}`,
@@ -46,6 +51,7 @@ function toFlowEdge(edge: ErdEdge, markerEnd: EdgeMarker): ErdFlowEdge {
       : `field-${edge.target_field_id}`,
     type: "erdEdge",
     markerEnd,
+    data: { flowsFromFocal },
   };
 }
 
@@ -69,11 +75,14 @@ export function toFlowGraph(
     connectedByTable.get(edge.target_table_id)!.add(edge.target_field_id);
   }
 
+  const focalNode = data.nodes.find((node) => node.is_focal);
+  const focalTableId = focalNode?.table_id ?? -1;
+
   const emptySet = new Set<number>();
   return {
     nodes: data.nodes.map((node) =>
       toFlowNode(node, connectedByTable.get(node.table_id) ?? emptySet),
     ),
-    edges: data.edges.map((edge) => toFlowEdge(edge, markerEnd)),
+    edges: data.edges.map((edge) => toFlowEdge(edge, markerEnd, focalTableId)),
   };
 }
