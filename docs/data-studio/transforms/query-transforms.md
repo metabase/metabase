@@ -39,7 +39,7 @@ Currently, you can't convert between different transform types (like converting 
 
    - **Name** (required): The name of the transform.
    - **Schema** (required): Target schema for your transform. This schema can be different from the schema of the source table(s). You create a new schema by typing its name in this field. You can only transform data _within_ a database; you can't write from one database to another.
-   - **Table name** (required): Name of the table where Metabase will write and enter a name for the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
+   - **Table name** (required): Name of the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
    - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query transforms](#incremental-query-transforms)
 
@@ -92,5 +92,5 @@ To make a query transform incremental:
 
    ```sql
    SELECT created_at, total FROM orders
-   {%raw%}[[WHERE created_at> {{checkpoint}}::timestamp]]{% endraw %}
+   {%raw%}[[WHERE created_at > {{checkpoint}}::timestamp]]{% endraw %}
    ```

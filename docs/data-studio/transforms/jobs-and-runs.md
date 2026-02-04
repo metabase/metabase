@@ -3,9 +3,9 @@ title: Transform jobs
 summary: Run transforms on schedule.
 ---
 
-_Data Studio > Jobs_
-
 # Transform jobs
+
+_Data Studio > Jobs_
 
 Jobs are scheduled runs of transforms based on the transform's tags.
 
@@ -16,7 +16,7 @@ Add tags to transforms so that you can use jobs to run the transforms on a sched
 To add a tag to a transform:
 
 1. Make sure you have [permissions to edit transforms](./transforms-overview.md#permissions-for-transforms).
-2. Visit the transform in **Data studio > Transforms**
+2. Visit the transform in **Data studio > Transforms**.
 3. On the **Settings** page for a transform, add transform tags.
 
 By default, Metabase comes with hourly, daily, weekly, and monthly tags and jobs that are run on the corresponding schedules, but you can remove or rename those tags, or create new tags. To create a new tag, just type the new tag's name in **Tags** field (either when viewing a transform or when viewing a job) and select **Create a tag**.
@@ -50,7 +50,7 @@ You can see which transforms a job will run (and in which order) on the job's pa
 
 ## Runs
 
-You can see all past and current transform runs (both manual and scheduled) by going to **Data studio** and clicking on **Runs** at the bottom of the left sidebar. The transform run times will be given in Greenwich Mean Time (GMT).
+You can see all past and current transform runs (both manual and scheduled) by going to **Data Studio** and clicking on **Runs** at the bottom of the left sidebar. The transform run times will be given in Greenwich Mean Time (GMT).
 
 You can click on any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click on the icon next the transform name in the right sidebar.
 

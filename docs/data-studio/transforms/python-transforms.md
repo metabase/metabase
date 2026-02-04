@@ -14,7 +14,7 @@ Use Python to write [transforms](transforms-overview.md).
 Python-based transforms require a dedicated [Python execution environment](#set-up-a-python-runner).
 
 - In your Metabase, you write a Python script that returns a `pandas` DataFrame and uses one or more tables from your database.
-- When Metabase runs the transform, a new Python execution environment is spun up. Metabase then run your transform in a new Python execution environment (not on your Metabase instance).
+- Metabase will spin up a new Python execution environment and run the transform there (not on your Metabase instance).
 - Metabase securely copies your source data to your Python environment and makes it available as pandas DataFrames.
 - The Python environment executes your Python script _in memory_ and saves the resulting DataFrame as a file.
 - Your Metabase reads the DataFrame file, writes the results to a new table in your database, and syncs the table to your Metabase.
@@ -49,7 +49,7 @@ Once you've [set up the Python runner](#set-up-a-python-runner):
 
    Metabase will pull 100 rows from each input table and run your transform on those rows. You'll be able to see the result in the **Results preview** tab below the editor. You can see any other output (e.g. outputs of any print statements in your code) in the **Output** tab.
 
-   The transform preview will **only use first 100 rows from each input table**. This means that if you might not see the real results of your transforms in preview: for example, if your transform renames the values of `Doohickey` to `Widget`, and the first 100 records of the input table happen to not contain any doohickeys, you won't be able to preview the result.
+   The transform preview will **only use first 100 rows from each input table**. This means that you might not see the real results of your transforms in preview: for example, if your transform renames the values of `Doohickey` to `Widget`, and the first 100 records of the input table happen to not contain any doohickeys, you won't be able to preview the result.
 
 7. Once you're done with your code, click **Save** in the top right corner.
 
@@ -113,11 +113,11 @@ To update a table incrementally, your data has to have a certain structure. See 
 
 ### Make a Python transform incremental
 
-To make a Python transforms incremental:
+To make a Python transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column
+3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column.
 
    Unlike [Query transforms](./query-transforms.md), where you select an _output_ column as the column to check for new values, with Python transforms, you have to select a column from the _input_ tables as the column to check for new values.
 

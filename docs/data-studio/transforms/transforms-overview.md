@@ -48,7 +48,7 @@ If you are running Metabase Open Source/Starter, Admins (and only Admins) can se
 
 Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](../../permissions/data.md).
 
-To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin of a member of the special [Data Analyst group](../../people-and-groups/managing.md).
+To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
 
 To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
 
@@ -79,7 +79,7 @@ To create a transform:
 
    For more information on transforms built with the query builder or SQL, see [query-based transforms](query-transforms.md). For more information on Python transforms, see and [Python transforms](python-transforms.md).
 
-   If you select "Copy of a saved question" for the transform's source, you can copy the query of an existing Metabase question (either a SQL question or a query builder question) into your transform query. Metabase will only _copy_ the question's query. Later edits to that original question won't affect the transform's query.
+   If you select **Copy of a saved question** for the transform's source, you can copy the query of an existing Metabase question (either a SQL question or a query builder question) into your transform query. Metabase will only _copy_ the question's query. Later edits to that original question won't affect the transform's query.
 
 5. Create the query or script for your transform.
 
@@ -91,7 +91,7 @@ To create a transform:
 
    - **Name** (required): The name of the transform.
    - **Schema** (required): Target schema for your transform. This schema can be different from the schema of the source table(s). You create a new schema by typing its name in this field. You can only transform data _within_ a database; you can't write from one database to another.
-   - **Table name** (required): Name of the table where Metabase will write and enter a name for the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
+   - **Table name** (required): Name of the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
    - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query-based transforms](query-transforms.md#incremental-query-transforms) or [Incremental Python transforms](python-transforms.md)
 
@@ -129,7 +129,7 @@ To edit the transform's query or script:
 
 1. Make sure you have [permissions to edit transforms](../../permissions/data.md).
 2. Go to **Data Studio > Transforms**.
-3. Find the transform you'd like to edit and click on "Edit definition" above the transform definition.
+3. Find the transform you'd like to edit and click on **Edit definition** above the transform definition.
 4. Edit the query or script.
 
    See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information. You can [use Metabot](#use-metabot-to-generate-code-for-transforms) to help edit your transform.
@@ -168,7 +168,7 @@ Transform queries can use the data from other transforms, and query-based transf
 
 Metabase will track transform dependencies and execute transforms in a reasonable order. So for example, if transform B relies on a table created by transform A, Metabase will run transform A first, then run transform B.
 
-On Metabase Pro or Enterprise plans, you can see the transform dependencies graph by going to **Data Studio > Transforms** and go to **Dependencies** tab.
+On Metabase Pro or Enterprise plans, you can see the transform dependencies graph by going to **Data Studio > Transforms** and go to the **Dependencies** tab.
 
 If a job includes a transform that depends on a table created by another transform, then the job will run all the tagged transforms and their dependencies, even if they lack tags, see [Jobs and runs](jobs-and-runs.md) for more information.
 
@@ -212,4 +212,4 @@ Transforms are similar to models with model persistence turned on, but there are
 - Transforms support more databases than model persistence.
 - You can use Python to create transforms.
 
-Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future version of Metabase, model persistence will be deprecated in favor of transforms.
+Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
