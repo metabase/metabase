@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
@@ -7,9 +6,15 @@ import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Icon, Title } from "metabase/ui";
+import type { Parameter } from "metabase-types/api";
+
+interface FormattedParam {
+  name: string;
+  value: string;
+}
 
 // TODO: will need improved formatting for operator parameter filters
-function formatDefaultParamValues(parameters) {
+function formatDefaultParamValues(parameters: Parameter[]): FormattedParam[] {
   return parameters
     .map((parameter) => {
       const { name, type, default: defaultValue } = parameter;
@@ -20,16 +25,19 @@ function formatDefaultParamValues(parameters) {
 
       let formattedValue;
       if (type.startsWith("date/")) {
-        const values = [].concat(defaultValue);
+        const values = ([] as string[]).concat(defaultValue as string);
         const formattedValues = values
           .map((val) => formatDateValue(parameter, val))
-          .filter(Boolean);
+          .filter((val): val is string => val != null);
 
         if (formattedValues.length > 0) {
           formattedValue = conjunct(formattedValues, t`and`);
         }
       } else {
-        formattedValue = conjunct([].concat(defaultValue), t`and`);
+        formattedValue = conjunct(
+          ([] as string[]).concat(defaultValue as string),
+          t`and`,
+        );
       }
 
       if (formattedValue) {
@@ -37,10 +45,18 @@ function formatDefaultParamValues(parameters) {
       }
       return null;
     })
-    .filter(Boolean);
+    .filter((item): item is FormattedParam => item !== null);
 }
 
-function DefaultParametersSection({ className, parameters }) {
+interface DefaultParametersSectionProps {
+  className?: string;
+  parameters: Parameter[];
+}
+
+function DefaultParametersSection({
+  className,
+  parameters,
+}: DefaultParametersSectionProps) {
   const formattedParameterValues = formatDefaultParamValues(parameters);
 
   return (
@@ -72,11 +88,6 @@ function DefaultParametersSection({ className, parameters }) {
     </div>
   );
 }
-
-DefaultParametersSection.propTypes = {
-  className: PropTypes.string,
-  parameters: PropTypes.array.isRequired,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DefaultParametersSection;
