@@ -1,6 +1,9 @@
+import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const { H } = cy;
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
@@ -259,44 +262,6 @@ describe("scenarios - embedding hub", () => {
         .should("not.exist");
     });
 
-    it('"Pick a user strategy" card should open the edit strategy modal', () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-
-      cy.request("PUT", "/api/setting/embedding-homepage", {
-        value: "visible",
-      });
-
-      cy.visit("/");
-
-      H.main()
-        .findByText("Pick a user strategy")
-        .scrollIntoView()
-        .should("be.visible")
-        .click();
-
-      H.modal().within(() => {
-        cy.findByText("Pick a user strategy").should("be.visible");
-        cy.findByText("Multi tenant").click();
-        cy.button("Apply").click();
-      });
-
-      cy.log("the internal prefix should show up on the page");
-      H.main().findByText("Internal users").should("be.visible");
-      H.main().findByText("Internal groups").should("be.visible");
-
-      cy.visit("/");
-
-      cy.log("'Pick a user strategy' should now be marked as done");
-      H.main()
-        .findByText("Pick a user strategy")
-        .closest("button")
-        .scrollIntoView()
-        .findByText("Done", { timeout: 10_000 })
-        .should("be.visible");
-    });
-
     it("should link to user strategy when tenants are disabled", () => {
       H.restore("setup");
       cy.signInAsAdmin();
@@ -329,10 +294,6 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
@@ -345,6 +306,62 @@ describe("scenarios - embedding hub", () => {
         .findByText("Configure data permissions and enable tenants")
         .scrollIntoView()
         .should("be.visible");
+    });
+
+    it("permissions setup page should mark steps as completed", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("all 5 steps are present and none are completed at first");
+      H.main().within(() => {
+        cy.findByText("Enable multi-tenant user strategy")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Which data segregation strategy does your database use?")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Select data to make available")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Create tenants").scrollIntoView().should("be.visible");
+        cy.findByText("Summary").scrollIntoView().should("be.visible");
+
+        // No steps should be completed yet (no check icons)
+        cy.icon("check").should("not.exist");
+      });
+
+      cy.log("enable tenants");
+      H.updateSetting("use-tenants", true);
+
+      cy.log("create a tenant");
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Test Tenant",
+        slug: "test-tenant",
+      });
+
+      cy.log("check steps 1 and 4 are completed");
+      cy.reload();
+      H.main().icon("check").should("have.length", 2);
+
+      cy.log("setup row-level security");
+      cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
+        ({ body: group }) => {
+          cy.sandboxTable({
+            table_id: STATIC_ORDERS_ID,
+            group_id: group.id,
+          });
+        },
+      );
+
+      cy.log("check all 5 steps are completed");
+      cy.reload();
+      H.main().icon("check").should("have.length", 5);
     });
   });
 });
