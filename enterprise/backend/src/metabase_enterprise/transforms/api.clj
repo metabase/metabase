@@ -101,6 +101,7 @@
    [:updated_at :any]
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
+   [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
    [:dependency_analysis_version :int]
    [:creator CreatorResponse]
@@ -129,6 +130,7 @@
                                          [:id {:optional true} pos-int?]
                                          [:name {:optional true} :string]
                                          [:deleted {:optional true} :boolean]
+                                         [:collection_id {:optional true} [:maybe pos-int?]]
                                          [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
 
 (defn- check-is-data-analyst
