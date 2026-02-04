@@ -156,7 +156,7 @@ interface DashboardSubscriptionsSidebarInnerProps {
   isAdmin?: boolean;
   pulse: DraftDashboardSubscription;
   saveEditingPulse: () => Promise<DashboardSubscription>;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   updateEditingPulse: (pulse: DraftDashboardSubscription) => void;
   cancelEditingPulse: () => void;
   pulses?: DashboardSubscription[];
@@ -551,7 +551,7 @@ interface AddEditEmailSidebarWithHooksProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
   setPulse: (pulse: DraftDashboardSubscription) => void;
   users: User[];

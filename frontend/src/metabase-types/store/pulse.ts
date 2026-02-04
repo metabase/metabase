@@ -32,6 +32,14 @@ export type DraftDashboardSubscription = Pick<
     >
   >;
 
+/**
+ * Union type for pulse that can be either a complete DashboardSubscription
+ * or a draft during editing.
+ */
+export type DashboardSubscriptionData =
+  | DashboardSubscription
+  | DraftDashboardSubscription;
+
 export interface PulseState {
   editingPulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;

@@ -54,7 +54,7 @@ interface AddEditEmailSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
   setPulse: (pulse: DraftDashboardSubscription) => void;
   handleArchive: () => void;

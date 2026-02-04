@@ -46,7 +46,7 @@ interface AddEditSlackSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
