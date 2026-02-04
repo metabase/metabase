@@ -113,7 +113,7 @@
                        (get-in preprocessed-query [:stages 0 :source-table]))
         lhs-fields (when lhs-table-id
                      (get-table-field-refs db-id lhs-table-id lhs-join-alias))]
-    (when (and rhs-field lhs-fields)
+    (when (and rhs-field lhs-field lhs-fields)
       (-> preprocessed-query
           (query-with-n-joins step)
           (update-in [:stages 0] (fn [stage]
@@ -125,8 +125,12 @@
                                                            (take step (get-in preprocessed-query [:stages 0 :joins]))))
                                        ;; Select fields from LHS table
                                        (assoc :fields lhs-fields)
-                                       ;; Filter for unmatched: RHS key IS NULL
-                                       (assoc :filters [[:is-null
+                                       ;; Filter for unmatched: RHS key IS NULL but LHS key IS NOT NULL
+                                       ;; (excludes rows where the LHS entity doesn't exist at all)
+                                       (assoc :filters [[:not-null
+                                                         {:lib/uuid (str (random-uuid))}
+                                                         (fresh-uuid-field-ref lhs-field)]
+                                                        [:is-null
                                                          {:lib/uuid (str (random-uuid))}
                                                          (fresh-uuid-field-ref rhs-field)]])
                                        ;; Limit results
