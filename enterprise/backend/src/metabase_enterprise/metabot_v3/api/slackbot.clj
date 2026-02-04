@@ -457,4 +457,3 @@
   (log/debug "Response stream:" response-stream)
   (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
   (delete-message client ai-message))
-
