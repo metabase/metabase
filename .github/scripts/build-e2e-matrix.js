@@ -1,8 +1,11 @@
+const { minimatch } = require('minimatch');
+const fs = require("fs");
 // This script is used in .github/workflows/e2e-matrix-builder.yml
 // its aim is to split the e2e test matrix into multiple jobs
 // grouping some specific tests together, other tests are split into chunks
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
+const { e2eMatrixMap } = require("./e2e-matrix-map");
 
 const specialTestConfigs = [
   {
@@ -16,7 +19,6 @@ const specialTestConfigs = [
 ];
 
 /**
- *
  * @param {*} inputSpecs - specs, which were changed in the PR, separated by comma
  * .e.g e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
  * or a pattern like DEFAULT_SPEC_PATTERN
@@ -36,6 +38,16 @@ function buildMatrix(options, inputSpecs, inputChunks) {
   const isDefaultSpecPattern =
     inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
 
+  const changedFiles = fs.readFileSync("changed-files.txt", "utf-8");
+
+  console.log({ changedFiles });
+
+  const matchedSpecFolders = getRelevantSpecs(changedFiles);
+
+  console.log({ matchedSpecFolders });
+
+  console.log("Matched spec folders:", matchedSpecFolders);
+
   console.log("Processed specs value:", inputSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
 
@@ -52,16 +64,17 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     );
   }
 
+  const specFn = isDefaultSpecPattern
+    ? () => matchedSpecFolders
+    : (index) => inputSpecs.split(",")
+      // works when specs less than 5, otherwise seems all chunks will contain
+      // same specs
+      .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
+      .join(",");
+
   const regularTests = new Array(regularChunks).fill(1).map((files, index) => ({
     name: `e2e-group-${index + 1}`,
-    // works when specs less than 5, otherwise seems all chunks will contain
-    // same specs
-    ...(!isDefaultSpecPattern && {
-      specs: inputSpecs
-        .split(",")
-        .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
-        .join(","),
-    }),
+    specs: specFn(index),
   }));
 
   const testSets = isDefaultSpecPattern
@@ -75,5 +88,22 @@ function buildMatrix(options, inputSpecs, inputChunks) {
 
   return { config, regularChunks, isDefaultSpecPattern };
 }
+/**
+ *
+ * @param {string} changedFiles comma-separate list of
+ * @returns
+ */
+export const getRelevantSpecs = (changedFiles) => {
+  const changedFilesArray = changedFiles.split("\n")
+    .map(f => f.trim())
+    .filter(Boolean);
+  const matchedSpecFolders = e2eMatrixMap.filter(({ globs }) =>
+    globs.some((pattern) =>
+      changedFilesArray.some((changedFile) => minimatch(changedFile, pattern)
+    )
+  )).map(({ specFolder }) => specFolder).join(",");
 
-module.exports = { buildMatrix };
+  return matchedSpecFolders;
+};
+
+module.exports = { buildMatrix, getRelevantSpecs };

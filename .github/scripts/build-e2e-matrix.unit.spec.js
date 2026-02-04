@@ -1,4 +1,4 @@
-const { buildMatrix } = require("./build-e2e-matrix");
+const { buildMatrix, getRelevantSpecs } = require("./build-e2e-matrix");
 
 describe("buildMatrix", () => {
   const options = {
@@ -93,5 +93,23 @@ describe("buildMatrix", () => {
 
     expect(result.config.length).toBe(1);
     expect(result.config[0].name).toBe("e2e-group-1");
+  });
+
+  describe("getRelevantSpecs", () => {
+    it("should return correct spec folders for changed files", () => {
+      const changedFiles = [
+        "frontend/src/metabase/search/some-file.js",
+        "src/metabase/internal_stats/stats.clj",
+        "some/other/file.txt",
+      ].join("\n");
+
+      const matchedSpecs = getRelevantSpecs(changedFiles);
+
+      console.log({ matchedSpecs });
+
+      expect(matchedSpecs).toContain("search");
+      expect(matchedSpecs).toContain("stats");
+      expect(matchedSpecs).not.toContain("sharing");
+    });
   });
 });
