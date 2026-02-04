@@ -42,10 +42,10 @@ export type Transform = {
 
   // hydrated fields
   collection?: Collection | null;
-  tag_ids?: TransformTagId[] | null;
+  tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
-  creator?: UserInfo | null;
+  creator?: UserInfo;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
