@@ -36,7 +36,7 @@ export const SETTINGS_DEFINITIONS = {
     dashboard: false,
     autoOpenWhenUnset: false,
     getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.source,
+      findSensibleSankeyColumns(series.data, series.card?.id)?.source,
   }),
   ...dimensionSetting("sankey.target", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -48,7 +48,7 @@ export const SETTINGS_DEFINITIONS = {
     dashboard: false,
     autoOpenWhenUnset: false,
     getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.target,
+      findSensibleSankeyColumns(series.data, series.card?.id)?.target,
   }),
   ...metricSetting("sankey.value", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -60,7 +60,7 @@ export const SETTINGS_DEFINITIONS = {
     dashboard: false,
     autoOpenWhenUnset: false,
     getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.metric,
+      findSensibleSankeyColumns(series.data, series.card?.id)?.metric,
   }),
   "sankey.node_align": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045

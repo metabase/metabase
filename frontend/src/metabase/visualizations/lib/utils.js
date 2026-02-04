@@ -1,4 +1,3 @@
-import crossfilter from "crossfilter";
 import * as d3 from "d3";
 import _ from "underscore";
 
@@ -190,23 +189,33 @@ export function colorShade(hex, shade = 0) {
   );
 }
 
-// cache computed cardinalities in a weak map since they are computationally expensive
 const cardinalityCache = new Map();
+const MAX_CARDINALITY_CACHE_SIZE = 1000;
 
-export function getColumnCardinality(cols, rows, index) {
-  const col = cols[index];
-  const key = getColumnKey(col);
-  if (!cardinalityCache.has(key) && rows) {
-    const dataset = crossfilter(rows);
-    cardinalityCache.set(
-      key,
-      dataset
-        .dimension((d) => d[index])
-        .group()
-        .size(),
-    );
+/** @param {number | null} [cardId] */
+export function getColumnCardinality(cols, rows, index, cardId = null) {
+  if (!rows) {
+    return undefined;
   }
-  return cardinalityCache.get(key);
+
+  const col = cols[index];
+  const columnKey = getColumnKey(col);
+  const cacheKey = `${cardId ?? "unsaved"}:${rows.length}:${cols.length}:${index}:${columnKey}`;
+
+  if (!cardinalityCache.has(cacheKey)) {
+    if (cardinalityCache.size >= MAX_CARDINALITY_CACHE_SIZE) {
+      const firstKey = cardinalityCache.keys().next().value;
+      cardinalityCache.delete(firstKey);
+    }
+
+    const uniqueValues = new Set();
+    for (let i = 0; i < rows.length; i++) {
+      uniqueValues.add(rows[i][index]);
+    }
+    cardinalityCache.set(cacheKey, uniqueValues.size);
+  }
+
+  return cardinalityCache.get(cacheKey);
 }
 
 const extentCache = new WeakMap();
@@ -298,13 +307,15 @@ export function getSingleSeriesDimensionsAndMetrics(
     metrics = metricColumns;
   }
 
+  const cardId = series.card?.id;
+
   if (dimensions.length === 2) {
     if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
       // if the series dimension is a date but the axis dimension is not then swap them
       dimensions.reverse();
     } else if (
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) <
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]))
+      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0]), cardId) <
+      getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]), cardId)
     ) {
       // if the series dimension is higher cardinality than the axis dimension then swap them
       dimensions.reverse();
@@ -313,7 +324,8 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   if (
     dimensions.length > 1 &&
-    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) > MAX_SERIES
+    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]), cardId) >
+      MAX_SERIES
   ) {
     dimensions.pop();
   }
@@ -399,14 +411,15 @@ export function getCardKey(cardId) {
 
 const PIVOT_SENSIBLE_MAX_CARDINALITY = 16;
 
-export const getDefaultPivotColumn = (cols, rows) => {
+/** @param {number | null} [cardId] */
+export const getDefaultPivotColumn = (cols, rows, cardId = null) => {
   const columnsWithCardinality = cols
     .map((column, index) => {
       if (!isDimension(column)) {
         return null;
       }
 
-      const cardinality = getColumnCardinality(cols, rows, index);
+      const cardinality = getColumnCardinality(cols, rows, index, cardId);
       if (cardinality > PIVOT_SENSIBLE_MAX_CARDINALITY) {
         return null;
       }
@@ -455,7 +468,8 @@ function findSankeyColumnPair(dimensionColumns, rows) {
   };
 }
 
-export function findSensibleSankeyColumns(data) {
+/** @param {number | null} [cardId] */
+export function findSensibleSankeyColumns(data, cardId = null) {
   if (!data?.cols || !data?.rows) {
     return null;
   }
@@ -486,7 +500,7 @@ export function findSensibleSankeyColumns(data) {
           uniqueValues.size > 0 &&
           uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
         ) {
-          const cardinality = getColumnCardinality(cols, rows, index);
+          const cardinality = getColumnCardinality(cols, rows, index, cardId);
           if (
             cardinality > 0 &&
             cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY

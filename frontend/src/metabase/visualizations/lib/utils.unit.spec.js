@@ -167,17 +167,91 @@ describe("metabase/visualization/lib/utils", () => {
   });
 
   describe("getColumnCardinality", () => {
-    it("should get column cardinality", () => {
-      const cols = [{}];
-      const rows = [[1], [2], [3], [3]];
-      expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
+    it("counts unique values in a column", () => {
+      const cols = [
+        createMockColumn({ name: "num" }),
+        createMockColumn({ name: "str" }),
+        createMockColumn({ name: "bool" }),
+      ];
+      const rows = [
+        [1, "a", true],
+        [2, "b", false],
+        [1, "a", true],
+        [3, "c", true],
+        [null, "a", false],
+      ];
+
+      expect(getColumnCardinality(cols, rows, 0, 1)).toBe(4); // 1, 2, 3, null
+      expect(getColumnCardinality(cols, rows, 1, 1)).toBe(3); // a, b, c
+      expect(getColumnCardinality(cols, rows, 2, 1)).toBe(2); // true, false
     });
 
-    it("should get column cardinality for frozen column", () => {
-      const cols = [{}];
-      const rows = [[1], [2], [3], [3]];
-      Object.freeze(cols[0]);
-      expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
+    it("treats different types as distinct values", () => {
+      const cols = [createMockColumn({ name: "col" })];
+      const rows = [["1"], [1], [""], [0], [null]];
+      expect(getColumnCardinality(cols, rows, 0, 2)).toBe(5);
+    });
+
+    describe("caching", () => {
+      it("does not collide for different cardIds", () => {
+        const cols = [createMockColumn({ name: "col" })];
+
+        expect(getColumnCardinality(cols, [[1], [2], [3]], 0, 20)).toBe(3);
+        expect(getColumnCardinality(cols, [[1], [1], [1]], 0, 21)).toBe(1);
+      });
+
+      it("does not collide for different row counts", () => {
+        const cols = [createMockColumn({ name: "col" })];
+
+        expect(getColumnCardinality(cols, [[1], [2], [3]], 0, 30)).toBe(3);
+        expect(getColumnCardinality(cols, [[1], [1], [2], [2]], 0, 30)).toBe(2);
+      });
+
+      it("does not collide for different columns", () => {
+        const cols = [
+          createMockColumn({ name: "a" }),
+          createMockColumn({ name: "b" }),
+        ];
+        const rows = [
+          [1, "x"],
+          [2, "y"],
+          [1, "z"],
+        ];
+
+        expect(getColumnCardinality(cols, rows, 0, 40)).toBe(2);
+        expect(getColumnCardinality(cols, rows, 1, 40)).toBe(3);
+      });
+
+      it("does not collide for different column indices with same column key, rows count, card id", () => {
+        const col = createMockColumn({ name: "col" });
+        const cols1 = [col, createMockColumn({ name: "other" })];
+        const cols2 = [createMockColumn({ name: "other" }), col];
+
+        expect(
+          getColumnCardinality(
+            cols1,
+            [
+              [1, 9],
+              [2, 9],
+              [3, 9],
+            ],
+            0,
+            50,
+          ),
+        ).toBe(3);
+        expect(
+          getColumnCardinality(
+            cols2,
+            [
+              [9, 1],
+              [9, 1],
+              [9, 1],
+            ],
+            1,
+            50,
+          ),
+        ).toBe(1);
+      });
     });
   });
 
