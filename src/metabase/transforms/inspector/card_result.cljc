@@ -23,8 +23,9 @@
     [lens-id (keyword (get-in card [:metadata :card-type]))]))
 
 (defmethod compute-card-result :default
-  [_ _ _]
-  nil)
+  [_ _ row]
+  (when (nil? row)
+    {"no-data" true}))
 
 (defmethod compute-card-result [:join-analysis :join-step]
   [_ _card row]

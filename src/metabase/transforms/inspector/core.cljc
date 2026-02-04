@@ -59,4 +59,4 @@
    - {:degenerate? true :reason :no-data|:single-value|:null-value|:all-same-value|...}
    - {:degenerate? false}"
   [card-id display-type card-results]
-  (degeneracy/degenerate-for-display? card-id (get card-results card-id) display-type card-results))
+  (degeneracy/degenerate-for-display? card-id display-type card-results))

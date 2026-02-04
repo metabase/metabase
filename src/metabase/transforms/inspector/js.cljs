@@ -56,3 +56,13 @@
     (clj->js (inspector/interesting-fields fields
                                            :threshold (or threshold 0.3)
                                            :limit limit))))
+
+(defn ^:export isDegenerate
+  "Check if a card result is degenerate and shouldn't be displayed.
+   Returns {degenerate: bool, reason: string|null}."
+  [card-id display-type card-results-js]
+  (let [card-results (js->clj card-results-js)
+        display-kw (keyword display-type)
+        result (inspector/degenerate? card-id display-kw card-results)]
+    (clj->js {:degenerate (:degenerate? result)
+              :reason (some-> (:reason result) name)})))
