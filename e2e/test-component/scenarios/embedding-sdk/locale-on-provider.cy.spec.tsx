@@ -4,7 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
+import { getMetabaseInstanceUrl } from "e2e/support/helpers";
 import { updateSetting } from "e2e/support/helpers/api";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -30,7 +30,7 @@ function setup({
   cy.mount(
     <MetabaseProvider
       authConfig={{
-        metabaseInstanceUrl: METABASE_INSTANCE_URL,
+        metabaseInstanceUrl: getMetabaseInstanceUrl(),
       }}
       locale={locale}
     >

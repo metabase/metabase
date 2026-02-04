@@ -6,7 +6,7 @@ import { configureStore, createSlice } from "@reduxjs/toolkit";
 import { Provider, useDispatch, useSelector } from "react-redux";
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
+import { getMetabaseInstanceUrl } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
@@ -28,7 +28,7 @@ describe("scenarios > embedding-sdk > the redux provider context should not clas
         </div>
         <MetabaseProvider
           authConfig={{
-            metabaseInstanceUrl: METABASE_INSTANCE_URL,
+            metabaseInstanceUrl: getMetabaseInstanceUrl(),
           }}
         >
           <div data-testid="inside-metabase-provider">

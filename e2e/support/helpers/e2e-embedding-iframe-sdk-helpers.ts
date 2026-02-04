@@ -1,7 +1,10 @@
 import { match } from "ts-pattern";
 
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
-import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
+import {
+  JWT_SHARED_SECRET,
+  getMetabaseInstanceUrl,
+} from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type { CreateApiKeyResponse } from "metabase-types/api";
 
@@ -17,7 +20,7 @@ import {
 
 const { IS_ENTERPRISE } = Cypress.env();
 
-const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
+const getEmbedJsPath = () => `${getMetabaseInstanceUrl()}/app/embed.js`;
 
 /**
  * Base interface for SDK iframe embedding test page options
@@ -306,7 +309,7 @@ export const getNewEmbedScriptTag = ({
     .exhaustive();
 
   return `
-    <script src="${EMBED_JS_PATH}" ${loadTypeAttribute}></script>
+    <script src="${getEmbedJsPath()}" ${loadTypeAttribute}></script>
     <script>
       function defineMetabaseConfig(settings) {
         window.metabaseConfig = settings;
@@ -316,7 +319,7 @@ export const getNewEmbedScriptTag = ({
 };
 
 export const getNewEmbedConfigurationScript = ({
-  instanceUrl = "http://localhost:4000",
+  instanceUrl,
   isGuest,
   theme,
   apiKey,
@@ -325,7 +328,7 @@ export const getNewEmbedConfigurationScript = ({
   locale,
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
-    instanceUrl,
+    instanceUrl: instanceUrl ?? getMetabaseInstanceUrl(),
     isGuest,
     apiKey,
     useExistingUserSession,
@@ -388,7 +391,7 @@ export const mockEmbedJsToDevServer = () => {
     const isHotReloadAvailable = result.code === 0;
 
     if (isHotReloadAvailable) {
-      cy.intercept("GET", EMBED_JS_PATH, (req) => {
+      cy.intercept("GET", getEmbedJsPath(), (req) => {
         req.redirect("http://localhost:8080/app/embed.js");
       });
     }

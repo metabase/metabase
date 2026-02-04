@@ -6,7 +6,7 @@ import {
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
-  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  getDefaultSdkAuthProviderConfig,
   getSdkBundleScriptElement,
   mountSdk,
   mountSdkContent,
@@ -60,7 +60,7 @@ describe(
         it("should add and cleanup the MetabaseProviderPropsStore in a global object", () => {
           const metabaseProviderElement = (
             <MetabaseProvider
-              authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+              authConfig={getDefaultSdkAuthProviderConfig()}
               locale="en"
             >
               <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -119,7 +119,7 @@ describe(
 
           mountSdk(
             <MetabaseProvider
-              authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+              authConfig={getDefaultSdkAuthProviderConfig()}
               locale="en"
             >
               {Array.from({ length: componentsCount }, (_, i) => (
@@ -150,7 +150,7 @@ describe(
         it("should update props passed to MetabaseProvider", () => {
           mountSdk(
             <MetabaseProvider
-              authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+              authConfig={getDefaultSdkAuthProviderConfig()}
               locale="en"
             >
               <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -164,7 +164,7 @@ describe(
             // Update props via the declarative API
             rerender(
               <MetabaseProvider
-                authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+                authConfig={getDefaultSdkAuthProviderConfig()}
                 locale="es"
               >
                 <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -178,7 +178,7 @@ describe(
             // Update props via the imperative API (via window)
             cy.window().then((win) => {
               win.METABASE_PROVIDER_PROPS_STORE.setProps({
-                authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+                authConfig: getDefaultSdkAuthProviderConfig(),
                 locale: "fr",
               });
 
@@ -238,12 +238,12 @@ describe(
                 mountSdk(
                   <>
                     <MetabaseProvider
-                      authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+                      authConfig={getDefaultSdkAuthProviderConfig()}
                     >
                       <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
                     </MetabaseProvider>
                     <MetabaseProvider
-                      authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+                      authConfig={getDefaultSdkAuthProviderConfig()}
                     >
                       <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
                     </MetabaseProvider>

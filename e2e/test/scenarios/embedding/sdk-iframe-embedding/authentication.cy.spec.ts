@@ -16,21 +16,21 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         withToken: "bleeding-edge",
       });
 
-      cy.intercept("GET", "http://localhost:4000/auth/sso").as("sso");
+      const baseUrl = Cypress.config("baseUrl");
+      cy.intercept("GET", `${baseUrl}/auth/sso`).as("sso");
       cy.intercept("GET", "http://auth-provider/sso?response=json").as(
         "ssoProvider",
       );
-      cy.intercept("GET", "http://localhost:4000/auth/sso?*").as(
-        "tokenInSessionOut",
-      );
+      cy.intercept("GET", `${baseUrl}/auth/sso?*`).as("tokenInSessionOut");
     });
 
     it("should not skip the first auth request if jwtProviderUri is not given", () => {
+      const baseUrl = Cypress.config("baseUrl");
       H.visitCustomHtmlPage(`
         <!DOCTYPE html>
           <html>
           <body>
-            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script src="${baseUrl}/app/embed.js" ></script>
             <script>
               function defineMetabaseConfig(settings) {
                 window.metabaseConfig = settings;
@@ -38,7 +38,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
             </script>
             <script>
               defineMetabaseConfig({
-                "instanceUrl": "http://localhost:4000",
+                "instanceUrl": "${baseUrl}",
               });
             </script>
             <metabase-dashboard dashboard-id='9' />
@@ -59,11 +59,12 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     it("should skip the first auth request if jwtProviderUri is given", () => {
+      const baseUrl = Cypress.config("baseUrl");
       H.visitCustomHtmlPage(`
         <!DOCTYPE html>
           <html>
           <body>
-            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script src="${baseUrl}/app/embed.js" ></script>
             <script>
               function defineMetabaseConfig(settings) {
                 window.metabaseConfig = settings;
@@ -71,7 +72,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
             </script>
             <script>
               defineMetabaseConfig({
-                "instanceUrl": "http://localhost:4000",
+                "instanceUrl": "${baseUrl}",
                 "jwtProviderUri": "http://auth-provider/sso?response=json",
               });
             </script>
@@ -319,7 +320,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
+    cy.visit("/");
 
     cy.log("visit a test page with an origin of example.com using api keys");
     cy.get<string>("@apiKey").then((apiKey) => {
@@ -350,7 +351,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
+    cy.visit("/");
 
     cy.log(
       "visit a test page with an origin of example.com using the existing user session",
@@ -463,12 +464,13 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     // This happens because the SAML endpoint is not mocked in this test.
     cy.wait("@authSso").its("response.statusCode").should("eq", 500);
 
+    const baseUrl = Cypress.config("baseUrl");
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
         .and(
           "contain",
-          "Unable to connect to instance at http://localhost:4000 (status: 500)",
+          `Unable to connect to instance at ${baseUrl} (status: 500)`,
         );
     });
   });

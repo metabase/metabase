@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  getDefaultSdkAuthProviderConfig,
   mountSdk,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import {
@@ -40,7 +40,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
     it("should return the auth status when the hook is called inside MetabaseProvider", () => {
       mountSdk(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <ComponentWithHook />
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -58,7 +58,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </>,
@@ -75,7 +75,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()} />
         </>,
       );
 
@@ -111,7 +111,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
     it("should render the created dashboard name when called inside MetabaseProvider", () => {
       mountSdk(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <ComponentWithHook />
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -128,7 +128,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </>,
@@ -144,7 +144,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()} />
         </>,
       );
 
@@ -163,7 +163,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
     it("should render the application name when called inside MetabaseProvider", () => {
       mountSdk(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <ComponentWithHook />
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -178,7 +178,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </>,
@@ -192,7 +192,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()} />
         </>,
       );
 
@@ -213,7 +213,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
     it("should render available fonts when called inside MetabaseProvider", () => {
       mountSdk(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <ComponentWithHook />
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -228,7 +228,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </>,
@@ -242,7 +242,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()} />
         </>,
       );
 
@@ -261,7 +261,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
     it("should render the current user email when called inside MetabaseProvider", () => {
       mountSdk(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <ComponentWithHook />
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -279,7 +279,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </>,
@@ -296,7 +296,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()} />
         </>,
       );
 

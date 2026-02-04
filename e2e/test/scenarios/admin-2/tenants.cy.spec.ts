@@ -704,12 +704,15 @@ describe("tenant users", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
+    const baseUrl = Cypress.config("baseUrl") ?? "http://localhost:4000";
+    const { host } = new URL(baseUrl);
+
     cy.request("PUT", "/api/setting", {
       "jwt-attribute-email": "email",
       "jwt-attribute-firstname": "first_name",
       "jwt-attribute-lastname": "last_name",
       "jwt-enabled": true,
-      "jwt-identity-provider-uri": "localhost:4000",
+      "jwt-identity-provider-uri": host,
       "jwt-shared-secret": JWT_SECRET,
       "jwt-user-provisioning-enabled?": true,
       "use-tenants": true,

@@ -77,9 +77,9 @@ export function postMessageToIframe(options: PostMessageOptions) {
  * Base HTML template for embedding test pages
  */
 function getInteractiveHtml({ dashboardId }: BaseEmbedTestPageOptions) {
-  const MB_BASE_URL = "http://localhost:4000";
+  const baseUrl = Cypress.config("baseUrl") ?? "http://localhost:4000";
 
-  const url = `${MB_BASE_URL}/dashboard/${dashboardId}`;
+  const url = `${baseUrl}/dashboard/${dashboardId}`;
 
   return `
     <!DOCTYPE html>

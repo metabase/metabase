@@ -14,7 +14,8 @@ describe("scenarios > embedding > modular embedding", () => {
   });
 
   it("can find the embed.js file", () => {
-    cy.request("http://localhost:4000/app/embed.js").then((response) => {
+    const baseUrl = Cypress.config("baseUrl");
+    cy.request(`${baseUrl}/app/embed.js`).then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body).to.be.a("string").and.not.be.empty;
     });
@@ -388,7 +389,7 @@ describe("scenarios > embedding > modular embedding", () => {
 
     it("should send an modular embedding usage event", () => {
       cy.signOut();
-      cy.visit("http://localhost:4000");
+      cy.visit("/");
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://different-than-metabase-instance.com",
         elements: [

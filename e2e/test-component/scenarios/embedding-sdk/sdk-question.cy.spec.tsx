@@ -14,8 +14,8 @@ import {
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  METABASE_INSTANCE_URL,
   createQuestion,
+  getMetabaseInstanceUrl,
   popover,
   tableAllFieldsHiddenImage,
   tableHeaderClick,
@@ -145,7 +145,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         tableAllFieldsHiddenImage()
           .should("be.visible")
           .should("have.attr", "src")
-          .and("include", METABASE_INSTANCE_URL);
+          .and("include", getMetabaseInstanceUrl());
       }
     });
   });

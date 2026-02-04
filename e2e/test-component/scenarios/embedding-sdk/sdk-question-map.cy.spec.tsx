@@ -1,7 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  METABASE_INSTANCE_URL,
   createQuestion,
+  getMetabaseInstanceUrl,
   mapPinIcon,
 } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -46,7 +46,7 @@ describe("scenarios > embedding-sdk > interactive-question-map", () => {
       mapPinIcon()
         .should("be.visible")
         .should("have.attr", "src")
-        .and("include", METABASE_INSTANCE_URL);
+        .and("include", getMetabaseInstanceUrl());
     });
   });
 
@@ -61,7 +61,7 @@ describe("scenarios > embedding-sdk > interactive-question-map", () => {
 
     cy.wait("@getTiles").then(
       ({ request: tilesRequest, response: tileResponse }) => {
-        expect(tilesRequest.url).to.include(METABASE_INSTANCE_URL);
+        expect(tilesRequest.url).to.include(getMetabaseInstanceUrl());
         expect(tilesRequest.headers["x-metabase-session"]).to.not.eq(undefined);
         expect(tileResponse?.statusCode).to.equal(200);
       },

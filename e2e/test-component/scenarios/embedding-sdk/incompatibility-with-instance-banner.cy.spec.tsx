@@ -5,7 +5,7 @@ import {
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { getDefaultSdkAuthProviderConfig } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
@@ -37,7 +37,7 @@ describe.skip("scenarios > embedding-sdk > incompatibility-with-instance-banner"
   describe("when the SDK bundle is incompatible with an instance", () => {
     it("should show an error with a close button", () => {
       cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
@@ -64,7 +64,7 @@ describe.skip("scenarios > embedding-sdk > incompatibility-with-instance-banner"
 
     it("should show an error after the SDK is re-mounted", () => {
       cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
@@ -79,7 +79,7 @@ describe.skip("scenarios > embedding-sdk > incompatibility-with-instance-banner"
 
       // Remount the SDK, the `api.onResponseError` handler that was set previously should properly work with the new reduxStore
       cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
@@ -107,7 +107,7 @@ describe.skip("scenarios > embedding-sdk > incompatibility-with-instance-banner"
     it("should show a custom error with a close button", () => {
       cy.mount(
         <MetabaseProvider
-          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          authConfig={getDefaultSdkAuthProviderConfig()}
           errorComponent={({
             message,
             onClose,

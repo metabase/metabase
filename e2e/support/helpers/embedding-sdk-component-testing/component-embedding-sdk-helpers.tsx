@@ -5,13 +5,13 @@ import {
 import type { JSX } from "react";
 import React from "react";
 
-import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
+import { getMetabaseInstanceUrl } from "e2e/support/helpers";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import { ThemeProvider } from "metabase/ui";
 
-export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
-  metabaseInstanceUrl: METABASE_INSTANCE_URL,
-};
+export const getDefaultSdkAuthProviderConfig = () => ({
+  metabaseInstanceUrl: getMetabaseInstanceUrl(),
+});
 
 export interface MountSdkOptions {
   strictMode?: boolean;
@@ -50,7 +50,7 @@ export function mountSdkContent(
       <MetabaseProvider
         {...sdkProviderProps}
         authConfig={{
-          ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+          ...getDefaultSdkAuthProviderConfig(),
           ...sdkProviderProps?.authConfig,
         }}
       >

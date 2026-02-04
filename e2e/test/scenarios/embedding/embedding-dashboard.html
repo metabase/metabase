@@ -1,11 +1,17 @@
-<script src="http://localhost:4000/app/iframeResizer.js"></script>
 <iframe
   id="iframe"
-  onload="iFrameResize({checkOrigin: false}, this)"
   style="width: 100%; border: 0"
 ></iframe>
 <script>
-  document.getElementById("iframe").src = new URLSearchParams(
-    location.search,
-  ).get("iframeUrl");
+  const iframeUrl = new URLSearchParams(location.search).get("iframeUrl");
+  document.getElementById("iframe").src = iframeUrl;
+
+  // Extract base URL from iframeUrl to load iframeResizer.js from the same instance
+  const baseUrl = new URL(iframeUrl).origin;
+  const script = document.createElement("script");
+  script.src = `${baseUrl}/app/iframeResizer.js`;
+  script.onload = function () {
+    iFrameResize({ checkOrigin: false }, document.getElementById("iframe"));
+  };
+  document.head.appendChild(script);
 </script>

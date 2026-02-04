@@ -14,7 +14,7 @@ import {
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { getDefaultSdkAuthProviderConfig } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
@@ -35,7 +35,7 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
         <Button color="brand">outside sdk provider</Button>
 
         <MetabaseProvider
-          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          authConfig={getDefaultSdkAuthProviderConfig()}
           theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
         >
           <Button color="brand">outside sdk wrapper</Button>
@@ -93,7 +93,7 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
       <MantineProvider>
         <TitleWrapper />
 
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>
       </MantineProvider>,
@@ -107,7 +107,7 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
   it("App styles should not affect SDK styles", () => {
     cy.mount(
       <MantineProvider>
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>
       </MantineProvider>,

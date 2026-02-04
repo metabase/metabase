@@ -8,7 +8,7 @@ import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
-  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  getDefaultSdkAuthProviderConfig,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import {
@@ -64,7 +64,7 @@ describe("scenarios > embedding-sdk > requests", () => {
       });
 
       cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={getDefaultSdkAuthProviderConfig()}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );

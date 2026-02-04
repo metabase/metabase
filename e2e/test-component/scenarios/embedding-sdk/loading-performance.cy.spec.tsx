@@ -5,7 +5,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import {
   AUTH_PROVIDER_URL,
-  METABASE_INSTANCE_URL,
+  getMetabaseInstanceUrl,
 } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import {
   mockAuthProviderAndJwtSignIn,
@@ -33,7 +33,7 @@ describe("scenarios > embedding-sdk > loading-performance", () => {
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
           authConfig: {
-            metabaseInstanceUrl: METABASE_INSTANCE_URL,
+            metabaseInstanceUrl: getMetabaseInstanceUrl(),
           },
         },
       });
@@ -57,7 +57,7 @@ describe("scenarios > embedding-sdk > loading-performance", () => {
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
           authConfig: {
-            metabaseInstanceUrl: METABASE_INSTANCE_URL,
+            metabaseInstanceUrl: getMetabaseInstanceUrl(),
             preferredAuthMethod: "jwt",
             jwtProviderUri: AUTH_PROVIDER_URL,
           },
