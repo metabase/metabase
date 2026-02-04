@@ -297,32 +297,35 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [active-table (active-table)
-        entries (map document->entry documents)
-        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated? (when-not (and active-table (pending-table) (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
-        pending-updated? (safe-batch-upsert! (pending-table) entries)]
-    (when (or active-updated? pending-updated?)
-      (u/prog1 (->> entries (map :model) frequencies)
-        (when (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-          (t2/query ["commit"]))
-        (log/trace "indexed documents for " <>)
-        (when active-updated?
-          (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
+  (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+        do-writes   (fn []
+                      (let [active-table    (active-table)
+                            entries          (map document->entry documents)
+                            ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
+                            active-updated?  (when-not (and active-table (pending-table) reindexing?)
+                                               (safe-batch-upsert! active-table entries))
+                            pending-updated? (safe-batch-upsert! (pending-table) entries)]
+                        (when (or active-updated? pending-updated?)
+                          (u/prog1 (->> entries (map :model) frequencies)
+                            (when reindexing?
+                              (t2/query ["commit"]))
+                            (log/trace "indexed documents for " <>)
+                            (when active-updated?
+                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))]
+    (if reindexing?
+      ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
+      (t2/with-connection [_conn (mdb/data-source)]
+        (do-writes))
+      (do-writes))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
-  ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
-  (letfn [(do-index []
-            (transduce (comp (partition-all insert-batch-size)
-                             (map (partial batch-update! context)))
-                       (partial merge-with +)
-                       document-reducible))]
-    (if (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-      (t2/with-connection [_conn (mdb/data-source)] (do-index))
-      (do-index))))
+  (transduce (comp (partition-all insert-batch-size)
+                   (map (partial batch-update! context)))
+             (partial merge-with +)
+             document-reducible))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))

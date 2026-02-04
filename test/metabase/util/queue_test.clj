@@ -248,3 +248,74 @@
       (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-2ˇ")))))))
+
+(deftest error-resilience-test
+  (testing "An AssertionError thrown by the handler does not kill the listener thread"
+    (let [listener-name "test-error-resilience"
+          thread-name   "queue-test-error-resilience-0"
+          call-count    (atom 0)
+          queue         (queue/delay-queue)]
+      (queue/listen! listener-name queue
+                     (fn [batch]
+                       (swap! call-count inc)
+                       (when (some #{"boom"} batch)
+                         (throw (AssertionError. "simulated assertion error")))
+                       (count batch))
+                     {:max-next-ms 5})
+      (try
+        ;; First message triggers AssertionError
+        (queue/put-with-delay! queue 0 "boom")
+        (await-test-while (zero? @call-count)
+          (is (= 1 @call-count)))
+
+        ;; Thread should still be alive
+        (is (thread-name-running? thread-name)
+            "Listener thread should survive an AssertionError")
+
+        ;; Second message should still be processed
+        (queue/put-with-delay! queue 0 "ok")
+        (await-test-while (< @call-count 2)
+          (is (= 2 @call-count)))
+
+        (finally
+          (queue/stop-listening! listener-name))))))
+
+(deftest restart-after-err-handler-failure-test
+  (testing "Listener restarts when err-handler itself throws an Error"
+    (let [listener-name   "test-restart-on-err-handler"
+          thread-name     "queue-test-restart-on-err-handler-0"
+          call-count      (atom 0)
+          err-handler-ran (atom false)
+          queue           (queue/delay-queue)]
+      (queue/listen! listener-name queue
+                     (fn [batch]
+                       (swap! call-count inc)
+                       (when (some #{"fail"} batch)
+                         (throw (Exception. "handler exception")))
+                       (count batch))
+                     {:err-handler  (fn [_e _name]
+                                      (reset! err-handler-ran true)
+                                      ;; err-handler itself throws an Error, escaping the inner catch
+                                      (throw (AssertionError. "err-handler assertion error")))
+                      :max-next-ms 5})
+      (try
+        ;; First message triggers the handler exception -> err-handler -> AssertionError
+        ;; This escapes listener-thread's inner catch, but listener-thread-with-restart should restart it
+        (queue/put-with-delay! queue 0 "fail")
+        (await-test-while (not @err-handler-ran)
+          (is @err-handler-ran))
+
+        ;; Wait for restart backoff (initial-restart-backoff-ms = 500ms) plus margin
+        (Thread/sleep 1000)
+
+        ;; Thread should be alive again after restart
+        (is (thread-name-running? thread-name)
+            "Listener thread should restart after err-handler throws an Error")
+
+        ;; Verify second message is processed normally
+        (queue/put-with-delay! queue 0 "ok")
+        (await-test-while (< @call-count 2)
+          (is (= 2 @call-count)))
+
+        (finally
+          (queue/stop-listening! listener-name))))))
