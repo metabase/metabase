@@ -429,18 +429,6 @@
     stage-number :- [:maybe :int]]
    (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ColumnWithOperators
-  "Malli schema for ColumnMetadata extended with the list of applicable operators."
-  [:merge
-   [:ref ::lib.schema.metadata/column]
-   [:map
-    [:operators {:optional true} [:sequential [:ref ::lib.schema.filter/operator]]]]])
-
-(mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
-  "Returns the operators for which `filterable-column` is applicable."
-  [filterable-column :- ColumnWithOperators]
-  (:operators filterable-column))
-
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
   [a-filter]
@@ -449,7 +437,7 @@
     (when (lib.util/ref-clause? leading-arg)
       leading-arg)))
 
-(mu/defn filterable-columns :- [:maybe [:sequential ColumnWithOperators]]
+(mu/defn filterable-columns :- [:maybe [:sequential [:ref ::lib.schema.metadata/column]]]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -509,9 +497,9 @@
 (def ^:private FilterParts
   [:map
    [:lib/type [:= :mbql/filter-parts]]
-   [:operator ::lib.schema.filter/operator]
+   [:operator :keyword]
    [:options ::lib.schema.common/options]
-   [:column [:maybe ColumnWithOperators]]
+   [:column [:maybe [:ref ::lib.schema.metadata/column]]]
    [:args [:sequential :any]]])
 
 (mu/defn filter-parts :- FilterParts

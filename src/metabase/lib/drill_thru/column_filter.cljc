@@ -34,7 +34,7 @@
 (mu/defn prepare-query-for-drill-addition :- [:maybe [:map
                                                       [:query ::lib.schema/query]
                                                       [:stage-number :int]
-                                                      [:column lib.filter/ColumnWithOperators]]]
+                                                      [:column [:ref ::lib.schema.metadata/column]]]]
   "If the column we're filtering on is an aggregation, the filtering must happen in a later stage. This function returns
   a map with that possibly-updated `:query` and `:stage-number`, plus the `:column` for filtering in that stage (with
   filter operators, as returned by [[lib.filter/filterable-columns]]).

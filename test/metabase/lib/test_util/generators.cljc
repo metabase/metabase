@@ -235,12 +235,7 @@
           (testing "adds it to the end of the list"
             (is (= (count after-filters)
                    (inc (count before-filters))))
-            (is (=? filter-clause (last after-filters))))
-          (testing (str `lib/filter-operator " returns the right op")
-            ;; TODO: The generator will happily build multiple joins
-            (when-let [op (first (last after-filters))]
-              (is (= (first filter-clause)
-                     op)))))))))
+            (is (=? filter-clause (last after-filters)))))))))
 
 ;; Expressions ===================================================================================
 ;; We only support a few basic expressions for now. It would be good to exercise all the expression types eventually,

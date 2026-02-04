@@ -290,9 +290,6 @@
   filter
   filters
   filterable-columns
-  filterable-column-operators
-  filter-clause
-  filter-operator
   filter-parts
   and
   or
