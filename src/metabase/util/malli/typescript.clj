@@ -41,6 +41,29 @@
     (wrap s "''")
     s))
 
+(defn- indent-ts
+  "Add proper indentation to TypeScript type definition based on brace depth.
+   Indents lines inside { } blocks with 2 spaces per level."
+  [s]
+  (let [lines (str/split-lines s)]
+    (loop [result []
+           depth 0
+           [line & remaining] lines]
+      (if (nil? line)
+        (str/join "\n" result)
+        (let [;; Count braces to track depth changes
+              open-count  (count (re-seq #"\{" line))
+              close-count (count (re-seq #"\}" line))
+              ;; For closing braces, reduce depth before indenting
+              indent-depth (if (str/starts-with? (str/trim line) "}")
+                             (max 0 (- depth 1))
+                             depth)
+              indented-line (str (apply str (repeat indent-depth "  ")) line)
+              new-depth (+ depth open-count (- close-count))]
+          (recur (conj result indented-line)
+                 (max 0 new-depth)
+                 remaining))))))
+
 (declare schema->ts)
 
 (defmulti -schema->ts
@@ -194,8 +217,7 @@
 (defmethod -schema->ts :fn
   [schema]
   (or (:typescript (mc/properties schema))
-      (let [t (first (mc/children schema))]
-        (str "unknown /* unsupported: " t " */"))))
+      "unknown"))
 
 ;; Default fallback
 
@@ -222,8 +244,7 @@
                [:vector? vector?]
                [:keyword? keyword?]])
 
-  ( s))
-
+  (s))
 
 ;; Public API
 
@@ -243,8 +264,8 @@
          (-schema->ts (mc/schema schema)))
        (catch Exception e
          (cond
-           (::unsupported (ex-data e))      (str "unknown /* unsupported: " (pr-str schema) " */")
-           (instance? StackOverflowError e) (str "unknown /* recursive: " (pr-str schema) " */")
+           (::unsupported (ex-data e))      "unknown"
+           (instance? StackOverflowError e) "unknown"
            :else                            (throw e)))))))
 
 (defn generate-typescript-interface
@@ -257,18 +278,61 @@
   [type-name schema]
   (str "export type " type-name " = " (schema->ts schema)))
 
+(defn- cljs-munge
+  "Munge a symbol/string using ClojureScript's munge which handles JS reserved words."
+  [s]
+  (comp/munge (if (symbol? s) s (symbol (str s)))))
+
+(defn- extract-arg-name
+  "Extract a valid parameter name from an arglist element.
+   Handles simple symbols and destructuring forms (maps/vectors)."
+  [arg-form index]
+  (cond
+    ;; Simple symbol
+    (symbol? arg-form)
+    (cljs-munge arg-form)
+
+    ;; Map destructuring - use :as name or synthetic
+    (map? arg-form)
+    (if-let [as-name (:as arg-form)]
+      (cljs-munge as-name)
+      (str "arg" index))
+
+    ;; Vector destructuring - use :as name or synthetic
+    (vector? arg-form)
+    (let [as-idx (.indexOf ^java.util.List arg-form :as)]
+      (if (and (>= as-idx 0) (< (inc as-idx) (count arg-form)))
+        (cljs-munge (nth arg-form (inc as-idx)))
+        (str "arg" index)))
+
+    ;; Fallback to synthetic name
+    :else
+    (str "arg" index)))
+
 (defn- format-ts-args [arglist arg-schema]
-  (->> (map
-        (fn [arg-name arg-schema]
-          (str (munge arg-name) ": " (schema->ts arg-schema)))
-        arglist
-        (mc/children arg-schema))
+  (->> (map-indexed
+        (fn [idx [arg-name arg-schema]]
+          (str (extract-arg-name arg-name idx) ": " (schema->ts arg-schema)))
+        (map vector arglist (mc/children arg-schema)))
        (str/join ", ")))
 
-(defn- format-comment [doc]
-  (when-not (str/blank? doc)
+(defn- format-jsdoc
+  "Generate a JSDoc comment block with description, @param tags, and @returns tag."
+  [doc arglist arg-schema return-schema]
+  (let [doc-lines (when-not (str/blank? doc)
+                    (->> (str/split-lines doc)
+                         (map #(str " * " %))))
+        param-lines (map-indexed
+                     (fn [idx [arg-name arg-schema]]
+                       (str " * @param {" (schema->ts arg-schema) "} " (extract-arg-name arg-name idx)))
+                     (map vector arglist (mc/children arg-schema)))
+        return-line (str " * @returns {" (schema->ts return-schema) "}")]
     (str "/**\n"
-         (->> (str/split-lines doc) (map #(str " * " %)) (str/join "\n"))
+         (when (seq doc-lines)
+           (str (str/join "\n" doc-lines) "\n *\n"))
+         (str/join "\n" param-lines)
+         "\n"
+         return-line
          "\n */\n")))
 
 (defn- -fn->ts
@@ -276,16 +340,26 @@
   - fnname: \"fnname\"
   - arglist: '[nothing]
   - schema: [:=> [:cat :string] [:maybe :string]]
+  - doc: optional docstring
 
   Output is a string:
 
+  /**
+   * docstring
+   *
+   * @param {string} nothing
+   * @returns {string | null}
+   */
   export function fnname(nothing: string): string | null;"
-  [fnname arglist schema]
-  (assert (= :=> (mc/type schema)) "-fn->ts expects schema to start with :=>")
-  (let [[arg-schema out-schema] (mc/children schema)]
-    (format "export function %s(%s): %s;" (munge fnname)
-            (format-ts-args arglist arg-schema)
-            (schema->ts out-schema))))
+  ([fnname arglist schema]
+   (-fn->ts fnname arglist schema nil))
+  ([fnname arglist schema doc]
+   (assert (= :=> (mc/type schema)) "-fn->ts expects schema to start with :=>")
+   (let [[arg-schema out-schema] (mc/children schema)]
+     (str (format-jsdoc doc arglist arg-schema out-schema)
+          (format "export function %s(%s): %s;" (cljs-munge fnname)
+                  (format-ts-args arglist arg-schema)
+                  (schema->ts out-schema))))))
 
 (defn- require-or-return [ns-or-name]
   (if (symbol? ns-or-name)
@@ -315,11 +389,13 @@
                      (second arglists)
                      arglists)]
       (str
-       (format-comment doc)
        (if (= (mc/type schema) :function)
-         (->> (map (partial -fn->ts fnname) (rest arglists) (mc/children schema))
+         (->> (map (fn [arglist child-schema]
+                     (-fn->ts fnname arglist child-schema doc))
+                   arglists
+                   (mc/children schema))
               (str/join "\n"))
-         (-fn->ts fnname (first arglists) schema))
+         (-fn->ts fnname (first arglists) schema doc))
        "\n"))
     (catch Exception e
       (throw (ex-info (.getMessage e)
@@ -327,8 +403,54 @@
                              :meta fnmeta)
                       e)))))
 
+(defn- function-schema?
+  "Check if a schema is a function schema (:=> or :function).
+   Works with raw schema forms before resolution."
+  [schema]
+  (when schema
+    (let [schema-type (if (vector? schema) (first schema) schema)]
+      (or (= schema-type :=>) (= schema-type :function)))))
+
+(defn- format-const-jsdoc
+  "Generate a JSDoc comment block for a constant with description and @type tag."
+  [doc schema]
+  (let [doc-lines (when-not (str/blank? doc)
+                    (->> (str/split-lines doc)
+                         (map #(str " * " %))))
+        type-line (str " * @type {" (schema->ts schema) "}")]
+    (str "/**\n"
+         (when (seq doc-lines)
+           (str (str/join "\n" doc-lines) "\n *\n"))
+         type-line
+         "\n */\n")))
+
+(defn const->ts
+  "Convert a constant definition with schema metadata into TypeScript type declaration."
+  [{:keys [schema doc ns] fqname :name :as defmeta}]
+  (try
+    (let [constname (cljs-munge (name fqname))
+          schema (resolve-var-refs (or ns fqname) schema)]
+      (str (format-const-jsdoc doc schema)
+           (format "export const %s: %s;" constname (schema->ts schema))
+           "\n"))
+    (catch Exception e
+      (throw (ex-info (.getMessage e)
+                      (assoc (ex-data e)
+                             :meta defmeta)
+                      e)))))
+
+(defn def->ts
+  "Convert a def with schema metadata into TypeScript. Dispatches to fn->ts for functions
+   and const->ts for constants."
+  [defmeta]
+  (indent-ts
+   (if (function-schema? (:schema defmeta))
+     (fn->ts defmeta)
+     (const->ts defmeta))))
+
 (defn- ts-content [defs]
-  (->> (map fn->ts (vals defs))
+  (->> (vals defs)
+       (map def->ts)
        (str/join "\n\n")))
 
 (comment
@@ -336,9 +458,7 @@
   (ns-resolve (find-ns 'metabase.lib.binning) 'with-binning-option-type)
   (print (fn->ts (meta #'metabase.lib.template-tags/arity)))
 
-  (fn->ts (meta #'metabase.lib.binning.util/resolve-options))
-
-  )
+  (fn->ts (meta #'metabase.lib.binning.util/resolve-options)))
 
 (defn produce-dts
   {:shadow.build/stage :flush}

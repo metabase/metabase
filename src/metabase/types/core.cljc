@@ -453,13 +453,16 @@
       :type/*))
 
 #?(:cljs
-   (defn ^:export isa
+   (mu/defn ^:export isa :- :boolean
      "Is `x` the same as, or a descendant type of, `y`?"
-     [x y]
+     [x :- :string
+      y :- :string]
      (isa? (keyword x) (keyword y))))
 
 #?(:cljs
-   (def ^:export TYPE
+   (def ^{:export true
+          :schema [:map-of :string :string]}
+     TYPE
      "A map of Type name (as string, without `:type/` namespace) -> qualified type name as string
 
          {\"Temporal\" \"type/Temporal\", ...}"
@@ -467,7 +470,9 @@
                          [(name tyype) (u/qualified-name tyype)])))))
 
 #?(:cljs
-   (def ^:export LEVEL_ONE_TYPES
+   (def ^{:export true
+          :schema [:vector :string]}
+     LEVEL_ONE_TYPES
      "Return js array of level one types formatted as values of [[TYPE]] js object.
 
      Level one types are children (i.e. direct descendants) of :type/*."
@@ -528,9 +533,9 @@
                  (select-keys (coercion-hierarchies/non-descending-strategies) [base-type]))
          not-empty)))
 
-(defn ^:export is-coerceable
+(mu/defn ^:export is_coerceable :- :boolean
   "Returns a boolean of whether a field base-type has any coercion strategies available."
-  [base-type]
+  [base-type :- :string]
   (boolean (not-empty (coercion-possibilities (keyword base-type)))))
 
 (defn effective-type-for-coercion
@@ -538,10 +543,10 @@
   [coercion]
   (coercion-hierarchies/effective-type-for-strategy coercion))
 
-(defn ^:export coercions-for-type
+(mu/defn ^:export coercions_for_type :- #?(:cljs [:vector :string] :clj [:sequential :keyword])
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
-  [base-type]
+  [base-type :- [:or :string :keyword]]
   (let [applicable (into () (comp (distinct) cat)
                          (vals (coercion-possibilities (keyword base-type))))]
     #?(:cljs

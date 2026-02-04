@@ -9,28 +9,28 @@
         "./frontend/src/*",
         "./frontend/test/*",
         "./enterprise/frontend/src/*",
-        "./enterprise/frontend/test/*"
+        "./enterprise/frontend/test/*",
       ],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
       "docs/*": ["./docs/*"],
-      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
     },
     "plugins": [
       {
         "name": "typescript-plugin-css-modules",
         "options": {
-          "goToDefinition": true
-        }
-      }
-    ]
+          "goToDefinition": true,
+        },
+      },
+    ],
   },
   "include": [
     "frontend/src/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*",
-    "target/cljs_dev/**/*"
+    "target/cljs_dev/**/*",
   ],
   "exclude": [
     "node_modules",
@@ -38,6 +38,6 @@
     // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-public.js",
-    "frontend/src/metabase/app-embed.js"
-  ]
+    "frontend/src/metabase/app-embed.js",
+  ],
 }

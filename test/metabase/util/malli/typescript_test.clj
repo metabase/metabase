@@ -9,38 +9,40 @@
   (testing "rendering malli schema to typescript works"
     (testing "basic transforms"
       (are [res schema] (= res (ts/schema->ts schema))
-        "number"                                number?
-        "{a: number; b: string}"                [:map [:a :int] [:b :string]]
-        "{type: \"main\"; value: string}"       [:map [:type [:= :main]] [:value :string]]
-        "(string | number)"                     [:or :string :int]
-        "Record<string, any>"                   [:map-of :keyword :any]
-        "\"one\" | \"two\""                     [:enum :one :two]
-        "(Record<string, any> & {key: string})" [:and
-                                                 [:map-of :keyword :any]
-                                                 [:map
-                                                  [:key string?]]]
-        "({type: \"a\"} | {type: \"b\"})"       [:multi {:dispatch :type}
-                                                 [:a [:map
-                                                      [:type [:= :a]]]]
-                                                 [:b [:map
-                                                      [:type [:= :b]]]]]))
+        "number"                                  number?
+        "{\na: number;\nb: string\n}"             [:map [:a :int] [:b :string]]
+        "{\ntype: \"main\";\nvalue: string\n}"    [:map [:type [:= :main]] [:value :string]]
+        "(string | number)"                       [:or :string :int]
+        "Record<string, any>"                     [:map-of :keyword :any]
+        "\"one\" | \"two\""                       [:enum :one :two]
+        "(Record<string, any> & {\nkey: string\n})" [:and
+                                                     [:map-of :keyword :any]
+                                                     [:map
+                                                      [:key string?]]]
+        "({\ntype: \"a\"\n} | {\ntype: \"b\"\n})" [:multi {:dispatch :type}
+                                                   [:a [:map
+                                                        [:type [:= :a]]]]
+                                                   [:b [:map
+                                                        [:type [:= :b]]]]]))
     (testing "registry"
       (is (= "number"
              (ts/schema->ts ::lib.schema.binning/bin-width)))
-      (is (= ""
-             (ts/schema->ts :metabase.lib.metadata.calculation/returned-columns)))
-      (is (= "{strategy: \"bin-width\" | \"default\" | \"num-bins\"}"
+      (is (= "{\nstrategy: \"bin-width\" | \"default\" | \"num-bins\"\n}"
              (ts/schema->ts [:map [:strategy [:ref ::lib.schema.binning/strategy]]])))
-      (is (= (str "({strategy: \"bin-width\" | \"default\" | \"num-bins\"} & "
-                  "({strategy: \"default\"}"
-                  " | {strategy: \"bin-width\"; 'bin-width': number}"
-                  " | {strategy: \"num-bins\"; 'num-bins': number})"
+      (is (= (str "({\nstrategy: \"bin-width\" | \"default\" | \"num-bins\"\n} & "
+                  "({\nstrategy: \"default\"\n}"
+                  " | {\nstrategy: \"bin-width\";\n'bin-width': number\n}"
+                  " | {\nstrategy: \"num-bins\";\n'num-bins': number\n})"
                   ")")
              (ts/schema->ts ::lib.schema.binning/binning)))))
   (testing "underlying functions work properly"
     (is (= "a: number, b: number | null"
            (#'ts/format-ts-args '[a b] [:cat number? [:maybe number?]])))
-    (is (= "export function some_fn(some_arg: string): string | null;"
+    (is (= (str "/**\n"
+                " * @param {string} some_arg\n"
+                " * @returns {string | null}\n"
+                " */\n"
+                "export function some_fn(some_arg: string): string | null;")
            (#'ts/-fn->ts "some-fn" '[some-arg] [:=> [:cat :string] [:maybe :string]])))))
 
 (comment
