@@ -140,7 +140,7 @@ Once you change the transform's query or script, the next transform run (manual 
 
 _Data Studio > Transforms > Settings_
 
-To edit transform's target table, i.e., the table where the query results are written, click on "Change target". You'll need to select whether you want to keep the old target table, or delete it. Deletion can't be undone.
+To edit transform's target table, i.e., the table where the query results are written, go the transforms **Settings** tab and click on **Change target**. You'll need to select whether you want to keep the old target table, or delete it. Deletion can't be undone.
 
 **Questions built on the old target will _not_ be transferred to the new target table.** If you delete the old target table, any questions using the old transform target table will break. If you keep the old target around, the questions built on it won't break but they will _not_ use the new target table, and so will become outdated.
 

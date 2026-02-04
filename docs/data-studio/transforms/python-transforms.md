@@ -105,7 +105,7 @@ To use functions or classes from your Python library:
 
 ## Incremental Python transforms
 
-By default, Metabase will process all the data in all input tables, drop the existing target table (if one exists), and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking you transform as incremental.
+By default, Metabase will process all the data in all input tables, drop the existing target table (if one exists), and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking your transform as incremental.
 
 ### Prerequisites for incremental transforms
 
@@ -125,6 +125,7 @@ To make a Python transforms incremental:
 
 - The transform function must return a single `pandas` DataFrame. Other data manipulation and DataFrame libraries like `polars` or `pyspark` are not supported.
 - Transform preview only uses 100 input rows from each input table.
+- DataFrame indexes, including indexes created by `groupby()`, are ignored from writing back to the database. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function to make the index into a real column.
 - Only a [limited set of packages](#available-python-packages) are available for import. You can't install additional packages.
 - Because Python transforms use `pandas`, all data manipulation is done in memory. The available memory is determined by the Python execution add-on. For large datasets, consider using [query-based transforms](./query-transforms.md) that run in your database.
 - Only one Python transform can be run at any given time.

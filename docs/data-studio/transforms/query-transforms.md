@@ -31,7 +31,7 @@ Currently, you can't convert between different transform types (like converting 
 
    Not all databases support transforms, see [Databases that support transforms](transforms-overview.md#databases-that-support-transforms).
 
-4. To test your transform, press the "Run" button at the bottom of the editor.
+4. To test your transform, press the **Run** button at the bottom of the editor.
 
    Previewing a query transform in the editor will _not_ write the result of the transform back to the database.
 
@@ -51,7 +51,7 @@ See [Run a transform](transforms-overview.md#run-a-transform). You'll see logs f
 
 ## Incremental query transforms
 
-By default, on every transform run after the first one, Metabase will process all the data in all input tables, then drop the existing target table, and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking you transform as incremental.
+By default, on every transform run after the first one, Metabase will process all the data in all input tables, then drop the existing target table, and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking your transform as incremental.
 
 ### Prerequisites for incremental transforms
 
@@ -59,7 +59,7 @@ Your data has to have certain structure for incremental transforms to work. See 
 
 ### How incremental query transforms work
 
-For transform to run incrementally, you'll need to pick a column ("checkpoint") that Metabase needs to check for new values. Then, behind the scenes, Metabase will add a filter around your transform query that will filter the results of the query for values greater than the last written checkpoint value.
+For a transform to run incrementally, you'll need to pick a column ("checkpoint") that Metabase needs to check for new values. Then, behind the scenes, Metabase will add a filter around your transform query that will filter the results of the query for values greater than the last written checkpoint value.
 
 ### Make a query transform incremental
 

@@ -19,7 +19,7 @@ To add a tag to a transform:
 2. Visit the transform in **Data studio > Transforms**
 3. On the **Settings** page for a transform, add transform tags.
 
-By default, Metabase comes with hourly, daily, weekly, and monthly tags and jobs that are run on the corresponding schedules, but you can remove or rename those tags, or create new tags. To create a new tag, just type the new tag's name in "Tags" field (either when viewing a transform or when viewing a job) and select "Create a tag".
+By default, Metabase comes with hourly, daily, weekly, and monthly tags and jobs that are run on the corresponding schedules, but you can remove or rename those tags, or create new tags. To create a new tag, just type the new tag's name in **Tags** field (either when viewing a transform or when viewing a job) and select **Create a tag**.
 
 Once you've tagged a transform, you can create a job that uses that tag to run the transform on the job's schedule.
 
@@ -33,7 +33,7 @@ Jobs run one or more transforms on schedule based on transform tags.
 
 To see all jobs, go to **Data Studio** and click on the **Jobs** at the bottom of the left sidebar.
 
-To create a new job, go to **Data Studio > Jobs**, and click on the **+New** button in top right.
+To create a new job, go to **Data Studio > Jobs**, and click on the **+ New** button in top right.
 
 Jobs have two components: schedule and tags.
 
