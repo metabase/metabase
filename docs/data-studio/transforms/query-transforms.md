@@ -47,7 +47,7 @@ Currently, you can't convert between different transform types (like converting 
 
 ## Run a query transform
 
-See [Run a transform](transform-overview.md#run-a-transform). You'll see logs for a transform run on the transform's page.
+See [Run a transform](transforms-overview.md#run-a-transform). You'll see logs for a transform run on the transform's page.
 
 ## Incremental query transforms
 
