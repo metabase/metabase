@@ -80,50 +80,64 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
             return;
 
           case "{clear}":
-            return helpers.clear();
+            helpers.clear();
+            return;
 
           case "{selectall}":
-            return helpers.selectAll();
+            helpers.selectAll();
+            return;
 
           case "{leftarrow}":
-            return cy.realPress(["ArrowLeft"]);
+            cy.realPress(["ArrowLeft"]);
+            return;
 
           case "{rightarrow}":
-            return cy.realPress(["ArrowRight"]);
+            cy.realPress(["ArrowRight"]);
+            return;
 
           case "{downarrow}":
-            return cy.realPress(["ArrowDown"]);
+            cy.realPress(["ArrowDown"]);
+            return;
 
           case "{uparrow}":
-            return cy.realPress(["ArrowUp"]);
+            cy.realPress(["ArrowUp"]);
+            return;
 
           case "{enter}":
-            return cy.realPress(["Enter"]);
+            cy.realPress(["Enter"]);
+            return;
 
           case "{home}":
           case "{movetostart}":
-            return cy.realPress(["Home"]);
+            cy.realPress(["Home"]);
+            return;
 
           case "{end}":
           case "{movetoend}":
-            return cy.realPress(["End"]);
+            cy.realPress(["End"]);
+            return;
 
           case "{backspace}":
-            return cy.realPress(["Backspace"]);
+            cy.realPress(["Backspace"]);
+            return;
 
           case "{tab}":
-            return cy.realPress(["Tab"]);
+            cy.realPress(["Tab"]);
+            return;
 
           case "{nextcompletion}":
             cy.wait(50);
-            return cy.realPress([metaKey, "j"]);
+            cy.realPress([metaKey, "j"]);
+            return;
 
           case "{prevcompletion}":
             cy.wait(50);
-            return cy.realPress([metaKey, "k"]);
+            cy.realPress([metaKey, "k"]);
+            return;
 
           case "{{}":
-            return cy.realType("{");
+            cy.realType("{");
+            return;
         }
 
         if (part.startsWith("{") && part.endsWith("}")) {
