@@ -3,10 +3,6 @@ import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import {
-  useGetRemappedFieldValueQuery,
-  useSearchFieldValuesQuery,
-} from "metabase/api";
-import {
   type ComboboxItem,
   type ComboboxProps,
   Loader,
@@ -14,16 +10,21 @@ import {
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
-import type { FieldId, FieldValue } from "metabase-types/api";
+import type { FieldValue } from "metabase-types/api";
 
+import type {
+  UseGetRemappedFieldValueArgs,
+  UseGetRemappedFieldValueResult,
+  UseSearchFieldValuesArgs,
+  UseSearchFieldValuesResult,
+} from "../types";
 import { getFieldOption, getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
 import { getEmptyResultsMessage, shouldSearch } from "./utils";
 
 type SearchValuePickerProps = {
-  fieldId: FieldId;
-  searchFieldId: FieldId;
+  canRemapValues: boolean;
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
@@ -31,12 +32,17 @@ type SearchValuePickerProps = {
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
   parseValue?: (rawValue: string) => string | null;
+  useSearchFieldValues: (
+    args: UseSearchFieldValuesArgs,
+  ) => UseSearchFieldValuesResult;
+  useGetRemappedFieldValue: (
+    args: UseGetRemappedFieldValueArgs,
+  ) => UseGetRemappedFieldValueResult;
   onChange: (newValues: string[]) => void;
 };
 
 export function SearchValuePicker({
-  fieldId,
-  searchFieldId,
+  canRemapValues,
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
@@ -44,31 +50,26 @@ export function SearchValuePicker({
   autoFocus,
   comboboxProps,
   parseValue,
+  useSearchFieldValues,
+  useGetRemappedFieldValue,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
   const canSearch = searchQuery.length > 0;
-  const isRemapped = fieldId !== searchFieldId;
 
   const {
-    data: searchFieldValues = [],
+    data: searchFieldValues,
     error: searchError,
     isFetching: isSearching,
-  } = useSearchFieldValuesQuery(
-    {
-      fieldId,
-      searchFieldId,
-      value: searchQuery,
-      limit: SEARCH_LIMIT,
-    },
-    {
-      skip: !canSearch,
-    },
-  );
+  } = useSearchFieldValues({
+    value: searchQuery,
+    limit: SEARCH_LIMIT,
+    skip: !canSearch,
+  });
 
   const searchOptions = canSearch
-    ? getFieldOptions(searchFieldValues)
+    ? getFieldOptions(searchFieldValues ?? [])
     : getFieldOptions(initialFieldValues);
   const emptyResultsMessage = getEmptyResultsMessage(
     nothingFoundMessage,
@@ -85,7 +86,7 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(searchValue, searchQuery, searchFieldValues)) {
+    if (shouldSearch(searchValue, searchQuery, searchFieldValues ?? [])) {
       setSearchQuery(searchValue);
     }
   };
@@ -105,14 +106,13 @@ export function SearchValuePicker({
       parseValue={parseValue}
       renderValue={({ value }) => (
         <RemappedValue
-          fieldId={fieldId}
-          searchFieldId={searchFieldId}
           value={value}
-          isRemapped={isRemapped}
+          canRemapValues={canRemapValues}
+          useGetRemappedFieldValue={useGetRemappedFieldValue}
         />
       )}
       renderOption={({ option }) => (
-        <RemappedOption option={option} isRemapped={isRemapped} />
+        <RemappedOption option={option} canRemapValues={canRemapValues} />
       )}
       onChange={onChange}
       onSearchChange={handleSearchChange}
@@ -121,28 +121,22 @@ export function SearchValuePicker({
 }
 
 type RemappedValueProps = {
-  fieldId: FieldId;
-  searchFieldId: FieldId;
   value: string;
-  isRemapped: boolean;
+  canRemapValues: boolean;
+  useGetRemappedFieldValue: (
+    args: UseGetRemappedFieldValueArgs,
+  ) => UseGetRemappedFieldValueResult;
 };
 
 function RemappedValue({
-  fieldId,
-  searchFieldId,
   value,
-  isRemapped,
+  canRemapValues,
+  useGetRemappedFieldValue,
 }: RemappedValueProps) {
-  const { data: remappedValue } = useGetRemappedFieldValueQuery(
-    {
-      fieldId,
-      remappedFieldId: searchFieldId,
-      value,
-    },
-    {
-      skip: !isRemapped,
-    },
-  );
+  const { data: remappedValue } = useGetRemappedFieldValue({
+    value,
+    skip: !canRemapValues,
+  });
 
   if (remappedValue == null) {
     return value;
@@ -154,11 +148,11 @@ function RemappedValue({
 
 type RemappedOptionProps = {
   option: ComboboxItem;
-  isRemapped: boolean;
+  canRemapValues: boolean;
 };
 
-function RemappedOption({ option, isRemapped }: RemappedOptionProps) {
-  if (!isRemapped) {
+function RemappedOption({ option, canRemapValues }: RemappedOptionProps) {
+  if (!canRemapValues) {
     return option.label;
   }
 

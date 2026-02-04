@@ -1,45 +1,27 @@
 import { t } from "ttag";
 
-import type { ComboboxItem } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { FieldValue, GetFieldValuesResponse } from "metabase-types/api";
 
-export function canLoadFieldValues({
+export function canListFieldValues({
   fieldId,
   hasFieldValues,
 }: FieldValuesSearchInfo): boolean {
   return fieldId != null && hasFieldValues === "list";
 }
 
-export function canListFieldValues({
-  values,
-  has_more_values,
-}: GetFieldValuesResponse): boolean {
-  return values.length > 0 && !has_more_values;
+export function canSearchFieldValues({
+  searchFieldId,
+  hasFieldValues,
+}: FieldValuesSearchInfo): boolean {
+  return searchFieldId != null && hasFieldValues === "search";
 }
 
-export function canSearchFieldValues(
-  { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
-  fieldData: GetFieldValuesResponse | undefined,
-): boolean {
-  return (
-    fieldId != null &&
-    searchFieldId != null &&
-    ((hasFieldValues === "list" && fieldData?.has_more_values) ||
-      hasFieldValues === "search")
-  );
-}
-
-export function getFieldOption([value, label]: FieldValue): ComboboxItem {
-  return {
-    value: String(value),
-    label: String(label ?? value),
-  };
-}
-
-export function getFieldOptions(fieldValues: FieldValue[]): ComboboxItem[] {
-  return fieldValues.filter(([value]) => value != null).map(getFieldOption);
+export function canRemapFieldValues({
+  fieldId,
+  searchFieldId,
+}: FieldValuesSearchInfo): boolean {
+  return fieldId != null && searchFieldId != null && fieldId !== searchFieldId;
 }
 
 export function getStaticPlaceholder(column: Lib.ColumnMetadata) {

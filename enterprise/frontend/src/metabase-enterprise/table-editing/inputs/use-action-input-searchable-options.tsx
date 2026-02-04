@@ -5,7 +5,7 @@ import {
   useSearchFieldValuesQuery,
 } from "metabase/api/field";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
+import { getFieldOptions } from "metabase/querying/filters/components/FieldValuePicker/utils";
 import type { FieldValue, RowValue } from "metabase-types/api";
 
 const SEARCH_LIMIT_DEFAULT = 20;
