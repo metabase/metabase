@@ -2003,7 +2003,7 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- test-alert-deletion! [{:keys [message card deleted? expected-email-re f]}]
+(defn- test-alert-deletion! [{:keys [message card deleted? disable-links? expected-email-re should-re-not-match? f]}]
   (testing message
     (notification.tu/with-channel-fixtures [:channel/email]
       (api.notification-test/with-send-messages-sync!
@@ -2015,13 +2015,14 @@
                                                    {:type    :notification-recipient/user
                                                     :user_id (mt/user->id :rasta)}
                                                    {:type    :notification-recipient/raw-value
-                                                    :details {:value "ngoc@metabase.com"}}]}]}]
+                                                    :details {:value "ngoc@metabase.com"}}]}]
+                         :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
                             (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
-                       :body    [{(str expected-email-re) true}]}
+                       :body    [{(str expected-email-re) (not should-re-not-match?)}]}
                       (mt/summarize-multipart-single-email email expected-email-re)))))
           (if deleted?
             (is (not (t2/exists? :model/Notification :id (:id notification)))
@@ -2035,7 +2036,25 @@
     :deleted?          true
     :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
     :f                 (fn [card]
-                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
+
+  (test-alert-deletion!
+   {:message              "Archiving a Card should trigger Alert deletion with email links when disable_links: false"
+    :deleted?             true
+    :disable-links?       false
+    :expected-email-re    #"If you want to restore the alert, go to the <a href=\".*\">trash</a>"
+    :should-re-not-match? false
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
+
+  (test-alert-deletion!
+   {:message              "Archiving a Card should trigger Alert deletion without email links when disable_links: true"
+    :deleted?             true
+    :disable-links?       true
+    :expected-email-re    #"If you want to restore the alert, go to the <a href=\".*\">trash</a>"
+    :should-re-not-match? true
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
 
 (deftest alert-deletion-test-2
   (test-alert-deletion!
@@ -2044,7 +2063,17 @@
     :deleted?          true
     :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
     :f                 (fn [card]
-                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))})
+
+  (test-alert-deletion!
+   {:message              "Validate changing display type triggers alert deletion without email links when disable_links: true"
+    :card                 {:display :table}
+    :deleted?             true
+    :disable-links?       true
+    :expected-email-re    #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+    :should-re-not-match? true
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
 
 (deftest alert-deletion-test-3
   (test-alert-deletion!
@@ -2101,6 +2130,8 @@
                                                {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                          [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :month}]
                                                                                              [:field (mt/id :checkins :date) {:temporal-unit :year}]])}))}))
+
+;; XXX: Add new tests here.
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (doseq [{:keys [message display]}
