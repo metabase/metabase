@@ -17,11 +17,13 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql SQLException PreparedStatement]
-            [java.time LocalDate]))
+  (:import
+   (com.clickhouse.client.api.query QuerySettings)
+   (java.sql Connection SQLException Statement PreparedStatement)
+   (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -43,6 +45,7 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
+                              :workspace                        true
                               :expression-literals              true
                               :expressions/date                 true
                               :expressions/float                true
@@ -346,11 +349,62 @@
   (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
   #{})
 
+(defmethod driver/table-known-to-not-exist? :clickhouse
+  [_driver e]
+  (instance? SQLException e))
+
 ;; Override clickhouse to not pass in the Types/DATE parameter due to jdbc
 ;; driver issue: https://github.com/ClickHouse/clickhouse-java/issues/2701
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
+
+;;; ------------------------------------------ Workspace Isolation ------------------------------------------
+
+(defmethod driver/init-workspace-isolation! :clickhouse
+  [_driver database workspace]
+  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
+        read-user {:user     (driver.u/workspace-isolation-user-name workspace)
+                   :password (driver.u/random-workspace-password)}]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                     (format "CREATE USER IF NOT EXISTS `%s` IDENTIFIED BY '%s'"
+                             (:user read-user) (:password read-user))
+                     (format "GRANT ALL ON `%s`.* TO `%s`" db-name (:user read-user))]]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))
+    {:schema           db-name
+     :database_details read-user}))
+
+(defmethod driver/grant-workspace-read-access! :clickhouse
+  [_driver database workspace tables]
+  (let [read-user-name (-> workspace :database_details :user)
+        sqls           (for [table tables]
+                         (format "GRANT SELECT ON `%s`.`%s` TO `%s`"
+                                 (:schema table)
+                                 (:name table)
+                                 read-user-name))]
+    (when-not read-user-name
+      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+                      {:workspace-id (:id workspace) :step :grant})))
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/destroy-workspace-isolation! :clickhouse
+  [_driver database workspace]
+  (let [db-name  (driver.u/workspace-isolation-namespace-name workspace)
+        username (driver.u/workspace-isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [;; DROP DATABASE cascades to all tables within it
+                     (format "DROP DATABASE IF EXISTS `%s`" db-name)
+                     (format "DROP USER IF EXISTS `%s`" username)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
   [driver database]

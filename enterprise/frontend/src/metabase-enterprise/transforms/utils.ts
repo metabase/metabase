@@ -35,8 +35,10 @@ export function parseTimestampWithTimezone(
   }
 }
 
-export function formatStatus(status: TransformRunStatus) {
+export function formatStatus(status: TransformRunStatus | null) {
   switch (status) {
+    case null:
+      return t`Unknown`;
     case "started":
       return t`In progress`;
     case "succeeded":
@@ -91,7 +93,7 @@ export function getTransformRunName(run: TransformRun): string {
   return run.transform?.name ?? t`Unknown transform`;
 }
 
-export function isErrorStatus(status: TransformRunStatus) {
+export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
 }
 
@@ -135,6 +137,27 @@ export function isSameSource(
     return _.isEqual(source1, source2);
   }
   return false;
+}
+
+export function isSourceEmpty(
+  source: DraftTransformSource,
+  databaseId: DatabaseId,
+  metadata: Metadata,
+): boolean {
+  if (source.type !== "query") {
+    return false;
+  }
+
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const query = Lib.fromJsQuery(metadataProvider, source.query);
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  if (!isNative) {
+    return false;
+  }
+
+  const nativeQuery = Lib.rawNativeQuery(query);
+  return !nativeQuery?.trim();
 }
 
 export function isCompleteSource(

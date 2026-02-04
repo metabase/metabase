@@ -52,6 +52,18 @@ const getDefaultPluginTableEditing = () => ({
 
 export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
 
+const getDefaultPluginWorkspaces = () => ({
+  AdminDatabaseWorkspacesSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
+    updateDatabase: (
+      database: { id: DatabaseId } & Partial<DatabaseData>,
+    ) => Promise<void>;
+  }>,
+});
+
+export const PLUGIN_WORKSPACES = getDefaultPluginWorkspaces();
+
 /**
  * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
  */
@@ -62,4 +74,5 @@ export function reinitialize() {
     getDefaultPluginDatabaseReplication(),
   );
   Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
+  Object.assign(PLUGIN_WORKSPACES, getDefaultPluginWorkspaces());
 }

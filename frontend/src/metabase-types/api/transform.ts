@@ -1,10 +1,11 @@
+import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, Table } from "./table";
+import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
 
 export type TransformId = number;
@@ -22,8 +23,9 @@ export type Transform = {
   name: string;
   description: string | null;
   source: TransformSource;
+  source_type: "native" | "python" | "mbql";
   target: TransformTarget;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   created_at: string;
   updated_at: string;
   source_readable: boolean;
@@ -40,6 +42,7 @@ export type Transform = {
   owner?: TransformOwner | null;
 
   // hydrated fields
+  collection?: Collection | null;
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
@@ -102,15 +105,15 @@ export type TransformTargetType = "table" | "table-incremental";
 export type TableTarget = {
   type: "table";
   name: string;
-  schema: string | null;
-  database: number;
+  schema: SchemaName | null;
+  database: DatabaseId;
 };
 
 export type TableIncrementalTarget = {
   type: "table-incremental";
   name: string;
-  schema: string | null;
-  database: number;
+  schema: SchemaName | null;
+  database: DatabaseId;
   "target-incremental-strategy": TargetIncrementalStrategy;
 };
 
@@ -118,7 +121,7 @@ export type TransformTarget = TableTarget | TableIncrementalTarget;
 
 export type TransformRun = {
   id: TransformRunId;
-  status: TransformRunStatus;
+  status: TransformRunStatus | null;
   start_time: string;
   end_time: string | null;
   message: string | null;
@@ -178,7 +181,7 @@ export type TransformJob = {
 export type CreateTransformRequest = {
   name: string;
   description?: string | null;
-  source: TransformSource;
+  source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;

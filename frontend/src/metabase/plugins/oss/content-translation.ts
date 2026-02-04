@@ -21,7 +21,7 @@ const getDefaultPluginContentTranslation = () => ({
     obj: T,
     _tc: ContentTranslationFunction,
   ) => obj,
-  translateAggregationDisplayName: (
+  translateColumnDisplayName: (
     displayName: string,
     _tc: ContentTranslationFunction,
   ): string => displayName,

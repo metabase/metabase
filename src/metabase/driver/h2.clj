@@ -1,9 +1,11 @@
 (ns metabase.driver.h2
-  (:refer-clojure :exclude [some every?])
+  (:refer-clojure :exclude [some every? get-in])
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -17,6 +19,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -24,9 +27,9 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some]])
+   [metabase.util.performance :refer [every? get-in some]])
   (:import
-   (java.sql Clob ResultSet ResultSetMetaData SQLException)
+   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -72,6 +75,9 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
+                              ;; (Ngoc - 2026-01-27) we have the code to support workspace isolation but since workspace
+                              ;; is useless with out transforms, so we disable it for now
+                              :workspace                 false
                               :database-routing          true
                               :describe-is-generated     true
                               :describe-is-nullable      true
@@ -140,7 +146,7 @@
   :monday)
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
-(defn- connection-string->file+options
+(defn connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
@@ -149,7 +155,7 @@
   {:pre [(string? connection-string)]}
   (let [[file & options] (str/split connection-string #";+")
         options          (into {} (for [option options]
-                                    (str/split option #"=")))]
+                                    (str/split option #"=" 2)))]
     [file options]))
 
 (defn- db-details->user [{:keys [db], :as details}]
@@ -167,8 +173,9 @@
     (when (= (keyword query-type) :native)
       (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
             user              (db-details->user details)]
-        (when (or (str/blank? user)
-                  (= user "sa"))        ; "sa" is the default USER
+        (when (and config/is-prod? ;; we elevated permissions in workspace tests
+                   (or (str/blank? user)
+                       (= user "sa")))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type driver-api/qp.error-type.db})))))))
@@ -517,7 +524,7 @@
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
 ;; options users might try to put in their connection string, like INIT=...
 
-(defn- file+options->connection-string
+(defn file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
   [file options]
   (apply str file (for [[k v] options]
@@ -674,6 +681,69 @@
 (defmethod sql/default-schema :h2
   [_]
   "PUBLIC")
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- replace-credentials
+  "Replace USER and PASSWORD in an H2 connection string."
+  [connection-string new-user new-password]
+  (let [[file options] (connection-string->file+options connection-string)]
+    (file+options->connection-string file (assoc options "USER" new-user "PASSWORD" new-password))))
+
+(defn- get-user-from-connection-string
+  "Extract the USER from an H2 connection string."
+  [connection-string]
+  (let [[_file options] (connection-string->file+options connection-string)]
+    (get options "USER")))
+
+(defmethod driver/init-workspace-isolation! :h2
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
+        password    (driver.u/random-workspace-password)
+        ;; H2 embeds credentials in the :db connection string, so we need to build a new one
+        original-db (get-in database [:details :db])
+        new-db      (replace-credentials original-db username password)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
+                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
+                     (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))
+    {:schema           schema-name
+     :database_details {:db new-db}}))
+
+(defmethod driver/destroy-workspace-isolation! :h2
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/grant-workspace-read-access! :h2
+  [_driver database workspace tables]
+  (let [username (-> workspace :database_details :db get-user-from-connection-string)
+        schemas  (distinct (map :schema tables))]
+    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [schema schemas]
+          (.addBatch ^Statement stmt
+                     ^String (format "GRANT SELECT ON SCHEMA \"%s\" TO \"%s\"" schema username)))
+        ;; Also grant on individual tables for more fine-grained access
+        (doseq [table tables]
+          (.addBatch ^Statement stmt
+                     ^String (format "GRANT SELECT ON \"%s\".\"%s\" TO \"%s\""
+                                     (:schema table) (:name table) username)))
+        (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "llm/prompts/dialects/h2.md")

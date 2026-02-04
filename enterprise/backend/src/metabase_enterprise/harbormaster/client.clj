@@ -7,6 +7,7 @@
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.api.settings :as api.auth]
    [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
@@ -128,13 +129,18 @@
   {:name ::add-bearer-token
    :enter (fn [ctx] (assoc-in ctx [:request :headers "Authorization"] (str "Bearer " secret)))})
 
+(defn- user-email-header []
+  {:name ::add-user-email
+   :enter (fn [ctx] (assoc-in ctx [:request :headers "X-Metabase-User-Email"] (:email @api/*current-user*)))})
+
 (defn- create-client
   [store-api-url api-key]
   (martian-http/bootstrap-openapi
    (str store-api-url "/openapi.json")
    ;; martian options for calling operations
    (merge {:server-url store-api-url}
-          (when api-key {:interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}))
+          (when api-key {:interceptors (into [(bearer-auth api-key) (user-email-header)]
+                                             martian-http/default-interceptors)}))
    ;; clj-http options for loading the openapi.json itself
    {:headers (merge {} (when api-key {"Authorization" (str "Bearer " api-key)}))}))
 

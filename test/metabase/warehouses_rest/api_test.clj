@@ -623,6 +623,57 @@
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
 
+(deftest update-database-settings-only-validates-changed-settings-test
+  (testing "PUT /api/database/:id only validates settings that are being changed"
+    (testing "should not validate existing settings that aren't being changed"
+      ;; api-test-disabled-for-database is always disabled, so it would fail validation if we tried to validate it
+      ;; Here we create a database with that setting already set, then update a different setting.
+      ;; If validation happens on all settings, it would fail. If it only validates changed settings, it should succeed.
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true
+                                                             :database-enable-actions        false}}]
+        (is (= {:api-test-disabled-for-database true
+                :database-enable-actions        true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:database-enable-actions true}}))))))
+
+    (testing "should not validate settings where the value hasn't changed"
+      ;; Same setup, but we set the same value as before - should skip validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should still validate settings that are actually being changed to a new value"
+      ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database false}}]
+        (is (= "Setting api-test-disabled-for-database is not enabled for this database"
+               (:message (mt/user-http-request :crowberto :put 400
+                                               (format "database/%s" db-id)
+                                               {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should not validate settings being reset to nil (default)"
+      ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database nil}}))))))
+
+    (testing "should not validate settings being reset to default value (literally)"
+      ;; Resetting a setting to default should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database false}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database false}}))))))))
+
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
@@ -673,7 +724,7 @@
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
-                                     :data_layer          "copper"
+                                     :data_layer          "hidden"
                                      :fields              [(merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
@@ -2390,6 +2441,7 @@
 (setting/defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
+  :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
@@ -2451,6 +2503,62 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
+
+(deftest workspace-permission-endpoint-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "POST /api/database/:id/permission/workspace/check"
+      (testing "returns cached status when available"
+        ;; First call to populate cache
+        (mt/user-http-request :crowberto :post 200
+                              (format "database/%d/permission/workspace/check" (mt/id))
+                              {:cached false})
+        ;; Second call should return cached result
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          (is (nil? (:error response)))))
+
+      (testing "runs permission check when no cache exists"
+        ;; Clear the cache
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          ;; Verify it was cached
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "cached=false forces permission check"
+        ;; Set a stale cache value
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "ok" (:status response)))
+          ;; Verify cache was updated
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
+
+(deftest workspace-permission-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns failed status when permissions check fails"
+      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
+                                  (fn [_driver _database _table]
+                                    "permission denied")]
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "failed" (:status response)))
+          (is (= "permission denied" (:error response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |

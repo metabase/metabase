@@ -59,7 +59,7 @@ export const useSummarizeData = () => {
             return {
               ...aggregationItem,
               displayName:
-                PLUGIN_CONTENT_TRANSLATION.translateAggregationDisplayName(
+                PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
                   aggregationItem.displayName,
                   tc,
                 ),
