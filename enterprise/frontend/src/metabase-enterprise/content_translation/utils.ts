@@ -65,35 +65,69 @@ export const translateContentString: TranslateContentStringFunction = (
   return msgstr;
 };
 
+/**
+ * Pattern function that takes a value and returns the full display name.
+ * Used for custom aggregation patterns (RTL languages, wrapped patterns, etc.)
+ *
+ * @example
+ * // English: "Sum of {value}"
+ * (value) => `Sum of ${value}`
+ *
+ * // Hebrew RTL: "{value} של סכום"
+ * (value) => `${value} של סכום`
+ *
+ * // French wrapped: "Somme de {value} totale"
+ * (value) => `Somme de ${value} totale`
+ */
 export type ColumnDisplayNamePattern = (value: string) => string;
 
 /**
- * The marker-based approach to find prefix/suffix in patterns.
+ * Translates by parsing display name into parts and translating each translatable part.
  */
-const VALUE_MARKER = "\u0000";
-
-const mightHavePattern = (displayName: string): boolean =>
-  displayName.includes(Lib.COLUMN_DISPLAY_NAME_SEPARATOR) ||
-  displayName.includes(Lib.JOIN_DISPLAY_NAME_SEPARATOR) ||
-  Lib.aggregationDisplayNamePatterns().some((p) =>
-    displayName.startsWith(p.prefix),
+const translateByParts = (
+  displayName: string,
+  tc: ContentTranslationFunction,
+): string => {
+  const parts = Lib.parseColumnDisplayNameParts(
+    displayName,
+    Lib.aggregationDisplayNamePatterns(),
   );
 
+  let anyChanged = false;
+  const translated = parts.map((part) => {
+    if (part.type === "translatable") {
+      const result = tc(part.value);
+
+      if (result !== part.value) {
+        anyChanged = true;
+      }
+
+      return result;
+    }
+
+    return part.value;
+  });
+
+  // If no translation applied, parsing may have been wrong
+  // (e.g., "Note: Important" is a column name, not temporal bucket).
+  // Fall back to translating the whole string.
+  return anyChanged ? translated.join("") : tc(displayName);
+};
+
 /**
- * Translates a column display name by parsing it into parts and translating the translatable ones.
+ * Translates a column display name by parsing it into translatable parts.
  *
- * The CLJ side (metabase.lib.util/parse-column-display-name-parts) handles all the complexity
- * of understanding display name formats. This function simply:
- * 1. Gets the parts from CLJ
- * 2. Translates parts marked as "translatable"
- * 3. Concatenates everything back together
+ * Uses CLJ-side parsing (metabase.lib.util/parse-column-display-name-parts) which handles:
+ * - Aggregation patterns: "Sum of X", "Distinct values of X matching condition"
+ * - Join patterns: "Products → Created At"
+ * - Implicit joins: "People - Product → Created At"
+ * - Temporal buckets: "Created At: Month"
  *
- * Examples:
- * - "Total" => tc("Total")
- * - "Sum of Total" => "Sum of " + tc("Total")
- * - "Products → Total" => tc("Products") + " → " + tc("Total")
- * - "People - Product → Created At: Month" =>
- *     tc("People") + " - " + tc("Product") + " → " + tc("Created At") + ": " + "Month"
+ * @example
+ * translateColumnDisplayName("Sum of Total", tc)
+ * // => "Sum of " + tc("Total")
+ * translateColumnDisplayName("Products → Created At: Month", tc)
+ * // => tc("Products") + " → " + tc("Created At") + ": " + "Month"
  */
 export const translateColumnDisplayName = (
   displayName: string,
@@ -104,55 +138,48 @@ export const translateColumnDisplayName = (
     return displayName;
   }
 
-  // If custom patterns are provided (for testing), use the legacy approach
+  // Custom patterns (RTL, wrapped) require the legacy TS-based parser
   if (patterns) {
-    return translateColumnDisplayNameWithPatterns(displayName, tc, patterns);
+    return translateWithCustomPatterns(displayName, tc, patterns);
   }
 
-  if (!mightHavePattern(displayName)) {
-    return tc(displayName);
-  }
-
-  // Get parts from CLJ - it handles all the parsing complexity
-  const parts = Lib.parseColumnDisplayNameParts(
-    displayName,
-    Lib.aggregationDisplayNamePatterns(),
-  );
-
-  let anyChanged = false;
-  let result = "";
-
-  for (const part of parts) {
-    if (part.type === "translatable") {
-      const translated = tc(part.value);
-
-      if (translated !== part.value) {
-        anyChanged = true;
-      }
-
-      result += translated;
-    } else {
-      result += part.value;
-    }
-  }
-
-  // If no translation was applied, the parsing may have been wrong
-  // (e.g., "Note: Important" is a column name with a colon, not a temporal bucket suffix).
-  // In that case, translate the whole string.
-  return anyChanged ? result : tc(displayName);
+  return translateByParts(displayName, tc);
 };
 
-const translateColumnDisplayNameWithPatterns = (
+/** Marker used to find where the value placeholder is in a pattern */
+const VALUE_MARKER = "\u0000";
+
+/**
+ * Extracts prefix and suffix from a pattern function.
+ *
+ * @example
+ * extractPrefixSuffix((v) => `Sum of ${v}`) // => { prefix: "Sum of ", suffix: "" }
+ * extractPrefixSuffix((v) => `${v} של סכום`) // => { prefix: "", suffix: " של סכום" }
+ */
+const extractPrefixSuffix = (
+  pattern: ColumnDisplayNamePattern,
+): { prefix: string; suffix: string } => {
+  const withMarker = pattern(VALUE_MARKER);
+  const markerIndex = withMarker.indexOf(VALUE_MARKER);
+
+  return {
+    prefix: withMarker.substring(0, markerIndex),
+    suffix: withMarker.substring(markerIndex + VALUE_MARKER.length),
+  };
+};
+
+/**
+ * Translates using custom patterns. Supports RTL and wrapped patterns.
+ * Recursively handles nested patterns, joins, and temporal buckets.
+ */
+const translateWithCustomPatterns = (
   displayName: string,
   tc: ContentTranslationFunction,
   patterns: ColumnDisplayNamePattern[],
 ): string => {
+  // Try each aggregation pattern
   for (const pattern of patterns) {
-    const withMarker = pattern(VALUE_MARKER);
-    const markerIndex = withMarker.indexOf(VALUE_MARKER);
-
-    const prefix = withMarker.substring(0, markerIndex);
-    const suffix = withMarker.substring(markerIndex + VALUE_MARKER.length);
+    const { prefix, suffix } = extractPrefixSuffix(pattern);
 
     const hasPrefix = displayName.startsWith(prefix);
     const hasSuffix = displayName.endsWith(suffix);
@@ -164,22 +191,19 @@ const translateColumnDisplayNameWithPatterns = (
       if (innerStart <= innerEnd) {
         const innerPart = displayName.substring(innerStart, innerEnd);
 
-        return pattern(
-          translateColumnDisplayNameWithPatterns(innerPart, tc, patterns),
-        );
+        return pattern(translateWithCustomPatterns(innerPart, tc, patterns));
       }
     }
   }
 
-  // Handle colon-separated patterns
+  // Try colon-separated pattern (temporal bucket / binning)
   const colonIndex = displayName.lastIndexOf(Lib.COLUMN_DISPLAY_NAME_SEPARATOR);
-
   if (colonIndex > 0) {
     const columnPart = displayName.substring(0, colonIndex);
     const suffixPart = displayName.substring(
       colonIndex + Lib.COLUMN_DISPLAY_NAME_SEPARATOR.length,
     );
-    const translatedColumn = translateColumnDisplayNameWithPatterns(
+    const translatedColumn = translateWithCustomPatterns(
       columnPart,
       tc,
       patterns,
@@ -190,47 +214,54 @@ const translateColumnDisplayNameWithPatterns = (
     }
   }
 
-  // Handle join patterns
+  // Try join pattern (arrow separator)
   const arrowIndex = displayName.indexOf(Lib.JOIN_DISPLAY_NAME_SEPARATOR);
 
   if (arrowIndex > 0) {
-    const joinAliasPart = displayName.substring(0, arrowIndex);
+    const joinAlias = displayName.substring(0, arrowIndex);
     const columnPart = displayName.substring(
       arrowIndex + Lib.JOIN_DISPLAY_NAME_SEPARATOR.length,
     );
 
-    const dashIndex = joinAliasPart.indexOf(
-      Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR,
+    const translatedAlias = translateJoinAlias(joinAlias, tc, patterns);
+    const translatedColumn = translateWithCustomPatterns(
+      columnPart,
+      tc,
+      patterns,
     );
 
-    let translatedJoinAlias: string;
-
-    if (dashIndex > 0) {
-      const tablePart = joinAliasPart.substring(0, dashIndex);
-      const fkPart = joinAliasPart.substring(
-        dashIndex + Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR.length,
-      );
-
-      translatedJoinAlias =
-        translateColumnDisplayNameWithPatterns(tablePart, tc, patterns) +
-        Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR +
-        translateColumnDisplayNameWithPatterns(fkPart, tc, patterns);
-    } else {
-      translatedJoinAlias = translateColumnDisplayNameWithPatterns(
-        joinAliasPart,
-        tc,
-        patterns,
-      );
-    }
-
-    return (
-      translatedJoinAlias +
-      Lib.JOIN_DISPLAY_NAME_SEPARATOR +
-      translateColumnDisplayNameWithPatterns(columnPart, tc, patterns)
-    );
+    return translatedAlias + Lib.JOIN_DISPLAY_NAME_SEPARATOR + translatedColumn;
   }
 
   return tc(displayName);
+};
+
+/**
+ * Translates a join alias, handling implicit joins (dash separator).
+ */
+const translateJoinAlias = (
+  joinAlias: string,
+  tc: ContentTranslationFunction,
+  patterns: ColumnDisplayNamePattern[],
+): string => {
+  const dashIndex = joinAlias.indexOf(Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR);
+
+  if (dashIndex > 0) {
+    // Implicit join: "People - Product"
+    const tablePart = joinAlias.substring(0, dashIndex);
+    const fkPart = joinAlias.substring(
+      dashIndex + Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR.length,
+    );
+
+    return (
+      translateWithCustomPatterns(tablePart, tc, patterns) +
+      Lib.IMPLICIT_JOIN_DISPLAY_NAME_SEPARATOR +
+      translateWithCustomPatterns(fkPart, tc, patterns)
+    );
+  }
+
+  // Simple join alias
+  return translateWithCustomPatterns(joinAlias, tc, patterns);
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
