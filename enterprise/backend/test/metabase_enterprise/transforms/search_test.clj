@@ -9,6 +9,8 @@
   (:import
    (org.postgresql.util PGobject)))
 
+(set! *warn-on-reflection* true)
+
 (deftest transform-ingestion-test
   (search.tu/with-temp-index-table
     (testing "A simple Python transform gets properly ingested & indexed for search"
