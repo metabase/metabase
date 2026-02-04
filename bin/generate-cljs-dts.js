@@ -10,8 +10,17 @@ const path = require("path");
 const CLJS_DEV_DIR = path.join(__dirname, "..", "target", "cljs_dev");
 const CLJS_RELEASE_DIR = path.join(__dirname, "..", "target", "cljs_release");
 
+function hasJsFiles(dir) {
+  if (!fs.existsSync(dir)) {
+    return false;
+  }
+  const files = fs.readdirSync(dir);
+  return files.some((f) => f.endsWith(".js") && !f.endsWith(".map"));
+}
+
 function getCljsDir() {
-  if (fs.existsSync(CLJS_RELEASE_DIR)) {
+  // Prefer release dir if it has actual JS files, otherwise use dev
+  if (hasJsFiles(CLJS_RELEASE_DIR)) {
     return CLJS_RELEASE_DIR;
   }
   return CLJS_DEV_DIR;
