@@ -1,5 +1,5 @@
+import type { Location } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -36,15 +36,16 @@ import {
 
 interface CleanupCollectionModalProps {
   onClose: () => void;
-  params: { slug: string };
+  params: { slug?: string };
+  location: Location;
 }
 
 const CleanupCollectionModalInner = ({
   onClose: handleClose,
-  params: { slug },
+  params,
 }: CleanupCollectionModalProps) => {
   const dispatch = useDispatch();
-  const collectionId = Urls.extractCollectionId(slug);
+  const collectionId = Urls.extractCollectionId(params.slug ?? "");
 
   // selection
   const selection = useListSelect(itemKeyFn);
@@ -224,4 +225,4 @@ const CleanupCollectionModalInner = ({
   );
 };
 
-export const CleanupCollectionModal = withRouter(CleanupCollectionModalInner);
+export const CleanupCollectionModal = CleanupCollectionModalInner;
