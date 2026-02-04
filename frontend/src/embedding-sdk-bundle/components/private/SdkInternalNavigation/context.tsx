@@ -1,10 +1,7 @@
 import { createContext, useContext } from "react";
 
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
-import type {
-  NavigateToNewCardParams,
-  SdkQuestionId,
-} from "embedding-sdk-bundle/types/question";
+import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 
 export type SdkInternalNavigationEntry =
@@ -33,13 +30,6 @@ export type SdkInternalNavigationEntry =
       onPop?: () => void;
     }
   | {
-      /** Virtual entry for adhoc questions from dashboard drills */
-      type: "virtual-adhoc-question";
-      /** The URL path for the ad-hoc question (e.g., /question#... with serialized card) */
-      name: string;
-      onPop?: () => void;
-    }
-  | {
       /** Virtual entry for new question creation from dashboard */
       type: "virtual-new-question";
       onPop?: () => void;
@@ -52,7 +42,6 @@ export type SdkInternalNavigationContextValue = {
   currentEntry: SdkInternalNavigationEntry | undefined;
   canGoBack: boolean;
   previousEntry: SdkInternalNavigationEntry | undefined;
-  navigateToNewCard: (params: NavigateToNewCardParams) => Promise<void>;
   initWithDashboard: (dashboard: { id: SdkDashboardId; name: string }) => void;
 };
 

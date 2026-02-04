@@ -7,11 +7,9 @@ import {
   useState,
 } from "react";
 import { match } from "ts-pattern";
-import { t } from "ttag";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
-import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
@@ -73,32 +71,6 @@ const SdkInternalNavigationProviderInner = ({
     [stack.length],
   );
 
-  const navigateToNewCard = useCallback(
-    async (params: NavigateToNewCardParams) => {
-      const { nextCard } = params;
-      const currentEntry = stack.at(-1);
-
-      // If we're already on a placeholder adhoc question, just update its path instead of pushing
-      // otherwise we'll have an entry for each filter change done from drills
-      if (currentEntry?.type === "virtual-adhoc-question") {
-        setStack((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            type: "virtual-adhoc-question",
-            name: nextCard.name || t`Question`,
-          };
-          return updated;
-        });
-      } else {
-        push({
-          type: "virtual-adhoc-question",
-          name: nextCard.name || t`Question`,
-        });
-      }
-    },
-    [push, stack],
-  );
-
   const value = useMemo(
     () => ({
       stack,
@@ -107,10 +79,9 @@ const SdkInternalNavigationProviderInner = ({
       currentEntry: stack.at(-1),
       previousEntry: stack.at(-2),
       canGoBack: stack.length > 1,
-      navigateToNewCard,
       initWithDashboard,
     }),
-    [stack, push, pop, navigateToNewCard, initWithDashboard],
+    [stack, push, pop, initWithDashboard],
   );
 
   // "Virtual" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
