@@ -430,13 +430,16 @@
   "Returns the JSON manifest used to create a new Slack app"
   []
   (perms/check-has-application-permission :setting)
+  (when-not (some? (system/site-url))
+    (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
   (slackbot-manifest (system/site-url)))
 
 (defn- setup-complete?
   "Returns true if all required Slack settings are configured to process events."
   []
   (boolean
-   (and (premium-features/enable-sso-slack?)
+   (and (some? (system/site-url))
+        (premium-features/enable-sso-slack?)
         (sso-settings/slack-connect-client-id)
         (sso-settings/slack-connect-client-secret)
         (metabot.settings/metabot-slack-signing-secret)
