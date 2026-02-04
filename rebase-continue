@@ -1,12 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "upstack",
-        "onto",
-        "integration-embedding-onboarding-improvements"
-      ],
-      "branch": "emb-1290-implement-enable-tenants-and-create-shared-collection-button"
-    }
-  ]
+  "continuations": null
 }
