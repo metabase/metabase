@@ -12,7 +12,7 @@ import { createMockDatasetData } from "metabase-types/api/mocks";
 import { leaveUntranslated } from "./use-translate-content";
 import {
   getTranslatedFilterDisplayName,
-  translateAggregationDisplayName,
+  translateColumnDisplayName,
   translateFieldValuesInSeries,
 } from "./utils";
 
@@ -386,7 +386,7 @@ describe("getTranslatedFilterDisplayName", () => {
   });
 });
 
-describe("translateAggregationDisplayName", () => {
+describe("translateColumnDisplayName", () => {
   const tcWithColumnTranslations: ContentTranslationFunction = (str) => {
     const translations: Record<string, string> = {
       Total: "Gesamtsumme",
@@ -398,7 +398,7 @@ describe("translateAggregationDisplayName", () => {
   };
 
   it("should return displayName unchanged when tc has no translations", () => {
-    const result = translateAggregationDisplayName(
+    const result = translateColumnDisplayName(
       "Sum of Total",
       mockTranslateWithoutTranslations,
     );
@@ -407,7 +407,7 @@ describe("translateAggregationDisplayName", () => {
   });
 
   it("should translate a simple column name without aggregation pattern", () => {
-    const result = translateAggregationDisplayName(
+    const result = translateColumnDisplayName(
       "Total",
       tcWithColumnTranslations,
     );
@@ -434,7 +434,7 @@ describe("translateAggregationDisplayName", () => {
   ])(
     "should translate column name inside aggregation pattern: %s -> %s",
     (input, expected) => {
-      const result = translateAggregationDisplayName(
+      const result = translateColumnDisplayName(
         input,
         tcWithColumnTranslations,
       );
@@ -446,15 +446,12 @@ describe("translateAggregationDisplayName", () => {
     ["Sum of Min of Total", "Sum of Min of Gesamtsumme"],
     ["Average of Sum of Min of Price", "Average of Sum of Min of Preis"],
   ])("should handle nested aggregations: %s -> %s", (input, expected) => {
-    const result = translateAggregationDisplayName(
-      input,
-      tcWithColumnTranslations,
-    );
+    const result = translateColumnDisplayName(input, tcWithColumnTranslations);
     expect(result).toBe(expected);
   });
 
   it("should return original string when column name has no translation", () => {
-    const result = translateAggregationDisplayName(
+    const result = translateColumnDisplayName(
       "Sum of UnknownColumn",
       tcWithColumnTranslations,
     );
@@ -463,10 +460,7 @@ describe("translateAggregationDisplayName", () => {
   });
 
   it("should handle empty string", () => {
-    const result = translateAggregationDisplayName(
-      "",
-      tcWithColumnTranslations,
-    );
+    const result = translateColumnDisplayName("", tcWithColumnTranslations);
 
     expect(result).toBe("");
   });
@@ -481,7 +475,7 @@ describe("translateAggregationDisplayName", () => {
     const wrappedPatterns = [(value: string) => `Somme de ${value} totale`];
 
     it("should handle RTL patterns where value comes first", () => {
-      const result = translateAggregationDisplayName(
+      const result = translateColumnDisplayName(
         "Total של סכום",
         tcWithColumnTranslations,
         rtlPatterns,
@@ -491,7 +485,7 @@ describe("translateAggregationDisplayName", () => {
     });
 
     it("should handle wrapped patterns where value is in the middle", () => {
-      const result = translateAggregationDisplayName(
+      const result = translateColumnDisplayName(
         "Somme de Total totale",
         tcWithColumnTranslations,
         wrappedPatterns,
@@ -506,7 +500,7 @@ describe("translateAggregationDisplayName", () => {
         (value: string) => `${value} של מינימום`,
       ];
 
-      const result = translateAggregationDisplayName(
+      const result = translateColumnDisplayName(
         "Total של מינימום של סכום",
         tcWithColumnTranslations,
         nestedRtlPatterns,
@@ -521,13 +515,236 @@ describe("translateAggregationDisplayName", () => {
         (value: string) => `Minimum de ${value} local`,
       ];
 
-      const result = translateAggregationDisplayName(
+      const result = translateColumnDisplayName(
         "Somme de Minimum de Total local totale",
         tcWithColumnTranslations,
         nestedWrappedPatterns,
       );
 
       expect(result).toBe("Somme de Minimum de Gesamtsumme local totale");
+    });
+  });
+
+  describe("binning patterns", () => {
+    it.each([
+      ["Total: Auto binned", "Gesamtsumme: Auto binned"],
+      // Dynamic binning patterns (handled by fallback)
+      ["Total: 10 bins", "Gesamtsumme: 10 bins"],
+      ["Total: 50 bins", "Gesamtsumme: 50 bins"],
+      ["Total: 100 bins", "Gesamtsumme: 100 bins"],
+      ["Price: 0.1°", "Preis: 0.1°"],
+      ["Price: 1°", "Preis: 1°"],
+      ["Price: 10°", "Preis: 10°"],
+    ])(
+      "should translate column name inside binning pattern: %s -> %s",
+      (input, expected) => {
+        const result = translateColumnDisplayName(
+          input,
+          tcWithColumnTranslations,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+  });
+
+  describe("temporal bucket patterns", () => {
+    it.each([
+      ["Total: Day", "Gesamtsumme: Day"],
+      ["Total: Month", "Gesamtsumme: Month"],
+      ["Total: Year", "Gesamtsumme: Year"],
+      ["Total: Hour", "Gesamtsumme: Hour"],
+      ["Total: Week", "Gesamtsumme: Week"],
+      ["Total: Quarter", "Gesamtsumme: Quarter"],
+      ["Total: Hour of day", "Gesamtsumme: Hour of day"],
+      ["Total: Day of week", "Gesamtsumme: Day of week"],
+      ["Total: Day of month", "Gesamtsumme: Day of month"],
+      ["Total: Day of year", "Gesamtsumme: Day of year"],
+      ["Total: Week of year", "Gesamtsumme: Week of year"],
+      ["Total: Month of year", "Gesamtsumme: Month of year"],
+      ["Total: Quarter of year", "Gesamtsumme: Quarter of year"],
+      ["Total: Minute of hour", "Gesamtsumme: Minute of hour"],
+      ["Total: Minute", "Gesamtsumme: Minute"],
+    ])(
+      "should translate column name inside temporal bucket pattern: %s -> %s",
+      (input, expected) => {
+        const result = translateColumnDisplayName(
+          input,
+          tcWithColumnTranslations,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+
+    it("should handle combined aggregation and temporal bucket patterns", () => {
+      const result = translateColumnDisplayName(
+        "Sum of Total: Month",
+        tcWithColumnTranslations,
+      );
+      expect(result).toBe("Sum of Gesamtsumme: Month");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should not incorrectly split column names that contain colon", () => {
+      // If a column is named "Note: Important" (with colon in name),
+      // it should be translated as a whole, not split
+      const tcWithColonColumn: ContentTranslationFunction = (str) => {
+        const translations: Record<string, string> = {
+          "Note: Important": "Notiz: Wichtig",
+        };
+
+        return typeof str === "string" ? (translations[str] ?? str) : str;
+      };
+
+      const result = translateColumnDisplayName(
+        "Note: Important",
+        tcWithColonColumn,
+      );
+      expect(result).toBe("Notiz: Wichtig");
+    });
+
+    it("should split on colon and translate column if column has a translation", () => {
+      // This handles backend-translated temporal bucket suffixes like "Monat", "Tag", etc.
+      // where the suffix is already translated by the backend
+      const result = translateColumnDisplayName(
+        "Total: SomeRandomSuffix",
+        tcWithColumnTranslations,
+      );
+      // "Total" has a translation, so it splits and translates the column part
+      expect(result).toBe("Gesamtsumme: SomeRandomSuffix");
+    });
+
+    it("should handle backend-translated temporal bucket suffixes", () => {
+      // The backend translates temporal unit names (e.g., "Month" -> "Monat" in German)
+      // before the FE receives them. This test verifies that we still translate the column part.
+      const result = translateColumnDisplayName(
+        "Total: Monat", // German for "Month" - already translated by backend
+        tcWithColumnTranslations,
+      );
+      expect(result).toBe("Gesamtsumme: Monat");
+    });
+  });
+
+  describe("joined table patterns", () => {
+    const tcWithJoinTranslations: ContentTranslationFunction = (str) => {
+      const translations: Record<string, string> = {
+        Total: "Gesamtsumme",
+        Price: "Preis",
+        Quantity: "Menge",
+        Products: "Produkte",
+        Orders: "Bestellungen",
+        "Created At": "Erstellt am",
+      };
+
+      return typeof str === "string" ? (translations[str] ?? str) : str;
+    };
+
+    it.each([
+      ["Products → Total", "Produkte → Gesamtsumme"],
+      ["Products → Created At", "Produkte → Erstellt am"],
+      ["Orders → Products → Total", "Bestellungen → Produkte → Gesamtsumme"],
+    ])(
+      "should translate joined table column names: %s -> %s",
+      (input, expected) => {
+        const result = translateColumnDisplayName(
+          input,
+          tcWithJoinTranslations,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+
+    it("should translate joined table with temporal bucket", () => {
+      const result = translateColumnDisplayName(
+        "Products → Created At: Month",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Produkte → Erstellt am: Month");
+    });
+
+    it("should translate joined table with aggregation pattern", () => {
+      const result = translateColumnDisplayName(
+        "Distinct values of Products → Total",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Distinct values of Produkte → Gesamtsumme");
+    });
+
+    it("should translate complex nested pattern with join, aggregation, and temporal bucket", () => {
+      const result = translateColumnDisplayName(
+        "Distinct values of Products → Created At: Month",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Distinct values of Produkte → Erstellt am: Month");
+    });
+
+    it("should handle nested joins with temporal bucket", () => {
+      const result = translateColumnDisplayName(
+        "Orders → Products → Created At: Month",
+        tcWithJoinTranslations,
+      );
+      expect(result).toBe("Bestellungen → Produkte → Erstellt am: Month");
+    });
+
+    describe("implicit join patterns (dash separator)", () => {
+      // Add translations for implicit join patterns
+      const tcWithImplicitJoinTranslations: ContentTranslationFunction = (
+        str,
+      ) => {
+        const translations: Record<string, string> = {
+          Total: "Gesamtsumme",
+          Products: "Produkte",
+          Product: "Produkt", // Singular form used in FK names
+          Orders: "Bestellungen",
+          People: "Personen",
+          "Created At": "Erstellt am",
+        };
+
+        return typeof str === "string" ? (translations[str] ?? str) : str;
+      };
+
+      it("should translate implicit join alias with dash separator", () => {
+        // "People - Product → Created At" has implicit join alias "People - Product"
+        const result = translateColumnDisplayName(
+          "People - Product → Created At",
+          tcWithImplicitJoinTranslations,
+        );
+        expect(result).toBe("Personen - Produkt → Erstellt am");
+      });
+
+      it("should translate implicit join with temporal bucket", () => {
+        const result = translateColumnDisplayName(
+          "People - Product → Created At: Month",
+          tcWithImplicitJoinTranslations,
+        );
+        expect(result).toBe("Personen - Produkt → Erstellt am: Month");
+      });
+
+      it("should translate aggregation with implicit join and temporal bucket", () => {
+        const result = translateColumnDisplayName(
+          "Distinct values of People - Product → Created At: Month",
+          tcWithImplicitJoinTranslations,
+        );
+        expect(result).toBe(
+          "Distinct values of Personen - Produkt → Erstellt am: Month",
+        );
+      });
+
+      it("should NOT split on dash when there is no arrow separator", () => {
+        // "My Question - Part 2" should be translated as a whole, not split on dash
+        const tcWithQuestionName: ContentTranslationFunction = (str) => {
+          const translations: Record<string, string> = {
+            "My Question - Part 2": "Meine Frage - Teil 2",
+          };
+          return typeof str === "string" ? (translations[str] ?? str) : str;
+        };
+
+        const result = translateColumnDisplayName(
+          "My Question - Part 2",
+          tcWithQuestionName,
+        );
+        expect(result).toBe("Meine Frage - Teil 2");
+      });
     });
   });
 });
