@@ -59,6 +59,7 @@ function visitArea(area: Area) {
 describe.each<Area>(areas)(
   "scenarios > admin > data model > %s",
   (area: Area) => {
+    const getBasePath = getBasePathForArea(area);
     const visit = visitArea(area);
     const checkLocation = getCheckLocation(area);
     const getTriggeredFrom = getTriggeredFromArea(area);
@@ -236,7 +237,7 @@ describe.each<Area>(areas)(
 
           cy.location("pathname").should(
             "eq",
-            `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
           );
 
           TablePicker.getTable("Products").click();
@@ -244,7 +245,7 @@ describe.each<Area>(areas)(
 
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+              `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
             );
           });
         });
@@ -266,7 +267,7 @@ describe.each<Area>(areas)(
           }
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+              `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
             );
           });
         });
@@ -283,13 +284,13 @@ describe.each<Area>(areas)(
           TablePicker.getDatabase("QA MySQL8").click();
           cy.location("pathname").should(
             "eq",
-            `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
           );
 
           TablePicker.getDatabase("QA MySQL8").click();
           cy.location("pathname").should(
             "eq",
-            `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
           );
 
           cy.log("ensure navigation to another db works");
@@ -384,7 +385,7 @@ describe.each<Area>(areas)(
             TablePicker.getTable("Animals").click();
             cy.location("pathname").should((pathname) => {
               return pathname.startsWith(
-                `${context.basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+                `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
               );
             });
             TableSection.getNameInput().should("have.value", "Animals");
@@ -396,7 +397,7 @@ describe.each<Area>(areas)(
             );
             cy.location("pathname").should((pathname) => {
               return pathname.startsWith(
-                `${context.basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+                `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
               );
             });
 
@@ -409,7 +410,7 @@ describe.each<Area>(areas)(
             TablePicker.getTable("Birds").click();
             cy.location("pathname").should((pathname) => {
               return pathname.startsWith(
-                `${context.basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+                `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
               );
             });
             TableSection.getNameInput().should("have.value", "Birds");
@@ -445,7 +446,7 @@ describe.each<Area>(areas)(
             cy.log("we still have a table opened");
             cy.location("pathname").should((pathname) => {
               return pathname.startsWith(
-                `${context.basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+                `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
               );
             });
 
