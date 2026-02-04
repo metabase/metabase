@@ -7,20 +7,14 @@ import {
 
 import { usePalette } from "metabase/common/hooks/use-palette";
 
-import type { ErdEdgeData } from "./types";
-
 const DASH_PATTERN = "6 4";
 
-export function ErdEdge(props: EdgeProps<ErdEdgeData>) {
+export function ErdEdge(props: EdgeProps) {
   const palette = usePalette();
   const isInitialized = useNodesInitialized();
   const isSelfRef = props.source === props.target;
   const hiddenStyle = !isInitialized ? { visibility: "hidden" as const } : {};
-  const flowsFromFocal = props.data?.flowsFromFocal ?? false;
-
-  const animationClass = flowsFromFocal
-    ? "erd-edge-march-outward"
-    : "erd-edge-march-inward";
+  const animationClass = "erd-edge-march";
 
   const style = {
     strokeWidth: 1,

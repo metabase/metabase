@@ -13,7 +13,13 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import * as Urls from "metabase/lib/urls";
-import { Loader, Stack, Text, useColorScheme } from "metabase/ui";
+import {
+  Loader,
+  Stack,
+  Text,
+  useColorScheme,
+  useMantineTheme,
+} from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
   CardId,
@@ -75,6 +81,8 @@ export function Erd({ tableId, modelId }: ErdProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<ErdFlowEdge>([]);
   const { colorScheme } = useColorScheme();
   const palette = usePalette();
+  const theme = useMantineTheme();
+  console.log({ palette, colorScheme, theme });
   const hasEntry = tableId != null || modelId != null;
 
   const markerEnd = useMemo(

@@ -2,11 +2,14 @@ import type { NodeProps } from "@xyflow/react";
 import cx from "classnames";
 import { memo, useMemo } from "react";
 
+import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
 
 import { ErdFieldRow } from "./ErdFieldRow";
 import S from "./ErdTableNode.module.css";
 import type { ErdFlowNode } from "./types";
+
+const ICON_COLORS = getAccentColors({ light: false, dark: false, gray: false });
 
 type ErdTableNodeProps = NodeProps<ErdFlowNode>;
 
@@ -14,6 +17,7 @@ export const ErdTableNode = memo(function ErdTableNode({
   data,
 }: ErdTableNodeProps) {
   const headerColor = data.is_focal ? "brand" : "text-primary";
+  const iconColor = ICON_COLORS[data.table_id % ICON_COLORS.length];
 
   // Find PK field IDs that are targets of self-referencing FKs
   const selfRefTargetIds = useMemo(() => {
@@ -45,7 +49,7 @@ export const ErdTableNode = memo(function ErdTableNode({
         py={20}
         wrap="nowrap"
       >
-        <FixedSizeIcon name="table2" color={headerColor} />
+        <FixedSizeIcon name="table2" color={iconColor} />
         <Box
           fz={17}
           c={headerColor}
