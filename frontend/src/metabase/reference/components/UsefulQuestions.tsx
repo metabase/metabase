@@ -1,4 +1,4 @@
-import PropTypes from "prop-types";
+import type { ComponentProps } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -7,23 +7,24 @@ import D from "metabase/reference/components/Detail.module.css";
 
 import S from "./UsefulQuestions.module.css";
 
-const UsefulQuestions = ({ questions }) => (
+interface UsefulQuestionsProps {
+  questions: ComponentProps<typeof QueryButton>[];
+}
+
+const UsefulQuestions = ({ questions }: UsefulQuestionsProps) => (
   <div className={D.detail}>
     <div className={D.detailBody}>
       <div className={D.detailTitle}>
         <span>{t`Potentially useful questions`}</span>
       </div>
       <div className={S.usefulQuestions}>
-        {questions.map((question, index, questions) => (
+        {questions.map((question, index) => (
           <QueryButton key={index} {...question} />
         ))}
       </div>
     </div>
   </div>
 );
-UsefulQuestions.propTypes = {
-  questions: PropTypes.array.isRequired,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(UsefulQuestions);
