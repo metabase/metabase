@@ -13,10 +13,12 @@ import {
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import { useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+import { downloadToImage } from "metabase/redux/downloads";
 import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
@@ -60,6 +62,7 @@ export const DashCardMenu = ({
   openUnderlyingQuestionItems,
   canEdit,
 }: DashCardMenuProps) => {
+  const dispatch = useDispatch();
   const store = useStore();
 
   const token = useMemo(() => {
@@ -81,6 +84,8 @@ export const DashCardMenu = ({
   });
 
   const [menuView, setMenuView] = useState<string | null>(null);
+  const [isSavingPresentationScreenshot, setIsSavingPresentationScreenshot] =
+    useState(false);
   const [isOpen, { close, toggle }] = useDisclosure(false, {
     onClose: () => {
       setMenuView(null);
@@ -122,7 +127,32 @@ export const DashCardMenu = ({
           question={question}
           result={result}
           isDownloadingData={isDownloadingData}
+          isSavingPresentationScreenshot={isSavingPresentationScreenshot}
           onDownload={() => setMenuView("download")}
+          onSavePresentationScreenshot={async () => {
+            close();
+            setIsSavingPresentationScreenshot(true);
+            try {
+              await dispatch(
+                downloadToImage({
+                  id: Date.now(),
+                  opts: {
+                    type: Urls.exportFormatPng,
+                    question,
+                    result,
+                    dashboardId: checkNotNull(dashboard?.id ?? dashboardId),
+                    dashcardId,
+                    uuid,
+                    token,
+                    params: getParameterValuesBySlugMap(store.getState()),
+                    imageExportStyle: "presentation",
+                  },
+                }),
+              );
+            } finally {
+              setIsSavingPresentationScreenshot(false);
+            }
+          }}
           onEditVisualization={onEditVisualization}
           canEdit={canEdit}
         />

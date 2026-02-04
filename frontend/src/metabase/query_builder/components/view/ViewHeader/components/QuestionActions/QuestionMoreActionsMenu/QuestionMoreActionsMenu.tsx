@@ -6,6 +6,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -21,7 +22,11 @@ import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
-import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import {
+  getFirstQueryResult,
+  getQuestionWithoutComposing,
+} from "metabase/query_builder/selectors";
+import { downloadToImage } from "metabase/redux/downloads";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -56,7 +61,10 @@ export const QuestionMoreActionsMenu = ({
   onSetQueryBuilderMode,
 }: QuestionMoreActionsMenuProps): JSX.Element | null => {
   const [opened, setOpened] = useState(false);
+  const [isSavingPresentationScreenshot, setIsSavingPresentationScreenshot] =
+    useState(false);
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
+  const result = useSelector(getFirstQueryResult);
 
   const dispatch = useDispatch();
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
@@ -79,6 +87,7 @@ export const QuestionMoreActionsMenu = ({
   const hasDataPermissions =
     underlyingQuestion != null &&
     Lib.queryDisplayInfo(underlyingQuestion.query()).isEditable;
+  const canSaveScreenshot = result != null && !result.error;
 
   const reload = () => dispatch(softReloadCard());
 
@@ -184,6 +193,36 @@ export const QuestionMoreActionsMenu = ({
         onClick={onOpenSettingsSidebar}
       >
         {t`Edit settings`}
+      </Menu.Item>
+    ),
+    canSaveScreenshot && (
+      <Menu.Item
+        key="save-screenshot"
+        leftSection={<Icon name="camera" />}
+        onClick={async () => {
+          setIsSavingPresentationScreenshot(true);
+          try {
+            await dispatch(
+              downloadToImage({
+                id: Date.now(),
+                opts: {
+                  type: Urls.exportFormatPng,
+                  question,
+                  result,
+                  imageExportStyle: "presentation",
+                },
+              }),
+            );
+          } finally {
+            setIsSavingPresentationScreenshot(false);
+            setOpened(false);
+          }
+        }}
+        disabled={isSavingPresentationScreenshot}
+      >
+        {isSavingPresentationScreenshot
+          ? t`Saving screenshot…`
+          : t`Save screenshot`}
       </Menu.Item>
     ),
     (hasCollectionPermissions || hasDataPermissions) && (

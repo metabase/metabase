@@ -20,7 +20,9 @@ type DashCardMenuItemsProps = {
   question: Question;
   result: Dataset;
   isDownloadingData: boolean;
+  isSavingPresentationScreenshot: boolean;
   onDownload: () => void;
+  onSavePresentationScreenshot: () => void;
   onEditVisualization?: () => void;
   dashcardId?: DashCardId;
   canEdit?: boolean;
@@ -29,7 +31,9 @@ export const DashCardMenuItems = ({
   question,
   result,
   isDownloadingData,
+  isSavingPresentationScreenshot,
   onDownload,
+  onSavePresentationScreenshot,
   onEditVisualization,
   dashcardId,
   canEdit,
@@ -94,6 +98,16 @@ export const DashCardMenuItems = ({
 
     if (withDownloads && canDownloadResults(result)) {
       items.push({
+        key: "MB_SAVE_PRESENTATION_SCREENSHOT",
+        iconName: "camera",
+        label: isSavingPresentationScreenshot
+          ? t`Saving screenshot…`
+          : t`Save screenshot`,
+        onClick: onSavePresentationScreenshot,
+        disabled: isSavingPresentationScreenshot,
+      });
+
+      items.push({
         key: "MB_DOWNLOAD_RESULTS",
         iconName: "download",
         label: isDownloadingData ? t`Downloading…` : t`Download results`,
@@ -129,7 +143,9 @@ export const DashCardMenuItems = ({
   }, [
     customItems,
     isDownloadingData,
+    isSavingPresentationScreenshot,
     onDownload,
+    onSavePresentationScreenshot,
     onEditQuestion,
     question,
     result,

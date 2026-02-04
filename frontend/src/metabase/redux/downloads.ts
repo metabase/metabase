@@ -40,6 +40,7 @@ export interface DownloadQueryResultsOpts {
   type: string;
   question: Question;
   result: Dataset;
+  imageExportStyle?: "default" | "presentation";
   enableFormatting?: boolean;
   enablePivot?: boolean;
   dashboardId?: DashboardId;
@@ -154,12 +155,10 @@ const getDownloadedResourceType = ({
 export const downloadToImage = createAsyncThunk(
   "metabase/downloads/downloadToImage",
   async (
-    {
-      opts: { question, dashcardId },
-      id,
-    }: { opts: DownloadQueryResultsOpts; id: number },
+    { opts, id }: { opts: DownloadQueryResultsOpts; id: number },
     { getState },
   ) => {
+    const { question, dashcardId } = opts;
     const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
     const includeBranding = !isWhitelabeled;
     const fileName = getChartFileName(question, includeBranding);
@@ -176,6 +175,7 @@ export const downloadToImage = createAsyncThunk(
       selector: chartSelector,
       fileName,
       includeBranding,
+      presentationMode: opts.imageExportStyle === "presentation",
     });
 
     return { id, fileName };

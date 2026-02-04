@@ -12,12 +12,14 @@ import { QuestionAlertListModal } from "metabase/notifications/modals";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  Dataset,
   ModerationReview,
   Notification,
   User,
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockDataset,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -33,6 +35,7 @@ type SetupOpts = {
   isEmailSetup: boolean;
   isEnterprise: boolean;
   moderationReviews?: ModerationReview[];
+  result?: Dataset;
 };
 
 export function setup({
@@ -42,6 +45,7 @@ export function setup({
   isEmailSetup = false,
   isEnterprise = false,
   moderationReviews,
+  result = createMockDataset(),
 }: SetupOpts) {
   const card = createMockCard(
     isEnterprise ? { moderation_reviews: moderationReviews ?? [] } : {},
@@ -72,6 +76,9 @@ export function setup({
         card,
       },
     } as User,
+    qb: {
+      queryResults: [result],
+    },
   });
 
   fetchMock.get("path:/api/user/recipients", { data: [] });

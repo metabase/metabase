@@ -43,6 +43,18 @@ describe("QuestionMoreActionsMenu >", () => {
       await userEvent.click(screen.getByText("Edit alerts"));
       expect(await screen.findByTestId("alert-list-modal")).toBeInTheDocument();
     });
+
+    it("should show the 'Save screenshot' menu item", async () => {
+      setup({
+        alerts: [],
+        canManageSubscriptions: false,
+        isAdmin: true,
+        isEmailSetup: true,
+        isEnterprise: false,
+      });
+      await openMenu();
+      expect(screen.getByText("Save screenshot")).toBeInTheDocument();
+    });
   });
 
   describe("non-admins", () => {

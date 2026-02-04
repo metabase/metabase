@@ -240,6 +240,7 @@ describe("DashCardMenu", () => {
     setup();
 
     await userEvent.click(getIcon("ellipsis"));
+    expect(await screen.findByText("Save screenshot")).toBeInTheDocument();
     await userEvent.click(await screen.findByText("Download results"));
 
     expect(
