@@ -73,6 +73,7 @@ export const FieldInfoSection = ({
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
+    defaultExpanded: true,
   });
 
   const targetInstance = useTreeTableInstance({
@@ -80,6 +81,7 @@ export const FieldInfoSection = ({
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => node.children,
+    defaultExpanded: true,
   });
 
   return (
@@ -165,8 +167,8 @@ function formatType(field: TransformInspectField): string {
   return field.base_type?.replace("type/", "") ?? t`Unknown`;
 }
 
-function formatNumber(value: number | undefined): string {
-  if (value === undefined) {
+function formatNumber(value: number | undefined | null): string {
+  if (value == null) {
     return "-";
   }
 
