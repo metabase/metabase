@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "integration-embedding-onboarding-improvements"
+    }
+  ]
 }
