@@ -1,16 +1,23 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
+import type { ReactNode } from "react";
 
 import { Box } from "metabase/ui";
 
 import ViewSidebarS from "./ViewSidebar.module.css";
+
+interface ViewSidebarProps {
+  side?: "left" | "right";
+  width?: number;
+  isOpen?: boolean;
+  children?: ReactNode;
+}
 
 export const ViewSidebar = ({
   side = "right",
   width = 400,
   isOpen,
   children,
-}) => (
+}: ViewSidebarProps) => (
   // If we passed `width` as prop, it would end up in the final HTML elements.
   // This would ruin the animation, so we pass it as `widthProp`.
   <Box
@@ -30,12 +37,3 @@ export const ViewSidebar = ({
     </Box>
   </Box>
 );
-
-ViewSidebar.propTypes = {
-  left: PropTypes.bool,
-  right: PropTypes.bool,
-  width: PropTypes.number,
-  isOpen: PropTypes.bool,
-  side: PropTypes.oneOf(["left", "right"]),
-  children: PropTypes.node,
-};
