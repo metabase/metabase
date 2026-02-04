@@ -31,12 +31,17 @@ function _init() {
   document.body.style.margin = "0";
   document.body.style.backgroundColor = "transparent";
 
+  document.documentElement.style.height = "100%";
+  document.body.style.height = "100%";
+
   const rootElement = document.getElementById("root");
 
   if (!rootElement) {
     console.error("no #root element found on sdk iframe embed route");
     return;
   }
+
+  rootElement.style.height = "100%";
 
   createRoot(rootElement).render(<SdkIframeEmbedRoute />);
 }
