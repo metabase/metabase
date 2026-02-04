@@ -15,7 +15,8 @@
   :database_impersonation_credentials)
 
 (t2/deftransforms :model/DatabaseImpersonationCredential
-  {:auth_type mi/transform-keyword})
+  {:auth_type mi/transform-keyword
+   :details   mi/transform-json})
 
 (doto :model/DatabaseImpersonationCredential
   (derive :metabase/model)
@@ -47,6 +48,10 @@
       (throw (ex-info (tru "{0} is missing for impersonation credentials." label)
                       (assoc context :secret-id secret-id)))))
 
+(defn- credential-details
+  [{:keys [details]}]
+  (if (map? details) details {}))
+
 (defenterprise credential-for-key
   "Fetch a single credential profile for a database and impersonation key."
   :feature :advanced-permissions
@@ -68,15 +73,16 @@
                       context)))
     (case (:auth_type credential)
       :pat
-      (let [token (require-secret (:token_secret_id credential) (tru "Token secret") context)]
+      (let [token (require-secret (:secret_id credential) (tru "Token secret") context)]
         (-> (:details database)
             (assoc :use-m2m false
                    :token token)
             (dissoc :client-id :oauth-secret)))
 
       :oauth-m2m
-      (let [client-id (require-non-blank (:oauth_client_id credential) (tru "OAuth client ID") context)
-            oauth-secret (require-secret (:oauth_secret_id credential) (tru "OAuth secret") context)]
+      (let [details (credential-details credential)
+            client-id (require-non-blank (:oauth_client_id details) (tru "OAuth client ID") context)
+            oauth-secret (require-secret (:secret_id credential) (tru "OAuth secret") context)]
         (-> (:details database)
             (assoc :use-m2m true
                    :client-id client-id

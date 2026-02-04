@@ -2968,21 +2968,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: token_secret_id
+                  name: secret_id
                   type: int
-                  remarks: Secret ID for PAT authentication
+                  remarks: Secret ID for authentication credentials
                   constraints:
                     nullable: true
               - column:
-                  name: oauth_client_id
-                  type: varchar(254)
-                  remarks: OAuth client ID for M2M authentication
-                  constraints:
-                    nullable: true
-              - column:
-                  name: oauth_secret_id
-                  type: int
-                  remarks: Secret ID for OAuth M2M authentication
+                  name: details
+                  type: ${text.type}
+                  remarks: JSON object containing auth-type specific details (e.g. oauth_client_id)
                   constraints:
                     nullable: true
               - column:

@@ -140,7 +140,7 @@ export const DatabaseImpersonationCredentialsSection = ({
       key: credential.key,
       auth_type: credential.auth_type,
       token: "",
-      oauth_client_id: credential.oauth_client_id ?? "",
+      oauth_client_id: credential.details?.oauth_client_id ?? "",
       oauth_secret: "",
     });
   };
@@ -246,7 +246,7 @@ export const DatabaseImpersonationCredentialsSection = ({
                 const isLast = index === credentials.length - 1;
                 const secondaryText =
                   credential.auth_type === "oauth-m2m"
-                    ? t`OAuth client ID: ${credential.oauth_client_id ?? ""}`
+                    ? t`OAuth client ID: ${credential.details?.oauth_client_id ?? ""}`
                     : t`PAT stored`;
 
                 return (

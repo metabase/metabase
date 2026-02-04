@@ -21,11 +21,13 @@
                  (tru "This database does not support credential-based impersonation.")))
 
 (defn- credential->response
-  [{:keys [token_secret_id oauth_secret_id] :as credential}]
-  (cond-> (select-keys credential
-                       [:id :db_id :key :auth_type :oauth_client_id :created_at :updated_at])
-    true (assoc :has_token (some? token_secret_id)
-                :has_oauth_secret (some? oauth_secret_id))))
+  [{:keys [details secret_id auth_type] :as credential}]
+  (let [details (when (map? details) details)]
+    (cond-> (select-keys credential
+                         [:id :db_id :key :auth_type :created_at :updated_at])
+      true (assoc :details details
+                  :has_secret (some? secret_id))
+      (= auth_type :oauth-m2m) (assoc :oauth_client_id (:oauth_client_id details)))))
 
 (defn- upsert-secret!
   [existing-id name kind value]
@@ -104,18 +106,15 @@
       (let [trimmed-token (->trimmed token)]
         (api/check-400 (seq trimmed-token) (tru "Token is required for PAT authentication."))
         (let [secret-id (upsert-secret!
-                         (:token_secret_id existing)
+                         (:secret_id existing)
                          (format "Databricks PAT for %s (%s)" (:name database) trimmed-key)
                          :databricks-pat
                          trimmed-token)
-              update-map {:db_id            db_id
-                          :key              trimmed-key
-                          :auth_type        :pat
-                          :token_secret_id  secret-id
-                          :oauth_client_id  nil
-                          :oauth_secret_id  nil}]
-          (when (and existing (not= (:auth_type existing) :pat))
-            (delete-secret! (:oauth_secret_id existing)))
+              update-map {:db_id      db_id
+                          :key        trimmed-key
+                          :auth_type  :pat
+                          :secret_id  secret-id
+                          :details    nil}]
           (if existing
             (t2/update! :model/DatabaseImpersonationCredential :id (:id existing) update-map)
             (t2/insert! :model/DatabaseImpersonationCredential update-map))
@@ -128,18 +127,15 @@
         (api/check-400 (seq trimmed-client-id) (tru "OAuth client ID is required."))
         (api/check-400 (seq trimmed-secret) (tru "OAuth secret is required."))
         (let [secret-id (upsert-secret!
-                         (:oauth_secret_id existing)
+                         (:secret_id existing)
                          (format "Databricks OAuth secret for %s (%s)" (:name database) trimmed-key)
                          :databricks-oauth-secret
                          trimmed-secret)
-              update-map {:db_id           db_id
-                          :key             trimmed-key
-                          :auth_type       :oauth-m2m
-                          :oauth_client_id trimmed-client-id
-                          :oauth_secret_id secret-id
-                          :token_secret_id nil}]
-          (when (and existing (not= (:auth_type existing) :oauth-m2m))
-            (delete-secret! (:token_secret_id existing)))
+              update-map {:db_id      db_id
+                          :key        trimmed-key
+                          :auth_type  :oauth-m2m
+                          :secret_id  secret-id
+                          :details    {:oauth_client_id trimmed-client-id}}]
           (if existing
             (t2/update! :model/DatabaseImpersonationCredential :id (:id existing) update-map)
             (t2/insert! :model/DatabaseImpersonationCredential update-map))
@@ -160,8 +156,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [credential (api/check-404 (t2/select-one :model/DatabaseImpersonationCredential :id id))]
-    (delete-secret! (:token_secret_id credential))
-    (delete-secret! (:oauth_secret_id credential))
+    (delete-secret! (:secret_id credential))
     (t2/delete! :model/DatabaseImpersonationCredential :id id)
     (sql-jdbc.conn/invalidate-impersonation-pool! (:db_id credential) (:key credential)))
   api/generic-204-no-content)

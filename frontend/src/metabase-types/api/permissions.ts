@@ -141,14 +141,18 @@ export type Impersonation = {
 
 export type ImpersonationCredentialAuthType = "pat" | "oauth-m2m";
 
+export type DatabaseImpersonationCredentialDetails = {
+  oauth_client_id?: string;
+  [key: string]: unknown;
+};
+
 export type DatabaseImpersonationCredential = {
   id: number;
   db_id: DatabaseId;
   key: string;
   auth_type: ImpersonationCredentialAuthType;
-  oauth_client_id?: string | null;
-  has_token?: boolean;
-  has_oauth_secret?: boolean;
+  details?: DatabaseImpersonationCredentialDetails | null;
+  has_secret?: boolean;
   created_at?: ISO8601Time;
   updated_at?: ISO8601Time;
 };
