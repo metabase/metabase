@@ -11,15 +11,15 @@
 ;;; -------------------------------------------------- Card Result Computation --------------------------------------------------
 
 (defmulti compute-card-result
-  "Compute derived fields from raw query result for a card.
+  "Compute derived fields from first row of query result for a card.
    Dispatches on [lens-id card-type]. Returns a map of field-name -> value, or nil.
 
    Arguments:
    - lens-id: keyword like :join-analysis
    - card: the card map with :id, :metadata, etc.
-   - rows: the raw query result rows (vector of vectors)"
-  {:arglists '([lens-id card rows])}
-  (fn [lens-id card _rows]
+   - row: the first row of query result (vector)"
+  {:arglists '([lens-id card row])}
+  (fn [lens-id card _row]
     [lens-id (keyword (get-in card [:metadata :card-type]))]))
 
 (defmethod compute-card-result :default
@@ -27,9 +27,8 @@
   nil)
 
 (defmethod compute-card-result [:join-analysis :join-step]
-  [_ _card rows]
-  (let [row (first rows)
-        output-count (nth row 0 nil)
+  [_ _card row]
+  (let [output-count (nth row 0 nil)
         matched-count (nth row 1 nil)
         null-count (when (and output-count matched-count)
                      (- output-count matched-count))

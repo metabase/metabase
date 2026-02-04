@@ -25,14 +25,14 @@
               :drillLenses drill-lenses-out})))
 
 (defn ^:export computeCardResult
-  "Compute derived fields from raw query result for a card.
+  "Compute derived fields from first row of query result for a card.
    Returns a JS object with computed fields, or null if no computation needed."
   [lens-id card-js rows-js]
   (let [lens-kw (keyword lens-id)
         card (-> (js->clj card-js :keywordize-keys true)
                  (update :metadata #(set/rename-keys % {:card_type :card-type})))
-        rows (js->clj rows-js)]
-    (when-let [result (inspector/compute-card-result lens-kw card rows)]
+        row (js->clj (aget rows-js 0))]
+    (when-let [result (inspector/compute-card-result lens-kw card row)]
       (clj->js result))))
 
 (defn ^:export interestingFields

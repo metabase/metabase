@@ -9,10 +9,10 @@
 ;;; -------------------------------------------------- Card Results --------------------------------------------------
 
 (defn compute-card-result
-  "Compute derived fields from raw query result for a card.
+  "Compute derived fields from first row of query result for a card.
    Dispatches on [lens-id card-type]. Returns a map of field-name -> value, or nil."
-  [lens-id card rows]
-  (card-result/compute-card-result lens-id card rows))
+  [lens-id card row]
+  (card-result/compute-card-result lens-id card row))
 
 ;;; -------------------------------------------------- Triggers --------------------------------------------------
 
