@@ -127,8 +127,29 @@ export function MetabotSlackbotAdminPage() {
             </Stack>
 
             <Stack gap="sm">
+              <Text>{t`3. Set your bot's app icon`}</Text>
+              <Flex gap="sm" align="center">
+                <img
+                  src="/app/assets/img/metabot-slack-icon.png"
+                  alt="Metabot icon"
+                  width={64}
+                  height={64}
+                />
+                <Text>
+                  <ExternalLink
+                    href="/app/assets/img/metabot-slack-icon.png"
+                    download
+                  >
+                    {t`Download icon`}
+                  </ExternalLink>
+                  {t` and upload it in your Slack app's Basic Information settings.`}
+                </Text>
+              </Flex>
+            </Stack>
+
+            <Stack gap="sm">
               <Text>
-                {t`3. Give us Slack info`}
+                {t`4. Give us Slack info`}
                 <br />
                 {t`⚠️ VIEWING SAVED VALUES IS BORKED AT THE MOMENT - they should set correctly though`}
               </Text>
