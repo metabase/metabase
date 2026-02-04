@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 
 import { QuestionLoaderHOC } from "metabase/common/components/QuestionLoader";
-import SelectButton from "metabase/common/components/SelectButton";
+import { SelectButton } from "metabase/common/components/SelectButton";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import {
   getMappingOptionByTarget,
