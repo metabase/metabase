@@ -87,9 +87,9 @@ export function TableAttributesEditSingle({ table }: Props) {
     });
 
     if (error) {
-      sendErrorToast(t`Failed to update table visibility type`);
+      sendErrorToast(t`Failed to update table visibility layer`);
     } else {
-      sendSuccessToast(t`Table visibility type updated`, async () => {
+      sendSuccessToast(t`Table visibility layer updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
           data_layer: table.data_layer,
@@ -163,7 +163,7 @@ export function TableAttributesEditSingle({ table }: Props) {
         />
 
         <LayerInput
-          value={table.data_layer ?? "copper"}
+          value={table.data_layer ?? "hidden"}
           onChange={handleLayerChange}
           classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}

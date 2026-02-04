@@ -3,7 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type {
   DatePickerShortcut,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
 import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
 import { Popover } from "metabase/ui";

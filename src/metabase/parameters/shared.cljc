@@ -300,7 +300,7 @@
                str/join)]
     (str/replace s non-optional-block-regex second)))
 
-(defn ^:export tag_names
+(defn ^:export tag-names
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
   [text]
   (let [tag-names (->> (re-seq template-tag-regex (or text ""))

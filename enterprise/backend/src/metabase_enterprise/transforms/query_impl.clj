@@ -20,7 +20,11 @@
 
 (defmethod transforms.i/target-db-id :query
   [transform]
-  (-> transform :source :query :database))
+  ;; For query transforms, the target needs to match the source, so use the query as the source of truth.
+  (or (-> transform :source :query :database)
+      ;; Fallback to using a configured value.
+      (get-in transform [:target :database])
+      (:target_db_id transform)))
 
 (mr/def ::transform-details
   [:map

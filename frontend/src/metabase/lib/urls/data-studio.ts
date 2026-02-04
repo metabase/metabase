@@ -309,6 +309,20 @@ export function dataStudioArchivedSnippets() {
   return `${dataStudioLibrary()}/snippets/archived`;
 }
 
+export function dataStudioWorkspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function dataStudioWorkspace(
+  workspaceId: number,
+  transformId?: number | string,
+) {
+  if (transformId) {
+    return `${dataStudioWorkspaceList()}/${workspaceId}?transformId=${transformId}`;
+  }
+  return `${dataStudioWorkspaceList()}/${workspaceId}`;
+}
+
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
 }
