@@ -4540,8 +4540,7 @@
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (defn handle-broken-subscription-notification!
-    "Handles the notification logic for broken subscriptions.i"
+  (defn- test-handle-broken-subscription-notification!
     [{:keys [disable-links? email-body-re match-email-body-re?]}]
     (let [param {:name "Source"
                  :slug "source"
@@ -4650,19 +4649,19 @@
                 (emails-received? "trashbird@metabase.com"))))))))
 
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
-    (handle-broken-subscription-notification!
+    (test-handle-broken-subscription-notification!
      {:disable-links?       false
       :email-body-re        "#my-channel"
       :match-email-body-re? true}))
 
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
-    (handle-broken-subscription-notification!
+    (test-handle-broken-subscription-notification!
      {:disable-links?       false
       :email-body-re        "href="
       :match-email-body-re? true}))
 
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
-    (handle-broken-subscription-notification!
+    (test-handle-broken-subscription-notification!
      {:disable-links?       true
       :email-body-re        "href="
       :match-email-body-re? false})))
