@@ -63,7 +63,7 @@ export function TransformsPurchasePage({
 
   const handlePurchase = useCallback(async () => {
     const productType =
-      selectedTier === "basic" ? "transforms" : "python-execution";
+      selectedTier === "basic" ? "transforms-basic" : "transforms-advanced";
     settingUpModalHandlers.open();
     try {
       await purchaseCloudAddOn({

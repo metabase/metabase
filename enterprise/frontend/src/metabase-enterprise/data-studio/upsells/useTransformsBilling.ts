@@ -42,7 +42,7 @@ export function useTransformsBilling(): {
       active &&
       self_service &&
       billing_period_months === billingPeriodMonths &&
-      product_type === "transforms",
+      product_type === "transforms-basic",
   );
 
   const pythonProduct = addOns?.find(
@@ -50,7 +50,7 @@ export function useTransformsBilling(): {
       active &&
       self_service &&
       billing_period_months === billingPeriodMonths &&
-      product_type === "python-execution",
+      product_type === "transforms-advanced",
   );
 
   return {
