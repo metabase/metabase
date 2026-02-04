@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";

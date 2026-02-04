@@ -7,7 +7,7 @@ import type {
 } from "metabase/querying/common/types";
 import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
 
-import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import {

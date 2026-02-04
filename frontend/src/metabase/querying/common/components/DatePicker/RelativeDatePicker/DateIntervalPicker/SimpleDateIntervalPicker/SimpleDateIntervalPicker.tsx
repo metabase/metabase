@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { NumberInputWithFallbackValue } from "metabase/querying/common/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue";
+import { NumberInputWithFallbackValue } from "metabase/querying/common/components/DatePicker/NumberInputWithFallbackValue";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
