@@ -4,25 +4,30 @@
    [clojure.set :as set]
    [metabase.transforms.inspector.core :as inspector]))
 
+(def ^:private empty-triggers #js {:alerts #js [] :drillLenses #js []})
+
 (defn ^:export evaluateTriggers
   "Evaluate all triggers. Returns {alerts: [...], drillLenses: [...]}."
   [lens-js card-results-js]
-  (let [lens-raw (js->clj lens-js :keywordize-keys true)
-        convert-condition (fn [c] (update c :name keyword))
-        lens (-> lens-raw
-                 (set/rename-keys {:alert_triggers :alert-triggers
-                                   :drill_lens_triggers :drill-lens-triggers})
-                 (update :alert-triggers #(mapv (fn [t] (update t :condition convert-condition)) %))
-                 (update :drill-lens-triggers #(mapv (fn [t]
-                                                       (-> t
-                                                           (set/rename-keys {:lens_id :lens-id})
-                                                           (update :condition convert-condition)))
-                                                     %)))
-        card-results (js->clj card-results-js)
-        result (inspector/evaluate-triggers lens card-results)
-        drill-lenses-out (mapv #(set/rename-keys % {:lens-id :lens_id}) (:drill-lenses result))]
-    (clj->js {:alerts (:alerts result)
-              :drillLenses drill-lenses-out})))
+  (if (and (empty? (unchecked-get lens-js "alert_triggers"))
+           (empty? (unchecked-get lens-js "drill_lens_triggers")))
+    empty-triggers
+    (let [lens-raw (js->clj lens-js :keywordize-keys true)
+          convert-condition (fn [c] (update c :name keyword))
+          lens (-> lens-raw
+                   (set/rename-keys {:alert_triggers :alert-triggers
+                                     :drill_lens_triggers :drill-lens-triggers})
+                   (update :alert-triggers #(mapv (fn [t] (update t :condition convert-condition)) %))
+                   (update :drill-lens-triggers #(mapv (fn [t]
+                                                         (-> t
+                                                             (set/rename-keys {:lens_id :lens-id})
+                                                             (update :condition convert-condition)))
+                                                       %)))
+          card-results (js->clj card-results-js)
+          result (inspector/evaluate-triggers lens card-results)
+          drill-lenses-out (mapv #(set/rename-keys % {:lens-id :lens_id}) (:drill-lenses result))]
+      (clj->js {:alerts (:alerts result)
+                :drillLenses drill-lenses-out}))))
 
 (defn ^:export computeCardResult
   "Compute derived fields from first row of query result for a card.
