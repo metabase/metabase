@@ -55,7 +55,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   getItemColor = (item) => item.color,
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
-  const isDragDisabled = items.length < 1;
+  const isDragDisabled = true;
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });

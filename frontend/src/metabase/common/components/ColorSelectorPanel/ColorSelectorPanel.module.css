@@ -1,0 +1,11 @@
+.ChromeColorPicker {
+  background-color: var(--mb-color-bg-white);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  border: calc(0.0625rem * var(--mantine-scale)) solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  min-height: fit-content;
+}

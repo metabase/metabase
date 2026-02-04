@@ -57,7 +57,7 @@ export const SortableList = <T,>({
   onSortEnd,
   sensors = [],
   modifiers = [],
-  useDragOverlay = true,
+  useDragOverlay = false,
   dividers,
 }: SortableListProps<T>) => {
   const [itemIds, setItemIds] = useState<ItemId[]>([]);
