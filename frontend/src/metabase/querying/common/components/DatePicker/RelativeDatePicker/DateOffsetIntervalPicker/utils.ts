@@ -5,7 +5,7 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 
 import { getAvailableTruncationUnits, getDirection } from "../utils";

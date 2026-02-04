@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { NumberInputWithFallbackValue } from "metabase/querying/filters/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue";
+import { NumberInputWithFallbackValue } from "metabase/querying/common/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { Group, Select } from "metabase/ui";
 
 import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";

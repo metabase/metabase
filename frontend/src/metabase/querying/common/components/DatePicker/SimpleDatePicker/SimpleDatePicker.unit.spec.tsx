@@ -4,12 +4,12 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_UNITS,
-} from "metabase/querying/filters/constants";
+} from "metabase/querying/common/constants";
 import type {
   DatePickerOperator,
   DatePickerUnit,
   DatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 
 import { SimpleDatePicker } from "./SimpleDatePicker";
 

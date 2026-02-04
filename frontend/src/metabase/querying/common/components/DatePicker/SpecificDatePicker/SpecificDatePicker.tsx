@@ -4,7 +4,7 @@ import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import type { DatePickerSubmitButtonProps } from "../types";

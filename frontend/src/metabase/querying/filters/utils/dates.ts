@@ -7,9 +7,8 @@ import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_TRUNCATION_UNITS,
-} from "metabase/querying/filters/constants";
+} from "metabase/querying/common/constants";
 import type {
-  DateFilterDisplayOpts,
   DateFilterValue,
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -21,7 +20,8 @@ import type {
   QuarterYearPickerValue,
   RelativeDatePickerValue,
   SpecificDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
+import type { DateFilterDisplayOpts } from "metabase/querying/filters/types";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DateFormattingSettings } from "metabase-types/api";

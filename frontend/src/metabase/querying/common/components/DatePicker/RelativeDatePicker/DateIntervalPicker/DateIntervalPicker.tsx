@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import {
   Button,
   Divider,

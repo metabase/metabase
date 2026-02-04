@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
+import { NumberFilterInput } from "metabase/querying/common/components/NumberFilterInput";
 import {
   type NumberOrEmptyValue,
   useNumberFilter,
@@ -10,11 +11,10 @@ import {
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { NumberFilterValuePicker } from "../../FilterValuePicker";
-import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
+import { NumberFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 

@@ -6,12 +6,12 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
-} from "metabase/querying/filters/constants";
+} from "metabase/querying/common/constants";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   ExcludeDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { createMockState } from "metabase-types/store/mocks";
 
 import type { DatePickerSubmitButtonProps } from "../types";

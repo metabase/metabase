@@ -4,7 +4,7 @@ import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

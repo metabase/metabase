@@ -4,12 +4,12 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_DIRECTIONS,
   DATE_PICKER_UNITS,
-} from "metabase/querying/filters/constants";
+} from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 
 import { RelativeDatePicker } from "./RelativeDatePicker";
 

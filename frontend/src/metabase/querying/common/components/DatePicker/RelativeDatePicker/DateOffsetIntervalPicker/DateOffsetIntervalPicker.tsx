@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
 
 import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";

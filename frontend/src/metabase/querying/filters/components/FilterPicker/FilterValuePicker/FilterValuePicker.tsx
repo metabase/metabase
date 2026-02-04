@@ -7,15 +7,14 @@ import {
   useSearchFieldValuesQuery,
 } from "metabase/api";
 import { parseNumber } from "metabase/lib/number";
-import type { ComboboxProps } from "metabase/ui";
-import * as Lib from "metabase-lib";
-
 import {
   FieldValuePicker,
   type UseGetFieldValuesArgs,
   type UseGetRemappedFieldValueArgs,
   type UseSearchFieldValuesArgs,
-} from "../FieldValuePicker";
+} from "metabase/querying/common/components/FieldValuePicker";
+import type { ComboboxProps } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import {
   canListFieldValues,

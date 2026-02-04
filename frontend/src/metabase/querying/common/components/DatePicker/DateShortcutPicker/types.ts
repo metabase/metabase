@@ -1,7 +1,7 @@
 import type {
   DatePickerOperator,
   DatePickerValueType,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 
 export interface TypeOption {
   label: string;

@@ -1,11 +1,11 @@
-import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/filters/constants";
+import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 
 import { DEFAULT_VALUE, TABS } from "./constants";

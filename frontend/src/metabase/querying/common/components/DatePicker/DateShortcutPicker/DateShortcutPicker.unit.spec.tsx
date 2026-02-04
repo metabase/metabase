@@ -5,12 +5,12 @@ import {
   DATE_PICKER_DIRECTIONS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_SHORTCUTS,
-} from "metabase/querying/filters/constants";
+} from "metabase/querying/common/constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 
 import { DateShortcutPicker } from "./DateShortcutPicker";
 

@@ -8,7 +8,7 @@ import type {
   DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,

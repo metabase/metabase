@@ -3,7 +3,7 @@ import type {
   DatePickerShortcut,
   RelativeIntervalDirection,
   ShortcutOption,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 
 import { SHORTCUT_OPTION_GROUPS, TYPE_OPTIONS } from "./constants";
 import type { TypeOption } from "./types";

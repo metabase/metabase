@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 
 import { DatePicker } from "./DatePicker";
 

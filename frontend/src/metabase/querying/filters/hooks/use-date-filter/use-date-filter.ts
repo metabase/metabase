@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import {
   getDateFilterClause,
   getDatePickerUnits,

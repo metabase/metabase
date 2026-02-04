@@ -6,7 +6,7 @@ import type {
   DatePickerValueType,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { Box, Button, Divider } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";

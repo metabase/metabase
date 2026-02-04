@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type {
   DatePickerOperator,
   DatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { Select } from "metabase/ui";
 
 import { getAvailableOptions, getOptionType, setOptionType } from "./utils";

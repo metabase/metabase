@@ -1,7 +1,7 @@
 import type {
   DatePickerOperator,
   DatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 
 import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
 import {

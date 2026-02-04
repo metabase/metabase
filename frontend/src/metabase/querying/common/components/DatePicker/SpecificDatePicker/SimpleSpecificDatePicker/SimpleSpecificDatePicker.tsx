@@ -1,4 +1,4 @@
-import type { SpecificDatePickerValue } from "metabase/querying/filters/types";
+import type { SpecificDatePickerValue } from "metabase/querying/common/types";
 
 import type { DateRangePickerValue } from "../DateRangePicker";
 import { SimpleDateRangePicker } from "../DateRangePicker/SimpleDateRangePicker";

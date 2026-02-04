@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
