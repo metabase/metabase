@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "3d304dec46f485af471d2af0866054d94556b516"
+    "hash": "47d7d7dcddb44faf2ceeb327c5748b596633629d"
   },
   "upstream": {
     "branch": "emb-1266-add-backend-completion-checks-for-data-segregation-and"
