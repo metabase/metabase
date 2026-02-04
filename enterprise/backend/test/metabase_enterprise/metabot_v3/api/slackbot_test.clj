@@ -74,7 +74,8 @@
           (is (= "3eZbrw1aBm2rZgRNFdxV2595E9CY3gmdALWMmHkvFXO7tYXAYM8P" response))))
 
       (testing "handles regular events without challenge"
-        (let [body {:type "event_callback"}
+        (let [body {:type "event_callback"
+                    :event {:text "hi"}}
               response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                   (slack-request-options body)
                                   body)]

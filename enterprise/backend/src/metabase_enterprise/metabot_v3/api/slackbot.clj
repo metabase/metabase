@@ -6,6 +6,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
@@ -26,6 +27,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
@@ -225,42 +228,77 @@
 
 ;; -------------------- API ---------------------------
 
-(defn- slackbot-manifest [base-url]
-  {"display_information" {"name" "Metabot"
-                          "description" "Your AI-powered data assistant"
-                          "background_color" "#509EE3"}
-   "features" {"app_home" {"home_tab_enabled" false
-                           "messages_tab_enabled" true
-                           "messages_tab_read_only_enabled" false}
-               "bot_user" {"display_name" "Metabot"
-                           "always_online" false}
-               "assistant_view" {"assistant_description" "Your AI-powered data assistant"}
-               "slash_commands" [{"command" "/metabot"
-                                  "url" (str base-url "/api/ee/metabot-v3/slack/commands")
-                                  "description" "Issue a Metabot command"
-                                  "should_escape" false}]}
+(def ^:private SlackbotManifest
+  "Malli schema for Slack app manifest structure"
+  [:map
+   [:display_information [:map
+                          [:name :string]
+                          [:description :string]
+                          [:background_color :string]]]
+   [:features [:map
+               [:app_home [:map
+                           [:home_tab_enabled :boolean]
+                           [:messages_tab_enabled :boolean]
+                           [:messages_tab_read_only_enabled :boolean]]]
+               [:bot_user [:map
+                           [:display_name :string]
+                           [:always_online :boolean]]]
+               [:assistant_view [:map
+                                 [:assistant_description :string]]]
+               [:slash_commands [:sequential [:map
+                                              [:command :string]
+                                              [:url ms/Url]
+                                              [:description :string]
+                                              [:should_escape :boolean]]]]]]
+   [:oauth_config [:map
+                   [:redirect_urls [:sequential ms/Url]]
+                   [:scopes [:map
+                             [:bot [:sequential :string]]]]]]
+   [:settings [:map
+               [:event_subscriptions [:map
+                                      [:request_url ms/Url]
+                                      [:bot_events [:sequential :string]]]]
+               [:interactivity [:map
+                                [:is_enabled :boolean]
+                                [:request_url ms/Url]]]
+               [:org_deploy_enabled :boolean]
+               [:socket_mode_enabled :boolean]
+               [:token_rotation_enabled :boolean]]]])
 
-   "oauth_config" {"redirect_urls" [(str base-url "/auth/sso")]
-                   "scopes" {"bot" ["channels:history"
-                                    "chat:write"
-                                    "commands"
-                                    "im:history"
-                                    "files:write"
-                                    "files:read"
-                                    "assistant:write"]}}
-
-   "settings" {"event_subscriptions" {"request_url" (str base-url "/api/ee/metabot-v3/slack/events")
-                                      "bot_events" ["app_home_opened"
-                                                    "message.channels"
-                                                    "message.im"
-                                                    "assistant_thread_started"
-                                                    "assistant_thread_context_changed"]}
-
-               "interactivity" {"is_enabled" true
-                                "request_url" (str base-url "/api/ee/metabot-v3/slack/interactive")}
-               "org_deploy_enabled" true
-               "socket_mode_enabled" false
-               "token_rotation_enabled" false}})
+(mu/defn- slackbot-manifest :- SlackbotManifest
+  [base-url :- ms/Url]
+  {:display_information {:name "Metabot"
+                         :description "Your AI-powered data assistant"
+                         :background_color "#509EE3"}
+   :features {:app_home {:home_tab_enabled false
+                         :messages_tab_enabled true
+                         :messages_tab_read_only_enabled false}
+              :bot_user {:display_name "Metabot"
+                         :always_online false}
+              :assistant_view {:assistant_description "Your AI-powered data assistant"}
+              :slash_commands [{:command "/metabot"
+                                :url (str base-url "/api/ee/metabot-v3/slack/commands")
+                                :description "Issue a Metabot command"
+                                :should_escape false}]}
+   :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
+                  :scopes {:bot ["channels:history"
+                                 "chat:write"
+                                 "commands"
+                                 "im:history"
+                                 "files:write"
+                                 "files:read"
+                                 "assistant:write"]}}
+   :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
+                                    :bot_events ["app_home_opened"
+                                                 "message.channels"
+                                                 "message.im"
+                                                 "assistant_thread_started"
+                                                 "assistant_thread_context_changed"]}
+              :interactivity {:is_enabled true
+                              :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
+              :org_deploy_enabled true
+              :socket_mode_enabled false
+              :token_rotation_enabled false}})
 
 ;; ------------------------- VALIDATION ----------------------------------
 
@@ -272,12 +310,40 @@
 
 ;; ------------------------- EVENT HANDLING ------------------------------
 
-(defn- handle-url-verification
+(def ^:private SlackEventsResponse
+  "Malli schema for Slack events API response"
+  [:map
+   ;; Response status is expected to be 2xx to indicate the event was received
+   ;; https://docs.slack.dev/apis/events-api/#error-handling
+   [:status  [:= 200]]
+   [:headers [:map ["Content-Type" [:= "text/plain"]]]]
+   [:body    :string]])
+
+(def ^:private SlackUrlVerificationEvent
+  "Malli schema for Slack url_verification event"
+  [:map
+   [:type      [:= "url_verification"]]
+   [:challenge :string]])
+
+;; TODO(appleby 2026-02-04) these are really separate event types and should be modeled
+;; with their own schemas. See BOT-852.
+(def ^:private SlackEventCallbackEvent
+  "Malli schema for Slack event_callback event"
+  [:map
+   [:type  [:= "event_callback"]]
+   [:event [:map
+            [:user      {:optional true} [:maybe :string]]
+            [:text      {:optional true} [:maybe :string]]
+            [:channel   {:optional true} [:maybe :string]]
+            [:ts        {:optional true} [:maybe :string]]
+            [:thread_ts {:optional true} [:maybe :string]]]]])
+
+(mu/defn- handle-url-verification :- SlackEventsResponse
   "Respond to a url_verification request (docs: https://docs.slack.dev/reference/events/url_verification)"
-  [event]
-  {:status 200
+  [event :- SlackUrlVerificationEvent]
+  {:status  200
    :headers {"Content-Type" "text/plain"}
-   :body (:challenge event)})
+   :body    (:challenge event)})
 
 (defn- user-message?
   "Check if event is a user message (not bot/system message)"
@@ -292,9 +358,9 @@
 
 (def ^:private ack-msg
   "Acknowledgement payload"
-  {:status 200
+  {:status  200
    :headers {"Content-Type" "text/plain"}
-   :body "ok"})
+   :body    "ok"})
 
 (defn- slack-id->user-id
   "Look up a Metabase user ID from Slack user ID."
@@ -348,9 +414,9 @@
                                       :text (str "You need to link your slack account and authorize the Metabot app. "
                                                  "Please visit: " slack-user-authorize-link)})))))
 
-(defn- handle-event-callback
+(mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request (docs: TODO)"
-  [payload]
+  [payload :- SlackEventCallbackEvent]
   (let [client {:token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
     (when (user-message? event)
@@ -360,7 +426,7 @@
 
 ;; ----------------------- ROUTES --------------------------
 
-(api.macros/defendpoint :get "/manifest"
+(api.macros/defendpoint :get "/manifest" :- SlackbotManifest
   "Returns the JSON manifest used to create a new Slack app"
   []
   (perms/check-has-application-permission :setting)
@@ -383,9 +449,15 @@
   (when-not (setup-complete?)
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
 
-(api.macros/defendpoint :post "/events"
+(api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"
-  [_route-params _query-params body request]
+  [_route-params
+   _query-params
+   body :- [:multi {:dispatch :type}
+            ["url_verification" SlackUrlVerificationEvent]
+            ["event_callback"   SlackEventCallbackEvent]
+            [::mc/default       [:map [:type :string]]]]
+   request]
   (assert-setup-complete)
   (assert-valid-slack-req request)
   ;; all handlers must respond within 3 seconds or slack will retry
