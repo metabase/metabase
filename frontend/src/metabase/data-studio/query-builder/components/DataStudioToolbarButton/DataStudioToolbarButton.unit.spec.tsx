@@ -30,42 +30,36 @@ const setup = ({
   });
 };
 
-it("should render a button if the card is a metric and the user has data studio access", async () => {
-  setup();
+describe("DataStudioToolbarButton", () => {
+  it("should render a button if the card is a metric and the user has data studio access", async () => {
+    setup();
 
-  expect(
-    await screen.findByRole("button", { name: "Open in Data Studio" }),
-  ).toBeInTheDocument();
-});
+    expect(
+      await screen.findByRole("button", { name: "Open in Data Studio" }),
+    ).toBeInTheDocument();
+  });
 
-it("should render a button if the card is a metric and the user is an admin", async () => {
-  setup({ is_superuser: true, is_data_analyst: false });
+  it("should render a button if the card is a metric and the user is an admin", async () => {
+    setup({ is_superuser: true, is_data_analyst: false });
 
-  expect(
-    await screen.findByRole("button", { name: "Open in Data Studio" }),
-  ).toBeInTheDocument();
-});
+    expect(
+      await screen.findByRole("button", { name: "Open in Data Studio" }),
+    ).toBeInTheDocument();
+  });
 
-it("should not render a button if the card is a metric and the user is not a data analyst", async () => {
-  setup({ is_data_analyst: false });
+  it("should not render a button if the card is a model", async () => {
+    setup({ type: "model" });
 
-  expect(
-    screen.queryByRole("button", { name: "Open in Data Studio" }),
-  ).not.toBeInTheDocument();
-});
+    expect(
+      screen.queryByRole("button", { name: "Open in Data Studio" }),
+    ).not.toBeInTheDocument();
+  });
 
-it("should not render a button if the card is a model", async () => {
-  setup({ type: "model" });
+  it("should not render a button if the card is a question", async () => {
+    setup({ type: "question" });
 
-  expect(
-    screen.queryByRole("button", { name: "Open in Data Studio" }),
-  ).not.toBeInTheDocument();
-});
-
-it("should not render a button if the card is a question", async () => {
-  setup({ type: "question" });
-
-  expect(
-    screen.queryByRole("button", { name: "Open in Data Studio" }),
-  ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open in Data Studio" }),
+    ).not.toBeInTheDocument();
+  });
 });
