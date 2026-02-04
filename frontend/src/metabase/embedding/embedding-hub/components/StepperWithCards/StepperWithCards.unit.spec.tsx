@@ -189,7 +189,7 @@ describe("StepperWithCards", () => {
     expect(lockedCard).toBeDisabled();
 
     // clicking the card should not trigger the action
-    userEvent.click(lockedCard);
+    await userEvent.click(lockedCard);
     expect(mockClickAction).not.toHaveBeenCalled();
 
     // step should not be marked as done
