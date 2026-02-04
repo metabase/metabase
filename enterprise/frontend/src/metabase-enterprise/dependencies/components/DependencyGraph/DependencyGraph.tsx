@@ -148,6 +148,7 @@ export function DependencyGraph({
               />
             )}
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
+            {withAppSwitcher && <AppSwitcher className={S.appSwitcher} />}
           </Group>
         </Panel>
         {selection != null && selectedNode != null && (
@@ -168,7 +169,6 @@ export function DependencyGraph({
             )}
           </Panel>
         )}
-        {withAppSwitcher && <AppSwitcher className={S.appSwitcher} />}
       </ReactFlow>
     </GraphContext.Provider>
   );

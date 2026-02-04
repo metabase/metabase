@@ -8,7 +8,6 @@
   flex-direction: column;
   bottom: 0;
   pointer-events: none;
-  z-index: 20;
 }
 
 .panelContent {
@@ -28,9 +27,7 @@
 }
 
 .appSwitcher {
-  position: absolute;
-  top: 1.25rem;
-  right: 3.5rem;
+  margin-left: auto;
+  margin-right: 2.5rem;
   background-color: var(--mb-color-background-secondary);
-  z-index: 10;
 }
