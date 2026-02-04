@@ -8,6 +8,7 @@
   flex-direction: column;
   bottom: 0;
   pointer-events: none;
+  z-index: 20;
 }
 
 .panelContent {
@@ -24,4 +25,12 @@
       background-color: var(--mb-color-background);
     }
   }
+}
+
+.appSwitcher {
+  position: absolute;
+  top: 1.25rem;
+  right: 3.5rem;
+  background-color: var(--mb-color-background-secondary);
+  z-index: 10;
 }
