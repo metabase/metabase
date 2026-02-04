@@ -14,6 +14,7 @@ import { skipToken } from "metabase/api";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import * as Urls from "metabase/lib/urls";
 import {
+  Group,
   Loader,
   Stack,
   Text,
@@ -34,6 +35,7 @@ import { GraphEntryInput } from "../DependencyGraph/GraphEntryInput";
 import S from "./Erd.module.css";
 import { ErdEdge } from "./ErdEdge";
 import { ErdNodeLayout } from "./ErdNodeLayout";
+import { ErdNodeSearch } from "./ErdNodeSearch";
 import { ErdTableNode } from "./ErdTableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { ErdFlowEdge, ErdFlowNode } from "./types";
@@ -136,13 +138,16 @@ export function Erd({ tableId, modelId }: ErdProps) {
       <Controls showInteractive={false} />
       {nodes.length > 0 && <ErdNodeLayout />}
       <Panel className={S.entryInput} position="top-left">
-        <GraphEntryInput
-          node={null}
-          isGraphFetching={isFetching}
-          getGraphUrl={getGraphUrl}
-          allowedSearchModels={ERD_SEARCH_MODELS}
-          pickerModels={ERD_PICKER_MODELS}
-        />
+        <Group gap="sm">
+          <GraphEntryInput
+            node={null}
+            isGraphFetching={isFetching}
+            getGraphUrl={getGraphUrl}
+            allowedSearchModels={ERD_SEARCH_MODELS}
+            pickerModels={ERD_PICKER_MODELS}
+          />
+          <ErdNodeSearch nodes={nodes} />
+        </Group>
       </Panel>
       {isFetching && (
         <Panel position="top-center">

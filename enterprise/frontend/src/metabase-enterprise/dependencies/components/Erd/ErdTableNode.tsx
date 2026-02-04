@@ -42,14 +42,8 @@ export const ErdTableNode = memo(function ErdTableNode({
 
   return (
     <Stack className={cx(S.card, { [S.focal]: data.is_focal })} gap={0}>
-      <Group
-        className={S.header}
-        gap={8}
-        px={16}
-        py={20}
-        wrap="nowrap"
-      >
-        <FixedSizeIcon name="table2" color={iconColor} />
+      <Group className={S.header} gap={8} px={16} py={20} wrap="nowrap">
+        <FixedSizeIcon name="table2" style={{ color: iconColor }} />
         <Box
           fz={17}
           c={headerColor}
