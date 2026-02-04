@@ -43,7 +43,7 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     },
     type(
       text: string,
-      { focus = true, delay = 10, allowFastSet = false }: TypeOptions = {},
+      { focus = true, delay = 25, allowFastSet = false }: TypeOptions = {},
     ) {
       if (focus) {
         helpers.focus();
