@@ -99,6 +99,7 @@ export const VisualizationCard = ({
             <Visualization
               rawSeries={rawSeries}
               showTitle={true}
+              isDashboard={true}
               actionButtons={actionButtons}
               getHref={getHref}
               onChangeCardAndRun={onChangeCardAndRun}
@@ -158,6 +159,7 @@ function buildRawSeries(
         visualization_settings: {
           "graph.y_axis.labels_enabled": false,
           "graph.x_axis.labels_enabled": false,
+          "table.row_index": false,
           ...displaySettings,
           ...card.visualization_settings,
         },
