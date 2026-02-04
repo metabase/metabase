@@ -1567,7 +1567,6 @@
    :uses #{analytics
            api
            channel
-           config
            database-routing
            driver
            events
