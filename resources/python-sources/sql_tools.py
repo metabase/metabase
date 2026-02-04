@@ -777,3 +777,161 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
     transformed = ast.transform(rename_fn)
     return transformed.sql(dialect=dialect)
+
+# This is the schema less implementation
+def returned_columns_no_schema(sql: str, dialect: str = "postgres") -> str:
+    """
+    Extract output columns and their source column dependencies without requiring a schema.
+
+    For each output column in the SELECT clause, traces back through subqueries and CTEs
+    to find the original source table columns.
+
+    Args:
+        sql: SQL query string
+        dialect: SQL dialect string (e.g., "postgres", "mysql")
+
+    Returns:
+        JSON array where each element is:
+        {
+            "identifier": "output_column_name",
+            "source_columns": [["table_name", "column_name"], ...]
+        }
+
+    Examples:
+        returned_columns_no_schema("SELECT x FROM (SELECT id AS x FROM orders)", "postgres")
+        => '[{"identifier": "x", "source_columns": [["orders", "id"]]}]'
+
+        returned_columns_no_schema("SELECT id FROM (SELECT * FROM orders)", "postgres")
+        => '[{"identifier": "id", "source_columns": [["orders", "*"]]}]'
+    """
+    ast = sqlglot.parse_one(sql, read=dialect)
+    root_scope = optimizer.build_scope(ast)
+
+    # Build mapping from scope to its ordered list of scopes (from innermost to outermost)
+    scope_list = list(root_scope.traverse())
+
+    # Collect CTE names to identify them later
+    cte_names = set()
+    for cte in ast.find_all(exp.CTE):
+        if cte.alias:
+            cte_names.add(cte.alias)
+
+    def find_source_columns(col_name, scope, table_qualifier=None, through_wildcard=False):
+        """
+        Recursively trace a column name back through scopes to find source table columns.
+        Returns a set of (table_name, column_name) tuples.
+
+        col_name: column name to trace
+        scope: current scope to search in
+        table_qualifier: if set, only look in this specific source (alias or table name)
+        through_wildcard: if True, the column came through a SELECT *, so record as "*"
+        """
+        sources = set()
+
+        # Check each source in this scope
+        for alias, source in scope.sources.items():
+            # If we have a table qualifier, only check that specific source
+            if table_qualifier and alias != table_qualifier:
+                continue
+
+            if isinstance(source, exp.Table):
+                table_name = source.name
+                # Skip CTEs (they're defined elsewhere, not actual tables)
+                if table_name in cte_names:
+                    continue
+                # If column came through a wildcard, record as wildcard
+                if col_name == "*" or through_wildcard:
+                    sources.add((table_name, "*"))
+                else:
+                    sources.add((table_name, col_name))
+
+            elif hasattr(source, 'expression'):
+                # It's a subquery scope - need to trace into it
+                subquery_scope = source
+                subquery_expr = subquery_scope.expression
+
+                if hasattr(subquery_expr, 'named_selects'):
+                    named_selects = subquery_expr.named_selects
+
+                    # Check if col_name is explicitly aliased/named in the subquery (not via *)
+                    explicit_names = [n for n in named_selects if n != "*"]
+
+                    if col_name in explicit_names:
+                        # Find the actual expression for this explicit column
+                        for select_expr in subquery_expr.expressions:
+                            expr_name = None
+                            if isinstance(select_expr, exp.Alias):
+                                expr_name = select_expr.alias
+                                inner_expr = select_expr.this
+                            elif isinstance(select_expr, exp.Column):
+                                expr_name = select_expr.name
+                                inner_expr = select_expr
+                            elif isinstance(select_expr, exp.Star):
+                                # Skip stars when looking for explicit columns
+                                continue
+                            else:
+                                continue
+
+                            if expr_name == col_name:
+                                if isinstance(inner_expr, exp.Column):
+                                    # Trace this column into the subquery, preserving wildcard flag
+                                    sources.update(find_source_columns(inner_expr.name, subquery_scope, inner_expr.table, through_wildcard))
+                                elif isinstance(inner_expr, exp.Star):
+                                    sources.update(find_source_columns("*", subquery_scope, None, through_wildcard=True))
+                                else:
+                                    # It's an expression - find all columns used in it
+                                    for col in inner_expr.find_all(exp.Column):
+                                        sources.update(find_source_columns(col.name, subquery_scope, col.table, through_wildcard))
+                                break  # Found the explicit match, stop searching
+
+                    # If column comes through a wildcard (not explicitly named, or we're looking for *)
+                    elif "*" in named_selects or col_name == "*":
+                        sources.update(find_source_columns(col_name, subquery_scope, None, through_wildcard=True))
+
+        return sources
+
+    # Get the outermost (root) scope - the last one in traverse order
+    outermost_scope = scope_list[-1] if scope_list else None
+    if not outermost_scope:
+        return json.dumps([])
+
+    result = []
+    outermost_expr = outermost_scope.expression
+
+    for select_name in outermost_expr.named_selects:
+        # Find the expression for this select
+        source_columns = set()
+
+        for select_expr in outermost_expr.expressions:
+            expr_name = None
+            if isinstance(select_expr, exp.Alias):
+                expr_name = select_expr.alias
+                inner_expr = select_expr.this
+            elif isinstance(select_expr, exp.Column):
+                expr_name = select_expr.name
+                inner_expr = select_expr
+            elif isinstance(select_expr, exp.Star):
+                # SELECT * - need to find all sources
+                if select_name == "*":
+                    source_columns.update(find_source_columns("*", outermost_scope, None))
+                continue
+            else:
+                continue
+
+            if expr_name == select_name:
+                if isinstance(inner_expr, exp.Column):
+                    source_columns.update(find_source_columns(inner_expr.name, outermost_scope, inner_expr.table))
+                elif isinstance(inner_expr, exp.Star):
+                    source_columns.update(find_source_columns("*", outermost_scope, None))
+                else:
+                    # Complex expression - find all columns
+                    for col in inner_expr.find_all(exp.Column):
+                        source_columns.update(find_source_columns(col.name, outermost_scope, col.table))
+                break
+
+        result.append({
+            "identifier": select_name,
+            "source_columns": sorted(list(source_columns))
+        })
+
+    return json.dumps(result)
