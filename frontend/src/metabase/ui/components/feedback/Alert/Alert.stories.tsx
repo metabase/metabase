@@ -1,4 +1,3 @@
-// trigger loki stress test
 import { Alert, type AlertProps, Icon, Stack, Text } from "metabase/ui";
 
 const args = {
