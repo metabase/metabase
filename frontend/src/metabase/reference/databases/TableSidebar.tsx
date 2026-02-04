@@ -1,6 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
+import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -9,10 +8,23 @@ import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
+import type { Database, Table } from "metabase-types/api";
 
 import { trackReferenceXRayClicked } from "../analytics";
 
-const TableSidebar = ({ database, table, style, className }) => (
+interface TableSidebarProps {
+  database: Database;
+  table: Table;
+  className?: string;
+  style?: CSSProperties;
+}
+
+const TableSidebar = ({
+  database,
+  table,
+  style,
+  className,
+}: TableSidebarProps) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div>
       <Breadcrumbs
@@ -57,13 +69,6 @@ const TableSidebar = ({ database, table, style, className }) => (
     </ol>
   </div>
 );
-
-TableSidebar.propTypes = {
-  database: PropTypes.object,
-  table: PropTypes.object,
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(TableSidebar);
