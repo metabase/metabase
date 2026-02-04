@@ -7,15 +7,10 @@ import type {
   NumberOrEmptyValue,
 } from "./types";
 
-export function getAvailableOptions(
-  column: Lib.ColumnMetadata,
-): CoordinateFilterOperatorOption[] {
-  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-  const variant = isKey ? "default" : "number";
-
+export function getAvailableOptions(): CoordinateFilterOperatorOption[] {
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: Lib.describeFilterOperator(operator, variant),
+    displayName: Lib.describeFilterOperator(operator),
   }));
 }
 
