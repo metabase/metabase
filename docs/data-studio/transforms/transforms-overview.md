@@ -31,9 +31,9 @@ Currently, Metabase can create transforms on the following databases:
 - Snowflake
 - SQL Server
 
-You can't create transforms on databases that have [Database routing](../permissions/database-routing.md) enabled, or on Metabase's Sample Database.
+You can't create transforms on databases that have [Database routing](../../permissions/database-routing.md) enabled, or on Metabase's Sample Database.
 
-Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../databases/users-roles-privileges.md).
+Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md).
 
 ## Types of transforms
 
@@ -148,7 +148,7 @@ To edit transform's target table, i.e., the table where the query results are wr
 
 You can run a transform manually or schedule the transform using tags and jobs.
 
-Running a transform for the first time will create and sync the table created by the transform, and you'll be able to edit the table's [metadata](./metadata-editing.md) and [permissions](../permissions/data.md). Subsequent runs will drop and recreate the table, unless you use [Incremental transforms](#incremental-transforms).
+Running a transform for the first time will create and sync the table created by the transform, and you'll be able to edit the table's [metadata](../../data-modeling/metadata-editing.md) and [permissions](../../permissions/data.md). Subsequent runs will drop and recreate the table, unless you use [Incremental transforms](#incremental-transforms).
 
 To run a transform manually, visit the transform in **Data Studio > Transforms > Runs** and click **Run**.
 
@@ -187,7 +187,7 @@ Incremental transforms only append new data since the previous transform run. Fo
 
 ### Make a transform incremental
 
-Incremental transforms work differently for query-based transforms and Python transforms, so see [incremental query transforms](query-transforms.md#incremental-query-transforms) and [incremental Python transforms](./query-transforms.md#incremental-python-transforms) for more information.
+Incremental transforms work differently for query-based transforms and Python transforms, so see [incremental query transforms](query-transforms.md#incremental-query-transforms) and [incremental Python transforms](./python-transforms.md#incremental-python-transforms) for more information.
 
 ## Versioning transforms
 
