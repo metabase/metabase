@@ -149,7 +149,7 @@
       (when-let [query (make-unmatched-rows-query ctx step)]
         {:id            (str "unmatched-sample-" step)
          :section-id    "samples"
-         :title         (str "Unmatched rows for join: " alias)
+         :title         (str "Sample of 100 unmatched rows for join: " alias)
          :display       :table
          :dataset-query query
          :metadata      {:card-type     :unmatched-sample

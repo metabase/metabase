@@ -137,6 +137,6 @@
    (let [lens-type (lens-id->type lens-id)]
      (if (lens-applicable? lens-type ctx)
        (make-lens lens-type ctx params)
-       (throw (ex-info (str "Lens not applicable: " lens-id)
+       (throw (ex-info "Lens data not available"
                        {:lens-id   lens-id
                         :lens-type lens-type}))))))
