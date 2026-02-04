@@ -9,16 +9,8 @@ import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
+import type { FormError, NotificationType } from "../../types";
 import { ModalMessage } from "./ArchiveModal.styled";
-
-type NotificationType = "alert" | "pulse";
-
-type FormError = {
-  status: number;
-  data?: {
-    message?: string;
-  };
-};
 
 type ArchiveModalProps = {
   item: Alert | DashboardSubscription;
