@@ -1,8 +1,7 @@
 (ns metabase-enterprise.embedding-hub.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (deftest has-user-created-models-test
   (testing "has-user-created-models? correctly handles multiple sample collections (metabase#64627)"
@@ -51,9 +50,9 @@
 
   (testing "create-tenants returns false when tenant is inactive"
     (mt/with-premium-features #{:embedding}
-      (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Inactive Tenant" :slug "inactive-tenant"}]
-        ;; Deactivate the tenant
-        (t2/update! :model/Tenant tenant-id {:is_active false})
+      (mt/with-temp [:model/Tenant _ {:name "Inactive Tenant"
+                                      :slug "inactive-tenant"
+                                      :is_active false}]
         (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
           (is (false? (:create-tenants response)))))))
 
@@ -101,4 +100,20 @@
                        :model/Sandbox _ {:group_id group-id
                                          :table_id (mt/id :venues)}]
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
-            (is (true? (:data-permissions-and-enable-tenants response)))))))))
+            (is (true? (:data-permissions-and-enable-tenants response))))))))
+
+  (testing "returns false when data segregation is not configured even if tenants are created"
+    (mt/with-premium-features #{:embedding :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (false? (:data-permissions-and-enable-tenants response))))))))
+
+  (testing "returns false when tenants are not created even if tenants and data segregation are configured"
+    (mt/with-premium-features #{:embedding :sandboxes :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Sandbox _ {:group_id group-id
+                                         :table_id (mt/id :venues)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (false? (:data-permissions-and-enable-tenants response)))))))))
