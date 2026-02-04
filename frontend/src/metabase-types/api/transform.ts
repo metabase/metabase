@@ -1,3 +1,4 @@
+import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -23,7 +24,7 @@ export type Transform = {
   description: string | null;
   source: TransformSource;
   target: TransformTarget;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   created_at: string;
   updated_at: string;
   source_readable: boolean;
@@ -40,10 +41,11 @@ export type Transform = {
   owner?: TransformOwner | null;
 
   // hydrated fields
-  tag_ids?: TransformTagId[];
+  collection?: Collection | null;
+  tag_ids?: TransformTagId[] | null;
   table?: Table | null;
   last_run?: TransformRun | null;
-  creator?: UserInfo;
+  creator?: UserInfo | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
