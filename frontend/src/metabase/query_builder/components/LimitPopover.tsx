@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { KeyboardEvent } from "react";
 import { t } from "ttag";
 
 import { Radio } from "metabase/common/components/Radio";
@@ -8,19 +8,29 @@ import { formatNumber } from "metabase/lib/formatting";
 import { LimitInput } from "metabase/query_builder/components/LimitInput";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
-const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
+interface CustomRowLimitProps {
+  limit: number | null;
+  onChangeLimit: (limit: number | null) => void;
+  onClose?: () => void;
+}
+
+const CustomRowLimit = ({
+  limit,
+  onChangeLimit,
+  onClose,
+}: CustomRowLimitProps) => {
   return (
     <LimitInput
       small
-      defaultValue={limit}
+      defaultValue={limit ?? undefined}
       className={cx({ [cx(CS.textBrand, CS.borderBrand)]: limit != null })}
       placeholder={t`Pick a limit`}
-      onKeyPress={(e) => {
+      onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
         if (e.nativeEvent.isComposing) {
           return;
         }
         if (e.key === "Enter") {
-          const value = parseInt(e.target.value, 10);
+          const value = parseInt((e.target as HTMLInputElement).value, 10);
           if (value > 0) {
             onChangeLimit(value);
           } else {
@@ -35,7 +45,19 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
   );
 };
 
-export const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
+interface LimitPopoverProps {
+  limit: number | null;
+  onChangeLimit: (limit: number | null) => void;
+  onClose?: () => void;
+  className?: string;
+}
+
+export const LimitPopover = ({
+  limit,
+  onChangeLimit,
+  onClose,
+  className,
+}: LimitPopoverProps) => (
   <div className={cx(className, CS.textBold, CS.textMedium)}>
     <Radio
       vertical
@@ -57,7 +79,7 @@ export const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
           value: "custom",
         },
       ]}
-      onChange={(value) =>
+      onChange={(value: string) =>
         value === "maximum" ? onChangeLimit(null) : onChangeLimit(2000)
       }
     />
