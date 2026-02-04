@@ -7,6 +7,7 @@ Metabase - The simplest, fastest way to get business intelligence and analytics 
 - [Custom actions](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/actions/custom.md)
 - [Introduction to actions](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/actions/introduction.md)
 - [Actions overview](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/actions/start.md)
+- [Metabase Agent API - Complete Reference](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/agent-api/reference.md)
 - [Metabot - Metabase's AI assistant](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/ai/metabot.md)
 - [Metabot AI settings](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/ai/settings.md)
 - [AI in Metabase](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/ai/start.md)
