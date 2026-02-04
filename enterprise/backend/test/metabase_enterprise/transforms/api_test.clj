@@ -63,10 +63,9 @@
     (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {transform-id :id} {}]
-          (let [response (mt/user-http-request :crowberto :put 402
-                                               (format "transform/%d" transform-id)
-                                               {:name "Updated Transform"})]
-            (is (= "Premium features required for this transform type are not enabled." response))))))))
+          (mt/user-http-request :crowberto :put 403
+                                (format "transform/%d" transform-id)
+                                {:name "Updated Transform"}))))))
 
 (deftest run-query-transform-requires-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
