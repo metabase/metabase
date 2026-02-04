@@ -1,10 +1,10 @@
-import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
 import { formatNumber } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import type { FieldId, FieldValue } from "metabase-types/api";
 
 import {
   Container,
@@ -16,15 +16,19 @@ import {
   RelativeContainer,
 } from "./GlobalFingerprint.styled";
 
-const propTypes = {
-  className: PropTypes.string,
-  fieldId: PropTypes.number,
-  showAllFieldValues: PropTypes.bool,
-};
+interface GlobalFingerprintProps {
+  className?: string;
+  fieldId: FieldId;
+  showAllFieldValues?: boolean;
+}
 
 const FIELD_VALUES_SHOW_LIMIT = 35;
 
-export function GlobalFingerprint({ className, fieldId, showAllFieldValues }) {
+export function GlobalFingerprint({
+  className,
+  fieldId,
+  showAllFieldValues,
+}: GlobalFingerprintProps) {
   const metadata = useSelector(getMetadata);
   const field = metadata.field(fieldId);
   const hasListValues = field?.has_field_values === "list";
@@ -34,7 +38,8 @@ export function GlobalFingerprint({ className, fieldId, showAllFieldValues }) {
 
   const fieldValues = fieldData ? fieldData.values : [];
   const distinctCount = field?.fingerprint?.global?.["distinct-count"];
-  const formattedDistinctCount = formatNumber(distinctCount);
+  const formattedDistinctCount =
+    distinctCount != null ? formatNumber(distinctCount) : null;
 
   const showDistinctCount = isLoading || distinctCount != null;
   const showFieldValuesBlock = isLoading || fieldValues.length > 0;
@@ -72,11 +77,13 @@ export function GlobalFingerprint({ className, fieldId, showAllFieldValues }) {
   ) : null;
 }
 
-ExtendedFieldValuesList.propTypes = {
-  fieldValues: PropTypes.array.isRequired,
-};
+interface ExtendedFieldValuesListProps {
+  fieldValues: FieldValue[];
+}
 
-function ExtendedFieldValuesList({ fieldValues }) {
+function ExtendedFieldValuesList({
+  fieldValues,
+}: ExtendedFieldValuesListProps) {
   return (
     <ul>
       {fieldValues.map((fieldValue, i) => {
@@ -84,18 +91,21 @@ function ExtendedFieldValuesList({ fieldValues }) {
         if (value === null) {
           return null;
         }
-        return <Li key={i}>{value}</Li>;
+        return <Li key={i}>{String(value)}</Li>;
       })}
     </ul>
   );
 }
 
-ShortenedFieldValuesList.propTypes = {
-  isLoading: PropTypes.bool.isRequired,
-  fieldValues: PropTypes.array.isRequired,
-};
+interface ShortenedFieldValuesListProps {
+  isLoading: boolean;
+  fieldValues: FieldValue[];
+}
 
-function ShortenedFieldValuesList({ isLoading, fieldValues }) {
+function ShortenedFieldValuesList({
+  isLoading,
+  fieldValues,
+}: ShortenedFieldValuesListProps) {
   const shortenedValuesStr = fieldValues
     .slice(0, FIELD_VALUES_SHOW_LIMIT)
     .map((value) => (Array.isArray(value) ? value[0] : value))
@@ -113,5 +123,3 @@ function ShortenedFieldValuesList({ isLoading, fieldValues }) {
     </RelativeContainer>
   );
 }
-
-GlobalFingerprint.propTypes = propTypes;
