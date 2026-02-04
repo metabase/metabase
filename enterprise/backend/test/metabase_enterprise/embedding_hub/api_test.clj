@@ -40,3 +40,80 @@
             (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
               (is (false? (:create-models response))
                   "Should exclude models in both sample collections"))))))))
+
+(deftest has-user-created-tenants-test
+  (testing "create-tenants returns true when there is an active tenant"
+    (mt/with-premium-features #{:embedding}
+      (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:create-tenants response)))))))
+
+  (testing "create-tenants returns false when tenant is inactive"
+    (mt/with-premium-features #{:embedding}
+      (mt/with-temp [:model/Tenant _ {:name "Inactive Tenant"
+                                      :slug "inactive-tenant"
+                                      :is_active false}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (false? (:create-tenants response)))))))
+
+  (testing "create-tenants returns false when no tenants exist"
+    (mt/with-premium-features #{:embedding}
+      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (is (false? (:create-tenants response)))))))
+
+(deftest has-configured-data-segregation-strategy-test
+  (testing "setup-data-segregation-strategy returns true when row-level security is configured"
+    (mt/with-premium-features #{:embedding :sandboxes}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Sandbox _ {:group_id group-id
+                                       :table_id (mt/id :venues)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:setup-data-segregation-strategy response)))))))
+
+  (testing "setup-data-segregation-strategy returns true when connection impersonation is configured"
+    (mt/with-premium-features #{:embedding}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/ConnectionImpersonation _ {:db_id (mt/id)
+                                                       :group_id group-id
+                                                       :attribute "test-attr"}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:setup-data-segregation-strategy response)))))))
+
+  (testing "setup-data-segregation-strategy returns true when database routing is configured"
+    (mt/with-premium-features #{:embedding :database-routing}
+      (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id)
+                                              :user_attribute "test-attr"}]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (true? (:setup-data-segregation-strategy response)))))))
+
+  (testing "setup-data-segregation-strategy returns false when none are configured"
+    (mt/with-premium-features #{:embedding}
+      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (is (false? (:setup-data-segregation-strategy response)))))))
+
+(deftest data-permissions-and-enable-tenants-test
+  (testing "data-permissions-and-enable-tenants returns true when all three conditions are met"
+    (mt/with-premium-features #{:embedding :sandboxes :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/Sandbox _ {:group_id group-id
+                                         :table_id (mt/id :venues)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (true? (:data-permissions-and-enable-tenants response))))))))
+
+  (testing "returns false when data segregation is not configured even if tenants are created"
+    (mt/with-premium-features #{:embedding :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (false? (:data-permissions-and-enable-tenants response))))))))
+
+  (testing "returns false when tenants are not created even if tenants and data segregation are configured"
+    (mt/with-premium-features #{:embedding :sandboxes :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Sandbox _ {:group_id group-id
+                                         :table_id (mt/id :venues)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (false? (:data-permissions-and-enable-tenants response)))))))))
