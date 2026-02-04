@@ -211,7 +211,8 @@
   [_driver _metadata-provider _col-spec]
   [])
 
-(defn- returned-columns
+(defn returned-columns
+  "Given a native query, return columns it produces using field-references pipeline."
   [driver native-query]
   (let [{:keys [returned-fields]} (sql-tools/field-references driver (lib/raw-native-query native-query))]
     (mapcat #(->> (resolve-field driver native-query %)
