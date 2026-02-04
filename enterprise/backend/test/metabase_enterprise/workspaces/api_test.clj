@@ -505,47 +505,48 @@
               (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
-  (testing "GET /api/ee/transform/:id/merge-history"
-    (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
-                   :model/Transform x1     {:name        "Transform for history"
-                                            :description "Test transform"
-                                            :target      {:type     "table"
-                                                          :database (mt/id)
-                                                          :schema   "public"
-                                                          :name     "merge_history_test_table"}}]
-      (let [{ws-id :id ws-name :name} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                            {:name        (mt/random-name)
-                                                             :database_id (mt/id)})
-            {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
-                                                            (merge {:global_id (:id x1)}
-                                                                   (select-keys x1 [:name :description :source :target])))
-            commit-msg                "Test merge for history endpoint"]
-        ;; Modify and merge the transform
-        (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified for history test"})
-        (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
-                              {:commit-message commit-msg})
+  (mt/with-premium-features #{:transforms :transforms-python :workspaces}
+    (testing "GET /api/transform/:id/merge-history"
+      (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
+                     :model/Transform x1     {:name        "Transform for history"
+                                              :description "Test transform"
+                                              :target      {:type     "table"
+                                                            :database (mt/id)
+                                                            :schema   "public"
+                                                            :name     "merge_history_test_table"}}]
+        (let [{ws-id :id ws-name :name} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                              {:name        (mt/random-name)
+                                                               :database_id (mt/id)})
+              {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                                              (merge {:global_id (:id x1)}
+                                                                     (select-keys x1 [:name :description :source :target])))
+              commit-msg                "Test merge for history endpoint"]
+          ;; Modify and merge the transform
+          (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified for history test"})
+          (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
+                                {:commit-message commit-msg})
 
-        (testing "returns merge history for a transform"
-          ;; workspace_id is preserved since workspace is archived (not deleted) after merge
-          (is (=? [{:id                 pos-int?
-                    :workspace_merge_id pos-int?
-                    :commit_message     commit-msg
-                    :workspace_id       ws-id
-                    :workspace_name     ws-name
-                    :merging_user_id    (mt/user->id :crowberto)
-                    :created_at         some?}]
-                  (mt/user-http-request :crowberto :get 200
-                                        (str "ee/transform/" (:id x1) "/merge-history")))))
+          (testing "returns merge history for a transform"
+            ;; workspace_id is preserved since workspace is archived (not deleted) after merge
+            (is (=? [{:id                 pos-int?
+                      :workspace_merge_id pos-int?
+                      :commit_message     commit-msg
+                      :workspace_id       ws-id
+                      :workspace_name     ws-name
+                      :merging_user_id    (mt/user->id :crowberto)
+                      :created_at         some?}]
+                    (mt/user-http-request :crowberto :get 200
+                                          (str "transform/" (:id x1) "/merge-history")))))
 
-        (testing "returns 404 for non-existent transform"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :get 404
-                                       "ee/transform/999999/merge-history"))))
+          (testing "returns 404 for non-existent transform"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :get 404
+                                         "transform/999999/merge-history"))))
 
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403
-                                       (str "ee/transform/" (:id x1) "/merge-history")))))))))
+          (testing "requires superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403
+                                         (str "transform/" (:id x1) "/merge-history"))))))))))
 
 (deftest merge-single-transform-failure-test
   (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}

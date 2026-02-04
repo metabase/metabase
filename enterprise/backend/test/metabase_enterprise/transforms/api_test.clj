@@ -73,9 +73,8 @@
     (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {transform-id :id} {}]
-          (let [response (mt/user-http-request :crowberto :post 402
-                                               (format "transform/%d/run" transform-id))]
-            (is (= "Premium features required for this transform type are not enabled." response))))))))
+          (mt/user-http-request :crowberto :post 403
+                                (format "transform/%d/run" transform-id)))))))
 
 (deftest list-transforms-404-without-feature-test
   (mt/with-premium-features #{:hosting}
@@ -86,7 +85,7 @@
     (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {transform-id :id} {}]
-          (mt/user-http-request :crowberto :get 404 (format "transform/%d" transform-id)))))))
+          (mt/user-http-request :crowberto :get 403 (format "transform/%d" transform-id)))))))
 
 (deftest list-transforms-excludes-python-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -99,12 +98,12 @@
             (is (contains? ids query-id))
             (is (not (contains? ids python-id)))))))))
 
-(deftest get-python-transform-404-without-python-feature-test
+(deftest get-python-transform-403-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
-          (mt/user-http-request :crowberto :get 404 (format "transform/%d" python-id)))))))
+          (mt/user-http-request :crowberto :get 403 (format "transform/%d" python-id)))))))
 
 (deftest get-python-transform-200-with-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
