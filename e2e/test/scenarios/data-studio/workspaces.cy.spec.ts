@@ -1702,17 +1702,19 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("Verify Edit transform button is disabled");
       cy.findByRole("button", { name: /Edit/ }).click();
       cy.wait("@checkoutWorkspace");
-      H.popover().contains("New workspace").should("be.disabled");
-      H.popover().contains("New workspace").realHover();
-      H.tooltip().should(
-        "contain.text",
-        "Transforms referencing other questions cannot be edited in a workspace.",
-      );
-      cy.log("Close tooltip");
-      cy.get("body").click();
+      H.popover()
+        .findByRole("menuitem", { name: /New workspace/ })
+        .should("be.disabled")
+        .realHover();
+      H.tooltip()
+        .should("be.visible")
+        .and(
+          "contain.text",
+          "Transforms referencing other questions cannot be edited in a workspace.",
+        );
 
       cy.log("Edit transform to remove model reference");
-      Transforms.clickEditDefinition();
+      H.popover().findByText("Edit definition").click();
       H.NativeEditor.type(
         '{selectall}SELECT * FROM "Schema A"."Animals" as t;',
       );
