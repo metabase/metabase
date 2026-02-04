@@ -129,7 +129,7 @@ describe("StepperWithCards", () => {
     expect(allSteps[0]).toHaveAttribute("data-done", "false");
 
     // no check icons should be present
-    expect(screen.queryAllByLabelText("check icon")).toHaveLength(0);
+    expect(screen.queryByLabelText("check icon")).not.toBeInTheDocument();
   });
 
   it("marks step as done when it only has optional cards and at least one is done", async () => {
