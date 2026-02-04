@@ -9,17 +9,12 @@ function isNotEmpty(value: string) {
   return value.length > 0;
 }
 
-function getOperatorName(
-  operator: Lib.StringFilterOperator,
-  column: Lib.ColumnMetadata,
-) {
-  const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-
+function getOperatorName(operator: Lib.StringFilterOperator) {
   switch (operator) {
     case "=":
-      return isKey ? t`Is` : t`Equal to`;
+      return t`Is`;
     case "!=":
-      return isKey ? t`Is not` : t`Not equal to`;
+      return t`Is not`;
     case "contains":
       return t`Contains`;
     case "does-not-contain":
@@ -44,7 +39,7 @@ export function getAvailableOptions(
     .filter(({ type }) => !isStringLike || type !== "partial")
     .map(({ operator }) => ({
       operator,
-      displayName: getOperatorName(operator, column),
+      displayName: getOperatorName(operator),
     }));
 }
 
