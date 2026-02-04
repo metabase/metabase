@@ -75,6 +75,8 @@
                         {:database-name (:name database)})))
       (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
+        ;; TODO: remove, temp hack. see: https://metaboat.slack.com/archives/CKZEMT1MJ/p1770242308801029?thread_ts=1770241635.689819&cid=CKZEMT1MJ
+        (t2/delete! :model/Transform :source_database_id existing-database-id)
         (t2/delete! :model/Database existing-database-id)))
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
