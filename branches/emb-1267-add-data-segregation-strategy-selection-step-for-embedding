@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1266-add-backend-completion-checks-for-data-segregation-and",
     "hash": "e773ce5ebba68bb0405e6cb41c3eb20bfe7b1e43"
+  },
+  "upstream": {
+    "branch": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69127,
+        "gqlID": "PR_kwDOAczgH87BiyHp"
+      }
+    }
   }
 }
