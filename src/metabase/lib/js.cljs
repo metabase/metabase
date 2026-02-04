@@ -85,6 +85,7 @@
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
@@ -1306,12 +1307,12 @@
   [arg]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
-(defn ^:export measure-metadata?
+(mu/defn ^:export measure-metadata? :- :boolean
   "Returns true if arg is an MLv2 measure, ie. has `:lib/type :metadata/measure`.
 
   > **Code health:** Healthy. This is used in the expression editor to parse and
   format expression clauses."
-  [arg]
+  [arg :- :any]
   (and (map? arg) (= :metadata/measure (:lib/type arg))))
 
 ;; # Field selection
@@ -1513,12 +1514,12 @@
       lib.convert/->legacy-MBQL
       normalize-legacy-ref))
 
-(defn ^:export column-unique-key
+(mu/defn ^:export column-unique-key :- :string
   "Given a column metadata from eg. [[fieldable-columns]], return an opaque unique key for it.
   This key is stable based on the column's alias and can be used to identify columns across operations.
 
   > **Code health:** Healthy. Prefer this over [[ref]] for identifying columns in UI state."
-  [column]
+  [column :- :any]
   (lib.metadata.column/column-unique-key column))
 
 (defn ^:export legacy-ref
@@ -2092,21 +2093,23 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-(defn ^:export measure-metadata
+(mu/defn ^:export measure-metadata :- [:maybe :map]
   "Get metadata for the Measure with `measure-id`, if it can be found.
 
   `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
   will be a query.
 
   > **Code health:** Healthy."
-  [metadata-providerable measure-id]
+  [metadata-providerable :- :any
+   measure-id :- :any]
   (lib.metadata/measure metadata-providerable measure-id))
 
-(defn ^:export available-measures
+(mu/defn ^:export available-measures :- :any
   "Returns a JS array of opaque Measures metadata objects, that could be used as aggregations for `a-query`.
 
   > **Code health:** Healthy."
-  [a-query stage-number]
+  [a-query :- :any
+   stage-number :- :int]
   (to-array (lib.core/available-measures a-query stage-number)))
 
 (defn ^:export available-metrics
@@ -2742,9 +2745,9 @@
         (u/prog1 (from-js-query* mp js-query)
           (.set cache js-query <>)))))
 
-(defn ^:export validate-template-tags
+(mu/defn ^:export validate-template-tags :- :any
   "Validates if the template tags in `query` are all valid and well-formed."
-  [js-query]
+  [js-query :- :any]
   (-> js-query
       js->clj
       lib.native/validate-template-tags

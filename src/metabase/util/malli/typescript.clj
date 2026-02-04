@@ -268,7 +268,17 @@
   [schema]
   (let [t (mc/type schema)]
     (cond
-      ;; For qualified keyword schemas (registry refs), output type name and record it
+      ;; For :malli.core/schema (registry wrapper), use mc/form to get the original keyword
+      (= t :malli.core/schema)
+      (let [form (mc/form schema)]
+        (if (and (keyword? form) (namespace form))
+          (do
+            (record-registry-ref! form)
+            (registry-type-name form))
+          ;; If form isn't a qualified keyword, resolve and expand
+          (schema->ts (mr/resolve-schema schema))))
+
+      ;; For other qualified keyword schemas, output type name and record it
       (and (keyword? t) (namespace t))
       (do
         (record-registry-ref! t)
