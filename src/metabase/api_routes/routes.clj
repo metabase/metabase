@@ -30,6 +30,7 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
+   [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
@@ -81,6 +82,7 @@
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.measures.api/keep-me
+         metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
@@ -167,6 +169,7 @@
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
+   "/metrics"              (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes

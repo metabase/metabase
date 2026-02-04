@@ -842,6 +842,14 @@
            search
            util}}
 
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api}
+   :uses #{api
+           collections
+           request
+           util}}
+
   model-persistence
   {:team "Querying"
    :api  #{metabase.model-persistence.api
