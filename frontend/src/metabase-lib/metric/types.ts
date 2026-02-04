@@ -3,6 +3,7 @@ import type {
   MetricId,
   NormalizedMeasure,
   NormalizedMetric,
+  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -77,7 +78,38 @@ export type JsMetadataProvider = {
   metrics?: Record<MetricId, NormalizedMetric>;
 };
 
-export type MetricSource = MetricMetadata | MeasureMetadata;
+export type SourceMetadata = MetricMetadata | MeasureMetadata;
+
+export type Clause = FilterClause | ProjectionClause;
+
+export type MetricDisplayInfo = {
+  displayName: string;
+};
+
+export type MeasureDisplayInfo = {
+  displayName: string;
+};
+
+export type ClauseDisplayInfo = {
+  displayName: string;
+};
+
+export type DimensionDisplayInfo = {
+  displayName: string;
+};
+
+export type TemporalBucketDisplayInfo = {
+  shortName: TemporalUnit;
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
+export type BinningStrategyDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
 
 export type FilterParts =
   | StringFilterParts
