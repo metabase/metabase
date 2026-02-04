@@ -1,3 +1,5 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
+
 import { useGetSubscriptionQuery, useUnsubscribeMutation } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
@@ -14,14 +16,12 @@ type UnsubscribePulseModalProps = {
 function UnsubscribePulseModal({
   params,
   onClose,
-}: UnsubscribePulseModalProps): React.JSX.Element | null {
+}: UnsubscribePulseModalProps): JSX.Element | null {
   const dispatch = useDispatch();
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
 
-  const { data: pulse } = useGetSubscriptionQuery(pulseId!, {
-    skip: pulseId == null,
-  });
+  const { data: pulse } = useGetSubscriptionQuery(pulseId ?? skipToken);
 
   const [unsubscribe] = useUnsubscribeMutation();
 
@@ -31,10 +31,10 @@ function UnsubscribePulseModal({
 
   const handleArchive = (
     item: { id: number },
-    type: string,
+    _type: "alert" | "pulse",
     hasUnsubscribed: boolean,
   ): void => {
-    dispatch(navigateToArchive(item, type, hasUnsubscribed));
+    dispatch(navigateToArchive(item, "pulse", hasUnsubscribed));
   };
 
   if (!pulse) {

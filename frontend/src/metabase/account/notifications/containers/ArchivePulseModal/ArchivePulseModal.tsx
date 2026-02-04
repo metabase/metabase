@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { Location } from "history";
 
 import {
@@ -20,13 +21,11 @@ function ArchivePulseModal({
   params,
   location,
   onClose,
-}: ArchivePulseModalProps): React.JSX.Element | null {
+}: ArchivePulseModalProps): JSX.Element | null {
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
 
-  const { data: pulse } = useGetSubscriptionQuery(pulseId!, {
-    skip: pulseId == null,
-  });
+  const { data: pulse } = useGetSubscriptionQuery(pulseId ?? skipToken);
 
   const [updateSubscription] = useUpdateSubscriptionMutation();
 

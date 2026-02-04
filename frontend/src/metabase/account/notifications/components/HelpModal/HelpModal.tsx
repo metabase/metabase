@@ -13,7 +13,7 @@ type HelpModalProps = {
   onClose?: (confirmed: boolean) => void;
 };
 
-function HelpModal({ onClose }: HelpModalProps): React.JSX.Element {
+function HelpModal({ onClose }: HelpModalProps): JSX.Element {
   const email = Settings.get("admin-email");
   const applicationName = useSelector(getApplicationName);
 

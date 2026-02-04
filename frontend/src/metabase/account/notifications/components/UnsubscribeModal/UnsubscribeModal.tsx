@@ -28,7 +28,7 @@ function UnsubscribeModal({
   onUnsubscribe,
   onArchive,
   onClose,
-}: UnsubscribeModalProps): React.JSX.Element {
+}: UnsubscribeModalProps): JSX.Element {
   const [error, setError] = useState<FormError>();
 
   const handleUnsubscribeClick = useCallback(async () => {

@@ -24,7 +24,7 @@ export function SendTestPulse<T extends DashboardSubscriptionData>({
   disabled,
   normalText,
   successText,
-}: SendTestPulseProps<T>): React.JSX.Element {
+}: SendTestPulseProps<T>): JSX.Element {
   const onTestPulseChannel = useCallback(() => {
     const channelPulse = { ...pulse, channels: [channel] };
     const cleanedPulse = cleanPulse(channelPulse, channelSpecs);

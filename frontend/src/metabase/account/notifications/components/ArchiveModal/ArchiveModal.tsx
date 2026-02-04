@@ -32,7 +32,7 @@ function ArchiveModal({
   hasUnsubscribed,
   onArchive,
   onClose,
-}: ArchiveModalProps): React.JSX.Element {
+}: ArchiveModalProps): JSX.Element {
   const [error, setError] = useState<FormError>();
 
   const handleArchiveClick = useCallback(async () => {

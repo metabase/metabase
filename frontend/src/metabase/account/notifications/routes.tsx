@@ -9,7 +9,7 @@ import { NotificationsApp } from "./containers/NotificationsApp";
 import { UnsubscribeAlertModal } from "./containers/UnsubscribeAlertModal";
 import UnsubscribePulseModal from "./containers/UnsubscribePulseModal";
 
-const getRoutes = (): React.JSX.Element => (
+const getRoutes = (): JSX.Element => (
   <Route path="notifications" component={NotificationsApp}>
     <ModalRoute path="help" modal={HelpModal} />
     <ModalRoute path="alert/:alertId/archive" modal={DeleteAlertModal} noWrap />

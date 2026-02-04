@@ -20,13 +20,11 @@ export const navigateToUnsubscribe = (
 
 export const navigateToArchive = (
   item: { id: number },
-  type: ListItemType | string,
+  type: ListItemType,
   hasUnsubscribed?: boolean,
 ) => {
   const query = hasUnsubscribed ? "?unsubscribed=true" : "";
-  return push(
-    `${PREFIX}/${TYPE_MAP[type as ListItemType]}/${item.id}/archive${query}`,
-  );
+  return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/archive${query}`);
 };
 
 export const navigateToHelp = () => {
