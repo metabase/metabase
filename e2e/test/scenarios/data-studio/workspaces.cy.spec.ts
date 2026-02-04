@@ -1699,13 +1699,13 @@ describe("scenarios > data studio > workspaces", () => {
         cy.button("Save").click();
       });
 
-      cy.log("Verify Edit transform button is disabled");
+      cy.log("Verify edit transform in a workspace button is disabled");
       cy.findByRole("button", { name: /Edit/ }).click();
       cy.wait("@checkoutWorkspace");
       H.popover()
         .findByRole("menuitem", { name: /New workspace/ })
         .should("be.disabled")
-        .realHover();
+        .trigger("mouseenter", { force: true }); // in CI realHover() does not work with disabled elements
       H.tooltip()
         .should("be.visible")
         .and(
