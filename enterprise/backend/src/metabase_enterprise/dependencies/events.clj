@@ -374,3 +374,21 @@
       (when (and (seq changes)
                  (deps.findings/mark-all-dependents-stale! {:table changes}))
         (task.entity-check/trigger-entity-check-job!)))))
+
+;; ### Admin UI Table/Field Metadata Updates
+;; When a table or field's metadata is updated via the admin UI, re-analyze all dependents of that table.
+(derive ::check-table-metadata-update :metabase/event)
+(derive :event/table-update ::check-table-metadata-update)
+
+(methodical/defmethod events/publish-event! ::check-table-metadata-update
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (deps.findings/mark-dependents-stale! :table (:id object))))
+
+(derive ::check-field-metadata-update :metabase/event)
+(derive :event/field-update ::check-field-metadata-update)
+
+(methodical/defmethod events/publish-event! ::check-field-metadata-update
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (deps.findings/mark-dependents-stale! :table (:table_id object))))

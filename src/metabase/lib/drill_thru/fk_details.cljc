@@ -80,7 +80,7 @@
       (when-let [fk-column-table (lib.metadata/table query (:table-id fk-column))]
         (let [other-fk-filters (for [filter-clause (lib.filter/filters query stage-number)
                                      :let [parts (lib.filter/filter-parts query stage-number filter-clause)]
-                                     :when (= (:short (:operator parts)) :=)
+                                     :when (= (:operator parts) :=)
                                      :let [other-fk-target (some->> parts
                                                                     :column
                                                                     :fk-target-field-id

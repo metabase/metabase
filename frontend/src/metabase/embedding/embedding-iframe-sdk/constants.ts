@@ -66,7 +66,11 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withNewQuestion",
     "withNewDashboard",
   ] satisfies (keyof BrowserEmbedOptions)[],
-  metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
+  metabot: [
+    "layout",
+    "isSaveEnabled",
+    "targetCollection",
+  ] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
 
 export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
