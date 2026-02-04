@@ -1,26 +1,37 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import Humanize from "humanize-plus";
+import type { MouseEvent } from "react";
 import { Component } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 
-export class ExpandableString extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.toggleExpansion = this.toggleExpansion.bind(this);
+interface ExpandableStringProps {
+  str?: string;
+  length?: number;
+  expanded?: boolean;
+}
 
+interface ExpandableStringState {
+  expanded: boolean;
+}
+
+export class ExpandableString extends Component<
+  ExpandableStringProps,
+  ExpandableStringState
+> {
+  static defaultProps = {
+    length: 140,
+  };
+
+  constructor(props: ExpandableStringProps) {
+    super(props);
     this.state = {
       expanded: false,
     };
   }
 
-  static defaultProps = {
-    length: 140,
-  };
-
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: ExpandableStringProps) {
     if (newProps.expanded !== undefined) {
       this.setState({
         expanded: newProps.expanded,
@@ -28,16 +39,16 @@ export class ExpandableString extends Component {
     }
   }
 
-  toggleExpansion(event) {
+  toggleExpansion = (event: MouseEvent) => {
     event.stopPropagation();
     this.setState({
       expanded: !this.state.expanded,
     });
-  }
+  };
 
   render() {
     if (!this.props.str) {
-      return false;
+      return null;
     }
 
     const truncated = Humanize.truncate(this.props.str || "", 140);
