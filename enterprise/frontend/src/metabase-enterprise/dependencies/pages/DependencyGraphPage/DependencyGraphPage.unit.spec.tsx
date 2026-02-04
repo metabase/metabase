@@ -1,8 +1,9 @@
-import React from "react";
 import { Route } from "react-router";
 
+import { setupDependecyGraphEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { createMockDependencyGraph } from "metabase-types/api/mocks";
 
 import { DependencyGraphPage } from "./DependencyGraphPage";
 
@@ -11,6 +12,9 @@ jest.mock("../../components/DependencyGraph", () => ({
 }));
 
 describe("DependencyGraphPage", () => {
+  beforeEach(() => {
+    setupDependecyGraphEndpoint(createMockDependencyGraph());
+  });
   it("should show an app switcher if there is no context", async () => {
     renderWithProviders(<Route path="/" component={DependencyGraphPage} />, {
       withRouter: true,
