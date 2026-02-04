@@ -237,11 +237,7 @@
                                 (lib/with-join-fields :all))))
         columns (into []
                       (lib.field.util/add-source-and-desired-aliases-xform query)
-                      (lib/filterable-columns query))
-        pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
-        temporal-operators [:!= := :< :> :between :is-null :not-null]
-        coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
-        text-operators [:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with]]
+                      (lib/filterable-columns query))]
     (is (= ["ID"
             "NAME"
             "LAST_LOGIN"
@@ -772,3 +768,44 @@
                                              :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
                                      "CREATED_AT"]
                                     "2023-01-01T00:00:00Z"])))))
+
+(deftest ^:parallel describe-filter-operator-test
+  (testing "default variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator))
+      "Is"                       :=
+      "Is not"                   :!=
+      "Contains"                 :contains
+      "Does not contain"         :does-not-contain
+      "Starts with"              :starts-with
+      "Ends with"                :ends-with
+      "Is empty"                 :is-empty
+      "Not empty"                :not-empty
+      "Greater than"             :>
+      "Less than"                :<
+      "Between"                  :between
+      "Greater than or equal to" :>=
+      "Less than or equal to"    :<=
+      "Is empty"                 :is-null
+      "Not empty"                :not-null
+      "Inside"                   :inside))
+  (testing "explicit :default variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator :default))
+      "Is"           :=
+      "Is not"       :!=
+      "Greater than" :>
+      "Less than"    :<))
+  (testing ":number variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator :number))
+      "Equal to"     :=
+      "Not equal to" :!=
+      "Greater than" :>
+      "Less than"    :<))
+  (testing ":temporal variant"
+    (are [expected operator] (= expected (lib/describe-filter-operator operator :temporal))
+      "Is"       :=
+      "Is not"   :!=
+      "After"    :>
+      "Before"   :<
+      "Between"  :between
+      "Is empty" :is-null
+      "Not empty" :not-null)))
