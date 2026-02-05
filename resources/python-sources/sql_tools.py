@@ -1598,13 +1598,16 @@ class FieldReferenceWalker:
         if not source:
             return False
 
-        # If table ref specified, check if it matches
+        # If table ref specified, check if it matches (case-insensitive since
+        # SQLGlot may lowercase identifiers)
         if table_ref:
             names = source.get("names", {})
             if names:
-                if names.get("table_alias") == table_ref:
+                table_alias = names.get("table_alias")
+                table_name = names.get("table")
+                if table_alias and table_alias.lower() == table_ref.lower():
                     return True
-                if names.get("table") == table_ref:
+                if table_name and table_name.lower() == table_ref.lower():
                     return True
             return False
 
