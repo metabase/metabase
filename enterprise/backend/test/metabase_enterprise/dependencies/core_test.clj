@@ -199,7 +199,6 @@
                                                                 :base-provider provider
                                                                 :graph graph
                                                                 :include-native? true)]
-          
           (is (= #{:card :transform} (set (keys errors))))
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
