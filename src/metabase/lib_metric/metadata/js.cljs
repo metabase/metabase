@@ -66,11 +66,52 @@
            (filter #(= (:type %) :metric)))
           (vals metrics))))
 
+(defn- parse-measure
+  "Parse a single measure from JS object to Clojure map."
+  [measure-obj]
+  (when measure-obj
+    (let [parsed (-> (js->clj measure-obj :keywordize-keys true)
+                     (update-keys u/->kebab-case-en))]
+      (assoc parsed :lib/type :metadata/measure))))
+
+(defn- parse-measures
+  "Parse all measures from JS metadata object.
+   Returns a map of id -> measure."
+  [measures-data]
+  (when measures-data
+    (into {}
+          (keep (fn [k]
+                  (when-let [id (parse-long k)]
+                    (when-let [measure (parse-measure (object-get measures-data k))]
+                      [id measure]))))
+          (js-keys measures-data))))
+
+(defn- filter-measures
+  "Filter parsed measures according to metadata-spec."
+  [measures {id-set :id, name-set :name, :keys [table-id], :as _metadata-spec}]
+  (let [active-only? (not (or id-set name-set))]
+    (into []
+          (comp
+           (if id-set
+             (filter #(contains? id-set (:id %)))
+             identity)
+           (if name-set
+             (filter #(contains? name-set (:name %)))
+             identity)
+           (if table-id
+             (filter #(= (:table-id %) table-id))
+             identity)
+           (if active-only?
+             (filter #(not (:archived %)))
+             identity))
+          (vals measures))))
+
 (defn metadata-provider
   "Create a MetricMetadataProvider from JS/Redux data.
 
    Arguments:
    - `metrics-data` - JS object with metric definitions
+   - `measures-data` - JS object with measure definitions (optional, can be nil)
    - `metadata` - Full JS metadata object (passed to js-metadata/metadata-provider for each db)
    - `table->db-id` - Clojure map of table-id -> database-id
    - `settings` - JS object with Metabase settings
@@ -78,9 +119,11 @@
    The returned provider:
    - Returns nil for database() since there's no single database context
    - Routes metric requests to the pre-loaded metrics data
+   - Routes measure requests to the pre-loaded measures data if provided
    - Routes table/column requests to database-specific providers"
-  [metrics-data metadata table->db-id settings]
+  [metrics-data measures-data metadata table->db-id settings]
   (let [parsed-metrics (parse-metrics metrics-data)
+        parsed-measures (parse-measures measures-data)
         db-provider-cache (atom {})
         db-provider-fn (fn [db-id]
                          (if-let [cached (get @db-provider-cache db-id)]
@@ -93,6 +136,8 @@
                      (some-> settings (object-get (name setting-key))))]
     (provider/metric-context-metadata-provider
      (fn [spec] (filter-metrics parsed-metrics spec))
+     (when parsed-measures
+       (fn [spec] (filter-measures parsed-measures spec)))
      (fn [table-id] (get table->db-id table-id))
      db-provider-fn
      setting-fn)))

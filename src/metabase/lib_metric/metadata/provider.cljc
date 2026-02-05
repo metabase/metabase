@@ -62,6 +62,7 @@
 ;; The main provider type that routes requests to database-specific providers
 (deftype MetricContextMetadataProvider
          [metric-fetcher-fn     ;; (fn [metadata-spec] ...) returns metrics
+          measure-fetcher-fn    ;; (fn [metadata-spec] ...) returns measures (optional, can be nil)
           table->db-fn          ;; (fn [table-id] ...) returns database-id
           db-provider-fn        ;; (fn [db-id] ...) returns MetadataProvider for that database
           setting-fn            ;; (fn [setting-key] ...) returns setting value
@@ -83,7 +84,12 @@
       :metadata/column
       (or (route-column-metadata table->db-fn db-provider-fn metadata-spec) [])
 
-      (:metadata/segment :metadata/measure)
+      :metadata/measure
+      (if measure-fetcher-fn
+        (measure-fetcher-fn metadata-spec)
+        (or (route-segment-or-measure-metadata table->db-fn db-provider-fn metadata-spec) []))
+
+      :metadata/segment
       (or (route-segment-or-measure-metadata table->db-fn db-provider-fn metadata-spec) [])
 
       :metadata/card
@@ -131,6 +137,7 @@
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? MetricContextMetadataProvider another)
          (= metric-fetcher-fn (.-metric-fetcher-fn ^MetricContextMetadataProvider another))
+         (= measure-fetcher-fn (.-measure-fetcher-fn ^MetricContextMetadataProvider another))
          (= table->db-fn (.-table->db-fn ^MetricContextMetadataProvider another))
          (= db-provider-fn (.-db-provider-fn ^MetricContextMetadataProvider another))
          (= setting-fn (.-setting-fn ^MetricContextMetadataProvider another)))))
@@ -140,6 +147,7 @@
 
    Arguments:
    - `metric-fetcher-fn` - `(fn [metadata-spec] ...)` returns metrics matching the spec
+   - `measure-fetcher-fn` (optional) - `(fn [metadata-spec] ...)` returns measures matching the spec
    - `table->db-fn` - `(fn [table-id] ...)` returns database-id for a table
    - `db-provider-fn` - `(fn [db-id] ...)` returns MetadataProvider for that database
    - `setting-fn` - `(fn [setting-key] ...)` returns setting value
@@ -147,15 +155,19 @@
    The returned provider:
    - Returns nil for `(database provider)` since there's no single database context
    - Routes metric requests to the metric-fetcher-fn
-   - Routes table/column/segment/measure requests to the appropriate database provider
+   - Routes measure requests to measure-fetcher-fn if provided, otherwise to database provider
+   - Routes table/column/segment requests to the appropriate database provider
    - Caches metric metadata internally"
-  [metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
-  (->MetricContextMetadataProvider
-   metric-fetcher-fn
-   table->db-fn
-   db-provider-fn
-   setting-fn
-   (atom {})))
+  ([metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
+   (metric-context-metadata-provider metric-fetcher-fn nil table->db-fn db-provider-fn setting-fn))
+  ([metric-fetcher-fn measure-fetcher-fn table->db-fn db-provider-fn setting-fn]
+   (->MetricContextMetadataProvider
+    metric-fetcher-fn
+    measure-fetcher-fn
+    table->db-fn
+    db-provider-fn
+    setting-fn
+    (atom {}))))
 
 (def keep-me
   "Var used to ensure this namespace is loaded."
