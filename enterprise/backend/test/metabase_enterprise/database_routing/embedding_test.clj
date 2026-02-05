@@ -14,7 +14,9 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
@@ -63,13 +65,15 @@
    :h2
    (mdb/spec :h2 (:details db))
    {:write? true}
-   (fn [^java.sql.Connection conn]
+   (fn [^Connection conn]
      (jdbc/execute! {:connection conn} [statement]))))
 
 (deftest guest-embedding-with-database-routing-test
   (testing "Guest embedding should work with database routing by bypassing routing"
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
+        ;; clj-kondo doesn't understand the with-temp-dbs! macro binding
+        #_{:clj-kondo/ignore [:unresolved-symbol]}
         (with-temp-dbs! [router-db destination-db]
           ;; Set up router and destination database
           (t2/update! :model/Database (u/the-id destination-db) {:name "destination-db" :router_database_id (u/the-id router-db)})
