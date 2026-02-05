@@ -2971,15 +2971,6 @@ databaseChangeLog:
             constraintName: fk_metabase_table_transform_id
             onDelete: SET NULL
 
-  - changeSet:
-      id: v59.2026-02-04T10:45:03
-      author: nvoxland
-      comment: Backfill metabase_table.transform_id from dependency records
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.BackfillTableTransformId"
-      rollback: # No need to roll back
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

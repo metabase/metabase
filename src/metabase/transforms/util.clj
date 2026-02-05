@@ -716,9 +716,8 @@
        [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
   (let [target (:target transform)]
     (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-      (let [table (sync-target! target db)]
-        (when table
-          (t2/update! :model/Table (:id table) {:transform_id (:id transform)})))
+      (when-let [table (sync-target! target db)]
+        (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
       ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id (:id db)

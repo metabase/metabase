@@ -1854,13 +1854,3 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
-
-(define-migration BackfillTableTransformId
-  (let [existing-transform-ids (into #{} (map :id) (t2/query {:select [:id] :from [:transform]}))]
-    (doseq [{:keys [from_entity_id to_entity_id]} (t2/query {:select [:from_entity_id :to_entity_id]
-                                                             :from   [:dependency]
-                                                             :where  [:and
-                                                                      [:= :from_entity_type "table"]
-                                                                      [:= :to_entity_type "transform"]]})]
-      (when (existing-transform-ids to_entity_id)
-        (t2/update! :metabase_table from_entity_id {:transform_id to_entity_id})))))
