@@ -17,6 +17,7 @@ import type {
   CardDisplayType,
   Dataset,
   InspectorCard,
+  InspectorCardDisplayType,
   RawSeries,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -99,6 +100,8 @@ export const VisualizationCard = ({
             <Visualization
               rawSeries={rawSeries}
               showTitle={true}
+              // we want to have dashboard like experience: e.g. leaner UI, no column reordering, prevent row detail clicks
+              isDashboard={true}
               actionButtons={actionButtons}
               getHref={getHref}
               onChangeCardAndRun={onChangeCardAndRun}
@@ -141,14 +144,16 @@ function getDisplayConfig(
 function buildRawSeries(
   dataset: Dataset | undefined,
   card: InspectorCard,
-  displayType: string,
+  displayType: InspectorCardDisplayType,
   displaySettings: Record<string, unknown>,
 ): RawSeries | undefined {
   if (!dataset) {
     return;
   }
+
   const vizDisplay: CardDisplayType =
-    displayType === "hidden" ? "table" : (displayType as CardDisplayType);
+    displayType === "hidden" ? "table" : displayType;
+
   return [
     {
       card: createMockCard({
@@ -158,6 +163,7 @@ function buildRawSeries(
         visualization_settings: {
           "graph.y_axis.labels_enabled": false,
           "graph.x_axis.labels_enabled": false,
+          "table.row_index": false, // hide row index column
           ...displaySettings,
           ...card.visualization_settings,
         },
