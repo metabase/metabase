@@ -28,10 +28,10 @@
 
 (defn evaluate-triggers
   "Evaluate all triggers for a lens against card results.
-   Returns {:alerts [...] :drill-lenses [...]}."
+   Returns {:alerts [...] :drill_lenses [...]}."
   [lens card-results]
-  {:alerts       (triggered-alerts card-results (:alert-triggers lens))
-   :drill-lenses (triggered-drill-lenses card-results (:drill-lens-triggers lens))})
+  {:alerts       (triggered-alerts card-results (:alert_triggers lens))
+   :drill_lenses (triggered-drill-lenses card-results (:drill_lens_triggers lens))})
 
 ;;; -------------------------------------------------- Interestingness --------------------------------------------------
 
@@ -53,10 +53,8 @@
    Arguments:
    - card-id: the card's ID string
    - display-type: keyword like :bar, :line, :scalar, etc.
-   - card-results: map of all card results for companion card lookup
+   - card-results: map of all card results (card-id -> result map)
 
-   Returns:
-   - {:degenerate? true :reason :no-data|:single-value|:null-value|:all-same-value|...}
-   - {:degenerate? false}"
+   Returns {:degenerate? bool, :reason keyword-or-nil}."
   [card-id display-type card-results]
   (degeneracy/degenerate-for-display? card-id display-type card-results))

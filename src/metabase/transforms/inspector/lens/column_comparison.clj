@@ -33,8 +33,8 @@
 (defn- viz-type-for-field
   "Determine appropriate visualization type for a field."
   [field]
-  (let [base-type (:base-type field)
-        distinct-count (get-in field [:stats :distinct-count])]
+  (let [base-type (:base_type field)
+        distinct-count (get-in field [:stats :distinct_count])]
     (cond
       (contains? #{:type/DateTime :type/Date :type/Time
                    :type/DateTimeWithTZ :type/DateTimeWithLocalTZ}
@@ -59,32 +59,35 @@
   "Generate a distribution card for a field."
   [db-id table-id table-name field output-column role order]
   {:id            (str table-name "-" (:name field) "-distribution")
-   :section-id    "comparisons"
+   :section_id    "comparisons"
    :title         (str (:name field) " (" table-name ")")
    :display       (viz-type-for-field field)
-   :dataset-query (make-distribution-query db-id table-id (:id field))
-   :metadata      {:group-id    output-column
-                   :group-role  role
-                   :group-order order
-                   :table-id    table-id
-                   :field-id    (:id field)}})
+   :dataset_query (make-distribution-query db-id table-id (:id field))
+   :metadata      {:group_id    output-column
+                   :group_role  role
+                   :group_order order
+                   :table_id    table-id
+                   :field_id    (:id field)}})
 
 (defn- comparison-cards-for-match
   "Generate comparison cards for a single column match."
   [{:keys [output-column output-field input-columns]} target]
-  (concat
-   ;; Input cards
-   (map-indexed (fn [i {:keys [source-table-id source-table-name id]}]
-                  (distribution-card (or (:db-id target) (:db-id (first input-columns)))
-                                     source-table-id source-table-name
-                                     {:id id :name (:name (first input-columns))
-                                      :base-type (:base-type output-field)
-                                      :stats (:stats output-field)}
-                                     output-column :input i))
-                input-columns)
-   ;; Output card
-   [(distribution-card (:db-id target) (:table-id target) (:table-name target)
-                       output-field output-column :output 0)]))
+  (let [;; Filter out input-columns with nil source-table-id (e.g., computed columns)
+        valid-inputs (filter :source-table-id input-columns)]
+    (when (seq valid-inputs)
+      (concat
+       ;; Input cards
+       (map-indexed (fn [i {:keys [source-table-id source-table-name id]}]
+                      (distribution-card (:db_id target)
+                                         source-table-id source-table-name
+                                         {:id id :name (:name (first valid-inputs))
+                                          :base_type (:base_type output-field)
+                                          :stats (:stats output-field)}
+                                         output-column :input i))
+                    valid-inputs)
+       ;; Output card
+       [(distribution-card (:db_id target) (:table_id target) (:table_name target)
+                           output-field output-column :output 0)]))))
 
 ;;; -------------------------------------------------- Lens Implementation --------------------------------------------------
 
@@ -95,7 +98,7 @@
 (defmethod lens.core/lens-metadata :column-comparison
   [_ _ctx]
   {:id           "column-comparison"
-   :display-name "Column Distributions"
+   :display_name "Column Distributions"
    :description  "Compare input/output column distributions"})
 
 (defmethod lens.core/make-lens :column-comparison
@@ -103,7 +106,7 @@
   (let [{:keys [column-matches target]} ctx
         match-count (count column-matches)]
     {:id           "column-comparison"
-     :display-name "Column Distributions"
+     :display_name "Column Distributions"
      :summary      {:text       "Compare value distributions for columns that match between input and output"
                     :highlights [{:label "Matched Columns" :value match-count}]}
      :sections     [{:id     "comparisons"

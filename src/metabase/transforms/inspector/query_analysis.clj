@@ -49,10 +49,10 @@
                             (mapcat (fn [join]
                                       (mapcat lib.walk.util/all-field-ids (:conditions join))))
                             joins))]
-    {:join-fields      (or join-fields #{})
-     :filter-fields    (or filter-fields #{})
-     :group-by-fields  (or group-by-fields #{})
-     :order-by-fields  (or order-by-fields #{})
+    {:join_fields      (or join-fields #{})
+     :filter_fields    (or filter-fields #{})
+     :group_by_fields  (or group-by-fields #{})
+     :order_by_fields  (or order-by-fields #{})
      :all              (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
 
 (defn analyze-mbql-query
@@ -286,10 +286,10 @@
         group-by-fields (resolve-cols group-by-columns)
         order-by-fields (resolve-cols order-by-columns)
         join-fields (resolve-cols join-columns)]
-    {:join-fields     join-fields
-     :filter-fields   filter-fields
-     :group-by-fields group-by-fields
-     :order-by-fields order-by-fields
+    {:join_fields     join-fields
+     :filter_fields   filter-fields
+     :group_by_fields group-by-fields
+     :order_by_fields order-by-fields
      :all             (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
 
 (defn analyze-native-query

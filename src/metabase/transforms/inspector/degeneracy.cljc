@@ -8,8 +8,8 @@
 (defn- no-data?
   "Check if the result has no data at all."
   [card-result]
-  (or (get card-result "no-data")
-      (= 0 (get card-result "row-count"))))
+  (or (get card-result "no_data")
+      (= 0 (get card-result "row_count"))))
 
 ;;; -------------------------------------------------- Display-specific Checks --------------------------------------------------
 

@@ -23,10 +23,10 @@
   (when (seq table-ids)
     (let [tables (t2/select :model/Table :id [:in table-ids])]
       (mapv (fn [table]
-              {:table-id   (:id table)
-               :table-name (:name table)
+              {:table_id   (:id table)
+               :table_name (:name table)
                :schema     (:schema table)
-               :db-id      (:db_id table)})
+               :db_id      (:db_id table)})
             tables))))
 
 (defmulti extract-sources
@@ -90,34 +90,32 @@
   [field]
   (let [fp (:fingerprint field)]
     (not-empty
-     (-> (merge (select-keys (get fp :global) [:distinct-count])
-                (select-keys (get-in fp [:type :type/Number]) [:min :max :avg :q1 :q3])
-                (select-keys (get-in fp [:type :type/DateTime]) [:earliest :latest]))
-         (cond-> (some? (get-in fp [:global :nil%]))
-           (assoc :nil-percent (get-in fp [:global :nil%])))))))
+     (cond-> (merge (when-let [dc (get-in fp [:global :distinct-count])]
+                      {:distinct_count dc})
+                    (select-keys (get-in fp [:type :type/Number]) [:min :max :avg :q1 :q3])
+                    (select-keys (get-in fp [:type :type/DateTime]) [:earliest :latest]))
+       (some? (get-in fp [:global :nil%]))
+       (assoc :nil_percent (get-in fp [:global :nil%]))))))
 
 (defn- collect-field-metadata
   "Collect metadata for fields in a table."
   [table-id]
   (let [fields (t2/select :model/Field :table_id table-id :active true)]
     (mapv (fn [field]
-            (cond-> (-> (select-keys field [:id :name :display_name :base_type :semantic_type])
-                        (set/rename-keys {:display_name  :display-name
-                                          :base_type     :base-type
-                                          :semantic_type :semantic-type}))
+            (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
               (get-field-stats field)
               (assoc :stats (get-field-stats field))))
           fields)))
 
 (defn- build-table-info
   "Build table info map with fields."
-  [{:keys [table-id table-name schema db-id]}]
-  (let [fields (collect-field-metadata table-id)]
-    {:table-id     table-id
-     :table-name   table-name
+  [{:keys [table_id table_name schema db_id]}]
+  (let [fields (collect-field-metadata table_id)]
+    {:table_id     table_id
+     :table_name   table_name
      :schema       schema
-     :db-id        db-id
-     :column-count (count fields)
+     :db_id        db_id
+     :column_count (count fields)
      :fields       fields}))
 
 ;;; -------------------------------------------------- Column Matching --------------------------------------------------
@@ -138,9 +136,9 @@
    Used for native queries where we don't have field IDs."
   [sources target join-structure]
   (let [alias->source-table (into {} (map (juxt :alias :source-table) join-structure))
-        source-fields (for [{:keys [table-id table-name fields]} sources
+        source-fields (for [{:keys [table_id table_name fields]} sources
                             field fields]
-                        (assoc field :source-table-id table-id :source-table-name table-name))]
+                        (assoc field :source-table-id table_id :source-table-name table_name))]
     (for [target-field (:fields target)
           :let [col-name (:name target-field)
                 parsed (parse-joined-column-name col-name)
@@ -167,16 +165,16 @@
 
         ;; Index source fields by field ID for fast lookup
         source-field-by-id (into {}
-                                 (for [{:keys [table-id table-name fields]} sources
+                                 (for [{:keys [table_id table_name fields]} sources
                                        field fields
                                        :when (:id field)]
                                    [(:id field)
                                     (assoc field
-                                           :source-table-id table-id
-                                           :source-table-name table-name)]))
+                                           :source-table-id table_id
+                                           :source-table-name table_name)]))
 
-        ;; Index source tables by table-id for name lookup
-        table-id->name (into {} (map (juxt :table-id :table-name) sources))]
+        ;; Index source tables by table_id for name lookup
+        table-id->name (into {} (map (juxt :table_id :table_name) sources))]
 
     (for [target-field (:fields target)
           :let [target-name (:name target-field)
@@ -228,10 +226,10 @@
         sources-info (mapv build-table-info (extract-sources transform))
         target-table (get-target-table transform)
         target-info (when target-table
-                      (build-table-info {:table-id   (:id target-table)
-                                         :table-name (:name target-table)
+                      (build-table-info {:table_id   (:id target-table)
+                                         :table_name (:name target-table)
                                          :schema     (:schema target-table)
-                                         :db-id      (:db_id target-table)}))
+                                         :db_id      (:db_id target-table)}))
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)

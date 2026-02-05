@@ -61,7 +61,11 @@ export const useTriggerEvaluation = (
     if (!lens) {
       return;
     }
-    setState(evaluateTriggers(lens, debouncedCardsStats));
+    const result = evaluateTriggers(lens, debouncedCardsStats);
+    setState({
+      alerts: result.alerts,
+      drillLenses: result.drill_lenses,
+    });
   }, [lens, debouncedCardsStats]);
 
   return {

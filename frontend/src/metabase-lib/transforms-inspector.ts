@@ -27,39 +27,10 @@ export type TriggeredDrillLens = {
 
 type TriggerResult = {
   alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  drill_lenses: TriggeredDrillLens[];
 };
 
 export type CardStats = Record<string, unknown>;
-
-const kebabToSnakeCase = (str: string): string => str.replace(/-/g, "_");
-const snakeToKebabCase = (str: string): string => str.replace(/_/g, "-");
-
-const convertKeysToSnakeCase = (obj: CardStats | null): CardStats | null => {
-  if (obj === null) {
-    return null;
-  }
-  return Object.fromEntries(
-    Object.entries(obj).map(([key, value]) => [kebabToSnakeCase(key), value]),
-  );
-};
-
-const convertKeysToKebabCase = (obj: CardStats): CardStats => {
-  return Object.fromEntries(
-    Object.entries(obj).map(([key, value]) => [snakeToKebabCase(key), value]),
-  );
-};
-
-const convertCardsStatsToKebabCase = (
-  cardsStats: Record<string, CardStats>,
-): Record<string, CardStats> => {
-  return Object.fromEntries(
-    Object.entries(cardsStats).map(([cardId, stats]) => [
-      cardId,
-      convertKeysToKebabCase(stats),
-    ]),
-  );
-};
 
 export const interestingFields = (
   fields: TransformInspectField[],
@@ -70,15 +41,13 @@ export const interestingFields = (
 export const evaluateTriggers = (
   lens: InspectorLens,
   cardsStats: Record<string, CardStats>,
-): TriggerResult =>
-  INSPECTOR.evaluateTriggers(lens, convertCardsStatsToKebabCase(cardsStats));
+): TriggerResult => INSPECTOR.evaluateTriggers(lens, cardsStats);
 
 export const computeCardStats = (
   lensId: string,
   card: InspectorCard,
   rows: unknown[][] | undefined,
-): CardStats | null =>
-  convertKeysToSnakeCase(INSPECTOR.computeCardResult(lensId, card, rows ?? []));
+): CardStats | null => INSPECTOR.computeCardResult(lensId, card, rows ?? []);
 
 export type DegeneracyResult = {
   degenerate: boolean;
@@ -89,5 +58,4 @@ export const isDegenerate = (
   cardId: string,
   displayType: string,
   cardsStats: Record<string, CardStats>,
-): DegeneracyResult =>
-  INSPECTOR.isDegenerate(cardId, displayType, convertCardsStatsToKebabCase(cardsStats));
+): DegeneracyResult => INSPECTOR.isDegenerate(cardId, displayType, cardsStats);
