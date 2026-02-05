@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -43,7 +42,6 @@ async function setup({
   isAdmin = false,
   isHosted = false,
   isPaidPlan = true,
-  hasDataStudio = false,
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
@@ -51,7 +49,6 @@ async function setup({
   isAdmin?: boolean;
   isHosted?: boolean;
   isPaidPlan?: boolean;
-  hasDataStudio?: boolean;
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
@@ -64,14 +61,8 @@ async function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
-    "token-features": createMockTokenFeatures({
-      data_studio: hasDataStudio,
-    }),
+    "token-features": createMockTokenFeatures(),
   });
-
-  if (hasDataStudio) {
-    setupEnterpriseOnlyPlugin("data-studio");
-  }
 
   const admin = createMockAdminState({
     app: createMockAdminAppState({
@@ -156,7 +147,7 @@ describe("ProfileLink", () => {
 
   describe("current app", () => {
     it("should update it's apps section as you navigate", async () => {
-      await setup({ isAdmin: true, hasDataStudio: true });
+      await setup({ isAdmin: true });
 
       await assertActiveApp("main");
 
@@ -195,7 +186,7 @@ describe("ProfileLink", () => {
 
   describe("with data studio", () => {
     it("should show data studio app when apropriate", async () => {
-      await setup({ isAdmin: true, hasDataStudio: true });
+      await setup({ isAdmin: true });
 
       WITH_DATA_STUDIO.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
