@@ -60,11 +60,22 @@
 
 ;;; -------------------------------------------------- Lens Metadata --------------------------------------------------
 
+(mr/def ::complexity-level
+  "Estimated complexity/cost of generating a lens."
+  [:enum :fast :slow :very-slow])
+
+(mr/def ::complexity
+  "Complexity estimate for a lens."
+  [:map
+   [:level ::complexity-level]
+   [:score {:optional true} pos-int?]])
+
 (mr/def ::lens-metadata
   [:map
    [:id :string]
    [:display_name :string]
-   [:description {:optional true} [:maybe :string]]])
+   [:description {:optional true} [:maybe :string]]
+   [:complexity {:optional true} ::complexity]])
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
@@ -201,6 +212,7 @@
   [:map
    [:id :string]
    [:display_name :string]
+   [:complexity {:optional true} ::complexity]
    [:summary {:optional true} ::lens-summary]
    [:sections [:sequential ::section]]
    [:cards [:sequential ::card]]

@@ -194,7 +194,8 @@
   [_ _ctx]
   {:id           "join-analysis"
    :display_name "Join Analysis"
-   :description  "Analyze join quality and match rates"})
+   :description  "Analyze join quality and match rates"
+   :complexity   {:level :very-slow}})
 
 (defn- make-triggers
   "Generate alert and drill-lens triggers for join steps."
@@ -226,6 +227,7 @@
         triggers (make-triggers join-structure params)]
     {:id                   "join-analysis"
      :display_name         "Join Analysis"
+     :complexity           {:level :very-slow}
      :summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
                             :highlights [{:label "Joins" :value join-count}]}
      :sections             [{:id     "join-stats"

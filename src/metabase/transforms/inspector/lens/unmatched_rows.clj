@@ -228,7 +228,8 @@
   [_ _ctx]
   {:id           "unmatched-rows"
    :display_name "Unmatched Rows"
-   :description  "Sample rows that failed to join"})
+   :description  "Sample rows that failed to join"
+   :complexity   {:level :slow}})
 
 (defmethod lens.core/make-lens :unmatched-rows
   [_ ctx params]
@@ -241,6 +242,7 @@
                 "Unmatched Rows")]
     {:id           "unmatched-rows"
      :display_name title
+     :complexity   {:level :slow}
      :summary      (if (seq cards)
                      {:text       (str "Analyzing unmatched rows for " outer-join-count " outer join(s)")
                       :highlights [{:label "Outer Joins" :value outer-join-count}

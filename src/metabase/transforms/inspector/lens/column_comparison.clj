@@ -99,7 +99,8 @@
   [_ _ctx]
   {:id           "column-comparison"
    :display_name "Column Distributions"
-   :description  "Compare input/output column distributions"})
+   :description  "Compare input/output column distributions"
+   :complexity   {:level :slow}})
 
 (defmethod lens.core/make-lens :column-comparison
   [_ ctx params]
@@ -107,6 +108,7 @@
         match-count (count column-matches)]
     {:id           "column-comparison"
      :display_name "Column Distributions"
+     :complexity   {:level :slow}
      :summary      {:text       "Compare value distributions for columns that match between input and output"
                     :highlights [{:label "Matched Columns" :value match-count}]}
      :sections     [{:id     "comparisons"
