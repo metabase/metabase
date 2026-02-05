@@ -5,9 +5,3 @@ export type LensRef = {
   title: string;
   params?: Record<string, unknown>;
 };
-
-export type LensStackEntry = {
-  lensRef: LensRef;
-  siblings: LensRef[];
-  drillSiblings: LensRef[];
-};

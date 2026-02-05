@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -25,7 +25,6 @@ type LensContentProps = {
   currentLensRef: LensRef;
   discovery: InspectorDiscoveryResponse;
   onDrill: (lensRef: LensRef) => void;
-  onDrillLensesChange?: (drillLenses: LensRef[]) => void;
 };
 
 export const LensContent = ({
@@ -33,7 +32,6 @@ export const LensContent = ({
   currentLensRef,
   discovery,
   onDrill,
-  onDrillLensesChange,
 }: LensContentProps) => {
   const {
     data: lens,
@@ -46,12 +44,7 @@ export const LensContent = ({
     params: currentLensRef.params,
   });
 
-  const { alerts, drillLenses, drillLensesRefs, pushNewStats } =
-    useTriggerEvaluation(lens, discovery.available_lenses);
-
-  useEffect(() => {
-    onDrillLensesChange?.(drillLensesRefs);
-  }, [drillLensesRefs, onDrillLensesChange]);
+  const { alerts, drillLenses, pushNewStats } = useTriggerEvaluation(lens);
 
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),

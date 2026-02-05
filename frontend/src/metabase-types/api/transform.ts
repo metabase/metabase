@@ -442,10 +442,18 @@ export type TransformInspectResponse = {
   visited_fields?: TransformInspectVisitedFields;
 };
 
+export type InspectorLensComplexityLevel = "fast" | "slow" | "very-slow";
+
+export type InspectorLensComplexity = {
+  level: InspectorLensComplexityLevel;
+  score?: number;
+};
+
 export type InspectorLensMetadata = {
   id: string;
   display_name: string;
   description?: string;
+  complexity?: InspectorLensComplexity;
 };
 
 export type InspectorDiscoveryResponse = {
