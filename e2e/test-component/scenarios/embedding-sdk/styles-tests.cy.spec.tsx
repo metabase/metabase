@@ -421,10 +421,16 @@ describe("scenarios > embedding-sdk > styles", () => {
         </div>,
       );
 
+      // force: true because the buttons are expected to be outside of the viewport (that's the point of this test)
+      // and we don't care of they're visible or not, what we care is that despite their positioning,
+      // the save modal is visible
       getSdkRoot().within(() => {
-        cy.findByText("Summarize").click();
-        cy.findByText("Count of rows").click();
-        cy.findByText("Save").click();
+        cy.log("Click on Summarize");
+        cy.findByText("Summarize").click({ force: true });
+        cy.log("Click on Count of rows");
+        cy.findByText("Count of rows").click({ force: true });
+        cy.log("Click on Save");
+        cy.findByText("Save").click({ force: true });
 
         cy.findByText("Save question").should("be.visible");
       });
