@@ -13,6 +13,7 @@ import {
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type DefinedClauseName,
   clausesForMode,
@@ -109,7 +110,11 @@ export function FilterColumnPicker({
   );
 
   const renderItemName = useCallback(
-    (item: Item) => tc(item.displayName),
+    (item: Item) =>
+      PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+        item.displayName,
+        tc,
+      ),
     [tc],
   );
 

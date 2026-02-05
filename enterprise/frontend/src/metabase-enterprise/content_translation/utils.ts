@@ -243,6 +243,35 @@ export const translateColumnDisplayName = (
     );
   }
 
+  // Handle filter display names like "Created At is in the previous 3 months"
+  // The column name is at the start, followed by a space and filter operator.
+  // We try prefixes at space boundaries to find the translatable column name.
+  // Start from shorter prefixes since column names are typically shorter than operator text.
+  let lastTranslatedIndex = -1;
+  let lastTranslatedColumn = "";
+
+  for (let i = 0; i < displayName.length; i++) {
+    if (displayName[i] === " ") {
+      const columnPart = displayName.substring(0, i);
+      const translatedColumn = translateColumnDisplayName(
+        columnPart,
+        tc,
+        patterns,
+      );
+
+      if (translatedColumn !== columnPart) {
+        // Found a translatable prefix - remember it but keep looking for longer matches
+        lastTranslatedIndex = i;
+        lastTranslatedColumn = translatedColumn;
+      }
+    }
+  }
+
+  // Use the longest translatable prefix found
+  if (lastTranslatedIndex > 0) {
+    return lastTranslatedColumn + displayName.substring(lastTranslatedIndex);
+  }
+
   return tc(displayName);
 };
 
@@ -441,34 +470,4 @@ export const useSortByContentTranslation = () => {
     (a: string, b: string) => tc(a).localeCompare(tc(b)),
     [tc],
   );
-};
-
-/**
- * Translates a filter's display name by translating the column name part.
- * The longDisplayName is a pre-formatted string like "Plan is Business"
- * where the column name part needs to be translated.
- */
-export const getTranslatedFilterDisplayName = (
-  displayName: string,
-  tc: ContentTranslationFunction,
-  columnDisplayName?: string,
-): string => {
-  if (!displayName) {
-    return displayName ?? "";
-  }
-
-  if (!hasTranslations(tc)) {
-    return displayName;
-  }
-
-  if (columnDisplayName) {
-    const translatedColumnName = tc(columnDisplayName);
-
-    if (translatedColumnName !== columnDisplayName) {
-      return displayName.replace(columnDisplayName, translatedColumnName);
-    }
-  }
-
-  // Fallback to translate the whole string
-  return tc(displayName);
 };
