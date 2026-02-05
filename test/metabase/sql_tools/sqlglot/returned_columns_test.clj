@@ -11,7 +11,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.sql-tools.sqlglot.core :as sqlglot]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -23,6 +23,12 @@
   [columns]
   (mapv (comp u/lower-case-en :name) columns))
 
+(defn- returned-column-aliases
+  "Extract just the column aliases from returned-columns result.
+   Normalizes to lowercase for cross-database comparison."
+  [columns]
+  (mapv (comp u/lower-case-en :lib/desired-column-alias) columns))
+
 (defn- make-query
   "Create a native query with the test metadata provider."
   [sql]
@@ -32,7 +38,7 @@
   "Get returned columns for a SQL query using the test metadata provider."
   [sql]
   (let [driver (:engine (lib.metadata/database (mt/metadata-provider)))]
-    (sqlglot/returned-columns driver (make-query sql))))
+    (sql-tools/returned-columns-impl :sqlglot driver (make-query sql))))
 
 ;;; Basic SELECT Tests
 
@@ -58,8 +64,8 @@
     (mt/test-driver :h2
       (let [result (returned-columns "SELECT ID AS user_id FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "user_id" (:name (first result))))
-        (is (= "user_id" (:lib/desired-column-alias (first result))))))))
+        (is (= "id" (first (returned-column-names result))))
+        (is (= "user_id" (first (returned-column-aliases result))))))))
 
 ;;; JOIN Tests
 
@@ -92,7 +98,7 @@
       (let [result (returned-columns
                     "SELECT a, b FROM (SELECT ID AS a, NAME AS b FROM PEOPLE)")]
         (is (= 2 (count result)))
-        (is (= ["a" "b"] (returned-column-names result)))))))
+        (is (= ["a" "b"] (returned-column-aliases result)))))))
 
 (deftest ^:parallel nested-subquery-test
   (testing "Nested subqueries trace through multiple levels"
@@ -100,7 +106,7 @@
       (let [result (returned-columns
                     "SELECT x FROM (SELECT a AS x FROM (SELECT ID AS a FROM PEOPLE))")]
         (is (= 1 (count result)))
-        (is (= "x" (:name (first result))))))))
+        (is (= "x" (first (returned-column-aliases result))))))))
 
 ;;; CTE Tests
 
@@ -120,7 +126,7 @@
     (mt/test-driver :h2
       (let [result (returned-columns "SELECT COUNT(*) AS cnt FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "cnt" (:name (first result))))
+        (is (= "cnt" (first (returned-column-names result))))
         ;; Aggregates should have :type/* since they're computed
         (is (= :type/* (:base-type (first result))))))))
 
@@ -157,7 +163,7 @@
     (mt/test-driver :h2
       (let [result (returned-columns "SELECT ID + 1 AS incremented FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "incremented" (:name (first result))))
+        (is (= "incremented" (first (returned-column-names result))))
         ;; Computed columns have :type/* base type
         (is (= :type/* (:base-type (first result))))))))
 
@@ -168,7 +174,7 @@
                     "SELECT CASE WHEN ID > 5 THEN 'high' ELSE 'low' END AS category
                      FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "category" (:name (first result))))))))
+        (is (= "category" (first (returned-column-names result))))))))
 
 ;;; UNION Tests
 
@@ -201,8 +207,9 @@
       (let [result (returned-columns
                     "SELECT b AS c FROM (SELECT ID AS b FROM PEOPLE)")]
         (is (= 1 (count result)))
-        (is (= "c" (:name (first result))))))))
+        (is (= "c" (first (returned-column-aliases result))))))))
 
+;; TODO: fixme
 (deftest ^:parallel different-case-nested-query-test
   (testing "Case-insensitive column matching through subquery"
     (mt/test-driver :h2
@@ -210,7 +217,7 @@
                     "SELECT A FROM (SELECT id AS a FROM PEOPLE)")]
         (is (= 1 (count result)))
         ;; Should match despite case difference
-        (is (= "a" (u/lower-case-en (:name (first result)))))))))
+        (is (= "a" (first (returned-column-aliases result))))))))
 
 (deftest ^:parallel wildcard-nested-query-test
   (testing "SELECT * from subquery expands to subquery columns"
@@ -334,7 +341,7 @@
       (let [result (returned-columns
                     "SELECT COUNT(DISTINCT STATE) AS unique_states FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "unique_states" (:name (first result))))))))
+        (is (= "unique_states" (first (returned-column-names result))))))))
 
 (deftest ^:parallel having-clause-test
   (testing "GROUP BY with HAVING"
@@ -439,7 +446,7 @@
       (let [result (returned-columns
                     "SELECT COALESCE(NAME, 'Unknown') AS name_or_default FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "name_or_default" (:name (first result))))
+        (is (= "name_or_default" (first (returned-column-names result))))
         (is (= :type/* (:base-type (first result))))))))
 
 ;;; String Functions
@@ -450,7 +457,7 @@
       (let [result (returned-columns
                     "SELECT NAME || ' from ' || STATE AS description FROM PEOPLE")]
         (is (= 1 (count result)))
-        (is (= "description" (:name (first result))))))))
+        (is (= "description" (first (returned-column-names result))))))))
 
 ;;; Math Expressions
 
