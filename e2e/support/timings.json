@@ -577,6 +577,10 @@
       "duration": 18089
     },
     {
+      "spec": "../test/scenarios/data-model/data-model.shared.cy.spec.ts",
+      "duration": 1080000
+    },
+    {
       "spec": "../test/scenarios/data-studio/data-model/data-studio-bulk-table.cy.spec.ts",
       "duration": 56160
     },

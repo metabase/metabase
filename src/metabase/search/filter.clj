@@ -141,6 +141,19 @@
            ;; nor within one of their sub-collections
            ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
 
+(defn transform-source-type-where-clause
+  "Build a clause that limits transforms to enabled source types.
+  When a `model-col` is provided, non-transform models always pass through."
+  ([search-context source-type-col]
+   (let [enabled-types (:enabled-transform-source-types search-context)]
+     (if (seq enabled-types)
+       [:in source-type-col enabled-types]
+       [:= [:inline 0] [:inline 1]])))
+  ([search-context model-col source-type-col]
+   [:or
+    [:!= model-col [:inline "transform"]]
+    (transform-source-type-where-clause search-context source-type-col)]))
+
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
