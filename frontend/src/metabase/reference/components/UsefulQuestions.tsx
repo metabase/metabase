@@ -1,4 +1,3 @@
-import type { ComponentProps } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -8,7 +7,7 @@ import D from "metabase/reference/components/Detail.module.css";
 import S from "./UsefulQuestions.module.css";
 
 interface UsefulQuestionsProps {
-  questions: ComponentProps<typeof QueryButton>[];
+  questions: { text: string; icon: string; link: string }[];
 }
 
 const UsefulQuestions = ({ questions }: UsefulQuestionsProps) => (
