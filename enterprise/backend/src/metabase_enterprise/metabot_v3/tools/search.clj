@@ -3,11 +3,11 @@
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
-   [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
