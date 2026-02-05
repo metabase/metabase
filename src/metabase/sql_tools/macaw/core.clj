@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
-   [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.interface :as sql-tools]
    [metabase.sql-tools.macaw.references :as sql-tools.macaw.references]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -118,18 +118,11 @@
   [parser driver query]
   (sql-tools.common/returned-columns parser driver query))
 
-(defn- referenced-fields
-  "Extract fields referenced (used) in a native query - fields in WHERE, JOIN ON, etc."
-  [driver native-query]
-  (let [{:keys [used-fields]} (sql-tools/field-references driver (lib/raw-native-query native-query))]
-    (into #{}
-          (mapcat #(->> (sql-tools.common/resolve-field driver native-query %)
-                        (keep :col)))
-          used-fields)))
+;;;; referenced-fields
 
 (defmethod sql-tools/referenced-fields-impl :macaw
-  [_parser driver query]
-  (referenced-fields driver query))
+  [parser driver query]
+  (sql-tools.common/referenced-fields parser driver query))
 
 (defmethod sql-tools/validate-query-impl :macaw
   [parser driver query]

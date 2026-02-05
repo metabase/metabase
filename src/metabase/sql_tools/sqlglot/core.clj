@@ -6,8 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
-   [metabase.sql-tools.core :as sql-tools]
-   [metabase.util :as u]
+   [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.log :as log]))
 
 (defn driver->dialect
@@ -48,45 +47,17 @@
   [_parser driver query]
   (referenced-tables driver query))
 
-;;;; referenced-fields
-
-(defn- namespaced-fields
-  "Build a lookup map: table -> field-name -> field metadata."
-  [mp]
-  (reduce (fn [acc table]
-            ;; TODO: Multiple schemas.
-            (assoc acc (:name table) (u/for-map
-                                      [field (lib.metadata/fields mp (:id table))]
-                                      [(:name field) field])))
-          {}
-          (lib.metadata/tables mp)))
-
-(defn- coords->fields
-  "Convert a [catalog schema table field] tuple to field metadata."
-  [namespaced-fields* [_catalog _schema table-name field-name :as _coords]]
-  (if (= "*" field-name)
-    (some-> (get namespaced-fields* table-name) vals)
-    (some-> (get-in namespaced-fields* [table-name field-name]) vector)))
-
-(defn- referenced-fields
-  "Given a driver and a native query, return the set of :metadata/column fields referenced in the query."
-  [driver query]
-  (let [sql (lib/raw-native-query query)
-        field-coords (sql-parsing/referenced-fields (driver->dialect driver) sql)
-        namespaced-fields* (namespaced-fields query)]
-    (into #{}
-          (mapcat (partial coords->fields namespaced-fields*))
-          field-coords)))
-
-(defmethod sql-tools/referenced-fields-impl :sqlglot
-  [_parser driver query]
-  (referenced-fields driver query))
-
 ;;;; field-references
 
 (defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
   (sql-parsing/field-references (driver->dialect driver) sql-string))
+
+;;;; referenced-fields
+
+(defmethod sql-tools/referenced-fields-impl :sqlglot
+  [parser driver query]
+  (sql-tools.common/referenced-fields parser driver query))
 
 ;;;; Validation
 ;; SQLGlot validation uses the same pipeline as Macaw:

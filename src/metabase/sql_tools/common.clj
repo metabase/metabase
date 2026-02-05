@@ -6,7 +6,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
 
@@ -50,7 +50,6 @@
   [col]
   {:col col})
 
-;; TODO: comment
 (defmulti resolve-field
   "Resolves a field reference to one or more actual database fields.
 
@@ -168,3 +167,12 @@
     (-> errors
         (into (check-fields used-fields))
         (into (check-fields returned-fields)))))
+
+(defn referenced-fields
+  "Extract fields referenced (used) in a native query - fields in WHERE, JOIN ON, etc."
+  [parser driver native-query]
+  (let [{:keys [used-fields]} (sql-tools/field-references-impl parser driver (lib/raw-native-query native-query))]
+    (into #{}
+          (mapcat #(->> (resolve-field driver native-query %)
+                        (keep :col)))
+          used-fields)))

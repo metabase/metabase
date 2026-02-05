@@ -1,5 +1,5 @@
 (ns metabase.sql-tools.macaw.replace-names-test
-  "Tests for replace-names functionality via the sql-tools API wrapping Macaw.
+  "Tests for replace-names functionality via the sql-tools API.
 
    Note: Macaw's replace-names uses a specific format for replacement maps:
    - :tables  - keys are {:schema s :table t} maps, values are new table names
@@ -8,8 +8,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.sql-tools.core :as sql-tools]
-   ;; Load macaw implementation for multimethod registration
-   [metabase.sql-tools.macaw.core]))
+   ;; Load implementations for multimethod registration
+   [metabase.sql-tools.init]))
 
 ;;; Test cases adapted from Macaw's test suite to verify the sql-tools wrapper.
 ;;; Macaw keys use {:schema ... :table ... :column ...} maps, not plain strings.
