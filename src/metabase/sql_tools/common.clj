@@ -1,4 +1,3 @@
-^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase.sql-tools.common
   (:require
    [clojure.set :as set]

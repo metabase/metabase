@@ -1,4 +1,3 @@
-^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase.transforms.api.transform
   (:require
    [metabase.api.common :as api]

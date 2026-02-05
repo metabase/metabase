@@ -213,6 +213,7 @@
       (allowIO true)
       (build)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- acquire-dev-context
   "Create a dev context (not pooled, but still Closeable for consistent API)."
   []
@@ -287,6 +288,7 @@
 (defn python-context
   "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
   []
-  (if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
-      (acquire-dev-context)
-      (acquire-context @python-context-pool)))
+  #_(if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
+        (acquire-dev-context)
+        (acquire-context @python-context-pool))
+  (acquire-context @python-context-pool))

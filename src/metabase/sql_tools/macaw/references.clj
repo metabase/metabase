@@ -1,4 +1,3 @@
-^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase.sql-tools.macaw.references
   (:refer-clojure :exclude [every? mapv select-keys some])
   (:require

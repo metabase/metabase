@@ -80,10 +80,6 @@
 
 ;;;; referenced-tables
 
-;; TODO: Proper schema
-;; FKA driver/native-query-deps :sql
-;; TODO: handling for other driver impls
-;; #_#_:- ::driver/native-query-deps
 (mu/defn referenced-tables
   "WIP"
   [driver :- :keyword
@@ -164,7 +160,7 @@
   [_parser driver sql table-name]
   (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
         ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
-    (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. table-name)])
+    (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
 
 (defmethod sql-tools/replace-names-impl :macaw

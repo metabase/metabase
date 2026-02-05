@@ -1,4 +1,3 @@
-^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: remove before merging
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [metabase.driver.sql :as driver.sql]
