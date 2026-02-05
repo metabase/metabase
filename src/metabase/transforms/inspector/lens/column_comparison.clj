@@ -103,15 +103,13 @@
    :complexity   {:level :slow}})
 
 (defmethod lens.core/make-lens :column-comparison
-  [_ ctx params]
+  [lens-type ctx params]
   (let [{:keys [column-matches target]} ctx
         match-count (count column-matches)]
-    {:id           "column-comparison"
-     :display_name "Column Distributions"
-     :complexity   {:level :slow}
-     :summary      {:text       "Compare value distributions for columns that match between input and output"
-                    :highlights [{:label "Matched Columns" :value match-count}]}
-     :sections     [{:id     "comparisons"
-                     :title  "Column Comparisons"
-                     :layout :comparison}]
-     :cards        (vec (mapcat #(comparison-cards-for-match % target params) column-matches))}))
+    (lens.core/with-metadata lens-type ctx
+      {:summary  {:text       "Compare value distributions for columns that match between input and output"
+                  :highlights [{:label "Matched Columns" :value match-count}]}
+       :sections [{:id     "comparisons"
+                   :title  "Column Comparisons"
+                   :layout :comparison}]
+       :cards    (vec (mapcat #(comparison-cards-for-match % target params) column-matches))})))

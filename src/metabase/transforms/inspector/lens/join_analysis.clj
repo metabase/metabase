@@ -220,19 +220,17 @@
         :reason    (str "Unmatched rows in " alias)})}))
 
 (defmethod lens.core/make-lens :join-analysis
-  [_ ctx params]
+  [lens-type ctx params]
   (let [{:keys [join-structure]} ctx
         join-count (count join-structure)
         strategies (distinct (map :strategy join-structure))
         triggers (make-triggers join-structure params)]
-    {:id                   "join-analysis"
-     :display_name         "Join Analysis"
-     :complexity           {:level :very-slow}
-     :summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
-                            :highlights [{:label "Joins" :value join-count}]}
-     :sections             [{:id     "join-stats"
-                             :title  "Join Statistics"
-                             :layout :flat}]
-     :cards                (all-cards ctx params)
-     :alert_triggers       (vec (:alert_triggers triggers))
-     :drill_lens_triggers  (vec (:drill_lens_triggers triggers))}))
+    (lens.core/with-metadata lens-type ctx
+      {:summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
+                              :highlights [{:label "Joins" :value join-count}]}
+       :sections             [{:id     "join-stats"
+                               :title  "Join Statistics"
+                               :layout :flat}]
+       :cards                (all-cards ctx params)
+       :alert_triggers       (vec (:alert_triggers triggers))
+       :drill_lens_triggers  (vec (:drill_lens_triggers triggers))})))

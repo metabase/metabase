@@ -232,24 +232,22 @@
    :complexity   {:level :slow}})
 
 (defmethod lens.core/make-lens :unmatched-rows
-  [_ ctx params]
+  [lens-type ctx params]
   (let [cards (all-cards ctx params)
         outer-join-count (count (filter #(contains? #{:left-join :right-join :full-join} (:strategy %))
                                         (:join-structure ctx)))
         requested-step (:join_step params)
-        title (if requested-step
-                (str "Unmatched Rows - Join " requested-step)
-                "Unmatched Rows")]
-    {:id           "unmatched-rows"
-     :display_name title
-     :complexity   {:level :slow}
-     :summary      (if (seq cards)
-                     {:text       (str "Analyzing unmatched rows for " outer-join-count " outer join(s)")
-                      :highlights [{:label "Outer Joins" :value outer-join-count}
-                                   {:label "Sample Cards" :value (count cards)}]}
-                     {:text       "No outer joins with detectable join conditions"
-                      :highlights []})
-     :sections     [{:id     "samples"
-                     :title  "Unmatched Row Samples"
-                     :layout :flat}]
-     :cards        cards}))
+        title (when requested-step
+                (str "Unmatched Rows - Join " requested-step))]
+    (cond-> (lens.core/with-metadata lens-type ctx
+              {:summary  (if (seq cards)
+                           {:text       (str "Analyzing unmatched rows for " outer-join-count " outer join(s)")
+                            :highlights [{:label "Outer Joins" :value outer-join-count}
+                                         {:label "Sample Cards" :value (count cards)}]}
+                           {:text       "No outer joins with detectable join conditions"
+                            :highlights []})
+               :sections [{:id     "samples"
+                           :title  "Unmatched Row Samples"
+                           :layout :flat}]
+               :cards    cards})
+      title (assoc :display_name title))))
