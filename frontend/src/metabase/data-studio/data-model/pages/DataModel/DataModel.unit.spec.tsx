@@ -14,6 +14,7 @@ import {
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
   setupUserAcknowledgementEndpoints,
+  setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -234,7 +235,9 @@ async function setup({
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
   setupTablesBulkEndpoints();
-  setupUsersEndpoints([createMockUserListResult()]);
+  const users = [createMockUserListResult()];
+  setupUsersEndpoints(users);
+  setupUserRecipientsEndpoint({ users });
   setupUserAcknowledgementEndpoints({
     key: "seen-publish-tables-info",
     value: false,
