@@ -39,10 +39,10 @@ Metabase only shows items when you have access to both the source item and at le
 
 Selecting an item opens a details panel with:
 
-- the item's name, owner, and creation date
-- a list of missing or invalid columns, with copy buttons to help fix references
-- downstream items that are broken because of this specific issue. You can filter this list by entity type
-- quick links to open items or view them in the [dependency graph](./dependency-graph.md)
+- The item's name, owner, and creation date
+- A list of missing or invalid columns, with copy buttons to help fix references
+- Downstream items that are broken because of this specific issue. You can filter this list by entity type
+- Quick links to open items or view them in the [dependency graph](./dependency-graph.md)
 
 For tables created by transforms, the sidebar also shows a link to the source transform.
 
@@ -91,8 +91,8 @@ For each item, the list shows:
 
 Selecting an item opens a details panel with:
 
-- who created the item and when
-- when it was last edited
-- links to open the item or view it in the [dependency graph](./dependency-graph.md)
+- Who created the item and when
+- When it was last edited
+- Links to open the item or view it in the [dependency graph](./dependency-graph.md)
 
 For tables, the sidebar also shows owners, descriptions, and links to open the schema or database. For tables created by transforms, the sidebar shows a link to the source transform.
