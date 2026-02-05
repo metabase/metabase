@@ -525,11 +525,10 @@
     (frequencies
      (doall
       (for [q queries]
-        (do (println "parsing " q)
-            (try
-              (sql-parsing/referenced-tables q driver)
-              true
-              (catch Exception _ false)))))))
+        (try
+          (sql-parsing/referenced-tables q driver)
+          true
+          (catch Exception _ false))))))
 
   ;; Load and run validation tests interactively
   (load-validation-test-cases)
@@ -544,13 +543,13 @@
   (doseq [tc (:valid-queries (load-validation-test-cases))]
     (let [result (validate-test-case tc)]
       (when-not (:passed result)
-        (println "FAILED:" (:name tc) "-" (:reason result)))))
+        result)))
 
   ;; Run all invalid query tests
   (doseq [tc (:invalid-queries (load-validation-test-cases))]
     (let [result (validate-test-case tc)]
       (when-not (:passed result)
-        (println "FAILED:" (:name tc) "-" (:reason result))))))
+        result))))
 
 ;;; -------------------------------------------- Referenced Fields Tests --------------------------------------------
 

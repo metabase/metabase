@@ -1,6 +1,5 @@
 (ns metabase.sql-tools.settings
   (:require
-   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 

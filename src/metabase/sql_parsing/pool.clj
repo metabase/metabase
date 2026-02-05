@@ -6,7 +6,6 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.sql-parsing.common :as common]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -289,5 +288,5 @@
   "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
   []
   (if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
-    (acquire-dev-context)
-    (acquire-context @python-context-pool)))
+      (acquire-dev-context)
+      (acquire-context @python-context-pool)))

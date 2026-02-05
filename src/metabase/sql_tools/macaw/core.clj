@@ -1,3 +1,5 @@
+(set! *warn-on-reflection* true)
+
 (ns metabase.sql-tools.macaw.core
   (:require
    [macaw.core :as macaw]
