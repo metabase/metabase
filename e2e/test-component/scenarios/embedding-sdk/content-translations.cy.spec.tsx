@@ -300,7 +300,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         });
 
         // "Visualize" in German locale
-        cy.button("Darstellen").click();
+        cy.button("Darstellen").should("be.visible").click();
 
         cy.findByTestId("interactive-question-result-toolbar").within(() => {
           // "1 grouping" in German locale
