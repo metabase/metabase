@@ -101,13 +101,18 @@
    [:group_role ::group-role]
    [:group_order :int]])
 
-(mr/def ::join-step-metadata
-  "Metadata for join analysis cards."
+(mr/def ::join-metadata
+  "Common metadata for join-related cards and triggers."
   [:map
-   [:card_type :keyword #_[:enum :base_count :join_step :table_count]]
    [:join_step {:optional true} :int]
    [:join_alias {:optional true} :string]
    [:join_strategy {:optional true} :keyword]])
+
+(mr/def ::join-step-metadata
+  "Metadata for join analysis cards."
+  [:merge
+   [:map [:card_type :keyword #_[:enum :base_count :join_step :table_count]]]
+   (mut/optional-keys ::join-metadata)])
 
 (mr/def ::card-metadata
   "Optional metadata for cards. An open map that may contain keys from
@@ -177,6 +182,11 @@
   [:map {:closed false}
    [:name :keyword]])
 
+(mr/def ::trigger-metadata
+  "Metadata for triggers. Uses same join fields as card metadata."
+  (mut/open-schema
+   (mut/optional-keys ::join-metadata)))
+
 (mr/def ::alert-trigger
   "Definition for conditional alerts.
    FE evaluates condition against card results and shows alert if triggered."
@@ -184,7 +194,8 @@
    [:id :string]
    [:condition ::trigger-condition]
    [:severity [:enum :info :warning :error]]
-   [:message :string]])
+   [:message :string]
+   [:metadata {:optional true} ::trigger-metadata]])
 
 (mr/def ::drill-lens-trigger
   "Definition for conditional drill lens availability.
@@ -194,7 +205,8 @@
    [:lens_id :string]
    [:condition ::trigger-condition]
    [:params {:optional true} [:map-of :keyword :any]]
-   [:reason {:optional true} :string]])
+   [:reason {:optional true} :string]
+   [:metadata {:optional true} ::trigger-metadata]])
 
 ;;; -------------------------------------------------- Drill Lenses --------------------------------------------------
 
