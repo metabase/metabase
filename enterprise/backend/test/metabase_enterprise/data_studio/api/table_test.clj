@@ -69,13 +69,13 @@
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
-    (is (= "Data Studio is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+    (is (= "Library is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/publish-tables"
                                            {:table_ids [(mt/id :users)]}))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (mt/with-premium-features #{:library}
-    (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
+    (testing "Data analysts (members of Data Analysts group) can access library endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
                                                      :last_name "Analyst"
@@ -94,7 +94,7 @@
 
 (deftest regular-user-cannot-access-data-studio-test
   (mt/with-premium-features #{:library}
-    (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"
+    (testing "Regular users (not in Data Analysts group) cannot access library endpoints"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Regular"
                                                 :last_name "User"
                                                 :email "regular-user@metabase.com"}
