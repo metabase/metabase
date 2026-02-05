@@ -291,23 +291,22 @@
   ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
   ([instance]
    (boolean
-    (or
-     ;; Has both view-data and create-queries permissions
-     (and (perms/user-has-permission-for-table?
+    ;; Has both view-data and create-queries permissions
+    (and (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/view-data
+          :unrestricted
+          (:db_id instance)
+          (:id instance))
+         (or
+          (perms/user-has-permission-for-table?
            api/*current-user-id*
-           :perms/view-data
-           :unrestricted
+           :perms/create-queries
+           :query-builder
            (:db_id instance)
            (:id instance))
-          (or
-           (perms/user-has-permission-for-table?
-            api/*current-user-id*
-            :perms/create-queries
-            :query-builder
-            (:db_id instance)
-            (:id instance))
-           ;; Can access via published collection (EE feature)
-           (perms/can-access-via-collection? instance))))))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))))
   ([_ pk]
    (mi/can-query? (t2/select-one :model/Table pk))))
 
