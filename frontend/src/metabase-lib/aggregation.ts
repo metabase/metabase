@@ -70,6 +70,6 @@ export function aggregableColumns(
   query: Query,
   stageIndex: number,
   expressionIndex?: number,
-): ColumnMetadata[] {
+): ColumnMetadata[] | null {
   return ML.aggregable_columns(query, stageIndex, expressionIndex);
 }

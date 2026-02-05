@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type {
-  Metabase_Lib_Schema_Query,
-  Metabase_Lib_Schema_Aggregation_Operator,
-  Metabase_Lib_Schema_Metadata_Column,
   Metabase_Lib_Aggregation_Aggregable,
   Metabase_Lib_Schema_Aggregation_Aggregation,
+  Metabase_Lib_Schema_Aggregation_Operator,
+  Metabase_Lib_Schema_Metadata_Column,
+  Metabase_Lib_Schema_Query,
 } from "cljs/metabase.lib.js";
 import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {

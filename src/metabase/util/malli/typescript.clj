@@ -31,6 +31,10 @@
 ;; When bound to an atom, maps ns -> set of {:type :any|:unknown, :def string}
 (def ^:dynamic *weak-types* nil)
 
+;; Dynamic var to indicate we're generating types for function arguments.
+;; When true, :maybe generates "T | undefined | null" instead of "T | null".
+(def ^:dynamic *argument-context* false)
+
 (defn- debug-cljs?
   "Check if MB_DEBUG_CLJS environment variable is set."
   []
@@ -288,7 +292,9 @@
 (defmethod -schema->ts :maybe
   [schema]
   (let [[inner] (mc/children (mc/schema schema))]
-    (str (schema->ts inner) " | null")))
+    (if *argument-context*
+      (str (schema->ts inner) " | undefined | null")
+      (str (schema->ts inner) " | null"))))
 
 ;; :schema wraps a schema for validation - just unwrap and process the child
 (defmethod -schema->ts :schema
@@ -484,9 +490,10 @@
 (defn schema->ts
   "Convert a Malli schema to TypeScript type definition.
    Dispatches on the schema type (keyword).
-   Uses memoization unless *bypass-memoization* is true."
+   Uses memoization unless *bypass-memoization* is true or *argument-context* is true
+   (since argument context affects :maybe output)."
   [schema]
-  (if *bypass-memoization*
+  (if (or *bypass-memoization* *argument-context*)
     (schema->ts-impl schema)
     (schema->ts-memoized schema)))
 
@@ -532,11 +539,12 @@
     (str "arg" index)))
 
 (defn- format-ts-args [arglist arg-schema]
-  (->> (map-indexed
-        (fn [idx [arg-name arg-schema]]
-          (str (extract-arg-name arg-name idx) ": " (schema->ts arg-schema)))
-        (map vector arglist (mc/children arg-schema)))
-       (str/join ", ")))
+  (binding [*argument-context* true]
+    (->> (map-indexed
+          (fn [idx [arg-name arg-schema]]
+            (str (extract-arg-name arg-name idx) ": " (schema->ts arg-schema)))
+          (map vector arglist (mc/children arg-schema)))
+         (str/join ", "))))
 
 (defn- format-jsdoc
   "Generate a JSDoc comment block with description, @param tags, and @returns tag."
@@ -544,10 +552,12 @@
   (let [doc-lines (when-not (str/blank? doc)
                     (->> (str/split-lines doc)
                          (map #(str " * " %))))
-        param-lines (map-indexed
-                     (fn [idx [arg-name arg-schema]]
-                       (str " * @param {" (schema->ts arg-schema) "} " (extract-arg-name arg-name idx)))
-                     (map vector arglist (mc/children arg-schema)))
+        param-lines (binding [*argument-context* true]
+                      (doall
+                       (map-indexed
+                        (fn [idx [arg-name arg-schema]]
+                          (str " * @param {" (schema->ts arg-schema) "} " (extract-arg-name arg-name idx)))
+                        (map vector arglist (mc/children arg-schema)))))
         return-line (str " * @returns {" (schema->ts return-schema) "}")]
     (str "/**\n"
          (when (seq doc-lines)
