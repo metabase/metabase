@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { TemporalUnitPicker } from "metabase/querying/filters/components/TemporalUnitPicker";
+import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
@@ -27,7 +27,9 @@ export function BucketButton({
 
   const { bucketInfo, availableItems } = useMemo(() => {
     const bucket = Lib.temporalBucket(breakout);
-    const info = bucket ? Lib.displayInfo(query, STAGE_INDEX, bucket) : undefined;
+    const info = bucket
+      ? Lib.displayInfo(query, STAGE_INDEX, bucket)
+      : undefined;
     const buckets = Lib.availableTemporalBuckets(query, STAGE_INDEX, column);
 
     const items = buckets.map((b) => {
@@ -66,7 +68,9 @@ export function BucketButton({
           rightSection={<Icon name="chevrondown" size={12} />}
           onClick={() => setIsOpen(!isOpen)}
         >
-          {bucketInfo ? t`by ${bucketInfo.displayName.toLowerCase()}` : t`Unbinned`}
+          {bucketInfo
+            ? t`by ${bucketInfo.displayName.toLowerCase()}`
+            : t`Unbinned`}
         </Button>
       </Popover.Target>
       <Popover.Dropdown>

@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import { metadataProvider } from "metabase-lib/metadata";
+import { metadataProvider } from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
