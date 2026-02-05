@@ -1140,6 +1140,17 @@ class FieldReferenceWalker:
                     "errors": set()
                 }
 
+            # A table with empty name whose 'this' is a function is a table function
+            # that SQLGlot parsed as Table instead of UDTF (e.g., my_function(1, 100))
+            if not table_name and isinstance(source_expr.this, exp.Func):
+                alias = source_expr.alias
+                return {
+                    "names": {"table_alias": alias} if alias else None,
+                    "returned_fields": [{"type": "unknown_columns"}],
+                    "used_fields": set(),
+                    "errors": set()
+                }
+
             # Real table
             table_info = {"table": table_name}
             if source_expr.db:

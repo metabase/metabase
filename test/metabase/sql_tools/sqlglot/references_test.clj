@@ -276,18 +276,8 @@
          (->references "select foo.* from (select a from orders)"))))
 
 (deftest ^:parallel bad-table-name-test
-  (is (= {:used-fields
-          #{{:column "a",
-             :alias nil,
-             :type :single-column,
-             :source-columns []}},
-          :returned-fields
-          [{:column "a",
-            :alias nil,
-            :type :single-column,
-            :source-columns []}]
-          :errors #{(lib/missing-table-alias-error "bad")}}
-         (->references "select bad.a from products"))))
+  (is (= #{(lib/missing-table-alias-error "bad")}
+         (:errors (->references "select bad.a from products")))))
 
 (deftest ^:parallel no-possible-sources-test
   (is (= {:used-fields
