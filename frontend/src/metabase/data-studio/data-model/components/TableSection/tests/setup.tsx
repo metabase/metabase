@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupUserKeyValueEndpoints,
+  setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -67,6 +68,7 @@ export function setup({
   }
 
   setupUsersEndpoints([createMockUser()]);
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "seen-publish-tables-info",
