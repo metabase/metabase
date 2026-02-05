@@ -667,21 +667,24 @@
 (defn- ts-content
   "Generate TypeScript content for a namespace.
    - defs: map of def name -> metadata
-   - shared-types: set of schema keywords that are defined in shared.d.ts (optional)"
+   - shared-types: set of schema keywords that are defined in shared.d.ts
+   - ns-refs: set of registry refs used by this namespace (from first pass)"
   ([defs]
-   (ts-content defs #{}))
+   (ts-content defs #{} #{}))
   ([defs shared-types]
+   (ts-content defs shared-types #{}))
+  ([defs shared-types ns-refs]
    (binding [*registry-refs* (atom #{})]
      (let [fn-defs (->> (vals defs)
                         (map (fn [defmeta]
                                (binding [*current-def* (name (:name defmeta))]
                                  (def->ts defmeta))))
                         (str/join "\n\n"))
-           ;; Only generate aliases for types NOT in shared-types
-           local-refs (remove shared-types @*registry-refs*)
+           ;; Use pre-collected refs from first pass, filter out shared types
+           local-refs (remove shared-types ns-refs)
            type-aliases (generate-type-aliases local-refs)
            ;; Add import for shared types if any refs are in shared-types
-           shared-refs-used (filter shared-types @*registry-refs*)
+           shared-refs-used (filter shared-types ns-refs)
            import-stmt (when (seq shared-refs-used)
                          "import type * as Shared from './metabase.lib.shared';\n\n")]
        (str (or import-stmt "")
@@ -748,7 +751,7 @@
           candidates [(str base-path ".cljs")
                       (str base-path ".cljc")
                       (str base-path ".clj")]]
-      (or (first (filter #(.exists (java.io.File. %)) candidates))
+      (or (first (filter #(.exists (java.io.File. ^String %)) candidates))
           (str base-path ".cljs")))))
 
 (defn- output-weak-type-warnings!
@@ -812,9 +815,10 @@
             (let [t     (u/start-timer)
                   fname (comp/munge (str ns))
                   f     (b.data/output-file state (str fname ".d.ts"))
+                  this-ns-refs (get ns-refs ns #{})
                   content (binding [*shared-types* shared-refs
                                     *current-ns*   ns]
-                            (ts-content defs shared-refs))
+                            (ts-content defs shared-refs this-ns-refs))
                   ;; Add re-exports for metabase.lib.js
                   content (if (= ns 'metabase.lib.js)
                             (str content (generate-reexports lib-namespaces))
