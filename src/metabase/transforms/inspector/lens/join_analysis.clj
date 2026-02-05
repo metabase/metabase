@@ -111,28 +111,28 @@
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
 (defn- resolve-from-table-id
-  "Find the table-id for the FROM table."
+  "Find the table_id for the FROM table."
   [{:keys [source-type preprocessed-query sources]}]
   (case source-type
     :mbql (get-in preprocessed-query [:stages 0 :source-table])
     ;; For native, first source is the FROM table
-    :native (:table-id (first sources))))
+    :native (:table_id (first sources))))
 
 (defn- base-count-card
   [ctx]
   (let [{:keys [source-type preprocessed-query from-clause-sql db-id]} ctx
         source-table-id (resolve-from-table-id ctx)]
     {:id         "base-count"
-     :section-id "join-stats"
+     :section_id "join-stats"
      :title      "Base Row Count"
      :display    :scalar
-     :dataset-query
+     :dataset_query
      (case source-type
        :mbql (-> preprocessed-query (query-with-n-joins 0) make-count-query)
        :native (make-native-query db-id
                                   (str "SELECT COUNT(*) FROM " from-clause-sql)))
-     :metadata {:dedup-key [:table-count source-table-id]
-                :card-type :base-count}}))
+     :metadata {:dedup_key [:table_count source-table-id]
+                :card_type :base_count}}))
 
 (defn- join-step-card
   [ctx step]
@@ -140,37 +140,37 @@
         join (nth join-structure (dec step))
         {:keys [strategy alias]} join]
     {:id         (str "join-step-" step)
-     :section-id "join-stats"
+     :section_id "join-stats"
      :title      (str "Join " step ": " alias)
      :display    :table
-     :dataset-query
+     :dataset_query
      (case source-type
        :mbql (make-join-step-query-mbql preprocessed-query step
                                         (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
        :native (make-native-query db-id
                                   (build-native-join-step-sql from-clause-sql
                                                               (take step join-structure) join)))
-     :metadata {:card-type     :join-step
-                :join-step     step
-                :join-alias    alias
-                :join-strategy strategy}}))
+     :metadata {:card_type     :join_step
+                :join_step     step
+                :join_alias    alias
+                :join_strategy strategy}}))
 
 (defn- table-count-card
   [ctx step]
   (let [{:keys [join-structure sources db-id]} ctx
         join (nth join-structure (dec step))
         table-id (:source-table join)
-        table (some #(when (= (:table-id %) table-id) %) sources)]
+        table (some #(when (= (:table_id %) table-id) %) sources)]
     (when table
       {:id         (str "table-" step "-count")
-       :section-id "join-stats"
-       :title      (str (:table-name table) " Row Count")
+       :section_id "join-stats"
+       :title      (str (:table_name table) " Row Count")
        :display    :scalar
-       :dataset-query (make-table-count-query (or (:db-id table) db-id) table-id)
-       :metadata   {:dedup-key  [:table-count table-id]
-                    :card-type  :table-count
-                    :join-step  step
-                    :table-id   table-id}})))
+       :dataset_query (make-table-count-query (or (:db_id table) db-id) table-id)
+       :metadata   {:dedup_key  [:table_count table-id]
+                    :card_type  :table_count
+                    :join_step  step
+                    :table_id   table-id}})))
 
 (defn- all-cards
   [ctx]
@@ -193,7 +193,7 @@
 (defmethod lens.core/lens-metadata :join-analysis
   [_ _ctx]
   {:id           "join-analysis"
-   :display-name "Join Analysis"
+   :display_name "Join Analysis"
    :description  "Analyze join quality and match rates"})
 
 (defn- make-triggers
@@ -202,20 +202,20 @@
   (let [outer-joins (filter #(contains? #{:left-join :right-join :full-join}
                                         (:strategy %))
                             (map-indexed #(assoc %2 :step (inc %1)) join-structure))]
-    {:alert-triggers
+    {:alert_triggers
      (for [{:keys [step alias]} outer-joins]
        {:id         (str "high-null-rate-" step)
         :condition  {:name    :high-null-rate
-                     :card-id (str "join-step-" step)}
+                     :card_id (str "join-step-" step)}
         :severity   :warning
         :message    (str "Join '" alias "' has >20% unmatched rows")})
 
-     :drill-lens-triggers
+     :drill_lens_triggers
      (for [{:keys [step alias]} outer-joins]
-       {:lens-id   "unmatched-rows"
+       {:lens_id   "unmatched-rows"
         :condition {:name    :has-unmatched-rows
-                    :card-id (str "join-step-" step)}
-        :params    {:join-step step}
+                    :card_id (str "join-step-" step)}
+        :params    {:join_step step}
         :reason    (str "Unmatched rows in " alias)})}))
 
 (defmethod lens.core/make-lens :join-analysis
@@ -225,12 +225,12 @@
         strategies (distinct (map :strategy join-structure))
         triggers (make-triggers join-structure)]
     {:id                   "join-analysis"
-     :display-name         "Join Analysis"
+     :display_name         "Join Analysis"
      :summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
                             :highlights [{:label "Joins" :value join-count}]}
      :sections             [{:id     "join-stats"
                              :title  "Join Statistics"
                              :layout :flat}]
      :cards                (all-cards ctx)
-     :alert-triggers       (vec (:alert-triggers triggers))
-     :drill-lens-triggers  (vec (:drill-lens-triggers triggers))}))
+     :alert_triggers       (vec (:alert_triggers triggers))
+     :drill_lens_triggers  (vec (:drill_lens_triggers triggers))}))

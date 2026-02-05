@@ -20,14 +20,14 @@
    - row: the first row of query result (vector)"
   {:arglists '([lens-id card row])}
   (fn [lens-id card _row]
-    [lens-id (keyword (get-in card [:metadata :card-type]))]))
+    [lens-id (get-in card [:metadata :card_type])]))
 
 (defmethod compute-card-result :default
   [_ _ row]
   (when (nil? row)
-    {"no-data" true}))
+    {"no_data" true}))
 
-(defmethod compute-card-result [:join-analysis :join-step]
+(defmethod compute-card-result [:join-analysis "join_step"]
   [_ _card row]
   (let [output-count (nth row 0 nil)
         matched-count (nth row 1 nil)
@@ -35,7 +35,7 @@
                      (- output-count matched-count))
         null-rate (when (and null-count output-count (pos? output-count))
                     (/ null-count output-count))]
-    {"output-count"  output-count
-     "matched-count" matched-count
-     "null-count"    null-count
-     "null-rate"     null-rate}))
+    {"output_count"  output-count
+     "matched_count" matched-count
+     "null_count"    null-count
+     "null_rate"     null-rate}))

@@ -28,10 +28,10 @@
 
 (defn evaluate-triggers
   "Evaluate all triggers for a lens against card results.
-   Returns {:alerts [...] :drill-lenses [...]}."
+   Returns {:alerts [...] :drill_lenses [...]}."
   [lens card-results]
-  {:alerts       (triggered-alerts card-results (:alert-triggers lens))
-   :drill-lenses (triggered-drill-lenses card-results (:drill-lens-triggers lens))})
+  {:alerts       (triggered-alerts card-results (:alert_triggers lens))
+   :drill_lenses (triggered-drill-lenses card-results (:drill_lens_triggers lens))})
 
 ;;; -------------------------------------------------- Interestingness --------------------------------------------------
 

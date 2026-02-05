@@ -31,14 +31,14 @@
        :status           :not-run
        :sources          sources
        :target           nil
-       :available-lenses []}
+       :available_lenses []}
       {:name             (str "Transform Inspector: " (:name transform))
        :description      (tru "Analysis of transform inputs, outputs, and joins")
        :status           :ready
        :sources          sources
        :target           target
-       :visited-fields   {} #_(:visited-fields ctx)
-       :available-lenses (lens.core/available-lenses ctx)})))
+       :visited_fields   {} #_(:visited_fields ctx)
+       :available_lenses (lens.core/available-lenses ctx)})))
 
 (mu/defn get-lens :- ::schema/lens
   "Get full lens contents for a transform.

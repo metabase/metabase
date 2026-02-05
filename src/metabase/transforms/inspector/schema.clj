@@ -14,8 +14,8 @@
 (mr/def ::field-stats
   "Statistics for a field from fingerprints."
   [:map
-   [:distinct-count {:optional true} :int]
-   [:nil-percent {:optional true} :double]
+   [:distinct_count {:optional true} :int]
+   [:nil_percent {:optional true} :double]
    ;; Number stats
    [:min {:optional true} :double]
    [:max {:optional true} :double]
@@ -31,19 +31,19 @@
   [:map
    [:id pos-int?]
    [:name :string]
-   [:display-name {:optional true} [:maybe :string]]
-   [:base-type :keyword]
-   [:semantic-type {:optional true} [:maybe :keyword]]
+   [:display_name {:optional true} [:maybe :string]]
+   [:base_type :keyword]
+   [:semantic_type {:optional true} [:maybe :keyword]]
    [:stats {:optional true} [:maybe ::field-stats]]])
 
 (mr/def ::table
   "Table metadata."
   [:map
-   [:table-id pos-int?]
-   [:table-name :string]
+   [:table_id pos-int?]
+   [:table_name :string]
    [:schema {:optional true} [:maybe :string]]
-   [:db-id pos-int?]
-   [:column-count :int]
+   [:db_id pos-int?]
+   [:column_count :int]
    [:fields [:sequential ::field]]])
 
 ;;; -------------------------------------------------- Visited Fields --------------------------------------------------
@@ -52,10 +52,10 @@
   "Field IDs used in semantically important query clauses.
    Used for interestingness scoring and preselection."
   [:map
-   [:join-fields {:optional true} [:set pos-int?]]
-   [:filter-fields {:optional true} [:set pos-int?]]
-   [:group-by-fields {:optional true} [:set pos-int?]]
-   [:order-by-fields {:optional true} [:set pos-int?]]
+   [:join_fields {:optional true} [:set pos-int?]]
+   [:filter_fields {:optional true} [:set pos-int?]]
+   [:group_by_fields {:optional true} [:set pos-int?]]
+   [:order_by_fields {:optional true} [:set pos-int?]]
    [:all {:optional true} [:set pos-int?]]])
 
 ;;; -------------------------------------------------- Lens Metadata --------------------------------------------------
@@ -63,7 +63,7 @@
 (mr/def ::lens-metadata
   [:map
    [:id :string]
-   [:display-name :string]
+   [:display_name :string]
    [:description {:optional true} [:maybe :string]]])
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
@@ -76,7 +76,7 @@
 
 (mr/def ::dedup-key
   "Key for deduplicating identical queries across lenses.
-   Typically a vector like [:table-count table-id]."
+   Typically a vector like [:table_count table-id]."
   [:sequential :any])
 
 (mr/def ::group-role
@@ -86,17 +86,17 @@
 (mr/def ::comparison-metadata
   "Metadata for cards in comparison layouts."
   [:map
-   [:group-id :string]
-   [:group-role ::group-role]
-   [:group-order :int]])
+   [:group_id :string]
+   [:group_role ::group-role]
+   [:group_order :int]])
 
 (mr/def ::join-step-metadata
   "Metadata for join analysis cards."
   [:map
-   [:card-type :keyword #_[:enum :base-count :join-step :table-count]]
-   [:join-step {:optional true} :int]
-   [:join-alias {:optional true} :string]
-   [:join-strategy {:optional true} :keyword]])
+   [:card_type :keyword #_[:enum :base_count :join_step :table_count]]
+   [:join_step {:optional true} :int]
+   [:join_alias {:optional true} :string]
+   [:join_strategy {:optional true} :keyword]])
 
 (mr/def ::card-metadata
   "Optional metadata for cards. An open map that may contain keys from
@@ -104,9 +104,9 @@
   (mut/open-schema
    [:merge
     [:map
-     [:dedup-key {:optional true} ::dedup-key]
+     [:dedup_key {:optional true} ::dedup-key]
      ;; Card IDs this card depends on (e.g. for degeneracy checks)
-     [:depends-on-cards {:optional true} [:set :string]]]
+     [:depends_on_cards {:optional true} [:set :string]]]
     (mut/optional-keys ::comparison-metadata)
     (mut/optional-keys ::join-step-metadata)]))
 
@@ -118,10 +118,10 @@
    lens-specific lib utilities on the frontend. "
   [:map
    [:id :string]
-   [:section-id {:optional true} [:maybe :string]]
+   [:section_id {:optional true} [:maybe :string]]
    [:title :string]
    [:display ::display-type]
-   [:dataset-query :map]
+   [:dataset_query :map]
    ;; Lens-specific metadata - opaque to core, interpreted by FE
    [:metadata {:optional true} ::card-metadata]])
 
@@ -148,7 +148,7 @@
   [:map
    [:label :string]
    [:value {:optional true} [:maybe :any]]
-   [:card-id {:optional true} :string]])
+   [:card_id {:optional true} :string]])
 
 (mr/def ::lens-summary
   "Summary section of a lens."
@@ -180,7 +180,7 @@
    FE evaluates condition and shows drill lens option if triggered.
    :params is passed to the drill lens when triggered."
   [:map
-   [:lens-id :string]
+   [:lens_id :string]
    [:condition ::trigger-condition]
    [:params {:optional true} [:map-of :keyword :any]]
    [:reason {:optional true} :string]])
@@ -191,7 +191,7 @@
   "A drill-down lens available from the current lens."
   [:map
    [:id :string]
-   [:display-name :string]
+   [:display_name :string]
    [:description {:optional true} [:maybe :string]]])
 
 ;;; -------------------------------------------------- Lens Response --------------------------------------------------
@@ -200,14 +200,14 @@
   "Full lens contents and drill lens/alert triggers."
   [:map
    [:id :string]
-   [:display-name :string]
+   [:display_name :string]
    [:summary {:optional true} ::lens-summary]
    [:sections [:sequential ::section]]
    [:cards [:sequential ::card]]
-   [:drill-lenses {:optional true} [:sequential ::drill-lens]]
+   [:drill_lenses {:optional true} [:sequential ::drill-lens]]
    ;; Trigger definitions - FE evaluates conditions against card results
-   [:alert-triggers {:optional true} [:sequential ::alert-trigger]]
-   [:drill-lens-triggers {:optional true} [:sequential ::drill-lens-trigger]]])
+   [:alert_triggers {:optional true} [:sequential ::alert-trigger]]
+   [:drill_lens_triggers {:optional true} [:sequential ::drill-lens-trigger]]])
 
 ;;; -------------------------------------------------- Discovery Response --------------------------------------------------
 
@@ -223,5 +223,5 @@
    [:status ::inspector-status]
    [:sources [:sequential ::table]]
    [:target {:optional true} [:maybe ::table]]
-   [:visited-fields {:optional true} [:maybe ::visited-fields]]
-   [:available-lenses [:sequential ::lens-metadata]]])
+   [:visited_fields {:optional true} [:maybe ::visited-fields]]
+   [:available_lenses [:sequential ::lens-metadata]]])

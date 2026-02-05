@@ -39,7 +39,7 @@
 
    Returns:
    {:id \"lens-id\"
-    :display-name \"Human Name\"
+    :display_name \"Human Name\"
     :description \"Optional description\"}"
   {:arglists '([lens-type ctx])}
   (fn [lens-type _ctx] lens-type))
@@ -47,7 +47,7 @@
 (defmethod lens-metadata :default
   [lens-type _ctx]
   {:id           (name lens-type)
-   :display-name (str lens-type)
+   :display_name (str lens-type)
    :description  nil})
 
 (defmulti make-lens
@@ -56,19 +56,19 @@
    Arguments:
    - lens-type: keyword like :generic-summary, :join-analysis
    - ctx: context map with sources, target, joins, etc.
-   - params: optional map with drill lens parameters (e.g., {:join-step 1})
+   - params: optional map with drill lens parameters (e.g., {:join_step 1})
 
    Returns a complete lens map with sections, cards, triggers, etc.
 
    Returns:
    {:id \"lens-id\"
-    :display-name \"Human Name\"
+    :display_name \"Human Name\"
     :summary {:text \"...\" :highlights [...] :alerts []}
     :sections [{:id :title :description :layout} ...]
-    :cards [{:id :title :display :dataset-query :metadata {...}} ...]
-    :drill-lenses [{:id :display-name :description} ...]
-    :alert-triggers [...]
-    :drill-lens-triggers [...]}"
+    :cards [{:id :title :display :dataset_query :metadata {...}} ...]
+    :drill_lenses [{:id :display_name :description} ...]
+    :alert_triggers [...]
+    :drill_lens_triggers [...]}"
   {:arglists '([lens-type ctx params])}
   (fn [lens-type _ctx _params] lens-type))
 
@@ -76,7 +76,7 @@
   [lens-type _ctx _params]
   (log/warnf "No lens implementation for type: %s" lens-type)
   {:id           (name lens-type)
-   :display-name (str lens-type)
+   :display_name (str lens-type)
    :summary      {:text nil :highlights [] :alerts []}
    :sections     []
    :cards        []})
@@ -128,14 +128,14 @@
   (keyword lens-id))
 
 (defn- filter-applicable-drill-triggers
-  "Filter drill-lens-triggers to only include sublenses that are applicable to ctx."
+  "Filter drill_lens_triggers to only include sublenses that are applicable to ctx."
   [ctx drill-lens-triggers]
-  (filterv #(lens-applicable? (lens-id->type (:lens-id %)) ctx) drill-lens-triggers))
+  (filterv #(lens-applicable? (lens-id->type (:lens_id %)) ctx) drill-lens-triggers))
 
 (defn get-lens
   "Generate a lens by ID (Phase 2).
    Returns the full lens with sections, cards, and triggers.
-   Filters drill-lens-triggers to only include applicable sublenses.
+   Filters drill_lens_triggers to only include applicable sublenses.
    Optional params can filter/customize drill lens output."
   ([ctx lens-id]
    (get-lens ctx lens-id nil))
@@ -143,7 +143,7 @@
    (let [lens-type (lens-id->type lens-id)]
      (if (lens-applicable? lens-type ctx)
        (-> (make-lens lens-type ctx params)
-           (update :drill-lens-triggers #(filter-applicable-drill-triggers ctx %)))
+           (update :drill_lens_triggers #(filter-applicable-drill-triggers ctx %)))
        (throw (ex-info "Lens data not available"
-                       {:lens-id   lens-id
-                        :lens-type lens-type}))))))
+                       {:lens_id   lens-id
+                        :lens_type lens-type}))))))

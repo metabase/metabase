@@ -166,14 +166,14 @@
     (when is-outer?
       (when-let [query (make-truly-unmatched-query ctx step)]
         {:id            (str "truly-unmatched-" step)
-         :section-id    "samples"
+         :section_id    "samples"
          :title         (str alias ": Rows with key but no match")
          :display       :table
-         :dataset-query query
-         :metadata      {:card-type     :truly-unmatched
-                         :join-step     step
-                         :join-alias    alias
-                         :join-strategy strategy}}))))
+         :dataset_query query
+         :metadata      {:card_type     :truly_unmatched
+                         :join_step     step
+                         :join_alias    alias
+                         :join_strategy strategy}}))))
 
 (defn- null-source-key-card
   "Generate a card for rows where LHS key is NULL."
@@ -185,14 +185,14 @@
     (when is-outer?
       (when-let [query (make-null-source-key-query ctx step)]
         {:id            (str "null-source-key-" step)
-         :section-id    "samples"
+         :section_id    "samples"
          :title         (str alias ": Rows with NULL source key")
          :display       :table
-         :dataset-query query
-         :metadata      {:card-type     :null-source-key
-                         :join-step     step
-                         :join-alias    alias
-                         :join-strategy strategy}}))))
+         :dataset_query query
+         :metadata      {:card_type     :null_source_key
+                         :join_step     step
+                         :join_alias    alias
+                         :join_strategy strategy}}))))
 
 (defn- cards-for-join
   "Generate both unmatched cards for a specific join step."
@@ -201,11 +201,11 @@
                   (null-source-key-card ctx step)]))
 
 (defn- all-cards
-  "Generate sample cards for all outer joins, optionally filtered by join-step."
+  "Generate sample cards for all outer joins, optionally filtered by join_step."
   [ctx params]
   (let [{:keys [join-structure]} ctx
         ;; Parse to int - may be string from query params
-        requested-step (some-> (:join-step params) str parse-long)
+        requested-step (some-> (:join_step params) str parse-long)
         join-count (count join-structure)]
     (into []
           (mapcat (fn [step]
@@ -227,7 +227,7 @@
 (defmethod lens.core/lens-metadata :unmatched-rows
   [_ _ctx]
   {:id           "unmatched-rows"
-   :display-name "Unmatched Rows"
+   :display_name "Unmatched Rows"
    :description  "Sample rows that failed to join"})
 
 (defmethod lens.core/make-lens :unmatched-rows
@@ -235,12 +235,12 @@
   (let [cards (all-cards ctx params)
         outer-join-count (count (filter #(contains? #{:left-join :right-join :full-join} (:strategy %))
                                         (:join-structure ctx)))
-        requested-step (:join-step params)
+        requested-step (:join_step params)
         title (if requested-step
                 (str "Unmatched Rows - Join " requested-step)
                 "Unmatched Rows")]
     {:id           "unmatched-rows"
-     :display-name title
+     :display_name title
      :summary      (if (seq cards)
                      {:text       (str "Analyzing unmatched rows for " outer-join-count " outer join(s)")
                       :highlights [{:label "Outer Joins" :value outer-join-count}

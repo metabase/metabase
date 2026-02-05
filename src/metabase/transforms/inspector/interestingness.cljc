@@ -35,7 +35,7 @@
    These are structural columns (PKs, FKs, UUIDs) that don't provide
    meaningful distribution insights."
   [field]
-  (let [semantic-type (:semantic-type field)
+  (let [semantic-type (:semantic_type field)
         field-name    (some-> (:name field) str)]
     (or
      ;; Explicit semantic type indicates dominated column
@@ -48,28 +48,28 @@
   "Returns true if the column has very high cardinality (>1000 distinct values).
    High cardinality columns don't make good bar/pie charts."
   [field]
-  (let [distinct-count (get-in field [:stats :distinct-count])]
+  (let [distinct-count (get-in field [:stats :distinct_count])]
     (and distinct-count (> distinct-count 1000))))
 
 (defn- mostly-null?
   "Returns true if the column is mostly null (>90% null)."
   [field]
-  (let [nil-percent (get-in field [:stats :nil-percent])]
+  (let [nil-percent (get-in field [:stats :nil_percent])]
     (and nil-percent (> nil-percent 0.9))))
 
 (defn- temporal-column?
   "Returns true if the column represents temporal data."
   [field]
-  (or (contains? temporal-base-types (:base-type field))
+  (or (contains? temporal-base-types (:base_type field))
       (contains? #{:type/CreationTimestamp :type/UpdatedTimestamp
                    :type/CreationDate :type/UpdatedDate}
-                 (:semantic-type field))))
+                 (:semantic_type field))))
 
 (defn- categorical-column?
   "Returns true if the column appears to be categorical (low cardinality text/enum)."
   [field]
-  (let [distinct-count (get-in field [:stats :distinct-count])
-        base-type      (:base-type field)]
+  (let [distinct-count (get-in field [:stats :distinct_count])
+        base-type      (:base_type field)]
     (and distinct-count
          (<= distinct-count 20)
          (contains? #{:type/Text :type/TextLike} base-type))))
@@ -77,7 +77,7 @@
 (defn- numeric-with-variance?
   "Returns true if the column is numeric and has meaningful variance."
   [field]
-  (let [base-type (:base-type field)
+  (let [base-type (:base_type field)
         min-val   (get-in field [:stats :min])
         max-val   (get-in field [:stats :max])]
     (and (contains? #{:type/Integer :type/Float :type/Decimal :type/Number} base-type)
@@ -104,7 +104,7 @@
 
     ;; High cardinality without semantic type - poor for visualization
     (and (high-cardinality? field)
-         (not (contains? high-interest-semantic-types (:semantic-type field))))
+         (not (contains? high-interest-semantic-types (:semantic_type field))))
     {:score 0.2 :dominated? false :reasons [:high-cardinality]}
 
     :else
@@ -112,12 +112,12 @@
                       (temporal-column? field)       (conj :temporal)
                       (categorical-column? field)    (conj :categorical)
                       (numeric-with-variance? field) (conj :numeric-variance)
-                      (contains? high-interest-semantic-types (:semantic-type field))
+                      (contains? high-interest-semantic-types (:semantic_type field))
                       (conj :high-interest-semantic-type))
           base-score (cond
                        (temporal-column? field)                              0.9
                        (contains? high-interest-semantic-types
-                                  (:semantic-type field))                    0.85
+                                  (:semantic_type field))                    0.85
                        (categorical-column? field)                           0.8
                        (numeric-with-variance? field)                        0.75
                        :else                                                 0.5)]

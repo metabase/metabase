@@ -19,11 +19,11 @@
   false)
 
 (defmethod evaluate-condition :high-null-rate
-  [{:keys [card-id]} card-results]
-  (when-let [result (get card-results card-id)]
-    (> (get result "null-rate" 0) 0.2)))
+  [{:keys [card_id]} card-results]
+  (when-let [result (get card-results card_id)]
+    (> (get result "null_rate" 0) 0.2)))
 
 (defmethod evaluate-condition :has-unmatched-rows
-  [{:keys [card-id]} card-results]
-  (when-let [result (get card-results card-id)]
-    (> (get result "null-rate" 0) 0.05)))
+  [{:keys [card_id]} card-results]
+  (when-let [result (get card-results card_id)]
+    (> (get result "null_rate" 0) 0.05)))

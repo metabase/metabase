@@ -29,40 +29,6 @@ import {
   tag,
 } from "./tags";
 
-function kebabToSnakeCase(str: string): string {
-  return str.replace(/-/g, "_");
-}
-
-function snakeToKebabCase(str: string): string {
-  return str.replace(/_/g, "-");
-}
-
-function snakeTokebabParams(
-  params: Record<string, unknown>,
-): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(params).map(([key, value]) => [
-      snakeToKebabCase(key),
-      value,
-    ]),
-  );
-}
-
-export function transformKeys(obj: unknown): unknown {
-  if (Array.isArray(obj)) {
-    return obj.map(transformKeys);
-  }
-  if (obj !== null && typeof obj === "object") {
-    return Object.fromEntries(
-      Object.entries(obj).map(([key, value]) => [
-        kebabToSnakeCase(key),
-        transformKeys(value),
-      ]),
-    );
-  }
-  return obj;
-}
-
 export const transformApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listTransforms: builder.query<Transform[], ListTransformsRequest>({
@@ -259,9 +225,6 @@ export const transformApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/transform/${id}/inspect`,
       }),
-      // FIXME(egorgrushin): THIS IS TEMPORAL
-      transformResponse: (response: unknown) =>
-        transformKeys(response) as TransformInspectResponse,
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
@@ -273,9 +236,6 @@ export const transformApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/transform/${id}/inspect`,
       }),
-      // FIXME(egorgrushin): THIS IS TEMPORAL
-      transformResponse: (response: unknown) =>
-        transformKeys(response) as InspectorDiscoveryResponse,
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
@@ -283,11 +243,8 @@ export const transformApi = Api.injectEndpoints({
       query: ({ transformId, lensId, params }) => ({
         method: "GET",
         url: `/api/transform/${transformId}/inspect/${lensId}`,
-        params: params ? snakeTokebabParams(params) : undefined,
+        params,
       }),
-      // FIXME(egorgrushin): THIS IS TEMPORAL
-      transformResponse: (response: unknown) =>
-        transformKeys(response) as InspectorLens,
       providesTags: (_, error, { transformId }) =>
         invalidateTags(error, [idTag("transform", transformId)]),
     }),
