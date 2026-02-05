@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -9,11 +7,18 @@ import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
+import type { Database, Field, Table } from "metabase-types/api";
 
 import { trackReferenceXRayClicked } from "../analytics";
 
-const FieldSidebar = ({ database, table, field, style, className }) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+interface FieldSidebarProps {
+  database: Database;
+  table: Table;
+  field: Field;
+}
+
+const FieldSidebar = ({ database, table, field }: FieldSidebarProps) => (
+  <div className={S.sidebar}>
     <ul>
       <div>
         <Breadcrumbs
@@ -51,14 +56,6 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
     </ul>
   </div>
 );
-
-FieldSidebar.propTypes = {
-  database: PropTypes.object,
-  table: PropTypes.object,
-  field: PropTypes.object,
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(FieldSidebar);
