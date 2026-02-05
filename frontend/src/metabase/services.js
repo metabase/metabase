@@ -144,7 +144,51 @@ export async function runQuestionQuery(
     );
   };
 
-  const datasetQueries = [question.datasetQuery()];
+  function encodeBase64(str) {
+    return Buffer.from(str, "utf-8").toString("base64");
+  }
+
+  function encodeNativeStagesBase64(datasetQuery) {
+  if (datasetQuery["lib/type"] !== "mbql/query") {
+    return datasetQuery;
+  }
+
+  const { stages } = datasetQuery;
+
+  // MUST be an array
+  if (!Array.isArray(stages)) {
+    return datasetQuery;
+  }
+
+  if (!stages || typeof stages !== "object") {
+    return datasetQuery;
+  }
+
+
+  const updatedStages = stages.map(stage => {
+    if (
+      stage?.["lib/type"] === "mbql.stage/native" &&
+      typeof stage.native === "string"
+    ) {
+      return {
+        ...stage,
+        // ❌ DO NOT base64 encode
+        native: encodeBase64(stage.native),
+      };
+    }
+
+    return stage;
+  });
+
+    return {
+      ...datasetQuery,
+      stages: updatedStages,
+    };
+  }
+
+
+  const datasetQueries = [encodeNativeStagesBase64(question.datasetQuery())];
+  console.log("Dataset Queries:", datasetQueries);
 
   return Promise.all(datasetQueries.map(getDatasetQueryResult));
 }

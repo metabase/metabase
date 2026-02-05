@@ -35,9 +35,42 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2])
+   
+   (:import [java.util Base64]
+           [java.nio.charset StandardCharsets]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
+
+(defn base64-decode
+  ^String [^String s]
+  (-> (Base64/getDecoder)
+      (.decode s)
+      (String. StandardCharsets/UTF_8)))
+
+(defn decode-native-stage [stage]
+  (if (= (:lib/type stage) "mbql.stage/native")
+    (update stage :native base64-decode)
+    stage))
+
+(defn decode-native-stages [query]
+  (if (not= (:lib/type query) "mbql/query")
+    query
+    (update query :stages
+      (fn [stages]
+        (cond
+          ;; stages as vector (correct internal form)
+          (vector? stages)
+          (mapv decode-native-stage stages)
+
+          ;; stages as map (API payload form)
+          (map? stages)
+          (into {}
+                (for [[k stage] stages]
+                  [k (decode-native-stage stage)]))
+
+          :else
+          stages)))))
 
 (defn- query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
@@ -96,10 +129,13 @@
    _query-params
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
-  (run-streaming-query
-   (-> query
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+  (let [decoded-query (decode-native-stages query)]
+    (log/info "Query BEFORE decoding:\n" (u/pprint-to-str query))
+    (log/info "Query AFTER decoding:\n"  (u/pprint-to-str decoded-query))
+    (run-streaming-query
+     (-> decoded-query
+         (update-in [:middleware :js-int-to-string?] (fnil identity true))
+         qp/userland-query-with-default-constraints))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
