@@ -15,19 +15,6 @@ import {
 } from "./utils";
 
 describe("metabot > errors", () => {
-  it("should handle service error response", async () => {
-    setup();
-    fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 500);
-
-    await enterChatMessage("Who is your favorite?");
-
-    await assertConversation([
-      ["user", "Who is your favorite?"],
-      ["agent", METABOT_ERR_MSG.agentOffline],
-    ]);
-    expect(await input()).toHaveTextContent("Who is your favorite?");
-  });
-
   it("should handle non-successful responses", async () => {
     setup();
     fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 400);
@@ -36,6 +23,7 @@ describe("metabot > errors", () => {
 
     await assertConversation([
       ["user", "Who is your favorite?"],
+      // When no body is provided, a generic error message is shown
       ["agent", METABOT_ERR_MSG.default],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
@@ -49,7 +37,7 @@ describe("metabot > errors", () => {
 
     await assertConversation([
       ["user", "Who is your favorite?"],
-      ["agent", METABOT_ERR_MSG.default],
+      ["agent", /Anthropic API key expired or invalid/],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
@@ -79,7 +67,7 @@ describe("metabot > errors", () => {
 
     await assertConversation([
       ["user", "Who is your favorite?"],
-      ["agent", METABOT_ERR_MSG.agentOffline],
+      ["agent", METABOT_ERR_MSG.default],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
 

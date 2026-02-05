@@ -5,7 +5,6 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { getMetabotInitialState } from "metabase-enterprise/metabot/state/reducer-utils";
 
@@ -188,12 +187,20 @@ describe("metabot > ui", () => {
 
   it("should not show retry option for error messages", async () => {
     setup();
-    fetchMock.post(`path:/api/ee/metabot-v3/native-agent-streaming`, 500);
+
+    mockAgentEndpoint({
+      textChunks: [
+        `3:"Anthropic API key expired or invalid"`,
+        `d:{"finishReason":"error","usage":{}}`,
+      ],
+    });
 
     await enterChatMessage("Who is your favorite?");
 
     const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(METABOT_ERR_MSG.agentOffline);
+    expect(lastMessage).toHaveTextContent(
+      /Anthropic API key expired or invalid/,
+    );
     expect(
       within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
     ).not.toBeInTheDocument();

@@ -27,8 +27,8 @@ export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
   },
-  get agentOffline() {
-    return t`Metabot is currently offline. Please try again later.`;
+  format(msg: string) {
+    return t`Sorry, an error occurred: ${msg}. If this persists, please contact your administrator.`;
   },
 };
 

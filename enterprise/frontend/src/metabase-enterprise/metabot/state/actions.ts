@@ -92,17 +92,13 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       errorMessage: false as const,
       shouldRetry: false,
     }))
-    .with(
-      { message: P.string.startsWith("Response status: 5") },
-      { status: 500 },
-      () => ({
-        errorMessage: {
-          type: "alert" as const,
-          message: METABOT_ERR_MSG.agentOffline,
-        },
-        shouldRetry: true,
-      }),
-    )
+    .with(P.string, (err) => ({
+      errorMessage: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(err),
+      },
+      shouldRetry: true,
+    }))
     .otherwise(() => ({
       errorMessage: {
         type: "message" as const,
