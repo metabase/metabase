@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -454,22 +453,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (if config/ee-available?
-    (mi/instances-with-hydrated-data
-     tables k
-     #(let [transform-ids (->> tables (keep :transform_id) distinct)
-            id->transform (when (seq transform-ids)
-                            (t2/select-fn->fn :id identity :model/Transform
-                                              :id [:in transform-ids]))]
-        (into {}
-              (keep (fn [{:keys [id transform_id]}]
-                      (when transform_id
-                        [id (get id->transform transform_id)])))
-              tables))
-     :id
-     {:default nil})
-    ;; EE not available, so no transforms
-    tables))
+  (mi/instances-with-hydrated-data
+   tables k
+   #(let [transform-ids (->> tables (keep :transform_id) distinct)
+          id->transform (when (seq transform-ids)
+                          (t2/select-fn->fn :id identity :model/Transform
+                                            :id [:in transform-ids]))]
+      (into {}
+            (keep (fn [{:keys [id transform_id]}]
+                    (when transform_id
+                      [id (get id->transform transform_id)])))
+            tables))
+   :id
+   {:default nil}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
