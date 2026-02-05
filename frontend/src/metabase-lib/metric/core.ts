@@ -242,7 +242,7 @@ export function projectionableDimensions(
   throw new Error("Not implemented");
 }
 
-export function projection(
+export function project(
   _definition: MetricDefinition,
   _projectionClause: ProjectionClause,
 ): MetricDefinition {
