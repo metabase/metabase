@@ -1,8 +1,8 @@
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
-import type {
-  DateFilterSpec,
+import {
+  type DateFilterSpec,
   type DimensionTabType,
   type ProjectionConfig,
   type SourceData,
