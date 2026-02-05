@@ -1,4 +1,5 @@
 import type {
+  DimensionId,
   MeasureId,
   MetricId,
   NormalizedMeasure,
@@ -77,8 +78,6 @@ export type JsMetadataProvider = {
   measures?: Record<MeasureId, NormalizedMeasure>;
   metrics?: Record<MetricId, NormalizedMetric>;
 };
-
-export type SourceMetadata = MetricMetadata | MeasureMetadata;
 
 export type Clause = FilterClause | ProjectionClause;
 
@@ -182,14 +181,14 @@ export type DefaultFilterParts = {
   dimension: DimensionMetadata;
 };
 
-export type FilterOperator =
-  | StringFilterOperator
-  | NumberFilterOperator
-  | BooleanFilterOperator
-  | SpecificDateFilterOperator
-  | ExcludeDateFilterOperator
-  | CoordinateFilterOperator
-  | TimeFilterOperator
-  | DefaultFilterOperator;
+export type MeasurePickerInfo = {
+  id: MeasureId;
+};
 
-export type { TimeFilterOperator };
+export type MetricPickerInfo = {
+  id: MetricId;
+};
+
+export type DimensionPickerInfo = {
+  id: DimensionId;
+};

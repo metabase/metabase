@@ -1,3 +1,5 @@
+export * from "../common";
+
 export * from "./binning";
 export * from "./definition";
 export * from "./dimension";

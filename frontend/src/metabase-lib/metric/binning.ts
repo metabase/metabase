@@ -4,7 +4,6 @@ import type {
   Clause,
   DimensionMetadata,
   MetricDefinition,
-  SourceMetadata,
 } from "./types";
 
 export function binning(
@@ -15,7 +14,6 @@ export function binning(
 
 export function availableBinningStrategies(
   _definition: MetricDefinition,
-  _source: SourceMetadata,
   _dimension: DimensionMetadata,
 ): BinningStrategy[] {
   throw new Error("Not implemented");
@@ -23,10 +21,9 @@ export function availableBinningStrategies(
 
 export function isBinnable(
   definition: MetricDefinition,
-  source: SourceMetadata,
   dimension: DimensionMetadata,
 ): boolean {
-  return availableBinningStrategies(definition, source, dimension).length > 0;
+  return availableBinningStrategies(definition, dimension).length > 0;
 }
 
 export function withBinning(
@@ -38,10 +35,9 @@ export function withBinning(
 
 export function withDefaultBinning(
   definition: MetricDefinition,
-  source: SourceMetadata,
   dimension: DimensionMetadata,
 ): DimensionMetadata {
-  const strategies = availableBinningStrategies(definition, source, dimension);
+  const strategies = availableBinningStrategies(definition, dimension);
   const defaultStrategy = strategies.find(
     (strategy) => displayInfo(definition, strategy).default,
   );

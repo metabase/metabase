@@ -11,8 +11,10 @@ export type Metric = {
   collection: Collection | null;
 };
 
+export type DimensionId = string;
+
 export type MetricDimension = {
-  id: string;
+  id: DimensionId;
   display_name: string;
   effective_type: string;
   semantic_type: string | null;
