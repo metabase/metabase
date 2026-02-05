@@ -56,6 +56,49 @@ detect_arch() {
     esac
 }
 
+# Check if Rosetta 2 is installed (macOS ARM64 only)
+is_rosetta_installed() {
+    # Try to run a simple x86_64 binary - fails if Rosetta isn't installed
+    arch -x86_64 /usr/bin/true 2>/dev/null
+}
+
+# Install Rosetta 2 for running x86_64 binaries on Apple Silicon
+install_rosetta() {
+    local os=$(detect_os)
+    local arch=$(detect_arch)
+
+    # Only relevant for macOS on ARM64
+    if [ "$os" != "macos" ] || [ "$arch" != "arm64" ]; then
+        return 0
+    fi
+
+    if is_rosetta_installed; then
+        print_success "Rosetta 2 is installed"
+        return 0
+    fi
+
+    print_warning "Rosetta 2 is not installed"
+    echo ""
+    echo "      Some development tools (like webpack-notifier) require Rosetta 2"
+    echo "      to run x86_64 binaries on Apple Silicon Macs."
+    echo ""
+
+    if ask_yes_no "Install Rosetta 2?" "y"; then
+        print_info "Installing Rosetta 2..."
+        if softwareupdate --install-rosetta --agree-to-license; then
+            print_success "Rosetta 2 installed successfully"
+        else
+            print_error "Failed to install Rosetta 2"
+            echo "      You can install it manually with: softwareupdate --install-rosetta"
+            echo "      The webpack dev server may not work without Rosetta."
+        fi
+    else
+        print_warning "Skipped Rosetta 2 installation"
+        echo "      The webpack dev server may fail without Rosetta."
+        echo "      Install manually if needed: softwareupdate --install-rosetta"
+    fi
+}
+
 detect_shell() {
     # Use $SHELL (login shell) since that's what rc files we want to configure.
     # The user may be running this script from a different shell, but their
@@ -425,6 +468,9 @@ main() {
         exit 1
     fi
     print_success "curl is available"
+
+    # Install Rosetta 2 if needed (macOS ARM64 only)
+    install_rosetta
 
     print_step "2. Install/update mise"
     # Install mise

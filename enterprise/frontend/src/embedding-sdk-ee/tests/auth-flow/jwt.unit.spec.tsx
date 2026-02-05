@@ -251,4 +251,53 @@ describe("Auth Flow - JWT", () => {
       fetchMock.callHistory.calls(`begin:${instanceUrlWithSubpath}/auth/sso`),
     ).toHaveLength(2);
   });
+
+  it("should support relative URLs for jwtProviderUri", async () => {
+    const relativeJwtProviderUri = "/api/sso";
+
+    setupCurrentUserEndpoint(createMockUser());
+    setupPropertiesEndpoints(createMockSettings());
+
+    // Mock the relative JWT provider endpoint (will be resolved to window.location.origin)
+    fetchMock.get(
+      `${window.location.origin}${relativeJwtProviderUri}?response=json`,
+      {
+        status: 200,
+        body: { jwt: MOCK_VALID_JWT_RESPONSE },
+      },
+    );
+
+    // Mock the Metabase SSO validation endpoint
+    fetchMock.get(
+      `${MOCK_INSTANCE_URL}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
+      {
+        status: 200,
+        body: {
+          id: MOCK_SESSION_TOKEN_ID,
+          exp: 1965805007,
+          iat: 1609459200,
+        },
+      },
+    );
+
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      jwtProviderUri: relativeJwtProviderUri,
+    });
+
+    renderWithProviders(
+      <ComponentProvider authConfig={authConfig}>
+        <StaticQuestion questionId={1} />
+      </ComponentProvider>,
+    );
+
+    await waitForLoaderToBeRemoved();
+
+    // Verify the relative URL was correctly resolved and called
+    expect(
+      fetchMock.callHistory.calls(
+        `${window.location.origin}${relativeJwtProviderUri}?response=json`,
+      ),
+    ).toHaveLength(1);
+  });
 });

@@ -55,7 +55,7 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+      edition: ${{ matrix.edition }}
       commit: ${{ github.event.inputs.commit || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}

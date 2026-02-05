@@ -8,6 +8,10 @@ inputs:
   edition:
     description: Metabase edition (ee or oss)
     required: true
+  release:
+    description: Whether this is a release artifact (uses metabase-release- prefix)
+    required: false
+    default: "false"
   output-name:
     description: Optional custom name for the output jar file (defaults to metabase.jar)
     required: false
@@ -28,7 +32,9 @@ runs:
         script: | # js
           const fs = require('fs');
 
-          const artifactName = `metabase-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
+          const isRelease = "${{ inputs.release }}" === "true";
+          const prefix = isRelease ? "metabase-release" : "metabase";
+          const artifactName = `${prefix}-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
           console.log(`Looking for artifact: ${artifactName}`);
 
           const artifacts = await github.rest.actions.listArtifactsForRepo({

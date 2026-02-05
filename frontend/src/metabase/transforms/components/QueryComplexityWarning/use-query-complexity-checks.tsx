@@ -63,7 +63,7 @@ export const useQueryComplexityChecks = () => {
       return new Promise<boolean>((resolve) => {
         show({
           title: t`Can't automatically run this transform incrementally`,
-          message: <QueryComplexityWarning complexity={complexity} />,
+          message: <QueryComplexityWarning />,
           onConfirm: () => resolve(true),
           onCancel: () => resolve(false),
           confirmButtonText,

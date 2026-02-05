@@ -201,9 +201,7 @@ function CreateTransformForm({
             onIncrementalChange={handleIncrementalChange}
           />
         )}
-        {complexity && (
-          <QueryComplexityWarning complexity={complexity} variant="standout" />
-        )}
+        {complexity && <QueryComplexityWarning variant="standout" />}
         <Group>
           <Box flex={1}>
             <FormErrorMessage />
