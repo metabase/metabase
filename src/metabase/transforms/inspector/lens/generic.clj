@@ -29,8 +29,8 @@
 
 (defn- row-count-card
   "Generate a row count card."
-  [db-id table-id table-name role order]
-  {:id            (str table-name "-row-count")
+  [db-id table-id table-name role order params]
+  {:id            (lens.core/make-card-id (str table-name "-row-count") params)
    :section_id    "row-counts"
    :title         (str table-name " Row Count")
    :display       :scalar
@@ -54,7 +54,7 @@
    :description  "Overview of input and output tables"})
 
 (defmethod lens.core/make-lens :generic-summary
-  [_ ctx _params]
+  [_ ctx params]
   (let [{:keys [sources target]} ctx]
     {:id           "generic-summary"
      :display_name "Data Summary"
@@ -69,9 +69,9 @@
                     (concat
                      ;; Input row counts
                      (map-indexed (fn [i {:keys [table_id table_name db_id]}]
-                                    (row-count-card db_id table_id table_name :input i))
+                                    (row-count-card db_id table_id table_name :input i params))
                                   sources)
                      ;; Output row count
                      (when target
                        [(row-count-card (:db_id target) (:table_id target)
-                                        (:table_name target) :output 0)])))}))
+                                        (:table_name target) :output 0 params)])))}))
