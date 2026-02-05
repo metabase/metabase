@@ -1,8 +1,10 @@
 (ns metabase.lib-metric.js
   "JavaScript-facing API for lib-metric functions."
   (:require
+   [cljs.proxy :as proxy]
    [goog.object :as gobject]
    [metabase.lib-metric.core :as lib-metric]
+   [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
@@ -84,3 +86,39 @@
   (first (lib.metadata.protocols/metadatas
           metadata-provider
           {:lib/type :metadata/measure, :id #{measure-id}})))
+
+(defn ^:export fromMetricMetadata
+  "Create a MetricDefinition from metric metadata.
+   Returns opaque CLJS data (no conversion needed for TypeScript's opaque type).
+   The metricMetadata should already be a CLJS data structure from the provider."
+  [provider metric-metadata]
+  (lib-metric.definition/from-metric-metadata provider metric-metadata))
+
+(defn ^:export fromMeasureMetadata
+  "Create a MetricDefinition from measure metadata.
+   Returns opaque CLJS data (no conversion needed for TypeScript's opaque type).
+   The measureMetadata should already be a CLJS data structure from the provider."
+  [provider measure-metadata]
+  (lib-metric.definition/from-measure-metadata provider measure-metadata))
+
+(defn ^:export sourceMetricId
+  "Get the source metric ID from a definition, or null if measure-based."
+  [definition]
+  (lib-metric.definition/source-metric-id definition))
+
+(defn ^:export sourceMeasureId
+  "Get the source measure ID from a definition, or null if metric-based."
+  [definition]
+  (lib-metric.definition/source-measure-id definition))
+
+(defn ^:export filters
+  "Get the filter clauses from a metric definition.
+   Returns a JS array of opaque CLJS values."
+  [definition]
+  (proxy/proxy (lib-metric.definition/filters definition)))
+
+(defn ^:export projections
+  "Get the projection clauses from a metric definition.
+   Returns a JS array of opaque CLJS values."
+  [definition]
+  (proxy/proxy (lib-metric.definition/projections definition)))

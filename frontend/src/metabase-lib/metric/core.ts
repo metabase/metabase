@@ -66,17 +66,23 @@ export function measureMetadata(
 }
 
 export function fromMetricMetadata(
-  _metadataProvider: MetadataProviderable,
-  _metricMetadata: MetricMetadata,
+  metadataProvider: MetadataProviderable,
+  metricMetadata: MetricMetadata,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.fromMetricMetadata(
+    metadataProvider,
+    metricMetadata,
+  ) as MetricDefinition;
 }
 
 export function fromMeasureMetadata(
-  _metadataProvider: MetadataProviderable,
-  _measureMetadata: MeasureMetadata,
+  metadataProvider: MetadataProviderable,
+  measureMetadata: MeasureMetadata,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.fromMeasureMetadata(
+    metadataProvider,
+    measureMetadata,
+  ) as MetricDefinition;
 }
 
 export function fromJsMetricDefinition(
@@ -91,18 +97,18 @@ export function toJsMetricDefinition(
   throw new Error("Not implemented");
 }
 
-export function sourceMetricId(_definition: MetricDefinition): MetricId | null {
-  throw new Error("Not implemented");
+export function sourceMetricId(definition: MetricDefinition): MetricId | null {
+  return LibMetric.sourceMetricId(definition) as MetricId | null;
 }
 
 export function sourceMeasureId(
-  _definition: MetricDefinition,
+  definition: MetricDefinition,
 ): MeasureId | null {
-  throw new Error("Not implemented");
+  return LibMetric.sourceMeasureId(definition) as MeasureId | null;
 }
 
-export function filters(_definition: MetricDefinition): FilterClause[] {
-  throw new Error("Not implemented");
+export function filters(definition: MetricDefinition): FilterClause[] {
+  return LibMetric.filters(definition) as FilterClause[];
 }
 
 export function filterableDimensions(
@@ -242,8 +248,8 @@ export function filterParts(
   );
 }
 
-export function projections(_definition: MetricDefinition): ProjectionClause[] {
-  throw new Error("Not implemented");
+export function projections(definition: MetricDefinition): ProjectionClause[] {
+  return LibMetric.projections(definition) as ProjectionClause[];
 }
 
 export function projectionableDimensions(

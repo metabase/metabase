@@ -14,6 +14,7 @@
    #?@(:clj [[metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
              [potemkin :as p]]
        :cljs [[metabase.lib-metric.metadata.js :as lib-metric.metadata.js]])
+   [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.measures :as lib-metric.measures]
    [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
@@ -29,6 +30,13 @@
 
 #?(:clj
    (p/import-vars
+    [lib-metric.definition
+     filters
+     from-measure-metadata
+     from-metric-metadata
+     projections
+     source-measure-id
+     source-metric-id]
     [lib-metric.dimension
      compute-dimension-pairs
      dimensionable-query
@@ -46,6 +54,12 @@
 
    :cljs
    (do
+     (def filters lib-metric.definition/filters)
+     (def from-measure-metadata lib-metric.definition/from-measure-metadata)
+     (def from-metric-metadata lib-metric.definition/from-metric-metadata)
+     (def projections lib-metric.definition/projections)
+     (def source-measure-id lib-metric.definition/source-measure-id)
+     (def source-metric-id lib-metric.definition/source-metric-id)
      (def dimensionable-query lib-metric.dimension/dimensionable-query)
      (def get-persisted-dimensions lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings lib-metric.dimension/get-persisted-dimension-mappings)
