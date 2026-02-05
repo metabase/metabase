@@ -147,7 +147,7 @@
                                        ;; OpenAI insists on `{additionalProperties false}`
                                        :schema (mjs/transform (mut/closed-schema schema))}})}]
     (try
-      (let [res (http/post "https://api.openai.com/v1/responses"
+      (let [res (http/post (str (llm/ee-openai-api-base-url) "/v1/responses")
                            {:as      :stream
                             :headers {"Authorization" (str "Bearer " (llm/ee-openai-api-key))
                                       "Content-Type"  "application/json"}

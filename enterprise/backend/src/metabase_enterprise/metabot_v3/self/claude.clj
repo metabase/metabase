@@ -159,7 +159,7 @@
                                           :description  "Output structured data"
                                           :input_schema (mjs/transform (mut/closed-schema schema))}]))]
     (try
-      (let [res (http/post "https://api.anthropic.com/v1/messages"
+      (let [res (http/post (str (llm/ee-anthropic-api-base-url) "/v1/messages")
                            {:as      :stream
                             :headers {"x-api-key"         (llm/ee-anthropic-api-key)
                                       "anthropic-version" "2023-06-01"
