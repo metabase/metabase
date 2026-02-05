@@ -127,16 +127,23 @@
   [lens-id]
   (keyword lens-id))
 
+(defn- filter-applicable-drill-triggers
+  "Filter drill-lens-triggers to only include sublenses that are applicable to ctx."
+  [ctx drill-lens-triggers]
+  (filterv #(lens-applicable? (lens-id->type (:lens-id %)) ctx) drill-lens-triggers))
+
 (defn get-lens
   "Generate a lens by ID (Phase 2).
    Returns the full lens with sections, cards, and triggers.
+   Filters drill-lens-triggers to only include applicable sublenses.
    Optional params can filter/customize drill lens output."
   ([ctx lens-id]
    (get-lens ctx lens-id nil))
   ([ctx lens-id params]
    (let [lens-type (lens-id->type lens-id)]
      (if (lens-applicable? lens-type ctx)
-       (make-lens lens-type ctx params)
+       (-> (make-lens lens-type ctx params)
+           (update :drill-lens-triggers #(filter-applicable-drill-triggers ctx %)))
        (throw (ex-info "Lens data not available"
                        {:lens-id   lens-id
                         :lens-type lens-type}))))))
