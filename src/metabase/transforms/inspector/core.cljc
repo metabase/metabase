@@ -53,10 +53,8 @@
    Arguments:
    - card-id: the card's ID string
    - display-type: keyword like :bar, :line, :scalar, etc.
-   - card-results: map of all card results for companion card lookup
+   - card-results: map of all card results (card-id -> result map)
 
-   Returns:
-   - {:degenerate? true :reason :no-data|:single-value|:null-value|:all-same-value|...}
-   - {:degenerate? false}"
+   Returns {:degenerate? bool, :reason keyword-or-nil}."
   [card-id display-type card-results]
   (degeneracy/degenerate-for-display? card-id display-type card-results))

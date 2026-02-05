@@ -8,8 +8,8 @@
 
    Scoring criteria:
    - Dominated columns (PK, FK, UUID) get score 0.0
-   - High cardinality columns (>90% distinct) get low scores
-   - Mostly null columns get low scores
+   - High cardinality columns (>1000 distinct values) get low scores
+   - Mostly null columns (>90% null) get low scores
    - Temporal, categorical, and numeric columns with variance get high scores")
 
 (def ^:private dominated-semantic-types
