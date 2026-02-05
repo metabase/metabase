@@ -442,7 +442,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
 
         cy.findByTestId("interactive-question-top-toolbar").within(() => {
           cy.findByText(
-            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat von DE-People - DE-Product → DE-Created At: Monat",
+            "Eindeutige Werte von People - Product → Created At: Monat von People - Product → Created At: Monat",
           ).should("be.visible");
         });
 
