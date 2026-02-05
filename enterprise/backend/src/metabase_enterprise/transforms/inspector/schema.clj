@@ -122,9 +122,6 @@
    [:title :string]
    [:display ::display-type]
    [:dataset-query :map]
-   [:interestingness {:optional true} [:maybe number?]]
-   [:summary {:optional true} :boolean]
-   [:visualization-settings {:optional true} :map]
    ;; Lens-specific metadata - opaque to core, interpreted by FE
    [:metadata {:optional true} ::card-metadata]])
 
