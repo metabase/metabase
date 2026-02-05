@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SimpleDateFilterPicker } from "metabase/querying/filters/components/FilterPicker/DateFilterPicker/SimpleDateFilterPicker";
+import { SimpleDateFilterPicker } from "metabase/querying/filters/components/FilterPicker/DateFilterPicker";
 import {
   findBreakoutClause,
   findFilterClause,

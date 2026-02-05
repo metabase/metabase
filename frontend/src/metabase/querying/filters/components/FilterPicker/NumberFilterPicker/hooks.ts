@@ -1,10 +1,62 @@
+import { useMemo, useState } from "react";
+
 import { isNotNull } from "metabase/lib/types";
+import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import { OPERATORS } from "./constants";
-import type { NumberFilterOperatorOption, NumberOrEmptyValue } from "./types";
+type NumberFilterOperatorOption =
+  FilterOperatorOption<Lib.NumberFilterOperator>;
 
-export function getAvailableOptions(
+type NumberFilterOperatorInfo = {
+  operator: Lib.NumberFilterOperator;
+  valueCount: number;
+  hasMultipleValues?: boolean;
+};
+
+export type NumberOrEmptyValue = Lib.NumberFilterValue | null;
+
+const OPERATORS: Record<Lib.NumberFilterOperator, NumberFilterOperatorInfo> = {
+  "=": {
+    operator: "=",
+    valueCount: 1,
+    hasMultipleValues: true,
+  },
+  "!=": {
+    operator: "!=",
+    valueCount: 1,
+    hasMultipleValues: true,
+  },
+  ">": {
+    operator: ">",
+    valueCount: 1,
+  },
+  "<": {
+    operator: "<",
+    valueCount: 1,
+  },
+  between: {
+    operator: "between",
+    valueCount: 2,
+  },
+  ">=": {
+    operator: ">=",
+    valueCount: 1,
+  },
+  "<=": {
+    operator: "<=",
+    valueCount: 1,
+  },
+  "is-null": {
+    operator: "is-null",
+    valueCount: 0,
+  },
+  "not-null": {
+    operator: "not-null",
+    valueCount: 0,
+  },
+};
+
+function getAvailableOptions(
   column: Lib.ColumnMetadata,
 ): NumberFilterOperatorOption[] {
   const isKey = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
@@ -16,11 +68,11 @@ export function getAvailableOptions(
   }));
 }
 
-export function getOptionByOperator(operator: Lib.NumberFilterOperator) {
+function getOptionByOperator(operator: Lib.NumberFilterOperator) {
   return OPERATORS[operator];
 }
 
-export function getDefaultOperator(
+function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
 ): Lib.NumberFilterOperator {
@@ -47,7 +99,7 @@ export function getDefaultValues(
     .map((value, index) => values[index] ?? value);
 }
 
-export function isValidFilter(
+function isValidFilter(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
@@ -55,7 +107,7 @@ export function isValidFilter(
   return getFilterParts(operator, column, values) != null;
 }
 
-export function getFilterClause(
+function getFilterClause(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
@@ -125,4 +177,52 @@ function getBetweenFilterParts(
       values: [endValue],
     };
   }
+}
+
+interface UseNumberFilterProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  filter?: Lib.Filterable;
+}
+
+export function useNumberFilter({
+  query,
+  stageIndex,
+  column,
+  filter,
+}: UseNumberFilterProps) {
+  const filterParts = useMemo(
+    () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
+    [query, stageIndex, filter],
+  );
+
+  const availableOptions = useMemo(() => getAvailableOptions(column), [column]);
+
+  const [operator, setOperator] = useState(() =>
+    filterParts ? filterParts.operator : getDefaultOperator(query, column),
+  );
+
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
+  );
+
+  const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
+  const isValid = isValidFilter(operator, column, values);
+
+  return {
+    operator,
+    availableOptions,
+    values,
+    valueCount,
+    hasMultipleValues,
+    isValid,
+    getDefaultValues,
+    getFilterClause: (
+      operator: Lib.NumberFilterOperator,
+      values: NumberOrEmptyValue[],
+    ) => getFilterClause(operator, column, values),
+    setOperator,
+    setValues,
+  };
 }

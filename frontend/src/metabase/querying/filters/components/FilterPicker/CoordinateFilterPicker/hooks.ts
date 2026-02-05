@@ -1,28 +1,86 @@
+import { useMemo, useState } from "react";
+
 import { isNotNull } from "metabase/lib/types";
+import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import { OPERATORS } from "./constants";
-import type {
-  CoordinateFilterOperatorOption,
-  NumberOrEmptyValue,
-} from "./types";
+type CoordinatePickerOperator =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | "between"
+  | "inside"
+  | ">="
+  | "<=";
 
-export function getAvailableOptions(): CoordinateFilterOperatorOption[] {
+type CoordinateFilterOperatorOption =
+  FilterOperatorOption<CoordinatePickerOperator>;
+
+type CoordinateFilterOperatorInfo = {
+  operator: CoordinatePickerOperator;
+  valueCount: number;
+  hasMultipleValues?: boolean;
+};
+
+export type NumberOrEmptyValue = Lib.NumberFilterValue | null;
+
+const OPERATORS: Record<
+  Lib.CoordinateFilterOperator,
+  CoordinateFilterOperatorInfo
+> = {
+  "=": {
+    operator: "=",
+    valueCount: 1,
+    hasMultipleValues: true,
+  },
+  "!=": {
+    operator: "!=",
+    valueCount: 1,
+    hasMultipleValues: true,
+  },
+  inside: {
+    operator: "inside",
+    valueCount: 4,
+  },
+  ">": {
+    operator: ">",
+    valueCount: 1,
+  },
+  "<": {
+    operator: "<",
+    valueCount: 1,
+  },
+  between: {
+    operator: "between",
+    valueCount: 2,
+  },
+  ">=": {
+    operator: ">=",
+    valueCount: 1,
+  },
+  "<=": {
+    operator: "<=",
+    valueCount: 1,
+  },
+};
+
+function getAvailableOptions(): CoordinateFilterOperatorOption[] {
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
     displayName: Lib.describeFilterOperator(operator),
   }));
 }
 
-export function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
+function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
   return OPERATORS[operator];
 }
 
-export function getDefaultOperator(): Lib.CoordinateFilterOperator {
+function getDefaultOperator(): Lib.CoordinateFilterOperator {
   return "between";
 }
 
-export function getAvailableColumns(
+function getAvailableColumns(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
@@ -36,14 +94,14 @@ export function getAvailableColumns(
   );
 }
 
-export function getDefaultSecondColumn(
+function getDefaultSecondColumn(
   columns: Lib.ColumnMetadata[],
   filterParts: Lib.CoordinateFilterParts | null,
 ): Lib.ColumnMetadata | undefined {
   return filterParts?.longitudeColumn ?? columns[0];
 }
 
-export function canPickColumns(
+function canPickColumns(
   operator: Lib.CoordinateFilterOperator,
   columns: Lib.ColumnMetadata[],
 ) {
@@ -64,7 +122,7 @@ export function getDefaultValues(
     .map((value, index) => values[index] ?? value);
 }
 
-export function isValidFilter(
+function isValidFilter(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
@@ -73,7 +131,7 @@ export function isValidFilter(
   return getFilterParts(operator, column, secondColumn, values) != null;
 }
 
-export function getFilterClause(
+function getFilterClause(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
@@ -183,5 +241,66 @@ function getInsideFilterParts(
       lowerLatitude < upperLatitude ? lowerLatitude : upperLatitude,
       leftLongitude < rightLongitude ? rightLongitude : leftLongitude,
     ],
+  };
+}
+
+interface UseCoordinateFilterProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  filter?: Lib.Filterable;
+}
+
+export function useCoordinateFilter({
+  query,
+  stageIndex,
+  column,
+  filter,
+}: UseCoordinateFilterProps) {
+  const filterParts = useMemo(
+    () =>
+      filter ? Lib.coordinateFilterParts(query, stageIndex, filter) : null,
+    [query, stageIndex, filter],
+  );
+
+  const availableOptions = useMemo(() => getAvailableOptions(), []);
+
+  const availableColumns = useMemo(
+    () => getAvailableColumns(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
+
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : getDefaultOperator(),
+  );
+  const [values, setValues] = useState(
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
+  );
+  const [secondColumn, setSecondColumn] = useState(
+    getDefaultSecondColumn(availableColumns, filterParts),
+  );
+
+  const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
+  const isValid = isValidFilter(operator, column, secondColumn, values);
+
+  return {
+    operator,
+    availableOptions,
+    values,
+    valueCount,
+    hasMultipleValues,
+    availableColumns,
+    secondColumn,
+    canPickColumns: canPickColumns(operator, availableColumns),
+    isValid,
+    getDefaultValues,
+    getFilterClause: (
+      operator: Lib.CoordinateFilterOperator,
+      secondColumn: Lib.ColumnMetadata | undefined,
+      values: NumberOrEmptyValue[],
+    ) => getFilterClause(operator, column, secondColumn, values),
+    setOperator,
+    setValues,
+    setSecondColumn,
   };
 }

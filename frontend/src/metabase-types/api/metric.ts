@@ -20,7 +20,7 @@ export type MetricDimension = {
   semantic_type: string | null;
 };
 
-export const _JsMetricDefinitionSymbol = Symbol("JsMetricDefinition");
+declare const _JsMetricDefinitionSymbol: unique symbol;
 
 export type JsMetricDefinition = unknown & {
   _opaque: typeof _JsMetricDefinitionSymbol;

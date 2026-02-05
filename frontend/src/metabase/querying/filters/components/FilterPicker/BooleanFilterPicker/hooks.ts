@@ -1,7 +1,9 @@
+import { useState } from "react";
+
 import type { BooleanFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 
-export function getFilterValue(
+function getFilterValue(
   query: Lib.Query,
   stageIndex: number,
   filterClause?: Lib.Filterable,
@@ -22,7 +24,7 @@ export function getFilterValue(
   }
 }
 
-export function getFilterClause(
+function getFilterClause(
   column: Lib.ColumnMetadata,
   value: BooleanFilterValue,
 ): Lib.ExpressionClause {
@@ -52,4 +54,28 @@ export function getFilterClause(
         values: [],
       });
   }
+}
+
+type UseBooleanFilterProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  filter?: Lib.Filterable;
+};
+
+export function useBooleanFilter({
+  query,
+  stageIndex,
+  column,
+  filter,
+}: UseBooleanFilterProps) {
+  const [value, setValue] = useState(() =>
+    getFilterValue(query, stageIndex, filter),
+  );
+
+  return {
+    value,
+    getFilterClause: () => getFilterClause(column, value),
+    setValue,
+  };
 }
