@@ -1,7 +1,9 @@
 import type { EdgeMarker } from "@xyflow/react";
 
+import { isTypeFK, isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ErdEdge,
+  ErdField,
   ErdNode,
   ErdResponse,
   TableId,
@@ -9,6 +11,32 @@ import type {
 
 import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "./constants";
 import type { ErdFlowEdge, ErdFlowNode } from "./types";
+
+function sortFields(fields: ErdField[]): ErdField[] {
+  return [...fields].sort((a, b) => {
+    const aPK = isTypePK(a.semantic_type);
+    const bPK = isTypePK(b.semantic_type);
+    const aFK = isTypeFK(a.semantic_type);
+    const bFK = isTypeFK(b.semantic_type);
+
+    // PK first
+    if (aPK && !bPK) {
+      return -1;
+    }
+    if (!aPK && bPK) {
+      return 1;
+    }
+    // FK second
+    if (aFK && !bFK) {
+      return -1;
+    }
+    if (!aFK && bFK) {
+      return 1;
+    }
+    // Keep original order for same category
+    return 0;
+  });
+}
 
 function getNodeId(node: ErdNode): string {
   return `table-${node.table_id}`;
@@ -26,7 +54,7 @@ function toFlowNode(
     id: getNodeId(node),
     type: "erdTable",
     position: { x: 0, y: 0 },
-    data: { ...node, connectedFieldIds },
+    data: { ...node, fields: sortFields(node.fields), connectedFieldIds },
     style: {
       width: NODE_WIDTH,
       height: getNodeHeight(node),

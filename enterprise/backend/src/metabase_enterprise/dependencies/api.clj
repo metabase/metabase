@@ -1234,7 +1234,7 @@
    :name            (:name field)
    :display_name    (:display_name field)
    :database_type   (:database_type field)
-   :semantic_type   (some-> (:semantic_type field) name)
+   :semantic_type   (some-> (:semantic_type field) u/qualified-name)
    :fk_target_field_id (:fk_target_field_id field)})
 
 (defn- build-erd-node

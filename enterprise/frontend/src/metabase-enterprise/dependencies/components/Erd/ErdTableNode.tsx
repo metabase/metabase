@@ -3,6 +3,7 @@ import cx from "classnames";
 import { memo, useMemo } from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
+import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
 
 import { ErdFieldRow } from "./ErdFieldRow";
@@ -22,11 +23,7 @@ export const ErdTableNode = memo(function ErdTableNode({
   // Find PK field IDs that are targets of self-referencing FKs
   const selfRefTargetIds = useMemo(() => {
     const pkIds = new Set(
-      data.fields
-        .filter(
-          (f) => f.semantic_type === "type/PK" || f.semantic_type === "PK",
-        )
-        .map((f) => f.id),
+      data.fields.filter((f) => isTypePK(f.semantic_type)).map((f) => f.id),
     );
     const targetIds = new Set<number>();
     for (const field of data.fields) {
