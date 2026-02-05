@@ -116,6 +116,27 @@
   {:count     (fn [arg] (i18n/tru "Count of {0}" arg))
    :cum-count (fn [arg] (i18n/tru "Cumulative count of {0}" arg))})
 
+(def ^:private count-aggregation-no-arg-display-name-fns
+  "Map of count aggregation tag to a function that returns the display name when no argument is provided."
+  {:count     (fn [] (i18n/tru "Count"))
+   :cum-count (fn [] (i18n/tru "Cumulative count"))})
+
+(def ^:private unary-aggregation-display-name-fns
+  "Map of aggregation tag to a function that takes the column display name and returns the full aggregation display name."
+  {:avg      (fn [arg] (i18n/tru "Average of {0}" arg))
+   :cum-sum  (fn [arg] (i18n/tru "Cumulative sum of {0}" arg))
+   :distinct (fn [arg] (i18n/tru "Distinct values of {0}" arg))
+   :max      (fn [arg] (i18n/tru "Max of {0}" arg))
+   :median   (fn [arg] (i18n/tru "Median of {0}" arg))
+   :min      (fn [arg] (i18n/tru "Min of {0}" arg))
+   :stddev   (fn [arg] (i18n/tru "Standard deviation of {0}" arg))
+   :sum      (fn [arg] (i18n/tru "Sum of {0}" arg))
+   :var      (fn [arg] (i18n/tru "Variance of {0}" arg))})
+
+(def ^:private other-aggregation-display-name-fns
+  "Map of other aggregation tags to functions that take the column display name and return the full aggregation display name."
+  {:sum-where (fn [arg] (i18n/tru "Sum of {0} matching condition" arg))})
+
 (lib.hierarchy/derive ::count-aggregation ::aggregation)
 
 ;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
@@ -129,12 +150,9 @@
   [query stage-number [tag _opts x] style]
   ;; x is optional.
   (if x
-    (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)
-          display-fn (get count-aggregation-display-name-fns tag)]
-      (display-fn x-display-name))
-    (case tag
-      :count     (i18n/tru "Count")
-      :cum-count (i18n/tru "Cumulative count"))))
+    ((get count-aggregation-display-name-fns tag)
+     (lib.metadata.calculation/display-name query stage-number x style))
+    ((get count-aggregation-no-arg-display-name-fns tag))))
 
 (defmethod lib.metadata.calculation/column-name-method ::count-aggregation
   [_query _stage-number [tag :as _clause]]
@@ -195,22 +213,6 @@
     :stddev    "stddev"
     :sum       "sum"
     :var       "var"))
-
-(def ^:private unary-aggregation-display-name-fns
-  "Map of aggregation tag to a function that takes the column display name and returns the full aggregation display name."
-  {:avg      (fn [arg] (i18n/tru "Average of {0}" arg))
-   :cum-sum  (fn [arg] (i18n/tru "Cumulative sum of {0}" arg))
-   :distinct (fn [arg] (i18n/tru "Distinct values of {0}" arg))
-   :max      (fn [arg] (i18n/tru "Max of {0}" arg))
-   :median   (fn [arg] (i18n/tru "Median of {0}" arg))
-   :min      (fn [arg] (i18n/tru "Min of {0}" arg))
-   :stddev   (fn [arg] (i18n/tru "Standard deviation of {0}" arg))
-   :sum      (fn [arg] (i18n/tru "Sum of {0}" arg))
-   :var      (fn [arg] (i18n/tru "Variance of {0}" arg))})
-
-(def ^:private other-aggregation-display-name-fns
-  "Map of other aggregation tags to functions that take the column display name and return the full aggregation display name."
-  {:sum-where (fn [arg] (i18n/tru "Sum of {0} matching condition" arg))})
 
 (defn- pattern->prefix-suffix
   "Converts a pattern string like 'Average of {0}' or 'Sum of {0} matching condition'
