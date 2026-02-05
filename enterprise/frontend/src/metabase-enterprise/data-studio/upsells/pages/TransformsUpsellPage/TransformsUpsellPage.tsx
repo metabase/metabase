@@ -30,7 +30,7 @@ import { LineDecorator } from "../../components/LineDecorator";
 import { TransformsSettingUpModal } from "../../components/TransformsSettingUpModal";
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 
-import S from "./TransformsPurchasePage.module.css";
+import S from "./TransformsUpsellPage.module.css";
 
 type TransformTier = "basic" | "advanced";
 
@@ -41,13 +41,14 @@ type TierOption = {
   description?: string;
 };
 
-export type TransformsPurchasePageProps = {
-  bulletPoints?: string[];
-};
+export function TransformsUpsellPage() {
+  const bulletPoints = [
+    t`Schedule and run transforms as groups with jobs`,
+    t`Fast runs with incremental transforms that respond to data changes`,
+    t`Predictable costs -  72,000 successful transform runs included every month`,
+    t`If you go over your cap, transforms bill at 0.01 per transform run`,
+  ];
 
-export function TransformsPurchasePage({
-  bulletPoints,
-}: TransformsPurchasePageProps) {
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
@@ -274,8 +275,10 @@ export function TransformsPurchasePage({
     </>
   );
 
-  // Determine if we should show the single-column layout (non-store user on hosted)
-  const showSingleColumn = isHosted && !isStoreUser;
+  // Determine if we should show the single-column layout:
+  // - Non-store user on hosted
+  // - No billing data available (can't show pricing)
+  const showSingleColumn = (isHosted && !isStoreUser) || !hasData;
 
   if (error) {
     return (
@@ -288,17 +291,10 @@ export function TransformsPurchasePage({
     );
   }
 
-  if (!hasData || isLoading) {
+  if (isLoading) {
     return (
       <Center h="100%" bg="background-secondary">
-        <LoadingAndErrorWrapper
-          loading={isLoading}
-          error={
-            !isLoading && !hasData
-              ? t`Error fetching information about available add-ons.`
-              : null
-          }
-        />
+        <LoadingAndErrorWrapper loading={true} error={null} />
       </Center>
     );
   }

@@ -17,10 +17,6 @@ export {
   GitSyncUpsellPage,
   LibraryUpsellPage,
   RemoteSyncUpsellPage,
-  TransformsPurchasePage,
   TransformsUpsellPage,
 } from "./pages";
-export type {
-  DataStudioUpsellPageProps,
-  TransformsPurchasePageProps,
-} from "./pages";
+export type { DataStudioUpsellPageProps } from "./pages";

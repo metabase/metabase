@@ -84,7 +84,9 @@ export const CreateTransformMenu = () => {
               <Menu.Item
                 leftSection={<Icon name="code_block" />}
                 rightSection={
-                  !hasPythonTransformsFeature ? <UpsellGem size={14} /> : null
+                  !hasPythonTransformsFeature ? (
+                    <UpsellGem.New size={14} />
+                  ) : null
                 }
                 onClick={handlePythonClick}
               >

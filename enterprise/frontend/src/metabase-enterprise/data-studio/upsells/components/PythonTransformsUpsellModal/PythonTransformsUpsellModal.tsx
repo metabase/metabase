@@ -30,10 +30,10 @@ import {
 } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
-import { useTransformsBilling } from "../hooks/useTransformsBilling";
+import { useTransformsBilling } from "../../hooks";
+import { TransformsSettingUpModal } from "../TransformsSettingUpModal";
 
 import S from "./PythonTransformsUpsellModal.module.css";
-import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
 
 const CAMPAIGN = "data-studio-python-transforms";
 const LOCATION = "data-studio-transforms";
@@ -110,7 +110,6 @@ export function PythonTransformsUpsellModal({
 
   const dueToday = isTrialFlow ? 0 : pythonPrice;
 
-  // Determine if we should show the single-column layout (non-store user on hosted)
   const showSingleColumn = isHosted && !isStoreUser;
 
   const handleModalClose = useCallback(() => {
@@ -127,14 +126,14 @@ export function PythonTransformsUpsellModal({
   const handleCloudPurchase = useCallback(async () => {
     trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
     settingUpModalHandlers.open();
-    handleModalClose(); // Close the modal immediately (also resets forceOpenAfterError)
+    handleModalClose();
     try {
       await purchaseCloudAddOn({
         product_type: "python-execution",
       }).unwrap();
     } catch {
       settingUpModalHandlers.close();
-      setForceOpenAfterError(true); // Re-open the modal on error
+      setForceOpenAfterError(true);
     }
   }, [purchaseCloudAddOn, settingUpModalHandlers, handleModalClose]);
 
@@ -182,19 +181,18 @@ export function PythonTransformsUpsellModal({
       );
     }
 
-    if (!hasData || isLoading) {
+    if (isLoading) {
       return (
         <Center py="xl">
-          <LoadingAndErrorWrapper
-            loading={isLoading}
-            error={
-              !isLoading && !hasData
-                ? t`Error fetching information about available add-ons.`
-                : null
-            }
-          />
+          <LoadingAndErrorWrapper loading={true} error={null} />
         </Center>
       );
+    }
+
+    // If no billing data available (e.g., product not available for this plan),
+    // fall back to showing the upsell CTA
+    if (!hasData) {
+      return renderSelfHostedContent();
     }
 
     return (
@@ -239,12 +237,10 @@ export function PythonTransformsUpsellModal({
   };
 
   const renderRightColumnContent = () => {
-    // Self-hosted flow
     if (!isHosted) {
       return renderSelfHostedContent();
     }
 
-    // Hosted and store user - show full purchase UI
     return renderCloudPurchaseContent();
   };
 
