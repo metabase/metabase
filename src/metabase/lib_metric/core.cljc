@@ -39,8 +39,12 @@
      source-metric-id]
     [lib-metric.dimension
      compute-dimension-pairs
+     dimension
      dimensionable-query
      dimensions-changed?
+     dimensions-for-measure
+     dimensions-for-metric
+     dimensions-for-table
      extract-persisted-dimensions
      get-persisted-dimension-mappings
      get-persisted-dimensions
@@ -60,7 +64,11 @@
      (def projections lib-metric.definition/projections)
      (def source-measure-id lib-metric.definition/source-measure-id)
      (def source-metric-id lib-metric.definition/source-metric-id)
+     (def dimension lib-metric.dimension/dimension)
      (def dimensionable-query lib-metric.dimension/dimensionable-query)
+     (def dimensions-for-measure lib-metric.dimension/dimensions-for-measure)
+     (def dimensions-for-metric lib-metric.dimension/dimensions-for-metric)
+     (def dimensions-for-table lib-metric.dimension/dimensions-for-table)
      (def get-persisted-dimensions lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings lib-metric.dimension/get-persisted-dimension-mappings)
      (def database-provider-for-table lib-metric.metadata.provider/database-provider-for-table)

@@ -106,3 +106,40 @@
    [:filters           [:sequential :any]]  ; MBQL filter clauses
    [:projections       [:sequential ::dimension-reference]]
    [:metadata-provider [:maybe :some]]])
+
+;;; ------------------------------------------------- Fetchable Dimension Metadata -------------------------------------------------
+;;; These schemas support dimensions as first-class metadata entities
+;;; fetchable through the MetricContextMetadataProvider.
+
+(mr/def ::dimension-source-type
+  "Source type indicating whether a dimension comes from a metric or measure."
+  [:enum :metric :measure])
+
+(mr/def ::metadata-dimension
+  "Schema for dimension metadata fetchable via metadata provider.
+   Dimensions are extracted from metrics/measures at fetch time, with source
+   tracking to identify their parent entity."
+  [:map
+   [:lib/type         [:= :metadata/dimension]]
+   [:id               ::dimension-id]  ; UUID string
+   [:name             {:optional true} [:maybe :string]]
+   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status-message   {:optional true} [:maybe :string]]
+   ;; Source tracking
+   [:source-type      ::dimension-source-type]
+   [:source-id        pos-int?]
+   ;; Optional mapping for field resolution
+   [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]])
+
+(mr/def ::dimension-spec
+  "Spec for fetching dimensions from metadata provider.
+   At least one filter should be provided for efficient querying."
+  [:map
+   [:lib/type   [:= :metadata/dimension]]
+   [:id         {:optional true} [:set {:min 1} ::lib.schema.common/uuid]]
+   [:metric-id  {:optional true} pos-int?]
+   [:measure-id {:optional true} pos-int?]
+   [:table-id   {:optional true} pos-int?]])

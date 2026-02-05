@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -200,3 +201,45 @@
    Pure function - only reads data from the entity."
   {:arglists '([entity])}
   :lib/type)
+
+;;; ------------------------------------------------- Public Dimension Fetching API -------------------------------------------------
+;;; These functions provide access to dimensions as first-class metadata entities
+;;; through the MetricContextMetadataProvider.
+
+(mu/defn dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
+  "Fetch a single dimension by UUID from the metadata provider.
+   Returns nil if not found."
+  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+   dimension-id      :- ::lib-metric.schema/dimension-id]
+  (first (lib.metadata.protocols/metadatas
+          metadata-provider
+          {:lib/type :metadata/dimension :id #{dimension-id}})))
+
+(mu/defn dimensions-for-metric :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Fetch all dimensions for a metric by metric ID."
+  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+   metric-id         :- pos-int?]
+  (lib.metadata.protocols/metadatas
+   metadata-provider
+   {:lib/type :metadata/dimension :metric-id metric-id}))
+
+(mu/defn dimensions-for-measure :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Fetch all dimensions for a measure by measure ID."
+  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+   measure-id        :- pos-int?]
+  (lib.metadata.protocols/metadatas
+   metadata-provider
+   {:lib/type :metadata/dimension :measure-id measure-id}))
+
+(mu/defn dimensions-for-table :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Fetch all dimensions mapped to a table by table ID.
+   This returns dimensions from both metrics and measures that have mappings to the table."
+  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+   table-id          :- pos-int?]
+  (lib.metadata.protocols/metadatas
+   metadata-provider
+   {:lib/type :metadata/dimension :table-id table-id}))
+
+(def keep-me
+  "Var used to ensure this namespace is loaded."
+  ::keep-me)

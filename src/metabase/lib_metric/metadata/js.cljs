@@ -106,6 +106,42 @@
              identity))
           (vals measures))))
 
+;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
+
+(defn- extract-dimensions-from-entity
+  "Extract dimensions from a parsed metric or measure, annotating with source info."
+  [entity source-type]
+  (let [dims     (:dimensions entity)
+        mappings (:dimension-mappings entity)
+        mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
+    (for [dim dims]
+      (-> dim
+          (assoc :lib/type :metadata/dimension
+                 :source-type source-type
+                 :source-id (:id entity))
+          (cond->
+           (get mappings-by-dim-id (:id dim))
+            (assoc :dimension-mapping (get mappings-by-dim-id (:id dim))))))))
+
+(defn- extract-all-dimensions
+  "Extract all dimensions from parsed metrics and measures."
+  [parsed-metrics parsed-measures]
+  (concat
+   (mapcat #(extract-dimensions-from-entity % :metric) (vals parsed-metrics))
+   (mapcat #(extract-dimensions-from-entity % :measure) (vals parsed-measures))))
+
+(defn- filter-dimensions
+  "Filter dimensions according to metadata-spec."
+  [dimensions {id-set :id, :keys [metric-id measure-id table-id]}]
+  (cond->> dimensions
+    id-set      (filter #(contains? id-set (:id %)))
+    metric-id   (filter #(and (= :metric (:source-type %))
+                              (= metric-id (:source-id %))))
+    measure-id  (filter #(and (= :measure (:source-type %))
+                              (= measure-id (:source-id %))))
+    table-id    (filter #(= table-id (get-in % [:dimension-mapping :table-id])))
+    true        vec))
+
 (defn metadata-provider
   "Create a MetricMetadataProvider from JS/Redux data.
 
@@ -120,10 +156,12 @@
    - Returns nil for database() since there's no single database context
    - Routes metric requests to the pre-loaded metrics data
    - Routes measure requests to the pre-loaded measures data if provided
+   - Routes dimension requests to dimensions extracted from metrics/measures
    - Routes table/column requests to database-specific providers"
   [metrics-data measures-data metadata table->db-id settings]
   (let [parsed-metrics (parse-metrics metrics-data)
         parsed-measures (parse-measures measures-data)
+        all-dimensions (extract-all-dimensions parsed-metrics parsed-measures)
         db-provider-cache (atom {})
         db-provider-fn (fn [db-id]
                          (if-let [cached (get @db-provider-cache db-id)]
@@ -138,6 +176,7 @@
      (fn [spec] (filter-metrics parsed-metrics spec))
      (when parsed-measures
        (fn [spec] (filter-measures parsed-measures spec)))
+     (fn [spec] (filter-dimensions all-dimensions spec))
      (fn [table-id] (get table->db-id table-id))
      db-provider-fn
      setting-fn)))
