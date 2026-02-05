@@ -56,7 +56,8 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
 
     return dataset.data.rows[0]?.[0] ?? 0; // rows array can be empty (metabase#62156)
   }, [dataset]);
-  const clickable = typeof count === "number" && count > 0;
+  const clickable =
+    typeof count === "number" && count > 0 && fkQuestionUrl != null;
   const originTableName = fk.origin?.table?.display_name ?? "";
   const relationName =
     typeof count === "number"
@@ -66,17 +67,8 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
   const textColor =
     count === 0 ? "text-tertiary" : clickable ? "brand" : "text-secondary";
 
-  return (
-    <Flex
-      className={cx(S.root, {
-        [S.clickable]: clickable,
-      })}
-      align="center"
-      justify="space-between"
-      {...(clickable
-        ? { component: Link, to: fkQuestionUrl, onClick }
-        : undefined)}
-    >
+  const content = (
+    <>
       <Stack gap={rem(12)}>
         {isFetching && <Loader data-testid="loading-indicator" size="md" />}
 
@@ -94,6 +86,29 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
       {clickable && (
         <Icon className={S.icon} name="chevronright" c="brand" aria-hidden />
       )}
+    </>
+  );
+
+  const className = cx(S.root, { [S.clickable]: clickable });
+
+  if (clickable) {
+    return (
+      <Flex
+        component={Link}
+        to={fkQuestionUrl}
+        onClick={onClick}
+        className={className}
+        align="center"
+        justify="space-between"
+      >
+        {content}
+      </Flex>
+    );
+  }
+
+  return (
+    <Flex className={className} align="center" justify="space-between">
+      {content}
     </Flex>
   );
 };
