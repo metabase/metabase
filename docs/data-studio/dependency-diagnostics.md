@@ -28,7 +28,7 @@ For each item, the list shows:
 
 - **Dependency**: The upstream item causing the issue
 - **Location**: Where the item lives in your collections
-- **Problems**: Unique missing column issues detected for this item
+- **Problems**: Missing columns detected for this item
 - **Broken dependents**: Downstream items that break because they reference those missing columns
 
 Metabase only shows items when you have access to both the source item and at least one broken dependent, and neither item is archived.
