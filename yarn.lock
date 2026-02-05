@@ -9165,6 +9165,13 @@ currently-unhandled@^0.4.1:
   dependencies:
     array-find-index "^1.0.1"
 
+cypress-each@^1.14.1:
+  version "1.14.1"
+  resolved "https://registry.yarnpkg.com/cypress-each/-/cypress-each-1.14.1.tgz#2c98ca2e656efc1de0e27621bc2de21209c82734"
+  integrity sha512-evywTv0Gid5J24C2W6ajYsVoBpoXIkvNo6L5a5+6QabtKOG1pn9Fq4zO/EwrdfktDZ9PWRRWFbJBMoRh3NlrYg==
+  dependencies:
+    format-util "^1.0.5"
+
 cypress-iframe@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/cypress-iframe/-/cypress-iframe-1.0.1.tgz#2a286cfd47a240aa9af0ad9f339f4c6f942089f8"
@@ -11764,6 +11771,11 @@ form-data@^4.0.0, form-data@~4.0.4:
     es-set-tostringtag "^2.1.0"
     hasown "^2.0.2"
     mime-types "^2.1.12"
+
+format-util@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/format-util/-/format-util-1.0.5.tgz#1ffb450c8a03e7bccffe40643180918cc297d271"
+  integrity sha512-varLbTj0e0yVyRpqQhuWV+8hlePAgaoFRhNFj50BNjEIrw1/DphHSObtqwskVCPWNgzwPoQrZAbfa/SBiicNeg==
 
 formik@^2.4.5:
   version "2.4.6"

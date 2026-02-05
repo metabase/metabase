@@ -4540,7 +4540,8 @@
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+  (defn- test-handle-broken-subscription-notification!
+    [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
     (let [param {:name "Source"
                  :slug "source"
                  :id   "_SOURCE_PARAM_ID_"
@@ -4571,10 +4572,11 @@
                                                                                          [:field (mt/id :people :source)
                                                                                           {:base-type :type/Text}]]}]}
 
-           :model/Pulse {bad-pulse-id :id} {:name         "Bad Pulse"
-                                            :dashboard_id dash-id
-                                            :creator_id   (mt/user->id :trashbird)
-                                            :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
+                                            :dashboard_id  dash-id
+                                            :creator_id    (mt/user->id :trashbird)
+                                            :parameters    [(assoc param :value ["Twitter", "Facebook"])]
+                                            :disable_links disable-links?}
            :model/PulseCard _ {:pulse_id          bad-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -4586,10 +4588,11 @@
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}
            ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
+           :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
+                                                  :dashboard_id  dash-id
+                                                  :creator_id    (mt/user->id :trashbird)
+                                                  :parameters    [(assoc param :value ["LinkedIn"])]
+                                                  :disable_links disable-links?}
            :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -4630,8 +4633,8 @@
                                        (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
                                                           (str/includes? title)))))
                                      (testing "The second email (about the broken slack pulse) was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                          (str/includes? "#my-channel"))))))]
+                                       (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                                                (str/includes? email-body-pattern))))))]
               (testing "The dashboard parameters were removed"
                 (is (empty? parameters)))
               (testing "The broken pulse was archived"
@@ -4643,7 +4646,25 @@
                        (set (keys inbox)))))
               (testing "Notification emails were sent to the dashboard and pulse creators"
                 (emails-received? "rasta@metabase.com")
-                (emails-received? "trashbird@metabase.com")))))))))
+                (emails-received? "trashbird@metabase.com"))))))))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+    (test-handle-broken-subscription-notification!
+     {:disable-links?            false
+      :email-body-pattern        "#my-channel"
+      :match-email-body-pattern? true}))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
+    (test-handle-broken-subscription-notification!
+     {:disable-links?            false
+      :email-body-pattern        "href="
+      :match-email-body-pattern? true}))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
+    (test-handle-broken-subscription-notification!
+     {:disable-links?            true
+      :email-body-pattern        "href="
+      :match-email-body-pattern? false})))
 
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
