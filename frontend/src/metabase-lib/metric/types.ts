@@ -176,7 +176,7 @@ export type DefaultFilterParts = {
   dimension: DimensionMetadata;
 };
 
-export type FieldValuesSearchInfo = {
+export type DimensionValuesInfo = {
   id: DimensionId;
   canListValues: boolean;
   canSearchValues: boolean;
