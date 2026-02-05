@@ -79,3 +79,15 @@ export const computeCardStats = (
   rows: unknown[][] | undefined,
 ): CardStats | null =>
   convertKeysToSnakeCase(INSPECTOR.computeCardResult(lensId, card, rows ?? []));
+
+export type DegeneracyResult = {
+  degenerate: boolean;
+  reason: string | null;
+};
+
+export const isDegenerate = (
+  cardId: string,
+  displayType: string,
+  cardsStats: Record<string, CardStats>,
+): DegeneracyResult =>
+  INSPECTOR.isDegenerate(cardId, displayType, convertCardsStatsToKebabCase(cardsStats));

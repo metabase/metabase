@@ -156,6 +156,23 @@
                     right)))))
           conditions-list)))
 
+(defn- lhs-column-from-ast
+  "Extract the first LHS column from join conditions (for WHERE lhs IS NOT NULL filter).
+   Handles compound AND conditions by recursively searching."
+  [conditions]
+  (let [conditions-list (if (sequential? conditions) conditions [conditions])]
+    (some (fn find-lhs [cond]
+            (when (= (:type cond) :macaw.ast/binary-expression)
+              (let [{:keys [operator left right]} cond
+                    op-upper (str/upper-case (str operator))]
+                (if (contains? #{"AND" "OR"} op-upper)
+                  ;; Compound - recurse into left side first
+                  (or (find-lhs left) (find-lhs right))
+                  ;; Simple comparison - check if left is a column
+                  (when (= (:type left) :macaw.ast/column)
+                    left)))))
+          conditions-list)))
+
 (defn- build-join-clause-sql
   "Build a complete JOIN clause SQL string from a macaw join node."
   [driver-kw strategy ast-node]
@@ -186,7 +203,7 @@
 
 (defn- extract-native-join-structure
   "Extract join structure from macaw AST, prebuilding SQL strings.
-   Returns join info with :join-clause-sql and :rhs-column-sql instead of raw AST."
+   Returns join info with :join-clause-sql, :lhs-column-sql, and :rhs-column-sql instead of raw AST."
   [ast sources driver-kw]
   (when-let [join-nodes (:join ast)]
     (let [table->id (into {} (map (fn [{:keys [table-name table-id]}]
@@ -195,6 +212,7 @@
       (mapv (fn [join-node]
               (let [strategy (ast-join-type->strategy (:join-type join-node))
                     is-outer? (contains? #{:left-join :right-join :full-join} strategy)
+                    lhs-col (when is-outer? (lhs-column-from-ast (:condition join-node)))
                     rhs-col (when is-outer? (rhs-column-from-ast (:condition join-node)))]
                 {:strategy        strategy
                  :alias           (sql.normalize/normalize-name
@@ -205,6 +223,7 @@
                                               driver-kw
                                               (get-in join-node [:source :table])))
                  :join-clause-sql (build-join-clause-sql driver-kw strategy join-node)
+                 :lhs-column-sql  (when lhs-col (sql-column-ref driver-kw lhs-col))
                  :rhs-column-sql  (when rhs-col (sql-column-ref driver-kw rhs-col))}))
             join-nodes))))
 
@@ -310,7 +329,7 @@
    {:preprocessed-query <pMBQL> (MBQL only)
     :from-clause-sql <string> (native only)
     :join-structure [{:strategy :alias :source-table
-                      :conditions (MBQL) or :join-clause-sql/:rhs-column-sql (native)} ...]
+                      :conditions (MBQL) or :join-clause-sql/:rhs-column-sql/:lhs-column-sql (native)} ...]
     :visited-fields {:join-fields :filter-fields :group-by-fields :order-by-fields :all}}"
   [transform source-type sources]
   (case source-type
