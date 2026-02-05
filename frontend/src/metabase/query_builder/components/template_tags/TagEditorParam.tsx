@@ -281,6 +281,7 @@ class TagEditorParamInner extends Component<
     setTemplateTag({
       ...tag,
       "table-id": tableId,
+      "field-id": undefined,
     });
   };
 
