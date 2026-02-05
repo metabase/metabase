@@ -1,4 +1,5 @@
 (ns metabase.sql-tools.common
+  {:clj-kondo/config '{:linters {:metabase/modules {:level :off}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -21,9 +22,10 @@
   [driver tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
                           (driver.sql/default-schema driver))
+        normalize (partial driver.sql/normalize-name driver)
         matches? (fn [db-table db-schema]
-                   (and (= search-table db-table)
-                        (= search-schema db-schema)))]
+                   (and (= (normalize search-table) (normalize db-table))
+                        (= (some-> search-schema normalize) (some-> db-schema normalize))))]
     (or (some (fn [{:keys [name schema id]}]
                 (when (matches? name schema)
                   {:table id}))
