@@ -533,6 +533,8 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
 
 const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
   "layout",
+  "is-save-enabled",
+  "target-collection",
 ]);
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it

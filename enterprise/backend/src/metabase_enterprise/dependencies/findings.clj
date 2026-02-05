@@ -61,7 +61,7 @@
 
 (def supported-entities
   "Entities supported by the analysis findings code"
-  #{:card :transform :segment})
+  #{:card :transform :segment :table})
 
 (def ^:private SupportedEntityType
   "Schema for entity types supported by analysis findings."
