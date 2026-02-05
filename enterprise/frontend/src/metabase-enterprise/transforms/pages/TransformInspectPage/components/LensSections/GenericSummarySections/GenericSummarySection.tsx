@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   Box,
@@ -109,19 +109,23 @@ export const GenericSummarySection = ({
     getNodeId: (node) => node.id,
   });
 
+  const inputCount = inputData.length;
+
   return (
     <Stack gap="md">
       <SimpleGrid cols={2} spacing="md">
-        <Title order={4}>{t`Input Tables`}</Title>
-        <Title order={4}>{t`Output Table`}</Title>
+        <Title order={4}>
+          {ngettext(
+            msgid`${inputCount} input table`,
+            `${inputCount} input tables`,
+            inputCount,
+          )}
+        </Title>
+        {/** we always expect to have one output table */}
+        <Title order={4}>{t`1 output table`}</Title>
       </SimpleGrid>
 
-      <Box
-        bg="background-tertiary"
-        bdrs="md"
-        p="md"
-        bd="1px solid var(--mb-color-border)"
-      >
+      <Box>
         <SimpleGrid cols={2} spacing="md">
           <Card p={0} shadow="none" withBorder>
             <TreeTable instance={inputInstance} />
