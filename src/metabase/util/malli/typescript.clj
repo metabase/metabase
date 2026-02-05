@@ -53,6 +53,7 @@
   {\! "Bang"
    \= "Eq"
    \+ "Plus"
+   \- "Minus"
    \* "Star"
    \/ "Slash"
    \< "Lt"
@@ -69,12 +70,17 @@
 
 (defn- to-capital-case
   "Convert string with dots/hyphens to CapitalCase.
-   Example: \"column.has-field-values\" -> \"ColumnHasFieldValues\""
+   Example: \"column.has-field-values\" -> \"ColumnHasFieldValues\"
+   Handles special case where string is just a special character like \"-\"."
   [s]
-  (->> (str/split s #"[-.]")
-       (remove str/blank?)
-       (map munge-segment)
-       (str/join "")))
+  ;; If the string is a single special character, munge it directly
+  (if (and (= 1 (count s)) (contains? special-char-map (first s)))
+    (get special-char-map (first s))
+    ;; Otherwise, split on delimiters and munge each segment
+    (->> (str/split s #"[-.]")
+         (remove str/blank?)
+         (map munge-segment)
+         (str/join ""))))
 
 (defn- base-type-name
   "Convert a qualified keyword like ::lib.schema/query to a base TypeScript type name.
@@ -284,6 +290,56 @@
   (let [[inner] (mc/children (mc/schema schema))]
     (str (schema->ts inner) " | null")))
 
+;; :schema wraps a schema for validation - just unwrap and process the child
+(defmethod -schema->ts :schema
+  [schema]
+  (let [[child] (mc/children (mc/schema schema))]
+    (schema->ts child)))
+
+;; :cat is a sequence schema with positional elements (like tuple but for seqex)
+(defmethod -schema->ts :cat
+  [schema]
+  (let [children (mc/children (mc/schema schema))]
+    (-> (str/join ", " (map schema->ts children))
+        (wrap "[]"))))
+
+;; :catn is like :cat but with named entries - extract schema from each entry
+(defmethod -schema->ts :catn
+  [schema]
+  (let [children (mc/children (mc/schema schema))
+        ;; Each child is [name opts? schema] - extract the schema part
+        schemas (map (fn [child]
+                       (if (= 3 (count child))
+                         (nth child 2)
+                         (nth child 1)))
+                     children)]
+    (-> (str/join ", " (map schema->ts schemas))
+        (wrap "[]"))))
+
+;; :repeat is a repeating sequence - produce array type
+(defmethod -schema->ts :repeat
+  [schema]
+  (let [[child] (mc/children (mc/schema schema))]
+    (str (schema->ts child) "[]")))
+
+;; :* is zero or more - produce array type
+(defmethod -schema->ts :*
+  [schema]
+  (let [[child] (mc/children (mc/schema schema))]
+    (str (schema->ts child) "[]")))
+
+;; :+ is one or more - produce array type (same as :* for TypeScript purposes)
+(defmethod -schema->ts :+
+  [schema]
+  (let [[child] (mc/children (mc/schema schema))]
+    (str (schema->ts child) "[]")))
+
+;; :? is zero or one - produce optional type
+(defmethod -schema->ts :?
+  [schema]
+  (let [[child] (mc/children (mc/schema schema))]
+    (str (schema->ts child) " | undefined")))
+
 (defmethod -schema->ts :=
   [schema]
   (let [v (first (mc/children (mc/schema schema)))]
@@ -311,10 +367,14 @@
 (defmethod -schema->ts :multi
   [schema]
   (let [children (mc/children (mc/schema schema))
-        types    (simplify-union-types
-                  (map (fn [[_key _opts child-schema]]
-                         (schema->ts child-schema))
-                       children))]
+        ;; Filter out unknown types from multi children before simplification.
+        ;; Multi schemas often have a default/error case that produces unknown,
+        ;; but this shouldn't invalidate the entire union type.
+        types    (->> children
+                      (map (fn [[_key _opts child-schema]]
+                             (schema->ts child-schema)))
+                      (remove unknown-type?)
+                      simplify-union-types)]
     (case (count types)
       0 "unknown"
       1 (first types)
