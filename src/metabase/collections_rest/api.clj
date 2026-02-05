@@ -22,7 +22,6 @@
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.published-tables :as published-tables]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
@@ -773,7 +772,7 @@
   [_ collection {:keys [archived? pinned-state]}]
   (let [user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
-        published-clause (published-tables/published-table-visible-clause :t.id user-info)
+        published-clause (perms/published-table-visible-clause :t.id user-info)
         queryable-clause (cond-> [:or
                                   [:in :t.id (perms/visible-table-filter-select
                                               :id

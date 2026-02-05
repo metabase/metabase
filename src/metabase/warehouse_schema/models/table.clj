@@ -8,7 +8,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.published-tables :as published-tables]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
@@ -384,7 +383,7 @@
    & [{:keys [include-published-via-collection?]}]]
   (let [{:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping)]
     (if-let [published-clause (and include-published-via-collection?
-                                   (published-tables/published-table-visible-clause column-or-exp user-info))]
+                                   (perms/published-table-visible-clause column-or-exp user-info))]
       {:clause [:or clause
                 [:and
                  [:in column-or-exp (perms/visible-table-filter-select
