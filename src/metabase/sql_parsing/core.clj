@@ -10,6 +10,8 @@
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
   (:require
+   [metabase.analytics.core :as analytics]
+   [metabase.lib.validate :as lib.validate]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.pool :as python.pool]
    [metabase.util.json :as json]
@@ -26,7 +28,7 @@
 (def ^:private ^:const default-timeout-ms
   "Default timeout for Python operations in milliseconds.
    GraalVM Python can occasionally hang (DEV-1393), so we wrap calls with a timeout."
-  30000) ; 30 seconds
+  15000) ; 15 seconds
 
 (defn- with-timeout*
   "Execute f in a future with timeout. On timeout, throws TimeoutException.
@@ -44,12 +46,15 @@
         (future-cancel fut)))))
 
 (defmacro ^:private with-python-timeout
-  "Execute body with a timeout. If timeout is reached, logs a warning and throws.
+  "Execute body with a timeout. If timeout is reached, poisons the context (so it gets
+   disposed rather than returned to pool), logs a warning, and throws TimeoutException.
    The context should be disposed by the caller's with-open."
-  [timeout-ms & body]
+  [ctx timeout-ms & body]
   `(let [result# (with-timeout* ~timeout-ms (fn [] ~@body))]
      (if (= result# ::timeout)
        (do
+         (python.pool/poison! ~ctx)
+         (analytics/inc! :metabase-sql-parsing/timeouts)
          (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM may be hung")
          (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
        result#)))
@@ -66,7 +71,7 @@
    Default schema resolution happens in the matching layer (core.clj)."
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.referenced_tables")
           (.execute ^Value (object-array [sql dialect]))
@@ -90,7 +95,7 @@
    => {:valid false :errors [{:message \"...\" :line 1 :col 10}]}"
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.validate_sql_query")
           (.execute ^Value (object-array [sql dialect]))
@@ -122,7 +127,7 @@
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.referenced_fields")
           (.execute ^Value (object-array [sql dialect]))
@@ -149,7 +154,7 @@
    => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
   [dialect sql default-table-schema sqlglot-schema]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
       (-> ^Value (common/eval-python ctx "sql_tools.returned_columns_lineage")
@@ -192,7 +197,7 @@
    - \"unhandled\": Other errors"
   [dialect sql default-table-schema & [sqlglot-schema]]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
       (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
@@ -221,7 +226,7 @@
    => {:is_simple false :reason \"Contains a LIMIT\"}"
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.simple_query")
           (.execute ^Value (object-array [sql dialect]))
@@ -245,7 +250,7 @@
    Returns: Modified SQL string with INTO clause"
   [dialect sql table-name]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.add_into_clause")
           (.execute ^Value (object-array [sql table-name dialect]))
@@ -363,21 +368,29 @@
    - :source-columns - nested list of possible source columns
    - :table - table info (for all-columns)
    - :used-fields - set of fields used (for custom-field)
-   - :member-fields - list of fields (for composite-field)"
+   - :member-fields - list of fields (for composite-field)
+
+   On timeout, returns an error map instead of throwing, consistent with the
+   'fail soft' pattern used for parsing failures."
   [dialect sql]
-  (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
-      (let [raw (-> ^Value (common/eval-python ctx "sql_tools.field_references")
-                    (.execute ^Value (object-array [sql dialect]))
-                    .asString
-                    json/decode+kw)
-            used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
-            returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-            errors (or (:errors raw) (get raw "errors") [])]
-        {:used-fields (set (map convert-field used-fields))
-         :returned-fields (vec (map convert-field returned-fields))
-         :errors (set (map convert-error errors))}))))
+  (try
+    (with-open [^Closeable ctx (python.pool/python-context)]
+      (with-python-timeout ctx default-timeout-ms
+        (common/eval-python ctx "import sql_tools")
+        (let [raw (-> ^Value (common/eval-python ctx "sql_tools.field_references")
+                      (.execute ^Value (object-array [sql dialect]))
+                      .asString
+                      json/decode+kw)
+              used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
+              returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
+              errors (or (:errors raw) (get raw "errors") [])]
+          {:used-fields (set (map convert-field used-fields))
+           :returned-fields (vec (map convert-field returned-fields))
+           :errors (set (map convert-error errors))})))
+    (catch TimeoutException e
+      {:used-fields #{}
+       :returned-fields []
+       :errors #{(lib.validate/validation-exception-error (.getMessage e))}})))
 
 (defn replace-names
   "Replace schema, table, and column names in SQL.
@@ -397,7 +410,7 @@
    => \"SELECT * FROM users\""
   [dialect sql replacements]
   (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout default-timeout-ms
+    (with-python-timeout ctx default-timeout-ms
       (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.replace_names")
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))

@@ -180,14 +180,26 @@
 
 ;;; -------------------------------------------- Context Wrappers ----------------------------------------------------
 
-(p/defrecord+ PooledContext [^Context context ^Pool pool tuple]
+(p/defrecord+ PooledContext [^Context context ^Pool pool tuple poisoned?]
   common/PythonEval
   (eval-python [_this code]
     (.eval context "python" ^String code))
 
   Closeable
   (close [_this]
-    (.release pool :python tuple)))
+    (if @poisoned?
+      (do
+        (log/warn "Disposing poisoned Python context (likely hung GraalVM)")
+        (.dispose pool :python tuple))
+      (.release pool :python tuple))))
+
+(defn poison!
+  "Mark a PooledContext as poisoned. When closed, it will be disposed from the pool
+   rather than released back. Use this when GraalVM hangs to prevent returning a
+   broken context to the pool."
+  [ctx]
+  (when (instance? PooledContext ctx)
+    (reset! (:poisoned? ctx) true)))
 
 (p/defrecord+ DevContext [^Context context]
   common/PythonEval
@@ -283,11 +295,11 @@
       (if (>= (System/nanoTime) expiry-ts)
         (do (.dispose pool :python tuple)
             (recur))
-        (->PooledContext context pool tuple)))))
+        (->PooledContext context pool tuple (atom false))))))
 
 (defn python-context
   "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
   []
   (if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
-    (acquire-dev-context)
-    (acquire-context @python-context-pool)))
+      (acquire-dev-context)
+      (acquire-context @python-context-pool)))
