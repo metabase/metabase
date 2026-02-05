@@ -51,7 +51,9 @@
 (defn- base-type-name
   "Convert a qualified keyword like ::lib.schema/query to a base TypeScript type name.
    Dots in namespace become underscores, dashes become CapitalCase.
-   Example: metabase.lib.schema.mbql-clause/bin-width -> Metabase_Lib_Schema_MbqlClause_BinWidth"
+   Dots in entity name also become CapitalCase parts.
+   Example: metabase.lib.schema.mbql-clause/bin-width -> Metabase_Lib_Schema_MbqlClause_BinWidth
+   Example: metabase.lib.schema.metadata/column.has-field-values -> Metabase_Lib_Schema_Metadata_ColumnHasFieldValues"
   [kw]
   (let [;; Map special characters to readable names (already capitalized)
         special-char-map {"!" "Bang"
@@ -65,15 +67,15 @@
         ;; Uppercase first char only (unlike str/capitalize which lowercases the rest)
         ucfirst (fn [s]
                   (if (empty? s) s (str (str/upper-case (subs s 0 1)) (subs s 1))))
-        ;; Munge a segment (between hyphens) by replacing special chars
+        ;; Munge a segment (between separators) by replacing special chars
         munge-segment (fn [segment]
                         (->> segment
                              (map #(get special-char-map (str %) (str %)))
                              (apply str)
                              ucfirst))
-        ;; Convert hyphenated string to CapitalCase (e.g., "mbql-clause" -> "MbqlClause")
+        ;; Convert string with dots/hyphens to CapitalCase (e.g., "column.has-field-values" -> "ColumnHasFieldValues")
         to-capital-case (fn [s]
-                          (->> (str/split s #"-")
+                          (->> (str/split s #"[-.]")
                                (remove str/blank?)
                                (map munge-segment)
                                (str/join "")))
@@ -82,7 +84,7 @@
                      (remove str/blank?)
                      (map to-capital-case)
                      (str/join "_"))
-        ;; Entity name: convert to CapitalCase
+        ;; Entity name: convert to CapitalCase (dots and dashes become CapitalCase)
         entity-name (to-capital-case (name kw))]
     (str ns-name "_" entity-name)))
 
@@ -207,8 +209,7 @@
                       children)]
     (if (empty? entries)
       "Record<string, unknown>"
-      (-> (str/join ";\n" entries)
-          (wrap "{\n" "\n}")))))
+      (str "{\n" (str/join ";\n" (map #(str "\t" %) entries)) ";\n}"))))
 
 (defmethod -schema->ts :map-of
   [schema]

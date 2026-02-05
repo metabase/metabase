@@ -8,21 +8,21 @@
 (deftest basic-transforms-test
   (testing "basic schema transforms"
     (are [res schema] (= res (ts/schema->ts schema))
-      "number"                                  number?
-      "{\na: number;\nb: string\n}"             [:map [:a :int] [:b :string]]
-      "{\ntype: \"main\";\nvalue: string\n}"    [:map [:type [:= :main]] [:value :string]]
-      "(string | number)"                       [:or :string :int]
-      "Record<string, any>"                     [:map-of :keyword :any]
-      "\"one\" | \"two\""                       [:enum :one :two]
-      "(Record<string, any> & {\nkey: string\n})" [:and
-                                                   [:map-of :keyword :any]
-                                                   [:map
-                                                    [:key string?]]]
-      "({\ntype: \"a\"\n} | {\ntype: \"b\"\n})" [:multi {:dispatch :type}
-                                                 [:a [:map
-                                                      [:type [:= :a]]]]
-                                                 [:b [:map
-                                                      [:type [:= :b]]]]])))
+      "number"                                          number?
+      "{\n\ta: number;\n\tb: string;\n}"                [:map [:a :int] [:b :string]]
+      "{\n\ttype: \"main\";\n\tvalue: string;\n}"       [:map [:type [:= :main]] [:value :string]]
+      "(string | number)"                               [:or :string :int]
+      "Record<string, any>"                             [:map-of :keyword :any]
+      "\"one\" | \"two\""                               [:enum :one :two]
+      "(Record<string, any> & {\n\tkey: string;\n})"    [:and
+                                                         [:map-of :keyword :any]
+                                                         [:map
+                                                          [:key string?]]]
+      "({\n\ttype: \"a\";\n} | {\n\ttype: \"b\";\n})"   [:multi {:dispatch :type}
+                                                         [:a [:map
+                                                              [:type [:= :a]]]]
+                                                         [:b [:map
+                                                              [:type [:= :b]]]]])))
 
 (deftest union-simplification-test
   (testing "unions containing 'any' simplify to 'any'"
@@ -47,7 +47,7 @@
     (is (= "Metabase_Lib_Schema_Common_NonBlankString"
            (ts/schema->ts ::lib.schema.common/non-blank-string))))
   (testing "refs in maps use type names"
-    (is (= "{\nstrategy: Metabase_Lib_Schema_Binning_Strategy\n}"
+    (is (= "{\n\tstrategy: Metabase_Lib_Schema_Binning_Strategy;\n}"
            (ts/schema->ts [:map [:strategy [:ref ::lib.schema.binning/strategy]]])))))
 
 (deftest base-type-name-test
