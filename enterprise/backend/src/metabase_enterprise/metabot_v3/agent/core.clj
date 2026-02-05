@@ -241,6 +241,7 @@
           :else
           (do (log/info "Agent loop complete"
                         {:iterations (inc iteration)
+                         ;; TODO: decide if we want this reason to float up to frontend
                          :reason     (finish-reason iteration max-iter parts)})
               (assoc loop-state
                      :status :done
