@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent.messages
   "Message formatting and history construction for the agent loop."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
    [metabase-enterprise.metabot-v3.agent.tool-results :as tool-results]
@@ -145,12 +146,11 @@
     ;; Ignore other part types (start, finish, usage, data, etc.)
     nil))
 
-(defn- step->messages
-  "Convert a step's parts into messages."
-  [step]
-  (->> (:parts step)
-       (keep part->message)
-       (remove nil?)))
+(defn- ->content-blocks [content]
+  (cond
+    (sequential? content)                              content
+    (and (string? content) (not (str/blank? content))) [{:type "text" :text content}]
+    :else                                              []))
 
 (defn- merge-consecutive-assistant-messages
   "Merge consecutive assistant messages into single messages with combined content.
@@ -159,52 +159,42 @@
   Example: [{:role 'assistant' :content 'text'}
             {:role 'assistant' :content [{:type 'tool_use' ...}]}]
   Becomes: [{:role 'assistant' :content [{:type 'text' :text 'text'}
-                                          {:type 'tool_use' ...}]}]"
+                                         {:type 'tool_use' ...}]}]"
   [messages]
-  (reduce
-   (fn [acc msg]
-     (let [prev (peek acc)]
-       (if (and prev
-                (= "assistant" (:role prev))
-                (= "assistant" (:role msg)))
-         ;; Merge with previous assistant message
-         (let [prev-content (:content prev)
-               curr-content (:content msg)
-               ;; Normalize to arrays
-               prev-blocks (if (sequential? prev-content)
-                             prev-content
-                             (if (and (string? prev-content) (seq prev-content))
-                               [{:type "text" :text prev-content}]
-                               []))
-               curr-blocks (if (sequential? curr-content)
-                             curr-content
-                             (if (and (string? curr-content) (seq curr-content))
-                               [{:type "text" :text curr-content}]
-                               []))
-               merged-content (into (vec prev-blocks) curr-blocks)]
-           (conj (pop acc) (assoc prev :content merged-content)))
-         ;; Different role or first message - add as-is
-         (conj acc msg))))
-   []
-   messages))
+  (->> messages
+       (partition-by :role)
+       (mapcat (fn [group]
+                 (cond
+                   (= (count group) 1)       group
+                   (= "assistant"
+                      (:role (first group))) [{:role    "assistant"
+                                               :content (into [] (mapcat (comp ->content-blocks :content)) group)}]
+                   :else                     group)))))
+
+(defn- step->messages
+  "Convert a step's parts into messages."
+  [step]
+  (->> (:parts step)
+       (keep part->message)
+       (remove nil?)))
 
 (defn build-message-history
   "Build full message history for LLM from memory.
   Includes input messages and all steps taken so far."
   [memory]
-  (let [input-messages (memory/get-input-messages memory)
-        steps (memory/get-steps memory)
-        step-messages (mapcat step->messages steps)
+  (let [input-messages  (memory/get-input-messages memory)
+        steps           (memory/get-steps memory)
+        step-messages   (mapcat step->messages steps)
         formatted-input (map format-message input-messages)
         ;; Merge consecutive assistant messages (Claude API requirement)
-        result (->> (concat formatted-input step-messages)
-                    (merge-consecutive-assistant-messages)
-                    vec)]
+        result          (->> (concat formatted-input step-messages)
+                             (merge-consecutive-assistant-messages)
+                             vec)]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
-               :step-count (count steps)
-               :total-messages (count result)
-               :message-roles (mapv :role result)})
+               :step-count          (count steps)
+               :total-messages      (count result)
+               :message-roles       (mapv :role result)})
     result))
 
 (defn build-system-message
