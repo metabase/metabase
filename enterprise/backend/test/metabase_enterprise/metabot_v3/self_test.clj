@@ -425,7 +425,7 @@
                  {:type :tool-output :id "call-1" :result {:data []}}
                  {:type :usage :id "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
                  {:type :finish}]
-          lines (into [] self/aisdk-line-xf parts)]
+          lines (into [] (self/aisdk-line-xf) parts)]
       ;; Should have: start, text, tool-call, tool-result, finish (usage is folded into finish)
       (is (= 5 (count lines)))
       (is (str/starts-with? (nth lines 0) "f:"))  ;; start

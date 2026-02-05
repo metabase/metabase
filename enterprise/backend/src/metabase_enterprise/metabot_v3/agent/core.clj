@@ -268,5 +268,6 @@
              first
              :result)
         (catch Exception e
-          (log/error e "Agent loop error")
+          (when-not (:api-error (ex-data e))
+            (log/error e "Agent loop error"))
           (rf init (error-part e)))))))
