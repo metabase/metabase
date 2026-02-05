@@ -354,7 +354,7 @@ function getTableSectionSortableFields() {
 }
 
 function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByRole("textbox", { name: "Visibility type" });
+  return getTableSection().findByRole("textbox", { name: "Visibility layer" });
 }
 
 function getTableSectionFieldNameInput(name: string) {
