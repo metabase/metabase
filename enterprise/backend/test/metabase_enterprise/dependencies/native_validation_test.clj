@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
+   [metabase.driver.sql :as driver.sql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,15 +17,21 @@
    (-> (lib/native-query mp query)
        (lib/with-template-tags template-tags))))
 
+(defn- normalize-error
+  "Normalize error :name using driver conventions for comparison.
+   This matches what sql-tools/common.clj does when returning errors."
+  [driver error]
+  (if-let [error-name (:name error)]
+    (assoc error :name (driver.sql/normalize-name driver error-name))
+    error))
+
 (defn- normalize-error-names
-  "Lowercase :name values in validation errors for case-insensitive comparison.
-  SQLGlot may return uppercase names while Macaw returns lowercase."
-  [errors]
+  "Normalize :name values in validation errors using driver conventions.
+   Both SQLGlot and Macaw errors are normalized by sql-tools/common.clj,
+   so we need to normalize expected values to match."
+  [driver errors]
   (into #{}
-        (map (fn [err]
-               (if (:name err)
-                 (update err :name u/lower-case-en)
-                 err)))
+        (map (partial normalize-error driver))
         errors))
 
 (defn- normalize-result-metadata
@@ -39,12 +46,12 @@
 
 (defn- validates?
   [mp driver card-id expected]
-  (is (=? (if (set? expected) (normalize-error-names expected) expected)
-          (-> (lib.metadata/card mp card-id)
-              :dataset-query
-              (assoc :lib/metadata mp)
-              (->> (deps.native-validation/validate-native-query driver))
-              normalize-error-names))))
+  (is (=? (if (set? expected) (normalize-error-names driver expected) expected)
+          (deps.native-validation/validate-native-query
+           driver
+           (-> (lib.metadata/card mp card-id)
+               :dataset-query
+               (assoc :lib/metadata mp))))))
 
 (deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
@@ -98,19 +105,17 @@
                   (= #{} result))
               (str "Expected syntax-error or empty set, got: " result))))
       (testing "bad table wildcard"
-        ;; Use normalize-error-names for case-insensitive comparison (SQLGlot returns uppercase)
-        (is (= #{(lib/missing-table-alias-error "products")}
-               (normalize-error-names
-                (deps.native-validation/validate-native-query
-                 driver
-                 (fake-query mp "select products.* from orders"))))))
+        ;; Normalize expected value using driver conventions (H2 uppercases, Postgres lowercases)
+        (is (= (normalize-error-names driver #{(lib/missing-table-alias-error "products")})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select products.* from orders")))))
       (testing "bad col reference"
-        ;; Use normalize-error-names for case-insensitive comparison (SQLGlot returns uppercase)
-        (is (= #{(lib/missing-column-error "bad")}
-               (normalize-error-names
-                (deps.native-validation/validate-native-query
-                 driver
-                 (fake-query mp "select bad from products")))))))))
+        ;; Normalize expected value using driver conventions (H2 uppercases, Postgres lowercases)
+        (is (= (normalize-error-names driver #{(lib/missing-column-error "bad")})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select bad from products"))))))))
 
 (deftest ^:parallel validate-table-function-query-test
   (testing "can validate queries using table functions"
