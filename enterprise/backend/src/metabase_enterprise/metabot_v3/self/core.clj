@@ -180,8 +180,8 @@
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
-  [accumulated-usage]
-  (str "d:" (json/encode {:finishReason "stop"
+  [error? accumulated-usage]
+  (str "d:" (json/encode {:finishReason (if error? "error" "stop")
                           :usage        (or accumulated-usage {})})))
 
 (defn format-start-line
@@ -204,17 +204,22 @@
     :usage      -> (accumulated into finish message)"
   []
   (fn [rf]
-    (let [usage-acc (volatile! {})]
+    (let [usage-acc (volatile! {})
+          error?    (volatile! false)]
       (fn
         ([] (rf))
         ([result]
-         ;; Emit finish message with accumulated usage at the end
-         (rf (rf result (format-finish-line @usage-acc))))
+         (-> result
+           ;; Emit finish message with accumulated usage at the end
+           (rf (format-finish-line @error? @usage-acc))
+           (rf)))
         ([result part]
          (case (:type part)
            :text        (rf result (format-text-line part))
            :data        (rf result (format-data-line part))
-           :error       (rf result (format-error-line part))
+           :error       (do
+                          (vreset! error? true)
+                          (rf result (format-error-line part)))
            :tool-input  (rf result (format-tool-call-line part))
            :tool-output (rf result (format-tool-result-line part))
            :start       (rf result (format-start-line part))
@@ -222,6 +227,7 @@
            :usage       (do
                           ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
                           (let [{:keys [usage id]} part
+                                ;; FIXME: this is not the model id right now, plus it's not accumulated
                                 model              (or id "claude-haiku-4-5")]
                             (vswap! usage-acc assoc model
                                     {:prompt     (:promptTokens usage 0)
