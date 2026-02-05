@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -11,16 +10,10 @@ import type { Database } from "metabase-types/api";
 
 interface DatabaseSidebarProps {
   database: Database;
-  className?: string;
-  style?: CSSProperties;
 }
 
-const DatabaseSidebar = ({
-  database,
-  style,
-  className,
-}: DatabaseSidebarProps) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const DatabaseSidebar = ({ database }: DatabaseSidebarProps) => (
+  <div className={S.sidebar}>
     <ul>
       <div>
         <Breadcrumbs
