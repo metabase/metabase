@@ -1544,7 +1544,10 @@ class FieldReferenceWalker:
         if not source_columns or not any(source_columns):
             # No potential sources found
             if table_ref:
-                errors.add(self._missing_table_alias_error(table_ref))
+                # Table qualifier doesn't exist - return error only, no col spec
+                # (Returning a col with empty source_columns would cause Clojure's
+                # resolve-field to generate a redundant missing-column error)
+                return [{"errors": {self._missing_table_alias_error(table_ref)}}]
             else:
                 errors.add(self._missing_column_error(column_name))
 
