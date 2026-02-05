@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -8,13 +7,8 @@ import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 
-interface BaseSidebarProps {
-  className?: string;
-  style?: CSSProperties;
-}
-
-const BaseSidebar = ({ style, className }: BaseSidebarProps) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const BaseSidebar = () => (
+  <div className={S.sidebar}>
     <div>
       <Breadcrumbs
         className={cx(CS.py4, CS.ml3)}
