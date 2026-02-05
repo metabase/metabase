@@ -28,9 +28,9 @@
   (testing "unions containing 'any' simplify to 'any'"
     (is (= "any" (ts/schema->ts [:or :string :any])))
     (is (= "any" (ts/schema->ts [:or :int :string :any]))))
-  (testing "unions filter out unknown types"
-    (is (= "string" (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
-    (is (= "(string | number)"
+  (testing "unions containing 'unknown' simplify to 'unknown'"
+    (is (= "unknown" (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
+    (is (= "unknown"
            (ts/schema->ts [:or :string :int [:fn {:typescript "unknown"} any?]]))))
   (testing "duplicate types are removed"
     (is (= "string" (ts/schema->ts [:or :string :string])))
@@ -68,11 +68,13 @@
   (testing "any absorbs everything"
     (is (= ["any"] (#'ts/simplify-union-types ["string" "any" "number"])))
     (is (= ["any"] (#'ts/simplify-union-types ["any"]))))
-  (testing "unknown types are filtered"
-    (is (= ["string" "number"] (#'ts/simplify-union-types ["string" "unknown" "number"])))
-    (is (= ["string"] (#'ts/simplify-union-types ["string" "unknown"]))))
-  (testing "empty after filtering returns empty"
-    (is (= [] (#'ts/simplify-union-types ["unknown"]))))
+  (testing "unknown absorbs everything (except any)"
+    (is (= ["unknown"] (#'ts/simplify-union-types ["string" "unknown" "number"])))
+    (is (= ["unknown"] (#'ts/simplify-union-types ["string" "unknown"])))
+    (is (= ["unknown"] (#'ts/simplify-union-types ["unknown"]))))
+  (testing "any takes precedence over unknown"
+    (is (= ["any"] (#'ts/simplify-union-types ["any" "unknown"])))
+    (is (= ["any"] (#'ts/simplify-union-types ["string" "any" "unknown"]))))
   (testing "duplicates are removed"
     (is (= ["string" "number"] (#'ts/simplify-union-types ["string" "number" "string"])))))
 

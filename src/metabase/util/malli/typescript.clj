@@ -85,21 +85,17 @@
       (str "Shared." base-name)
       base-name)))
 
-(defn normalize-schema [schema]
-  (when-not (vector? schema)
-    (throw (ex-info "Expected to get schema vector" {:schema schema})))
-  (if (map? (second schema))
-    schema
-    (into [(first schema) nil] (rest schema))))
-
 (declare schema->ts)
 
 (defn- fmt-literal
-  "Format literal value to a TypeScript string"
+  "Format literal value to a TypeScript literal type."
   [v]
   (cond
+    (nil? v)     "null"
+    (boolean? v) (str v)
     (number? v)  (str v)
     (keyword? v) (str "\"" (name v) "\"")
+    (string? v)  (str "\"" (str/replace v "\"" "\\\"") "\"")
     :else        (str "\"" v "\"")))
 
 (defn- wrap
@@ -108,9 +104,11 @@
   ([s l r]
    (str l s r)))
 
-(defn- quote-if-neccessary [s]
+(defn- quote-if-necessary
+  "Quote a property name if it contains characters invalid for JS identifiers."
+  [s]
   (if (re-find #"[^\w\d_]" s)
-    (wrap s "''")
+    (str "\"" s "\"")
     s))
 
 (defn- indent-ts
@@ -135,8 +133,6 @@
           (recur (conj result indented-line)
                  (max 0 new-depth)
                  remaining))))))
-
-(declare schema->ts)
 
 (defmulti -schema->ts
   "Convert a Malli schema to TypeScript type definition.
@@ -169,7 +165,9 @@
 (defmethod -schema->ts 'symbol   [_] "string")
 (defmethod -schema->ts 'uuid     [_] "string")
 (defmethod -schema->ts 'nil      [_] "null")
-(defmethod -schema->ts 'vector?  [_] "unknown[]")
+(defmethod -schema->ts 'vector?  [_]
+  (record-weak-type! :unknown)
+  "unknown[]")
 
 (defmethod -schema->ts :vector
   [schema]
@@ -190,10 +188,10 @@
 (defmethod -schema->ts :map
   [schema]
   (let [children (mc/children schema)
-        entries  (map (fn [[k _opts v-schema]]
+        entries  (map (fn [[k opts v-schema]]
                         (let [k-str     (-> (if (keyword? k) (name k) (str k))
-                                            (quote-if-neccessary))
-                              optional? (:optional (mc/properties v-schema))
+                                            (quote-if-necessary))
+                              optional? (:optional opts)
                               separator (if optional? "?:" ":")]
                           (str k-str separator " " (schema->ts v-schema))))
                       children)]
@@ -223,15 +221,13 @@
 (defn- simplify-union-types
   "Simplify a collection of union type strings:
    - If any type is 'any', return [\"any\"] (any absorbs everything)
-   - Remove 'unknown' types (they provide no useful info)
+   - If any type is 'unknown', return [\"unknown\"] (unknown is supertype of all)
    - Return distinct types"
   [types]
-  (if (some #(= % "any") types)
-    ["any"]
-    (->> types
-         (remove unknown-type?)
-         distinct
-         vec)))
+  (cond
+    (some #(= % "any") types)     ["any"]
+    (some unknown-type? types)    ["unknown"]
+    :else                         (vec (distinct types))))
 
 (defmethod -schema->ts :or
   [schema]
@@ -382,18 +378,18 @@
   (try
     (binding [*seen* (conj *seen* schema)]
       (-schema->ts (mc/schema schema)))
-    (catch Exception e
+    (catch Throwable t
       (cond
-        (::unsupported (ex-data e))
+        (::unsupported (ex-data t))
         (do
           (record-weak-type! :unknown)
           "unknown")
-        (instance? StackOverflowError e)
+        (instance? StackOverflowError t)
         (do
           (record-weak-type! :unknown)
           "unknown")
         :else
-        (throw e)))))
+        (throw t)))))
 
 (def ^:private schema->ts-memoized
   "Memoized version of schema->ts-impl."
@@ -596,35 +592,25 @@
     (catch Exception _
       false)))
 
-(defn- expand-schema-for-alias
-  "Expand a registry schema to its full TypeScript representation for type alias generation.
-   Bypasses memoization and disables ref collection to avoid infinite loops."
-  [schema-kw]
-  (binding [*registry-refs*      nil              ; Don't collect new refs
-            *bypass-memoization* true             ; Bypass cache to get full expansion
-            *seen*               #{}]
-    (try
-      (schema->ts (mr/resolve-schema schema-kw))
-      (catch Exception e
-        (if (::unsupported (ex-data e))
-          "unknown"
-          (throw e))))))
-
 (defn- generate-type-aliases
   "Generate TypeScript type aliases for a set of registry schema keywords.
-   Iteratively expands to find all transitively referenced schemas."
+   Iteratively expands to find all transitively referenced schemas.
+   Uses sorted order for deterministic output."
   [initial-refs]
-  ;; Filter to only valid registry schemas
-  (let [valid-refs (into #{} (filter registry-schema?) initial-refs)]
+  ;; Filter to only valid registry schemas and sort for deterministic order
+  (let [valid-refs (->> initial-refs
+                        (filter registry-schema?)
+                        (sort-by str)
+                        vec)]
     (loop [pending-refs valid-refs
            processed    #{}
            aliases      []]
       (if (empty? pending-refs)
         (str/join "\n\n" aliases)
         (let [current-ref (first pending-refs)
-              remaining   (disj pending-refs current-ref)]
+              remaining   (rest pending-refs)]
           (if (processed current-ref)
-            (recur remaining processed aliases)
+            (recur (vec remaining) processed aliases)
             ;; Expand this ref and collect any new refs it discovers
             (let [new-refs-atom (atom #{})
                   type-def     (binding [*registry-refs*      new-refs-atom
@@ -641,12 +627,13 @@
                   ;; Skip useless `type X = unknown;` aliases
                   alias-decl   (when-not (unknown-type? type-def)
                                  (str "export type " type-name " = " type-def ";"))
-                  ;; Filter new refs to only valid registry schemas, exclude self-refs
+                  ;; Filter new refs to only valid registry schemas, exclude self-refs, sort for determinism
                   new-refs     (->> @new-refs-atom
                                     (remove #(= % current-ref))
                                     (filter registry-schema?)
-                                    set)]
-              (recur (into remaining (remove processed new-refs))
+                                    (remove processed)
+                                    (sort-by str))]
+              (recur (vec (concat remaining new-refs))
                      (conj processed current-ref)
                      (if alias-decl
                        (conj aliases alias-decl)
