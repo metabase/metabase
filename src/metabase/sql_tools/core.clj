@@ -117,8 +117,8 @@
     opts :- ::replace-names-opts]
    (interface/replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
 
-(mu/defn referenced-tables-raw :- [:set ::table-spec]
-  "Given a driver and sql string, returns a set of form #{{:schema <name> :table <name>}...}."
+(mu/defn referenced-tables-raw :- [:sequential ::table-spec]
+  "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
   [driver :- :keyword
    sql-str :- :string]
   (interface/referenced-tables-raw-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-str))
