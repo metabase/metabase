@@ -76,10 +76,11 @@
   [_parser driver sql-str]
   (let [dialect (driver->dialect driver)
         ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
-        ;; Convert to [{:schema ... :table ...} ...] for table-match-clause
-        table-tuples (sql-parsing/referenced-tables dialect sql-str)
-        tables (mapv (fn [[_catalog schema table]] {:schema schema :table table}) table-tuples)]
-    tables))
+        ;; Convert to [{:schema ... :table ...} ...] with driver-appropriate case normalization
+        table-tuples (sql-parsing/referenced-tables dialect sql-str)]
+    (mapv (fn [[_catalog schema table]]
+            (sql-tools.common/normalize-table-spec driver {:schema schema :table table}))
+          table-tuples)))
 
 (defmethod sql-tools/simple-query?-impl :sqlglot
   [_parser sql-string]
