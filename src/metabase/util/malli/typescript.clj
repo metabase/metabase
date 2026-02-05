@@ -685,17 +685,17 @@
            type-aliases))))
 
 (defn- generate-reexports
-  "Generate re-export statements for metabase.lib.js.d.ts to re-export from all metabase.lib.* modules."
-  [lib-namespaces]
-  (let [;; Filter to only metabase.lib.* namespaces, excluding metabase.lib.js itself
-        lib-nses (->> lib-namespaces
-                      (filter (fn [ns]
-                                (and (str/starts-with? (str ns) "metabase.lib.")
-                                     (not= ns 'metabase.lib.js))))
-                      sort)]
-    (when (seq lib-nses)
-      (str "\n// Re-exports from metabase.lib.* modules\n"
-           (->> lib-nses
+  "Generate re-export statements for metabase.lib.js.d.ts to re-export from all metabase.* modules."
+  [all-namespaces]
+  (let [;; Filter to all metabase.* namespaces, excluding metabase.lib.js itself
+        reexport-nses (->> all-namespaces
+                           (filter (fn [ns]
+                                     (and (str/starts-with? (str ns) "metabase.")
+                                          (not= ns 'metabase.lib.js))))
+                           sort)]
+    (when (seq reexport-nses)
+      (str "\n// Re-exports from metabase.* modules\n"
+           (->> reexport-nses
                 (map (fn [ns]
                        (let [fname (comp/munge (str ns))]
                          (str "export * from './" fname "';"))))
