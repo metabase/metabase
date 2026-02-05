@@ -20,6 +20,7 @@ import type {
 } from "metabase-types/api";
 
 import type { CardStats } from "../../../types";
+import { FieldInfoSection } from "../../FieldInfoSection/FieldInfoSection";
 
 import { RowCountCard } from "./components/RowCountCard";
 
@@ -112,29 +113,32 @@ export const GenericSummarySection = ({
   const inputCount = inputData.length;
 
   return (
-    <Stack gap="md">
-      <SimpleGrid cols={2} spacing="lg">
-        <Title order={4}>
-          {ngettext(
-            msgid`${inputCount} input table`,
-            `${inputCount} input tables`,
-            inputCount,
-          )}
-        </Title>
-        {/** we always expect to have one output table */}
-        <Title order={4}>{t`1 output table`}</Title>
-      </SimpleGrid>
-
-      <Box>
+    <Stack gap="xl">
+      <Stack gap="md">
         <SimpleGrid cols={2} spacing="lg">
-          <Card p={0} shadow="none" withBorder>
-            <TreeTable instance={inputInstance} />
-          </Card>
-          <Card p={0} shadow="none" withBorder>
-            <TreeTable instance={outputInstance} />
-          </Card>
+          <Title order={4}>
+            {ngettext(
+              msgid`${inputCount} input table`,
+              `${inputCount} input tables`,
+              inputCount,
+            )}
+          </Title>
+          {/** we always expect to have one output table */}
+          <Title order={4}>{t`1 output table`}</Title>
         </SimpleGrid>
-      </Box>
+
+        <Box>
+          <SimpleGrid cols={2} spacing="lg">
+            <Card p={0} shadow="none" withBorder>
+              <TreeTable instance={inputInstance} />
+            </Card>
+            <Card p={0} shadow="none" withBorder>
+              <TreeTable instance={outputInstance} />
+            </Card>
+          </SimpleGrid>
+        </Box>
+      </Stack>
+      <FieldInfoSection sources={sources} target={target} />
     </Stack>
   );
 };

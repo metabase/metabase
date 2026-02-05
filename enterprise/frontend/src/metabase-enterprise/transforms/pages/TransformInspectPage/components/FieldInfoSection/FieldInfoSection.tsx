@@ -3,11 +3,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
-import { Icon } from "metabase/ui";
 import {
-  Accordion,
   Card,
+  EntityNameCell,
+  Flex,
   SimpleGrid,
   Stack,
   Text,
@@ -22,8 +23,6 @@ import type {
   TransformInspectTarget,
 } from "metabase-types/api";
 import { NUMERIC_BASE_TYPES, TEMPORAL_BASE_TYPES } from "metabase-types/api";
-
-import S from "./FieldInfoSection.module.css";
 
 type FieldInfoSectionProps = {
   sources: TransformInspectSource[];
@@ -85,49 +84,25 @@ export const FieldInfoSection = ({
   });
 
   return (
-    <Accordion
-      classNames={{
-        chevron: S.chevron,
-        content: S.content,
-        control: S.control,
-        icon: S.icon,
-        item: S.item,
-        label: S.label,
-      }}
-    >
-      <Accordion.Item value="field-info">
-        <Accordion.Control icon={<Icon name="field" />}>
-          {t`Field Information`}
-        </Accordion.Control>
-        <Accordion.Panel>
-          <SimpleGrid cols={2} spacing="lg">
-            <Stack gap="sm">
-              <Title order={5}>{t`Input`}</Title>
-              <Card p={0} shadow="none" withBorder>
-                <TreeTable
-                  instance={sourceInstance}
-                  onRowClick={handleRowClick}
-                />
-              </Card>
-            </Stack>
+    <SimpleGrid cols={2} spacing="lg">
+      <Stack gap="md">
+        <Title order={4}>{t`Input fields`}</Title>
+        <Card p={0} shadow="none" withBorder>
+          <TreeTable instance={sourceInstance} onRowClick={handleRowClick} />
+        </Card>
+      </Stack>
 
-            <Stack gap="sm">
-              <Title order={5}>{t`Output`}</Title>
-              {target ? (
-                <Card p={0} shadow="none" withBorder>
-                  <TreeTable
-                    instance={targetInstance}
-                    onRowClick={handleRowClick}
-                  />
-                </Card>
-              ) : (
-                <Text c="text-tertiary">{t`No output table`}</Text>
-              )}
-            </Stack>
-          </SimpleGrid>
-        </Accordion.Panel>
-      </Accordion.Item>
-    </Accordion>
+      <Stack gap="md">
+        <Title order={4}>{t`Output fields`}</Title>
+        {target ? (
+          <Card p={0} shadow="none" withBorder>
+            <TreeTable instance={targetInstance} onRowClick={handleRowClick} />
+          </Card>
+        ) : (
+          <Text c="text-tertiary">{t`No output table`}</Text>
+        )}
+      </Stack>
+    </SimpleGrid>
   );
 };
 
@@ -224,15 +199,18 @@ function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
         const node = row.original;
         if (node.type === "table") {
           return (
-            <Text size="sm" style={{ whiteSpace: "nowrap" }}>
-              {node.tableName}
-              <Text span size="xs" c="text-tertiary" ml="xs" display="inline">
-                ({node.fieldCount})
-              </Text>
-            </Text>
+            <EntityNameCell
+              icon="table"
+              name={
+                <Flex align="center" gap="xs">
+                  <Text fw="bold">{node.tableName}</Text>{" "}
+                  <Text c="text-secondary">({node.fieldCount})</Text>
+                </Flex>
+              }
+            />
           );
         }
-        return <Text size="sm">{node.fieldName}</Text>;
+        return <Ellipsified>{node.fieldName}</Ellipsified>;
       },
     },
     {
@@ -242,11 +220,7 @@ function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "field") {
-          return (
-            <Text size="xs" c="text-tertiary" ta="right">
-              {node.baseType}
-            </Text>
-          );
+          return <Text ta="right">{node.baseType}</Text>;
         }
         return null;
       },
