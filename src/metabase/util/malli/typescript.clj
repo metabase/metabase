@@ -24,8 +24,11 @@
 ;; Dynamic var to track current namespace being processed (for debug warnings)
 (def ^:dynamic *current-ns* nil)
 
+;; Dynamic var to track current def name being processed (for debug warnings)
+(def ^:dynamic *current-def* nil)
+
 ;; Dynamic var to collect files with any/unknown types (for debug warnings)
-;; When bound to an atom, maps ns -> set of {:type :any|:unknown, :context string}
+;; When bound to an atom, maps ns -> set of {:type :any|:unknown, :def string}
 (def ^:dynamic *weak-types* nil)
 
 (defn- debug-cljs?
@@ -35,9 +38,9 @@
 
 (defn- record-weak-type!
   "Record an occurrence of 'any' or 'unknown' type for debug output."
-  [type-kw context]
-  (when (and *weak-types* *current-ns*)
-    (swap! *weak-types* update *current-ns* (fnil conj #{}) {:type type-kw :context context})))
+  [type-kw]
+  (when (and *weak-types* *current-ns* *current-def*)
+    (swap! *weak-types* update *current-ns* (fnil conj #{}) {:type type-kw :def *current-def*})))
 
 (defn- record-registry-ref!
   "Record a registry schema reference for later type alias generation."
@@ -151,8 +154,8 @@
 (defmethod -schema->ts :uuid     [_] "string")
 (defmethod -schema->ts :uri      [_] "string")
 (defmethod -schema->ts :nil      [_] "null")
-(defmethod -schema->ts :any      [schema]
-  (record-weak-type! :any (str "schema :any at " (mc/form schema)))
+(defmethod -schema->ts :any      [_schema]
+  (record-weak-type! :any)
   "any")
 (defmethod -schema->ts :re       [_] "string")
 (defmethod -schema->ts 'pos-int? [_] "number")
@@ -320,12 +323,8 @@
 
 (defmethod -schema->ts :fn
   [schema]
-  (let [ts-type (:typescript (mc/properties schema))]
-    (if ts-type
-      ts-type
-      (do
-        (record-weak-type! :unknown (str "fn schema without :typescript property: " (mc/form schema)))
-        "unknown"))))
+  (or (:typescript (mc/properties schema))
+      "unknown"))
 
 ;; Default fallback
 
@@ -387,11 +386,11 @@
       (cond
         (::unsupported (ex-data e))
         (do
-          (record-weak-type! :unknown (str "unsupported schema: " (try (mc/form schema) (catch Exception _ schema))))
+          (record-weak-type! :unknown)
           "unknown")
         (instance? StackOverflowError e)
         (do
-          (record-weak-type! :unknown (str "stack overflow for schema: " (try (mc/form schema) (catch Exception _ schema))))
+          (record-weak-type! :unknown)
           "unknown")
         :else
         (throw e)))))
@@ -660,7 +659,8 @@
   (binding [*registry-refs* (atom #{})]
     (doseq [defmeta (vals defs)]
       (try
-        (def->ts defmeta)
+        (binding [*current-def* (name (:name defmeta))]
+          (def->ts defmeta))
         (catch Exception _)))
     @*registry-refs*))
 
@@ -673,7 +673,9 @@
   ([defs shared-types]
    (binding [*registry-refs* (atom #{})]
      (let [fn-defs (->> (vals defs)
-                        (map def->ts)
+                        (map (fn [defmeta]
+                               (binding [*current-def* (name (:name defmeta))]
+                                 (def->ts defmeta))))
                         (str/join "\n\n"))
            ;; Only generate aliases for types NOT in shared-types
            local-refs (remove shared-types @*registry-refs*)
@@ -733,6 +735,22 @@
                 (str/join "\n"))
            "\n"))))
 
+(defn- ns->file-path
+  "Convert a namespace symbol to a source file path.
+   e.g., metabase.lib.limit -> src/metabase/lib/limit.cljs"
+  [ns-sym]
+  (let [ns-str (str ns-sym)
+        path (-> ns-str
+                 (str/replace "." "/")
+                 (str/replace "-" "_"))]
+    ;; Try to find the actual file extension
+    (let [base-path (str "src/" path)
+          candidates [(str base-path ".cljs")
+                      (str base-path ".cljc")
+                      (str base-path ".clj")]]
+      (or (first (filter #(.exists (java.io.File. %)) candidates))
+          (str base-path ".cljs")))))
+
 (defn- output-weak-type-warnings!
   "Output warnings for namespaces that have any/unknown types."
   [weak-types]
@@ -740,15 +758,18 @@
     (log/warn "=== TypeScript generation: files with weak types (any/unknown) ===")
     (doseq [[ns entries] (sort-by key weak-types)]
       (let [any-count (count (filter #(= :any (:type %)) entries))
-            unknown-count (count (filter #(= :unknown (:type %)) entries))]
-        (log/warn (str "  " ns " - any: " any-count ", unknown: " unknown-count))))
-    (log/warn "Set MB_DEBUG_CLJS=verbose for detailed context of each weak type")
+            unknown-count (count (filter #(= :unknown (:type %)) entries))
+            file-path (ns->file-path ns)]
+        (log/warn (str "  " file-path " - any: " any-count ", unknown: " unknown-count))))
+    (log/warn "Set MB_DEBUG_CLJS=verbose to list entities with weak types")
     (when (= "verbose" (System/getenv "MB_DEBUG_CLJS"))
-      (log/warn "=== Detailed weak type contexts ===")
+      (log/warn "=== Entities with weak types ===")
       (doseq [[ns entries] (sort-by key weak-types)]
-        (log/warn (str "  " ns ":"))
-        (doseq [{:keys [type context]} (sort-by :type entries)]
-          (log/warn (str "    [" (name type) "] " context)))))))
+        (let [by-def (group-by :def entries)]
+          (log/warn (str "  " (ns->file-path ns) ":"))
+          (doseq [[def-name def-entries] (sort-by key by-def)]
+            (let [types (->> def-entries (map :type) distinct sort (map name) (str/join ", "))]
+              (log/warn (str "    " def-name " [" types "]")))))))))
 
 (defn produce-dts
   {:shadow.build/stage :flush}
