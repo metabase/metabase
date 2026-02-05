@@ -82,6 +82,12 @@
    :sections     []
    :cards        []})
 
+(defn with-metadata
+  "Merge lens-metadata into a lens map. Use this in make-lens implementations
+   to avoid duplicating id, display_name, description, and complexity."
+  [lens-type ctx lens-map]
+  (merge (lens-metadata lens-type ctx) lens-map))
+
 ;;; -------------------------------------------------- Lens Registry --------------------------------------------------
 
 (defonce ^:private ^{:doc "Atom containing registered lens types.

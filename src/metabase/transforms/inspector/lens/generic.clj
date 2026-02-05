@@ -51,27 +51,27 @@
   [_ _ctx]
   {:id           "generic-summary"
    :display_name "Data Summary"
-   :description  "Overview of input and output tables"})
+   :description  "Overview of input and output tables"
+   :complexity   {:level :fast}})
 
 (defmethod lens.core/make-lens :generic-summary
-  [_ ctx params]
+  [lens-type ctx params]
   (let [{:keys [sources target]} ctx]
-    {:id           "generic-summary"
-     :display_name "Data Summary"
-     :summary      {:text       "Compare row counts before and after transformation"
-                    :highlights (cond-> [{:label "Input Tables" :value (count sources)}]
-                                  target
-                                  (conj {:label "Output Columns" :value (:column_count target)}))}
-     :sections     [{:id     "row-counts"
-                     :title  "Row Counts"
-                     :layout :comparison}]
-     :cards        (vec
-                    (concat
-                     ;; Input row counts
-                     (map-indexed (fn [i {:keys [table_id table_name db_id]}]
-                                    (row-count-card db_id table_id table_name :input i params))
-                                  sources)
-                     ;; Output row count
-                     (when target
-                       [(row-count-card (:db_id target) (:table_id target)
-                                        (:table_name target) :output 0 params)])))}))
+    (lens.core/with-metadata lens-type ctx
+      {:summary  {:text       "Compare row counts before and after transformation"
+                  :highlights (cond-> [{:label "Input Tables" :value (count sources)}]
+                                target
+                                (conj {:label "Output Columns" :value (:column_count target)}))}
+       :sections [{:id     "row-counts"
+                   :title  "Row Counts"
+                   :layout :comparison}]
+       :cards    (vec
+                  (concat
+                   ;; Input row counts
+                   (map-indexed (fn [i {:keys [table_id table_name db_id]}]
+                                  (row-count-card db_id table_id table_name :input i params))
+                                sources)
+                   ;; Output row count
+                   (when target
+                     [(row-count-card (:db_id target) (:table_id target)
+                                      (:table_name target) :output 0 params)])))})))
