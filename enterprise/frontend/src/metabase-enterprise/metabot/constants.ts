@@ -30,8 +30,8 @@ export const METABOT_ERR_MSG = {
   get unauthenticated() {
     return t`Metabot could not authenticate your request. Please contact your administrator.`;
   },
-  get agentOffline() {
-    return t`Metabot is currently offline. Please try again later.`;
+  format(msg: string) {
+    return t`Sorry, an error occurred: ${msg}. If this persists, please contact your administrator.`;
   },
 };
 
