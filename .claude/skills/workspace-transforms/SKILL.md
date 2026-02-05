@@ -57,7 +57,13 @@ Non-blocking problems (like unused transforms) produce warnings but don't preven
 
 ### Staleness
 
-A transform is "stale" (`target_stale: true`) when its definition has changed since the last successful run, or when it has never been run. Running the transform clears staleness. The `stale_only` flag on the run-all endpoint lets you skip transforms that are already up to date.
+A transform is "stale" when any of the following is true:
+1. It has never run
+2. It's definition has changed since its last successful run
+3. A table it depends upon has since been updated by another transform
+4. Any of its ancestor transforms is stale
+
+The `stale_only` flag on the run-all endpoint will skip transforms that are already up to date, performing the minimal amount of work to ensure that there are no longer any stale transforms.
 
 ### Identity
 
