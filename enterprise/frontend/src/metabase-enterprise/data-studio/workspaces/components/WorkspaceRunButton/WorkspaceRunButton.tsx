@@ -1,4 +1,4 @@
-import { RunButton } from "metabase-enterprise/transforms/components/RunButton";
+import { RunButton } from "metabase/transforms/components/RunButton";
 import type {
   TransformId,
   TransformJobId,

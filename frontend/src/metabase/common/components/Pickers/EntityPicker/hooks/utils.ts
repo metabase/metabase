@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { collectionApi } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type { DispatchFn } from "metabase/lib/redux";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { PLUGIN_TENANTS } from "metabase/plugins/oss/tenants";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+import { getRootCollectionItem as getTransformsRootCollectionItem } from "metabase/transforms/utils";
 import type { CollectionNamespace } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem } from "../types";
@@ -47,7 +47,7 @@ export const getRootCollectionItem = async ({
     };
   }
 
-  const transformRootItem = PLUGIN_TRANSFORMS.getRootCollectionItem({
+  const transformRootItem = getTransformsRootCollectionItem({
     namespace,
   });
   if (transformRootItem) {

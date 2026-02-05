@@ -19,7 +19,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
 import type {
   SchemaName,
@@ -69,7 +69,7 @@ function RootItemList() {
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
     useGetCollectionQuery({ id: "root" });
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
+    PLUGIN_LIBRARY.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading || isLoadingRootCollection) {
