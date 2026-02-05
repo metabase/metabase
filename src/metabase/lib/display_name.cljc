@@ -33,7 +33,7 @@
   (perf/some (fn [{:keys [prefix suffix]}]
                (when (and (str/starts-with? display-name prefix)
                           (str/ends-with? display-name suffix)
-                     ;; Ensure we have a non-empty inner part
+                          ;; Ensure we have a non-empty inner part
                           (> (- (count display-name) (count prefix) (count suffix)) 0))
                  (let [inner (subs display-name (count prefix) (- (count display-name) (count suffix)))]
                    {:matched   true
@@ -114,9 +114,9 @@
   ([display-name]
    (parse-column-display-name-parts display-name nil))
   ([display-name aggregation-patterns]
-   (letfn [(parse-inner [s]
-             ;; Recursively parse the inner part which may have more patterns
-             (parse-column-display-name-parts s aggregation-patterns))
+   (letfn [(parse-inner [string]
+                        ;; Recursively parse the inner part which may have more patterns
+             (parse-column-display-name-parts string aggregation-patterns))
 
            (parse-join-alias [join-alias]
              ;; Parse join alias which may be an implicit join like "People - Product"

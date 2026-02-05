@@ -560,20 +560,20 @@
   [display-name]
   (let [patterns (lib.aggregation/aggregation-display-name-patterns)
         parts (lib.display-name/parse-column-display-name-parts display-name patterns)]
-    (to-array (map clj->js parts))))
+    (clj->js parts)))
 
 (defn ^:export numeric-binning-strategies
   "Returns the list of binning options for numeric fields. These split the data evenly into a fixed number of bins.
   Returns opaque values that can be passed to [[display-info]] for rendering."
   []
-  (to-array (map clj->js (lib.binning/numeric-binning-strategies))))
+  (clj->js (lib.binning/numeric-binning-strategies)))
 
 (defn ^:export coordinate-binning-strategies
   "Returns the list of binning options for coordinate fields (latitude/longitude).
   These split the data into ranges of a certain number of degrees.
   Returns opaque values that can be passed to [[display-info]] for rendering."
   []
-  (to-array (map clj->js (lib.binning/coordinate-binning-strategies))))
+  (clj->js (lib.binning/coordinate-binning-strategies)))
 
 ;; ## Temporal Bucketing
 
@@ -623,7 +623,7 @@
 (defn ^:export available-temporal-units
   "The temporal bucketing units for date type expressions."
   []
-  (to-array (map clj->js (lib.core/available-temporal-units))))
+  (clj->js (lib.core/available-temporal-units)))
 
 ;; # Manipulating Clauses
 ;;
@@ -1109,7 +1109,7 @@
     (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))
+           :values   (clj->js values)
            :options  (cljs-map->js-obj options)})))
 
 (defn ^:export number-filter-clause
@@ -1128,7 +1128,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export coordinate-filter-clause
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -1149,7 +1149,7 @@
       #js {:operator        (name operator)
            :column          column
            :longitudeColumn longitude-column
-           :values          (to-array (map clj->js values))})))
+           :values          (clj->js values)})))
 
 (defn ^:export boolean-filter-clause
   "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1167,7 +1167,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export specific-date-filter-clause
   "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -1231,7 +1231,7 @@
       #js {:operator    (name operator)
            :column      column
            :unit        (some-> unit name)
-           :values      (to-array (map clj->js values))})))
+           :values      (clj->js values)})))
 
 (defn ^:export time-filter-clause
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1249,7 +1249,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export default-filter-clause
   "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -2614,7 +2614,7 @@
 
   > **Code health:** Healthy"
   [a-query card-id card-type]
-  (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
+  (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
 
 (defn ^:export table-or-card-dependent-metadata
   "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
@@ -2623,7 +2623,7 @@
 
   > **Code health:** Healthy"
   [metadata-providerable table-id]
-  (to-array (map clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id))))
+  (clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id)))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

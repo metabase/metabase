@@ -1,6 +1,7 @@
 (ns metabase.lib.display-name-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.display-name :as lib.display-name]))
 
 (deftest ^:parallel parse-column-display-name-parts-plain-column-test
@@ -54,10 +55,7 @@
 
 (deftest ^:parallel parse-column-display-name-parts-aggregation-test
   (testing "Aggregation patterns should have static prefix/suffix"
-    ;; More specific patterns (with suffix) must come before general patterns
-    (let [patterns [{:prefix "Sum of ", :suffix " matching condition"}
-                    {:prefix "Sum of ", :suffix ""}
-                    {:prefix "Distinct values of ", :suffix ""}]]
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)]
       (is (= [{:type :static, :value "Sum of "}
               {:type :translatable, :value "Total"}]
              (lib.display-name/parse-column-display-name-parts "Sum of Total" patterns)))
@@ -71,7 +69,7 @@
 
 (deftest ^:parallel parse-column-display-name-parts-aggregation-with-join-test
   (testing "Aggregation with joined table"
-    (let [patterns [{:prefix "Distinct values of ", :suffix ""}]]
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)]
       (is (= [{:type :static, :value "Distinct values of "}
               {:type :translatable, :value "Products"}
               {:type :static, :value " → "}
@@ -80,7 +78,7 @@
 
 (deftest ^:parallel parse-column-display-name-parts-complex-test
   (testing "Complex pattern: aggregation with implicit join and temporal bucket"
-    (let [patterns [{:prefix "Distinct values of ", :suffix ""}]]
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)]
       (is (= [{:type :static, :value "Distinct values of "}
               {:type :translatable, :value "People"}
               {:type :static, :value " - "}

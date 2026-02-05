@@ -2,6 +2,14 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
+// Mock the CLJ-side parsing to return the whole string as translatable
+jest.mock("metabase-lib", () => ({
+  ...jest.requireActual("metabase-lib"),
+  parseColumnDisplayNameParts: (displayName: string) => [
+    { type: "translatable", value: displayName },
+  ],
+}));
+
 import { leaveUntranslated } from "../use-translate-content";
 import {
   translateCardNames,
