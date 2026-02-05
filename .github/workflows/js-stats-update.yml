@@ -1,7 +1,6 @@
 name: JS Stats Update
 
 on:
-  pull_request: ## FIXME: for testing
   workflow_dispatch:
   schedule:
     - cron: 40 1 * * 4 # every Thursday at 1:40
