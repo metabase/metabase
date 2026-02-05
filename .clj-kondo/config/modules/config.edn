@@ -1432,15 +1432,13 @@
   sql-parsing
   {:team "DevEx"
    :api #{metabase.sql-parsing.core}
-   :uses #{config
-           util}}
+   :uses #{util}}
 
   sql-tools
   {:team "DevEx"
    :api #{metabase.sql-tools.core
           metabase.sql-tools.init}
-   :uses #{config
-           driver
+   :uses #{driver
            lib
            settings
            sql-parsing
@@ -1598,6 +1596,7 @@
            request
            revisions
            settings
+           sql-tools
            sync
            task
            task-history
