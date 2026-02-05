@@ -463,10 +463,6 @@
       (str/replace strip-id-regex "")
       str/trim))
 
-;;; ------------------------------------------------ Display Name Parsing ------------------------------------------------
-;;; These constants and functions are used for parsing display names into their translatable components.
-;;; They match the separators used when constructing display names in field.cljc, join.cljc, etc.
-
 (def ^:const column-display-name-separator
   "Separator used for temporal bucket and binning suffixes (e.g., 'Total: Month', 'Price: 10 bins').
    See: temporal_bucket.cljc, binning.cljc"
