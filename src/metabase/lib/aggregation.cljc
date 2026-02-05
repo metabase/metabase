@@ -111,6 +111,11 @@
   [query stage-number ag-ref style]
   (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number ag-ref) style))
 
+(def ^:private count-aggregation-display-name-fns
+  "Map of count aggregation tag to a function that takes the column display name and returns the full aggregation display name."
+  {:count     (fn [arg] (i18n/tru "Count of {0}" arg))
+   :cum-count (fn [arg] (i18n/tru "Cumulative count of {0}" arg))})
+
 (lib.hierarchy/derive ::count-aggregation ::aggregation)
 
 ;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
@@ -124,10 +129,9 @@
   [query stage-number [tag _opts x] style]
   ;; x is optional.
   (if x
-    (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)]
-      (case tag
-        :count     (i18n/tru "Count of {0}" x-display-name)
-        :cum-count (i18n/tru "Cumulative count of {0}" x-display-name)))
+    (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)
+          display-fn (get count-aggregation-display-name-fns tag)]
+      (display-fn x-display-name))
     (case tag
       :count     (i18n/tru "Count")
       :cum-count (i18n/tru "Cumulative count"))))
@@ -204,11 +208,6 @@
    :sum      (fn [arg] (i18n/tru "Sum of {0}" arg))
    :var      (fn [arg] (i18n/tru "Variance of {0}" arg))})
 
-(def ^:private count-aggregation-display-name-fns
-  "Map of count aggregation tag to a function that takes the column display name and returns the full aggregation display name."
-  {:count     (fn [arg] (i18n/tru "Count of {0}" arg))
-   :cum-count (fn [arg] (i18n/tru "Cumulative count of {0}" arg))})
-
 (def ^:private other-aggregation-display-name-fns
   "Map of other aggregation tags to functions that take the column display name and return the full aggregation display name."
   {:sum-where (fn [arg] (i18n/tru "Sum of {0} matching condition" arg))})
@@ -267,7 +266,8 @@
 
 (defmethod lib.metadata.calculation/display-name-method :sum-where
   [query stage-number [_sum-where _opts x _pred] style]
-  (i18n/tru "Sum of {0} matching condition" (lib.metadata.calculation/display-name query stage-number x style)))
+  ((get other-aggregation-display-name-fns :sum-where)
+   (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :sum-where
   [query stage-number [_sum-where _opts x _pred]]
