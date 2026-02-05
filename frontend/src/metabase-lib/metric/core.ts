@@ -69,13 +69,13 @@ export function fromMeasureMetadata(
   throw new Error("Not implemented");
 }
 
-export function fromJsDefinition(
+export function fromJsMetricDefinition(
   _jsDefinition: JsMetricDefinition,
 ): MetricDefinition {
   throw new Error("Not implemented");
 }
 
-export function toJsDefinition(
+export function toJsMetricDefinition(
   _definition: MetricDefinition,
 ): JsMetricDefinition {
   throw new Error("Not implemented");
@@ -89,89 +89,6 @@ export function sourceMeasureId(
   _definition: MetricDefinition,
 ): MeasureId | null {
   throw new Error("Not implemented");
-}
-
-export function binning(
-  _clause: Clause | DimensionMetadata,
-): BinningStrategy | null {
-  throw new Error("Not implemented");
-}
-
-export function availableBinningStrategies(
-  _definition: MetricDefinition,
-  _dimension: DimensionMetadata,
-): BinningStrategy[] {
-  throw new Error("Not implemented");
-}
-
-export function isBinnable(
-  definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): boolean {
-  return availableBinningStrategies(definition, dimension).length > 0;
-}
-
-export function withBinning(
-  _dimension: DimensionMetadata,
-  _binningStrategy: BinningStrategy | null,
-): DimensionMetadata {
-  throw new Error("Not implemented");
-}
-
-export function withDefaultBinning(
-  definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): DimensionMetadata {
-  const strategies = availableBinningStrategies(definition, dimension);
-  const defaultStrategy = strategies.find(
-    (strategy) => displayInfo(definition, strategy).default,
-  );
-  return defaultStrategy ? withBinning(dimension, defaultStrategy) : dimension;
-}
-
-export function temporalBucket(
-  _clause: Clause | DimensionMetadata,
-): TemporalBucket | null {
-  throw new Error("Not implemented");
-}
-
-export function availableTemporalBuckets(
-  _definition: MetricDefinition,
-  _dimension: DimensionMetadata,
-): TemporalBucket[] {
-  throw new Error("Not implemented");
-}
-
-export function isTemporalBucketable(
-  definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): boolean {
-  return availableTemporalBuckets(definition, dimension).length > 0;
-}
-
-export function withTemporalBucket(
-  _dimension: DimensionMetadata,
-  _bucket: TemporalBucket | null,
-): DimensionMetadata {
-  throw new Error("Not implemented");
-}
-
-export function withDefaultTemporalBucket(
-  definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): DimensionMetadata {
-  const bucket = defaultTemporalBucket(definition, dimension);
-  return bucket ? withTemporalBucket(dimension, bucket) : dimension;
-}
-
-export function defaultTemporalBucket(
-  definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): TemporalBucket | null {
-  const buckets = availableTemporalBuckets(definition, dimension);
-  const bucket = buckets.find((b) => displayInfo(definition, b).default);
-
-  return bucket ?? null;
 }
 
 export function filters(_definition: MetricDefinition): FilterClause[] {
@@ -345,6 +262,89 @@ export function removeClause(
   _clause: Clause,
 ): MetricDefinition {
   throw new Error("Not implemented");
+}
+
+export function temporalBucket(
+  _clause: Clause | DimensionMetadata,
+): TemporalBucket | null {
+  throw new Error("Not implemented");
+}
+
+export function availableTemporalBuckets(
+  _definition: MetricDefinition,
+  _dimension: DimensionMetadata,
+): TemporalBucket[] {
+  throw new Error("Not implemented");
+}
+
+export function isTemporalBucketable(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): boolean {
+  return availableTemporalBuckets(definition, dimension).length > 0;
+}
+
+export function withTemporalBucket(
+  _dimension: DimensionMetadata,
+  _bucket: TemporalBucket | null,
+): DimensionMetadata {
+  throw new Error("Not implemented");
+}
+
+export function withDefaultTemporalBucket(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): DimensionMetadata {
+  const bucket = defaultTemporalBucket(definition, dimension);
+  return bucket ? withTemporalBucket(dimension, bucket) : dimension;
+}
+
+export function defaultTemporalBucket(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): TemporalBucket | null {
+  const buckets = availableTemporalBuckets(definition, dimension);
+  const bucket = buckets.find((b) => displayInfo(definition, b).default);
+
+  return bucket ?? null;
+}
+
+export function binning(
+  _clause: Clause | DimensionMetadata,
+): BinningStrategy | null {
+  throw new Error("Not implemented");
+}
+
+export function availableBinningStrategies(
+  _definition: MetricDefinition,
+  _dimension: DimensionMetadata,
+): BinningStrategy[] {
+  throw new Error("Not implemented");
+}
+
+export function isBinnable(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): boolean {
+  return availableBinningStrategies(definition, dimension).length > 0;
+}
+
+export function withBinning(
+  _dimension: DimensionMetadata,
+  _binningStrategy: BinningStrategy | null,
+): DimensionMetadata {
+  throw new Error("Not implemented");
+}
+
+export function withDefaultBinning(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): DimensionMetadata {
+  const strategies = availableBinningStrategies(definition, dimension);
+  const defaultStrategy = strategies.find(
+    (strategy) => displayInfo(definition, strategy).default,
+  );
+  return defaultStrategy ? withBinning(dimension, defaultStrategy) : dimension;
 }
 
 type TypeFn = (dimension: DimensionMetadata) => boolean;
