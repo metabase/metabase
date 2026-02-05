@@ -388,4 +388,3 @@
                                                                                     {:name "count"}
                                                                                     {:name "CC", :lib/expression-name "CC"}]}}]}]}]}
               (lib.util/pipeline query))))))
-
