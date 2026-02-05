@@ -847,6 +847,7 @@
    :api  #{metabase.metrics.api}
    :uses #{api
            collections
+           lib-metric
            request
            util}}
 

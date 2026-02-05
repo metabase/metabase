@@ -17,7 +17,6 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -27,6 +26,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -143,22 +143,9 @@
                    mi/json-out-with-keywordization
                    (mapv normalize-dimension-mapping)))})
 
-;;; ------------------------------------------------- Metric Dimension Multimethods --------------------------------------------------
+;;; ------------------------------------------------- Metric Dimension Persistence --------------------------------------------------
 
-(defmethod lib-metric/dimensionable-query :metadata/metric
-  [_metadata-providerable {:keys [dataset_query]}]
-  (when (seq dataset_query)
-    dataset_query))
-
-(defmethod lib-metric/get-persisted-dimensions :metadata/metric
-  [metric]
-  (:dimensions metric))
-
-(defmethod lib-metric/get-persisted-dimension-mappings :metadata/metric
-  [metric]
-  (:dimension_mappings metric))
-
-(defmethod lib-metric/save-dimensions! :metadata/metric
+(defmethod metrics/save-dimensions! :metadata/metric
   [metric dimensions dimension-mappings]
   (when-let [metric-id (:id metric)]
     (t2/update! :model/Card metric-id

@@ -154,3 +154,93 @@
         (let [updated-card (t2/select-one :model/Card :id (:id metric))]
           (is (seq (:dimensions updated-card)))
           (is (seq (:dimension_mappings updated-card))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/metric/dataset                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest dataset-endpoint-requires-definition-test
+  (testing "POST /api/metric/dataset requires definition"
+    (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset" {})))))
+
+(deftest dataset-endpoint-requires-source-test
+  (testing "POST /api/metric/dataset requires source-measure or source-metric in definition"
+    (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
+                                     {:definition {}})))))
+
+(deftest dataset-endpoint-rejects-both-sources-test
+  (testing "POST /api/metric/dataset rejects both source-measure and source-metric"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Measure measure {:name       "Test Measure"
+                                           :table_id   (mt/id :venues)
+                                           :definition {}}]
+      (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
+                                       {:definition {:source-metric  (:id metric)
+                                                     :source-measure (:id measure)}}))))))
+
+(deftest dataset-endpoint-metric-source-test
+  (testing "POST /api/metric/dataset with source-metric"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                           {:definition {:source-metric (:id metric)}})]
+        (is (= "completed" (:status response)))
+        (is (= 0 (:row_count response)))))))
+
+(deftest dataset-endpoint-measure-source-test
+  (testing "POST /api/metric/dataset with source-measure"
+    (mt/with-temp [:model/Measure measure {:name       "Test Measure"
+                                           :table_id   (mt/id :venues)
+                                           :definition {}}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                             {:definition {:source-measure (:id measure)}})]
+          (is (= "completed" (:status response)))
+          (is (= 0 (:row_count response))))))))
+
+(deftest dataset-endpoint-metric-not-found-test
+  (testing "POST /api/metric/dataset returns 404 for non-existent metric"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :post 404 "metric/dataset"
+                                 {:definition {:source-metric Integer/MAX_VALUE}})))))
+
+(deftest dataset-endpoint-measure-not-found-test
+  (testing "POST /api/metric/dataset returns 404 for non-existent measure"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :post 404 "metric/dataset"
+                                 {:definition {:source-measure Integer/MAX_VALUE}})))))
+
+(deftest dataset-endpoint-metric-permissions-test
+  (testing "POST /api/metric/dataset respects metric collection permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "metric/dataset"
+                                     {:definition {:source-metric (:id metric)}})))))))
+
+(deftest dataset-endpoint-rejects-non-metric-card-test
+  (testing "POST /api/metric/dataset returns 404 for non-metric cards"
+    (mt/with-temp [:model/Card card {:name          "Regular Question"
+                                     :type          :question
+                                     :dataset_query (mt/mbql-query venues)}]
+      (is (= "Not found."
+             (mt/user-http-request :rasta :post 404 "metric/dataset"
+                                   {:definition {:source-metric (:id card)}}))))))
+
+(deftest dataset-endpoint-accepts-filters-and-projections-test
+  (testing "POST /api/metric/dataset accepts filters and projections parameters"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                           {:definition {:source-metric (:id metric)
+                                                         :filters       [["=" {} ["dimension" {} "uuid1"] "Widget"]]
+                                                         :projections   [["dimension" {"temporal-unit" "year"} "uuid2"]]}})]
+        (is (= "completed" (:status response)))))))

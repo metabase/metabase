@@ -1,8 +1,6 @@
 (ns metabase.measures.models.measure-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -279,72 +277,3 @@
                                                   :table_id (mt/id :venues)
                                                   :definition (measure-definition (lib/count))}))))))
 
-;;; ------------------------------------------------ Dimension Hydration Tests ------------------------------------------------
-
-(deftest hydrate-dimensions-basic-test
-  (testing "hydrate-dimensions computes dimensions from visible columns"
-    (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
-                                           :creator_id (mt/user->id :rasta)
-                                           :definition (measure-definition (lib/count))}]
-      (let [mp (lib-be/application-database-metadata-provider (mt/id))
-            measure-with-type (assoc measure :lib/type :metadata/measure)
-            hydrated (lib-metric/hydrate-dimensions mp measure-with-type)]
-        (is (some? (:dimensions hydrated))
-            "Should have dimensions populated")
-        (is (some? (:dimension_mappings hydrated))
-            "Should have dimension_mappings populated")
-        ;; Venues table has ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE columns
-        (is (>= (count (:dimensions hydrated)) 1)
-            "Should have at least one dimension from the venues table")
-        (is (= (count (:dimensions hydrated)) (count (:dimension_mappings hydrated)))
-            "Should have same number of dimensions and mappings")))))
-
-(deftest hydrate-dimensions-persists-on-first-read-test
-  (testing "hydrate-dimensions persists dimensions and mappings to database on first read"
-    (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
-                                           :creator_id (mt/user->id :rasta)
-                                           :definition (measure-definition (lib/count))}]
-      ;; Initially, dimensions should be nil in the database
-      (is (nil? (:dimensions (t2/select-one :model/Measure :id (:id measure))))
-          "Dimensions should be nil before hydration")
-      ;; Hydrate dimensions
-      (let [mp (lib-be/application-database-metadata-provider (mt/id))
-            measure-with-type (assoc measure :lib/type :metadata/measure)
-            _hydrated (lib-metric/hydrate-dimensions mp measure-with-type)]
-        ;; Now check that dimensions were persisted
-        (let [reloaded (t2/select-one :model/Measure :id (:id measure))]
-          (is (some? (:dimensions reloaded))
-              "Dimensions should be persisted to database")
-          (is (some? (:dimension_mappings reloaded))
-              "Dimension mappings should be persisted to database"))))))
-
-(deftest hydrate-dimensions-preserves-user-modifications-test
-  (testing "hydrate-dimensions preserves user modifications like display-name"
-    (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
-                                           :creator_id (mt/user->id :rasta)
-                                           :definition (measure-definition (lib/count))}]
-      (let [mp (lib-be/application-database-metadata-provider (mt/id))
-            measure-with-type (assoc measure :lib/type :metadata/measure)
-            ;; First hydration to get dimensions
-            hydrated (lib-metric/hydrate-dimensions mp measure-with-type)
-            first-dim (first (:dimensions hydrated))
-            dim-id (:id first-dim)]
-        ;; Manually update the dimension to have a custom display name
-        (t2/update! :model/Measure (:id measure)
-                    {:dimensions [{:id dim-id
-                                   :name (:name first-dim)
-                                   :display-name "My Custom Name"
-                                   :status :status/active}]})
-        ;; Reload and hydrate again
-        (let [reloaded (t2/select-one :model/Measure :id (:id measure))
-              reloaded-with-type (assoc reloaded :lib/type :metadata/measure)
-              re-hydrated (lib-metric/hydrate-dimensions mp reloaded-with-type)
-              matching-dim (first (filter #(= dim-id (:id %)) (:dimensions re-hydrated)))]
-          (is (= "My Custom Name" (:display-name matching-dim))
-              "User's custom display-name should be preserved"))))))
-
-;; Note: There's no test for "returns entity unchanged without definition" for measures
-;; because measures have a NOT NULL constraint on the definition column - they must always have a definition.

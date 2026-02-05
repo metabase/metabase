@@ -361,7 +361,9 @@
                 :measure/name
                 :measure/description
                 :measure/archived
-                :measure/definition]
+                :measure/definition
+                :measure/dimensions
+                :measure/dimension_mappings]
     :from      [[(t2/table-name :model/Measure) :measure]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :measure/table_id :table/id]]}))

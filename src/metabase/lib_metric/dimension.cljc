@@ -66,7 +66,7 @@
                          :target target}
                   (:table-id column) (assoc :table-id (:table-id column)))}))
 
-(defn- compute-dimension-pairs
+(defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
    Only includes actual database fields, not expressions."
   [metadata-providerable query]
@@ -179,51 +179,24 @@
                     (set (map #(update % :target normalize-target) mappings)))]
     (not= (normalize old-mappings) (normalize new-mappings))))
 
-;;; ------------------------------------------------- Multimethods -------------------------------------------------
+;;; ------------------------------------------------- Entity Accessors -------------------------------------------------
+;;; These multimethods provide pure read access to dimensionable entities.
+;;; They dispatch on :lib/type and extract data without side effects.
 
 (defmulti dimensionable-query
-  "Returns the MBQL query for computing visible-columns for this entity."
-  {:arglists '([metadata-providerable entity])}
-  (fn [_metadata-providerable entity] (:lib/type entity)))
+  "Returns the MBQL query for computing visible-columns for this entity.
+   Pure function - only reads data from the entity."
+  {:arglists '([entity])}
+  :lib/type)
 
 (defmulti get-persisted-dimensions
-  "Returns the currently persisted dimensions from the entity."
+  "Returns the currently persisted dimensions from the entity.
+   Pure function - only reads data from the entity."
   {:arglists '([entity])}
   :lib/type)
 
 (defmulti get-persisted-dimension-mappings
-  "Returns the currently persisted dimension mappings from the entity."
+  "Returns the currently persisted dimension mappings from the entity.
+   Pure function - only reads data from the entity."
   {:arglists '([entity])}
   :lib/type)
-
-(defmulti save-dimensions!
-  "Persists dimensions and dimension-mappings to the entity's storage."
-  {:arglists '([entity dimensions dimension-mappings])}
-  (fn [entity _dimensions _dimension-mappings] (:lib/type entity)))
-
-;;; ------------------------------------------------- High-level API -------------------------------------------------
-
-(defn hydrate-dimensions
-  "Hydrate dimensions and dimension-mappings onto an entity by computing from
-   visible-columns and reconciling with persisted data.
-
-   Returns the entity with :dimensions and :dimension_mappings keys populated.
-   If no query is available, returns the entity unchanged."
-  [metadata-providerable entity]
-  (if-let [query (dimensionable-query metadata-providerable entity)]
-    (let [computed-pairs     (compute-dimension-pairs metadata-providerable query)
-          persisted-dims     (get-persisted-dimensions entity)
-          persisted-mappings (get-persisted-dimension-mappings entity)
-
-          {:keys [dimensions dimension-mappings]}
-          (reconcile-dimensions-and-mappings computed-pairs persisted-dims persisted-mappings)
-
-          old-persisted-dims (extract-persisted-dimensions (or persisted-dims []))
-          new-persisted-dims (extract-persisted-dimensions dimensions)]
-      (when (or (dimensions-changed? old-persisted-dims new-persisted-dims)
-                (mappings-changed? persisted-mappings dimension-mappings))
-        (save-dimensions! entity new-persisted-dims dimension-mappings))
-      (assoc entity
-             :dimensions dimensions
-             :dimension_mappings dimension-mappings))
-    entity))
