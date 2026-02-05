@@ -44,8 +44,6 @@ Once you select a table in Data Structure, you can publish the table to add it t
 
 See [Publishing tables](./library.md#publishing-tables) in the [Library docs](./library.md).
 
-Publishing a table will change [data permissions](../permissions/data.md) for the table: every person in your instance who has **View** access to the Library collection will automatically get **Create queries** permissions on a published table.
-
 ## Sync settings
 
 You can trigger manual re-sync of the table schema. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
@@ -71,6 +69,8 @@ The options are:
 - **Hidden**: the table isn't available in the query builder and isn't [synced](../databases/sync-scan.md). People with SQL access can still query the table.
 - **Internal**: table visible in the query builder and synced.
 - **Final**: table is visible in the query builder and synced.
+
+Table visibility layer can be used as a tool to improve user experience of people working in you Metabase, and it should _not be used to control access_ - use [data permissions](../permissions/data.md) to control access instead.
 
 ### Entity type
 
@@ -102,24 +102,24 @@ To see all segments on a table, select the table in **Data Structure** and switc
 
 ### Create a segment
 
-1. Select the table in **Data Structure**.
+1. Select the table in **Data structure**.
 2. Scroll down and switch to **Segments**.
 3. Click on **+New Segment**. You'll see an abridged version of Metabase's query builder.
 4. Add the filters describing the segment (e.g. `Active = true`) and name the segment.
 5. To preview the records in the segment, click on the **three dots** icon next to the segment's name and select **Preview**.
 6. Save.
 
+### Use a segment in the query builder
+
+To use a segment in the query builder, start a new question from the table that the segment is based on, and select the segment in the **Filter** block. The segment's filters will be applied behind the scenes.
+
 ### Delete a segment
 
 Deleting a segment will not break questions using it. The questions that use the segment will keep using the same filters as before.
 
-1. Select the table in **Data Structure**.
+1. Select the table in **Data structure**.
 2. Scroll down and switch to **Segments** and choose your segment.
 3. On the segment's page, click on the **three dots** icon next to the segment's name and select **Remove segment**.
-
-### Use a segment in the query builder
-
-To use a segment in the query builder, start a new question from the table that the segment is based on, and select the segment in the **Filter** block. The segment's filters will be applied behind the scenes.
 
 ## Measures
 
@@ -127,15 +127,19 @@ Measures are saved aggregations on tables. You can use measures to create an off
 
 People will see measures as options in the Summarize block of the [query builder](../questions/query-builder/editor.md).
 
-To see all measures on a table, select the table in **Data Structure** and switch to **Measures** tab.
+To see all measures on a table, select the table in **Data structure** and switch to **Measures** tab.
 
 ### Create a measure
 
-1. Select the table in **Data Structure**.
+1. Select the table in **Data structure**.
 2. Scroll down and switch to **Measures**.
 3. Click on **+New measure**. You'll see an abridged version of Metabase's query builder that focuses on aggregation.
 4. Add your aggregation. For more complex aggregations, check out [custom expressions](../questions/query-builder/expressions.md).
 5. To preview the results of the measure, click on the **three dots** icon next to the measure's name and select **Preview**.
+
+### Use a measure in the query builder
+
+To use a measure in the query builder, start a new question from the table that the measure is based on, and select the measure in the **Summarize** block. Measure's saved aggregation will be applied behind the scenes. You can use breakouts with a saved measure.
 
 ### Delete a measure
 
@@ -144,7 +148,3 @@ Deleting a measure will not break questions using it. The questions that use the
 1. Select the table in **Data structure**.
 2. Scroll down and switch to **Measures** and choose your measure.
 3. On the measure's page, click on the **three dots** icon next to the measure's name and select **Remove measure**.
-
-### Use a measure in the query builder
-
-To use a measure in the query builder, start a new question from the table that the measure is based on, and select the measure in the **Summarize** block. Measure's saved aggregation will be applied behind the scenes. You can use breakouts with a saved measure.
