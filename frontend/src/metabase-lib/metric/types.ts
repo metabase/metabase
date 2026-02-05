@@ -181,3 +181,15 @@ export type DefaultFilterParts = {
   operator: DefaultFilterOperator;
   dimension: DimensionMetadata;
 };
+
+export type FilterOperator =
+  | StringFilterOperator
+  | NumberFilterOperator
+  | BooleanFilterOperator
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
+  | CoordinateFilterOperator
+  | TimeFilterOperator
+  | DefaultFilterOperator;
+
+export type { TimeFilterOperator };

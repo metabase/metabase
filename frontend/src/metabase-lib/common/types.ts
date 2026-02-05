@@ -1,3 +1,12 @@
+export type FilterOperator =
+  | StringFilterOperator
+  | NumberFilterOperator
+  | CoordinateFilterOperator
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
+  | TimeFilterOperator
+  | DefaultFilterOperator;
+
 export type StringFilterOperator =
   | "="
   | "!="
