@@ -19,7 +19,8 @@
     Pools)
    (java.io Closeable File)
    (java.nio.file Files Path)
-   (java.util.concurrent TimeUnit)
+   (java.time Duration)
+   (java.util.concurrent TimeUnit TimeoutException)
    (org.graalvm.polyglot Context HostAccess)))
 
 (set! *warn-on-reflection* true)
@@ -210,6 +211,24 @@
   (close [_this]
     nil))
 
+(defn interrupt!
+  "Interrupt Python execution in this context. Returns true if interrupted successfully.
+   If interrupt times out (guest in uninterruptible code), forces context closure with close(true).
+   This is necessary because future-cancel doesn't actually stop GraalVM execution."
+  [ctx ^long timeout-ms]
+  (when-let [^Context raw-ctx (cond
+                                (instance? PooledContext ctx) (:context ctx)
+                                (instance? DevContext ctx)    (:context ctx))]
+    (try
+      (.interrupt raw-ctx (Duration/ofMillis timeout-ms))
+      true
+      (catch TimeoutException _
+        ;; Interrupt timed out - guest app may be in uninterruptible native code
+        ;; Force close cannot be denied by guest application
+        (log/warn "GraalVM interrupt timed out, forcing context closure")
+        (.close raw-ctx true)
+        false))))
+
 (defn- create-graalvm-context
   "Create a new GraalVM Python context configured for sqlglot.
 
@@ -254,7 +273,11 @@
                 ;; Generate a tuple of the context and the expiry timestamp.
                 [(context-generator)
                  (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES ttl-minutes))])
-              (destroy [_ _ _v]))
+              (destroy [_ _ [^Context ctx _expiry]]
+                ;; Close context when disposed from pool (expiry, poison, or shutdown)
+                (try
+                  (.close ctx true) ;; Force close - can't wait for running code
+                  (catch Exception _))))
             ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below min-size.
             (reify IPool$Controller
               (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))

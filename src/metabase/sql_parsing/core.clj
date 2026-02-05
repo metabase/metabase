@@ -46,16 +46,20 @@
         (future-cancel fut)))))
 
 (defmacro ^:private with-python-timeout
-  "Execute body with a timeout. If timeout is reached, poisons the context (so it gets
-   disposed rather than returned to pool), logs a warning, and throws TimeoutException.
-   The context should be disposed by the caller's with-open."
+  "Execute body with a timeout. If timeout is reached:
+   1. Interrupts the GraalVM context (actually stops execution)
+   2. Poisons context so it gets disposed rather than returned to pool
+   3. Logs warning and throws TimeoutException"
   [ctx timeout-ms & body]
   `(let [result# (with-timeout* ~timeout-ms (fn [] ~@body))]
      (if (= result# ::timeout)
        (do
+         ;; Actually interrupt the GraalVM context (1s grace period for soft interrupt)
+         ;; This is necessary because future-cancel doesn't stop GraalVM execution
+         (python.pool/interrupt! ~ctx 1000)
          (python.pool/poison! ~ctx)
          (analytics/inc! :metabase-sql-parsing/timeouts)
-         (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM may be hung")
+         (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM interrupted")
          (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
        result#)))
 
