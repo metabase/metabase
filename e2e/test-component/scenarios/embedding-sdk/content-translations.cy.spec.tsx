@@ -160,35 +160,75 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
-    it("should translate content in filter step", () => {
-      setupEditor();
-      mountEditor();
+    describe("filter step", () => {
+      it("should translate content for numberic field", () => {
+        setupEditor();
+        mountEditor();
 
-      getSdkRoot().within(() => {
-        popover().within(() => {
-          cy.findByText("DE-Orders").click();
-        });
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-Orders").click();
+          });
 
-        cy.findByText(
-          "Füge Filter hinzu, um deine Antwort einzugrenzen",
-        ).click();
+          cy.findByText(
+            "Füge Filter hinzu, um deine Antwort einzugrenzen",
+          ).click();
 
-        popover().within(() => {
-          cy.findByText("DE-Total").click();
+          popover().within(() => {
+            cy.findByText("DE-Total").click();
 
-          cy.findByTestId("number-filter-picker").within(() => {
-            cy.findByText("DE-Total").should("be.visible");
+            cy.findByTestId("number-filter-picker").within(() => {
+              cy.findByText("DE-Total").should("be.visible");
 
-            cy.findByPlaceholderText("Min").type("100");
-            cy.findByPlaceholderText("Max").type("200");
+              cy.findByPlaceholderText("Min").type("100");
+              cy.findByPlaceholderText("Max").type("200");
 
-            // "Add filter" in German locale
-            cy.button("Füge einen Filter hinzu").click();
+              // "Add filter" in German locale
+              cy.button("Füge einen Filter hinzu").click();
+            });
+          });
+
+          // "DE-Total is between 100 and 200" - filter display with translated column name
+          cy.findByText("DE-Total ist zwischen 100 und 200").should(
+            "be.visible",
+          );
+
+          // "Visualize" in German locale
+          cy.button("Darstellen").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").within(() => {
+            cy.findByText("1 Filter").click();
+          });
+
+          popover().within(() => {
+            cy.findByText("DE-Total ist zwischen 100 und 200").should(
+              "be.visible",
+            );
           });
         });
+      });
 
-        // "DE-Total is between 100 and 200" - filter display with translated column name
-        cy.findByText("DE-Total ist zwischen 100 und 200").should("be.visible");
+      it("should translate content for date field", () => {
+        setupEditor();
+        mountEditor();
+
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-People").click();
+          });
+
+          cy.findByText(
+            "Füge Filter hinzu, um deine Antwort einzugrenzen",
+          ).click();
+
+          popover().within(() => {
+            cy.findByText("DE-Created At").click();
+          });
+
+          cy.findByTestId("clause-popover").within(() => {
+            cy.findByText("DE-Created At").should("be.visible");
+          });
+        });
       });
     });
 
