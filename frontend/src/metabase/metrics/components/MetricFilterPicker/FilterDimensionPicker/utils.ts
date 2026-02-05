@@ -1,0 +1,61 @@
+import { t } from "ttag";
+
+import * as LibMetric from "metabase-lib/metric";
+
+import type { DimensionListItem, DimensionSection } from "./types";
+
+export function getSections(
+  definitions: LibMetric.MetricDefinition[],
+): DimensionSection[] {
+  return definitions.map((definition) => {
+    const dimensions = LibMetric.filterableDimensions(definition);
+    const items: DimensionListItem[] = dimensions.map((dimension) => ({
+      name: getDimensionName(definition, dimension),
+      definition,
+      dimension,
+    }));
+
+    return {
+      name: getSectionName(definition),
+      icon: getSectionIcon(definition),
+      items,
+    };
+  });
+}
+
+export function getSectionName(definition: LibMetric.MetricDefinition): string {
+  const metricId = LibMetric.sourceMetricId(definition);
+  if (metricId != null) {
+    const metric = LibMetric.metricMetadata(definition, metricId);
+    if (metric) {
+      const metricInfo = LibMetric.displayInfo(definition, metric);
+      return metricInfo.displayName;
+    }
+  }
+
+  const measureId = LibMetric.sourceMeasureId(definition);
+  if (measureId != null) {
+    const measure = LibMetric.measureMetadata(definition, measureId);
+    if (measure) {
+      const measureInfo = LibMetric.displayInfo(definition, measure);
+      return measureInfo.displayName;
+    }
+  }
+
+  return t`Unknown`;
+}
+
+export function getSectionIcon(
+  definition: LibMetric.MetricDefinition,
+): "metric" | "ruler" {
+  const metricId = LibMetric.sourceMetricId(definition);
+  return metricId != null ? "metric" : "ruler";
+}
+
+export function getDimensionName(
+  definition: LibMetric.MetricDefinition,
+  dimension: LibMetric.DimensionMetadata,
+): string {
+  const dimensionInfo = LibMetric.displayInfo(definition, dimension);
+  return dimensionInfo.displayName;
+}

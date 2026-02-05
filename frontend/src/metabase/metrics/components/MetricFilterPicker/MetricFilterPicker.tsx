@@ -11,13 +11,11 @@ type MetricFilterPickerProps = {
     definition: LibMetric.MetricDefinition,
     filter: LibMetric.FilterClause,
   ) => void;
-  onBack?: () => void;
 };
 
 export function MetricFilterPicker({
   definitions,
   onChange,
-  onBack,
 }: MetricFilterPickerProps) {
   const [definition, setDefinition] =
     useState<LibMetric.MetricDefinition | null>(null);
@@ -39,12 +37,16 @@ export function MetricFilterPicker({
     onChange(definition, filter);
   };
 
+  const handleBack = () => {
+    setDefinition(null);
+    setDimension(null);
+  };
+
   if (!definition || !dimension) {
     return (
       <FilterDimensionPicker
         definitions={definitions}
         onChange={handleDimensionChange}
-        onBack={onBack}
       />
     );
   }
@@ -55,7 +57,7 @@ export function MetricFilterPicker({
       dimension={dimension}
       isNew
       onChange={handleFilterChange}
-      onBack={onBack}
+      onBack={handleBack}
     />
   );
 }
