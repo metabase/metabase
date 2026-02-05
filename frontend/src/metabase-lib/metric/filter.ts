@@ -57,6 +57,7 @@ export function stringFilterClause(_parts: StringFilterParts): FilterClause {
 
 export function stringFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): StringFilterParts | null {
   throw new Error("Not implemented");
@@ -68,6 +69,7 @@ export function numberFilterClause(_parts: NumberFilterParts): FilterClause {
 
 export function numberFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): NumberFilterParts | null {
   throw new Error("Not implemented");
@@ -81,6 +83,7 @@ export function coordinateFilterClause(
 
 export function coordinateFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): CoordinateFilterParts | null {
   throw new Error("Not implemented");
@@ -92,6 +95,7 @@ export function booleanFilterClause(_parts: BooleanFilterParts): FilterClause {
 
 export function booleanFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): BooleanFilterParts | null {
   throw new Error("Not implemented");
@@ -105,6 +109,7 @@ export function specificDateFilterClause(
 
 export function specificDateFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
   throw new Error("Not implemented");
@@ -118,6 +123,7 @@ export function relativeDateFilterClause(
 
 export function relativeDateFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
   throw new Error("Not implemented");
@@ -131,6 +137,7 @@ export function excludeDateFilterClause(
 
 export function excludeDateFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
   throw new Error("Not implemented");
@@ -142,6 +149,7 @@ export function timeFilterClause(_parts: TimeFilterParts): FilterClause {
 
 export function timeFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): TimeFilterParts | null {
   throw new Error("Not implemented");
@@ -153,6 +161,7 @@ export function defaultFilterClause(_parts: DefaultFilterParts): FilterClause {
 
 export function defaultFilterParts(
   _definition: MetricDefinition,
+  _source: SourceMetadata,
   _filterClause: FilterClause,
 ): DefaultFilterParts | null {
   throw new Error("Not implemented");
@@ -160,17 +169,18 @@ export function defaultFilterParts(
 
 export function filterParts(
   definition: MetricDefinition,
+  source: SourceMetadata,
   filterClause: FilterClause,
 ): FilterParts | null {
   return (
-    stringFilterParts(definition, filterClause) ??
-    numberFilterParts(definition, filterClause) ??
-    coordinateFilterParts(definition, filterClause) ??
-    booleanFilterParts(definition, filterClause) ??
-    specificDateFilterParts(definition, filterClause) ??
-    relativeDateFilterParts(definition, filterClause) ??
-    excludeDateFilterParts(definition, filterClause) ??
-    timeFilterParts(definition, filterClause) ??
-    defaultFilterParts(definition, filterClause)
+    stringFilterParts(definition, source, filterClause) ??
+    numberFilterParts(definition, source, filterClause) ??
+    coordinateFilterParts(definition, source, filterClause) ??
+    booleanFilterParts(definition, source, filterClause) ??
+    specificDateFilterParts(definition, source, filterClause) ??
+    relativeDateFilterParts(definition, source, filterClause) ??
+    excludeDateFilterParts(definition, source, filterClause) ??
+    timeFilterParts(definition, source, filterClause) ??
+    defaultFilterParts(definition, source, filterClause)
   );
 }

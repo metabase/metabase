@@ -15,17 +15,21 @@ import {
 interface UseTimeFilterProps {
   definition: LibMetric.MetricDefinition;
   dimension: LibMetric.DimensionMetadata;
+  source: LibMetric.SourceMetadata;
   filter?: LibMetric.FilterClause;
 }
 
 export function useTimeFilter({
   definition,
   dimension,
+  source,
   filter,
 }: UseTimeFilterProps) {
   const filterParts = useMemo(() => {
-    return filter ? LibMetric.timeFilterParts(definition, filter) : null;
-  }, [definition, filter]);
+    return filter
+      ? LibMetric.timeFilterParts(definition, source, filter)
+      : null;
+  }, [definition, source, filter]);
 
   const availableOptions = useMemo(() => getAvailableOptions(), []);
 

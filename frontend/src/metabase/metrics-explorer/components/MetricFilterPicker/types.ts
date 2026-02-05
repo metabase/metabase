@@ -8,8 +8,13 @@ export type FilterOperatorOption<T extends LibMetric.FilterOperator> = {
 export type FilterPickerWidgetProps = {
   definition: LibMetric.MetricDefinition;
   dimension: LibMetric.DimensionMetadata;
+  source: LibMetric.SourceMetadata;
   filter?: LibMetric.FilterClause;
-  onChange: (filter: LibMetric.FilterClause, opts: FilterChangeOpts) => void;
+  onChange: (
+    source: LibMetric.SourceMetadata,
+    filter: LibMetric.FilterClause,
+    opts: FilterChangeOpts,
+  ) => void;
   onBack?: () => void;
 };
 

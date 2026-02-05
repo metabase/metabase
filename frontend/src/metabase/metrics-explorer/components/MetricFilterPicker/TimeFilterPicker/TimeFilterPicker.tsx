@@ -17,6 +17,7 @@ import type { TimeValue } from "./types";
 export function TimeFilterPicker({
   definition,
   dimension,
+  source,
   filter,
   onChange,
   onBack,
@@ -38,6 +39,7 @@ export function TimeFilterPicker({
   } = useTimeFilter({
     definition,
     dimension,
+    source,
     filter,
   });
 
@@ -49,7 +51,7 @@ export function TimeFilterPicker({
   const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(filter, opts);
+      onChange(source, filter, opts);
     }
   };
 

@@ -7,14 +7,20 @@ import type { FilterChangeOpts } from "../types";
 interface FilterPickerBodyProps {
   definition: LibMetric.MetricDefinition;
   dimension: LibMetric.DimensionMetadata;
+  source: LibMetric.SourceMetadata;
   filter?: LibMetric.FilterClause;
-  onChange: (filter: LibMetric.FilterClause, opts: FilterChangeOpts) => void;
+  onChange: (
+    source: LibMetric.SourceMetadata,
+    filter: LibMetric.FilterClause,
+    opts: FilterChangeOpts,
+  ) => void;
   onBack?: () => void;
 }
 
 export function FilterPickerBody({
   definition,
   dimension,
+  source,
   filter,
   onChange,
   onBack,
@@ -29,6 +35,7 @@ export function FilterPickerBody({
       <FilterWidget
         definition={definition}
         dimension={dimension}
+        source={source}
         filter={filter}
         onChange={onChange}
         onBack={onBack}
