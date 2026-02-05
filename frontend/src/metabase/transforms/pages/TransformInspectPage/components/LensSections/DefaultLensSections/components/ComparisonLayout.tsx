@@ -129,42 +129,10 @@ export const ComparisonLayout = ({
       return [columnOptions[0].value];
     }
 
-    if (visitedFields?.all && visitedFields.all.length > 0) {
-      const visitedFieldIdSet = new Set(visitedFields.all);
-
-      const fieldIdToName = new Map<number, string>();
-      for (const source of sources) {
-        for (const field of source.fields ?? []) {
-          if (field.id) {
-            fieldIdToName.set(field.id, field.name);
-          }
-        }
-      }
-
-      const preselected = groups
-        .filter((g) =>
-          g.inputCards.some((card) => {
-            const fieldId = card.metadata?.field_id as number | undefined;
-            if (fieldId && visitedFieldIdSet.has(fieldId)) {
-              return true;
-            }
-            for (const [id, name] of fieldIdToName) {
-              if (visitedFieldIdSet.has(id) && card.title.includes(name)) {
-                return true;
-              }
-            }
-            return false;
-          }),
-        )
-        .map((g) => g.groupId);
-
-      if (preselected.length > 0) {
-        return preselected;
-      }
-    }
-
     const allFields = sources.flatMap((s) => s.fields ?? []);
-    const scoredFields = interestingFields(allFields, { limit: 20 });
+    const scoredFields = interestingFields(allFields, visitedFields, {
+      limit: 20,
+    });
     const topFieldNames = new Set(scoredFields.map((f) => f.name));
 
     const groupsWithInterestingFields = groups.filter((g) =>

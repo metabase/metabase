@@ -31,12 +31,14 @@
 (defn ^:export interestingFields
   "Filter and sort fields by interestingness.
    Returns fields with score above threshold, sorted by score descending.
-   Options: threshold (default 0.3), limit (default nil = all)."
-  [fields-js & {:keys [threshold limit]}]
-  (let [fields (js->clj fields-js :keywordize-keys true)]
+   Options: visited_fields (ignored for now), threshold (default 0.3), limit (default nil = all)."
+  [fields-js visited-fields-js threshold limit]
+  (let [fields (js->clj fields-js :keywordize-keys true)
+        visited-fields (js->clj visited-fields-js :keywordize-keys true)]
     (clj->js (inspector/interesting-fields fields
-                                           :threshold (or threshold 0.3)
-                                           :limit limit))))
+                                           {:visited_fields visited-fields
+                                            :threshold      (or threshold 0.3)
+                                            :limit          limit}))))
 
 (defn ^:export isDegenerate
   "Check if a card result is degenerate and shouldn't be displayed.
