@@ -1,48 +1,13 @@
 import { useMemo, useState } from "react";
 
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { FilterOperatorOption } from "../types";
-
-type DefaultFilterOperatorOption =
-  FilterOperatorOption<Lib.DefaultFilterOperator>;
-
-type DefaultFilterOperatorInfo = {
-  operator: Lib.DefaultFilterOperator;
-};
-
-const OPERATORS: Record<Lib.DefaultFilterOperator, DefaultFilterOperatorInfo> =
-  {
-    "is-null": {
-      operator: "is-null",
-    },
-    "not-null": {
-      operator: "not-null",
-    },
-  };
-
-function getAvailableOptions(): DefaultFilterOperatorOption[] {
-  return Object.values(OPERATORS).map(({ operator }) => ({
-    operator,
-    displayName: Lib.describeFilterOperator(operator),
-  }));
-}
-
-function getDefaultOperator(
-  hasInitialOperator: boolean,
-): Lib.DefaultFilterOperator | undefined {
-  return hasInitialOperator ? "is-null" : undefined;
-}
-
-function getFilterClause(
-  operator: Lib.DefaultFilterOperator | undefined,
-  dimension: LibMetric.DimensionMetadata,
-) {
-  if (operator) {
-    return LibMetric.defaultFilterClause({ operator, dimension });
-  }
-}
+import {
+  getAvailableOptions,
+  getDefaultOperator,
+  getFilterClause,
+} from "./utils";
 
 interface UseDefaultFilterProps {
   definition: LibMetric.MetricDefinition;

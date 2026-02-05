@@ -7,9 +7,6 @@ import { FilterPickerBody } from "./FilterPickerBody";
 
 type MetricFilterPickerProps = {
   definitions: LibMetric.MetricDefinition[];
-  filter?: LibMetric.FilterClause;
-  isNew?: boolean;
-  readOnly?: boolean;
   onChange: (
     definition: LibMetric.MetricDefinition,
     filter: LibMetric.FilterClause,
@@ -19,9 +16,6 @@ type MetricFilterPickerProps = {
 
 export function MetricFilterPicker({
   definitions,
-  filter,
-  isNew,
-  readOnly,
   onChange,
   onBack,
 }: MetricFilterPickerProps) {
@@ -59,9 +53,7 @@ export function MetricFilterPicker({
     <FilterPickerBody
       definition={definition}
       dimension={dimension}
-      filter={filter}
-      isNew={isNew}
-      readOnly={readOnly}
+      isNew
       onChange={handleFilterChange}
       onBack={onBack}
     />

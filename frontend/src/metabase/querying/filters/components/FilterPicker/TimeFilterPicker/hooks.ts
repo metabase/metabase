@@ -1,119 +1,16 @@
-import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 
-import { isNotNull } from "metabase/lib/types";
-import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-type TimeFilterOperatorOption = FilterOperatorOption<Lib.TimeFilterOperator>;
-
-type TimeFilterOperatorInfo = {
-  operator: Lib.TimeFilterOperator;
-  valueCount: number;
-};
-
-export type TimeValue = Date | null;
-
-const OPERATORS: Record<Lib.TimeFilterOperator, TimeFilterOperatorInfo> = {
-  "<": {
-    operator: "<",
-    valueCount: 1,
-  },
-  ">": {
-    operator: ">",
-    valueCount: 1,
-  },
-  between: {
-    operator: "between",
-    valueCount: 2,
-  },
-  "is-null": {
-    operator: "is-null",
-    valueCount: 0,
-  },
-  "not-null": {
-    operator: "not-null",
-    valueCount: 0,
-  },
-};
-
-function getAvailableOptions(): TimeFilterOperatorOption[] {
-  return Object.values(OPERATORS).map(({ operator }) => ({
-    operator,
-    displayName: Lib.describeFilterOperator(operator, "temporal"),
-  }));
-}
-
-function getOptionByOperator(operator: Lib.TimeFilterOperator) {
-  return OPERATORS[operator];
-}
-
-function getDefaultOperator(): Lib.TimeFilterOperator {
-  return "<";
-}
-
-function getDefaultValue() {
-  return dayjs().startOf("day").toDate(); // 00:00:00
-}
-
-export function getDefaultValues(
-  operator: Lib.TimeFilterOperator,
-  values: TimeValue[],
-): TimeValue[] {
-  const { valueCount } = OPERATORS[operator];
-
-  return Array(valueCount)
-    .fill(getDefaultValue())
-    .map((value, index) => values[index] ?? value);
-}
-
-function isValidFilter(
-  operator: Lib.TimeFilterOperator,
-  column: Lib.ColumnMetadata,
-  values: TimeValue[],
-) {
-  return getFilterParts(operator, column, values) != null;
-}
-
-function getFilterClause(
-  operator: Lib.TimeFilterOperator,
-  column: Lib.ColumnMetadata,
-  values: TimeValue[],
-) {
-  const filterParts = getFilterParts(operator, column, values);
-  if (filterParts == null) {
-    return undefined;
-  }
-
-  return Lib.timeFilterClause(filterParts);
-}
-
-function getFilterParts(
-  operator: Lib.TimeFilterOperator,
-  column: Lib.ColumnMetadata,
-  values: TimeValue[],
-): Lib.TimeFilterParts | undefined {
-  if (!values.every(isNotNull)) {
-    return undefined;
-  }
-
-  if (operator === "between") {
-    const [startTime, endTime] = values;
-    return {
-      operator,
-      column,
-      values: dayjs(endTime).isBefore(startTime)
-        ? [endTime, startTime]
-        : [startTime, endTime],
-    };
-  }
-
-  return {
-    operator,
-    column,
-    values,
-  };
-}
+import type { TimeValue } from "./types";
+import {
+  getAvailableOptions,
+  getDefaultOperator,
+  getDefaultValues,
+  getFilterClause,
+  getOptionByOperator,
+  isValidFilter,
+} from "./utils";
 
 interface UseTimeFilterProps {
   query: Lib.Query;
