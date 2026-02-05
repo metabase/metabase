@@ -1,5 +1,3 @@
-import cx from "classnames";
-import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -12,17 +10,10 @@ import type { Field, Segment } from "metabase-types/api";
 interface SegmentFieldSidebarProps {
   segment: Segment;
   field: Field;
-  className?: string;
-  style?: CSSProperties;
 }
 
-const SegmentFieldSidebar = ({
-  segment,
-  field,
-  style,
-  className,
-}: SegmentFieldSidebarProps) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const SegmentFieldSidebar = ({ segment, field }: SegmentFieldSidebarProps) => (
+  <div className={S.sidebar}>
     <ul className={CS.mx3}>
       <div>
         <Breadcrumbs
