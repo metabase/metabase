@@ -27,7 +27,7 @@ export default Object.assign(Action, {
   defaultSize: getDefaultSize("action"),
 
   checkRenderable: () => true,
-  isSensible: () => false,
+  getSensibility: () => "nonsensible" as const,
 
   settings: {
     "card.title": {

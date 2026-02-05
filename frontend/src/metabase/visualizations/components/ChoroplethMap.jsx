@@ -161,10 +161,6 @@ class ChoroplethMapInner extends Component {
   static minSize = getMinSize("map");
   static defaultSize = getDefaultSize("map");
 
-  static isSensible({ cols }) {
-    return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;
-  }
-
   static checkRenderable([
     {
       data: { cols, rows },

@@ -35,10 +35,6 @@ export class PinMap extends Component {
   static identifier = "pin_map";
   static iconName = "pinmap";
 
-  static isSensible({ cols, rows }) {
-    return hasLatitudeAndLongitudeColumns(cols);
-  }
-
   static checkRenderable([
     {
       data: { cols, rows },

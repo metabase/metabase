@@ -160,10 +160,28 @@ export function SmartScalar({
   );
 }
 
+import { isDate, isDimension } from "metabase-lib/v1/types/utils/isa";
+
 Object.assign(SmartScalar, {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
+  getSensibility: data => {
+    const { cols } = data;
+    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasDateDimension = cols.some(col => isDimension(col) && isDate(col));
+
+    if (!data.insights?.length) {
+      return "nonsensible";
+    }
+    if (hasDateDimension) {
+      return "recommended";
+    }
+    if (!hasAggregation) {
+      return "sensible";
+    }
+    return "nonsensible";
+  },
   canSavePng: true,
 
   minSize: getMinSize("smartscalar"),
@@ -239,10 +257,6 @@ Object.assign(SmartScalar, {
       readDependencies: ["scalar.field"],
     }),
     click_behavior: {},
-  },
-
-  isSensible({ insights }) {
-    return !!insights && insights?.length > 0;
   },
 
   // Smart scalars need to have a breakout

@@ -27,8 +27,8 @@ export function getSensibleDisplays(data: DatasetData) {
   return Array.from(visualizations)
     .filter(
       ([, viz]) =>
-        // don't rule out displays if there's no data
-        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
+        data.rows.length <= 1 ||
+        (viz.getSensibility?.(data) ?? "nonsensible") !== "nonsensible",
     )
     .map(([display]) => display);
 }

@@ -35,6 +35,8 @@ import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
+export type VisualizationSensibility = "recommended" | "sensible" | "nonsensible";
+
 export interface Padding {
   top: number;
   left: number;
@@ -346,8 +348,7 @@ export type VisualizationDefinition = {
   settings: VisualizationSettingsDefinitions;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  isSensible: (data: DatasetData) => boolean;
-  // checkRenderable throws an error if a visualization is not renderable
+  getSensibility?: (data: DatasetData) => VisualizationSensibility;
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,

@@ -9,26 +9,29 @@ const categoryColumn = createMockColumn({
   name: "Category",
   display_name: "Category",
   base_type: "type/Text",
+  source: "breakout",
 });
 
 const idColumn = createMockColumn({
   name: "ID",
   display_name: "ID",
   base_type: "type/Integer",
+  semantic_type: "type/PK",
+  source: "breakout",
 });
 
 const metricColumn = createMockColumn({
   name: "Value",
   display_name: "Value",
   base_type: "type/Number",
-  semantic_type: "type/Number",
+  source: "aggregation",
 });
 
 const columns = [categoryColumn, idColumn, metricColumn];
 
 describe("BoxPlot", () => {
-  describe("isSensible", () => {
-    it("should return true for data with two dimensions and a metric", () => {
+  describe("getSensibility", () => {
+    it("should return sensible for data with two dimensions and a metric", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", 1, 10],
@@ -40,10 +43,10 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(true);
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe("nonsensible");
     });
 
-    it("should return false when there is only one dimension column", () => {
+    it("should return nonsensible when there is only one dimension column", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", 10],
@@ -55,29 +58,31 @@ describe("BoxPlot", () => {
         cols: [categoryColumn, metricColumn],
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
     });
 
-    it("should return false when there are no rows", () => {
+    it("should return nonsensible when there are no rows", () => {
       const data = createMockDatasetData({
         rows: [],
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
     });
 
-    it("should return false when there is no metric column", () => {
+    it("should return nonsensible when there is no metric column", () => {
       const columnsWithoutMetric = [
         createMockColumn({
           name: "Category1",
           display_name: "Category1",
           base_type: "type/Text",
+          source: "breakout",
         }),
         createMockColumn({
           name: "Category2",
           display_name: "Category2",
           base_type: "type/Text",
+          source: "breakout",
         }),
       ];
 
@@ -92,10 +97,10 @@ describe("BoxPlot", () => {
         cols: columnsWithoutMetric,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
     });
 
-    it("should return true for multiple categories with sufficient total rows", () => {
+    it("should return sensible for multiple categories with sufficient total rows", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", 1, 10],
@@ -107,7 +112,7 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(true);
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe("nonsensible");
     });
   });
 });

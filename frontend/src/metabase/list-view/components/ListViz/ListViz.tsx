@@ -48,7 +48,7 @@ const vizDefinition = {
   minSize: getMinSize("list"),
   defaultSize: getDefaultSize("list"),
   checkRenderable: () => {},
-  isSensible: () => true,
+  getSensibility: () => "nonsensible" as const,
 
   settings: {
     ...columnSettings({ hidden: true }),

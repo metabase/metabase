@@ -33,7 +33,11 @@ import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  hasLatitudeAndLongitudeColumns,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
 import type { RawSeries, Series } from "metabase-types/api";
 
 import { DimensionsWidget } from "./DimensionsWidget";
@@ -54,16 +58,25 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
   supportsVisualizer: true,
-  isSensible: ({ cols, rows }) => {
-    const numDimensions = cols.filter(isDimension).length;
-    const numMetrics = cols.filter(isMetric).length;
+  getSensibility: data => {
+    const { cols, rows } = data;
+    const dimensionCount = cols.filter(isDimension).length;
+    const metricCount = cols.filter(isMetric).length;
+    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
 
-    return (
-      rows.length >= 2 &&
-      cols.length >= 2 &&
-      numDimensions >= 1 &&
-      numMetrics >= 1
-    );
+    if (
+      rows.length < 2 ||
+      cols.length < 2 ||
+      dimensionCount < 1 ||
+      metricCount < 1
+    ) {
+      return "nonsensible";
+    }
+    if (!hasAggregation || hasLatLong) {
+      return "sensible";
+    }
+    return "recommended";
   },
   checkRenderable: (
     [

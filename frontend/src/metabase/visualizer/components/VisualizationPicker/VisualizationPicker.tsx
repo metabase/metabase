@@ -29,7 +29,9 @@ export function VisualizationPicker({
           label: viz.getUiName(),
           value: vizType,
           icon: viz.iconName,
-          isSensible: Boolean(data && viz.isSensible?.(data)),
+          isSensible: Boolean(
+            data && (viz.getSensibility?.(data) ?? "nonsensible") !== "nonsensible",
+          ),
         };
       });
   }, [series]);

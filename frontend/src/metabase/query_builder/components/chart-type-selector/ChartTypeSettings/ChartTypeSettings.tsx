@@ -1,6 +1,16 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import { Space, Stack, type StackProps, Text } from "metabase/ui";
+import {
+  Collapse,
+  Group,
+  Icon,
+  Space,
+  Stack,
+  type StackProps,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 
@@ -20,33 +30,52 @@ export const ChartTypeSettings = ({
   nonSensibleVisualizations,
   onOpenSettings,
   ...stackProps
-}: ChartTypeSettingsProps) => (
-  <Stack data-testid="chart-type-settings" {...stackProps}>
-    <ChartTypeList
-      data-testid="display-options-sensible"
-      visualizationList={sensibleVisualizations}
-      onSelectVisualization={onSelectVisualization}
-      selectedVisualization={selectedVisualization}
-      onOpenSettings={onOpenSettings}
-    />
+}: ChartTypeSettingsProps) => {
+  const [isExpanded, setIsExpanded] = useState(
+    nonSensibleVisualizations.includes(selectedVisualization),
+  );
 
-    <Space h="xl" />
+  return (
+    <Stack data-testid="chart-type-settings" {...stackProps}>
+      <ChartTypeList
+        data-testid="display-options-sensible"
+        visualizationList={sensibleVisualizations}
+        onSelectVisualization={onSelectVisualization}
+        selectedVisualization={selectedVisualization}
+        onOpenSettings={onOpenSettings}
+      />
 
-    <Text
-      fw="bold"
-      color="text-secondary"
-      tt="uppercase"
-      fz="sm"
-    >{t`Other charts`}</Text>
+      <Space h="xl" />
 
-    <Space h="sm" />
+      <Group
+        component={UnstyledButton}
+        gap="xs"
+        onClick={() => setIsExpanded(prev => !prev)}
+        data-testid="more-charts-toggle"
+      >
+        <Text
+          fw="bold"
+          color="text-secondary"
+          tt="uppercase"
+          fz="sm"
+        >{t`More charts`}</Text>
+        <Icon
+          name={isExpanded ? "chevronup" : "chevrondown"}
+          color="text-secondary"
+          size={10}
+        />
+      </Group>
 
-    <ChartTypeList
-      data-testid="display-options-not-sensible"
-      visualizationList={nonSensibleVisualizations}
-      onSelectVisualization={onSelectVisualization}
-      selectedVisualization={selectedVisualization}
-      onOpenSettings={onOpenSettings}
-    />
-  </Stack>
-);
+      <Collapse in={isExpanded}>
+        <Space h="sm" />
+        <ChartTypeList
+          data-testid="display-options-not-sensible"
+          visualizationList={nonSensibleVisualizations}
+          onSelectVisualization={onSelectVisualization}
+          selectedVisualization={selectedVisualization}
+          onOpenSettings={onOpenSettings}
+        />
+      </Collapse>
+    </Stack>
+  );
+};

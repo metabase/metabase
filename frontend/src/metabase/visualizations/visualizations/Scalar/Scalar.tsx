@@ -28,7 +28,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
+import type { DatasetColumn } from "metabase-types/api/dataset";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { scalarToBarTransform } from "./scalars-bar-transform";
@@ -60,9 +60,19 @@ export class Scalar extends Component<
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
 
-  static isSensible({ cols, rows }: DatasetData) {
-    return rows.length === 1 && cols.length === 1;
-  }
+  static getSensibility = (data: import("metabase-types/api").DatasetData) => {
+    const { cols, rows } = data;
+    const isScalar = rows.length === 1 && cols.length === 1;
+    const hasAggregation = cols.some(col => col.source === "aggregation");
+
+    if (isScalar) {
+      return "recommended" as const;
+    }
+    if (!hasAggregation && cols.length === 1) {
+      return "sensible" as const;
+    }
+    return "nonsensible" as const;
+  };
 
   static checkRenderable() {
     // scalar can always be rendered, nothing needed here

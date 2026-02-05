@@ -18,7 +18,7 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, RawSeries, Series } from "metabase-types/api";
+import type { RawSeries, Series } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
@@ -151,24 +151,25 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   minSize: getMinSize("sankey"),
   disableVisualizer: true,
   defaultSize: getDefaultSize("sankey"),
-  isSensible: (data: DatasetData) => {
+  getSensibility: data => {
     const { cols, rows } = data;
-    const numDimensions = cols.filter(
-      (col) => isDimension(col) && !isDate(col),
+    const numNonDateDimensions = cols.filter(
+      col => isDimension(col) && !isDate(col),
     ).length;
-    const numMetrics = cols.filter(isMetric).length;
+    const metricCount = cols.filter(isMetric).length;
 
-    const hasEnoughRows = rows.length >= 1;
-    const hasSuitableColumnTypes =
-      cols.length >= 3 && numDimensions >= 2 && numMetrics >= 1;
-
-    if (!hasSuitableColumnTypes || !hasEnoughRows) {
-      return false;
+    if (
+      rows.length < 1 ||
+      cols.length < 3 ||
+      numNonDateDimensions < 2 ||
+      metricCount < 1
+    ) {
+      return "nonsensible";
     }
 
     const suitableColumns = findSensibleSankeyColumns(data);
     if (!suitableColumns) {
-      return false;
+      return "nonsensible";
     }
 
     const sankeyColumns = getSankeyChartColumns(cols, {
@@ -177,14 +178,16 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
       "sankey.value": suitableColumns.metric,
     });
     if (!sankeyColumns) {
-      return false;
+      return "nonsensible";
     }
 
-    return !hasCyclicFlow(
-      data.rows,
-      sankeyColumns.source.index,
-      sankeyColumns.target.index,
-    );
+    if (
+      hasCyclicFlow(rows, sankeyColumns.source.index, sankeyColumns.target.index)
+    ) {
+      return "nonsensible";
+    }
+
+    return "sensible";
   },
   checkRenderable: (
     rawSeries: RawSeries,

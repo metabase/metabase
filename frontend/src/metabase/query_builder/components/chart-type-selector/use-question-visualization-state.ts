@@ -10,6 +10,7 @@ import {
   isCardDisplayType,
 } from "metabase-types/api";
 
+import { groupVisualizationsBySensibility } from "./sensibility-grouping";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 export type UseQuestionVisualizationStateProps = {
@@ -47,23 +48,6 @@ export const useQuestionVisualizationState = ({
   };
 };
 
-type IsSensibleVisualizationProps = {
-  result: Dataset | null;
-  vizType: CardDisplayType;
-};
-
-const isSensibleVisualization = ({
-  result,
-  vizType,
-}: IsSensibleVisualizationProps) => {
-  const visualization = visualizations.get(vizType);
-  return (
-    (result?.data &&
-      visualization?.isSensible?.(sanatizeResultData(result.data))) ||
-    false
-  );
-};
-
 export type GetSensibleVisualizationsProps = {
   result: Dataset | null;
 };
@@ -78,9 +62,27 @@ export const getSensibleVisualizations = ({
 
   const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
 
+  if (result?.data) {
+    const sanitizedData = sanatizeResultData(result.data);
+
+    const { recommended, sensible, nonsensible } =
+      groupVisualizationsBySensibility({
+        orderedVizTypes,
+        data: sanitizedData,
+      });
+
+    return {
+      sensibleVisualizations: recommended,
+      nonSensibleVisualizations: [...sensible, ...nonsensible],
+    };
+  }
+
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,
-    (vizType) => isSensibleVisualization({ result, vizType }),
+    vizType => {
+      const viz = visualizations.get(vizType);
+      return Boolean(viz?.getSensibility);
+    },
   );
 
   return { sensibleVisualizations, nonSensibleVisualizations };

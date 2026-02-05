@@ -15,13 +15,6 @@ const isValidCoordinatesColumn = (column) =>
   column.binning_info || (column.source === "native" && isNumeric(column));
 
 export class LeafletGridHeatMap extends LeafletMap {
-  static isSensible({ cols }) {
-    return (
-      cols.filter(isValidCoordinatesColumn).length >= 2 &&
-      cols.filter(isMetric).length > 0
-    );
-  }
-
   componentDidMount() {
     super.componentDidMount();
 
