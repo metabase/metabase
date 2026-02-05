@@ -723,15 +723,6 @@
       (is (= 7
              (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
-(defmethod driver/database-supports? [::driver/driver ::empty-results-wrong-because-of-issue-5419]
-  [_driver _feature _database]
-  false)
-
-;;; Mongo returns empty row for count = 0. We should fix that (#5419)
-(defmethod driver/database-supports? [:mongo ::empty-results-wrong-because-of-issue-5419]
-  [_driver _feature _database]
-  true)
-
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
