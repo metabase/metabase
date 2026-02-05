@@ -18,7 +18,7 @@ You can do things like:
 - Set table and field visibility
 - Edit table and column names and types
 - Set data formatting settings
-- Create metrics and segments
+- Create measures and segments
 
 ## Permissions for Data Structure
 
@@ -127,7 +127,7 @@ To use a segment in the query builder, start a new question from the table that 
 
 Measures are saved aggregations on tables. You can use measures to create an official saved calculation, e.g. what "Net Promoter Score" means.
 
-People will see metrics as options in the Summarize block of the [query builder](../questions/query-builder/editor.md).
+People will see measures as options in the Summarize block of the [query builder](../questions/query-builder/editor.md).
 
 To see all segments on a table, select the table in **Data Structure** and switch to **Measures** tab.
 
