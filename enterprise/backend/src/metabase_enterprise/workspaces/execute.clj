@@ -10,12 +10,12 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.transforms.core :as transforms]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

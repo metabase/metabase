@@ -352,23 +352,33 @@
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [card recipient-emails archiver]
+  [card recipient-emails recipient-emails-with-no-links archiver]
   (send-email! recipient-emails not-working-subject archived-template
                {:card card
                 :actor archiver}
+               true)
+  (send-email! recipient-emails-with-no-links not-working-subject archived-template
+               {:card card
+                :actor archiver
+                :disable_links true}
                true))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [card recipient-emails archiver]
+  [card recipient-emails recipient-emails-with-no-links archiver]
   (send-email! recipient-emails not-working-subject changed-stopped-template
                {:card card
                 :actor archiver}
+               true)
+  (send-email! recipient-emails-with-no-links not-working-subject changed-stopped-template
+               {:card card
+                :actor archiver
+                :disable_links true}
                true))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
-  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters disable_links]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
     (email/send-message!
      :subject (trs "Subscription to {0} removed" dashboard-name)
@@ -399,4 +409,5 @@
                                                      :recipient         (:common_name pulse-creator)
                                                      :role              "Subscription Creator"}]
                                                    (map #(assoc % :role "Subscriber") affected-users)))
-                       :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))
+                       :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)
+                       :disable_links            disable_links})))))
