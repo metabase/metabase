@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
-   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -93,7 +93,7 @@
     (if-not (seq transform-ids)
       results
       (let [readable-ids (->> (t2/select :model/Transform :id [:in transform-ids])
-                              transforms.util/add-source-readable
+                              transforms/add-source-readable
                               (filter :source_readable)
                               (map :id)
                               set)]
