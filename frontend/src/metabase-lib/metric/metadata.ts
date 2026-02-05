@@ -7,16 +7,14 @@ import type {
   ClauseDisplayInfo,
   DimensionDisplayInfo,
   DimensionMetadata,
-  DimensionPickerInfo,
+  FieldValuesSearchInfo,
   JsMetadataProvider,
   MeasureDisplayInfo,
   MeasureMetadata,
-  MeasurePickerInfo,
   MetadataProvider,
   MetricDefinition,
   MetricDisplayInfo,
   MetricMetadata,
-  MetricPickerInfo,
   TemporalBucket,
   TemporalBucketDisplayInfo,
 } from "./types";
@@ -70,19 +68,9 @@ export const displayInfo: typeof _DisplayInfoFn = () => {
   throw new Error("Not implemented");
 };
 
-declare function _PickerInfoFn(
+export function fieldValuesSearchInfo(
   _definition: MetricDefinition,
-  _source: MetricMetadata,
-): MetricPickerInfo;
-declare function _PickerInfoFn(
-  _definition: MetricDefinition,
-  _source: MeasureMetadata,
-): MeasurePickerInfo;
-declare function _PickerInfoFn(
-  _definition: MetricDefinition,
-  _source: DimensionMetadata,
-): DimensionPickerInfo;
-
-export const pickerInfo: typeof _PickerInfoFn = () => {
+  _dimension: DimensionMetadata,
+): FieldValuesSearchInfo {
   throw new Error("Not implemented");
-};
+}

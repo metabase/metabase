@@ -2,7 +2,7 @@ export * from "../common";
 
 export * from "./binning";
 export * from "./definition";
-export * from "./dimension";
+export * from "./dimension-types";
 export * from "./filter";
 export * from "./metadata";
 export * from "./temporal-bucket";

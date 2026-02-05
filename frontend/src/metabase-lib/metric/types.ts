@@ -176,14 +176,9 @@ export type DefaultFilterParts = {
   dimension: DimensionMetadata;
 };
 
-export type MeasurePickerInfo = {
-  id: MeasureId;
-};
-
-export type MetricPickerInfo = {
-  id: MetricId;
-};
-
-export type DimensionPickerInfo = {
+export type FieldValuesSearchInfo = {
   id: DimensionId;
+  canListValues: boolean;
+  canSearchValues: boolean;
+  canRemapValues: boolean;
 };
