@@ -60,7 +60,10 @@
    [:database_id ::ws.t/appdb-id]
    [:status ::status]
    [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]])
+   [:updated_at ms/TemporalInstant]
+   ;; Only present in POST response - the unmasked API key for workspace service user.
+   ;; This is the only time the key is available; after creation it's hashed and unrecoverable.
+   [:api_key {:optional true} :string]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
 ;; TODO (Chris 2026-02-02) -- We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
@@ -177,10 +180,11 @@
   (routes.common/wrap-middleware-for-open-api-spec-generation authorize*))
 
 (defn- ws->response
-  "Transform a workspace record into an API response, computing the backwards-compatible status."
+  "Transform a workspace record into an API response, computing the backwards-compatible status.
+   If :api_key is present (only at creation time), it is preserved in the response."
   [ws]
   (-> ws
-      (select-keys [:id :name :collection_id :database_id :created_at :updated_at])
+      (select-keys [:id :name :collection_id :database_id :created_at :updated_at :api_key])
       (assoc :status (ws.model/computed-status ws))))
 
 ;;; routes
@@ -869,9 +873,12 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
-    (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    (let [source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} body)
+    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+          ;; Merge incoming target with existing to preserve fields like :database when not explicitly provided
+          merged-body (cond-> body
+                        (:target body) (update :target #(merge (:target existing) %)))
+          source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
