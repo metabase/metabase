@@ -5,6 +5,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, NavLink, SegmentedControl, Text } from "metabase/ui";
@@ -28,6 +29,8 @@ export const SearchResults = ({
   error?: unknown;
   onClick?: (item: OmniPickerItem, index: number) => void;
 }) => {
+  const tc = useTranslateContent();
+
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
   const selectedItem = path?.[path.length - 1];
@@ -79,7 +82,7 @@ export const SearchResults = ({
               mb={0}
               label={
                 <Flex align="center">
-                  <Ellipsified maw="21rem">{item.name} </Ellipsified>
+                  <Ellipsified maw="21rem">{tc(item.name)} </Ellipsified>
                   <PLUGIN_MODERATION.ModerationStatusIcon
                     status={"moderated_status" in item && item.moderated_status}
                     filled
