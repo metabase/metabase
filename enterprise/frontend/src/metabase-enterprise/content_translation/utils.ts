@@ -243,10 +243,15 @@ export const translateColumnDisplayName = (
     );
   }
 
-  // Handle filter display names like "Created At is in the previous 3 months"
-  // The column name is at the start, followed by a space and filter operator.
-  // We try prefixes at space boundaries to find the translatable column name.
-  // Start from shorter prefixes since column names are typically shorter than operator text.
+  // First try direct translation of the full display name
+  const directTranslation = tc(displayName);
+  if (directTranslation !== displayName) {
+    return directTranslation;
+  }
+
+  // If no direct translation, try space-based iteration for filter patterns
+  // (handles cases like "Created At is in the previous 3 months" where only the column name is translatable)
+  // TODO: temporal code, in a follow up we will get this from CLJ side
   let lastTranslatedIndex = -1;
   let lastTranslatedColumn = "";
 
@@ -260,19 +265,17 @@ export const translateColumnDisplayName = (
       );
 
       if (translatedColumn !== columnPart) {
-        // Found a translatable prefix - remember it but keep looking for longer matches
         lastTranslatedIndex = i;
         lastTranslatedColumn = translatedColumn;
       }
     }
   }
 
-  // Use the longest translatable prefix found
   if (lastTranslatedIndex > 0) {
     return lastTranslatedColumn + displayName.substring(lastTranslatedIndex);
   }
 
-  return tc(displayName);
+  return displayName;
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
