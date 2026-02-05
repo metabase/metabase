@@ -75,7 +75,7 @@ export const PricingSummary = (props: PricingSummaryProps) => {
       <Stack gap="sm">
         <Group justify="space-between">
           <Text c="text-secondary">{t`Due today:`}</Text>
-          <Text fw="bold">{`$${dueToday}`}</Text>
+          <Text fw="bold" data-testid="due-today-amount">{`$${dueToday}`}</Text>
         </Group>
         <Group justify="space-between">
           <Text c="text-secondary">

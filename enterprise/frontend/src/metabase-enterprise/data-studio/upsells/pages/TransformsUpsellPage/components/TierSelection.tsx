@@ -57,7 +57,7 @@ export const TierSelection = (props: TierSelectionProps) => {
     };
   }, [pythonPrice, transformsPrice]);
 
-  if (showAdvancedOnly && advancedTierOption) {
+  if (showAdvancedOnly) {
     // Single tier display (trial or upgrade from basic)
     return (
       <Card withBorder p="md" radius="md">
