@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (defn- extract-suffix-number
@@ -69,7 +70,7 @@
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
     ;; TODO (Sanya 2025-11-18) -- For now we expose this in logs for manual testing. In future we need a secure channel.
-    (log/infof "Generated API key for workspace: %s" (:unmasked_key api-key))
+    (log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
     ws))
 
 (defn- unique-constraint-violation?
