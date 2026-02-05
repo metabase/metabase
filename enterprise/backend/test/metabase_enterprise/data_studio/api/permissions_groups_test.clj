@@ -9,7 +9,7 @@
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group - Data Analysts group is visible with the feature"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
                      (:id (perms-group/data-analyst))))))
   (testing "GET /api/permissions/group - Data Analysts group is not visible without the feature"
@@ -21,7 +21,7 @@
 
 (deftest sync-data-analyst-group-for-oss!-ee-noop-test
   (testing "When we have the feature, sync-data-analyst-group-for-oss! does nothing"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {user-id :id} {}]
           (perms/add-user-to-group! user-id data-analyst-group-id)

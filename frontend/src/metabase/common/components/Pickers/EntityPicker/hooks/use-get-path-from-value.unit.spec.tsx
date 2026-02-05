@@ -105,7 +105,7 @@ const setup = ({
   }
 
   const enterpriseTokenFeatures = {
-    data_studio: true,
+    library: true,
     transforms: true,
     tenants: true,
   };

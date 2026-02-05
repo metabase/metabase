@@ -113,7 +113,7 @@ function DataModelContent({ params }: Props) {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
 
-  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
     PLUGIN_LIBRARY.useGetLibraryCollectionQuery(undefined, {
       skip: !hasLibraryFeature,

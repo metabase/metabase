@@ -11,7 +11,7 @@
 
 (deftest can-access-via-collection?-returns-false-for-non-published-tables-test
   (testing "Returns false for non-published tables"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection collection {}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
@@ -23,7 +23,7 @@
 
 (deftest can-access-via-collection?-returns-true-with-collection-access-test
   (testing "Returns true for published tables when user has collection access"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection collection {}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
@@ -35,7 +35,7 @@
 
 (deftest can-access-via-collection?-returns-false-without-collection-access-test
   (testing "Returns false for published tables when user lacks collection access"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection collection {}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}

@@ -308,9 +308,9 @@
   "Should users be allowed to enable support users in-app?"
   :support-users)
 
-(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
-  "Should we enable the Data Studio?"
-  :data-studio)
+(define-premium-feature ^{:added "0.58.0"} enable-library?
+  "Should we enable the Library?"
+  :library)
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
@@ -337,7 +337,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
-   :data_studio                    (enable-data-studio?)
+   :library                        (enable-library?)
    :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
