@@ -29462,9 +29462,9 @@
         "tags" : [ "/api/ee/tenant" ]
       }
     },
-    "/api/ee/transform-job/" : {
+    "/api/transform-job/" : {
       "post" : {
-        "summary" : "POST /api/ee/transform-job/",
+        "summary" : "POST /api/transform-job/",
         "description" : "Create a new transform job.",
         "parameters" : [ ],
         "responses" : {
@@ -29519,10 +29519,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       },
       "get" : {
-        "summary" : "GET /api/ee/transform-job/",
+        "summary" : "GET /api/transform-job/",
         "description" : "Get all transform jobs.",
         "parameters" : [ {
           "in" : "query",
@@ -29591,12 +29591,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       }
     },
-    "/api/ee/transform-job/{job-id}" : {
+    "/api/transform-job/{job-id}" : {
       "put" : {
-        "summary" : "PUT /api/ee/transform-job/{job-id}",
+        "summary" : "PUT /api/transform-job/{job-id}",
         "description" : "Update a transform job.",
         "parameters" : [ {
           "in" : "path",
@@ -29658,10 +29658,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/transform-job/{job-id}",
+        "summary" : "DELETE /api/transform-job/{job-id}",
         "description" : "Delete a transform job.",
         "parameters" : [ {
           "in" : "path",
@@ -29684,10 +29684,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       },
       "get" : {
-        "summary" : "GET /api/ee/transform-job/{job-id}",
+        "summary" : "GET /api/transform-job/{job-id}",
         "description" : "Get a transform job by ID.",
         "parameters" : [ {
           "in" : "path",
@@ -29710,12 +29710,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       }
     },
-    "/api/ee/transform-job/{job-id}/run" : {
+    "/api/transform-job/{job-id}/run" : {
       "post" : {
-        "summary" : "POST /api/ee/transform-job/{job-id}/run",
+        "summary" : "POST /api/transform-job/{job-id}/run",
         "description" : "Run a transform job manually.",
         "parameters" : [ {
           "in" : "path",
@@ -29738,12 +29738,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       }
     },
-    "/api/ee/transform-job/{job-id}/transforms" : {
+    "/api/transform-job/{job-id}/transforms" : {
       "get" : {
-        "summary" : "GET /api/ee/transform-job/{job-id}/transforms",
+        "summary" : "GET /api/transform-job/{job-id}/transforms",
         "description" : "Get the transforms of job specified by the job's ID.",
         "parameters" : [ {
           "in" : "path",
@@ -29766,12 +29766,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-job" ]
+        "tags" : [ "/api/transform-job" ]
       }
     },
-    "/api/ee/transform-tag/" : {
+    "/api/transform-tag/" : {
       "post" : {
-        "summary" : "POST /api/ee/transform-tag/",
+        "summary" : "POST /api/transform-tag/",
         "description" : "Create a new transform tag.",
         "parameters" : [ ],
         "responses" : {
@@ -29801,10 +29801,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform-tag" ]
+        "tags" : [ "/api/transform-tag" ]
       },
       "get" : {
-        "summary" : "GET /api/ee/transform-tag/",
+        "summary" : "GET /api/transform-tag/",
         "description" : "Get a list of all transform tags.",
         "parameters" : [ ],
         "responses" : {
@@ -29818,12 +29818,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-tag" ]
+        "tags" : [ "/api/transform-tag" ]
       }
     },
-    "/api/ee/transform-tag/{tag-id}" : {
+    "/api/transform-tag/{tag-id}" : {
       "put" : {
-        "summary" : "PUT /api/ee/transform-tag/{tag-id}",
+        "summary" : "PUT /api/transform-tag/{tag-id}",
         "description" : "Update a transform tag.",
         "parameters" : [ {
           "in" : "path",
@@ -29862,10 +29862,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform-tag" ]
+        "tags" : [ "/api/transform-tag" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/transform-tag/{tag-id}",
+        "summary" : "DELETE /api/transform-tag/{tag-id}",
         "description" : "Delete a transform tag. Removes it from all transforms and jobs.",
         "parameters" : [ {
           "in" : "path",
@@ -29888,12 +29888,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform-tag" ]
+        "tags" : [ "/api/transform-tag" ]
       }
     },
-    "/api/ee/transform/" : {
+    "/api/transform/" : {
       "get" : {
-        "summary" : "GET /api/ee/transform/",
+        "summary" : "GET /api/transform/",
         "description" : "Get a list of transforms.",
         "parameters" : [ {
           "in" : "query",
@@ -29963,10 +29963,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       },
       "post" : {
-        "summary" : "POST /api/ee/transform/",
+        "summary" : "POST /api/transform/",
         "description" : "Create a new transform.",
         "parameters" : [ ],
         "responses" : {
@@ -30044,12 +30044,12 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/extract-columns" : {
+    "/api/transform/extract-columns" : {
       "post" : {
-        "summary" : "POST /api/ee/transform/extract-columns",
+        "summary" : "POST /api/transform/extract-columns",
         "description" : "Extract column names suitable for incremental transform checkpoint filtering.\n\n  This endpoint is specifically for populating the checkpoint column dropdown in\n  incremental transforms. It only returns columns with types supported for checkpoint\n  filtering: temporal (timestamp/tz) and numeric (int/float) types.\n\n  Text, boolean, and other unsupported column types are filtered out.\n\n  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  and types using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
         "parameters" : [ ],
         "responses" : {
@@ -30098,12 +30098,12 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/is-simple-query" : {
+    "/api/transform/is-simple-query" : {
       "post" : {
-        "summary" : "POST /api/ee/transform/is-simple-query",
+        "summary" : "POST /api/transform/is-simple-query",
         "description" : "Checks if a native SQL query string is simple enough for automatic checkpoint insertion",
         "parameters" : [ ],
         "responses" : {
@@ -30132,12 +30132,12 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/run" : {
+    "/api/transform/run" : {
       "get" : {
-        "summary" : "GET /api/ee/transform/run",
+        "summary" : "GET /api/transform/run",
         "description" : "Get transform runs based on a set of filter params.",
         "parameters" : [ {
           "in" : "query",
@@ -30253,12 +30253,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/{id}" : {
+    "/api/transform/{id}" : {
       "get" : {
-        "summary" : "GET /api/ee/transform/{id}",
+        "summary" : "GET /api/transform/{id}",
         "description" : "Get a specific transform.",
         "parameters" : [ {
           "in" : "path",
@@ -30281,10 +30281,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       },
       "put" : {
-        "summary" : "PUT /api/ee/transform/{id}",
+        "summary" : "PUT /api/transform/{id}",
         "description" : "Update a transform.",
         "parameters" : [ {
           "in" : "path",
@@ -30370,10 +30370,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/transform/{id}",
+        "summary" : "DELETE /api/transform/{id}",
         "description" : "Delete a transform.",
         "parameters" : [ {
           "in" : "path",
@@ -30396,12 +30396,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/{id}/cancel" : {
+    "/api/transform/{id}/cancel" : {
       "post" : {
-        "summary" : "POST /api/ee/transform/{id}/cancel",
+        "summary" : "POST /api/transform/{id}/cancel",
         "description" : "Cancel the current run for a given transform.",
         "parameters" : [ {
           "in" : "path",
@@ -30424,12 +30424,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/{id}/dependencies" : {
+    "/api/transform/{id}/dependencies" : {
       "get" : {
-        "summary" : "GET /api/ee/transform/{id}/dependencies",
+        "summary" : "GET /api/transform/{id}/dependencies",
         "description" : "Get the dependencies of a specific transform.",
         "parameters" : [ {
           "in" : "path",
@@ -30452,10 +30452,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/{id}/merge-history" : {
+    "/api/transform/{id}/merge-history" : {
       "get" : {
         "summary" : "GET /api/ee/transform/{id}/merge-history",
         "description" : "Get merge history for a transform. Returns all merge events that affected this transform,\n   ordered by created_at descending (newest first).",
@@ -30527,9 +30527,9 @@
         "tags" : [ "/api/ee/transform" ]
       }
     },
-    "/api/ee/transform/{id}/run" : {
+    "/api/transform/{id}/run" : {
       "post" : {
-        "summary" : "POST /api/ee/transform/{id}/run",
+        "summary" : "POST /api/transform/{id}/run",
         "description" : "Run a transform.",
         "parameters" : [ {
           "in" : "path",
@@ -30552,12 +30552,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
-    "/api/ee/transform/{id}/table" : {
+    "/api/transform/{id}/table" : {
       "delete" : {
-        "summary" : "DELETE /api/ee/transform/{id}/table",
+        "summary" : "DELETE /api/transform/{id}/table",
         "description" : "Delete a transform's output table.",
         "parameters" : [ {
           "in" : "path",
@@ -30580,7 +30580,7 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/transform" ]
+        "tags" : [ "/api/transform" ]
       }
     },
     "/api/ee/transforms-python/library/{path}" : {

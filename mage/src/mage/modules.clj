@@ -14,7 +14,7 @@
 
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
-  ['driver 'enterprise/transforms])
+  ['driver 'transforms])
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
