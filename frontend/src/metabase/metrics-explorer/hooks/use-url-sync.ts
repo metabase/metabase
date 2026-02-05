@@ -47,6 +47,7 @@ import {
   createMetricSourceId,
   serializedSourceToId,
 } from "../utils/source-ids";
+import { ALL_TAB_ID } from "../utils/tab-registry";
 import {
   buildUrl,
   decodeState,
@@ -213,10 +214,21 @@ export function useUrlSync(hash: string, search: string): void {
   const loadedSourceCount = Object.keys(sourceDataById).length;
 
   useEffect(() => {
-    if (projectionConfig && loadedSourceCount > 0) {
+    if (
+      projectionConfig &&
+      loadedSourceCount > 0 &&
+      activeTabId !== ALL_TAB_ID
+    ) {
       dispatch(fetchAllResults());
     }
-  }, [projectionConfig, dimensionOverrides, activeTabId, loadedSourceCount, dispatch]);
+  }, [
+    projectionConfig,
+    dimensionOverrides,
+    activeTabId,
+    loadedSourceCount,
+    storedDimensionTabs,
+    dispatch,
+  ]);
 }
 
 /**
@@ -293,32 +305,18 @@ export function useExplorerActions() {
   );
 
   const handleSetActiveTab = useCallback(
-    (
-      tabId: string,
-      defaultDisplayType: MetricsExplorerDisplayType,
-      defaultProjectionConfig: ProjectionConfig,
-    ) => {
-      dispatch(setActiveTab({ tabId, defaultDisplayType, defaultProjectionConfig }));
+    (tabId: string) => {
+      dispatch(setActiveTab({ tabId }));
     },
     [dispatch],
   );
 
   const handleAddTab = useCallback(
-    (
-      columnName: string,
-      defaultDisplayType: MetricsExplorerDisplayType,
-      defaultProjectionConfig: ProjectionConfig,
-    ) => {
+    (columnName: string) => {
       const tab = createTabFromColumn(columnName, baseQueries, sourceOrder);
       if (tab) {
         dispatch(addTab(tab));
-        dispatch(
-          setActiveTab({
-            tabId: tab.id,
-            defaultDisplayType,
-            defaultProjectionConfig,
-          }),
-        );
+        dispatch(setActiveTab({ tabId: tab.id }));
       }
     },
     [dispatch, baseQueries, sourceOrder],

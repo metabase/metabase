@@ -5,7 +5,12 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Dataset, MeasureId, SingleSeries } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetData,
+  MeasureId,
+  SingleSeries,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type {
   DimensionOverrides,
@@ -38,13 +43,14 @@ import {
   measureToCardId,
   parseSourceId,
 } from "./utils/source-ids";
+import { ALL_TAB_ID, DISPLAY_TYPE_REGISTRY } from "./utils/tab-registry";
 import { stateToSerializedState } from "./utils/url";
-import { getVisualizationSettings } from "./utils/visualization-settings";
 
 const STAGE_INDEX = -1;
 
-export const selectMetricsExplorerState = (state: State): MetricsExplorerState =>
-  state.metricsExplorer;
+export const selectMetricsExplorerState = (
+  state: State,
+): MetricsExplorerState => state.metricsExplorer;
 
 export const selectSourceOrder = (state: State): MetricSourceId[] =>
   selectMetricsExplorerState(state).sourceOrder;
@@ -99,22 +105,23 @@ export const selectActiveBinning = createSelector(
   },
 );
 
-// Mirrors getSeriesVizSettingsKey in the chart
-function getMetricSeriesKey(
-  singleSeries: SingleSeries,
+function getSourceColorKey(
+  sourceData: SourceData,
+  resultData: DatasetData | undefined,
   isFirst: boolean,
 ): string {
-  const { card, data } = singleSeries;
-
-  if (isFirst) {
-    const metricColumn = data?.cols?.find((col) => col.source === "aggregation");
-    if (metricColumn) {
-      return metricColumn.name;
+  if (sourceData.type === "metric") {
+    if (isFirst && resultData) {
+      const metricColumn = resultData.cols?.find(
+        (col) => col.source === "aggregation",
+      );
+      if (metricColumn) {
+        return metricColumn.name;
+      }
     }
-    return card.name;
+    return sourceData.data.card.name;
   }
-
-  return card.name;
+  return sourceData.data.measure.name;
 }
 
 export const selectSourceColors = createSelector(
@@ -129,24 +136,15 @@ export const selectSourceColors = createSelector(
 
     sourceOrder.forEach((sourceId, index) => {
       const sourceData = sourceDataById[sourceId];
-      const result = resultsById[sourceId];
-      if (!sourceData || !result?.data) {
+      if (!sourceData) {
         return;
       }
 
-      const isFirst = index === 0;
       const { id } = parseSourceId(sourceId);
+      const result = resultsById[sourceId];
 
-      if (sourceData.type === "metric") {
-        const { card } = sourceData.data;
-        const singleSeries: SingleSeries = { card, data: result.data };
-        keys.push(getMetricSeriesKey(singleSeries, isFirst));
-        sourceIds.push(id);
-      } else {
-        // Measure - use measure name
-        keys.push(sourceData.data.measure.name);
-        sourceIds.push(id);
-      }
+      keys.push(getSourceColorKey(sourceData, result?.data, index === 0));
+      sourceIds.push(id);
     });
 
     if (keys.length === 0) {
@@ -227,12 +225,19 @@ export const selectBaseQueries = createSelector(
 export const selectDimensionTabs = createSelector(
   [selectStoredDimensionTabs, selectBaseQueries],
   (storedTabs, baseQueries): DimensionTab[] => {
-    return storedTabs.map((storedTab) => hydrateTabColumns(storedTab, baseQueries));
+    return storedTabs.map((storedTab) =>
+      hydrateTabColumns(storedTab, baseQueries),
+    );
   },
 );
 
 export const selectAvailableColumns = createSelector(
-  [selectBaseQueries, selectSourceOrder, selectSourceDataById, selectStoredDimensionTabs],
+  [
+    selectBaseQueries,
+    selectSourceOrder,
+    selectSourceDataById,
+    selectStoredDimensionTabs,
+  ],
   (
     baseQueries,
     sourceOrder,
@@ -249,10 +254,17 @@ export const selectAvailableColumns = createSelector(
   },
 );
 
+export const selectIsAllTabActive = createSelector(
+  [selectActiveTabId, selectDimensionTabs],
+  (activeTabId, dimensionTabs): boolean => {
+    return activeTabId === ALL_TAB_ID && dimensionTabs.length > 1;
+  },
+);
+
 export const selectActiveTab = createSelector(
   [selectDimensionTabs, selectActiveTabId],
   (dimensionTabs, activeTabId): DimensionTab | null => {
-    if (dimensionTabs.length === 0) {
+    if (dimensionTabs.length === 0 || activeTabId === ALL_TAB_ID) {
       return null;
     }
 
@@ -352,7 +364,7 @@ export const selectRawSeries = createSelector(
       }
 
       if (vizSettings === null) {
-        vizSettings = getVisualizationSettings(displayType, {
+        vizSettings = DISPLAY_TYPE_REGISTRY[displayType].getSettings({
           query,
           resultData: result.data,
         });
@@ -393,36 +405,57 @@ export const selectRawSeries = createSelector(
 );
 
 export const selectDimensionItems = createSelector(
-  [selectSourceOrder, selectModifiedQueries, selectSourceColors],
-  (sourceOrder, modifiedQueries, sourceColors): DimensionItem[] => {
+  [
+    selectSourceOrder,
+    selectModifiedQueries,
+    selectSourceColors,
+    selectActiveTab,
+    selectBaseQueries,
+  ],
+  (
+    sourceOrder,
+    modifiedQueries,
+    sourceColors,
+    activeTab,
+    baseQueries,
+  ): DimensionItem[] => {
     const items: DimensionItem[] = [];
 
     for (const sourceId of sourceOrder) {
       const query = modifiedQueries[sourceId];
-      if (!query) {
-        continue;
-      }
-
-      const breakouts = Lib.breakouts(query, STAGE_INDEX);
-      if (breakouts.length === 0) {
-        continue;
-      }
-
-      const column = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
-      if (!column) {
-        continue;
-      }
-
       const { id } = parseSourceId(sourceId);
       const itemId = isMeasureSourceId(sourceId) ? measureToCardId(id) : id;
 
-      items.push({
-        id: itemId,
-        query,
-        stageIndex: STAGE_INDEX,
-        column,
-        color: sourceColors[id],
-      });
+      if (query) {
+        const breakouts = Lib.breakouts(query, STAGE_INDEX);
+        if (breakouts.length === 0) {
+          continue;
+        }
+
+        const column = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
+        if (!column) {
+          continue;
+        }
+
+        items.push({
+          id: itemId,
+          query,
+          stageIndex: STAGE_INDEX,
+          column,
+          color: sourceColors[id],
+        });
+      } else if (activeTab) {
+        const baseQuery = baseQueries[sourceId];
+        if (baseQuery) {
+          items.push({
+            id: itemId,
+            query: baseQuery,
+            stageIndex: STAGE_INDEX,
+            column: undefined,
+            color: sourceColors[id],
+          });
+        }
+      }
     }
 
     return items;
@@ -438,7 +471,8 @@ export const selectSelectedMetrics = createSelector(
       const isLoading = Boolean(loadingSourceIds[sourceId]);
 
       if (type === "metric") {
-        const name = sourceData?.type === "metric" ? sourceData.data.card.name : "";
+        const name =
+          sourceData?.type === "metric" ? sourceData.data.card.name : "";
         return {
           sourceType: "metric",
           id,

@@ -9,7 +9,7 @@ export interface DimensionItem {
   id: string | number;
   query: Lib.Query;
   stageIndex: number;
-  column: Lib.ColumnMetadata;
+  column?: Lib.ColumnMetadata;
   color?: string;
 }
 
@@ -34,7 +34,13 @@ export function DimensionPillBar({
   }
 
   return (
-    <Flex className={S.bar} align="center" justify="center" gap="sm" wrap="wrap">
+    <Flex
+      className={S.bar}
+      align="center"
+      justify="center"
+      gap="sm"
+      wrap="wrap"
+    >
       {items.map((item) => (
         <DimensionPill
           key={item.id}

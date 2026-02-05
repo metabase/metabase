@@ -202,6 +202,26 @@
                  :definition  map?}
                 (mt/user-http-request :rasta :get 200 (format "measure/%d" id))))))))
 
+(deftest fetch-measure-saves-dimensions-on-read-test
+  (testing "GET /api/measure/:id saves dimensions and dimension_mappings to the database"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (testing "no dimensions saved initially"
+        (let [initial-measure (t2/select-one :model/Measure :id id)]
+          (is (nil? (:dimensions initial-measure)))
+          (is (nil? (:dimension_mappings initial-measure)))))
+      (testing "response contains dimensions with active status"
+        (mt/with-full-data-perms-for-all-users!
+          (let [response (mt/user-http-request :rasta :get 200 (format "measure/%d" id))]
+            (is (seq (:dimensions response)))
+            (is (seq (:dimension_mappings response)))
+            (is (every? #(= "status/active" (:status %)) (:dimensions response))))))
+      (testing "dimensions persisted to database"
+        (let [updated-measure (t2/select-one :model/Measure :id id)]
+          (is (seq (:dimensions updated-measure)))
+          (is (seq (:dimension_mappings updated-measure))))))))
+
 (deftest list-test
   (testing "GET /api/measure/"
     (mt/with-temp [:model/Measure {id-1 :id} {:name       "Measure 1"

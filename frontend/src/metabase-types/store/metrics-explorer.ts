@@ -33,7 +33,12 @@ export type MetricSourceId = `metric:${number}` | `measure:${number}`;
 /**
  * Dimension tab types for grouping metrics.
  */
-export type DimensionTabType = "time" | "geo" | "category" | "boolean" | "numeric";
+export type DimensionTabType =
+  | "time"
+  | "geo"
+  | "category"
+  | "boolean"
+  | "numeric";
 
 /**
  * Column info for a dimension tab, tracking which column from which source.
@@ -54,6 +59,8 @@ export interface StoredDimensionTab {
   type: DimensionTabType;
   label: string;
   columnsBySource: Record<MetricSourceId, string>;
+  projectionConfig?: ProjectionConfig;
+  displayType?: MetricsExplorerDisplayType;
 }
 
 /**
@@ -65,18 +72,36 @@ export interface DimensionTab {
   type: DimensionTabType;
   label: string;
   columnsBySource: DimensionTabColumn[];
+  projectionConfig?: ProjectionConfig;
+  displayType?: MetricsExplorerDisplayType;
 }
 
-/**
- * Serialized tab format for URL encoding.
- * Uses numeric source IDs for compactness.
- */
-export interface SerializedTab {
-  id: string;
-  type: DimensionTabType;
-  label: string;
-  cols: Record<number, string>;
-}
+export const TAB_KEY_MAP = {
+  id: "i",
+  type: "t",
+  label: "l",
+  columnsBySource: "c",
+  projectionConfig: "p",
+  displayType: "d",
+} as const satisfies Record<keyof StoredDimensionTab, string>;
+
+type SerializedProjection = {
+  t?: "temporal" | "numeric";
+  u?: TemporalUnit;
+  f?: DateFilterSpec;
+  b?: string | null;
+};
+
+type SerializedValueOverrides = {
+  columnsBySource: Record<number, string>;
+  projectionConfig: SerializedProjection;
+};
+
+export type SerializedTab = {
+  [K in keyof StoredDimensionTab as (typeof TAB_KEY_MAP)[K]]: K extends keyof SerializedValueOverrides
+    ? SerializedValueOverrides[K]
+    : StoredDimensionTab[K];
+};
 
 /**
  * Data for a metric source (saved metric card).
@@ -154,7 +179,9 @@ export interface NumericProjectionConfig {
  * Union type for projection configs.
  * Use type guards to narrow the type.
  */
-export type ProjectionConfig = TemporalProjectionConfig | NumericProjectionConfig;
+export type ProjectionConfig =
+  | TemporalProjectionConfig
+  | NumericProjectionConfig;
 
 /**
  * Type guard for temporal projection config.
@@ -350,6 +377,14 @@ export interface ReorderSourcesPayload {
  */
 export interface ClearDimensionOverridePayload {
   sourceId: MetricSourceId;
+}
+
+/**
+ * Payload for swapping a source in place (preserving position).
+ */
+export interface SwapSourcePayload {
+  oldSourceId: MetricSourceId;
+  newSourceId: MetricSourceId;
 }
 
 /**

@@ -14,7 +14,7 @@ interface MetricResultItemProps {
   onClick?: () => void;
 }
 
-export const MetricResultItem = forwardRef<HTMLDivElement, MetricResultItemProps>(
+export const MetricResultItem = forwardRef<HTMLElement, MetricResultItemProps>(
   function MetricResultItem(
     {
       name,
@@ -37,17 +37,19 @@ export const MetricResultItem = forwardRef<HTMLDivElement, MetricResultItemProps
         data-active={active || undefined}
         onClick={onClick}
       >
-      <Icon name={icon} className={S.icon} />
-      <Text className={S.name} lh="1rem" lineClamp={1} flex="1">
-        {name}
-      </Text>
-      {slug && (
-        <Text className={S.slug} fz="0.75rem">
-          {slug}
+        <Icon name={icon} className={S.icon} />
+        <Text className={S.name} lh="1rem" lineClamp={1} flex="1">
+          {name}
         </Text>
-      )}
-      {isSelected && <Icon name="check" className={S.selectedIcon} size={16} />}
-    </Flex>
-  );
+        {slug && (
+          <Text className={S.slug} fz="0.75rem">
+            {slug}
+          </Text>
+        )}
+        {isSelected && (
+          <Icon name="check" className={S.selectedIcon} size={16} />
+        )}
+      </Flex>
+    );
   },
 );

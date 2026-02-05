@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 
+import { getObjectEntries } from "metabase/lib/objects";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
@@ -8,14 +9,17 @@ import type {
   DimensionOverrides,
   MetricSourceId,
   MetricsExplorerDisplayType,
+  NumericProjectionConfig,
   ProjectionConfig,
   SerializedExplorerState,
   SerializedSource,
   SerializedTab,
   SourceData,
   StoredDimensionTab,
+  TemporalProjectionConfig,
 } from "metabase-types/store/metrics-explorer";
 import {
+  TAB_KEY_MAP,
   createNumericProjectionConfig,
   createTemporalProjectionConfig,
   isTemporalProjectionConfig,
@@ -54,13 +58,13 @@ const dateFilterSpecSchema = Yup.object({
   type: Yup.string().oneOf(["relative", "specific", "exclude"]).required(),
 });
 
-const serializedTabSchema: Yup.ObjectSchema<SerializedTab> = Yup.object({
-  id: Yup.string().required().min(1),
-  type: Yup.string()
+const serializedTabSchema = Yup.object({
+  i: Yup.string().required().min(1),
+  t: Yup.string()
     .oneOf(["time", "geo", "category", "boolean", "numeric"] as const)
     .required(),
-  label: Yup.string().required().min(1),
-  cols: Yup.object().required(),
+  l: Yup.string().required().min(1),
+  c: Yup.object().required(),
 });
 
 function isValidFilterSpec(value: unknown): value is DateFilterSpec {
@@ -253,18 +257,109 @@ export function stateToSerializedState(
   return state;
 }
 
-function storedTabToSerializedTab(tab: StoredDimensionTab): SerializedTab {
-  const cols: Record<number, string> = {};
-  for (const [sourceId, columnName] of Object.entries(tab.columnsBySource)) {
-    const { id } = parseSourceId(sourceId as MetricSourceId);
-    cols[id] = columnName;
-  }
-  return {
-    id: tab.id,
-    type: tab.type,
-    label: tab.label,
-    cols,
+type AllProjectionKeys =
+  | keyof TemporalProjectionConfig
+  | keyof NumericProjectionConfig;
+type SerializedProjectionKeys = keyof NonNullable<SerializedTab["p"]>;
+
+const PROJECTION_KEY_MAP: Record<AllProjectionKeys, SerializedProjectionKeys> =
+  {
+    type: "t",
+    unit: "u",
+    filterSpec: "f",
+    binningStrategy: "b",
   };
+
+interface TabFieldDef {
+  serialize?: (value: any, tab: StoredDimensionTab) => unknown;
+  deserialize?: (value: any, sources: SerializedSource[]) => unknown;
+}
+
+const TAB_SERDE: Record<keyof StoredDimensionTab, TabFieldDef> = {
+  id: {},
+  type: {},
+  label: {},
+  columnsBySource: {
+    serialize: (columnsBySource: StoredDimensionTab["columnsBySource"]) => {
+      const cols: Record<number, string> = {};
+      for (const [sourceId, columnName] of getObjectEntries(columnsBySource)) {
+        cols[parseSourceId(sourceId).id] = columnName;
+      }
+      return cols;
+    },
+    deserialize: (cols: SerializedTab["c"], sources: SerializedSource[]) => {
+      const columnsBySource: Record<MetricSourceId, string> = {};
+      for (const [idStr, columnName] of Object.entries(cols)) {
+        const source = sources.find((s) => s.id === parseInt(idStr, 10));
+        if (source) {
+          columnsBySource[serializedSourceToId(source)] = columnName;
+        }
+      }
+      return columnsBySource;
+    },
+  },
+  projectionConfig: {
+    serialize: (config: ProjectionConfig) =>
+      renameKeys(
+        config as unknown as Record<string, unknown>,
+        PROJECTION_KEY_MAP,
+      ),
+    deserialize: (p: NonNullable<SerializedTab["p"]>) => {
+      const full = renameKeys(p, invertMap(PROJECTION_KEY_MAP));
+      if (full.type === "numeric") {
+        return createNumericProjectionConfig(
+          typeof full.binningStrategy === "string"
+            ? full.binningStrategy
+            : null,
+        );
+      }
+      if (full.type === "temporal" && isTemporalUnit(full.unit)) {
+        return createTemporalProjectionConfig(
+          full.unit,
+          isValidFilterSpec(full.filterSpec) ? full.filterSpec : null,
+        );
+      }
+      return undefined;
+    },
+  },
+  displayType: {
+    deserialize: (v: unknown) =>
+      isMetricsExplorerDisplayType(v) ? v : undefined,
+  },
+};
+
+function invertMap<K extends string, V extends string>(
+  map: Record<K, V>,
+): Record<V, K> {
+  return Object.fromEntries(
+    Object.entries(map).map(([k, v]) => [v, k]),
+  ) as Record<V, K>;
+}
+
+function renameKeys(
+  obj: Record<string, unknown>,
+  keyMap: Record<string, string>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined && value !== null) {
+      result[keyMap[key] ?? key] = value;
+    }
+  }
+  return result;
+}
+
+function storedTabToSerializedTab(tab: StoredDimensionTab): SerializedTab {
+  const result: Record<string, unknown> = {};
+  for (const [storedKey, def] of getObjectEntries(TAB_SERDE)) {
+    const value = tab[storedKey];
+    if (value !== undefined) {
+      result[TAB_KEY_MAP[storedKey]] = def.serialize
+        ? def.serialize(value, tab)
+        : value;
+    }
+  }
+  return result as SerializedTab;
 }
 
 export function serializedStateToReduxState(
@@ -285,9 +380,14 @@ export function serializedStateToReduxState(
   if (serializedState.projection) {
     const proj = serializedState.projection;
     if (proj.type === "numeric") {
-      projectionConfig = createNumericProjectionConfig(proj.binningStrategy ?? null);
+      projectionConfig = createNumericProjectionConfig(
+        proj.binningStrategy ?? null,
+      );
     } else if (proj.unit) {
-      projectionConfig = createTemporalProjectionConfig(proj.unit, proj.filterSpec ?? null);
+      projectionConfig = createTemporalProjectionConfig(
+        proj.unit,
+        proj.filterSpec ?? null,
+      );
     }
   }
 
@@ -310,7 +410,8 @@ export function serializedStateToReduxState(
   const binningByTab: Record<string, string | null> = {};
 
   const dimensionTabs: StoredDimensionTab[] = (serializedState.tabs ?? []).map(
-    (serializedTab) => serializedTabToStoredTab(serializedTab, serializedState.sources),
+    (serializedTab) =>
+      serializedTabToStoredTab(serializedTab, serializedState.sources),
   );
 
   return {
@@ -329,21 +430,17 @@ function serializedTabToStoredTab(
   serializedTab: SerializedTab,
   sources: SerializedSource[],
 ): StoredDimensionTab {
-  const columnsBySource: Record<MetricSourceId, string> = {};
-
-  for (const [idStr, columnName] of Object.entries(serializedTab.cols)) {
-    const id = parseInt(idStr, 10);
-    const matchingSource = sources.find((s) => s.id === id);
-    if (matchingSource) {
-      const sourceId = serializedSourceToId(matchingSource);
-      columnsBySource[sourceId] = columnName;
+  const result: Record<string, unknown> = {};
+  for (const [storedKey, def] of getObjectEntries(TAB_SERDE)) {
+    const value = serializedTab[TAB_KEY_MAP[storedKey]];
+    if (value !== undefined) {
+      const deserialized = def.deserialize
+        ? def.deserialize(value, sources)
+        : value;
+      if (deserialized !== undefined) {
+        result[storedKey] = deserialized;
+      }
     }
   }
-
-  return {
-    id: serializedTab.id,
-    type: serializedTab.type,
-    label: serializedTab.label,
-    columnsBySource,
-  };
+  return result as unknown as StoredDimensionTab;
 }

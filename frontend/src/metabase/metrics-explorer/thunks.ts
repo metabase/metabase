@@ -19,8 +19,8 @@ import type {
 import {
   addMeasureSource,
   addMetricSource,
-  removeSource,
   setInitialTabs,
+  swapSourceInPlace,
   updateTabColumns,
 } from "./metrics-explorer.slice";
 import {
@@ -29,7 +29,10 @@ import {
   selectSourceOrder,
   selectStoredDimensionTabs,
 } from "./selectors";
-import { computeDefaultTabs, findMatchingColumnForTab } from "./utils/dimensions";
+import {
+  computeDefaultTabs,
+  findMatchingColumnForTab,
+} from "./utils/dimensions";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -148,7 +151,7 @@ export const fetchAllResults =
 
     const sourceOrder = selectSourceOrder(getState());
 
-    const fetchPromises = sourceOrder.map(sourceId =>
+    const fetchPromises = sourceOrder.map((sourceId) =>
       dispatch(fetchSourceResult({ sourceId, signal })),
     );
 
@@ -187,7 +190,11 @@ export const updateTabsForSource =
         continue;
       }
 
-      const matchingColumnName = findMatchingColumnForTab(query, tab);
+      const matchingColumnName = findMatchingColumnForTab(
+        query,
+        tab,
+        baseQueries,
+      );
       if (matchingColumnName) {
         dispatch(
           updateTabColumns({
@@ -223,20 +230,26 @@ export const addMeasureAndFetch =
   };
 
 /**
- * Swap one source for another atomically.
- * Adds the new source first, then removes the old to preserve tabs.
+ * Swap one source for another, preserving position in the order.
  */
 export const swapSource =
   (
     oldSourceId: MetricSourceId,
-    newSource: { type: "metric"; cardId: CardId } | { type: "measure"; measureId: MeasureId },
+    newSource:
+      | { type: "metric"; cardId: CardId }
+      | { type: "measure"; measureId: MeasureId },
   ) =>
   async (dispatch: Dispatch): Promise<void> => {
-    if (newSource.type === "metric") {
-      await dispatch(addMetricAndFetch(newSource.cardId));
-    } else {
-      await dispatch(addMeasureAndFetch(newSource.measureId));
-    }
+    const newSourceId =
+      newSource.type === "metric"
+        ? createMetricSourceId(newSource.cardId)
+        : createMeasureSourceId(newSource.measureId);
 
-    dispatch(removeSource({ sourceId: oldSourceId }));
+    dispatch(swapSourceInPlace({ oldSourceId, newSourceId }));
+
+    if (newSource.type === "metric") {
+      await dispatch(fetchMetricSource({ cardId: newSource.cardId }));
+    } else {
+      await dispatch(fetchMeasureSource({ measureId: newSource.measureId }));
+    }
   };

@@ -74,9 +74,7 @@
 (defn- hydrate-dimensions
   "Hydrate dimensions onto a measure by computing from visible-columns and reconciling with persisted."
   [measure]
-  (let [table-id          (:table_id measure)
-        database-id       (t2/select-one-fn :db_id :model/Table :id table-id)
-        mp                (lib-be/application-database-metadata-provider database-id)
+  (let [mp                (lib-metric/metadata-provider)
         measure-with-type (assoc measure :lib/type :metadata/measure)]
     (lib-metric/hydrate-dimensions mp measure-with-type)))
 

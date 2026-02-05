@@ -232,6 +232,8 @@ import grabber_component from "./grabber.svg?component";
 import grabber_source from "./grabber.svg?source";
 import grid_component from "./grid.svg?component";
 import grid_source from "./grid.svg?source";
+import grid_2x2_component from "./grid_2x2.svg?component";
+import grid_2x2_source from "./grid_2x2.svg?source";
 import group_component from "./group.svg?component";
 import group_source from "./group.svg?source";
 import history_component from "./history.svg?component";
@@ -984,6 +986,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     grid: {
       component: grid_component,
       source: grid_source,
+    },
+    grid_2x2: {
+      component: grid_2x2_component,
+      source: grid_2x2_source,
     },
     group: {
       component: group_component,
@@ -1783,6 +1789,7 @@ export type IconName =
   | "git_branch"
   | "grabber"
   | "grid"
+  | "grid_2x2"
   | "group"
   | "google"
   | "google_drive"

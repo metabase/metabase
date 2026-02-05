@@ -220,3 +220,25 @@
   (is (lib-metric.dimension/mappings-changed?
        nil
        [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}])))
+
+;;; -------------------------------------------------- Always Save Behavior --------------------------------------------------
+
+(deftest ^:parallel reconcile-new-dimensions-get-active-status-test
+  (testing "New computed dimensions should always get :status/active so they are persisted"
+    (let [computed-pairs [(make-computed-pair "col1" target-1)
+                          (make-computed-pair "col2" target-2)]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+      (is (= 2 (count dimensions)))
+      (is (every? #(= :status/active (:status %)) dimensions)
+          "All new dimensions should have :status/active"))))
+
+(deftest ^:parallel reconcile-all-dimensions-have-status-for-persistence-test
+  (testing "After reconciliation, all active dimensions should be extractable for persistence"
+    (let [computed-pairs [(make-computed-pair "col1" target-1)
+                          (make-computed-pair "col2" target-2)]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings computed-pairs nil nil)
+          persisted (lib-metric.dimension/extract-persisted-dimensions dimensions)]
+      (is (= 2 (count persisted))
+          "All dimensions should be extracted for persistence since they all have :status/active"))))

@@ -171,6 +171,7 @@ type VisualizationOwnProps = {
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
+  onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHeaderColumnReorder?: (columnName: string) => void;
   onChangeLocation?: (location: Location) => void;
   onUpdateQuestion?: () => void;
@@ -957,6 +958,7 @@ class Visualization extends PureComponent<
                         ? this.handleOnChangeCardAndRun
                         : null
                     }
+                    onBrush={this.props.onBrush}
                     onDeselectTimelineEvents={onDeselectTimelineEvents}
                     onHoverChange={this.handleHoverChange}
                     onOpenTimelines={onOpenTimelines}
