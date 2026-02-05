@@ -74,13 +74,13 @@ const translateByParts = (
 ): string => {
   const parts = Lib.parseColumnDisplayNameParts(displayName);
 
-  let anyChanged = false;
+  let anyTranslated = false;
   const translated = parts.map((part) => {
     if (part.type === "translatable") {
       const result = tc(part.value);
 
       if (result !== part.value) {
-        anyChanged = true;
+        anyTranslated = true;
       }
 
       return result;
@@ -89,10 +89,9 @@ const translateByParts = (
     return part.value;
   });
 
-  // If no translation applied, parsing may have been wrong
-  // (e.g., "Note: Important" is a column name, not temporal bucket).
-  // Fall back to translating the whole string.
-  return anyChanged ? translated.join("") : tc(displayName);
+  // Fallback to whole string if nothing translated - covers mis-parsing
+  // (e.g., column "Note: Important" split as temporal bucket) or simply no translations.
+  return anyTranslated ? translated.join("") : tc(displayName);
 };
 
 /**
