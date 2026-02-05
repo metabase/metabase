@@ -393,7 +393,7 @@
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 7: Cloud driver + query-processor updated → run it
+    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
          (seq (set/intersection updated modules-triggering-cloud-drivers)))
     {:should-run true
