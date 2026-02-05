@@ -186,11 +186,15 @@ It's important that your All Users group should never have _greater_ access for 
 
 You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-studio/overview.md).
 
-In addition to access to Data Studio, people in the Data Analysts group will automatically get [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-studio/library.md), and [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your instance. Other permissions will remain unchanged by default (so they will be based on any other groups that a person is a member of), although you can configure permissions for the Data Analyst group separately.
+By default (and you can't change this), the Data Analyst group gets:
 
-By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-studio/transforms/transforms-overview.md) that use tables which the person otherwise can view.
+- Access to [Data Studio](../data-studio/overview.md).
+- [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-studio/library.md)
+-  [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your Metabase.
 
-To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
+Other than the fixed access listed above, you can assign data, collection, and application permissions to the Data Analyst group as you would normally.
+
+By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-studio/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
 
 ## Creating a group
 
