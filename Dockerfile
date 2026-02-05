@@ -26,7 +26,7 @@ RUN git config --global --add safe.directory /home/node
 # install frontend dependencies
 RUN yarn --frozen-lockfile
 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh ${VERSION:+:version} ${VERSION:+$VERSION}
 
 # ###################
 # # STAGE 2: runner
