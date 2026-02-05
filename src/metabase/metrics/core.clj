@@ -3,7 +3,6 @@
    Contains persistence multimethod and orchestration logic."
   (:require
    [metabase.lib-metric.core :as lib-metric]
-   [metabase.lib-metric.dimension :as lib-metric.dimension]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- Persistence Multimethod -------------------------------------------------
@@ -30,19 +29,18 @@
   (when-let [entity (first (t2/select metadata-type :id id))]
     (when-let [query (lib-metric/dimensionable-query entity)]
       (let [mp                 (lib-metric/metadata-provider)
-            computed-pairs     (lib-metric.dimension/compute-dimension-pairs mp query)
+            computed-pairs     (lib-metric/compute-dimension-pairs mp query)
             persisted-dims     (lib-metric/get-persisted-dimensions entity)
             persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)
 
             {:keys [dimensions dimension-mappings]}
-            (lib-metric.dimension/reconcile-dimensions-and-mappings
+            (lib-metric/reconcile-dimensions-and-mappings
              computed-pairs persisted-dims persisted-mappings)
 
-            old-persisted (lib-metric.dimension/extract-persisted-dimensions
+            old-persisted (lib-metric/extract-persisted-dimensions
                            (or persisted-dims []))
-            new-persisted (lib-metric.dimension/extract-persisted-dimensions
+            new-persisted (lib-metric/extract-persisted-dimensions
                            dimensions)]
-        (when (or (lib-metric.dimension/dimensions-changed? old-persisted new-persisted)
-                  (lib-metric.dimension/mappings-changed? persisted-mappings dimension-mappings))
-          (save-dimensions! entity new-persisted dimension-mappings)))))
-  nil)
+        (when (or (lib-metric/dimensions-changed? old-persisted new-persisted)
+                  (lib-metric/mappings-changed? persisted-mappings dimension-mappings))
+          (save-dimensions! entity new-persisted dimension-mappings))))))
