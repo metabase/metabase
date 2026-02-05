@@ -46,7 +46,7 @@ export function setup({
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,
       "token-features": createMockTokenFeatures({
-        data_studio: true,
+        library: true,
         remote_sync: true,
       }),
     });

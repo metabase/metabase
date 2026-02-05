@@ -275,7 +275,7 @@
                 "Second hydrated should match the second user's data")))))))
 
 (deftest check-allowed-content-transforms
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
                    :model/Collection regular-col {:name "Test Regular"}]
       (mt/with-model-cleanup [:model/Transform :model/Card]

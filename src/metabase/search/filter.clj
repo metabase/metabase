@@ -91,11 +91,11 @@
 (defmethod where-clause* ::collection-hierarchy [_ k v]
   ;; Filter by collection and all descendants
   ;; Match items directly in the collection OR in descendant collections
-  ;; Tables in collections are an EE feature (data-studio), so exclude them in OSS
+  ;; Tables in collections are an EE feature (library), so exclude them in OSS
   (let [collection-filter [:or
                            [:= k v]
                            [:like :collection.location (str "%" (collection/location-path v) "%")]]]
-    (if (premium-features/has-feature? :data-studio)
+    (if (premium-features/has-feature? :library)
       collection-filter
       [:and
        [:not= :search_index.model [:inline "table"]]
