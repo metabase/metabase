@@ -79,6 +79,9 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -93,21 +96,22 @@
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
 
-(defn ^:export suggestedName
+(mu/defn ^:export suggestedName :- [:maybe ::lib.schema.common/non-blank-string]
   "Return a nice description of a query.
 
   > **Code health:** Single use, smelly. Name is not idiomatic Clojure. Could it be merged with `display-name-method`?"
-  [query]
+  [query :- ::lib.schema/query]
   (lib.core/suggested-name query))
 
-(defn ^:export metadataProvider
+(mu/defn ^:export metadataProvider :- :any
   "Convert the provided metadata container to an MLv2 metadata provider.
 
   > **Code health:** Smelly. Name is not idiomatic Clojure.
 
   If the `metadata` is already an MLv2 metadata provider, it is simply returned. If it is a JavaScript `Metadata`
   instance, it is wrapped with an MLv2 adapter."
-  [database-id metadata]
+  [database-id :- :any
+   metadata :- :any]
   (if (lib.metadata.protocols/metadata-provider? metadata)
     metadata
     (js.metadata/metadata-provider database-id metadata)))
@@ -172,12 +176,12 @@
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
-(defn ^:export legacy-query
+(mu/defn ^:export legacy-query :- :any
   "Coerce an MLv2 query (pMBQL in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
 
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
   where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2."
-  [query-map]
+  [query-map :- ::lib.schema/query]
   (-> (lib.query/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
@@ -205,7 +209,7 @@
   [a-query]
   (lib.core/drop-empty-stages a-query))
 
-(defn ^:export as-returned
+(mu/defn ^:export as-returned :- :any
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
   (with access to the columns before aggregation) or adding it to stage `N+1` (with access to the aggregations and
   breakouts).
@@ -215,7 +219,9 @@
   looking at the last stage.
 
   > **Code health:** Healthy"
-  [a-query stage-number card-id]
+  [a-query :- ::lib.schema/query
+   stage-number :- :int
+   card-id :- [:maybe :int]]
   (let [{a-query :query, :keys [stage-number]} (lib.core/wrap-native-query-with-mbql a-query stage-number card-id)]
     (if (and
          (empty? (lib.core/aggregations a-query stage-number))
@@ -584,7 +590,7 @@
    (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
 
-(defn ^:export available-temporal-units
+(mu/defn ^:export available-temporal-units :- :any
   "The temporal bucketing units for date type expressions."
   []
   (to-array (map clj->js (lib.core/available-temporal-units))))
@@ -625,7 +631,7 @@
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))
    (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
 
-(defn ^:export swap-clauses
+(mu/defn ^:export swap-clauses :- ::lib.schema/query
   "Exchanges the positions of two clauses of the same kind. Can be used for filters, aggregations, breakouts, and
   expressions.
 
@@ -633,7 +639,10 @@
   unchanged.
 
   > **Code health:** Healthy"
-  [a-query stage-number source-clause target-clause]
+  [a-query :- ::lib.schema/query
+   stage-number :- :int
+   source-clause :- :any
+   target-clause :- :any]
   (lib.core/swap-clauses
    a-query stage-number
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
@@ -754,7 +763,10 @@
     ;; Either way, = does the right thing.
     :else (= x y)))
 
-(defn ^:export query=
+(defn ^:export ^{:schema [:function
+                                   [:=> [:cat :any :any] :boolean]
+                                   [:=> [:cat :any :any [:maybe :any]] :boolean]]}
+  query=
   "Returns whether the provided queries should be considered equal.
 
   If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
@@ -1277,7 +1289,7 @@
   [lhs-or-rhs-expression]
   (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
 
-(defn ^:export column-metadata?
+(mu/defn ^:export column-metadata? :- :boolean
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
@@ -1285,7 +1297,7 @@
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
-(defn ^:export metric-metadata?
+(mu/defn ^:export metric-metadata? :- :boolean
   "Returns true if arg is named entity that can be used as an aggregation expression on its own, i.e., without
   wrapping it into an aggregating function.
   Currently, this can be an MLv2 metric (`:lib/type :metadata/metric`) or an aggregation column
@@ -1299,7 +1311,7 @@
            (and (= (:lib/type arg) :metadata/column)
                 (= (:lib/source arg) :source/aggregations)))))
 
-(defn ^:export segment-metadata?
+(mu/defn ^:export segment-metadata? :- :boolean
   "Returns true if arg is an MLv2 segment, ie. has `:lib/type :metadata/segment`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
@@ -1479,14 +1491,14 @@
      (visible-columns* a-query stage-number))))
 
 ;; ## Column keys
-(defn ^:export column-key
+(mu/defn ^:export column-key :- [:maybe :string]
   "Given a column, as returned by [[visible-columns]], [[returned-columns]] etc., return a string suitable for uniquely
   identifying the column on its query.
 
   This key will generally not be changed by unrelated edits to the query.
 
   (Currently this is powered by `:lib/desired-column-alias`, but it's deliberately opaque.)"
-  [a-column]
+  [a-column :- ::lib.schema.metadata/column]
   (or (:lib/desired-column-alias a-column)
       (:name a-column)))
 
@@ -1522,7 +1534,7 @@
   [column :- :any]
   (lib.metadata.column/column-unique-key column))
 
-(defn ^:export legacy-ref
+(mu/defn ^:export legacy-ref :- :any
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.
 
@@ -1530,7 +1542,9 @@
 
   > **Code health:** Legacy. New calls strongly discouraged; refs are a bad leak in the abstraction and we should aim
   to refactor the existing ones."
-  [a-query stage-number column]
+  [a-query :- ::lib.schema/query
+   stage-number :- :int
+   column :- [:or ::lib.schema.metadata/column ::lib.schema.metadata/metric ::lib.schema.metadata/segment]]
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (-> column
         lib.core/ref
@@ -1549,7 +1563,7 @@
     ;; It's already a :metadata/column map
     column))
 
-(defn ^:export find-column-indexes-from-legacy-refs
+(mu/defn ^:export find-column-indexes-from-legacy-refs :- :any
   "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
 
@@ -1558,7 +1572,10 @@
   > **Code health:** Legacy. This is used in several places, mostly because legacy field refs are used as the keys to
   identify a column in viz settings. Avoid new calls if you have an alternative way to find the column you need. But if
   you need it, no worries about a new call."
-  [a-query stage-number legacy-columns legacy-refs]
+  [a-query :- ::lib.schema/query
+   stage-number :- :int
+   legacy-columns :- [:sequential :any]
+   legacy-refs :- [:sequential :any]]
   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
@@ -1581,7 +1598,7 @@
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
-(defn ^:export source-table-or-card-id
+(mu/defn ^:export source-table-or-card-id :- [:maybe [:or :int :string]]
   "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
   with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned.
 
@@ -1589,7 +1606,7 @@
   updated to handle Metrics v2."
   ;; TODO: Figure out what the callers of this function really need it for, and consider an alternative design.
   ;; [[with-different-table]] should be included in that refactor.
-  [a-query]
+  [a-query :- ::lib.schema/query]
   (or (lib.util/source-table-id a-query)
       (some->> (lib.util/source-card-id a-query) (str "card__"))))
 
@@ -1919,12 +1936,13 @@
   [a-query a-join]
   (lib.join/joined-thing a-query a-join))
 
-(defn ^:export picker-info
+(mu/defn ^:export picker-info :- [:maybe :any]
   "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions.
 
   > **Code health:** Single-use, Legacy, Deprecated! This exists only to support some legacy UI in the join picker. No
   new calls should be added, and the UI should be refactored to remove the need for this function."
-  [a-query metadata]
+  [a-query :- ::lib.schema/query
+   metadata :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card :map]]
   (case (:lib/type metadata)
     :metadata/table #js {:databaseId (:database a-query)
                          :tableId (:id metadata)}
@@ -2074,7 +2092,7 @@
 ;;
 ;; These functions still work, but they're **Legacy** and **Single Use**, and will be removed when legacy Segments are
 ;; removed from the product in 2024.
-(defn ^:export segment-metadata
+(mu/defn ^:export segment-metadata :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the legacy Segment with `segment-id`, if it can be found.
 
   `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
@@ -2082,7 +2100,8 @@
 
   > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Segments and will be removed
   when they are."
-  [metadata-providerable segment-id]
+  [metadata-providerable :- [:or ::lib.schema/query :any]
+   segment-id :- :int]
   (lib.metadata/segment metadata-providerable segment-id))
 
 (defn ^:export available-segments
@@ -2144,7 +2163,7 @@
 ;; TODO: table-or-card-metadata is too specific and leaks details of how sources are stored. We need a higher-level API
 ;; for the sources of queries, especially with Metrics v2.
 
-(defn ^:export table-or-card-metadata
+(mu/defn ^:export table-or-card-metadata :- [:maybe [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]]
   "Given an integer `table-id`, returns the table's metadata. Given a legacy `\"card__123\"` string, returns the card's
   metadata.
 
@@ -2153,7 +2172,8 @@
   > **Code health:** Legacy. Avoid new calls - this leaks too much of how sources are stored, and with Metrics v2 the
   way sources are stored will be evolving. A more general API for checking the sources of a query (or join) should be
   added, and then this function deprecated and removed."
-  [query-or-metadata-provider table-id]
+  [query-or-metadata-provider :- [:or ::lib.schema/query :any]
+   table-id :- [:or :int :string]]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
 (defn ^:export field-metadata
@@ -2219,20 +2239,22 @@
     ;; We have the UUID for the aggregation in its ref, so use that here.
     (some-> a-ref first (= :aggregation)) (assoc :lib/source-uuid (last a-ref))))
 
-(defn ^:export legacy-column->metadata
+(mu/defn ^:export legacy-column->metadata :- ::lib.schema.metadata/column
   "Given a JS `DatasetColumn`, return a CLJS `:metadata/column` for the same column.
 
   This properly handles fields, expressions and aggregations.
 
   > **Code health:** Legacy. Avoid new calls. We should refactor the existing callers so they receive MLv2 columns in
   the first place, and don't need to convert via to MLv2 via this function."
-  [a-query stage-number ^js js-column]
+  [a-query :- ::lib.schema/query
+   stage-number :- :int
+   js-column :- :any]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [column-ref (when-let [a-ref (.-field_ref js-column)]
+    (let [column-ref (when-let [a-ref (.-field_ref ^js js-column)]
                        (legacy-ref->pMBQL a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
-(defn ^:export legacy-column->type-info
+(mu/defn ^:export legacy-column->type-info :- [:or ::lib.schema.metadata/column :any]
   "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
   does not require a `query`. MLv2 columns remain unchanged.
 
@@ -2344,7 +2366,7 @@
   [a-query stage-number card-id a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number card-id a-drill-thru args))
 
-(defn ^:export filter-drill-details
+(mu/defn ^:export filter-drill-details :- :any
   "Returns a JS object with the details needed to render the complex UI for `column-filter` and some `quick-filter`
   drills. The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].
 
@@ -2361,34 +2383,34 @@
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
   [{a-query :query
     :keys [column stage-number value]
-    :as _filter-drill}]
+    :as _filter-drill} :- :map]
   #js {"column"     column
        "query"      a-query
        "stageIndex" stage-number
        "value"      (lib.drill-thru.common/drill-value->js value)})
 
-(defn ^:export combine-column-drill-details
+(mu/defn ^:export combine-column-drill-details :- :any
   "Returns a JS object with the details needed to render the complex UI for `combine-column` drills."
   [{a-query :query
-    :keys [column stage-number]}]
+    :keys [column stage-number]} :- :map]
   #js {"query"      a-query
        "stageIndex" stage-number
        "column"     column})
 
-(defn ^:export column-extract-drill-extractions
+(mu/defn ^:export column-extract-drill-extractions :- :any
   "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.
 
   The extractions are opaque values of the same type as are returned by [[column-extractions]].
 
   > **Code health:** Single use. This is only here to support UI for column extract drills, and should not be reused."
-  [column-extract-drill]
+  [column-extract-drill :- :any]
   (to-array (lib.core/extractions-for-drill column-extract-drill)))
 
-(defn ^:export pivot-drill-details
+(mu/defn ^:export pivot-drill-details :- :any
   "Returns a JS object with the details needed to render the complex UI for `pivot` drills.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [{:keys [stage-number] :as a-drill-thru}]
+  [{:keys [stage-number] :as a-drill-thru} :- :map]
   #js {"stageIndex" stage-number
        "pivotTypes" (->> (lib.core/pivot-types a-drill-thru)
                          (map name)
@@ -2414,7 +2436,7 @@
   [a-query table-id]
   (lib.core/with-different-table a-query table-id))
 
-(defn ^:export format-relative-date-range
+(mu/defn ^:export format-relative-date-range :- :string
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range.
@@ -2422,7 +2444,11 @@
   > **Code health:** Deprecated. This is a direct call to a shared date/time formatting library elsewhere in the CLJC
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
-  [n unit offset-n offset-unit options]
+  [n :- :int
+   unit :- :string
+   offset-n :- [:maybe :int]
+   offset-unit :- [:maybe :string]
+   options :- :any]
   (u.time/format-relative-date-range
    n
    (keyword unit)
@@ -2462,13 +2488,14 @@
   [a-query stage-number a-ref columns]
   (lib.core/find-matching-column a-query stage-number a-ref columns))
 
-(defn ^:export has-clauses
+(mu/defn ^:export has-clauses :- :boolean
   "Return `true` if the given stage of `a-query` contains any clauses.
 
   This returns `false` in the same conditions which [[drop-empty-stages]] considers \"empty\".
 
   > **Code health:** Healthy"
-  [a-query stage-number]
+  [a-query :- ::lib.schema/query
+   stage-number :- :int]
   (lib.core/has-clauses? a-query stage-number))
 
 (defn ^:export stage-count
@@ -2576,11 +2603,12 @@
   (lib.core/with-wrapped-native-query a-query stage-number card-id
     lib.core/update-temporal-filter temporal-column start end))
 
-(defn ^:export valid-filter-for?
+(mu/defn ^:export valid-filter-for? :- :boolean
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
 
   > **Code health:** Healthy."
-  [src-column dst-column]
+  [src-column :- ::lib.schema.metadata/column
+   dst-column :- ::lib.schema.metadata/column]
   (lib.types.isa/valid-filter-for? src-column dst-column))
 
 (defn ^:export dependent-metadata
@@ -2670,7 +2698,7 @@
     (fn [_]
       (lib.core/can-save a-query (keyword card-type))))))
 
-(defn ^:export ensure-filter-stage
+(mu/defn ^:export ensure-filter-stage :- ::lib.schema/query
   "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
 
   This is so that parameters can address both the stage before and after the aggregation.
@@ -2678,12 +2706,12 @@
   stage -2 filter before the summary.
 
   > **Code health:** Healthy"
-  [a-query]
+  [a-query :- ::lib.schema/query]
   (lib.core/ensure-filter-stage a-query))
 
-(defn ^:export to-js-query
+(mu/defn ^:export to-js-query :- :any
   "Serialize a query to a plain JS object."
-  [cljs-query]
+  [cljs-query :- ::lib.schema/query]
   (letfn [(->js [x]
             (cond
               (map? x)
@@ -2726,21 +2754,22 @@
       (cond-> mp
         (assoc :lib/metadata mp))))
 
-(defn ^:export from-js-query
+(mu/defn ^:export from-js-query :- ::lib.schema/query
   "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
 
   Attaches a cache to `metadata-provider` so that subsequent calls with the same `js-query` return the same query
   object. If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying the cache."
-  [^js mp js-query]
+  [mp :- :any
+   js-query :- :any]
   ;; even in JS, this will never work right without a valid MetadataProvider, so error if we don't get one.
   (assert (satisfies? lib.metadata.protocols/MetadataProvider mp))
   ;; TODO (Cam 10/8/25) -- I attempted to use the side-channel cache stuff here and it didn't work correctly, so I
   ;; made a different cache instead... this seems to work correctly now. Maybe we can fix it and use the existing
   ;; stuff.
-  (let [^js/WeakMap cache (if-let [cache (.-__fromJsQueryCache mp)]
+  (let [^js/WeakMap cache (if-let [cache (.-__fromJsQueryCache ^js mp)]
                             cache
                             (u/prog1 (js/WeakMap.)
-                              (set! (.-__fromJsQueryCache mp) <>)))]
+                              (set! (.-__fromJsQueryCache ^js mp) <>)))]
     (or (.get cache js-query)
         (u/prog1 (from-js-query* mp js-query)
           (.set cache js-query <>)))))
