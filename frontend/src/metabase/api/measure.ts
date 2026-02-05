@@ -2,8 +2,12 @@ import { updateMetadata } from "metabase/lib/redux/metadata";
 import { MeasureSchema } from "metabase/schema";
 import type {
   CreateMeasureRequest,
+  FieldValue,
+  GetMeasureDimensionValuesRequest,
+  GetMeasureDimensionValuesResponse,
   Measure,
   MeasureId,
+  SearchMeasureDimensionValuesRequest,
   UpdateMeasureRequest,
 } from "metabase-types/api";
 
@@ -42,6 +46,25 @@ export const measureApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, MeasureSchema)),
         ),
     }),
+    getMeasureDimensionValues: builder.query<
+      GetMeasureDimensionValuesResponse,
+      GetMeasureDimensionValuesRequest
+    >({
+      query: ({ measureId, dimensionId }) => ({
+        method: "GET",
+        url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/values`,
+      }),
+    }),
+    searchMeasureDimensionValues: builder.query<
+      FieldValue[],
+      SearchMeasureDimensionValuesRequest
+    >({
+      query: ({ measureId, dimensionId, ...params }) => ({
+        method: "GET",
+        url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/search`,
+        params,
+      }),
+    }),
     createMeasure: builder.mutation<Measure, CreateMeasureRequest>({
       query: (body) => ({
         method: "POST",
@@ -70,6 +93,8 @@ export const measureApi = Api.injectEndpoints({
 export const {
   useListMeasuresQuery,
   useGetMeasureQuery,
+  useGetMeasureDimensionValuesQuery,
+  useSearchMeasureDimensionValuesQuery,
   useCreateMeasureMutation,
   useUpdateMeasureMutation,
 } = measureApi;

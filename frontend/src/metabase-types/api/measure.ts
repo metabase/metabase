@@ -3,6 +3,7 @@ import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 
 export type MeasureId = number;
+export type DimensionId = string;
 
 export interface Measure {
   id: MeasureId;
@@ -35,3 +36,20 @@ export interface UpdateMeasureRequest {
   archived?: boolean;
   description?: string;
 }
+
+export type GetMeasureDimensionValuesRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+};
+
+export type GetMeasureDimensionValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+};
+
+export type SearchMeasureDimensionValuesRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+  query: string;
+  limit: number;
+};
