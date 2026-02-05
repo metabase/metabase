@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -16,18 +15,10 @@ interface FieldSidebarProps {
   database: Database;
   table: Table;
   field: Field;
-  className?: string;
-  style?: CSSProperties;
 }
 
-const FieldSidebar = ({
-  database,
-  table,
-  field,
-  style,
-  className,
-}: FieldSidebarProps) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const FieldSidebar = ({ database, table, field }: FieldSidebarProps) => (
+  <div className={S.sidebar}>
     <ul>
       <div>
         <Breadcrumbs
