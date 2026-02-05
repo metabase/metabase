@@ -15,6 +15,7 @@ import type {
   ExpressionClause,
   FilterClause,
   FilterOperator,
+  FilterOperatorVariant,
   FilterParts,
   Filterable,
   NumberFilterParts,
@@ -36,12 +37,6 @@ export function filterableColumns(
   opts?: FilterableColumnsOpts,
 ): ColumnMetadata[] {
   return ML.filterable_columns(query, stageIndex, opts);
-}
-
-export function filterableColumnOperators(
-  column: ColumnMetadata,
-): FilterOperator[] {
-  return ML.filterable_column_operators(column);
 }
 
 export function filter(
@@ -349,4 +344,11 @@ export function updateTemporalFilter(
     start,
     end,
   );
+}
+
+export function describeFilterOperator(
+  operator: FilterOperator,
+  variant: FilterOperatorVariant = "default",
+): string {
+  return ML.describe_filter_operator(operator, variant);
 }
