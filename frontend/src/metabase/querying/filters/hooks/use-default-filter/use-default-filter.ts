@@ -28,15 +28,10 @@ export function useDefaultFilter({
     [query, stageIndex, filter],
   );
 
-  const availableOptions = useMemo(
-    () => getAvailableOptions(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const availableOptions = useMemo(() => getAvailableOptions(), []);
 
   const [operator, setOperator] = useState(
-    filterParts
-      ? filterParts.operator
-      : getDefaultOperator(availableOptions, hasInitialOperator),
+    filterParts ? filterParts.operator : getDefaultOperator(hasInitialOperator),
   );
 
   return {

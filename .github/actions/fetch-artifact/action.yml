@@ -2,8 +2,11 @@ name: Fetch artifact
 description: Fetches a specific artifact and downloads it to the current directory
 
 inputs:
-  name:
-    description: The name of the artifact to fetch
+  commit:
+    description: Commit SHA for the artifact
+    required: true
+  edition:
+    description: Metabase edition (ee or oss)
     required: true
   output-name:
     description: Optional custom name for the output jar file (defaults to metabase.jar)
@@ -25,15 +28,18 @@ runs:
         script: | # js
           const fs = require('fs');
 
+          const artifactName = `metabase-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
+          console.log(`Looking for artifact: ${artifactName}`);
+
           const artifacts = await github.rest.actions.listArtifactsForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            name: "${{ inputs.name }}",
+            name: artifactName,
             per_page: 1,
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${{ inputs.name }}`);
+            throw new Error(`No artifacts found for ${artifactName}`);
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;

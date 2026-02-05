@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -349,9 +350,11 @@
                 has-temporal-dim
                 display-type
                 is-superuser?]} search-context
+        enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
+      (empty? enabled-types)       (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
@@ -383,6 +386,11 @@
                 has-temporal-dim
                 display-type]} search-context]
     (cond-> honeysql-query
+      (= model "transform")
+      (sql.helpers/where (search.filter/transform-source-type-where-clause
+                          search-context
+                          (search.config/column-with-model-alias "transform" :source_type)))
+
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 

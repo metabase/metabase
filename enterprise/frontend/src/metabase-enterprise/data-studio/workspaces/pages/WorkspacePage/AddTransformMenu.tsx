@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import {
   getInitialNativeSource,
   getInitialPythonSource,
-} from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
+} from "metabase/transforms/pages/NewTransformPage/utils";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import type { DatabaseId, TransformSource } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 

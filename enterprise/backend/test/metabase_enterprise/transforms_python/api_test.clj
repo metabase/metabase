@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

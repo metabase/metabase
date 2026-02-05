@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
-import type { BooleanFilterValue } from "metabase/querying/filters/types";
+import type { BooleanFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";

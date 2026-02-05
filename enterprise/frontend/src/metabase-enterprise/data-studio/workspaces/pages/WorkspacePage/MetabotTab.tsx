@@ -1,7 +1,7 @@
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import type { MetabotSuggestionActions } from "metabase-enterprise/metabot/context";
 import { useRegisterMetabotSuggestionActions } from "metabase-enterprise/metabot/context";
-import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type {
   DraftTransformSource,
   TaggedTransform,

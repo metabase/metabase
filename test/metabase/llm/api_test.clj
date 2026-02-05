@@ -183,7 +183,7 @@
                                    "prompt_tokens"       1000
                                    "completion_tokens"   200
                                    "total_tokens"        1200
-                                   "estimated_costs_usd" #(and (number? %) (pos? %))
+                                   "estimated_costs_usd" 0.0
                                    "duration_ms"         500
                                    "source"              "oss_metabot"
                                    "tag"                 "oss-sqlgen"}}]
@@ -241,7 +241,7 @@
                               "total_tokens"                  1500
                               "prompt_tokens"                 1000
                               "completion_tokens"             500
-                              "estimated_costs_usd"           #(and (number? %) (pos? %))
+                              "estimated_costs_usd"           0.0
                               "duration_ms"                   1234
                               "source"                        "oss_metabot"
                               "tag"                           "oss-sqlgen"}}]

@@ -8,6 +8,7 @@ import { trackErrorDiagnosticModalOpened } from "metabase/common/components/Erro
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { userInitials } from "metabase/common/utils/user";
+import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -15,7 +16,6 @@ import {
 import type { ColorName } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import { getUser } from "metabase/selectors/user";
@@ -56,9 +56,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   // based on whether they're an admin or not
   const adminItems = useSelector(getAdminPaths);
   const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
-  const canAccessDataStudio = useSelector(
-    PLUGIN_DATA_STUDIO.canAccessDataStudio,
-  );
+  const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
   const isNewInstance = useSelector(getIsNewInstance);
   const helpLink = useHelpLink();
 

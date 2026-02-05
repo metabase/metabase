@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { FilterPicker } from "../../FilterPicker";
 import { FilterPill } from "../FilterPill";
 
 interface FilterPanelPopoverProps {

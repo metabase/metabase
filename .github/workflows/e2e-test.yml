@@ -79,7 +79,8 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ${{ inputs.edition }}
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 

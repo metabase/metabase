@@ -156,7 +156,8 @@ jobs:
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
       uses: ./.github/actions/fetch-artifact
       with:
-        name: metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+        commit: ${{ inputs.commit }}
+        edition: ${{ matrix.edition }}
 
     - name: Update version.properties in jar
       run: | # sh

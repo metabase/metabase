@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { checkNotNull } from "metabase/lib/types";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
+import { isSameSource } from "metabase/transforms/utils";
 import type {
   DatasetQuery,
   DraftTransformSource,

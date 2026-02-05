@@ -2,11 +2,11 @@ import { useCallback, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { useLazyGetTransformQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  useLazyGetTransformQuery,
   useLazyGetWorkspaceTablesQuery,
   useLazyGetWorkspaceTransformQuery,
   useMergeWorkspaceMutation,

@@ -25,13 +25,11 @@ describe("bulk table operations", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    cy.intercept("POST", "/api/ee/data-studio/table/sync-schema").as(
-      "syncSchema",
-    );
-    cy.intercept("POST", "/api/ee/data-studio/table/rescan-values").as(
+    cy.intercept("POST", "/api/data-studio/table/sync-schema").as("syncSchema");
+    cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
       "rescanValues",
     );
-    cy.intercept("POST", "/api/ee/data-studio/table/discard-values").as(
+    cy.intercept("POST", "/api/data-studio/table/discard-values").as(
       "discardValues",
     );
     cy.intercept(

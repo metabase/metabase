@@ -64,7 +64,9 @@
   user-has-permission-for-schema?
   user-has-permission-for-table?
   with-additional-table-permission
-  with-relevant-permissions-for-user]
+  with-relevant-permissions-for-user
+  has-any-transforms-permission?
+  has-db-transforms-permission?]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
@@ -108,9 +110,7 @@
   collection-path?]
  [metabase.permissions.user
   user-permissions-set
-  user->tenant-collection-and-descendant-ids
-  has-any-transforms-permission?
-  has-db-transforms-permission?]
+  user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

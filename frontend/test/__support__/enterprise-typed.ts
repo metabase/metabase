@@ -25,10 +25,10 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   dependencies: "metabase-enterprise/dependencies",
   feature_level_permissions: "metabase-enterprise/feature_level_permissions",
   shared: "metabase-enterprise/shared",
+  transforms: "metabase-enterprise/transforms",
   "transforms-python": "metabase-enterprise/transforms-python",
   remote_sync: "metabase-enterprise/remote_sync",
   public: "metabase-enterprise/public",
-  transforms: "metabase-enterprise/transforms",
   support: "metabase-enterprise/support",
   upload_management: "metabase-enterprise/upload_management",
   "public-sharing": "metabase-enterprise/public-sharing",
@@ -40,7 +40,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   documents: "metabase-enterprise/documents",
   semantic_search: "metabase-enterprise/semantic_search",
   database_replication: "metabase-enterprise/database_replication",
-  "data-studio": "metabase-enterprise/data-studio",
+  library: "metabase-enterprise/data-studio/library",
   caching: "metabase-enterprise/caching",
   group_managers: "metabase-enterprise/group_managers",
   collections: "metabase-enterprise/collections",
@@ -52,6 +52,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
   tenants: "metabase-enterprise/tenants",
+  workspaces: "metabase-enterprise/data-studio/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

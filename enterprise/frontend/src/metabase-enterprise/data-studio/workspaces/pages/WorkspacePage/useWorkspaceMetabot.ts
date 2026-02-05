@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useLazyGetTransformQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { getIsWorkspace } from "metabase/selectors/routing";
-import { useLazyGetTransformQuery } from "metabase-enterprise/api";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import type {
   ApplySuggestionPayload,
@@ -19,7 +19,6 @@ import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metab
 import type {
   MetabotConverstationState,
   MetabotState,
-  MetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import {
   activateSuggestedTransform,
@@ -31,6 +30,7 @@ import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {
   DatabaseId,
   DraftTransformSource,
+  MetabotSuggestedTransform,
   TaggedTransform,
   Transform,
   UnsavedTransform,

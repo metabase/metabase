@@ -3,22 +3,28 @@ import { Route } from "react-router";
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
-import { getAdminRoutes as getAdminUpsellRoutes } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
-import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
+import { getAdminRoutes as getAdminUpsellRoutes } from "./components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
+import { MetabotDataStudioSidebar } from "./components/MetabotDataStudioSidebar";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
-import { getMetabotVisible, metabotReducer } from "./state";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+  getMetabotVisible,
+  metabotReducer,
+} from "./state";
+
 /**
  * This is for Metabot in embedding
  *
@@ -59,6 +65,8 @@ export function initializePlugin() {
       // hooks
       useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,
       useLazyMetabotGenerateContentQuery,
+      getMetabotSuggestedTransform,
+      deactivateSuggestedTransform,
     });
   } else if (hasPremiumFeature("hosting")) {
     Object.assign(PLUGIN_METABOT, {

@@ -5,7 +5,7 @@ import type {
   OmniPickerTableItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
-import type { TransformPickerItem } from "metabase/plugins";
+import type { TransformPickerItem } from "metabase/plugins/oss/transforms";
 import type {
   CardType,
   DependencyEntry,

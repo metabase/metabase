@@ -31,7 +31,7 @@ const mockTransformQueryPageEditor = jest.fn((_props: MockProps) => (
 ));
 
 jest.mock(
-  "metabase-enterprise/transforms/pages/TransformQueryPage/TransformQueryPage",
+  "metabase/transforms/pages/TransformQueryPage/TransformQueryPage",
   () => ({
     TransformQueryPageEditor: (props: MockProps) =>
       mockTransformQueryPageEditor(props),

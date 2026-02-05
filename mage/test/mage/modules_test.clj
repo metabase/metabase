@@ -217,12 +217,12 @@
            mage.modules/cloud-drivers))))
 
 ;;; =============================================================================
-;;; Two roots trigger driver tests: driver and enterprise/transforms
+;;; Two roots trigger driver tests: driver and transforms
 ;;; =============================================================================
 
 (deftest transforms-triggers-driver-tests
-  (testing "enterprise/transforms triggers driver tests (it's a root)"
-    (is (true? (mage.modules/driver-deps-affected? ['enterprise/transforms])))))
+  (testing "transforms triggers driver tests (it's a root)"
+    (is (true? (mage.modules/driver-deps-affected? ['transforms])))))
 
 (deftest driver-triggers-driver-tests
   (testing "driver triggers driver tests (it's a root)"

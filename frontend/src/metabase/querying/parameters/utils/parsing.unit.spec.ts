@@ -1,4 +1,4 @@
-import type { DateFilterValue } from "metabase/querying/filters/types";
+import type { DateFilterValue } from "metabase/querying/common/types";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 import {

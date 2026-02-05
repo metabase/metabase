@@ -120,7 +120,7 @@ const setup = ({
   });
 
   if (enterprise) {
-    setupEnterpriseOnlyPlugin("data-studio");
+    setupEnterpriseOnlyPlugin("library");
     setupEnterpriseOnlyPlugin("tenants");
     setupEnterpriseOnlyPlugin("transforms");
   } else {

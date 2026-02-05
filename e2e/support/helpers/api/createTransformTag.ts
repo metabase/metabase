@@ -17,7 +17,7 @@ export function createTransformTag(
   }: CreateTransformTagOptions = {},
 ): Cypress.Chainable<Cypress.Response<TransformTag>> {
   return cy
-    .request<TransformTag>("POST", "/api/ee/transform-tag", {
+    .request<TransformTag>("POST", "/api/transform-tag", {
       name,
     })
     .then(({ body }) => {

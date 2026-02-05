@@ -1,7 +1,6 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
@@ -42,8 +41,7 @@
 
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
-  (cond-> api/model->db-model
-    config/ee-available? (assoc "transform" {:db-model :model/Transform :alias :transform})))
+  api/model->db-model)
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -73,9 +71,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  (cond-> ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"]
-    config/ee-available? (concat ["transform"])
-    :always (conj "database")))
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -274,7 +270,8 @@
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
    [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]])
+   [:has-temporal-dim                    {:optional true} :boolean]
+   [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string
   "Turn a complex column into a string"

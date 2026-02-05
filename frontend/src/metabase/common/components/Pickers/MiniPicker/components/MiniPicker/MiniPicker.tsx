@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Menu } from "metabase/ui";
 
 import type { DataPickerValue } from "../../../DataPicker";
@@ -40,8 +40,7 @@ export function MiniPicker({
   shouldHide,
   shouldShowLibrary = true,
 }: MiniPickerProps) {
-  const { data: libraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
     value,

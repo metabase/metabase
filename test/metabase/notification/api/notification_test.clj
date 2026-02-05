@@ -1021,6 +1021,21 @@
                              :expected-subject "You’ve been unsubscribed from an alert"
                              :card-url-tag card-url-tag))))
 
+          (testing "when notification is archived (active -> inactive) with disable_links value:"
+            (let [has-link? (fn [disable_links]
+                              (notification.tu/with-card-notification
+                                [{noti-id :id :as notification} (assoc-in base-notification [:notification-card :disable_links] disable_links)]
+                                (->> (update-notification! noti-id notification {:active false})
+                                     first :body first :content
+                                     (re-find #"href=")
+                                     (= "href="))))]
+              (testing "false will keep links in the alert unsubscribe email"
+                (is (true? (has-link? false))))
+              (testing "nil will keep links in the alert unsubscribe email"
+                (is (true? (has-link? nil))))
+              (testing "true will remove all links in the alert unsubscribe email"
+                (is (false? (has-link? true))))))
+
           (testing "when notification is unarchived (inactive -> active)"
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} (assoc-in base-notification [:notification :active] false)]

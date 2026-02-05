@@ -1,54 +1,52 @@
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { OperatorOption } from "./types";
+import { OPERATORS } from "./constants";
+import type { StringFilterOperatorOption } from "./types";
 
 function isNotEmpty(value: string) {
   return value.length > 0;
 }
 
 export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
-) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+): StringFilterOperatorOption[] {
+  const isStringLike = Lib.isStringLike(column);
+
+  return Object.values(OPERATORS)
+    .filter(({ type }) => !isStringLike || type !== "partial")
+    .map(({ operator }) => ({
+      operator,
+      displayName: Lib.describeFilterOperator(operator),
+    }));
 }
 
 export function getOptionByOperator(operator: Lib.StringFilterOperator) {
-  return OPERATOR_OPTIONS[operator];
+  return OPERATORS[operator];
 }
 
 export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
-  availableOptions: OperatorOption[],
 ): Lib.StringFilterOperator {
   const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
-  const desiredOperator =
+  if (
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
+    Lib.isStringLike(column) ||
     fieldValuesInfo.hasFieldValues !== "none"
-      ? "="
-      : "contains";
-  return getDefaultAvailableOperator(availableOptions, desiredOperator);
+  ) {
+    return "=";
+  }
+
+  return "contains";
 }
 
 export function getDefaultValues(
   operator: Lib.StringFilterOperator,
   values: string[],
 ): string[] {
-  const { type } = OPERATOR_OPTIONS[operator];
+  const { type } = OPERATORS[operator];
   return type !== "empty" ? values.filter(isNotEmpty) : [];
 }
 
@@ -77,7 +75,7 @@ function getFilterParts(
   values: string[],
   options: Lib.StringFilterOptions,
 ): Lib.StringFilterParts | undefined {
-  const { type } = OPERATOR_OPTIONS[operator];
+  const { type } = OPERATORS[operator];
   if (values.length === 0 && type !== "empty") {
     return undefined;
   }

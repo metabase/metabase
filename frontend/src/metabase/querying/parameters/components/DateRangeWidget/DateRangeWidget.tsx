@@ -6,7 +6,7 @@ import { t } from "ttag";
 import {
   DateRangePicker,
   type DateRangePickerValue,
-} from "metabase/querying/filters/components/DatePicker/SpecificDatePicker/DateRangePicker";
+} from "metabase/querying/common/components/DatePicker/SpecificDatePicker/DateRangePicker";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,

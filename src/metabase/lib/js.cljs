@@ -948,32 +948,6 @@
       (fn [_]
         (to-array (lib.core/filterable-columns a-query stage-number opts)))))))
 
-(defn ^:export filterable-column-operators
-  "Returns the filter operators which can be used in a filter for `filterable-column`.
-
-  `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
-  like [[visible-columns]].
-
-  > **Code health:** Healthy"
-  [filterable-column]
-  (to-array (lib.core/filterable-column-operators filterable-column)))
-
-(defn ^:export filter-clause
-  "Given a `filter-operator`, `column`, and 0 or more extra arguments, returns a standalone filter clause.
-
-  `filter-operator` comes from [[filterable-column-operators]], and `column` from [[filterable-columns]].
-
-  > **Code health:** Healthy"
-  [filter-operator column & args]
-  (apply lib.core/filter-clause filter-operator column args))
-
-(defn ^:export filter-operator
-  "Returns the filter operator used in `a-filter-clause`.
-
-  > **Code health:** Healthy"
-  [a-query stage-number a-filter-clause]
-  (lib.core/filter-operator a-query stage-number a-filter-clause))
-
 (defn ^:export filter
   "Adds `a-filter-clause` as a filter on `a-query`."
   [a-query stage-number a-filter-clause]
@@ -989,6 +963,18 @@
   > **Code health:** Healthy"
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
+
+(defn ^:export describe-filter-operator
+  "Returns a human-readable display name for a filter operator.
+
+  `operator` is a string like \"=\", \"!=\", \"contains\", etc.
+  `variant` is an optional string: \"default\" or \"equal-to\". Defaults to \"default\".
+
+  > **Code health:** Healthy"
+  ([operator]
+   (lib.core/describe-filter-operator (keyword operator)))
+  ([operator variant]
+   (lib.core/describe-filter-operator (keyword operator) (keyword variant))))
 
 ;; # Expressions
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported

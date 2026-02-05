@@ -1,5 +1,4 @@
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { MetricCachingPage } from "metabase-enterprise/data-studio/metrics/pages/MetricCachingPage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
@@ -14,6 +13,7 @@ import {
   enterpriseOnlyCachingStrategies,
   getEnterprisePerformanceTabMetadata,
 } from "./constants";
+import { MetricCachingPage } from "./pages/MetricCachingPage";
 import { hasQuestionCacheSection } from "./utils";
 
 /**

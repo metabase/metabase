@@ -8,10 +8,10 @@ import {
 } from "metabase/common/components/Pickers";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
+import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Card, Dashboard } from "metabase-types/api";
 
@@ -103,7 +103,7 @@ export const AddToDashSelectDashModal = ({
 
       // if there can't be dashboards in the collection, you can't add a question to one there
       if (
-        !PLUGIN_DATA_STUDIO.canPlaceEntityInCollectionOrDescendants(
+        !canPlaceEntityInCollectionOrDescendants(
           "dashboard",
           getCollectionType(item),
         )

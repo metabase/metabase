@@ -1172,26 +1172,72 @@
         accum
         (recur to-traverse traversed accum)))))
 
+(defn- select-for-eligibility-check
+  "Select instances with fields needed for remote-sync eligibility checking.
+   Returns nil for nested models like DashboardCard that don't need separate eligibility checks."
+  [model-key ids]
+  (when (seq ids)
+    (case model-key
+      :model/Collection
+      ;; Collections use their own :id for eligibility, plus namespace and is_remote_synced
+      (t2/select [model-key :id :namespace :is_remote_synced] :id [:in ids])
+      :model/Table
+      (t2/select [model-key :id :collection_id :is_published] :id [:in ids])
+      ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
+      (:model/DashboardCard :model/DashboardCardSeries)
+      nil
+      ;; Default - most models just need id and collection_id
+      (t2/select [model-key :id :collection_id] :id [:in ids]))))
+
+(defn- filter-eligible-dependents
+  "Filter a list of dependent info maps to only include those that are eligible for remote sync.
+   Each dependent-info is a map like {\"Card\" 123} or {\"Dashboard\" 456}.
+   Returns only those where the model instance is eligible for remote sync.
+   Nested models (like DashboardCard) are always considered eligible since their parent is checked."
+  [dependent-infos]
+  (let [;; Group by model type and collect IDs
+        grouped (reduce (fn [acc dependent-info]
+                          (reduce-kv (fn [acc' model-name inst-id]
+                                       (update acc' model-name (fnil conj #{}) inst-id))
+                                     acc
+                                     dependent-info))
+                        {}
+                        dependent-infos)
+        ;; For each model type, check eligibility
+        eligible-ids (reduce-kv (fn [acc model-name ids]
+                                  (let [model-key (keyword "model" model-name)
+                                        instances (select-for-eligibility-check model-key ids)]
+                                    (if (nil? instances)
+                                      ;; Nested models (DashboardCard, etc.) - all are eligible
+                                      (assoc acc model-name ids)
+                                      ;; Check eligibility via batch function
+                                      (let [eligibility-map (remote-sync/batch-model-eligible? model-key instances)
+                                            eligible (into #{} (keep (fn [[iid eligible?]] (when eligible? iid))) eligibility-map)]
+                                        (assoc acc model-name eligible)))))
+                                {}
+                                grouped)]
+    ;; Filter original list to keep only eligible ones
+    (filter (fn [dependent-info]
+              (every? (fn [[model-name inst-id]]
+                        (contains? (get eligible-ids model-name #{}) inst-id))
+                      dependent-info))
+            dependent-infos)))
+
 (defn remote-synced-dependents
-  "Finds dependents of a model that are contained in ANY remote-synced collection.
-
-  For cards, checks if there are any other queries that reference this card. For collections, checks dependents of
-  all cards in the collection or subcollections. For all other models it returns an empty seq. Only checks for
-  immediate dependents.
-
-  All remote-synced collections are treated as a unified pool - dependents in any remote-synced collection
-  (regardless of root) are returned.
+  "Finds dependents of a model that are eligible for remote sync.
+   Uses spec-based eligibility rules which account for special cases like
+   snippets (eligible when Library is synced, not by collection).
 
   Takes model (the model to check dependents for).
 
-  Returns a sequence of models immediately dependent on the provided model that are in any remote-synced collection."
+  Returns a sequence of {model-name id} maps for dependents that are eligible for remote sync."
   [{:keys [id archived] :as model}]
   (let [;; Get ALL top-level remote-synced collections
         all-remote-synced-roots (t2/select-pks-set :model/Collection
                                                    {:where [:and
                                                             [:= :is_remote_synced true]
                                                             [:= :location "/"]]})
-          ;; Traverse descendants of all remote-synced roots combined
+        ;; Traverse descendants of all remote-synced roots combined
         all-remote-synced-descendants (reduce (fn [accum root-id]
                                                 (merge-with concat accum
                                                             (traverse-descendants ["Collection" root-id] true)))
@@ -1199,38 +1245,39 @@
                                               all-remote-synced-roots)]
     (case (t2/model model)
       :model/Collection
-        ;; Get all descendants of the collection being moved and see if any of them are present in the
-        ;; set of all descendants across all remote-synced roots
-      (->> (traverse-descendants ["Collection" id] (not archived))
-           keys
-           (mapcat #(get all-remote-synced-descendants %)))
+      ;; Get all descendants of the collection being moved and see if any of them are present in the
+      ;; set of all descendants across all remote-synced roots, then filter by eligibility
+      (let [all-dependents (->> (traverse-descendants ["Collection" id] (not archived))
+                                keys
+                                (mapcat #(get all-remote-synced-descendants %)))]
+        (filter-eligible-dependents all-dependents))
 
-        ;; If this is not a collection see if the provided model appears anywhere in the descendants of
-        ;; any remote-synced collection
-      (get all-remote-synced-descendants [(name (t2/model model)) id] []))))
+      ;; If this is not a collection see if the provided model appears anywhere in the descendants of
+      ;; any remote-synced collection, then filter by eligibility
+      (let [direct-dependents (get all-remote-synced-descendants [(name (t2/model model)) id] [])]
+        (filter-eligible-dependents direct-dependents)))))
 
 (defn non-remote-synced-dependencies
-  "Finds dependencies of a model that are not contained in ANY remote-synced collection.
-
-  Checks for dependencies that could be contained in a remote-synced collection but are not.
-  All remote-synced collections are treated as a unified pool - a dependency in any remote-synced
-  collection (regardless of root) is considered valid.
-
-  Uses serdes/descendants to list dependencies of a model.
+  "Finds dependencies of a model that are not eligible for remote sync.
+   Uses spec-based eligibility rules which account for special cases like
+   snippets (eligible when Library is synced, not by collection).
 
   Takes model (the model to check dependencies for).
 
-  Returns a set of model IDs for dependencies of the given model that are not in any remote-synced collection."
+  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync."
   [{:keys [id] :as model}]
   (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
     (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
-      (apply set/union (for [m (collectable-models)
-                             :let [key (name m)]]
-                         (set/difference (set (get descendants key))
-                                         (t2/select-pks-set m {:inner-join [[:collection :c]
-                                                                            [:and
-                                                                             [:= :c.id :collection_id]
-                                                                             [:= :c.is_remote_synced true]]]})))))
+      (apply set/union
+             (for [m (collectable-models)
+                   :let [key (name m)
+                         descendant-ids (set (get descendants key))]
+                   :when (seq descendant-ids)]
+               (let [instances (select-for-eligibility-check m descendant-ids)
+                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
+                 (into #{}
+                       (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
+                       eligibility-map)))))
     #{}))
 
 (defn check-non-remote-synced-dependencies

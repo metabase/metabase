@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

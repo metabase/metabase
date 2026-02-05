@@ -11,6 +11,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -58,14 +59,6 @@
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
     true))
-
-(defmethod check-permissions-for-model :transform
-  [search-ctx instance]
-  (and (:is-superuser? search-ctx)
-       (premium-features/enable-transforms?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
 
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
@@ -326,6 +319,7 @@
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
+                        :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
