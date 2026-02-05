@@ -1988,7 +1988,7 @@
       },
       "metabase-enterprise.data-studio.api.table.data-layers" : {
         "type" : "string",
-        "enum" : [ "copper", "bronze", "gold", "silver" ]
+        "enum" : [ "final", "internal", "hidden" ]
       },
       "metabase-enterprise.data-studio.api.table.data-sources" : {
         "type" : "string",
@@ -14042,7 +14042,7 @@
       },
       "metabase.warehouse-schema-rest.api.table.data-layers" : {
         "type" : "string",
-        "enum" : [ "copper", "bronze", "gold", "silver" ]
+        "enum" : [ "final", "internal", "hidden" ]
       },
       "metabase.warehouse-schema-rest.api.table.data-sources" : {
         "type" : "string",
