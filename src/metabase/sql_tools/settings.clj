@@ -12,9 +12,7 @@
   :visibility :internal
   :export? false
   :type :keyword
-  :default (if config/is-dev?
-             :sqlglot
-             :macaw)
+  :default :sqlglot
   :setter (fn [new-value]
             (or (available-parser-backends (keyword new-value))
                 (throw (ex-info (tru "Invalid sql-tools parser backend.")
