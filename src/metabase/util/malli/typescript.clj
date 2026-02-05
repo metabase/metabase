@@ -17,14 +17,18 @@
 ;; When bound to an atom, registry refs are recorded so we can generate type aliases.
 (def ^:dynamic *registry-refs* nil)
 
+;; Dynamic var for shared types - when bound to a set, refs in this set will be
+;; prefixed with "Shared." to reference the shared module.
+(def ^:dynamic *shared-types* #{})
+
 (defn- record-registry-ref!
   "Record a registry schema reference for later type alias generation."
   [schema-keyword]
   (when *registry-refs*
     (swap! *registry-refs* conj schema-keyword)))
 
-(defn- registry-type-name
-  "Convert a qualified keyword like ::lib.schema/query to a TypeScript type name like Lib_Schema_Query.
+(defn- base-type-name
+  "Convert a qualified keyword like ::lib.schema/query to a base TypeScript type name like Lib_Schema_Query.
    Handles special characters that are invalid in TypeScript identifiers."
   [kw]
   (let [;; Map special characters to readable names
@@ -50,6 +54,15 @@
                             (map str/capitalize)
                             (str/join "_"))))]
     (str (munge-part (namespace kw)) "_" (munge-part (name kw)))))
+
+(defn- registry-type-name
+  "Convert a qualified keyword to a TypeScript type reference.
+   If the type is in *shared-types*, prefix with 'Shared.' to reference the shared module."
+  [kw]
+  (let [base-name (base-type-name kw)]
+    (if (contains? *shared-types* kw)
+      (str "Shared." base-name)
+      base-name)))
 
 (defn normalize-schema [schema]
   (when-not (vector? schema)
@@ -178,34 +191,59 @@
     (-> (str/join ", " (map schema->ts children))
         (wrap "[]"))))
 
+(defn- unknown-type?
+  "Check if a type string is effectively 'unknown' (no useful type info)."
+  [s]
+  (or (= s "unknown")
+      (str/starts-with? s "unknown /*")))
+
+(defn- simplify-union-types
+  "Simplify a collection of union type strings:
+   - If any type is 'any', return [\"any\"] (any absorbs everything)
+   - Remove 'unknown' types (they provide no useful info)
+   - Return distinct types"
+  [types]
+  (if (some #(= % "any") types)
+    ["any"]
+    (->> types
+         (remove unknown-type?)
+         distinct
+         vec)))
+
 (defmethod -schema->ts :or
   [schema]
   (let [children (mc/children schema)
-        types    (->> (map schema->ts children)
-                      (remove #(str/starts-with? % "unknown /* unsupported")))]
-    (if (seq types)
+        types    (simplify-union-types (map schema->ts children))]
+    (case (count types)
+      0 "unknown"
+      1 (first types)
       (-> (str/join " | " types)
-          (wrap "()"))
-      "unknown /* unsupported */")))
+          (wrap "()")))))
 
 (defmethod -schema->ts :orn
   [schema]
-  (let [children (mc/children schema)]
-    (-> (str/join " | "
+  (let [children (mc/children schema)
+        types    (simplify-union-types
                   (map (fn [[_name _opts child-schema]]
                          (schema->ts child-schema))
-                       children))
-        (wrap "()"))))
+                       children))]
+    (case (count types)
+      0 "unknown"
+      1 (first types)
+      (-> (str/join " | " types)
+          (wrap "()")))))
 
 (defmethod -schema->ts :and
   [schema]
   (let [children (mc/children (mc/schema schema))
         types (->> (map schema->ts children)
-                   (remove #(str/starts-with? % "unknown /* unsupported")))]
-    (if (seq types)
+                   (remove unknown-type?)
+                   distinct)]
+    (case (count types)
+      0 "unknown"
+      1 (first types)
       (-> (str/join " & " types)
-          (wrap "()"))
-      "unknown /* unsupported */")))
+          (wrap "()")))))
 
 (defmethod -schema->ts :maybe
   [schema]
@@ -238,12 +276,15 @@
 
 (defmethod -schema->ts :multi
   [schema]
-  (let [children (mc/children (mc/schema schema))]
-    (if (empty? children)
-      "unknown"
-      (-> (str/join " | " (map (fn [[_key _opts child-schema]]
-                                 (schema->ts child-schema))
-                               children))
+  (let [children (mc/children (mc/schema schema))
+        types    (simplify-union-types
+                  (map (fn [[_key _opts child-schema]]
+                         (schema->ts child-schema))
+                       children))]
+    (case (count types)
+      0 "unknown"
+      1 (first types)
+      (-> (str/join " | " types)
           (wrap "()")))))
 
 (defmethod -schema->ts :ref
@@ -565,8 +606,11 @@
                                      (log/warn "Failed to expand schema for type alias"
                                                {:schema current-ref :error (.getMessage e)})
                                      "unknown")))
-                  type-name    (registry-type-name current-ref)
-                  alias-decl   (str "type " type-name " = " type-def ";")
+                  ;; Use base-type-name for the definition (no Shared. prefix)
+                  type-name    (base-type-name current-ref)
+                  ;; Skip useless `type X = unknown;` aliases
+                  alias-decl   (when-not (unknown-type? type-def)
+                                 (str "export type " type-name " = " type-def ";"))
                   ;; Filter new refs to only valid registry schemas, exclude self-refs
                   new-refs     (->> @new-refs-atom
                                     (remove #(= % current-ref))
@@ -574,17 +618,43 @@
                                     set)]
               (recur (into remaining (remove processed new-refs))
                      (conj processed current-ref)
-                     (conj aliases alias-decl)))))))))
+                     (if alias-decl
+                       (conj aliases alias-decl)
+                       aliases)))))))))
 
-(defn- ts-content [defs]
+(defn- collect-refs-from-defs
+  "Collect all registry schema refs used by a set of defs (without generating full TypeScript).
+   Returns a set of qualified keywords."
+  [defs]
   (binding [*registry-refs* (atom #{})]
-    (let [fn-defs (->> (vals defs)
-                       (map def->ts)
-                       (str/join "\n\n"))
-          type-aliases (generate-type-aliases @*registry-refs*)]
-      (if (seq type-aliases)
-        (str "// Type aliases for registry schemas\n" type-aliases "\n\n" fn-defs)
-        fn-defs))))
+    (doseq [defmeta (vals defs)]
+      (try
+        (def->ts defmeta)
+        (catch Exception _)))
+    @*registry-refs*))
+
+(defn- ts-content
+  "Generate TypeScript content for a namespace.
+   - defs: map of def name -> metadata
+   - shared-types: set of schema keywords that are defined in shared.d.ts (optional)"
+  ([defs]
+   (ts-content defs #{}))
+  ([defs shared-types]
+   (binding [*registry-refs* (atom #{})]
+     (let [fn-defs (->> (vals defs)
+                        (map def->ts)
+                        (str/join "\n\n"))
+           ;; Only generate aliases for types NOT in shared-types
+           local-refs (remove shared-types @*registry-refs*)
+           type-aliases (generate-type-aliases local-refs)
+           ;; Add import for shared types if any refs are in shared-types
+           shared-refs-used (filter shared-types @*registry-refs*)
+           import-stmt (when (seq shared-refs-used)
+                         "import type * as Shared from './metabase.lib.shared';\n\n")]
+       (str (or import-stmt "")
+            (if (seq type-aliases)
+              (str "// Type aliases for registry schemas\n" type-aliases "\n\n" fn-defs)
+              fn-defs))))))
 
 (comment
   (requiring-resolve 'metabase.lib.binning/with-binning-option-type)
@@ -604,6 +674,34 @@
       (log/debug "Skipping cljs-only namespace" {:ns ns})
       false)))
 
+(defn- generate-shared-types-content
+  "Generate content for the shared types file.
+   Takes a set of schema keywords that should be defined in the shared file."
+  [shared-refs]
+  (binding [*shared-types* #{}]  ; No Shared. prefix when defining in shared file
+    (let [type-aliases (generate-type-aliases shared-refs)]
+      (str "// Shared type aliases for registry schemas used by multiple modules\n"
+           "// Auto-generated - do not edit\n\n"
+           type-aliases))))
+
+(defn- generate-reexports
+  "Generate re-export statements for metabase.lib.js.d.ts to re-export from all metabase.lib.* modules."
+  [lib-namespaces]
+  (let [;; Filter to only metabase.lib.* namespaces, excluding metabase.lib.js itself
+        lib-nses (->> lib-namespaces
+                      (filter (fn [ns]
+                                (and (str/starts-with? (str ns) "metabase.lib.")
+                                     (not= ns 'metabase.lib.js))))
+                      sort)]
+    (when (seq lib-nses)
+      (str "\n// Re-exports from metabase.lib.* modules\n"
+           (->> lib-nses
+                (map (fn [ns]
+                       (let [fname (comp/munge (str ns))]
+                         (str "export * from './" fname "';"))))
+                (str/join "\n"))
+           "\n"))))
+
 (defn produce-dts
   {:shadow.build/stage :flush}
   [state]
@@ -616,14 +714,39 @@
                          nses)
         defs-count (count nses-defs)]
     (log/info "Compiling TypeScript defs" {:namespaces defs-count :total total})
-    (doseq [[ns defs] nses-defs]
-      (let [t (u/start-timer)]
-        (try-require-ns ns)
-        (log/debug "Loading ns completed" {:ns ns :time (u/since-ms t)}))
-      (let [t     (u/start-timer)
-            fname (comp/munge (str ns))
-            f     (b.data/output-file state (str fname ".d.ts"))]
-        (spit f (ts-content defs))
-        (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))
+    ;; First pass: require all namespaces and collect refs to count usage
+    (log/debug "Pass 1: Collecting type references across all namespaces")
+    (doseq [[ns _defs] nses-defs]
+      (try-require-ns ns))
+    (let [;; Collect refs from each namespace
+          ns-refs (into {}
+                        (for [[ns defs] nses-defs]
+                          [ns (collect-refs-from-defs defs)]))
+          ;; Count how many namespaces reference each schema
+          ref-counts (frequencies (mapcat val ns-refs))
+          ;; Shared types are those used by 2+ namespaces
+          shared-refs (into #{} (keep (fn [[ref cnt]] (when (>= cnt 2) ref)) ref-counts))]
+      (log/info "Shared types analysis" {:total-refs (count ref-counts)
+                                         :shared-refs (count shared-refs)})
+      ;; Generate shared.d.ts
+      (when (seq shared-refs)
+        (let [f (b.data/output-file state "metabase.lib.shared.d.ts")]
+          (spit f (generate-shared-types-content shared-refs))
+          (log/debug "Generated shared types file" {:types (count shared-refs)})))
+      ;; Second pass: generate per-namespace files
+      (log/debug "Pass 2: Generating per-namespace type files")
+      (let [lib-namespaces (map first nses-defs)]
+        (doseq [[ns defs] nses-defs]
+          (let [t     (u/start-timer)
+                fname (comp/munge (str ns))
+                f     (b.data/output-file state (str fname ".d.ts"))
+                content (binding [*shared-types* shared-refs]
+                          (ts-content defs shared-refs))
+                ;; Add re-exports for metabase.lib.js
+                content (if (= ns 'metabase.lib.js)
+                          (str content (generate-reexports lib-namespaces))
+                          content)]
+            (spit f content)
+            (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))))
     (log/info "TypeScript defs compilation complete" {:namespaces defs-count}))
   state)
