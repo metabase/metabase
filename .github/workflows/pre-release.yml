@@ -234,6 +234,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
+      release: "true"
 
   containerize-ee:
     needs: release-artifact
@@ -244,6 +245,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
+      release: "true"
 
   tests-complete-message:
     if: always()

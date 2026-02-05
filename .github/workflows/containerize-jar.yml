@@ -38,6 +38,13 @@ on:
       commit:
         description: the full commit hash
         type: string
+      release:
+        description: Whether this is a release artifact (uses metabase-release- prefix)
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
 
 jobs:
   containerize:

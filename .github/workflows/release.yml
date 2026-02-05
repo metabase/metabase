@@ -265,6 +265,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
+      release: "true"
 
   containerize-ee:
     needs: check-version
@@ -275,6 +276,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
+      release: "true"
 
   push-tags:
     permissions: write-all
