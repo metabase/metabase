@@ -195,7 +195,9 @@ export class Scalar extends Component<
       jsx: true,
     };
 
-    const segments = settings["scalar.segments"]?.filter(segmentIsValid);
+    const segments = settings["scalar.segments"]?.filter((segment) =>
+      segmentIsValid(segment, { allowOpenEnded: true }),
+    );
 
     const color = getColor(value, segments);
     const tooltipContent = getTooltipContent(segments);
