@@ -68,6 +68,7 @@
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -558,7 +559,7 @@
   Uses the standard aggregation display name patterns internally."
   [display-name]
   (let [patterns (lib.aggregation/aggregation-display-name-patterns)
-        parts (lib.util/parse-column-display-name-parts display-name patterns)]
+        parts (lib.display-name/parse-column-display-name-parts display-name patterns)]
     (to-array (map clj->js parts))))
 
 (defn ^:export numeric-binning-strategies
