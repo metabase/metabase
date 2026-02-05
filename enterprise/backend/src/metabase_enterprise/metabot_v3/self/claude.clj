@@ -139,13 +139,14 @@
        [:tools {:optional true} [:sequential [:or
                                               [:fn var?]
                                               [:tuple :string [:fn var?]]
-                                                  ;; Also accept [name, {:doc :schema :fn}] for wrapped tools
+                                              ;; Also accept [name, {:doc :schema :fn}] for wrapped tools
                                               [:tuple :string [:map
                                                                [:doc {:optional true} [:maybe :string]]
                                                                [:schema :any]
                                                                [:fn [:fn fn?]]]]]]]
        [:schema {:optional true} :any]]]
-  (assert (llm/ee-anthropic-api-key) "No Anthropic API key!")
+  (when-not (llm/ee-anthropic-api-key)
+    (throw (ex-info "No Anthropic API key is set" {})))
   (let [req (cond-> {:model      model
                      :max_tokens 4096
                      :stream     true
@@ -166,8 +167,19 @@
                             :body    (json/encode req)})]
         (core/sse-reducible (:body res)))
       (catch Exception e
-        (if-let [res (ex-data e)]
-          (throw (ex-info (.getMessage e) (json/decode-body res)))
+        (if-let [res (some-> (ex-data e)
+                             json/decode-body)]
+          (let [status (:status res)
+                msg    (case (int status)
+                         401 "Anthropic API key expired or invalid"
+                         403 "Anthropic API key has not enough permissions"
+                         404 "Anthropic API is telling us we cannot access this URL anymore?"
+                         413 "Anthropic API is not happy with our request being too big"
+                         429 "Anthropic API has rate limited us"
+                         500 "Anthropic API is not working but not saying why"
+                         529 "Anthropid API is overloaded and is asking us to wait"
+                         "Unhandled error accessing Anthropic API")]
+            (throw (ex-info msg (assoc res :api-error true) e)))
           (throw e))))))
 
 (defn claude
