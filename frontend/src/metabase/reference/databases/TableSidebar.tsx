@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -15,17 +14,10 @@ import { trackReferenceXRayClicked } from "../analytics";
 interface TableSidebarProps {
   database: Database;
   table: Table;
-  className?: string;
-  style?: CSSProperties;
 }
 
-const TableSidebar = ({
-  database,
-  table,
-  style,
-  className,
-}: TableSidebarProps) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const TableSidebar = ({ database, table }: TableSidebarProps) => (
+  <div className={S.sidebar}>
     <div>
       <Breadcrumbs
         className={cx(CS.py4, CS.ml3)}
