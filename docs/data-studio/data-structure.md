@@ -1,6 +1,6 @@
 ---
 title: Data structure
-summary: See all the tables in your m
+summary: See all the tables in your Metabase instance and configure how people work with them.
 ---
 
 ## Data structure
