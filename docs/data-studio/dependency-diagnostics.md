@@ -68,9 +68,9 @@ To fix this, either restore the expected column names in the SQL query or update
 
 Unreferenced entities shows items that aren't used by any other non-archived content. Use this view to clean up unused content, especially reusable items like models, metrics, and snippets. Start by checking why an item was created, when it was last edited, and whether it was meant to be reused.
 
-An unreferenced item isn't broken and isn't automatically safe to delete. It simply means nothing else depends on it.
+An unreferenced item isn't broken and isn't automatically safe to delete. It simply means nothing else depends on it. Check [Usage analytics](../usage-and-performance-tools/usage-analytics.md) for view activity before you archive or delete an item.
 
-This view is limited to what you can access, so an item can show up as unreferenced even if something you can’t see depends on it.
+The Unreferenced entities list is limited to what you can access, so an item can show up as unreferenced even if something you can’t see depends on it.
 
 Unreferenced entities includes:
 
