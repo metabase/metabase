@@ -23,6 +23,10 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
 
+## Workspaces & Transforms
+
+- **[workspace-transforms](.claude/skills/workspace-transforms/SKILL.md)** - Develop and debug transforms in isolated workspaces via the enterprise API
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.
