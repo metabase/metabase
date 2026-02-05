@@ -4,7 +4,10 @@
    This namespace contains only the multimethod definitions. Implementations
    are in metabase.sql-tools.macaw.core and metabase.sql-tools.sqlglot.core.")
 
-(defn parser-dispatch [parser & _args] parser)
+(defn parser-dispatch
+  "Dispatch function for sql-tools multimethods. Returns the parser keyword (e.g. :macaw, :sqlglot)."
+  [parser & _args]
+  parser)
 
 (defmulti returned-columns-impl
   "Parser specific implementation of [[metabase.sql-tools.core/returned-columns]]. Do not use directly."
