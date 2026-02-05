@@ -435,9 +435,11 @@ describe("scenarios > embedding > modular embedding", () => {
           afterEmbed: `
             <script>
               window.handleLinkCalls = [];
-              window.metabaseConfig.handleLink = (url) => {
-                window.handleLinkCalls.push(url);
-                return { handled: true };
+              window.metabaseConfig.pluginsConfig = {
+                handleLink: (url) => {
+                  window.handleLinkCalls.push(url);
+                  return { handled: true };
+                },
               };
             </script>
           `,
@@ -458,7 +460,6 @@ describe("scenarios > embedding > modular embedding", () => {
         .should("include", "https://example.org/order/448");
     });
   });
-});
 
   describe("analytics", () => {
     beforeEach(() => {

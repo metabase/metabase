@@ -437,7 +437,7 @@ export abstract class MetabaseEmbedElement
     // Note: if we wrap other functions like this, let's come up with a generic utility function
     if (event.data.type === "metabase.embed.handleLink") {
       const { url, requestId } = event.data.data;
-      const handleLink = this.globalSettings.handleLink;
+      const handleLink = this.globalSettings.pluginsConfig?.handleLink;
 
       let handled = false;
       if (typeof handleLink === "function") {
@@ -467,7 +467,8 @@ export abstract class MetabaseEmbedElement
       const normalizedData = Object.entries(data).reduce(
         (acc, [key, value]) => {
           // Functions are not serializable, so we ignore them.
-          if (typeof value === "function") {
+          // `pluginsConfig` contains functions so we also skip it.
+          if (typeof value === "function" || key === "pluginsConfig") {
             return acc;
           }
 
