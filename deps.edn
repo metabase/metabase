@@ -443,9 +443,10 @@
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
     io.github.metabase/hawk            {:mvn/version "1.0.13"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
+    org.clojure/clojurescript          {:mvn/version "1.12.134"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "3.2.1"}}}
+    thheller/shadow-cljs               {:mvn/version "3.3.5"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers

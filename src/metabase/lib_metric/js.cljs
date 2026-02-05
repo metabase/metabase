@@ -1,12 +1,14 @@
 (ns metabase.lib-metric.js
   "JavaScript-facing API for lib-metric functions."
   (:require
-   [cljs.proxy :as proxy]
    [goog.object :as gobject]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
+   [metabase.lib-metric.proxy :as proxy]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]))
 
 (def ^:private camel->kebab-proxy
@@ -129,6 +131,69 @@
   (proxy/proxy (lib-metric.definition/projections definition)))
 
 ;; =============================================================================
+;; Mock data for stubs
+;; =============================================================================
+
+(def ^:private mock-dimensions
+  "Mock dimension metadata for testing."
+  [{:lib/type       :metadata/dimension
+    :id             "d1-created-at"
+    :name           "created_at"
+    :display-name   "Created At"
+    :effective-type :type/DateTime
+    :semantic-type  :type/CreationTimestamp
+    :source-type    :metric
+    :source-id      1}
+   {:lib/type       :metadata/dimension
+    :id             "d2-category"
+    :name           "category"
+    :display-name   "Category"
+    :effective-type :type/Text
+    :semantic-type  :type/Category
+    :source-type    :metric
+    :source-id      1}
+   {:lib/type       :metadata/dimension
+    :id             "d3-amount"
+    :name           "amount"
+    :display-name   "Amount"
+    :effective-type :type/Number
+    :semantic-type  nil
+    :source-type    :metric
+    :source-id      1}])
+
+(def ^:private mock-temporal-buckets
+  "Mock temporal buckets for date/time dimensions."
+  [{:lib/type :temporal-bucket
+    :unit     :day}
+   {:lib/type :temporal-bucket
+    :unit     :week}
+   {:lib/type :temporal-bucket
+    :unit     :month
+    :default  true}
+   {:lib/type :temporal-bucket
+    :unit     :quarter}
+   {:lib/type :temporal-bucket
+    :unit     :year}])
+
+(def ^:private mock-binning-strategies
+  "Mock binning strategies for numeric dimensions."
+  [{:lib/type :binning-strategy
+    :strategy :default
+    :default  true}
+   {:lib/type    :binning-strategy
+    :strategy    :num-bins
+    :num-bins    10}
+   {:lib/type    :binning-strategy
+    :strategy    :num-bins
+    :num-bins    50}
+   {:lib/type    :binning-strategy
+    :strategy    :num-bins
+    :num-bins    100}
+   {:lib/type    :binning-strategy
+    :strategy    :bin-width
+    :bin-width   1.0}])
+
+;; =============================================================================
 ;; NotImplemented stubs with mock data
 ;; =============================================================================
 
@@ -137,7 +202,7 @@
    STUB: Returns mock data."
   [_js-definition]
   {:lib/type :metric/definition
-   :source {:type :mock}})
+   :source {:type :source/metric :id 1}})
 
 (defn ^:export toJsMetricDefinition
   "Convert a MetricDefinition to a JS metric definition.
@@ -149,9 +214,9 @@
 
 (defn ^:export filterableDimensions
   "Get dimensions that can be used for filtering.
-   STUB: Returns empty array."
+   STUB: Returns mock dimensions."
   [_definition]
-  (proxy/proxy []))
+  (proxy/proxy mock-dimensions))
 
 (defn ^:export filter
   "Add a filter clause to a metric definition.
@@ -164,8 +229,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/string
-   :operator :=
-   :mock? true})
+   :operator :=})
 
 (defn ^:export stringFilterParts
   "Extract string filter parts from a clause.
@@ -178,8 +242,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/number
-   :operator :=
-   :mock? true})
+   :operator :=})
 
 (defn ^:export numberFilterParts
   "Extract number filter parts from a clause.
@@ -192,8 +255,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/coordinate
-   :operator :inside
-   :mock? true})
+   :operator :inside})
 
 (defn ^:export coordinateFilterParts
   "Extract coordinate filter parts from a clause.
@@ -206,8 +268,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/boolean
-   :operator :=
-   :mock? true})
+   :operator :=})
 
 (defn ^:export booleanFilterParts
   "Extract boolean filter parts from a clause.
@@ -220,8 +281,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/specific-date
-   :operator :=
-   :mock? true})
+   :operator :=})
 
 (defn ^:export specificDateFilterParts
   "Extract specific date filter parts from a clause.
@@ -234,8 +294,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/relative-date
-   :unit :day
-   :mock? true})
+   :unit :day})
 
 (defn ^:export relativeDateFilterParts
   "Extract relative date filter parts from a clause.
@@ -248,8 +307,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/exclude-date
-   :operator :!=
-   :mock? true})
+   :operator :!=})
 
 (defn ^:export excludeDateFilterParts
   "Extract exclude date filter parts from a clause.
@@ -262,8 +320,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/time
-   :operator :=
-   :mock? true})
+   :operator :=})
 
 (defn ^:export timeFilterParts
   "Extract time filter parts from a clause.
@@ -276,8 +333,7 @@
    STUB: Returns mock clause."
   [_parts]
   {:lib/type :filter/default
-   :operator :is-null
-   :mock? true})
+   :operator :is-null})
 
 (defn ^:export defaultFilterParts
   "Extract default filter parts from a clause.
@@ -287,9 +343,9 @@
 
 (defn ^:export projectionableDimensions
   "Get dimensions that can be used for projections.
-   STUB: Returns empty array."
+   STUB: Returns mock dimensions."
   [_definition]
-  (proxy/proxy []))
+  (proxy/proxy mock-dimensions))
 
 (defn ^:export project
   "Add a projection clause to a metric definition.
@@ -317,9 +373,9 @@
 
 (defn ^:export availableTemporalBuckets
   "Get available temporal buckets for a dimension.
-   STUB: Returns empty array."
+   STUB: Returns mock temporal buckets."
   [_definition _dimension]
-  (proxy/proxy []))
+  (proxy/proxy mock-temporal-buckets))
 
 (defn ^:export withTemporalBucket
   "Apply a temporal bucket to a dimension.
@@ -335,9 +391,9 @@
 
 (defn ^:export availableBinningStrategies
   "Get available binning strategies for a dimension.
-   STUB: Returns empty array."
+   STUB: Returns mock binning strategies."
   [_definition _dimension]
-  (proxy/proxy []))
+  (proxy/proxy mock-binning-strategies))
 
 (defn ^:export withBinning
   "Apply a binning strategy to a dimension.
@@ -425,17 +481,45 @@
 
 (defn ^:export displayInfo
   "Get display info for a displayable item.
-   STUB: Returns mock display info."
-  [_definition _source]
-  (camel->kebab-proxy
-   {:display-name "Mock Display Name"}))
+   Dispatches on :lib/type to return appropriate display info structure."
+  [_definition source]
+  (let [lib-type (:lib/type source)]
+    (camel->kebab-proxy
+     (case lib-type
+       :metadata/metric
+       {:display-name (or (:display-name source) (:name source) "Metric")}
+
+       :metadata/measure
+       {:display-name (or (:display-name source) (:name source) "Measure")}
+
+       :metadata/dimension
+       {:display-name         (or (:display-name source) (:name source) "Dimension")
+        :filter-positions     []
+        :projection-positions []}
+
+       :temporal-bucket
+       {:short-name   (name (:unit source))
+        :display-name (lib.temporal-bucket/describe-temporal-unit (:unit source))
+        :default      (boolean (:default source))
+        :selected     (boolean (:selected source))}
+
+       :binning-strategy
+       {:display-name (lib.binning/binning-display-name source nil)
+        :default      (boolean (:default source))
+        :selected     (boolean (:selected source))}
+
+       ;; Default for filter clauses and other types
+       {:display-name (or (:display-name source)
+                          (when-let [op (:operator source)]
+                            (name op))
+                          "Unknown")}))))
 
 (defn ^:export dimensionValuesInfo
   "Get dimension values info.
-   STUB: Returns mock info."
-  [_definition _dimension]
+   STUB: Returns mock info based on dimension."
+  [_definition dimension]
   (camel->kebab-proxy
-   {:id nil
-    :can-list-values false
-    :can-search-values false
-    :can-remap-values false}))
+   {:id                (:id dimension)
+    :can-list-values   (= :type/Category (:semantic-type dimension))
+    :can-search-values (= :type/Text (:effective-type dimension))
+    :can-remap-values  false}))
