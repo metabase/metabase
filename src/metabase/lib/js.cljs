@@ -544,14 +544,6 @@
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
-(defn ^:export aggregation-display-name-patterns
-  "Returns the list of aggregation display name patterns for content translation.
-  Each pattern is an object with `prefix` and `suffix` properties, derived from
-  the display name pattern by splitting on the placeholder.
-  These match the patterns used by display-name-method for aggregations."
-  []
-  (to-array (map clj->js (lib.aggregation/aggregation-display-name-patterns))))
-
 (defn ^:export parse-column-display-name-parts
   "Parse a column display name into a flat list of parts for translation.
 
@@ -563,14 +555,11 @@
   1. Translate all parts where type is 'translatable'
   2. Concatenate all value strings together
 
-  The optional second argument is an array of aggregation patterns (from aggregation-display-name-patterns)."
-  ([display-name]
-   (parse-column-display-name-parts display-name nil))
-  ([display-name aggregation-patterns]
-   (let [patterns (when aggregation-patterns
-                    (map #(js->clj % :keywordize-keys true) aggregation-patterns))
-         parts (lib.util/parse-column-display-name-parts display-name patterns)]
-     (to-array (map clj->js parts)))))
+  Uses the standard aggregation display name patterns internally."
+  [display-name]
+  (let [patterns (lib.aggregation/aggregation-display-name-patterns)
+        parts (lib.util/parse-column-display-name-parts display-name patterns)]
+    (to-array (map clj->js parts))))
 
 (def ^:export column-display-name-separator
   "Separator used for temporal bucket and binning suffixes (e.g., 'Total: Month', 'Price: 10 bins')."

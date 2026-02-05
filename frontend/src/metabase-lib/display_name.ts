@@ -1,7 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import type { AggregationDisplayNamePattern } from "./aggregation";
-
 export interface DisplayNamePart {
   type: "static" | "translatable";
   value: string;
@@ -9,9 +7,8 @@ export interface DisplayNamePart {
 
 export function parseColumnDisplayNameParts(
   displayName: string,
-  aggregationPatterns?: AggregationDisplayNamePattern[],
 ): DisplayNamePart[] {
-  return ML.parse_column_display_name_parts(displayName, aggregationPatterns);
+  return ML.parse_column_display_name_parts(displayName);
 }
 
 export const COLUMN_DISPLAY_NAME_SEPARATOR: string =

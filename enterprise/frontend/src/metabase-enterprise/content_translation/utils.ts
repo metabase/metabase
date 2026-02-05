@@ -88,10 +88,7 @@ const translateByParts = (
   displayName: string,
   tc: ContentTranslationFunction,
 ): string => {
-  const parts = Lib.parseColumnDisplayNameParts(
-    displayName,
-    Lib.aggregationDisplayNamePatterns(),
-  );
+  const parts = Lib.parseColumnDisplayNameParts(displayName);
 
   let anyChanged = false;
   const translated = parts.map((part) => {
