@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: get JS file count
+        id: get-js-file-count
         run: |
           oss=$(find ./frontend/src/metabase -type f -name "*.js" -o -name "*.jsx" | wc -l)
           ee=$(find ./enterprise/frontend/src/metabase-enterprise -type f -name "*.js" -o -name "*.jsx" | wc -l)
