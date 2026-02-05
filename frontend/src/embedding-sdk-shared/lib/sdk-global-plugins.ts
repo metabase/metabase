@@ -1,4 +1,4 @@
-import { requestHandleLinkFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-handle-link";
+import { bridgeHandleLinkForEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/bridge-handle-link";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 
 import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
@@ -28,7 +28,7 @@ export async function handleLinkSdkPlugin(
 ): Promise<{ handled: boolean }> {
   // In iframe SDK mode, send a message to the parent window
   if (isEmbeddingEajs()) {
-    return requestHandleLinkFromEmbedJs(url);
+    return bridgeHandleLinkForEmbedJs(url);
   }
 
   // React SDK mode - use the global plugins

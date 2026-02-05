@@ -5,22 +5,15 @@ import type {
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
 
-const HANDLE_LINK_TIMEOUT = 1000; // 1 second timeout for link handling
-
 /**
  * Requests the parent window (embed.js) to handle a link click.
  * Returns { handled: true } if the parent handled the link, { handled: false } otherwise.
  */
-export function requestHandleLinkFromEmbedJs(
+export function bridgeHandleLinkForEmbedJs(
   url: string,
 ): Promise<{ handled: boolean }> {
   return new Promise((resolve) => {
     const requestId = crypto.randomUUID();
-
-    const timeout = setTimeout(() => {
-      window.removeEventListener("message", handler);
-      resolve({ handled: false }); // Default to not handled on timeout
-    }, HANDLE_LINK_TIMEOUT);
 
     const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
       if (!isWithinIframe() || !event.data) {
@@ -34,7 +27,6 @@ export function requestHandleLinkFromEmbedJs(
         action.data.requestId === requestId
       ) {
         window.removeEventListener("message", handler);
-        clearTimeout(timeout);
         resolve({ handled: action.data.handled });
       }
     };
