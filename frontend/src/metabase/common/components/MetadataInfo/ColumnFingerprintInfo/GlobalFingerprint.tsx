@@ -39,7 +39,7 @@ export function GlobalFingerprint({
   const fieldValues = fieldData ? fieldData.values : [];
   const distinctCount = field?.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount =
-    distinctCount != null ? formatNumber(distinctCount) : null;
+    distinctCount !== undefined && formatNumber(distinctCount);
 
   const showDistinctCount = isLoading || distinctCount != null;
   const showFieldValuesBlock = isLoading || fieldValues.length > 0;
@@ -91,7 +91,7 @@ function ExtendedFieldValuesList({
         if (value === null) {
           return null;
         }
-        return <Li key={i}>{String(value)}</Li>;
+        return <Li key={i}>{value.toString()}</Li>;
       })}
     </ul>
   );

@@ -38,7 +38,7 @@ export const LoadingSpinner = styled((props: LoadingSpinnerProps) => (
   color: var(--mb-color-brand);
 `;
 
-export const RelativeContainer = styled.div<{ height?: string | number }>`
+export const RelativeContainer = styled.div<{ height?: string }>`
   position: relative;
   height: ${({ height }) => height || "1em"};
   line-height: 1em;
