@@ -9,10 +9,19 @@
   margin: 0 auto;
 }
 
+.containerSingleColumn {
+  display: flex;
+  flex-direction: row;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
 .leftColumn {
   flex: 1;
-  padding-right: 2.5rem;
-  border-right: 1px solid var(--mb-color-border);
+}
+
+.leftColumnSingleColumn {
+  flex: 1;
 }
 
 .rightColumn {

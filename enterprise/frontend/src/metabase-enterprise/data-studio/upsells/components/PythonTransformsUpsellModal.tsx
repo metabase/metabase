@@ -1,22 +1,38 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect } from "react";
+import dayjs from "dayjs";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/admin/upsells/components/analytics";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
 import { UPGRADE_URL } from "metabase/admin/upsells/constants";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
-import { Button, Flex, Modal, Stack, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Center,
+  Divider,
+  Flex,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
+import { useTransformsBilling } from "../hooks/useTransformsBilling";
+
+import S from "./PythonTransformsUpsellModal.module.css";
 import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
 
 const CAMPAIGN = "data-studio-python-transforms";
@@ -31,11 +47,40 @@ export function PythonTransformsUpsellModal({
   isOpen,
   onClose,
 }: PythonTransformsUpsellModalProps) {
+  const bulletPoints = [
+    t`Use Python to handle complex logic that's awkward or brittle in SQL`,
+    t`Reuse shared Python logic instead of copying SQL patterns`,
+    t`Unblock advanced use cases without pushing work into another tool`,
+    t`Put pandas to work for data analysis and manipulation`,
+  ];
+
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
+
+  // Track if we should force the modal open after a purchase error
+  const [forceOpenAfterError, setForceOpenAfterError] = useState(false);
+
+  // Reset forceOpenAfterError when parent reopens the modal
+  useEffect(() => {
+    if (isOpen) {
+      setForceOpenAfterError(false);
+    }
+  }, [isOpen]);
+
+  // Modal is open if parent says so OR if we're forcing it open after an error
+  const modalOpen = isOpen || forceOpenAfterError;
+
+  const {
+    isLoading,
+    error,
+    billingPeriodMonths,
+    pythonProduct,
+    isOnTrial,
+    trialEndDate,
+  } = useTransformsBilling();
 
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
     campaign: CAMPAIGN,
@@ -54,89 +99,202 @@ export function PythonTransformsUpsellModal({
     }
   }, [isOpen]);
 
-  const handleSelfHostedClick = () => {
-    triggerUpsellFlow?.();
+  const hasData = billingPeriodMonths !== undefined && pythonProduct;
+  const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`year`;
+  const pythonPrice = pythonProduct?.default_base_fee ?? 0;
+
+  const isTrialFlow = isOnTrial;
+  const formattedTrialEndDate = trialEndDate
+    ? dayjs(trialEndDate).format("MMMM D, YYYY")
+    : undefined;
+
+  const dueToday = isTrialFlow ? 0 : pythonPrice;
+
+  // Determine if we should show the single-column layout (non-store user on hosted)
+  const showSingleColumn = isHosted && !isStoreUser;
+
+  const handleModalClose = useCallback(() => {
+    setForceOpenAfterError(false);
     onClose();
+  }, [onClose]);
+
+  const handleSelfHostedClick = () => {
+    trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
+    triggerUpsellFlow?.();
+    handleModalClose();
   };
 
   const handleCloudPurchase = useCallback(async () => {
     trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
     settingUpModalHandlers.open();
-    onClose();
+    handleModalClose(); // Close the modal immediately (also resets forceOpenAfterError)
     try {
       await purchaseCloudAddOn({
         product_type: "python-execution",
       }).unwrap();
     } catch {
       settingUpModalHandlers.close();
+      setForceOpenAfterError(true); // Re-open the modal on error
     }
-  }, [purchaseCloudAddOn, settingUpModalHandlers, onClose]);
+  }, [purchaseCloudAddOn, settingUpModalHandlers, handleModalClose]);
 
-  const renderContent = () => {
-    if (isHosted && !isStoreUser) {
+  const getButtonText = () => {
+    if (isTrialFlow) {
+      return t`Add to trial`;
+    }
+    return t`Confirm purchase`;
+  };
+
+  const renderNonStoreUserContent = () => (
+    <Text fw="bold">
+      {anyStoreUserEmailAddress
+        ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+          t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
+        : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+          t`Please ask a Metabase Store Admin to enable this for you.`}
+    </Text>
+  );
+
+  const renderSelfHostedContent = () => (
+    <Flex justify="flex-end">
+      <UpsellCta
+        onClick={handleSelfHostedClick}
+        url={upsellUrl}
+        internalLink={undefined}
+        buttonText={t`Get Python transforms`}
+        onClickCapture={() =>
+          trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN })
+        }
+        size="large"
+      />
+    </Flex>
+  );
+
+  const renderCloudPurchaseContent = () => {
+    if (error) {
       return (
-        <Text fw="bold">
-          {anyStoreUserEmailAddress
-            ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-              t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
-            : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-              t`Please ask a Metabase Store Admin to enable this for you.`}
-        </Text>
+        <Center py="xl">
+          <LoadingAndErrorWrapper
+            loading={false}
+            error={t`Error fetching information about available add-ons.`}
+          />
+        </Center>
       );
     }
 
-    if (isHosted && isStoreUser) {
+    if (!hasData || isLoading) {
       return (
-        <Flex justify="flex-end">
-          <Button
-            variant="filled"
-            size="md"
-            onClick={handleCloudPurchase}
-            loading={isPurchasing}
-          >
-            {t`Get Python transforms`}
-          </Button>
-        </Flex>
+        <Center py="xl">
+          <LoadingAndErrorWrapper
+            loading={isLoading}
+            error={
+              !isLoading && !hasData
+                ? t`Error fetching information about available add-ons.`
+                : null
+            }
+          />
+        </Center>
       );
     }
 
     return (
-      <Flex justify="flex-end">
-        <UpsellCta
-          onClick={handleSelfHostedClick}
-          url={upsellUrl}
-          internalLink={undefined}
-          buttonText={t`Get Python transforms`}
-          onClickCapture={() =>
-            trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN })
-          }
-          size="large"
-        />
-      </Flex>
+      <Stack gap="lg">
+        <Card withBorder p="md" radius="md">
+          <Flex direction="column" style={{ flex: 1 }}>
+            <Group justify="space-between" align="flex-start">
+              <Text fw="bold">{t`SQL + Python`}</Text>
+              <Text fw="bold">{`$${pythonPrice} / ${billingPeriod}`}</Text>
+            </Group>
+            <Text size="sm" c="text-secondary" mt="sm">
+              {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
+            </Text>
+          </Flex>
+        </Card>
+        <Divider />
+        <Stack gap="sm">
+          <Group justify="space-between">
+            <Text c="text-secondary">{t`Due today:`}</Text>
+            <Text fw="bold">{`$${dueToday}`}</Text>
+          </Group>
+          <Group justify="space-between">
+            <Text c="text-secondary">
+              {isTrialFlow && formattedTrialEndDate
+                ? t`New total ${billingPeriod}ly cost starting ${formattedTrialEndDate}`
+                : t`New total ${billingPeriod}ly cost`}
+            </Text>
+            <Text fw="bold">{`$${pythonPrice}`}</Text>
+          </Group>
+        </Stack>
+        <Button
+          variant="filled"
+          size="md"
+          onClick={handleCloudPurchase}
+          loading={isPurchasing}
+          fullWidth
+        >
+          {getButtonText()}
+        </Button>
+      </Stack>
     );
+  };
+
+  const renderRightColumnContent = () => {
+    // Self-hosted flow
+    if (!isHosted) {
+      return renderSelfHostedContent();
+    }
+
+    // Hosted and store user - show full purchase UI
+    return renderCloudPurchaseContent();
   };
 
   return (
     <>
-      <Modal.Root opened={isOpen} onClose={onClose} size="md">
+      <Modal.Root
+        opened={modalOpen}
+        onClose={handleModalClose}
+        size={showSingleColumn ? "md" : "xl"}
+      >
         <Modal.Overlay />
         <Modal.Content>
-          <Modal.Header p="xl" pb="md">
-            <Flex align="center" gap="sm">
-              <UpsellGem size={24} />
-              <Title order={3}>{t`Unlock Python transforms`}</Title>
+          <Modal.Body p={0}>
+            <Flex className={S.container}>
+              {/* Left Column - Info */}
+              <Stack gap="lg" className={S.leftColumn} p="xl">
+                <Title
+                  order={2}
+                >{t`Go beyond SQL with advanced transforms`}</Title>
+                <Text c="text-secondary">
+                  {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
+                </Text>
+                <Stack gap="lg" py="sm">
+                  {bulletPoints.map((point) => (
+                    <Flex direction="row" gap="sm" key={point}>
+                      <Center w={24} h={24}>
+                        <Icon name="check_filled" size={16} c="text-brand" />
+                      </Center>
+                      <Text c="text-secondary">{point}</Text>
+                    </Flex>
+                  ))}
+                </Stack>
+                {showSingleColumn && renderNonStoreUserContent()}
+              </Stack>
+              {/* Right Column - Purchase Card (hidden for non-store users) */}
+              {!showSingleColumn && (
+                <>
+                  <Divider orientation="vertical" />
+                  <Stack gap="lg" className={S.rightColumn} p="xl">
+                    <Title
+                      order={3}
+                    >{t`Add advanced transforms to your plan`}</Title>
+                    {renderRightColumnContent()}
+                  </Stack>
+                </>
+              )}
             </Flex>
-            <Modal.CloseButton />
-          </Modal.Header>
-          <Modal.Body px="xl" pb="xl">
-            <Stack gap="lg">
-              <Text>{t`Write powerful data transformations using Python. Access pandas, numpy, and other libraries to clean, reshape, and enrich your data. Available as an add-on for your plan.`}</Text>
-              {renderContent()}
-            </Stack>
           </Modal.Body>
         </Modal.Content>
       </Modal.Root>
-
       <TransformsSettingUpModal
         opened={settingUpModalOpened}
         onClose={() => {

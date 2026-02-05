@@ -5,6 +5,9 @@ import { Fragment, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { getStoreUsers } from "metabase/selectors/store-users";
+import { getIsHosted } from "metabase/setup/selectors";
 import {
   Button,
   Card,
@@ -45,6 +48,9 @@ export type TransformsPurchasePageProps = {
 export function TransformsPurchasePage({
   bulletPoints,
 }: TransformsPurchasePageProps) {
+  const isHosted = useSelector(getIsHosted);
+  const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
+
   const [selectedTier, setSelectedTier] = useState<TransformTier>("basic");
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
@@ -86,54 +92,6 @@ export function TransformsPurchasePage({
     ? dayjs(trialEndDate).format("MMMM D, YYYY")
     : undefined;
 
-  const handlePurchase = useCallback(async () => {
-    // When showing advanced only (trial or existing basic), always purchase advanced
-    const productType = showAdvancedOnly
-      ? "transforms-advanced"
-      : selectedTier === "basic"
-        ? "transforms-basic"
-        : "transforms-advanced";
-    settingUpModalHandlers.open();
-    try {
-      await purchaseCloudAddOn({
-        product_type: productType,
-      }).unwrap();
-    } catch {
-      settingUpModalHandlers.close();
-    }
-  }, [
-    showAdvancedOnly,
-    selectedTier,
-    purchaseCloudAddOn,
-    settingUpModalHandlers,
-  ]);
-
-  if (error) {
-    return (
-      <Center h="100%" bg="background-secondary">
-        <LoadingAndErrorWrapper
-          loading={false}
-          error={t`Error fetching information about available add-ons.`}
-        />
-      </Center>
-    );
-  }
-
-  if (!hasData || isLoading) {
-    return (
-      <Center h="100%" bg="background-secondary">
-        <LoadingAndErrorWrapper
-          loading={isLoading}
-          error={
-            !isLoading && !hasData
-              ? t`Error fetching information about available add-ons.`
-              : null
-          }
-        />
-      </Center>
-    );
-  }
-
   const transformsPrice = transformsProduct?.default_base_fee ?? 0;
   const pythonPrice = pythonProduct?.default_base_fee ?? 0;
 
@@ -166,6 +124,28 @@ export function TransformsPurchasePage({
     (option) => option.value === "advanced",
   );
 
+  const handlePurchase = useCallback(async () => {
+    // When showing advanced only (trial or existing basic), always purchase advanced
+    const productType = showAdvancedOnly
+      ? "transforms-advanced"
+      : selectedTier === "basic"
+        ? "transforms-basic"
+        : "transforms-advanced";
+    settingUpModalHandlers.open();
+    try {
+      await purchaseCloudAddOn({
+        product_type: productType,
+      }).unwrap();
+    } catch {
+      settingUpModalHandlers.close();
+    }
+  }, [
+    showAdvancedOnly,
+    selectedTier,
+    purchaseCloudAddOn,
+    settingUpModalHandlers,
+  ]);
+
   // Determine the title based on scenario
   const getRightColumnTitle = () => {
     if (isTrialFlow) {
@@ -185,6 +165,154 @@ export function TransformsPurchasePage({
     return t`Confirm purchase`;
   };
 
+  const renderNonStoreUserContent = () => (
+    <Text fw="bold">
+      {anyStoreUserEmailAddress
+        ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+          t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
+        : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+          t`Please ask a Metabase Store Admin to enable this for you.`}
+    </Text>
+  );
+
+  const renderTierSelection = () => {
+    if (showAdvancedOnly && advancedTierOption) {
+      // Single tier display (trial or upgrade from basic)
+      return (
+        <Card withBorder p="md" radius="md">
+          <Flex direction="column" style={{ flex: 1 }}>
+            <Group justify="space-between" align="flex-start">
+              <Text fw="bold">{advancedTierOption.label}</Text>
+              <Text fw="bold">{`$${advancedTierOption.price} / ${billingPeriod}`}</Text>
+            </Group>
+            {advancedTierOption.description && (
+              <Text size="sm" c="text-secondary" mt="sm">
+                {advancedTierOption.description}
+              </Text>
+            )}
+          </Flex>
+        </Card>
+      );
+    }
+
+    // Multi-tier selection (regular user)
+    return (
+      <Radio.Group
+        value={selectedTier}
+        onChange={(value) => setSelectedTier(value as TransformTier)}
+      >
+        <Stack gap="md">
+          {tierOptions.map((option) => (
+            <Fragment key={option.value}>
+              <Card
+                withBorder
+                p={0}
+                radius="md"
+                className={cx({
+                  [S.selectedTierOptionCard]: selectedTier === option.value,
+                })}
+              >
+                <Radio.Card value={option.value} p="md" radius="md">
+                  <Flex direction="row" align="flex-start" gap="md">
+                    <Center mt={2}>
+                      <Radio.Indicator />
+                    </Center>
+                    <Flex direction="column" style={{ flex: 1 }}>
+                      <Group justify="space-between" align="flex-start">
+                        <Text fw="bold">{option.label}</Text>
+                        <Text fw="bold">{`$${option.price} / ${billingPeriod}`}</Text>
+                      </Group>
+                      {option.description && (
+                        <Text size="sm" c="text-secondary" mt="sm">
+                          {option.description}
+                        </Text>
+                      )}
+                    </Flex>
+                  </Flex>
+                </Radio.Card>
+              </Card>
+            </Fragment>
+          ))}
+        </Stack>
+      </Radio.Group>
+    );
+  };
+
+  const renderPricingSummary = () => (
+    <>
+      <Divider />
+      <Stack gap="sm">
+        <Group justify="space-between">
+          <Text c="text-secondary">{t`Due today:`}</Text>
+          <Text fw="bold">{`$${dueToday}`}</Text>
+        </Group>
+        <Group justify="space-between">
+          <Text c="text-secondary">
+            {isTrialFlow && formattedTrialEndDate
+              ? t`New total ${billingPeriod}ly cost starting ${formattedTrialEndDate}`
+              : t`New total ${billingPeriod}ly cost`}
+          </Text>
+          <Text fw="bold">{`$${selectedPrice}`}</Text>
+        </Group>
+      </Stack>
+      <Button
+        variant="filled"
+        size="md"
+        onClick={handlePurchase}
+        loading={isPurchasing}
+        fullWidth
+      >
+        {getButtonText()}
+      </Button>
+    </>
+  );
+
+  const renderCloudPurchaseContent = () => (
+    <>
+      {renderTierSelection()}
+      {renderPricingSummary()}
+    </>
+  );
+
+  // Determine if we should show the single-column layout (non-store user on hosted)
+  const showSingleColumn = isHosted && !isStoreUser;
+
+  if (error) {
+    return (
+      <Center h="100%" bg="background-secondary">
+        <LoadingAndErrorWrapper
+          loading={false}
+          error={t`Error fetching information about available add-ons.`}
+        />
+      </Center>
+    );
+  }
+
+  if (!hasData || isLoading) {
+    return (
+      <Center h="100%" bg="background-secondary">
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={
+            !isLoading && !hasData
+              ? t`Error fetching information about available add-ons.`
+              : null
+          }
+        />
+      </Center>
+    );
+  }
+
+  const cardClassNames = showSingleColumn
+    ? S.containerSingleColumn
+    : S.container;
+  const leftColumnClassNames = showSingleColumn
+    ? S.leftColumnSingleColumn
+    : S.leftColumn;
+  const rightColumnClassNames = showSingleColumn
+    ? S.rightColumnSingleColumn
+    : S.rightColumn;
+
   return (
     <DottedBackground px="3.5rem" pb="2rem">
       <PaneHeader
@@ -194,8 +322,8 @@ export function TransformsPurchasePage({
       />
       <Flex align="flex-start" justify="center" py="xl">
         <LineDecorator>
-          <Card className={S.container} p={0} withBorder>
-            <Stack gap="lg" className={S.leftColumn} p="xl">
+          <Card className={cardClassNames} p={0} withBorder>
+            <Stack gap="lg" className={leftColumnClassNames} p="xl">
               <Title
                 order={2}
                 // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
@@ -216,95 +344,17 @@ export function TransformsPurchasePage({
                   ))}
                 </Stack>
               )}
+              {showSingleColumn && renderNonStoreUserContent()}
             </Stack>
-            {/* Right Column - Purchase Card */}
-            <Stack gap="lg" className={S.rightColumn} p="xl">
-              <Title order={3}>{getRightColumnTitle()}</Title>
-              {showAdvancedOnly && advancedTierOption ? (
-                // Single tier display (trial or upgrade from basic)
-                <Card withBorder p="md" radius="md">
-                  <Flex direction="column" style={{ flex: 1 }}>
-                    <Group justify="space-between" align="flex-start">
-                      <Text fw="bold">{advancedTierOption.label}</Text>
-                      <Text fw="bold">{`$${advancedTierOption.price} / ${billingPeriod}`}</Text>
-                    </Group>
-                    {advancedTierOption.description && (
-                      <Text size="sm" c="text-secondary" mt="sm">
-                        {advancedTierOption.description}
-                      </Text>
-                    )}
-                  </Flex>
-                </Card>
-              ) : (
-                // Multi-tier selection (regular user)
-                <Radio.Group
-                  value={selectedTier}
-                  onChange={(value) => setSelectedTier(value as TransformTier)}
-                >
-                  <Stack gap="md">
-                    {tierOptions.map((option) => (
-                      <Fragment key={option.value}>
-                        <Card
-                          withBorder
-                          p={0}
-                          radius="md"
-                          className={cx({
-                            [S.selectedTierOptionCard]:
-                              selectedTier === option.value,
-                          })}
-                        >
-                          <Radio.Card value={option.value} p="md" radius="md">
-                            <Flex direction="row" align="flex-start" gap="md">
-                              <Center mt={2}>
-                                <Radio.Indicator />
-                              </Center>
-                              <Flex direction="column" style={{ flex: 1 }}>
-                                <Group
-                                  justify="space-between"
-                                  align="flex-start"
-                                >
-                                  <Text fw="bold">{option.label}</Text>
-                                  <Text fw="bold">{`$${option.price} / ${billingPeriod}`}</Text>
-                                </Group>
-                                {option.description && (
-                                  <Text size="sm" c="text-secondary" mt="sm">
-                                    {option.description}
-                                  </Text>
-                                )}
-                              </Flex>
-                            </Flex>
-                          </Radio.Card>
-                        </Card>
-                      </Fragment>
-                    ))}
-                  </Stack>
-                </Radio.Group>
-              )}
-              <Divider />
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text c="text-secondary">{t`Due today:`}</Text>
-                  <Text fw="bold">{`$${dueToday}`}</Text>
-                </Group>
-                <Group justify="space-between">
-                  <Text c="text-secondary">
-                    {isTrialFlow && formattedTrialEndDate
-                      ? t`New total cost starting ${formattedTrialEndDate}`
-                      : t`New total cost`}
-                  </Text>
-                  <Text fw="bold">{`$${selectedPrice}`}</Text>
-                </Group>
-              </Stack>
-              <Button
-                variant="filled"
-                size="md"
-                onClick={handlePurchase}
-                loading={isPurchasing}
-                fullWidth
-              >
-                {getButtonText()}
-              </Button>
-            </Stack>
+            {!showSingleColumn && (
+              <>
+                <Divider orientation="vertical" />
+                <Stack gap="lg" className={rightColumnClassNames} p="xl">
+                  <Title order={3}>{getRightColumnTitle()}</Title>
+                  {renderCloudPurchaseContent()}
+                </Stack>
+              </>
+            )}
           </Card>
         </LineDecorator>
       </Flex>
