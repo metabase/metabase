@@ -17,7 +17,7 @@ on:
         type: string
       release:
         type: string
-        default: 'true'
+        default: 'false'
       build-args:
         type: string
   workflow_dispatch:
