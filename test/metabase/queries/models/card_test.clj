@@ -5,8 +5,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1366,99 +1364,3 @@
           (finally
             (t2/delete! :model/Card (:id card))))))))
 
-;;; ------------------------------------------------ Metric Dimension Hydration Tests ------------------------------------------------
-
-(defn- metric-query
-  "Create a metric-style dataset query (a query with a single aggregation)."
-  []
-  (let [mp (mt/metadata-provider)
-        table-metadata (lib.metadata/table mp (mt/id :venues))]
-    (-> (lib/query mp table-metadata)
-        (lib/aggregate (lib/count)))))
-
-(deftest metric-hydrate-dimensions-basic-test
-  (testing "hydrate-dimensions computes dimensions from visible columns for metrics"
-    (mt/with-temp [:model/Card metric {:name "Test Metric"
-                                       :type :metric
-                                       :database_id (mt/id)
-                                       :table_id (mt/id :venues)
-                                       :dataset_query (metric-query)}]
-      (let [mp (lib-be/application-database-metadata-provider (mt/id))
-            metric-with-type (assoc metric :lib/type :metadata/metric)
-            hydrated (lib-metric/hydrate-dimensions mp metric-with-type)]
-        (is (some? (:dimensions hydrated))
-            "Should have dimensions populated")
-        (is (some? (:dimension_mappings hydrated))
-            "Should have dimension_mappings populated")
-        ;; Venues table has ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE columns
-        (is (>= (count (:dimensions hydrated)) 1)
-            "Should have at least one dimension from the venues table")
-        (is (= (count (:dimensions hydrated)) (count (:dimension_mappings hydrated)))
-            "Should have same number of dimensions and mappings")))))
-
-(deftest metric-hydrate-dimensions-persists-on-first-read-test
-  (testing "hydrate-dimensions persists dimensions and mappings to database on first read for metrics"
-    (mt/with-temp [:model/Card metric {:name "Test Metric"
-                                       :type :metric
-                                       :database_id (mt/id)
-                                       :table_id (mt/id :venues)
-                                       :dataset_query (metric-query)}]
-      ;; Initially, dimensions should be nil in the database
-      (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
-          "Dimensions should be nil before hydration")
-      ;; Hydrate dimensions
-      (let [mp (lib-be/application-database-metadata-provider (mt/id))
-            metric-with-type (assoc metric :lib/type :metadata/metric)
-            _hydrated (lib-metric/hydrate-dimensions mp metric-with-type)]
-        ;; Now check that dimensions were persisted
-        (let [reloaded (t2/select-one :model/Card :id (:id metric))]
-          (is (some? (:dimensions reloaded))
-              "Dimensions should be persisted to database")
-          (is (some? (:dimension_mappings reloaded))
-              "Dimension mappings should be persisted to database"))))))
-
-(deftest metric-hydrate-dimensions-preserves-user-modifications-test
-  (testing "hydrate-dimensions preserves user modifications like display-name for metrics"
-    (mt/with-temp [:model/Card metric {:name "Test Metric"
-                                       :type :metric
-                                       :database_id (mt/id)
-                                       :table_id (mt/id :venues)
-                                       :dataset_query (metric-query)}]
-      (let [mp (lib-be/application-database-metadata-provider (mt/id))
-            metric-with-type (assoc metric :lib/type :metadata/metric)
-            ;; First hydration to get dimensions
-            hydrated (lib-metric/hydrate-dimensions mp metric-with-type)
-            first-dim (first (:dimensions hydrated))
-            dim-id (:id first-dim)]
-        ;; Manually update the dimension to have a custom display name
-        (t2/update! :model/Card (:id metric)
-                    {:dimensions [{:id dim-id
-                                   :name (:name first-dim)
-                                   :display-name "My Custom Metric Dimension"
-                                   :status :status/active}]})
-        ;; Reload and hydrate again
-        (let [reloaded (t2/select-one :model/Card :id (:id metric))
-              reloaded-with-type (assoc reloaded :lib/type :metadata/metric)
-              re-hydrated (lib-metric/hydrate-dimensions mp reloaded-with-type)
-              matching-dim (first (filter #(= dim-id (:id %)) (:dimensions re-hydrated)))]
-          (is (= "My Custom Metric Dimension" (:display-name matching-dim))
-              "User's custom display-name should be preserved"))))))
-
-(deftest metric-hydrate-dimensions-returns-entity-unchanged-without-query-test
-  (testing "hydrate-dimensions returns entity unchanged when dataset_query is empty for metrics"
-    (mt/with-temp [:model/Card metric {:name "Test Metric"
-                                       :type :metric
-                                       :database_id (mt/id)
-                                       :table_id (mt/id :venues)
-                                       :dataset_query (metric-query)}]
-      ;; Set dataset_query to empty - metrics can't have nil queries, so use empty
-      (t2/update! :model/Card (:id metric) {:dataset_query {}})
-      (let [reloaded (t2/select-one :model/Card :id (:id metric))
-            mp (lib-be/application-database-metadata-provider (mt/id))
-            metric-with-type (assoc reloaded :lib/type :metadata/metric)
-            hydrated (lib-metric/hydrate-dimensions mp metric-with-type)]
-        ;; Should return entity unchanged (without :dimensions or :dimension_mappings added)
-        (is (nil? (:dimensions hydrated))
-            "Dimensions should remain nil when query is empty")
-        (is (nil? (:dimension_mappings hydrated))
-            "Dimension mappings should remain nil when query is empty")))))

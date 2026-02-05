@@ -5,10 +5,10 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -276,22 +276,9 @@
                   :table_schema :table.schema}
    :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
 
-;;; ------------------------------------------------- Dimension Multimethods --------------------------------------------------
+;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
 
-(defmethod lib-metric/dimensionable-query :metadata/measure
-  [_metadata-providerable {:keys [definition]}]
-  (when (seq definition)
-    definition))
-
-(defmethod lib-metric/get-persisted-dimensions :metadata/measure
-  [measure]
-  (:dimensions measure))
-
-(defmethod lib-metric/get-persisted-dimension-mappings :metadata/measure
-  [measure]
-  (:dimension_mappings measure))
-
-(defmethod lib-metric/save-dimensions! :metadata/measure
+(defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (t2/update! :model/Measure measure-id

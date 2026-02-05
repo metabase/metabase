@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-metric.core :as lib-metric]
+   [metabase.metrics.core :as metrics]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -83,17 +83,10 @@
      :offset offset
      :data   data}))
 
-(defn- hydrate-dimensions
-  "Hydrate dimensions onto a metric by computing from visible-columns and reconciling with persisted."
-  [metric]
-  (let [mp                (lib-metric/metadata-provider)
-        metric-with-type  (assoc metric :lib/type :metadata/metric)]
-    (lib-metric/hydrate-dimensions mp metric-with-type)))
-
 (mu/defn- hydrated-metric [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/Card :id id :type "metric"))
-      (t2/hydrate :collection)
-      hydrate-dimensions))
+  (api/read-check (t2/select-one :model/Card :id id :type "metric"))
+  (metrics/sync-dimensions! :metadata/metric id)
+  (t2/select-one :model/Card :id id :type "metric"))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.

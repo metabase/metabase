@@ -15,9 +15,14 @@
              [potemkin :as p]]
        :cljs [[metabase.lib-metric.metadata.js :as lib-metric.metadata.js]])
    [metabase.lib-metric.dimension :as lib-metric.dimension]
-   [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]))
+   [metabase.lib-metric.measures :as lib-metric.measures]
+   [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
+   [metabase.lib-metric.metrics :as lib-metric.metrics]))
 
+;; Ensure multimethod implementations are loaded
 (comment lib-metric.dimension/keep-me
+         lib-metric.measures/keep-me
+         lib-metric.metrics/keep-me
          lib-metric.metadata.provider/keep-me
          #?(:clj lib-metric.metadata.jvm/keep-me
             :cljs lib-metric.metadata.js/keep-me))
@@ -25,11 +30,14 @@
 #?(:clj
    (p/import-vars
     [lib-metric.dimension
+     compute-dimension-pairs
      dimensionable-query
+     dimensions-changed?
+     extract-persisted-dimensions
      get-persisted-dimension-mappings
      get-persisted-dimensions
-     hydrate-dimensions
-     save-dimensions!]
+     mappings-changed?
+     reconcile-dimensions-and-mappings]
     [lib-metric.metadata.provider
      database-provider-for-table
      metric-context-metadata-provider]
@@ -39,10 +47,8 @@
    :cljs
    (do
      (def dimensionable-query lib-metric.dimension/dimensionable-query)
-     (def get-persisted-dimension-mappings lib-metric.dimension/get-persisted-dimension-mappings)
      (def get-persisted-dimensions lib-metric.dimension/get-persisted-dimensions)
-     (def hydrate-dimensions lib-metric.dimension/hydrate-dimensions)
-     (def save-dimensions! lib-metric.dimension/save-dimensions!)
+     (def get-persisted-dimension-mappings lib-metric.dimension/get-persisted-dimension-mappings)
      (def database-provider-for-table lib-metric.metadata.provider/database-provider-for-table)
      (def metric-context-metadata-provider lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider lib-metric.metadata.js/metadata-provider)))
