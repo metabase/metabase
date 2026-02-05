@@ -53,3 +53,9 @@ export type SearchMeasureDimensionValuesRequest = {
   query: string;
   limit: number;
 };
+
+export type GetRemappedMeasureDimensionValueRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+  value: string;
+};

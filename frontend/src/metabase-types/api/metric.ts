@@ -42,3 +42,9 @@ export type SearchMetricDimensionValuesRequest = {
   query: string;
   limit: number;
 };
+
+export type GetRemappedMetricDimensionValueRequest = {
+  metricId: MetricId;
+  dimensionId: DimensionId;
+  value: string;
+};

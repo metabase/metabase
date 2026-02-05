@@ -2,6 +2,7 @@ import type {
   FieldValue,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
+  GetRemappedMetricDimensionValueRequest,
   SearchMetricDimensionValuesRequest,
 } from "metabase-types/api";
 
@@ -28,10 +29,21 @@ export const metricApi = Api.injectEndpoints({
         params,
       }),
     }),
+    getRemappedMetricDimensionValue: builder.query<
+      FieldValue,
+      GetRemappedMetricDimensionValueRequest
+    >({
+      query: ({ metricId, dimensionId, value }) => ({
+        method: "GET",
+        url: `/api/metric/${metricId}/dimension/${encodeURIComponent(dimensionId)}/remapping`,
+        params: { value },
+      }),
+    }),
   }),
 });
 
 export const {
   useGetMetricDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
+  useGetRemappedMetricDimensionValueQuery,
 } = metricApi;

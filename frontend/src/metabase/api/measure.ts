@@ -5,6 +5,7 @@ import type {
   FieldValue,
   GetMeasureDimensionValuesRequest,
   GetMeasureDimensionValuesResponse,
+  GetRemappedMeasureDimensionValueRequest,
   Measure,
   MeasureId,
   SearchMeasureDimensionValuesRequest,
@@ -65,6 +66,16 @@ export const measureApi = Api.injectEndpoints({
         params,
       }),
     }),
+    getRemappedMeasureDimensionValue: builder.query<
+      FieldValue,
+      GetRemappedMeasureDimensionValueRequest
+    >({
+      query: ({ measureId, dimensionId, value }) => ({
+        method: "GET",
+        url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/remapping`,
+        params: { value },
+      }),
+    }),
     createMeasure: builder.mutation<Measure, CreateMeasureRequest>({
       query: (body) => ({
         method: "POST",
@@ -95,6 +106,7 @@ export const {
   useGetMeasureQuery,
   useGetMeasureDimensionValuesQuery,
   useSearchMeasureDimensionValuesQuery,
+  useGetRemappedMeasureDimensionValueQuery,
   useCreateMeasureMutation,
   useUpdateMeasureMutation,
 } = measureApi;
