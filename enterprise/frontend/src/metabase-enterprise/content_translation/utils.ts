@@ -66,35 +66,6 @@ export const translateContentString: TranslateContentStringFunction = (
 };
 
 /**
- * Translates by parsing display name into parts and translating each translatable part.
- */
-const translateByParts = (
-  displayName: string,
-  tc: ContentTranslationFunction,
-): string => {
-  const parts = Lib.parseColumnDisplayNameParts(displayName);
-
-  let anyTranslated = false;
-  const translated = parts.map((part) => {
-    if (part.type === "translatable") {
-      const result = tc(part.value);
-
-      if (result !== part.value) {
-        anyTranslated = true;
-      }
-
-      return result;
-    }
-
-    return part.value;
-  });
-
-  // Fallback to whole string if nothing translated - covers mis-parsing
-  // (e.g., column "Note: Important" split as temporal bucket) or simply no translations.
-  return anyTranslated ? translated.join("") : tc(displayName);
-};
-
-/**
  * Translates a column display name by parsing it into translatable parts.
  *
  * Uses CLJ-side parsing (metabase.lib.util/parse-column-display-name-parts) which handles:
@@ -119,7 +90,26 @@ export const translateColumnDisplayName = (
     return displayName;
   }
 
-  return translateByParts(displayName, tc);
+  const parts = Lib.parseColumnDisplayNameParts(displayName);
+
+  let anyTranslated = false;
+  const translated = parts.map((part) => {
+    if (part.type === "translatable") {
+      const result = tc(part.value);
+
+      if (result !== part.value) {
+        anyTranslated = true;
+      }
+
+      return result;
+    }
+
+    return part.value;
+  });
+
+  // Fallback to whole string if nothing translated - covers mis-parsing
+  // (e.g., column "Note: Important" split as temporal bucket) or simply no translations.
+  return anyTranslated ? translated.join("") : tc(displayName);
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
