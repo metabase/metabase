@@ -1,6 +1,6 @@
 ---
 title: Data structure
-summary: See all the tables in your Metabase instance and configure how people work with them.
+summary: See all the tables in your Metabase, edit and sync metadata, edit column types, set visibility, publish tables, and more.
 ---
 
 ## Data structure
