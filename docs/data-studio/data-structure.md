@@ -7,7 +7,7 @@ summary: See all the tables in your Metabase, edit and sync metadata, edit colum
 
 _Data studio > Data structure_
 
-**Data structure** area of [Data Studio](overview.md) is where you can manage table metadata and configure how the end users of your Metabase interact with the data.
+The **Data structure** area of [Data Studio](overview.md) is where you can manage table metadata to make it easier for people to work with your data.
 
 You can do things like:
 
@@ -22,21 +22,19 @@ You can do things like:
 
 ## Permissions for Data Structure
 
-To access the Data Structure area of Data Studio, people will need to be members of the Admin group or Data Analyst group (Data Analyst group is only available on Pro/Enterprise plans).
+To access the Data Structure area of Data Studio, you need to be a members of the Admin group or the Data Analyst group (Data Analyst group is only available on Pro/Enterprise plans).
 
-Note that putting someone into Data Analyst group will give them table metadata and data structure access to _all_ tables in your Metabase, even if they have limited View Data permissions for those tables.
-
-If you only want to give someone access to table metadata for some - but not all - tables, use the table metadata permissions and access the Table Metadata through Admin > Table metadata instead of Data Studio.
+People in the Data Analyst group will have table metadata and data structure access to _all_ tables in your Metabase, even if they have limited View Data permissions for those tables. If you only want to give someone access to table metadata for some - but not all - tables, use the table metadata permissions and access the Table Metadata through Admin > Table metadata instead of Data Studio.
 
 ## Browse tables
 
-Data Structure gives you an overview of all tables in all databases connected to your instance, together with their owner, row count, and published state. Note that row count is only displayed for PostgreSQL tables for now.
+The Data Structure tab gives you an overview of all tables in all databases connected to your Metabase, together with their owner, row count, and published state. For now, Metabase only displays row counts for PostgreSQL tables.
 
-You can search for table names, but the search will only match beginnings of word in table names. This means if you search for “base”, it can find names like “Baseball stats”, “All your base are belong to us”, but it will not find tables like “Metabase secrets”.
+You can search for table names, but the search will only match beginnings of words in table names. So for example, if you search for “base”, results will include names like “Baseball stats” and “All your base are belong to us”, but the results won't include tables like “Metabase secrets”.
 
-You can also filter tables by attributes like owners, visibility, or source - for example, if you wanted to find all hidden tables, or all tables coming from CSV uploads.
+You can also filter tables by attributes like owners, visibility, or source - for example, if you wanted to find all hidden tables, or all tables created from CSV uploads.
 
-You can select a table to set [table attributes](#table-attributes), [edit metadata](#table-and-field-metadata), [publish it](#publishing-and-unpublishing-tables) or create [segments](#segments) or [measures](#measures) on the table. You can also select tables in bulk to publish or assign attributes (including visibility) to multiple tables at once.
+You can set [table attributes](#table-attributes), [edit metadata](#table-and-field-metadata), [publish the table](#publishing-and-unpublishing-tables) or create [segments](#segments) or [measures](#measures) on the table. You can also select tables in bulk to publish or assign attributes (including visibility) to multiple tables at once.
 
 ## Publishing and unpublishing tables
 
@@ -50,7 +48,7 @@ Publishing a table will change [data permissions](../permissions/data.md) for th
 
 ## Sync settings
 
-You can trigger manual re-sync of the table schema. This can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
+You can trigger manual re-sync of the table schema. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
 
 You can also re-scan field values for the table or discard cached field values, which is useful if you need to retrieve updated values for dropdown filters.
 
@@ -60,13 +58,13 @@ See [syncs and scans](../databases/sync-scan.md) for more information.
 
 ### Owner
 
-Table **owner** can be a Metabase user or an arbitrary email address. You can use this attribute to quickly identify who on your data team is responsible for which table.
+Table **owner** can be a Metabase user or an arbitrary email address. Use this owner attribute to let people know who on your team is responsible for which table.
 
 Table owner attribute is not exposed to people outside Data Studio.
 
 ### Visibility layer
 
-**Visibility layer** attribute controls whether people in your Metabase can see the table when building new queries. You can also use it to tag tables according to how ready for end-user consumption they are (for example, if you're using medallion architecture).
+The **Visibility layer** attribute controls whether people in your Metabase can see the table when building new queries. You can also use it to tag tables according to how ready for end-user consumption they are (for example, if you're using medallion architecture).
 
 The options are:
 
@@ -90,7 +88,7 @@ Metabase will automatically assign the source "Metabase transforms” to tables 
 
 You can edit field descriptions, types, visibility settings, and formatting. For example, you can choose to display a filter on a field as a dropdown, or display days as `21.03.2026` instead of `03/21/2026`.
 
-See [Table metadata editing](../data-modeling/metadata-editing.md) for more information.
+See [Table metadata editing](../data-modeling/metadata-editing.md).
 
 ## Segments
 
@@ -121,11 +119,11 @@ Deleting a segment will not break questions using it. The questions that use the
 
 ### Use a segment in the query builder
 
-To use a segment in the query builder, start a new question from the table that the segment is based on, and select the segment in the **Filter** block. Segment's saved filters will be applied behind the scenes.
+To use a segment in the query builder, start a new question from the table that the segment is based on, and select the segment in the **Filter** block. The segment's filters will be applied behind the scenes.
 
 ## Measures
 
-Measures are saved aggregations on tables. You can use measures to create an official saved calculation, e.g. what "Net Promoter Score" means.
+Measures are saved aggregations on tables. You can use measures to create an official saved calculation, like what "Net Promoter Score" is calculated.
 
 People will see measures as options in the Summarize block of the [query builder](../questions/query-builder/editor.md).
 
@@ -135,8 +133,8 @@ To see all measures on a table, select the table in **Data Structure** and switc
 
 1. Select the table in **Data Structure**.
 2. Scroll down and switch to **Measures**.
-3. Click on **+New measure**. You'll see an abridged version of Metabase's query builder.
-4. Add your aggregation. You will probably be interested in [Custom expressions](../questions/query-builder/expressions.md).
+3. Click on **+New measure**. You'll see an abridged version of Metabase's query builder that focuses on aggregation.
+4. Add your aggregation. For more complex aggregations, check out [custom expressions](../questions/query-builder/expressions.md).
 5. To preview the results of the measure, click on the **three dots** icon next to the measure's name and select **Preview**.
 
 ### Delete a measure
