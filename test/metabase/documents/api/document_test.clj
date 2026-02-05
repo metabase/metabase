@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
@@ -132,6 +133,100 @@
   (testing "should return 404 for non-existent document"
     (mt/user-http-request :crowberto
                           :get 404 "document/99999")))
+
+(deftest copy-document-test
+  (testing "POST /api/document/:id/copy"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document {doc-id :id} {:name "Source Document"
+                                                   :content_type prose-mirror/prose-mirror-content-type}
+                     :model/Card {card-1-id :id} {:name "Card 1"
+                                                  :document_id doc-id
+                                                  :collection_id coll-id
+                                                  :dataset_query (mt/mbql-query venues)
+                                                  :archived false}
+                     :model/Card {card-2-id :id} {:name "Card 2"
+                                                  :document_id doc-id
+                                                  :collection_id coll-id
+                                                  :dataset_query (mt/mbql-query users)
+                                                  :archived false}
+                     :model/Card {archived-card-id :id} {:name "Archived Card"
+                                                         :document_id doc-id
+                                                         :collection_id coll-id
+                                                         :dataset_query (mt/mbql-query venues)
+                                                         :archived true}]
+        ;; Ensure the source document embeds the cards we expect to be copied (and one archived card that should not).
+        (t2/update! :model/Document doc-id
+                    {:document {:type "doc"
+                                :content [{:type "cardEmbed" :attrs {:id card-1-id :name nil}}
+                                          {:type "paragraph"}
+                                          {:type "cardEmbed" :attrs {:id card-2-id :name nil}}
+                                          {:type "cardEmbed" :attrs {:id archived-card-id :name nil}}]}})
+
+        (let [copied (mt/user-http-request :crowberto :post 200
+                                           (format "document/%d/copy" doc-id)
+                                           {:name "Copied Document"
+                                            :collection_id coll-id})]
+          (testing "creates a new document row"
+            (is (pos? (:id copied)))
+            (is (not= doc-id (:id copied)))
+            (is (= "Copied Document" (:name copied)))
+            (is (= coll-id (:collection_id copied))))
+
+          (testing "copies cards onto the new document"
+            (let [new-cards (t2/select :model/Card :document_id (:id copied))]
+              (is (= 3 (count new-cards)))
+              (is (every? #(not (contains? #{card-1-id card-2-id archived-card-id} (:id %))) new-cards))))
+
+          (testing "updates embedded card IDs in the copied document AST for all copied cards"
+            (let [new-cards-by-name (into {} (map (juxt :name :id)) (t2/select :model/Card :document_id (:id copied)))
+                  embedded-ids      (keep #(get-in % [:attrs :id]) (get-in copied [:document :content]))]
+              (is (contains? (set embedded-ids) (get new-cards-by-name "Card 1")))
+              (is (contains? (set embedded-ids) (get new-cards-by-name "Card 2")))
+              (is (contains? (set embedded-ids) (get new-cards-by-name "Archived Card"))))))))))
+
+(deftest copy-document-permissions-test
+  (testing "POST /api/document/:id/copy - permission checks"
+    (mt/with-model-cleanup [:model/Document]
+      (testing "fails with 403 when user cannot read the source document"
+        (mt/with-temp [:model/Collection {restricted-col :id} {}
+                       :model/Document {doc-id :id} {:name "Restricted Source Doc"
+                                                     :collection_id restricted-col
+                                                     :document (documents.test-util/text->prose-mirror-ast "restricted")}]
+          (mt/with-non-admin-groups-no-collection-perms restricted-col
+            (mt/user-http-request :rasta :post 403
+                                  (format "document/%d/copy" doc-id)
+                                  {:name "Should Not Copy"}))))
+
+      (testing "fails with 403 when user cannot create the new document in destination collection"
+        (mt/with-temp [:model/Collection {allowed-col :id} {}
+                       :model/Collection {restricted-dest-col :id} {}
+                       :model/Document {doc-id :id} {:name "Source Doc"
+                                                     :collection_id allowed-col
+                                                     :document (documents.test-util/text->prose-mirror-ast "source")}]
+          ;; Ensure the user can read the source document, but cannot write to the destination collection.
+          (mt/with-non-admin-groups-no-collection-perms restricted-dest-col
+            (mt/user-http-request :rasta :post 403
+                                  (format "document/%d/copy" doc-id)
+                                  {:name "Should Not Copy"
+                                   :collection_id restricted-dest-col})))))))
+
+(deftest copy-document-nonexistent-document-test
+  (testing "POST /api/document/:id/copy - non-existent source document returns 404"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :post 404
+                                 (format "document/%d/copy" Integer/MAX_VALUE)
+                                 {:name "Copy"})))))
+
+(deftest copy-document-archived-document-test
+  (testing "POST /api/document/:id/copy - archived source document returns 404"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Archived Document"
+                                                 :document (documents.test-util/text->prose-mirror-ast "archived")
+                                                 :archived true}]
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404
+                                   (format "document/%d/copy" doc-id)
+                                   {:name "Copy"}))))))
 
 (deftest document-collection-sync-integration-test
   (testing "End-to-end collection synchronization through API"
