@@ -2,6 +2,7 @@ name: JS Stats Update
 
 on:
   pull_request: ## FIXME: for testing
+  workflow_dispatch:
   schedule:
     - cron: 40 1 * * 4 # every Thursday at 1:40
 
@@ -29,7 +30,7 @@ jobs:
           script: | # js
             const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
 
-            console.log("JS_FILES", process.env.JS_FILES);
+            console.log("JS_FILES", Number(process.env.JS_FILES));
 
             const data = [
               {
@@ -40,8 +41,8 @@ jobs:
 
             uploadCsvToMb({
               baseUrl: 'https://stats.metabase.com',
-              jsonData: data,
               tableId: 73270,
+              jsonData: data,
               mode: 'append',
             }).then(() => {
               console.log('Data uploaded successfully');
