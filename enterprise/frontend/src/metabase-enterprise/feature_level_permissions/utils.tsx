@@ -34,11 +34,17 @@ export const databaseManagementPermissionAllowedPathGetter = (
   return canUserAccessDatabaseManagement(user) ? ["databases"] : [];
 };
 
-export const getDataColumns = (
-  subject: PermissionSubject,
-  groupType?: SpecialGroupType,
-  isExternal?: boolean,
-) => {
+export const getDataColumns = ({
+  subject,
+  groupType,
+  isExternal,
+  transformsEnabled,
+}: {
+  subject: PermissionSubject;
+  groupType?: SpecialGroupType;
+  isExternal?: boolean;
+  transformsEnabled?: boolean;
+}) => {
   const allSubjectsColumns: { name: string; hint?: ReactNode }[] = [
     {
       name: t`Download results`,
@@ -57,7 +63,7 @@ export const getDataColumns = (
       name: t`Manage database`,
     });
 
-    if (PLUGIN_TRANSFORMS.isEnabled) {
+    if (PLUGIN_TRANSFORMS.isEnabled && transformsEnabled) {
       allSubjectsColumns.push({
         name: t`Transforms`,
         hint:

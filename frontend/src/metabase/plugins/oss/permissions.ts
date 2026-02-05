@@ -132,23 +132,40 @@ const getDefaultAdvancedPermissions = () => ({
 export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();
 
 const getDefaultFeatureLevelPermissions = () => ({
-  getFeatureLevelDataPermissions: (
-    _entityId: DatabaseEntityId,
-    _groupId: number,
-    _groupType: SpecialGroupType,
-    _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: DataPermissionValue,
-    _defaultGroup: Group,
-    _permissionSubject: PermissionSubject,
-    _permissionView?: "group" | "database",
-  ) => {
+  getFeatureLevelDataPermissions: ({
+    entityId: _entityId,
+    groupId: _groupId,
+    groupType: _groupType,
+    permissions: _permissions,
+    dataAccessPermissionValue: _dataAccessPermissionValue,
+    defaultGroup: _defaultGroup,
+    permissionSubject: _permissionSubject,
+    permissionView: _permissionView,
+    transformsEnabled: _transformsEnabled,
+  }: {
+    entityId: DatabaseEntityId;
+    groupId: number;
+    groupType: SpecialGroupType;
+    permissions: GroupsPermissions;
+    dataAccessPermissionValue: DataPermissionValue;
+    defaultGroup: Group;
+    permissionSubject: PermissionSubject;
+    permissionView?: "group" | "database";
+    transformsEnabled: boolean;
+  }) => {
     return [] as any;
   },
-  getDataColumns: (
-    _subject: PermissionSubject,
-    _groupType?: SpecialGroupType,
-    _isExternal?: boolean,
-  ) => [] as any,
+  getDataColumns: ({
+    subject: _subject,
+    groupType: _groupType,
+    isExternal: _isExternal,
+    transformsEnabled: _transformsEnabled,
+  }: {
+    subject: PermissionSubject;
+    groupType?: SpecialGroupType;
+    isExternal?: boolean;
+    transformsEnabled?: boolean;
+  }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),

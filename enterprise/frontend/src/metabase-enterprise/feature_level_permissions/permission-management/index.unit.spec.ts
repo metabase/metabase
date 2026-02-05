@@ -49,15 +49,15 @@ describe("getFeatureLevelDataPermissions", () => {
     it("returns 4 permissions including transforms when PLUGIN_TRANSFORMS.isEnabled is true", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      const permissions = getFeatureLevelDataPermissions(
-        { databaseId },
+      const permissions = getFeatureLevelDataPermissions({
+        entityId: { databaseId },
         groupId,
         groupType,
-        getPermissionGraph(),
-        DataPermissionValue.UNRESTRICTED,
+        permissions: getPermissionGraph(),
+        dataAccessPermissionValue: DataPermissionValue.UNRESTRICTED,
         defaultGroup,
-        "schemas",
-      );
+        permissionSubject: "schemas",
+      });
 
       expect(permissions).toHaveLength(4);
       expect(permissions[0]).toMatchObject({ permission: "download" });
@@ -74,15 +74,15 @@ describe("getFeatureLevelDataPermissions", () => {
     it("returns 3 permissions without transforms when PLUGIN_TRANSFORMS.isEnabled is false", () => {
       PLUGIN_TRANSFORMS.isEnabled = false;
 
-      const permissions = getFeatureLevelDataPermissions(
-        { databaseId },
+      const permissions = getFeatureLevelDataPermissions({
+        entityId: { databaseId },
         groupId,
         groupType,
-        getPermissionGraph(),
-        DataPermissionValue.UNRESTRICTED,
+        permissions: getPermissionGraph(),
+        dataAccessPermissionValue: DataPermissionValue.UNRESTRICTED,
         defaultGroup,
-        "schemas",
-      );
+        permissionSubject: "schemas",
+      });
 
       expect(permissions).toHaveLength(3);
       expect(permissions[0]).toMatchObject({ permission: "download" });
@@ -95,15 +95,15 @@ describe("getFeatureLevelDataPermissions", () => {
     it("returns 2 permissions without transforms regardless of PLUGIN_TRANSFORMS.isEnabled", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      const permissions = getFeatureLevelDataPermissions(
-        { databaseId, schemaName: "public" },
+      const permissions = getFeatureLevelDataPermissions({
+        entityId: { databaseId, schemaName: "public" },
         groupId,
         groupType,
-        getPermissionGraph(),
-        DataPermissionValue.UNRESTRICTED,
+        permissions: getPermissionGraph(),
+        dataAccessPermissionValue: DataPermissionValue.UNRESTRICTED,
         defaultGroup,
-        "tables",
-      );
+        permissionSubject: "tables",
+      });
 
       expect(permissions).toHaveLength(2);
       expect(permissions[0]).toMatchObject({ permission: "download" });
@@ -115,15 +115,15 @@ describe("getFeatureLevelDataPermissions", () => {
     it("returns 2 permissions without transforms regardless of PLUGIN_TRANSFORMS.isEnabled", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      const permissions = getFeatureLevelDataPermissions(
-        { databaseId, schemaName: "public", tableId: 1 },
+      const permissions = getFeatureLevelDataPermissions({
+        entityId: { databaseId, schemaName: "public", tableId: 1 },
         groupId,
         groupType,
-        getPermissionGraph(),
-        DataPermissionValue.UNRESTRICTED,
+        permissions: getPermissionGraph(),
+        dataAccessPermissionValue: DataPermissionValue.UNRESTRICTED,
         defaultGroup,
-        "fields",
-      );
+        permissionSubject: "fields",
+      });
 
       expect(permissions).toHaveLength(2);
       expect(permissions[0]).toMatchObject({ permission: "download" });

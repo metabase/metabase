@@ -13,7 +13,9 @@ describe("getDataColumns", () => {
     it("returns 4 columns with Transforms when PLUGIN_TRANSFORMS.isEnabled is true", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      expect(getDataColumns("schemas", "admin")).toStrictEqual([
+      expect(
+        getDataColumns({ subject: "schemas", groupType: "admin" }),
+      ).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
@@ -27,7 +29,7 @@ describe("getDataColumns", () => {
     it("returns 3 columns without Transforms when PLUGIN_TRANSFORMS.isEnabled is false", () => {
       PLUGIN_TRANSFORMS.isEnabled = false;
 
-      expect(getDataColumns("schemas")).toStrictEqual([
+      expect(getDataColumns({ subject: "schemas" })).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
@@ -49,10 +51,14 @@ describe("getDataColumns", () => {
       ];
 
       PLUGIN_TRANSFORMS.isEnabled = true;
-      expect(getDataColumns("tables")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "tables" })).toStrictEqual(
+        expectedColumns,
+      );
 
       PLUGIN_TRANSFORMS.isEnabled = false;
-      expect(getDataColumns("tables")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "tables" })).toStrictEqual(
+        expectedColumns,
+      );
     });
   });
 
@@ -67,10 +73,14 @@ describe("getDataColumns", () => {
       ];
 
       PLUGIN_TRANSFORMS.isEnabled = true;
-      expect(getDataColumns("fields")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "fields" })).toStrictEqual(
+        expectedColumns,
+      );
 
       PLUGIN_TRANSFORMS.isEnabled = false;
-      expect(getDataColumns("fields")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "fields" })).toStrictEqual(
+        expectedColumns,
+      );
     });
   });
 });

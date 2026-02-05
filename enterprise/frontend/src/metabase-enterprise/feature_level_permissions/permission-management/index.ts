@@ -14,16 +14,27 @@ import { buildDetailsPermission } from "./details-permission";
 import { buildDownloadPermission } from "./download-permission";
 import { buildTransformsPermission } from "./transforms-permission";
 
-export const getFeatureLevelDataPermissions = (
-  entityId: EntityId,
-  groupId: number,
-  groupType: SpecialGroupType,
-  permissions: GroupsPermissions,
-  dataAccessPermissionValue: DataPermissionValue,
-  defaultGroup: Group,
-  permissionSubject: PermissionSubject,
-  permissionView?: "group" | "database",
-): PermissionSectionConfig[] => {
+export const getFeatureLevelDataPermissions = ({
+  entityId,
+  groupId,
+  groupType,
+  permissions,
+  dataAccessPermissionValue,
+  defaultGroup,
+  permissionSubject,
+  permissionView,
+  tenantsEnabled,
+}: {
+  entityId: EntityId;
+  groupId: number;
+  groupType: SpecialGroupType;
+  permissions: GroupsPermissions;
+  dataAccessPermissionValue: DataPermissionValue;
+  defaultGroup: Group;
+  permissionSubject: PermissionSubject;
+  permissionView?: "group" | "database";
+  tenantsEnabled?: boolean;
+}): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
   const isExternal = groupType === "external";
   const downloadPermission = buildDownloadPermission(
@@ -61,16 +72,17 @@ export const getFeatureLevelDataPermissions = (
         )
       : null;
 
-  const transformsPermission = PLUGIN_TRANSFORMS.isEnabled
-    ? buildTransformsPermission(
-        entityId,
-        groupId,
-        isAdmin,
-        permissions,
-        defaultGroup,
-        permissionSubject,
-      )
-    : null;
+  const transformsPermission =
+    PLUGIN_TRANSFORMS.isEnabled && tenantsEnabled
+      ? buildTransformsPermission(
+          entityId,
+          groupId,
+          isAdmin,
+          permissions,
+          defaultGroup,
+          permissionSubject,
+        )
+      : null;
 
   return [
     downloadPermission,

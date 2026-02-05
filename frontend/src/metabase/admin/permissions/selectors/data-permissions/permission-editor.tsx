@@ -12,6 +12,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
   Database,
@@ -181,6 +182,7 @@ export const getDatabasesPermissionEditor = createSelector(
   getGroup,
   Groups.selectors.getList,
   getIsLoadingDatabaseTables,
+  (state: State) => getSetting(state, "transforms-enabled"),
   (
     metadata,
     params,
@@ -189,6 +191,7 @@ export const getDatabasesPermissionEditor = createSelector(
     group: Group,
     groups: Group[],
     isLoading,
+    transformsEnabled,
   ) => {
     const { groupId, databaseId, schemaName } = params;
 
@@ -236,15 +239,16 @@ export const getDatabasesPermissionEditor = createSelector(
             id: table.id,
             name: table.display_name,
             entityId,
-            permissions: buildFieldsPermissions(
+            permissions: buildFieldsPermissions({
               entityId,
               groupId,
               groupType,
               permissions,
               originalPermissions,
-              isExternal ? externalUsersGroup : defaultGroup,
+              defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
-            ),
+              transformsEnabled,
+            }),
           };
         });
     } else if (database && databaseId != null) {
@@ -259,15 +263,16 @@ export const getDatabasesPermissionEditor = createSelector(
             name: schema.name,
             entityId,
             canSelect: true,
-            permissions: buildTablesPermissions(
+            permissions: buildTablesPermissions({
               entityId,
               groupId,
               groupType,
               permissions,
               originalPermissions,
-              isExternal ? externalUsersGroup : defaultGroup,
+              defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
-            ),
+              transformsEnabled,
+            }),
           };
         });
       if (maybeDbEntities) {
@@ -289,16 +294,17 @@ export const getDatabasesPermissionEditor = createSelector(
               ? t`(Database routing enabled)`
               : undefined,
             canSelect: true,
-            permissions: buildSchemasPermissions(
+            permissions: buildSchemasPermissions({
               entityId,
               groupId,
               groupType,
               permissions,
               originalPermissions,
-              isExternal ? externalUsersGroup : defaultGroup,
+              defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
-              "group",
-            ),
+              permissionView: "group",
+              transformsEnabled,
+            }),
           };
         });
     }
@@ -310,11 +316,12 @@ export const getDatabasesPermissionEditor = createSelector(
       showViewDataColumn && { name: t`View data` },
       { name: t`Create queries` },
       ...(permissionSubject
-        ? PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(
-            permissionSubject,
+        ? PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns({
+            subject: permissionSubject,
             groupType,
             isExternal,
-          )
+            transformsEnabled,
+          })
         : []),
     ]);
 
@@ -386,7 +393,15 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getDataPermissions,
     getOriginalDataPermissions,
     getOrderedGroups,
-    (metadata, params, permissions, originalPermissions, groups) => {
+    (state: State) => getSetting(state, "transforms-enabled"),
+    (
+      metadata,
+      params,
+      permissions,
+      originalPermissions,
+      groups,
+      transformsEnabled,
+    ) => {
       const { databaseId, schemaName, tableId } = params;
       const database = metadata?.database(databaseId);
 
@@ -422,45 +437,54 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
           !!allTenantUsersGroup && (isAllTenantUsersGroup || isTenantGroup);
 
         if (tableId != null) {
-          groupPermissions = buildFieldsPermissions(
-            {
+          groupPermissions = buildFieldsPermissions({
+            entityId: {
               databaseId,
               schemaName,
               tableId,
             },
-            group.id,
+            groupId: group.id,
             groupType,
             permissions,
             originalPermissions,
-            shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
+            defaultGroup: shouldUseAllExternalUsersGroup
+              ? allTenantUsersGroup
+              : defaultGroup,
             database,
-          );
+            transformsEnabled,
+          });
         } else if (schemaName != null) {
-          groupPermissions = buildTablesPermissions(
-            {
+          groupPermissions = buildTablesPermissions({
+            entityId: {
               databaseId,
               schemaName,
             },
-            group.id,
+            groupId: group.id,
             groupType,
             permissions,
             originalPermissions,
-            shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
+            defaultGroup: shouldUseAllExternalUsersGroup
+              ? allTenantUsersGroup
+              : defaultGroup,
             database,
-          );
+            transformsEnabled,
+          });
         } else if (databaseId != null) {
-          groupPermissions = buildSchemasPermissions(
-            {
+          groupPermissions = buildSchemasPermissions({
+            entityId: {
               databaseId,
             },
-            group.id,
+            groupId: group.id,
             groupType,
             permissions,
             originalPermissions,
-            shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
+            defaultGroup: shouldUseAllExternalUsersGroup
+              ? allTenantUsersGroup
+              : defaultGroup,
             database,
-            "database",
-          );
+            permissionView: "database",
+            transformsEnabled,
+          });
         }
 
         return {
@@ -481,7 +505,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         { name: t`Group name` },
         showViewDataColumn && { name: t`View data` },
         { name: t`Create queries` },
-        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns({
+          subject: permissionSubject,
+          transformsEnabled,
+        }),
       ]);
 
       const hasLegacyNoSelfServiceValueInPermissionGraph =
