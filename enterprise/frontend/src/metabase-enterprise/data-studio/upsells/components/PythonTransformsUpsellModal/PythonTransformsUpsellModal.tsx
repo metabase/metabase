@@ -129,7 +129,7 @@ export function PythonTransformsUpsellModal({
     handleModalClose();
     try {
       await purchaseCloudAddOn({
-        product_type: "python-execution",
+        product_type: "transforms-advanced",
       }).unwrap();
     } catch {
       settingUpModalHandlers.close();
