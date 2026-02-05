@@ -641,8 +641,8 @@
   {:team "Embedding"
    :api  #{metabase.embedding-rest.api}
    :uses #{api
-           database-routing
            dashboards
+           database-routing
            eid-translation
            embedding
            events
