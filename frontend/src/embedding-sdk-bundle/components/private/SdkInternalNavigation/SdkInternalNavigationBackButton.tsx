@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { Button, Icon } from "metabase/ui";
 
+import S from "./SdkInternalNavigationBackButton.module.css";
 import { useSdkInternalNavigationOptional } from "./context";
 
 /**
@@ -37,7 +39,7 @@ export const SdkInternalNavigationBackButton = ({
       onClick={pop}
       pl={0}
       style={style}
-      className={className}
+      className={cx(className, S.backButton)}
       aria-label={label}
     >
       {label}
