@@ -294,7 +294,7 @@ function createContent() {
 
 function dropTransformTable() {
   cy.get<TransformId>("@transformId").then((transformId) => {
-    cy.request("DELETE", `/api/ee/transform/${transformId}/table`);
+    cy.request("DELETE", `/api/transform/${transformId}/table`);
   });
 }
 
@@ -333,7 +333,7 @@ function createTransform() {
 
 function breakTransform() {
   cy.get<TransformId>("@transformId").then((transformId) => {
-    cy.request("PUT", `/api/ee/transform/${transformId}`, {
+    cy.request("PUT", `/api/transform/${transformId}`, {
       source: {
         type: "query",
         query: {

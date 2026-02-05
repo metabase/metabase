@@ -33,27 +33,26 @@
 
 (def data-layers
   "Valid values for `Table.data_layer`.
-  :gold   - highest quality, fully visible, synced
-  :silver - high quality, visible, synced
-  :bronze - acceptable quality, visible, synced
-  :copper - low quality, hidden, not synced"
-  #{:gold :silver :bronze :copper})
+  :final     - tables published for downstream consumption
+  :internal  - acceptable quality, visible, synced
+  :hidden    - low quality, hidden, not synced"
+  #{:final :internal :hidden})
 
 (defn- visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
-    :copper
-    :gold))
+    :hidden
+    :internal))
 
 (defn- data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
   (case data-layer
-    :copper :hidden
-    ;; gold, silver, bronze all map to visible (nil)
+    :hidden :hidden
+    ;; internal,final all map to visible (nil)
     nil))
 
 (def field-orderings
@@ -112,10 +111,25 @@
                                :status-code 400}))))
           (some-> value name))})
 
+(def ^:private transform-data-layer
+  {:in  (:in mi/transform-keyword)
+   :out (comp (some-fn data-layers
+                       ;; some databases may retain prior medallion values
+                       ;; this is due to race conditions with migrations (migration runs can contend with running writes)
+                       ;; e.g. we saw the prior values retained for the sync of a new search index table in stats.
+                       ;; we might later have a second migration and risk removing this map or find a better way
+                       ;; to make breaking enum migrations.
+                       {:copper :hidden
+                        :bronze :final
+                        :silver :final
+                        :gold   :final}
+                       identity)
+              (:out mi/transform-keyword))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
@@ -161,7 +175,7 @@
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :bronze}]
+                  :data_layer   :internal}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table

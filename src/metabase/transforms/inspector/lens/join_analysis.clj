@@ -1,0 +1,236 @@
+(ns metabase.transforms.inspector.lens.join-analysis
+  "Join Analysis lens - analyze join quality and data flow.
+
+   Cards returned:
+   - base-count: COUNT(*) with 0 joins
+   - join-step-N: [COUNT(*), COUNT(rhs_field)] for each join step
+   - table-N-count: COUNT(*) for each joined table (right-row-count)
+
+   FE derives from card results:
+   - null-count = output-count - matched-count
+   - left-row-count = previous step's output-count
+   - match-rate = matched-count / left-row-count
+
+   Layout: :flat (FE renders as table based on lens type)"
+  (:require
+   [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.transforms.inspector.lens.core :as lens.core]))
+
+(set! *warn-on-reflection* true)
+
+(lens.core/register-lens! :join-analysis 10)
+
+;;; -------------------------------------------------- MBQL Query Building --------------------------------------------------
+
+(defn- strip-join-to-essentials
+  [join]
+  (-> join
+      (select-keys [:lib/type :strategy :alias :conditions :stages])
+      (update :stages (fn [stages]
+                        (mapv #(select-keys % [:lib/type :source-table]) stages)))))
+
+(defn- query-with-n-joins
+  [query n]
+  (if (zero? n)
+    (update-in query [:stages 0] dissoc :joins)
+    (update-in query [:stages 0 :joins] #(vec (take n %)))))
+
+(defn- make-count-query
+  [query]
+  (update-in query [:stages 0]
+             (fn [stage]
+               (let [base (-> stage
+                              (select-keys [:lib/type :source-table])
+                              (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}]]))]
+                 (if-let [joins (seq (:joins stage))]
+                   (assoc base :joins (mapv strip-join-to-essentials joins))
+                   base)))))
+
+(defn- fresh-uuid-field-ref
+  [field-ref]
+  (when (and (vector? field-ref) (= :field (first field-ref)) (map? (second field-ref)))
+    (assoc-in field-ref [1 :lib/uuid] (str (random-uuid)))))
+
+(defn- get-rhs-field-from-condition
+  [conditions]
+  (when-let [condition (first conditions)]
+    (when (and (vector? condition) (>= (count condition) 4))
+      (let [[_op _opts _lhs rhs] condition]
+        (when (and (vector? rhs)
+                   (= :field (first rhs))
+                   (:join-alias (second rhs)))
+          rhs)))))
+
+(defn- make-join-step-query-mbql
+  "Query returning [COUNT(*), COUNT(rhs_field)] for outer joins, [COUNT(*)] otherwise."
+  [query step join]
+  (let [strategy (or (:strategy join) :left-join)
+        is-outer? (contains? #{:left-join :right-join :full-join} strategy)
+        rhs-field (when is-outer? (get-rhs-field-from-condition (:conditions join)))
+        step-query (-> query (query-with-n-joins step) make-count-query)]
+    (if rhs-field
+      (update-in step-query [:stages 0 :aggregation]
+                 conj [:count {:lib/uuid (str (random-uuid))}
+                       (fresh-uuid-field-ref rhs-field)])
+      step-query)))
+
+(defn- make-table-count-query
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)
+        table-metadata (lib.metadata/table mp table-id)]
+    (-> (lib/query mp table-metadata)
+        (lib/aggregate (lib/count)))))
+
+;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
+;;; Uses prebuilt SQL strings from query-analysis (no macaw AST knowledge needed here)
+
+(defn- build-native-join-step-sql
+  "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins.
+   Uses prebuilt :join-clause-sql and :rhs-column-sql from join-structure."
+  [from-clause-sql joins-so-far current-join]
+  (let [strategy (:strategy current-join)
+        is-outer? (contains? #{:left-join :right-join :full-join} strategy)
+        rhs-col-sql (when is-outer? (:rhs-column-sql current-join))
+        from-clause (str "FROM " from-clause-sql
+                         (when (seq joins-so-far)
+                           (str " " (str/join " " (map :join-clause-sql joins-so-far)))))]
+    (if rhs-col-sql
+      (str "SELECT COUNT(*), COUNT(" rhs-col-sql ") " from-clause)
+      (str "SELECT COUNT(*) " from-clause))))
+
+(defn- make-native-query
+  [db-id sql]
+  {:lib/type :mbql/query
+   :database db-id
+   :stages   [{:lib/type :mbql.stage/native
+               :native   sql}]})
+
+;;; -------------------------------------------------- Card Generation --------------------------------------------------
+
+(defn- resolve-from-table-id
+  "Find the table-id for the FROM table."
+  [{:keys [source-type preprocessed-query sources]}]
+  (case source-type
+    :mbql (get-in preprocessed-query [:stages 0 :source-table])
+    ;; For native, first source is the FROM table
+    :native (:table-id (first sources))))
+
+(defn- base-count-card
+  [ctx]
+  (let [{:keys [source-type preprocessed-query from-clause-sql db-id]} ctx
+        source-table-id (resolve-from-table-id ctx)]
+    {:id         "base-count"
+     :section-id "join-stats"
+     :title      "Base Row Count"
+     :display    :scalar
+     :dataset-query
+     (case source-type
+       :mbql (-> preprocessed-query (query-with-n-joins 0) make-count-query)
+       :native (make-native-query db-id
+                                  (str "SELECT COUNT(*) FROM " from-clause-sql)))
+     :metadata {:dedup-key [:table-count source-table-id]
+                :card-type :base-count}}))
+
+(defn- join-step-card
+  [ctx step]
+  (let [{:keys [source-type preprocessed-query from-clause-sql db-id join-structure]} ctx
+        join (nth join-structure (dec step))
+        {:keys [strategy alias]} join]
+    {:id         (str "join-step-" step)
+     :section-id "join-stats"
+     :title      (str "Join " step ": " alias)
+     :display    :table
+     :dataset-query
+     (case source-type
+       :mbql (make-join-step-query-mbql preprocessed-query step
+                                        (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
+       :native (make-native-query db-id
+                                  (build-native-join-step-sql from-clause-sql
+                                                              (take step join-structure) join)))
+     :metadata {:card-type     :join-step
+                :join-step     step
+                :join-alias    alias
+                :join-strategy strategy}}))
+
+(defn- table-count-card
+  [ctx step]
+  (let [{:keys [join-structure sources db-id]} ctx
+        join (nth join-structure (dec step))
+        table-id (:source-table join)
+        table (some #(when (= (:table-id %) table-id) %) sources)]
+    (when table
+      {:id         (str "table-" step "-count")
+       :section-id "join-stats"
+       :title      (str (:table-name table) " Row Count")
+       :display    :scalar
+       :dataset-query (make-table-count-query (or (:db-id table) db-id) table-id)
+       :metadata   {:dedup-key  [:table-count table-id]
+                    :card-type  :table-count
+                    :join-step  step
+                    :table-id   table-id}})))
+
+(defn- all-cards
+  [ctx]
+  (let [join-count (count (:join-structure ctx))]
+    (into [(base-count-card ctx)]
+          (mapcat (fn [step]
+                    (let [step-card (join-step-card ctx step)
+                          table-card (table-count-card ctx step)]
+                      (if table-card
+                        [step-card table-card]
+                        [step-card])))
+                  (range 1 (inc join-count))))))
+
+;;; -------------------------------------------------- Lens Implementation --------------------------------------------------
+
+(defmethod lens.core/lens-applicable? :join-analysis
+  [_ ctx]
+  (:has-joins? ctx))
+
+(defmethod lens.core/lens-metadata :join-analysis
+  [_ _ctx]
+  {:id           "join-analysis"
+   :display-name "Join Analysis"
+   :description  "Analyze join quality and match rates"})
+
+(defn- make-triggers
+  "Generate alert and drill-lens triggers for join steps."
+  [join-structure]
+  (let [outer-joins (filter #(contains? #{:left-join :right-join :full-join}
+                                        (:strategy %))
+                            (map-indexed #(assoc %2 :step (inc %1)) join-structure))]
+    {:alert-triggers
+     (for [{:keys [step alias]} outer-joins]
+       {:id         (str "high-null-rate-" step)
+        :condition  {:name    :high-null-rate
+                     :card-id (str "join-step-" step)}
+        :severity   :warning
+        :message    (str "Join '" alias "' has >20% unmatched rows")})
+
+     :drill-lens-triggers
+     (for [{:keys [step alias]} outer-joins]
+       {:lens-id   "unmatched-rows"
+        :condition {:name    :has-unmatched-rows
+                    :card-id (str "join-step-" step)}
+        :params    {:join-step step}
+        :reason    (str "Unmatched rows in " alias)})}))
+
+(defmethod lens.core/make-lens :join-analysis
+  [_ ctx _params]
+  (let [{:keys [join-structure]} ctx
+        join-count (count join-structure)
+        strategies (distinct (map :strategy join-structure))
+        triggers (make-triggers join-structure)]
+    {:id                   "join-analysis"
+     :display-name         "Join Analysis"
+     :summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
+                            :highlights [{:label "Joins" :value join-count}]}
+     :sections             [{:id     "join-stats"
+                             :title  "Join Statistics"
+                             :layout :flat}]
+     :cards                (all-cards ctx)
+     :alert-triggers       (vec (:alert-triggers triggers))
+     :drill-lens-triggers  (vec (:drill-lens-triggers triggers))}))

@@ -45,7 +45,8 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
@@ -194,7 +195,8 @@ jobs:
         id: download-uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
+          commit: ${{ steps.get-commit-sha.outputs.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
         continue-on-error: true # do not break the whole job if this step doesn't succeed

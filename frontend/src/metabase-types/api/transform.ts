@@ -1,3 +1,4 @@
+import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -25,7 +26,7 @@ export type Transform = {
   source: TransformSource;
   source_type: "native" | "python" | "mbql";
   target: TransformTarget;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   created_at: string;
   updated_at: string;
   source_readable: boolean;
@@ -42,6 +43,7 @@ export type Transform = {
   owner?: TransformOwner | null;
 
   // hydrated fields
+  collection?: Collection | null;
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
@@ -518,4 +520,9 @@ export type GetInspectorLensRequest = {
   transformId: TransformId;
   lensId: string;
   params?: Record<string, unknown>;
+};
+
+export type MetabotSuggestedTransform = SuggestedTransform & {
+  active: boolean;
+  suggestionId: string; // internal unique identifier for marking active/inactive
 };

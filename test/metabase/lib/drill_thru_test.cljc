@@ -76,10 +76,7 @@
   (case (:type drill)
     ;; filter-op value
     :drill-thru/column-filter
-    (concat
-     (when-let [initial-op (:initial-op drill)]
-       [[(:short initial-op) 1]])
-     [["!=" 2]])
+    [["!=" 2]]
 
     :drill-thru/summarize-column
     (for [ag (:aggregations drill)]
@@ -128,8 +125,7 @@
       (let [context (basic-context (meta/field-metadata :orders :id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :id)
-                  :initial-op {:short := :display-name-variant :default}}
+                  :column     (meta/field-metadata :orders :id)}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :id)
@@ -147,8 +143,7 @@
       (let [context (basic-context (meta/field-metadata :orders :user-id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :user-id)
-                  :initial-op {:short := :display-name-variant :default}}
+                  :column     (meta/field-metadata :orders :user-id)}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :user-id)}
@@ -169,8 +164,7 @@
       (let [context (basic-context (meta/field-metadata :orders :subtotal) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :subtotal)
-                  :initial-op {:short := :display-name-variant :equal-to}}
+                  :column     (meta/field-metadata :orders :subtotal)}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :subtotal)}
@@ -196,8 +190,7 @@
       (let [context (basic-context (meta/field-metadata :orders :created-at) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :created-at)
-                  :initial-op nil}
+                  :column     (meta/field-metadata :orders :created-at)}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :created-at)}
@@ -222,8 +215,7 @@
     (testing "a sorted column"
       (let [expected [{:lib/type   :metabase.lib.drill-thru/drill-thru
                        :type       :drill-thru/column-filter
-                       :column     (meta/field-metadata :orders :subtotal)
-                       :initial-op {:short := :display-name-variant :equal-to}}
+                       :column     (meta/field-metadata :orders :subtotal)}
                       {:lib/type :metabase.lib.drill-thru/drill-thru
                        :type     :drill-thru/distribution
                        :column   (meta/field-metadata :orders :subtotal)}
@@ -508,9 +500,7 @@
                        :column-ref (lib/ref count-col)
                        :value      nil}]
           (is (=? [{:type   :drill-thru/column-filter
-                    :column {:name "count"}
-                    :initial-op {:display-name-variant :equal-to
-                                 :short :=}}
+                    :column {:name "count"}}
                    {:type   :drill-thru/sort
                     :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
@@ -524,9 +514,7 @@
                        :column-ref (lib/ref max-of-discount-col)
                        :value      nil}]
           (is (=? [{:type   :drill-thru/column-filter,
-                    :column {:display-name "Max of Discount"}
-                    :initial-op {:display-name-variant :equal-to
-                                 :short :=}}
+                    :column {:display-name "Max of Discount"}}
                    {:type   :drill-thru/sort
                     :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
@@ -685,7 +673,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "ID"
-    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
@@ -696,7 +684,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "PRODUCT_ID"
-    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}
@@ -713,7 +701,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "SUBTOTAL"
-    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct :sum :avg]}
@@ -724,7 +712,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "CREATED_AT"
-    :expected    [{:type :drill-thru/column-filter, :initial-op nil}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
@@ -814,7 +802,7 @@
        {:click-type  :header
         :query-type  :aggregated
         :column-name "count"
-        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
+        :expected    [{:type :drill-thru/column-filter}
                       {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
 ;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
@@ -824,7 +812,7 @@
        {:click-type  :header
         :query-type  :aggregated
         :column-name "PRODUCT_ID"
-        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
+        :expected    [{:type :drill-thru/column-filter}
                       {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
 ;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
@@ -834,8 +822,7 @@
        {:click-type  :header
         :query-type  :aggregated
         :column-name "CREATED_AT"
-        :expected    [{:type       :drill-thru/column-filter
-                       :initial-op {:short :=}}
+        :expected    [{:type            :drill-thru/column-filter}
                       {:type            :drill-thru/sort
                        :sort-directions [:asc :desc]}]})))
 
