@@ -1,5 +1,3 @@
-(set! *warn-on-reflection* true)
-
 (ns metabase.sql-tools.macaw.core
   (:require
    [macaw.core :as macaw]
@@ -11,6 +9,8 @@
    [metabase.sql-tools.macaw.references :as sql-tools.macaw.references]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;;; Macaw options and parsing
 
