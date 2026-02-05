@@ -10,7 +10,9 @@ import {
 } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
+import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import type { LibrarySectionType, TreeItem } from "./types";
@@ -85,6 +87,9 @@ export const useBuildSnippetTree = (): {
     useListCollectionsQuery({
       namespace: "snippets",
     });
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   return useMemo(() => {
     if (
@@ -103,14 +108,19 @@ export const useBuildSnippetTree = (): {
     return {
       isLoading: false,
       error,
-      tree: buildSnippetTree(snippetCollections, snippets),
+      tree: buildSnippetTree(
+        snippetCollections,
+        snippets,
+        !isRemoteSyncReadOnly,
+      ),
     };
   }, [
-    loadingSnippets,
-    loadingCollections,
-    snippets,
-    snippetCollections,
     error,
+    isRemoteSyncReadOnly,
+    loadingCollections,
+    loadingSnippets,
+    snippetCollections,
+    snippets,
   ]);
 };
 

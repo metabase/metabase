@@ -8,12 +8,13 @@ import { useCreateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { EditableText } from "metabase/common/components/EditableText";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Card, Flex, Stack } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
@@ -48,6 +49,9 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   );
   const [createSnippet, { isLoading: isSaving }] = useCreateSnippetMutation();
   const isValid = name.length > 0 && content.length > 0;
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
@@ -95,6 +99,10 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   };
 
   const extensions = useMemo(() => [sql()], []);
+
+  if (isRemoteSyncReadOnly) {
+    return <Unauthorized />;
+  }
 
   return (
     <>

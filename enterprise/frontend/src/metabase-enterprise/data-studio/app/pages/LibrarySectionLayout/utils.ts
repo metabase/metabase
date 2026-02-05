@@ -57,6 +57,7 @@ function buildCollectionNode(
 export function buildSnippetTree(
   snippetCollections: Collection[],
   snippets: NativeQuerySnippet[],
+  canWriteSnippets: boolean,
 ): TreeItem[] {
   const collections = snippetCollections.filter((c) => !c.archived);
   const activeSnippets = snippets.filter((s) => !s.archived);
@@ -77,7 +78,7 @@ export function buildSnippetTree(
   const hasContent = activeSnippets.length > 0 || nonRootCollections.length > 0;
   const children = hasContent
     ? rootNode.children
-    : [createEmptyStateItem("snippets")];
+    : [createEmptyStateItem("snippets", undefined, !canWriteSnippets)];
 
   return [{ ...rootNode, name: t`SQL snippets`, children }];
 }
@@ -132,14 +133,15 @@ function getEmptyStateConfig(
 
 export function createEmptyStateItem(
   sectionType: LibrarySectionType,
-  metricCollectionId?: CollectionId,
+  collectionId?: CollectionId,
+  hideAction?: boolean,
 ): TreeItem {
   const config = getEmptyStateConfig(sectionType);
 
   let actionUrl: string | undefined;
-  if (sectionType === "metrics" && metricCollectionId) {
-    actionUrl = Urls.newDataStudioMetric({ collectionId: metricCollectionId });
-  } else if (sectionType === "snippets") {
+  if (sectionType === "metrics" && collectionId && !hideAction) {
+    actionUrl = Urls.newDataStudioMetric({ collectionId: collectionId });
+  } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
   }
   // "data" section opens a modal, so no actionUrl
