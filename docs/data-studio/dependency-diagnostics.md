@@ -5,7 +5,7 @@ summary: Find broken content and unused items so you can fix problems and clean 
 
 # Dependency diagnostics
 
-Dependency diagnostics shows you content with broken dependencies, and content that isn't referenced by anything else. Use it to fix problems at the source and clean up what you no longer need.
+Dependency diagnostics shows you content with broken dependencies, and content that isn't referenced by anything else.
 
 To open Dependency diagnostics:
 
