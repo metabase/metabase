@@ -26,7 +26,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io OutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -135,8 +137,7 @@
   [{:keys [profile-id message context history conversation-id state]}]
   (let [enriched-context (metabot-v3.context/create-context context)
         messages         (concat history [message])]
-    (sr/streaming-response {:content-type "text/event-stream"}
-                           [^java.io.OutputStream os _canceled-chan]
+    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os _canceled-chan]
       (let [parts-atom (atom [])
             ;; Compose: collect parts AND convert to lines for streaming
             xf         (comp (u/tee-xf parts-atom)
