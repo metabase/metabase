@@ -117,6 +117,7 @@ const SdkInternalNavigationProviderInner = ({
         className={undefined}
         dashboardId={activeEntry.id}
         initialParameters={activeEntry.parameters}
+        enableEntityNavigation={true}
       />
     ))
     .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => (

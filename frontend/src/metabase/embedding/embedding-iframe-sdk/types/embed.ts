@@ -152,6 +152,9 @@ export interface BrowserEmbedOptions {
   /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */
   withNewDashboard?: boolean;
 
+  /** Whether to enable internal entity navigation (links to dashboards/questions). Defaults to false. */
+  enableEntityNavigation?: boolean;
+
   template?: never;
   questionId?: never;
   dashboardId?: never;
