@@ -49,7 +49,7 @@
 
 (defenterprise published-table-visible-clause
   "Returns a HoneySQL clause matching published tables that are readable via collection permissions."
-  :feature :data-studio
+  :feature :library
   [table-id-column {:keys [user-id is-superuser?]}]
   [:in table-id-column
    {:select [:id]
