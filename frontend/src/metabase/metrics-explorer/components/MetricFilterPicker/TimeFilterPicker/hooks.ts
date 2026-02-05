@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import * as LibMetric from "metabase-lib/metric";
+import type * as LibMetric from "metabase-lib/metric";
 
 import type { TimeValue } from "./types";
 import {
@@ -13,32 +13,14 @@ import {
 } from "./utils";
 
 interface UseTimeFilterProps {
-  definition: LibMetric.MetricDefinition;
   dimension: LibMetric.DimensionMetadata;
-  source: LibMetric.SourceMetadata;
-  filter?: LibMetric.FilterClause;
 }
 
-export function useTimeFilter({
-  definition,
-  dimension,
-  source,
-  filter,
-}: UseTimeFilterProps) {
-  const filterParts = useMemo(() => {
-    return filter
-      ? LibMetric.timeFilterParts(definition, source, filter)
-      : null;
-  }, [definition, source, filter]);
-
+export function useTimeFilter({ dimension }: UseTimeFilterProps) {
   const availableOptions = useMemo(() => getAvailableOptions(), []);
 
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(),
-  );
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts ? filterParts.values : []),
-  );
+  const [operator, setOperator] = useState(getDefaultOperator());
+  const [values, setValues] = useState(() => getDefaultValues(operator, []));
   const { valueCount } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, dimension, values);
 

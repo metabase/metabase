@@ -17,8 +17,6 @@ import type { TimeValue } from "./types";
 export function TimeFilterPicker({
   definition,
   dimension,
-  source,
-  filter,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -37,10 +35,7 @@ export function TimeFilterPicker({
     setOperator,
     setValues,
   } = useTimeFilter({
-    definition,
     dimension,
-    source,
-    filter,
   });
 
   const handleOperatorChange = (newOperator: LibMetric.TimeFilterOperator) => {
@@ -51,7 +46,7 @@ export function TimeFilterPicker({
   const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(source, filter, opts);
+      onChange(filter, opts);
     }
   };
 
