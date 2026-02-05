@@ -7,7 +7,6 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.macaw.core :as sql-tools.macaw]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -44,13 +43,6 @@
                     driver {:table table
                             :schema (or table-schema default-schema)}))))
           query-tables)))
-
-(comment
-  ;; REPL usage - requires test metadata:
-  (require '[metabase.lib.test-metadata :as meta])
-  (require '[metabase.lib.core :as lib])
-  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS")]
-    (referenced-tables :h2 query)))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [_parser driver query]
@@ -100,15 +92,15 @@
 ;; SQLGlot validation uses the same pipeline as Macaw:
 ;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
 (defmethod sql-tools/validate-query-impl :sqlglot
-  [_parser driver query]
-  (sql-tools.macaw/validate-query driver query))
+  [parser driver query]
+  (sql-tools.common/validate-query parser driver query))
 
 ;;;; returned-columns
 ;; SQLGlot returned-columns uses the same pipeline as Macaw:
 ;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
 (defmethod sql-tools/returned-columns-impl :sqlglot
-  [_parser driver query]
-  (sql-tools.macaw/returned-columns driver query))
+  [parser driver query]
+  (sql-tools.common/returned-columns parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
   [_parser driver sql-str]

@@ -2,12 +2,12 @@
 (ns metabase.sql-tools.macaw.references
   (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
-   [clojure.string :as str]
    [macaw.ast-types :as macaw.ast-types]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.sql-tools.common :as sql-tools.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [every? mapv select-keys some]]))
@@ -73,6 +73,7 @@
                   (driver.sql/normalize-name driver %)
                   %)))
 
+;; TODO: add this into sqlglot implementation
 (defn- col-fields [driver m]
   (->> (select-keys m [:type :column :table :schema :database :alias])
        (normalize-fields driver)))
@@ -91,17 +92,6 @@
                    %)
                 sublist))
         sources))
-
-(mu/defn table-name :- [:maybe :string]
-  "Computes a table name from a table reference"
-  [raw-col :- [:map
-               [:database {:optional true} :string]
-               [:schema {:optional true} :string]
-               [:table {:optional true} :string]]]
-  (when (:table raw-col)
-    (->> [:database :schema :table]
-         (keep raw-col)
-         (str/join "."))))
 
 (defn- get-column [driver sources raw-col {:keys [return-table-matches?]}]
   (if (and (nil? (:table raw-col))
@@ -144,7 +134,7 @@
                       :source-columns source-columns}
                 ;; if we didn't find any potential sources, signal an error here
                 :errors (when-not (some #(some identity %) valid-sources)
-                          #{(if-let [name (table-name raw-col)]
+                          #{(if-let [name (sql-tools.common/table-name raw-col)]
                               (lib/missing-table-alias-error name)
                               (lib/missing-column-error column))})}]))))
 
@@ -231,23 +221,18 @@
   [driver sources _withs expr]
   (get-column driver sources expr {:return-table-matches? true}))
 
-(defn wrap-col
-  "Wraps the argument in `{:col _}`"
-  [col]
-  {:col col})
-
 (defmethod find-returned-fields [:sql :macaw.ast/wildcard]
   [_driver sources _withs _expr]
   (into []
-        (mapcat #(->> % :returned-fields (map wrap-col)))
+        (mapcat #(->> % :returned-fields (map sql-tools.common/wrap-col)))
         (first sources)))
 
 (defmethod find-returned-fields [:sql :macaw.ast/table-wildcard]
   [driver sources _withs expr]
   (or (some->> (find-source (col-fields driver expr) sources)
                :returned-fields
-               (map wrap-col))
-      [{:errors #{(lib/missing-table-alias-error (table-name expr))}}]))
+               (map sql-tools.common/wrap-col))
+      [{:errors #{(lib/missing-table-alias-error (sql-tools.common/table-name expr))}}]))
 
 (defmethod find-returned-fields [:sql :macaw.ast/set-operation]
   [driver sources withs expr]
@@ -305,7 +290,7 @@
            (mapcat rec (:join expr))
            (mapcat rec (:group-by expr))
            (mapcat rec (:order-by expr))
-           (mapcat #(->> % :used-fields (map wrap-col))
+           (mapcat #(->> % :used-fields (map sql-tools.common/wrap-col))
                    local-sources)])))
 
 (defmethod find-returned-fields [:sql :macaw.ast/select]
