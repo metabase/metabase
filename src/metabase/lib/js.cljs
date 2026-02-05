@@ -81,6 +81,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -675,10 +676,11 @@
               (mbql.normalize/normalize q)))]
     (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
-(defn ^:export normalize
+(mu/defn ^:export normalize :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]
   "Normalize the MBQL or pMBQL query `a-query`.
-  Returns the JS form of the normalized query."
-  [a-query]
+  Returns the JS form of the normalized query.
+  Accepts either a full query object or an MBQL clause/reference array."
+  [a-query :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]]
   (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
 
 ;; # Comparing queries

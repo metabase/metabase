@@ -46,13 +46,18 @@
   [x]
   (empty? (find-duplicate-uuid x)))
 
-;;; Malli schema for to ensure that all `:lib/uuid`s are unique.
+;;; Malli schema to ensure that all `:lib/uuid`s are unique.
+;;; This is a validation constraint applied to MBQL clauses/expressions (vectors).
+;;; The [:sequential :any] provides the base type for TypeScript (any[]),
+;;; and the :fn provides the uniqueness validation.
 (mr/def ::unique-uuids
-  [:fn
-   {:error/message "all :lib/uuids must be unique"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
-   #'unique-uuids?])
+  [:and
+   [:sequential :any]
+   [:fn
+    {:error/message "all :lib/uuids must be unique"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
+    #'unique-uuids?]])
 
 (defn- mbql-clause?
   "Just check that `x` is in the general shape of an MBQL clause. This is to prevent things
