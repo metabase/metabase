@@ -602,9 +602,6 @@ describe("translateColumnDisplayName", () => {
         );
         expect(result).toBe("Meine Frage - Teil 2");
       });
-
-      // Note: "already-translated display names from backend" test moved to CLJ side
-      // (test/metabase/lib/util_test.cljc - parse-column-display-name-parts-rtl-test)
     });
   });
 });
