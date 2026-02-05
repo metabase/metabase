@@ -10,8 +10,7 @@
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
   (:require
-   [metabase.analytics.core :as analytics]
-   [metabase.lib.validate :as lib.validate]
+   [clojure.string :as str]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.pool :as python.pool]
    [metabase.util.json :as json]
@@ -261,15 +260,11 @@
           .asString))))
 
 (defn- convert-field-type
-  "Convert field type string to keyword."
+  "Convert field type string (snake_case) to keyword (kebab-case)."
   [type-str]
-  (case type-str
-    "single_column" :single-column
-    "all_columns" :all-columns
-    "custom_field" :custom-field
-    "composite_field" :composite-field
-    "unknown_columns" :unknown-columns
-    (keyword type-str)))
+  (-> type-str
+      (str/replace "_" "-")
+      keyword))
 
 (defn- convert-error
   "Convert Python error format to Metabase lib error format."
@@ -410,7 +405,7 @@
    Returns modified SQL string.
 
    Examples:
-   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[[{:table \"people\"} \"users\"]]})
+   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
   [dialect sql replacements]
   (with-open [^Closeable ctx (python.pool/python-context)]

@@ -1,4 +1,5 @@
 (ns metabase.sql-tools.common
+  {:clj-kondo/config '{:linters {:metabase/modules {:level :off}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -21,9 +22,10 @@
   [driver tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
                           (driver.sql/default-schema driver))
+        normalize (partial driver.sql/normalize-name driver)
         matches? (fn [db-table db-schema]
-                   (and (= search-table db-table)
-                        (= search-schema db-schema)))]
+                   (and (= (normalize search-table) (normalize db-table))
+                        (= (some-> search-schema normalize) (some-> db-schema normalize))))]
     (or (some (fn [{:keys [name schema id]}]
                 (when (matches? name schema)
                   {:table id}))
@@ -155,6 +157,14 @@
                        (keep :col))
                  returned-fields))))
 
+(defn- normalize-error
+  "Normalize error names using driver-specific case normalization.
+   This ensures error names match database metadata conventions."
+  [driver error]
+  (if-let [error-name (:name error)]
+    (assoc error :name (driver.sql/normalize-name driver error-name))
+    error))
+
 (defn validate-query
   "Validate native query. TODO: limits; what this can and can not do."
   [parser driver native-query]
@@ -163,9 +173,11 @@
                                 (->> (resolve-field driver (lib/->metadata-provider native-query) col-spec)
                                      (keep :error)))
                               %)]
-    (-> errors
-        (into (check-fields used-fields))
-        (into (check-fields returned-fields)))))
+    (->> (-> errors
+             (into (check-fields used-fields))
+             (into (check-fields returned-fields)))
+         (map (partial normalize-error driver))
+         set)))
 
 (defn referenced-fields
   "Extract fields referenced (used) in a native query - fields in WHERE, JOIN ON, etc."

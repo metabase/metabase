@@ -28,11 +28,19 @@
    [:table {:optional true} [:maybe :string]]
    [:schema {:optional true} [:maybe :string]]])
 
+(mr/def ::table-replacement-value
+  "Schema for table replacement target - can be a string or a map with schema/table."
+  [:or
+   :string
+   [:map
+    [:schema {:optional true} [:maybe :string]]
+    [:table {:optional true} [:maybe :string]]]])
+
 (mr/def ::replacements
   "Schema for replace-names replacements map."
   [:map
    [:schemas {:optional true} [:map-of :string :string]]
-   [:tables {:optional true} [:map-of ::table-spec :string]]
+   [:tables {:optional true} [:map-of ::table-spec ::table-replacement-value]]
    [:columns {:optional true} [:map-of ::column-spec :string]]])
 
 (mr/def ::replace-names-opts

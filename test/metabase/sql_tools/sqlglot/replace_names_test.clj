@@ -99,3 +99,23 @@
            (replace-names :postgres
                           "SELECT * FROM PEOPLE"
                           {:tables {{:table "PEOPLE"} "users"}})))))
+
+(deftest ^:parallel table-rename-with-schema-map-value-test
+  (testing "Table rename using map value with schema and table (workspace isolation pattern)"
+    ;; This is the pattern used by workspaces to isolate tables into a new schema
+    (is (= "SELECT * FROM ws_isolated_123.public__orders"
+           (replace-names :postgres
+                          "SELECT * FROM orders"
+                          {:tables {{:table "orders"} {:schema "ws_isolated_123" :table "public__orders"}}})))
+    ;; Qualified source table
+    (is (= "SELECT * FROM ws_isolated_123.public__orders"
+           (replace-names :postgres
+                          "SELECT * FROM public.orders"
+                          {:tables {{:schema "public" :table "orders"} {:schema "ws_isolated_123" :table "public__orders"}}})))))
+
+(deftest ^:parallel table-rename-add-schema-only-test
+  (testing "Table rename that only adds schema (qualify unqualified reference)"
+    (is (= "SELECT * FROM public.orders"
+           (replace-names :postgres
+                          "SELECT * FROM orders"
+                          {:tables {{:table "orders"} {:schema "public" :table "orders"}}})))))

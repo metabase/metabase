@@ -27,13 +27,24 @@
                  err)))
         errors))
 
+(defn- normalize-result-metadata
+  "Lowercase :name and :lib/desired-column-alias values in result metadata for case-insensitive comparison.
+  SQLGlot returns lowercase column names while Macaw preserves query case."
+  [results]
+  (mapv (fn [col]
+          (cond-> col
+            (:name col) (update :name u/lower-case-en)
+            (:lib/desired-column-alias col) (update :lib/desired-column-alias u/lower-case-en)))
+        results))
+
 (defn- validates?
   [mp driver card-id expected]
-  (is (=? expected
+  (is (=? (if (set? expected) (normalize-error-names expected) expected)
           (-> (lib.metadata/card mp card-id)
               :dataset-query
               (assoc :lib/metadata mp)
-              (->> (deps.native-validation/validate-native-query driver))))))
+              (->> (deps.native-validation/validate-native-query driver))
+              normalize-error-names))))
 
 (deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
@@ -149,10 +160,11 @@
                     #{(lib/missing-column-error "LATITUDE")})))))
 
 (defn- check-result-metadata [driver mp query expected]
-  (is (=? expected
+  (is (=? (normalize-result-metadata expected)
           (->> query
                (fake-query mp)
-               (deps.native-validation/native-result-metadata driver)))))
+               (deps.native-validation/native-result-metadata driver)
+               normalize-result-metadata))))
 
 (defn- add-desired-column-alias [fields]
   (map #(assoc % :lib/desired-column-alias (:name %)) fields))

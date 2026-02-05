@@ -1140,6 +1140,17 @@ class FieldReferenceWalker:
                     "errors": set()
                 }
 
+            # A table with empty name whose 'this' is a function is a table function
+            # that SQLGlot parsed as Table instead of UDTF (e.g., my_function(1, 100))
+            if not table_name and isinstance(source_expr.this, exp.Func):
+                alias = source_expr.alias
+                return {
+                    "names": {"table_alias": alias} if alias else None,
+                    "returned_fields": [{"type": "unknown_columns"}],
+                    "used_fields": set(),
+                    "errors": set()
+                }
+
             # Real table
             table_info = {"table": table_name}
             if source_expr.db:
@@ -1544,7 +1555,10 @@ class FieldReferenceWalker:
         if not source_columns or not any(source_columns):
             # No potential sources found
             if table_ref:
-                errors.add(self._missing_table_alias_error(table_ref))
+                # Table qualifier doesn't exist - return error only, no col spec
+                # (Returning a col with empty source_columns would cause Clojure's
+                # resolve-field to generate a redundant missing-column error)
+                return [{"errors": {self._missing_table_alias_error(table_ref)}}]
             else:
                 errors.add(self._missing_column_error(column_name))
 
@@ -1595,13 +1609,16 @@ class FieldReferenceWalker:
         if not source:
             return False
 
-        # If table ref specified, check if it matches
+        # If table ref specified, check if it matches (case-insensitive since
+        # SQLGlot may lowercase identifiers)
         if table_ref:
             names = source.get("names", {})
             if names:
-                if names.get("table_alias") == table_ref:
+                table_alias = names.get("table_alias")
+                table_name = names.get("table")
+                if table_alias and table_alias.lower() == table_ref.lower():
                     return True
-                if names.get("table") == table_ref:
+                if table_name and table_name.lower() == table_ref.lower():
                     return True
             return False
 
