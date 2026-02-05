@@ -57,8 +57,8 @@
 
 (defn- distribution-card
   "Generate a distribution card for a field."
-  [db-id table-id table-name field output-column role order]
-  {:id            (str table-name "-" (:name field) "-distribution")
+  [db-id table-id table-name field output-column role order params]
+  {:id            (lens.core/make-card-id (str table-name "-" (:name field) "-distribution") params)
    :section_id    "comparisons"
    :title         (str (:name field) " (" table-name ")")
    :display       (viz-type-for-field field)
@@ -71,7 +71,7 @@
 
 (defn- comparison-cards-for-match
   "Generate comparison cards for a single column match."
-  [{:keys [output-column output-field input-columns]} target]
+  [{:keys [output-column output-field input-columns]} target params]
   (let [;; Filter out input-columns with nil source-table-id (e.g., computed columns)
         valid-inputs (filter :source-table-id input-columns)]
     (when (seq valid-inputs)
@@ -83,11 +83,11 @@
                                          {:id id :name (:name (first valid-inputs))
                                           :base_type (:base_type output-field)
                                           :stats (:stats output-field)}
-                                         output-column :input i))
+                                         output-column :input i params))
                     valid-inputs)
        ;; Output card
        [(distribution-card (:db_id target) (:table_id target) (:table_name target)
-                           output-field output-column :output 0)]))))
+                           output-field output-column :output 0 params)]))))
 
 ;;; -------------------------------------------------- Lens Implementation --------------------------------------------------
 
@@ -102,7 +102,7 @@
    :description  "Compare input/output column distributions"})
 
 (defmethod lens.core/make-lens :column-comparison
-  [_ ctx _params]
+  [_ ctx params]
   (let [{:keys [column-matches target]} ctx
         match-count (count column-matches)]
     {:id           "column-comparison"
@@ -112,4 +112,4 @@
      :sections     [{:id     "comparisons"
                      :title  "Column Comparisons"
                      :layout :comparison}]
-     :cards        (vec (mapcat #(comparison-cards-for-match % target) column-matches))}))
+     :cards        (vec (mapcat #(comparison-cards-for-match % target params) column-matches))}))

@@ -119,10 +119,10 @@
     :native (:table_id (first sources))))
 
 (defn- base-count-card
-  [ctx]
+  [ctx params]
   (let [{:keys [source-type preprocessed-query from-clause-sql db-id]} ctx
         source-table-id (resolve-from-table-id ctx)]
-    {:id         "base-count"
+    {:id         (lens.core/make-card-id "base-count" params)
      :section_id "join-stats"
      :title      "Base Row Count"
      :display    :scalar
@@ -135,11 +135,11 @@
                 :card_type :base_count}}))
 
 (defn- join-step-card
-  [ctx step]
+  [ctx step params]
   (let [{:keys [source-type preprocessed-query from-clause-sql db-id join-structure]} ctx
         join (nth join-structure (dec step))
         {:keys [strategy alias]} join]
-    {:id         (str "join-step-" step)
+    {:id         (lens.core/make-card-id (str "join-step-" step) params)
      :section_id "join-stats"
      :title      (str "Join " step ": " alias)
      :display    :table
@@ -156,13 +156,13 @@
                 :join_strategy strategy}}))
 
 (defn- table-count-card
-  [ctx step]
+  [ctx step params]
   (let [{:keys [join-structure sources db-id]} ctx
         join (nth join-structure (dec step))
         table-id (:source-table join)
         table (some #(when (= (:table_id %) table-id) %) sources)]
     (when table
-      {:id         (str "table-" step "-count")
+      {:id         (lens.core/make-card-id (str "table-" step "-count") params)
        :section_id "join-stats"
        :title      (str (:table_name table) " Row Count")
        :display    :scalar
@@ -173,12 +173,12 @@
                     :table_id   table-id}})))
 
 (defn- all-cards
-  [ctx]
+  [ctx params]
   (let [join-count (count (:join-structure ctx))]
-    (into [(base-count-card ctx)]
+    (into [(base-count-card ctx params)]
           (mapcat (fn [step]
-                    (let [step-card (join-step-card ctx step)
-                          table-card (table-count-card ctx step)]
+                    (let [step-card (join-step-card ctx step params)
+                          table-card (table-count-card ctx step params)]
                       (if table-card
                         [step-card table-card]
                         [step-card])))
@@ -198,7 +198,7 @@
 
 (defn- make-triggers
   "Generate alert and drill-lens triggers for join steps."
-  [join-structure]
+  [join-structure params]
   (let [outer-joins (filter #(contains? #{:left-join :right-join :full-join}
                                         (:strategy %))
                             (map-indexed #(assoc %2 :step (inc %1)) join-structure))]
@@ -206,7 +206,7 @@
      (for [{:keys [step alias]} outer-joins]
        {:id         (str "high-null-rate-" step)
         :condition  {:name    :high-null-rate
-                     :card_id (str "join-step-" step)}
+                     :card_id (lens.core/make-card-id (str "join-step-" step) params)}
         :severity   :warning
         :message    (str "Join '" alias "' has >20% unmatched rows")})
 
@@ -214,16 +214,16 @@
      (for [{:keys [step alias]} outer-joins]
        {:lens_id   "unmatched-rows"
         :condition {:name    :has-unmatched-rows
-                    :card_id (str "join-step-" step)}
+                    :card_id (lens.core/make-card-id (str "join-step-" step) params)}
         :params    {:join_step step}
         :reason    (str "Unmatched rows in " alias)})}))
 
 (defmethod lens.core/make-lens :join-analysis
-  [_ ctx _params]
+  [_ ctx params]
   (let [{:keys [join-structure]} ctx
         join-count (count join-structure)
         strategies (distinct (map :strategy join-structure))
-        triggers (make-triggers join-structure)]
+        triggers (make-triggers join-structure params)]
     {:id                   "join-analysis"
      :display_name         "Join Analysis"
      :summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
@@ -231,6 +231,6 @@
      :sections             [{:id     "join-stats"
                              :title  "Join Statistics"
                              :layout :flat}]
-     :cards                (all-cards ctx)
+     :cards                (all-cards ctx params)
      :alert_triggers       (vec (:alert_triggers triggers))
      :drill_lens_triggers  (vec (:drill_lens_triggers triggers))}))

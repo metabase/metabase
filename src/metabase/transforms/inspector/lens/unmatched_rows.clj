@@ -158,14 +158,14 @@
 
 (defn- truly-unmatched-card
   "Generate a card for rows where LHS key exists but RHS didn't match."
-  [ctx step]
+  [ctx step params]
   (let [{:keys [join-structure]} ctx
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
     (when is-outer?
       (when-let [query (make-truly-unmatched-query ctx step)]
-        {:id            (str "truly-unmatched-" step)
+        {:id            (lens.core/make-card-id (str "truly-unmatched-" step) params)
          :section_id    "samples"
          :title         (str alias ": Rows with key but no match")
          :display       :table
@@ -177,14 +177,14 @@
 
 (defn- null-source-key-card
   "Generate a card for rows where LHS key is NULL."
-  [ctx step]
+  [ctx step params]
   (let [{:keys [join-structure]} ctx
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
     (when is-outer?
       (when-let [query (make-null-source-key-query ctx step)]
-        {:id            (str "null-source-key-" step)
+        {:id            (lens.core/make-card-id (str "null-source-key-" step) params)
          :section_id    "samples"
          :title         (str alias ": Rows with NULL source key")
          :display       :table
@@ -196,9 +196,9 @@
 
 (defn- cards-for-join
   "Generate both unmatched cards for a specific join step."
-  [ctx step]
-  (keep identity [(truly-unmatched-card ctx step)
-                  (null-source-key-card ctx step)]))
+  [ctx step params]
+  (keep identity [(truly-unmatched-card ctx step params)
+                  (null-source-key-card ctx step params)]))
 
 (defn- all-cards
   "Generate sample cards for all outer joins, optionally filtered by join_step."
@@ -210,7 +210,7 @@
     (into []
           (mapcat (fn [step]
                     (when (or (nil? requested-step) (= step requested-step))
-                      (cards-for-join ctx step))))
+                      (cards-for-join ctx step params))))
           (range 1 (inc join-count)))))
 
 ;;; -------------------------------------------------- Lens Implementation --------------------------------------------------

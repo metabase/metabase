@@ -11,6 +11,7 @@
    Each lens type is implemented via multimethods. Adding a new lens
    requires implementing: lens-applicable?, lens-metadata, make-lens."
   (:require
+   [clojure.string :as str]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -131,6 +132,23 @@
   "Filter drill_lens_triggers to only include sublenses that are applicable to ctx."
   [ctx drill-lens-triggers]
   (filterv #(lens-applicable? (lens-id->type (:lens_id %)) ctx) drill-lens-triggers))
+
+(defn params->id-suffix
+  "Generate a suffix for card IDs based on params to ensure uniqueness across
+   different parameterizations of the same lens. Returns empty string if no params."
+  [params]
+  (if (seq params)
+    (str "@" (->> params
+                  (sort-by key)
+                  (map (fn [[k v]] (str (name k) "=" v)))
+                  (str/join ",")))
+    ""))
+
+(defn make-card-id
+  "Create a card ID with optional params suffix for uniqueness in parametric lenses.
+   Use this everywhere you create or reference card IDs in parametric lenses."
+  [base-id params]
+  (str base-id (params->id-suffix params)))
 
 (defn get-lens
   "Generate a lens by ID (Phase 2).
