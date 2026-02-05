@@ -21,6 +21,24 @@
 ;; prefixed with "Shared." to reference the shared module.
 (def ^:dynamic *shared-types* #{})
 
+;; Dynamic var to track current namespace being processed (for debug warnings)
+(def ^:dynamic *current-ns* nil)
+
+;; Dynamic var to collect files with any/unknown types (for debug warnings)
+;; When bound to an atom, maps ns -> set of {:type :any|:unknown, :context string}
+(def ^:dynamic *weak-types* nil)
+
+(defn- debug-cljs?
+  "Check if MB_DEBUG_CLJS environment variable is set."
+  []
+  (some? (System/getenv "MB_DEBUG_CLJS")))
+
+(defn- record-weak-type!
+  "Record an occurrence of 'any' or 'unknown' type for debug output."
+  [type-kw context]
+  (when (and *weak-types* *current-ns*)
+    (swap! *weak-types* update *current-ns* (fnil conj #{}) {:type type-kw :context context})))
+
 (defn- record-registry-ref!
   "Record a registry schema reference for later type alias generation."
   [schema-keyword]
@@ -133,7 +151,9 @@
 (defmethod -schema->ts :uuid     [_] "string")
 (defmethod -schema->ts :uri      [_] "string")
 (defmethod -schema->ts :nil      [_] "null")
-(defmethod -schema->ts :any      [_] "any")
+(defmethod -schema->ts :any      [schema]
+  (record-weak-type! :any (str "schema :any at " (mc/form schema)))
+  "any")
 (defmethod -schema->ts :re       [_] "string")
 (defmethod -schema->ts 'pos-int? [_] "number")
 (defmethod -schema->ts 'int      [_] "number")
@@ -300,8 +320,12 @@
 
 (defmethod -schema->ts :fn
   [schema]
-  (or (:typescript (mc/properties schema))
-      "unknown"))
+  (let [ts-type (:typescript (mc/properties schema))]
+    (if ts-type
+      ts-type
+      (do
+        (record-weak-type! :unknown (str "fn schema without :typescript property: " (mc/form schema)))
+        "unknown"))))
 
 ;; Default fallback
 
@@ -361,9 +385,16 @@
       (-schema->ts (mc/schema schema)))
     (catch Exception e
       (cond
-        (::unsupported (ex-data e))      "unknown"
-        (instance? StackOverflowError e) "unknown"
-        :else                            (throw e)))))
+        (::unsupported (ex-data e))
+        (do
+          (record-weak-type! :unknown (str "unsupported schema: " (try (mc/form schema) (catch Exception _ schema))))
+          "unknown")
+        (instance? StackOverflowError e)
+        (do
+          (record-weak-type! :unknown (str "stack overflow for schema: " (try (mc/form schema) (catch Exception _ schema))))
+          "unknown")
+        :else
+        (throw e)))))
 
 (def ^:private schema->ts-memoized
   "Memoized version of schema->ts-impl."
@@ -702,51 +733,75 @@
                 (str/join "\n"))
            "\n"))))
 
+(defn- output-weak-type-warnings!
+  "Output warnings for namespaces that have any/unknown types."
+  [weak-types]
+  (when (seq weak-types)
+    (log/warn "=== TypeScript generation: files with weak types (any/unknown) ===")
+    (doseq [[ns entries] (sort-by key weak-types)]
+      (let [any-count (count (filter #(= :any (:type %)) entries))
+            unknown-count (count (filter #(= :unknown (:type %)) entries))]
+        (log/warn (str "  " ns " - any: " any-count ", unknown: " unknown-count))))
+    (log/warn "Set MB_DEBUG_CLJS=verbose for detailed context of each weak type")
+    (when (= "verbose" (System/getenv "MB_DEBUG_CLJS"))
+      (log/warn "=== Detailed weak type contexts ===")
+      (doseq [[ns entries] (sort-by key weak-types)]
+        (log/warn (str "  " ns ":"))
+        (doseq [{:keys [type context]} (sort-by :type entries)]
+          (log/warn (str "    [" (name type) "] " context)))))))
+
 (defn produce-dts
   {:shadow.build/stage :flush}
   [state]
-  (let [nses       (get-in state [:compiler-env ::ana/namespaces])
-        total      (count nses)
-        nses-defs  (keep (fn [[ns {:keys [defs]}]]
-                           (let [defs (m/filter-vals :schema defs)]
-                             (when (seq defs)
-                               [ns defs])))
-                         nses)
-        defs-count (count nses-defs)]
-    (log/info "Compiling TypeScript defs" {:namespaces defs-count :total total})
-    ;; First pass: require all namespaces and collect refs to count usage
-    (log/debug "Pass 1: Collecting type references across all namespaces")
-    (doseq [[ns _defs] nses-defs]
-      (try-require-ns ns))
-    (let [;; Collect refs from each namespace
-          ns-refs (into {}
-                        (for [[ns defs] nses-defs]
-                          [ns (collect-refs-from-defs defs)]))
-          ;; Count how many namespaces reference each schema
-          ref-counts (frequencies (mapcat val ns-refs))
-          ;; Shared types are those used by 2+ namespaces
-          shared-refs (into #{} (keep (fn [[ref cnt]] (when (>= cnt 2) ref)) ref-counts))]
-      (log/info "Shared types analysis" {:total-refs (count ref-counts)
-                                         :shared-refs (count shared-refs)})
-      ;; Generate shared.d.ts
-      (when (seq shared-refs)
-        (let [f (b.data/output-file state "metabase.lib.shared.d.ts")]
-          (spit f (generate-shared-types-content shared-refs))
-          (log/debug "Generated shared types file" {:types (count shared-refs)})))
-      ;; Second pass: generate per-namespace files
-      (log/debug "Pass 2: Generating per-namespace type files")
-      (let [lib-namespaces (map first nses-defs)]
-        (doseq [[ns defs] nses-defs]
-          (let [t     (u/start-timer)
-                fname (comp/munge (str ns))
-                f     (b.data/output-file state (str fname ".d.ts"))
-                content (binding [*shared-types* shared-refs]
-                          (ts-content defs shared-refs))
-                ;; Add re-exports for metabase.lib.js
-                content (if (= ns 'metabase.lib.js)
-                          (str content (generate-reexports lib-namespaces))
-                          content)]
-            (spit f content)
-            (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))))
-    (log/info "TypeScript defs compilation complete" {:namespaces defs-count}))
+  (binding [*weak-types* (when (debug-cljs?) (atom {}))]
+    (let [nses       (get-in state [:compiler-env ::ana/namespaces])
+          total      (count nses)
+          nses-defs  (keep (fn [[ns {:keys [defs]}]]
+                             (let [defs (m/filter-vals :schema defs)]
+                               (when (seq defs)
+                                 [ns defs])))
+                           nses)
+          defs-count (count nses-defs)]
+      (log/info "Compiling TypeScript defs" {:namespaces defs-count :total total})
+      ;; First pass: require all namespaces and collect refs to count usage
+      (log/debug "Pass 1: Collecting type references across all namespaces")
+      (doseq [[ns _defs] nses-defs]
+        (try-require-ns ns))
+      (let [;; Collect refs from each namespace
+            ns-refs (into {}
+                          (for [[ns defs] nses-defs]
+                            [ns (binding [*current-ns* ns]
+                                  (collect-refs-from-defs defs))]))
+            ;; Count how many namespaces reference each schema
+            ref-counts (frequencies (mapcat val ns-refs))
+            ;; Shared types are those used by 2+ namespaces
+            shared-refs (into #{} (keep (fn [[ref cnt]] (when (>= cnt 2) ref)) ref-counts))]
+        (log/info "Shared types analysis" {:total-refs (count ref-counts)
+                                           :shared-refs (count shared-refs)})
+        ;; Generate shared.d.ts
+        (when (seq shared-refs)
+          (let [f (b.data/output-file state "metabase.lib.shared.d.ts")]
+            (binding [*current-ns* 'metabase.lib.shared]
+              (spit f (generate-shared-types-content shared-refs)))
+            (log/debug "Generated shared types file" {:types (count shared-refs)})))
+        ;; Second pass: generate per-namespace files
+        (log/debug "Pass 2: Generating per-namespace type files")
+        (let [lib-namespaces (map first nses-defs)]
+          (doseq [[ns defs] nses-defs]
+            (let [t     (u/start-timer)
+                  fname (comp/munge (str ns))
+                  f     (b.data/output-file state (str fname ".d.ts"))
+                  content (binding [*shared-types* shared-refs
+                                    *current-ns*   ns]
+                            (ts-content defs shared-refs))
+                  ;; Add re-exports for metabase.lib.js
+                  content (if (= ns 'metabase.lib.js)
+                            (str content (generate-reexports lib-namespaces))
+                            content)]
+              (spit f content)
+              (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))))
+      ;; Output warnings if debug mode is on
+      (when *weak-types*
+        (output-weak-type-warnings! @*weak-types*))
+      (log/info "TypeScript defs compilation complete" {:namespaces defs-count})))
   state)
