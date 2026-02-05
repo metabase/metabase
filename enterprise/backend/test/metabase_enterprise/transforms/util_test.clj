@@ -1,6 +1,6 @@
 (ns metabase-enterprise.transforms.util-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest testing is]]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.transforms.util :as transforms.util]))
