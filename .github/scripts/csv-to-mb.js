@@ -19,11 +19,11 @@ function jsonToCsvFormData(jsonData) {
   return formData;
 }
 
-function uploadCsvToMb({ baseUrl, tableID, jsonData, mode = 'append' }) {
+function uploadCsvToMb({ baseUrl, tableId, jsonData, mode = 'append' }) {
   const formData = jsonToCsvFormData(jsonData);
   const operation = mode === 'replace' ? 'replace-csv' : 'append-csv';
 
-  return fetch(`${baseUrl}/api/table/${tableID}/${operation}`, {
+  return fetch(`${baseUrl}/api/table/${tableId}/${operation}`, {
     method: 'POST',
     headers: {
       "x-api-key": process.env.API_KEY
