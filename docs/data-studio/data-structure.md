@@ -1,6 +1,6 @@
 ---
 title: Data structure
-summary: Visualize how your content connects and what depends on what in Metabase.
+summary: See all the tables in your m
 ---
 
 ## Data structure
@@ -30,15 +30,13 @@ If you only want to give someone access to table metadata for some - but not all
 
 ## Browse tables
 
-Data Structure gives you an overview of all tables in all databases connected to your instance. You can select a table to edit metadata, publish the tables, or create segments or measures on the table.
+Data Structure gives you an overview of all tables in all databases connected to your instance, together with their owner, row count, and published state. Note that row count is only displayed for PostgreSQL tables for now.
 
 You can search for table names, but the search will only match beginnings of word in table names. This means if you search for “base”, it can find names like “Baseball stats”, “All your base are belong to us”, but it will not find tables like “Metabase secrets”.
 
-You can also filter tables by attributes like owners, visibility - for example, if you wanted to find all
+You can also filter tables by attributes like owners, visibility, or source - for example, if you wanted to find all hidden tables, or all tables coming from CSV uploads.
 
-You can select tables in bulk to [publish them](section link) or [assign attributes](section link) to them.
-
-estimated rows - PG only?
+You can select a table to set [table attributes](#table-attributes), [edit metadata](#table-and-field-metadata), [publish it](#publishing-and-unpublishing-tables) or create [segments](#segments) or [measures](#measures) on the table. You can also select tables in bulk to publish or assign attributes (including visibility) to multiple tables at once.
 
 ## Publishing and unpublishing tables
 
@@ -48,53 +46,107 @@ Once you select a table in Data Structure, you can publish the table to add it t
 
 See [Publishing tables](./library.md#publishing-tables) in the [Library docs](./library.md).
 
-Publishing a table will change permissions for the table: every person in your instance who has View access to the Library will automatically get Create Queries permissions on a published table
+Publishing a table will change [data permissions](../permissions/data.md) for the table: every person in your instance who has **View** access to the Library collection will automatically get **Create queries** permissions on a published table.
 
-## Sync the table
+## Sync settings
 
-See [sync table](table metadata docs link)
+You can trigger manual re-sync of the table schema. This can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
+
+You can also re-scan field values for the table or discard cached field values, which is useful if you need to retrieve updated values for dropdown filters.
+
+See [syncs and scans](../databases/sync-scan.md) for more information.
 
 ## Table attributes
 
-- Owner - who owns the table. You can type someone’s email and it’ll send them an invite. This is _not_ exposed to users outside data studio
-- Visibility type - where is this table visible in normal Metabase UI. TBD how this words
-- Entity type - describes the type of entity in the table. TBD what this actually does
-- Source - where the data comes from. Tables created by [Metabase transforms](link) get automatic source “Metabase transforms” that can’t be edited. other stuff you can assign manually, and it does’t have any real meaning beyond helping you in Search
+### Owner
+
+Table **owner** can be a Metabase user or an arbitrary email address. You can use this attribute to quickly identify who on your data team is responsible for which table.
+
+Table owner attribute is not exposed to people outside Data Studio.
+
+### Visibility layer
+
+**Visibility layer** attribute controls whether people in your Metabase can see the table when building new queries. You can also use it to tag tables according to how ready for end-user consumption they are (for example, if you're using medallion architecture).
+
+The options are:
+
+- **Hidden**: the table isn't available in the query builder and isn't [synced](../databases/sync-scan.md). People with SQL access can still query the table.
+- **Internal**: table visible in the query builder and synced.
+- **Final**: table is visible in the query builder and synced.
+
+### Entity type
+
+You can use **entity type** to tell people what kind of information is contained in the table, for example "Transaction" or "Event". Metabase will try to detect and automatically assign appropriate entity types (like entity type "Person" for a `Users` table"), but you can always change it later.
+
+Outside Data Studio, entity type determines the record icons in the [details view](../exploration-and-organization/exploration.md#view-details-of-a-record).
+
+### Source
+
+**Source** describes where the data comes from. It can be useful when you want to identify tables that are, for example, ingested tables, or tables coming from CSV uploads.
+
+Metabase will automatically assign the source "Metabase transforms” to tables created by [Metabase transforms](./transforms/transforms-overview.md), and source "Uploaded data" to tables created by new [CSV uploads](../databases/uploads.md) (CSV uploads that you created before getting Data Studio will not be automatically tagged).
+
+## Table and field metadata
+
+You can edit field descriptions, types, visibility settings, and formatting. For example, you can choose to display a filter on a field as a dropdown, or display days as `21.03.2026` instead of `03/21/2026`.
+
+See [Table metadata editing](../data-modeling/metadata-editing.md) for more information.
 
 ## Segments
 
-Segments are saved filters on tables. You can use segments to blah blah. See [Segments](link to old modeling docs) for more info.
+Segments are saved filters on tables. You can use segments to create an official definition of a subset of customers, users, or products that everyone on your team can refer to consistently (for example what constitutes an "active user").
 
-You can click on a segment to see its definition, [revision history](link to old docs), and dependencies.
+People will see segments as options in the Filter block of the [query builder](../questions/query-builder/editor.md).
 
-For published tables, you can also manage segments in [the library](Link)
+For now, in addition to Data Studio, segments can also be managed through **Admin settings > Table Metadata**, see [Segments in table metadata](../data-modeling/segments.md).
+
+To see all segments on a table, select the table in **Data Structure** and switch to **Segments** tab.
+
+### Create a segment
+
+1. Select the table in **Data Structure**.
+2. Scroll down and switch to **Segments**.
+3. Click on **+New Segment**. You'll see an abridged version of Metabase's query builder.
+4. Add the filters describing the segment (e.g. `Active = true`) and name the segment.
+5. To preview the records in the segment, click on the **three dots** icon next to the segment's name and select **Preview**.
+6. Save.
+
+### Delete a segment
+
+Deleting a segment will not break questions using it. The questions that use the segment will keep using the same filters as before.
+
+1. Select the table in **Data Structure**.
+2. Scroll down and switch to **Segments** and choose your segment.
+3. On the segment's page, click on the **three dots** icon next to the segment's name and select **Remove segment**.
+
+### Use a segment in the query builder
+
+To use a segment in the query builder, start a new question from the table that the segment is based on, and select the segment in the **Filter** block. Segment's saved filters will be applied behind the scenes.
 
 ## Measures
 
-Measures are saved aggregations on tables. You can use measures to blah blah.
+Measures are saved aggregations on tables. You can use measures to create an official saved calculation, e.g. what "Net Promoter Score" means.
 
-For published tables, you can also manage segments in [the library](Link)
+People will see metrics as options in the Summarize block of the [query builder](../questions/query-builder/editor.md).
 
-**See all measures**
+To see all segments on a table, select the table in **Data Structure** and switch to **Measures** tab.
 
-1. Select the table in Data Structure
-2. Scroll down and switch to Measures
+### Create a measure
 
-**Create a measure on a table**
+1. Select the table in **Data Structure**.
+2. Scroll down and switch to **Measures**.
+3. Click on **+New measure**. You'll see an abridged version of Metabase's query builder.
+4. Add your aggregation. You will probably be interested in [Custom expressions](../questions/query-builder/expressions.md).
+5. To preview the results of the measure, click on the **three dots** icon next to the measure's name and select **Preview**.
 
-1. Select the table in Data Structure
-2. Scroll down and switch to Measures
-3. Click “new measure”
-4. Add a custom aggregation. You will probably be interested in [Custom expressions](LINK)
+### Delete a measure
 
-**Edit a measure**
+Deleting a measure will not break questions using it. The questions that use the measure will keep using the same aggregations as before.
 
-blah blah
+1. Select the table in **Data structure**.
+2. Scroll down and switch to **Measures** and choose your measure.
+3. On the measure's page, click on the **three dots** icon next to the measure's name and select **Remove measure**.
 
-**Remove a measure**
+### Use a measure in the query builder
 
-**Use a measure in the query builder**
-
-## Field metadata
-
-Read [these docs](link to old metadata docs)
+To use a measure in the query builder, start a new question from the table that the measure is based on, and select the measure in the **Summarize** block. Measure's saved aggregation will be applied behind the scenes. You can use breakouts with a saved measure.
