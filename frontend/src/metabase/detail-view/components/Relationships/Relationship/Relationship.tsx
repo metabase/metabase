@@ -8,7 +8,7 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Loader, Stack, Text, rem } from "metabase/ui";
+import { Flex, Icon, Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
 
@@ -63,38 +63,37 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
       ? inflect(originTableName, count)
       : originTableName;
 
+  const textColor =
+    count === 0 ? "text-tertiary" : clickable ? "brand" : "text-secondary";
+
   return (
-    <Stack
-      className={cx({
+    <Flex
+      className={cx(S.root, {
         [S.clickable]: clickable,
       })}
-      gap={rem(12)}
+      align="center"
+      justify="space-between"
       {...(clickable
         ? { component: Link, to: fkQuestionUrl, onClick }
         : undefined)}
     >
-      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+      <Stack gap={rem(12)}>
+        {isFetching && <Loader data-testid="loading-indicator" size="md" />}
 
-      {!isFetching && (
-        <Text
-          c={count === 0 ? "text-tertiary" : "text-secondary"}
-          className={S.text}
-          fw="bold"
-          fz={rem(24)}
-          lh={1}
-        >
-          {error ? t`Unknown` : String(count)}
+        {!isFetching && (
+          <Text c={textColor} className={S.text} fw="bold" fz={rem(24)} lh={1}>
+            {error ? t`Unknown` : String(count)}
+          </Text>
+        )}
+
+        <Text c={textColor} className={S.text} fw="bold" lh={1}>
+          {relationName}
         </Text>
-      )}
+      </Stack>
 
-      <Text
-        c={count === 0 ? "text-tertiary" : "text-secondary"}
-        className={S.text}
-        fw="bold"
-        lh={1}
-      >
-        {relationName}
-      </Text>
-    </Stack>
+      {clickable && (
+        <Icon className={S.icon} name="chevronright" c="brand" aria-hidden />
+      )}
+    </Flex>
   );
 };

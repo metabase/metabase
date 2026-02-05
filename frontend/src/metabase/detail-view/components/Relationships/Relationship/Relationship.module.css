@@ -1,9 +1,17 @@
+.root {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-md);
+}
+
 .clickable {
-  color: var(--mb-color-text-primary) !important;
+  cursor: pointer;
 
   &:hover {
-    .text {
-      color: var(--mb-color-brand) !important;
+    background-color: var(--mb-color-background-hover);
+
+    .text,
+    .icon {
+      color: var(--mb-color-brand-hover) !important;
     }
   }
 }
