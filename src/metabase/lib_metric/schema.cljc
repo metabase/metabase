@@ -15,10 +15,10 @@
 (mr/def ::dimension
   "Schema for a dimension definition."
   [:map
-   [:id ::dimension-id]
-   [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:id             ::dimension-id]
+   [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (mr/def ::dimension-mapping.type
   "Type of dimension mapping."
@@ -31,18 +31,18 @@
 (mr/def ::dimension-mapping
   "Schema for a dimension mapping."
   [:map
-   [:type ::dimension-mapping.type]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
+   [:type         ::dimension-mapping.type]
+   [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
    [:dimension-id ::dimension-id]
-   [:target ::dimension-mapping.target]])
+   [:target       ::dimension-mapping.target]])
 
 (mr/def ::dimension-reference.options
   "Options map for dimension references."
   [:map
    {:decode/normalize lib.schema.common/normalize-options-map}
-   [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (mr/def ::dimension-reference
   "Dimension reference clause [:dimension opts uuid]."
@@ -66,14 +66,43 @@
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
   [:map
-   [:id ::dimension-id]
-   [:name {:optional true} [:maybe :string]]
-   [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   [:status {:optional true} [:maybe ::dimension-status]]
-   [:status-message {:optional true} [:maybe :string]]])
+   [:id              ::dimension-id]
+   [:name            {:optional true} [:maybe :string]]
+   [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:status          {:optional true} [:maybe ::dimension-status]]
+   [:status-message  {:optional true} [:maybe :string]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
   [:sequential ::persisted-dimension])
+
+;;; ------------------------------------------------- MetricDefinition -------------------------------------------------
+
+(mr/def ::metric-definition.source-type
+  "Type of source for a metric definition."
+  [:enum :source/metric :source/measure])
+
+(mr/def ::metric-definition.source
+  "The source entity for a metric definition."
+  [:map
+   [:type     ::metric-definition.source-type]
+   [:id       pos-int?]
+   [:metadata :map]])
+
+(mr/def ::metric-definition
+  "A MetricDefinition represents an exploration of a metric or measure.
+   - source: reference to the metric or measure with its metadata
+   - filters: MBQL filter clauses using dimension references
+   - projections: dimension references for grouping
+   - metadata-provider: for resolving additional metadata
+
+   Note: dimensions and dimension-mappings are always derived from the source
+   metadata when building the AST, so they are not part of the definition schema."
+  [:map
+   [:lib/type          [:= :metric/definition]]
+   [:source            ::metric-definition.source]
+   [:filters           [:sequential :any]]  ; MBQL filter clauses
+   [:projections       [:sequential ::dimension-reference]]
+   [:metadata-provider [:maybe :some]]])
