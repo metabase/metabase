@@ -101,7 +101,8 @@
                                               :semantic-type :Semantic/*}])
                                           (keep :col (resolve-field driver metadata-provider current-col))))
                                       source-col-set)
-                              (some #(when (= (:name %) (:column col-spec))
+                              (some #(when (= (driver.sql/normalize-name driver (:name %))
+                                              (driver.sql/normalize-name driver (:column col-spec)))
                                        %))))))]
      {:col (assoc found :lib/desired-column-alias (or alias name))}
      {:error (lib/missing-column-error (:column col-spec))})])
@@ -152,9 +153,9 @@
   "Given a native query, return columns it produces using field-references pipeline."
   [parser driver native-query]
   (let [{:keys [returned-fields]} (sql-tools/field-references-impl parser driver (lib/raw-native-query native-query))]
-    (mapcat #(->> (resolve-field driver native-query %)
-                  (keep :col))
-            returned-fields)))
+    (vec (mapcat #(->> (resolve-field driver native-query %)
+                       (keep :col))
+                 returned-fields))))
 
 (defn validate-query
   "Validate native query. TODO: limits; what this can and can not do."
