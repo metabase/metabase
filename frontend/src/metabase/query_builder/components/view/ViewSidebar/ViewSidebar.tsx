@@ -6,7 +6,7 @@ import { Box } from "metabase/ui";
 import ViewSidebarS from "./ViewSidebar.module.css";
 
 interface ViewSidebarProps {
-  side?: "left" | "right";
+  side: "left" | "right";
   width?: number;
   isOpen?: boolean;
   children?: ReactNode;
