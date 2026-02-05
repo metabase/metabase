@@ -2395,9 +2395,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         cy.intercept("POST", "/api/table/*/rescan_values", error);
         cy.intercept("POST", "/api/table/*/discard_values", error);
       } else {
-        cy.intercept("POST", "/api/ee/data-studio/table/sync-schema", error);
-        cy.intercept("POST", "/api/ee/data-studio/table/rescan-values", error);
-        cy.intercept("POST", "/api/ee/data-studio/table/discard-values", error);
+        cy.intercept("POST", "/api/data-studio/table/sync-schema", error);
+        cy.intercept("POST", "/api/data-studio/table/rescan-values", error);
+        cy.intercept("POST", "/api/data-studio/table/discard-values", error);
       }
     });
 

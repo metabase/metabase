@@ -1,4 +1,4 @@
-import { isSameSource } from "metabase-enterprise/transforms/utils";
+import { isSameSource } from "metabase/transforms/utils";
 
 import type {
   AnyWorkspaceTransform,
