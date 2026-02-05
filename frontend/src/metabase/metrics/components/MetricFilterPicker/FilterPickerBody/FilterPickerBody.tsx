@@ -1,6 +1,12 @@
 import { Box } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
+import { BooleanFilterPicker } from "../BooleanFilterPicker";
+import { CoordinateFilterPicker } from "../CoordinateFilterPicker";
+import { DateFilterPicker } from "../DateFilterPicker";
+import { DefaultFilterPicker } from "../DefaultFilterPicker";
+import { NumberFilterPicker } from "../NumberFilterPicker";
+import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
 
 interface FilterPickerBodyProps {
@@ -43,9 +49,22 @@ export function FilterPickerBody({
 }
 
 function getFilterWidget(dimension: LibMetric.DimensionMetadata) {
-  // TODO: add other filter pickers based on dimension type
+  if (LibMetric.isBoolean(dimension)) {
+    return BooleanFilterPicker;
+  }
   if (LibMetric.isTime(dimension)) {
     return TimeFilterPicker;
   }
-  return null;
+  if (LibMetric.isDateOrDateTime(dimension)) {
+    return DateFilterPicker;
+  }
+  if (LibMetric.isNumeric(dimension)) {
+    return LibMetric.isCoordinate(dimension)
+      ? CoordinateFilterPicker
+      : NumberFilterPicker;
+  }
+  if (LibMetric.isStringOrStringLike(dimension)) {
+    return StringFilterPicker;
+  }
+  return DefaultFilterPicker;
 }
