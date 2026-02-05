@@ -5,4 +5,3 @@ export { DependencyDiagnosticsUpsellPage } from "./DependencyDiagnosticsUpsellPa
 export { GitSyncUpsellPage } from "./GitSyncUpsellPage";
 export { LibraryUpsellPage } from "./LibraryUpsellPage";
 export { RemoteSyncUpsellPage } from "./RemoteSyncUpsellPage";
-export { TransformsUpsellPage } from "./TransformsUpsellPage";

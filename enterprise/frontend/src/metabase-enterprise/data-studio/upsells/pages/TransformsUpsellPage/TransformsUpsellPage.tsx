@@ -2,6 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -16,10 +18,8 @@ import {
   Title,
 } from "metabase/ui";
 
-import { DataStudioBreadcrumbs } from "../../../common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "../../../common/components/PaneHeader";
-import { DottedBackground } from "../../../components/DottedBackground";
-import { LineDecorator } from "../../components/LineDecorator";
+import { DottedBackground } from "../../../../../../../../frontend/src/metabase/data-studio/upsells/components/DottedBackground";
+import { LineDecorator } from "../../../../../../../../frontend/src/metabase/data-studio/upsells/components/LineDecorator";
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 
 import S from "./TransformsUpsellPage.module.css";

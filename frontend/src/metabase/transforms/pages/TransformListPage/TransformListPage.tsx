@@ -384,7 +384,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           )}
         </Card>
       </Stack>
-      <PythonTransformsUpsellModal
+      <PLUGIN_TRANSFORMS_PYTHON.PythonTransformsUpsellModal
         isOpen={isPythonUpsellOpened}
         onClose={closePythonUpsell}
       />

@@ -10,6 +10,8 @@ import {
 } from "metabase/admin/upsells/components/analytics";
 import { UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -24,9 +26,7 @@ import {
   Title,
 } from "metabase/ui";
 
-import { DataStudioBreadcrumbs } from "../../../common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "../../../common/components/PaneHeader";
-import { DottedBackground } from "../../../components/DottedBackground";
+import { DottedBackground } from "../../components/DottedBackground";
 import { LineDecorator } from "../../components/LineDecorator";
 
 import S from "./DataStudioUpsellPage.module.css";

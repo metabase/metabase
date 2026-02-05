@@ -1,7 +1,6 @@
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { TransformsUpsellPage } from "metabase-enterprise/data-studio/upsells/pages/TransformsUpsellPage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-
-import { TransformsUpsellPage } from "./upsells/TransformsUpsellPage";
 
 // transforms is not a regular plugin, but a set of addons - basic transforms + python transforms
 export function initializePlugin() {
