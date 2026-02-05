@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -15,17 +14,10 @@ import { trackReferenceXRayClicked } from "../analytics";
 interface SegmentSidebarProps {
   segment: Segment;
   user?: User | null;
-  className?: string;
-  style?: CSSProperties;
 }
 
-const SegmentSidebar = ({
-  segment,
-  user,
-  style,
-  className,
-}: SegmentSidebarProps) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const SegmentSidebar = ({ segment, user }: SegmentSidebarProps) => (
+  <div className={S.sidebar}>
     <ul>
       <div>
         <Breadcrumbs
