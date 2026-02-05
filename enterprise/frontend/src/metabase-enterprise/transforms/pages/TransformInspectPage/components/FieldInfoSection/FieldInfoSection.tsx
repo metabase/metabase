@@ -107,7 +107,7 @@ export const FieldInfoSection = ({
   );
 };
 
-type StatColumns =
+type StatsColumn =
   | "distinct_count"
   | "nil_percent"
   | "avg"
@@ -139,9 +139,9 @@ function fieldToColumn(distinctFields: Set<string>) {
 
 function gatherColumnStasticsFields(
   sources: TransformInspectSource[],
-): Set<StatColumns> {
+): Set<StatsColumn> {
   const distinctFields = new Set<string>();
-  const distinctColumns = new Set<StatColumns>();
+  const distinctColumns = new Set<StatsColumn>();
   sources.forEach((source) => {
     source.fields.forEach((field) => {
       if (!field.stats) {
@@ -180,7 +180,7 @@ const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
   });
 };
 
-function getColumnLabel(columnName: StatColumns) {
+function getColumnLabel(columnName: StatsColumn) {
   const statisticsInfo = {
     distinct_count: t`Distinct count`,
     nil_percent: t`Nil %`,
@@ -207,6 +207,9 @@ function getColumns(
       id: "column",
       header: t`Column`,
       minWidth: "auto",
+      maxAutoWidth: 400,
+      accessorFn: (originalRow) =>
+        originalRow.tableName + originalRow.fieldCount,
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "table") {
@@ -229,6 +232,7 @@ function getColumns(
       id: "type",
       header: t`Type`,
       width: "auto",
+      accessorFn: (originalRow) => originalRow.baseType,
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "field") {
@@ -241,41 +245,42 @@ function getColumns(
       id: column,
       header: getColumnLabel(column),
       cell: ({ row }: { row: Row<FieldTreeNode> }) => {
-        const node = row.original;
-        const { stats } = node;
-        if (node.type === "field" && stats) {
-          const {
-            distinct_count,
-            avg,
-            nil_percent,
-            min,
-            max,
-            q1,
-            q3,
-            earliest,
-            latest,
-          } = stats;
-          const text = match(column)
-            .with("distinct_count", () => distinct_count)
-            .with("avg", () => avg)
-            .with(
-              "nil_percent",
-              () => nil_percent && formatPercent(nil_percent),
-            )
-            .with("min_max", () => (min ? `${min} - ${max}` : ""))
-            .with("q1_q3", () =>
-              q1 ? `${formatNumber(q1)} - ${formatNumber(q3)}` : "",
-            )
-            .with("earliest_latest", () =>
-              earliest && latest
-                ? `${getFormattedTime(earliest)} - ${getFormattedTime(latest)}`
-                : "",
-            )
-            .exhaustive();
-          return <Text>{text}</Text>;
-        }
-        return null;
+        return <Text>{getStatsColumnValue(row.original, column)}</Text>;
       },
     })),
   ];
+}
+
+function getStatsColumnValue(node: FieldTreeNode, column: StatsColumn) {
+  const { stats } = node;
+  if (!stats) {
+    return "";
+  }
+
+  const {
+    distinct_count,
+    avg,
+    nil_percent,
+    min,
+    max,
+    q1,
+    q3,
+    earliest,
+    latest,
+  } = stats;
+
+  return match(column)
+    .with("distinct_count", () => distinct_count)
+    .with("avg", () => avg)
+    .with("nil_percent", () => nil_percent && formatPercent(nil_percent))
+    .with("min_max", () => (min ? `${min} - ${max}` : ""))
+    .with("q1_q3", () =>
+      q1 && q3 ? `${formatNumber(q1)} - ${formatNumber(q3)}` : "",
+    )
+    .with("earliest_latest", () =>
+      earliest && latest
+        ? `${getFormattedTime(earliest)} - ${getFormattedTime(latest)}`
+        : "",
+    )
+    .exhaustive();
 }
