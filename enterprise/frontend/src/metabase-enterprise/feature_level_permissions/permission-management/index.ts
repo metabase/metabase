@@ -23,7 +23,7 @@ export const getFeatureLevelDataPermissions = ({
   defaultGroup,
   permissionSubject,
   permissionView,
-  tenantsEnabled,
+  transformsEnabled,
 }: {
   entityId: EntityId;
   groupId: number;
@@ -33,7 +33,7 @@ export const getFeatureLevelDataPermissions = ({
   defaultGroup: Group;
   permissionSubject: PermissionSubject;
   permissionView?: "group" | "database";
-  tenantsEnabled?: boolean;
+  transformsEnabled?: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
   const isExternal = groupType === "external";
@@ -73,7 +73,7 @@ export const getFeatureLevelDataPermissions = ({
       : null;
 
   const transformsPermission =
-    PLUGIN_TRANSFORMS.isEnabled && tenantsEnabled
+    PLUGIN_TRANSFORMS.isEnabled && transformsEnabled
       ? buildTransformsPermission(
           entityId,
           groupId,

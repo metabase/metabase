@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useUpdateSettingMutation } from "metabase/api";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
@@ -20,6 +21,15 @@ import {
 export const EnableTransformsPage = () => {
   const isAdmin = useSelector(getUserIsAdmin);
 
+  const [updateSetting, { isLoading: updateSettingLoading }] =
+    useUpdateSettingMutation();
+
+  const enableTransforms = () =>
+    updateSetting({
+      key: "transforms-enabled",
+      value: true,
+    });
+
   return (
     <PageContainer>
       <PaneHeader
@@ -38,7 +48,11 @@ export const EnableTransformsPage = () => {
                   fw="bold"
                   lh="1.25rem"
                 >{t`Because transforms require write access to your database, make sure you know what you’re doing and that you understand the risks.`}</Text>
-                <Button variant="primary">{t`Enable transforms`}</Button>
+                <Button
+                  loading={updateSettingLoading}
+                  variant="primary"
+                  onClick={enableTransforms}
+                >{t`Enable transforms`}</Button>
               </>
             )}
           </Stack>
