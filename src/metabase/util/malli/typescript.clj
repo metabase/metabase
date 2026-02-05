@@ -48,6 +48,34 @@
   (when *registry-refs*
     (swap! *registry-refs* conj schema-keyword)))
 
+(def ^:private special-char-map
+  "Map of special characters to readable TypeScript-safe names."
+  {\! "Bang"
+   \= "Eq"
+   \+ "Plus"
+   \* "Star"
+   \/ "Slash"
+   \< "Lt"
+   \> "Gt"
+   \? "Q"})
+
+(defn- munge-segment
+  "Munge a segment by replacing special chars with readable names and capitalizing."
+  [segment]
+  (->> segment
+       (map #(get special-char-map % (str %)))
+       (apply str)
+       u/capitalize-first-char))
+
+(defn- to-capital-case
+  "Convert string with dots/hyphens to CapitalCase.
+   Example: \"column.has-field-values\" -> \"ColumnHasFieldValues\""
+  [s]
+  (->> (str/split s #"[-.]")
+       (remove str/blank?)
+       (map munge-segment)
+       (str/join "")))
+
 (defn- base-type-name
   "Convert a qualified keyword like ::lib.schema/query to a base TypeScript type name.
    Dots in namespace become underscores, dashes become CapitalCase.
@@ -55,31 +83,7 @@
    Example: metabase.lib.schema.mbql-clause/bin-width -> Metabase_Lib_Schema_MbqlClause_BinWidth
    Example: metabase.lib.schema.metadata/column.has-field-values -> Metabase_Lib_Schema_Metadata_ColumnHasFieldValues"
   [kw]
-  (let [;; Map special characters to readable names (already capitalized)
-        special-char-map {"!" "Bang"
-                          "=" "Eq"
-                          "+" "Plus"
-                          "*" "Star"
-                          "/" "Slash"
-                          "<" "Lt"
-                          ">" "Gt"
-                          "?" "Q"}
-        ;; Uppercase first char only (unlike str/capitalize which lowercases the rest)
-        ucfirst (fn [s]
-                  (if (empty? s) s (str (str/upper-case (subs s 0 1)) (subs s 1))))
-        ;; Munge a segment (between separators) by replacing special chars
-        munge-segment (fn [segment]
-                        (->> segment
-                             (map #(get special-char-map (str %) (str %)))
-                             (apply str)
-                             ucfirst))
-        ;; Convert string with dots/hyphens to CapitalCase (e.g., "column.has-field-values" -> "ColumnHasFieldValues")
-        to-capital-case (fn [s]
-                          (->> (str/split s #"[-.]")
-                               (remove str/blank?)
-                               (map munge-segment)
-                               (str/join "")))
-        ;; Namespace: split by dots, convert each part to CapitalCase, join with underscores
+  (let [;; Namespace: split by dots, convert each part to CapitalCase, join with underscores
         ns-name (->> (str/split (namespace kw) #"\.")
                      (remove str/blank?)
                      (map to-capital-case)
@@ -106,9 +110,9 @@
     (nil? v)     "null"
     (boolean? v) (str v)
     (number? v)  (str v)
-    (keyword? v) (str "\"" (name v) "\"")
-    (string? v)  (str "\"" (str/replace v "\"" "\\\"") "\"")
-    :else        (str "\"" v "\"")))
+    (keyword? v) (pr-str (name v))
+    (string? v)  (pr-str v)
+    :else        (pr-str (str v))))
 
 (defn- wrap
   ([s wrappers]
@@ -369,9 +373,7 @@
   (schema->ts [:orn
                [:string? string?]
                [:vector? vector?]
-               [:keyword? keyword?]])
-
-  (s))
+               [:keyword? keyword?]]))
 
 ;; Public API
 
