@@ -32,11 +32,19 @@ type TriggerResult = {
 
 export type CardStats = Record<string, unknown>;
 
+type VisitedFields = Record<string, unknown>;
+
 export const interestingFields = (
   fields: TransformInspectField[],
+  visitedFields?: VisitedFields,
   options?: { threshold?: number; limit?: number },
 ): Array<TransformInspectField & { interestingness: { score: number } }> =>
-  INSPECTOR.interestingFields(fields, options?.threshold, options?.limit);
+  INSPECTOR.interestingFields(
+    fields,
+    visitedFields ?? null,
+    options?.threshold,
+    options?.limit,
+  );
 
 export const evaluateTriggers = (
   lens: InspectorLens,

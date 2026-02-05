@@ -37,7 +37,7 @@
        :status           :ready
        :sources          sources
        :target           target
-       :visited_fields   {} #_(:visited_fields ctx)
+       :visited_fields   (:visited_fields ctx)
        :available_lenses (lens.core/available-lenses ctx)})))
 
 (mu/defn get-lens :- ::schema/lens

@@ -40,9 +40,10 @@
    Returns fields with score above threshold, sorted by score descending.
 
    Options:
-   - :threshold - minimum score to include (default 0.3)
-   - :limit     - maximum number of fields to return (default nil = all)"
-  [fields & opts]
+   - :visited_fields - map of field sets used in query clauses (ignored for now)
+   - :threshold      - minimum score to include (default 0.3)
+   - :limit          - maximum number of fields to return (default nil = all)"
+  [fields opts]
   (interestingness/interesting-fields fields opts))
 
 ;;; -------------------------------------------------- Degeneracy --------------------------------------------------
