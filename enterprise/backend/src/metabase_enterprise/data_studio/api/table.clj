@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -133,6 +134,10 @@
                             where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+    (api/check-403 (every?
+                    #(and (mi/can-write? %) (mi/can-query? %))
+                    (when (seq table-ids-to-update)
+                      (t2/select :model/Table :id [:in table-ids-to-update]))))
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id (:id target-collection)
                         :is_published  true}
@@ -158,6 +163,10 @@
                           where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+    (api/check-403 (every?
+                    #(and (mi/can-write? %) (mi/can-query? %))
+                    (when (seq table-ids-to-update)
+                      (t2/select :model/Table :id [:in table-ids-to-update]))))
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id nil
                         :is_published  false}

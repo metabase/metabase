@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -74,7 +76,7 @@
                                            {:table_ids [(mt/id :users)]}))))))
 
 (deftest data-analyst-can-access-endpoints-test
-  (mt/with-premium-features #{:library}
+  (mt/with-premium-features #{:library :advanced-permissions}
     (testing "Data analysts (members of Data Analysts group) can access library endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
@@ -85,6 +87,8 @@
                        :model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}
                        :model/Collection _ {:type collection/library-data-collection-type}]
+          ;; Grant data analyst group view-data permission on this database
+          (data-perms/set-database-permission! data-analyst-group-id db-id :perms/view-data :unrestricted)
           (testing "data analyst can publish tables"
             (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
                                             {:table_ids [table-id]}))))
@@ -246,3 +250,46 @@
                                 {:table_ids [customers-id]})
           (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
             customers-id orders-id items-id))))))
+
+;;; ------------------------------------------ Publish/Unpublish requires write and query perms ------------------------------------------
+
+(deftest publish-tables-requires-write-and-query-perms-test
+  (mt/with-premium-features #{:data-studio :advanced-permissions}
+    (testing "POST /api/ee/data-studio/table/publish-tables requires write and query permission on all tables"
+      (mt/with-temp [:model/Collection _              {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}    {}
+                     :model/Table      {table-id :id} {:db_id db-id :name "restricted_table"}
+                     :model/User       {analyst-id :id} {:first_name "Data"
+                                                         :last_name "Analyst"
+                                                         :email "analyst-no-perms@metabase.com"
+                                                         :is_data_analyst true}
+                     :model/PermissionsGroupMembership _ {:user_id analyst-id
+                                                          :group_id (:id (perms-group/data-analyst))}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/data-analyst) db-id :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/data-analyst) db-id :perms/create-queries :no)
+          ;; Analyst has data analyst role but no data perms on the table
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/publish-tables"
+                                       {:table_ids [table-id]}))))))))
+
+(deftest unpublish-tables-requires-write-and-query-perms-test
+  (mt/with-premium-features #{:data-studio :advanced-permissions}
+    (testing "POST /api/ee/data-studio/table/unpublish-tables requires write and query permission on all tables"
+      (mt/with-temp [:model/Collection {coll-id :id}  {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}    {}
+                     :model/Table      {table-id :id} {:db_id db-id :name "restricted_table"
+                                                       :is_published true :collection_id coll-id}
+                     :model/User       {analyst-id :id} {:first_name "Data"
+                                                         :last_name "Analyst"
+                                                         :email "analyst-no-perms@metabase.com"
+                                                         :is_data_analyst true}
+                     :model/PermissionsGroupMembership _ {:user_id analyst-id
+                                                          :group_id (:id (perms-group/data-analyst))}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+          (perms/revoke-collection-permissions! (perms-group/data-analyst) coll-id)
+            ;; Analyst has data analyst role but no data perms on the table
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
+                                       {:table_ids [table-id]}))))))))
