@@ -18,7 +18,7 @@ Dependency diagnostics has two tabs: **Broken dependencies** and **Unreferenced 
 
 Broken dependencies lists items that other content depends on, where a dependent item references a column or field the item no longer provides. This can happen when a column is removed or renamed, or when a field is hidden from the query builder by setting Visibility to [**Do not include**](../data-modeling/metadata-editing.md).
 
-Broken dependencies includes:
+The broken dependencies table includes:
 
 - Tables
 - [Questions](../questions/introduction.md)
