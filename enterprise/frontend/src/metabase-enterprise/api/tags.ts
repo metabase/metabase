@@ -10,8 +10,6 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
-  type BulkTableInfo,
-  type BulkTableSelectionInfo,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
@@ -26,11 +24,7 @@ import {
   type SnippetDependencyNode,
   type SupportAccessGrant,
   type TableDependencyNode,
-  type Transform,
   type TransformDependencyNode,
-  type TransformJob,
-  type TransformRun,
-  type TransformTag,
   type Workspace,
   type WorkspaceAllowedDatabase,
   type WorkspaceItem,
@@ -44,14 +38,9 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-prompt-suggestions",
   "gsheets-status",
   "sandbox",
-  "transform-tag",
-  "transform-job",
-  "transform-job-via-tag",
-  "transform-run",
   "workspace-transforms",
   "workspace-transform",
   "workspace-tables",
-  "external-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -106,48 +95,6 @@ export function provideWorkspaceTags(
   return [idTag("workspace", workspace.id)];
 }
 
-export function provideTransformTags(
-  transform: Transform,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("transform", transform.id),
-    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
-  ];
-}
-
-export function provideTransformListTags(
-  transforms: Transform[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
-}
-
-export function provideTransformRunTags(
-  run: TransformRun,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("transform-run", run.id),
-    ...(run.transform ? provideTransformTags(run.transform) : []),
-  ];
-}
-
-export function provideTransformRunListTags(
-  runs: TransformRun[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
-}
-
-export function provideTransformTagTags(
-  tag: TransformTag,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-tag", tag.id)];
-}
-
-export function provideTransformTagListTags(
-  tags: TransformTag[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
-}
-
 export function provideExternalTransformTags(
   transform: ExternalTransform,
 ): TagDescription<EnterpriseTagType>[] {
@@ -161,22 +108,6 @@ export function provideExternalTransformListTags(
     listTag("external-transform"),
     ...transforms.flatMap(provideExternalTransformTags),
   ];
-}
-
-export function provideTransformJobTags(
-  job: TransformJob,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("transform-job", job.id),
-    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
-      []),
-  ];
-}
-
-export function provideTransformJobListTags(
-  jobs: TransformJob[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
 }
 
 export function providePythonLibraryTags(
@@ -336,25 +267,6 @@ export function provideSupportAccessGrantListTags(
   return [
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
-  ];
-}
-
-export function provideBulkTableInfoTags(
-  table: BulkTableInfo,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("table", table.id)];
-}
-
-export function provideBulkTableSelectionInfoTags({
-  selected_table,
-  published_downstream_tables,
-  unpublished_upstream_tables,
-}: BulkTableSelectionInfo): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("table"),
-    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
-    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
-    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
   ];
 }
 

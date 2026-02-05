@@ -1271,7 +1271,7 @@
           (is (= "PRODUCT_ID" (:related_by products-table))))))))
 
 (deftest get-transforms-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1314,7 +1314,7 @@
                                                         (sort-by :id))))))))))))
 
 (deftest get-transform-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1471,7 +1471,7 @@
 (deftest check-transform-dependencies-test
   ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
   ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
-  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies}
+  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
