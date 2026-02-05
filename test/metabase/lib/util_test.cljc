@@ -478,3 +478,33 @@
              (lib.util/parse-column-display-name-parts
               "Distinct values of People - Product → Created At: Month"
               patterns))))))
+
+(deftest ^:parallel parse-column-display-name-parts-rtl-test
+  (testing "RTL pattern: value comes first (e.g., Hebrew 'Sum of X' = 'X של סכום')"
+    (let [patterns [{:prefix "", :suffix " של סכום"}]]
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " של סכום"}]
+             (lib.util/parse-column-display-name-parts "Total של סכום" patterns)))))
+
+  (testing "Wrapped pattern: value in middle (e.g., French 'Somme de X totale')"
+    (let [patterns [{:prefix "Somme de ", :suffix " totale"}]]
+      (is (= [{:type :static, :value "Somme de "}
+              {:type :translatable, :value "Total"}
+              {:type :static, :value " totale"}]
+             (lib.util/parse-column-display-name-parts "Somme de Total totale" patterns)))))
+
+  (testing "Nested RTL patterns"
+    (let [patterns [{:prefix "", :suffix " של סכום"}
+                    {:prefix "", :suffix " של מינימום"}]]
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " של מינימום"}
+              {:type :static, :value " של סכום"}]
+             (lib.util/parse-column-display-name-parts "Total של מינימום של סכום" patterns)))))
+
+  (testing "RTL pattern with join"
+    (let [patterns [{:prefix "", :suffix " של סכום"}]]
+      (is (= [{:type :translatable, :value "Products"}
+              {:type :static, :value " → "}
+              {:type :translatable, :value "Total"}
+              {:type :static, :value " של סכום"}]
+             (lib.util/parse-column-display-name-parts "Products → Total של סכום" patterns))))))

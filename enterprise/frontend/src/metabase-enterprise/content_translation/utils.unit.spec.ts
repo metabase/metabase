@@ -382,66 +382,6 @@ describe("translateColumnDisplayName", () => {
     expect(result).toBe("");
   });
 
-  describe("RTL and wrapped patterns", () => {
-    // RTL pattern: value comes first, then the aggregation text
-    // e.g., Hebrew: "{value} של סכום" (Sum of {value})
-    const rtlPatterns = [(value: string) => `${value} של סכום`];
-
-    // Wrapped pattern: value is surrounded by prefix and suffix
-    // e.g., hypothetical French: "Somme de {value} totale"
-    const wrappedPatterns = [(value: string) => `Somme de ${value} totale`];
-
-    it("should handle RTL patterns where value comes first", () => {
-      const result = translateColumnDisplayName(
-        "Total של סכום",
-        tcWithColumnTranslations,
-        rtlPatterns,
-      );
-
-      expect(result).toBe("Gesamtsumme של סכום");
-    });
-
-    it("should handle wrapped patterns where value is in the middle", () => {
-      const result = translateColumnDisplayName(
-        "Somme de Total totale",
-        tcWithColumnTranslations,
-        wrappedPatterns,
-      );
-
-      expect(result).toBe("Somme de Gesamtsumme totale");
-    });
-
-    it("should handle nested RTL patterns", () => {
-      const nestedRtlPatterns = [
-        (value: string) => `${value} של סכום`,
-        (value: string) => `${value} של מינימום`,
-      ];
-
-      const result = translateColumnDisplayName(
-        "Total של מינימום של סכום",
-        tcWithColumnTranslations,
-        nestedRtlPatterns,
-      );
-
-      expect(result).toBe("Gesamtsumme של מינימום של סכום");
-    });
-
-    it("should handle nested wrapped patterns", () => {
-      const nestedWrappedPatterns = [
-        (value: string) => `Somme de ${value} totale`,
-        (value: string) => `Minimum de ${value} local`,
-      ];
-
-      const result = translateColumnDisplayName(
-        "Somme de Minimum de Total local totale",
-        tcWithColumnTranslations,
-        nestedWrappedPatterns,
-      );
-
-      expect(result).toBe("Somme de Minimum de Gesamtsumme local totale");
-    });
-  });
-
   describe("binning patterns", () => {
     it.each([
       ["Total: Auto binned", "Gesamtsumme: Auto binned"],
@@ -663,21 +603,8 @@ describe("translateColumnDisplayName", () => {
         expect(result).toBe("Meine Frage - Teil 2");
       });
 
-      it("should handle already-translated display names from backend", () => {
-        const germanAggregationPatterns = [
-          (v: string) => `Eindeutige Werte von ${v}`,
-        ];
-
-        const result = translateColumnDisplayName(
-          "Eindeutige Werte von People - Product → Created At: Monat",
-          tcWithImplicitJoinTranslations,
-          germanAggregationPatterns,
-        );
-
-        expect(result).toBe(
-          "Eindeutige Werte von Personen - Produkt → Erstellt am: Monat",
-        );
-      });
+      // Note: "already-translated display names from backend" test moved to CLJ side
+      // (test/metabase/lib/util_test.cljc - parse-column-display-name-parts-rtl-test)
     });
   });
 });
