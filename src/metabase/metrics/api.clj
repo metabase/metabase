@@ -4,8 +4,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-metric.definition :as lib-metric.definition]
+   [metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
    [metabase.metrics.core :as metrics]
-   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
@@ -129,6 +131,46 @@
                 [:rows [:sequential :any]]]]
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
+(defn- fetch-source-metadata
+  "Fetch source metadata with proper casing and permission check.
+   Returns [source-type source-id metadata].
+   Uses model types for permission checks, then fetches metadata with property-cased keys."
+  [{:keys [source-metric source-measure]}]
+  (if source-metric
+    (do
+      ;; Permission check uses model type
+      (api/read-check (t2/select-one :model/Card :id source-metric :type "metric"))
+      ;; Fetch metadata with property-cased keys for definition building
+      (let [metadata (t2/select-one :metadata/metric :id source-metric)]
+        [:source/metric source-metric metadata]))
+    (do
+      ;; Permission check uses model type
+      (api/read-check (t2/select-one :model/Measure :id source-measure))
+      ;; Fetch metadata with property-cased keys for definition building
+      (let [metadata (t2/select-one :metadata/measure :id source-measure)]
+        [:source/measure source-measure metadata]))))
+
+(defn- from-api-definition
+  "Create a MetricDefinition from API definition parameters.
+
+   The definition map should contain:
+   - :source-metric OR :source-measure (exactly one)
+   - :filters (optional, vector of MBQL filter clauses)
+   - :projections (optional, vector of dimension references)
+
+   Note: dimensions and dimension-mappings are loaded lazily via metadata-provider
+   when building the AST."
+  [provider definition]
+  (let [{:keys [filters projections]} definition
+        [source-type source-id metadata] (fetch-source-metadata definition)]
+    {:lib/type          :metric/definition
+     :source            {:type     source-type
+                         :id       source-id
+                         :metadata metadata}
+     :filters           (or filters [])
+     :projections       (or projections [])
+     :metadata-provider provider}))
+
 (api.macros/defendpoint :post "/dataset"
   :- (server/streaming-response-schema ::DatasetResponse)
   "Execute a metric or measure-based query and stream the results.
@@ -143,9 +185,8 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [{:keys [source-measure source-metric]} definition]
-    (if source-metric
-      (api/read-check (t2/select-one :model/Card :id source-metric :type "metric"))
-      (api/read-check (t2/select-one :model/Measure :id source-measure)))
+  (let [provider   (lib-metric.metadata.jvm/metadata-provider)
+        metric-def (from-api-definition provider definition)
+        query      (lib-metric.definition/->mbql-query metric-def {:limit 10000})]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pipeline/*reduce* rff {:cols []} []))))
+      (qp/process-query (qp/userland-query query) rff))))

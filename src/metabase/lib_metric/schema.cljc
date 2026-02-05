@@ -96,14 +96,13 @@
    - source: reference to the metric or measure with its metadata
    - filters: MBQL filter clauses using dimension references
    - projections: dimension references for grouping
-   - dimensions: available dimensions from the source
-   - dimension-mappings: how dimensions resolve to actual fields
-   - metadata-provider: for resolving additional metadata"
+   - metadata-provider: for resolving additional metadata
+
+   Note: dimensions and dimension-mappings are always derived from the source
+   metadata when building the AST, so they are not part of the definition schema."
   [:map
-   [:lib/type           [:= :metric/definition]]
-   [:source             ::metric-definition.source]
-   [:filters            [:sequential :any]]  ; MBQL filter clauses
-   [:projections        [:sequential ::dimension-reference]]
-   [:dimensions         [:sequential ::persisted-dimension]]
-   [:dimension-mappings [:sequential ::dimension-mapping]]
-   [:metadata-provider  [:maybe :some]]])
+   [:lib/type          [:= :metric/definition]]
+   [:source            ::metric-definition.source]
+   [:filters           [:sequential :any]]  ; MBQL filter clauses
+   [:projections       [:sequential ::dimension-reference]]
+   [:metadata-provider [:maybe :some]]])
