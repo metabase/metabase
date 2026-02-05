@@ -6,6 +6,9 @@ import { TimeFilterPicker } from "../TimeFilterPicker";
 interface FilterPickerBodyProps {
   definition: LibMetric.MetricDefinition;
   dimension: LibMetric.DimensionMetadata;
+  filter?: LibMetric.FilterClause;
+  isNew?: boolean;
+  readOnly?: boolean;
   onChange: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
 }
@@ -13,6 +16,9 @@ interface FilterPickerBodyProps {
 export function FilterPickerBody({
   definition,
   dimension,
+  filter,
+  isNew,
+  readOnly,
   onChange,
   onBack,
 }: FilterPickerBodyProps) {
@@ -26,6 +32,9 @@ export function FilterPickerBody({
       <FilterWidget
         definition={definition}
         dimension={dimension}
+        filter={filter}
+        isNew={isNew}
+        readOnly={readOnly}
         onChange={onChange}
         onBack={onBack}
       />

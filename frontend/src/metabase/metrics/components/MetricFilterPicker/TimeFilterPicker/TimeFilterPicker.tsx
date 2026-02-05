@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -18,6 +17,9 @@ import type { TimeValue } from "./types";
 export function TimeFilterPicker({
   definition,
   dimension,
+  filter,
+  isNew,
+  readOnly,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -31,15 +33,18 @@ export function TimeFilterPicker({
     values,
     valueCount,
     availableOptions,
+    isValid,
     getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
   } = useTimeFilter({
+    definition,
     dimension,
+    filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
+  const handleOperatorChange = (newOperator: LibMetric.TimeFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };
@@ -66,6 +71,7 @@ export function TimeFilterPicker({
       <FilterPickerHeader
         dimensionName={dimensionInfo.displayName}
         onBack={onBack}
+        readOnly={readOnly}
       >
         <FilterOperatorPicker
           value={operator}
@@ -83,7 +89,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterPickerFooter isValid />
+        <FilterPickerFooter isNew={isNew} isValid={isValid} />
       </Box>
     </Box>
   );
