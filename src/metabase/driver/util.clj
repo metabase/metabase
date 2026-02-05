@@ -798,11 +798,6 @@
 ;;; |                                           Macaw parsing helpers                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private considered-drivers
-  "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to explicitly
-  mention all sub-types. This is probably not a bad thing."
-  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
-
 ;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
 (def trusted-for-table-permissions?
   "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"

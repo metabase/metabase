@@ -6,8 +6,6 @@
    [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
@@ -21,12 +19,16 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
+   [metabase.transforms.core :as transforms]
+   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -85,7 +87,7 @@
   [db-id]
   (let [database (api/check-400 (t2/select-one :model/Database db-id)
                                 (deferred-tru "The target database cannot be found."))]
-    (api/check (transforms.util/check-feature-enabled nil)
+    (api/check (transforms.gating/any-transforms-enabled?)
                [402 (deferred-tru "Premium features required for transforms are not enabled.")])
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
@@ -93,7 +95,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (driver.u/supports? (:engine database) :transforms/table database)
                    (deferred-tru "The database does not support the requested transform target type."))
-    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+    (api/check-400 (not (database-routing/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (def ^:private ws-prefix "/api/ee/workspace/\\d+")

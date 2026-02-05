@@ -6,7 +6,6 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.sql-parsing.common :as common]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -245,6 +244,7 @@
       (allowIO true)
       (build)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- acquire-dev-context
   "Create a dev context (not pooled, but still Closeable for consistent API)."
   []

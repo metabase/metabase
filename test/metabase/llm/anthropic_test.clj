@@ -112,6 +112,30 @@
            #"not configured"
            (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
 
+(deftest chat-completion-returns-usage-test
+  (testing "chat-completion returns result, usage, and duration"
+    (let [mock-response {:body {:id      "msg_123"
+                                :model   "claude-sonnet-4-5-20250929"
+                                :content [{:type  "tool_use"
+                                           :id    "tool_123"
+                                           :name  "generate_sql"
+                                           :input {:sql         "SELECT * FROM users"
+                                                   :explanation "Fetches all users"}}]
+                                :usage   {:input_tokens  1500
+                                          :output_tokens 250}}}]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"
+                                         llm-anthropic-model "claude-sonnet-4-5-20250929"]
+        (with-redefs [http/post (constantly mock-response)]
+          (let [result (anthropic/chat-completion {:system   "You are a SQL expert"
+                                                   :messages [{:role "user" :content "get all users"}]})]
+            (is (=? {:result      {:sql         "SELECT * FROM users"
+                                   :explanation "Fetches all users"}
+                     :duration-ms #(and (number? %) (pos? %))
+                     :usage       {:model      "claude-sonnet-4-5-20250929"
+                                   :prompt     1500
+                                   :completion 250}}
+                    result))))))))
+
 ;;; ------------------------------------------- list-models Tests -------------------------------------------
 
 (deftest list-models-requires-api-key-test
@@ -148,27 +172,3 @@
                     {:id "claude-sonnet-4-5-20250929" :display_name "Claude Sonnet 4.5"}
                     {:id "claude-sonnet-4-20250514" :display_name "Claude Sonnet 4"}]
                    (:models result)))))))))
-
-(deftest chat-completion-returns-usage-test
-  (testing "chat-completion returns result, usage, and duration"
-    (let [mock-response {:body {:id "msg_123"
-                                :model "claude-sonnet-4-5-20250929"
-                                :content [{:type "tool_use"
-                                           :id "tool_123"
-                                           :name "generate_sql"
-                                           :input {:sql "SELECT * FROM users"
-                                                   :explanation "Fetches all users"}}]
-                                :usage {:input_tokens 1500
-                                        :output_tokens 250}}}]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"
-                                         llm-anthropic-model "claude-sonnet-4-5-20250929"]
-        (with-redefs [http/post (constantly mock-response)]
-          (let [result (anthropic/chat-completion {:system "You are a SQL expert"
-                                                   :messages [{:role "user" :content "get all users"}]})]
-            (is (=? {:result {:sql "SELECT * FROM users"
-                              :explanation "Fetches all users"}
-                     :duration-ms #(and (number? %) (pos? %))
-                     :usage {:model "claude-sonnet-4-5-20250929"
-                             :prompt 1500
-                             :completion 250}}
-                    result))))))))

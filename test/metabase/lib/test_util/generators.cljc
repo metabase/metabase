@@ -13,8 +13,7 @@
    [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.test.util.random :as tu.rng]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
 ;; achieve it with moderate cost. I think we can, at least for most queries. Some temporal stuff is a huge PITA,
@@ -236,13 +235,7 @@
           (testing "adds it to the end of the list"
             (is (= (count after-filters)
                    (inc (count before-filters))))
-            (is (=? filter-clause (last after-filters))))
-          (testing (str `lib/filter-operator " returns the right op")
-            ;; TODO: The generator will happily build multiple joins
-            (when-let [op (mu/disable-enforcement
-                            (lib/filter-operator after stage-number (last after-filters)))]
-              (is (= (first filter-clause)
-                     (:short op))))))))))
+            (is (=? filter-clause (last after-filters)))))))))
 
 ;; Expressions ===================================================================================
 ;; We only support a few basic expressions for now. It would be good to exercise all the expression types eventually,

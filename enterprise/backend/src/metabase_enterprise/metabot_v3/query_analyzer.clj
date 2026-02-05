@@ -116,7 +116,7 @@
   to return tables that are in the query."
   ;; TODO (lbrdnk 2026-02-03): all code that may be providing mode (upper layers)
   ;; should be investigated and refactored.
-  [driver query & {:keys [_mode] :or {_mode :compound-select}}]
+  [driver query & {:keys [_mode]}]
   (let [db-id (:database query)
         sql-str (:query (nqa.sub/replace-tags query))
         tables (sql-tools/referenced-tables-raw driver sql-str)]

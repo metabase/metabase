@@ -1,53 +1,84 @@
 (ns metabase.sql-tools.core
+  "Public API for sql-tools SQL parsing functionality.
+
+   This namespace provides parser-agnostic functions that delegate to the
+   configured backend (Macaw or SQLGlot) via multimethods.
+
+   Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
+   metabase.sql-tools.init to avoid circular dependencies."
   (:require
+   [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.settings :as sql-tools.settings]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [potemkin :as p]))
 
-(defn- parser-dispatch [parser & _args] parser)
+;;; -------------------------------------------------- Schemas --------------------------------------------------
 
-;; TODO: should not be called elsewhere as in this module. Must be public for parser implementations
-(defmulti returned-columns-impl
-  "Parser specific implementation of [[returned-columns]]. Do not use directly."
-  {:arglists '([parser driver native-query])}
-  parser-dispatch)
+(mr/def ::table-spec
+  "Schema for table identifier used in replacements."
+  [:map
+   [:table :string]
+   [:schema {:optional true} [:maybe :string]]])
 
-(defn returned-columns
+(mr/def ::column-spec
+  "Schema for column identifier used in replacements."
+  [:map
+   [:column :string]
+   [:table {:optional true} [:maybe :string]]
+   [:schema {:optional true} [:maybe :string]]])
+
+(mr/def ::replacements
+  "Schema for replace-names replacements map."
+  [:map
+   [:schemas {:optional true} [:map-of :string :string]]
+   [:tables {:optional true} [:map-of ::table-spec :string]]
+   [:columns {:optional true} [:map-of ::column-spec :string]]])
+
+(mr/def ::replace-names-opts
+  "Schema for replace-names options."
+  [:map
+   [:allow-unused? {:optional true} :boolean]])
+
+(mr/def ::simple-query-result
+  "Schema for simple-query? return value."
+  [:map
+   [:is_simple :boolean]
+   [:reason {:optional true} :string]])
+
+;; Re-export multimethod vars so implementations can use sql-tools/foo-impl
+(p/import-vars
+ [interface
+  returned-columns-impl
+  referenced-tables-impl
+  referenced-fields-impl
+  field-references-impl
+  validate-query-impl
+  replace-names-impl
+  referenced-tables-raw-impl
+  simple-query?-impl
+  add-into-clause-impl])
+
+(mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
-  [driver native-query]
-  (returned-columns-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+  [driver :- :keyword
+   native-query]
+  (interface/returned-columns-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
-(defmulti referenced-tables-impl
-  "Parser specific implementation of [[referenced-tables]]. Do not use directly."
-  {:arglists '([parser driver native-query])}
-  parser-dispatch)
-
-(defn referenced-tables
+(mu/defn referenced-tables :- [:set :map]
   "Return tables referenced by the `native-query`"
-  [driver native-query]
-  (referenced-tables-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+  [driver :- :keyword
+   native-query]
+  (interface/referenced-tables-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
-(defmulti referenced-fields-impl
-  "Parser specific implementation of [[referenced-fields]]. Do not use directly."
-  {:arglists '([parser driver native-query])}
-  parser-dispatch)
-
-(defn referenced-fields
+(mu/defn referenced-fields :- [:set :map]
   "Return appdb fields referenced (used) by the `native-query`.
 
   This includes fields in SELECT, WHERE, JOIN ON, GROUP BY, ORDER BY, etc.
   Returns a set of :metadata/column maps."
-  [driver native-query]
-  (referenced-fields-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
-
-(defmulti field-references-impl
-  "Parser specific implementation of [[field-references]]. Do not use directly.
-
-  Returns a map with:
-  - :used-fields - set of field specs from WHERE, JOIN ON, GROUP BY, ORDER BY
-  - :returned-fields - vector of field specs from SELECT clause (ordered)
-  - :errors - set of validation errors"
-  {:arglists '([parser driver sql-string])}
-  parser-dispatch)
+  [driver :- :keyword
+   native-query]
+  (interface/referenced-fields-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
 (mu/defn field-references :- :metabase.sql-tools.macaw.references/field-references
   "Return field references for SQL string.
@@ -58,24 +89,15 @@
   - :errors - set of validation errors"
   [driver :- :keyword
    sql-string :- :string]
-  (field-references-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string))
+  (interface/field-references-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string))
 
-(defmulti validate-query-impl
-  "Parser specific implementation of [[validate-query]]. Do not use directly."
-  {:arglists '([parser driver native-query])}
-  parser-dispatch)
+(mu/defn validate-query :- [:set :map]
+  "Validate native query. Returns a set of validation errors (empty set if valid)."
+  [driver :- :keyword
+   native-query]
+  (interface/validate-query-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
 
-(defn validate-query
-  "Validate native query."
-  [driver native-query]
-  (validate-query-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
-
-(defmulti replace-names-impl
-  "Parser specific implementation of [[replace-names]]. Do not use directly."
-  {:arglists '([parser driver sql-string replacements opts])}
-  #'parser-dispatch)
-
-(defn replace-names
+(mu/defn replace-names :- :string
   "Replace schema, table, and column names in a SQL query.
 
    `replacements` is a map with optional keys:
@@ -89,47 +111,29 @@
    Returns the modified SQL string."
   ([driver sql-string replacements]
    (replace-names driver sql-string replacements {}))
-  ([driver sql-string replacements opts]
-   (replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
+  ([driver :- :keyword
+    sql-string :- :string
+    replacements :- ::replacements
+    opts :- ::replace-names-opts]
+   (interface/replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
 
-(defmulti referenced-tables-raw-impl
-  "Parser specific implementation of [[referenced-tables-raw]]. Do not use directly."
-  {:arglists '([parser driver sql-str])}
-  #'parser-dispatch)
+(mu/defn referenced-tables-raw :- [:sequential ::table-spec]
+  "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
+  [driver :- :keyword
+   sql-str :- :string]
+  (interface/referenced-tables-raw-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-str))
 
-(defn referenced-tables-raw
-  "Given a driver and sql string, returns a set of form #{{:schema <name> :table <name>}...}."
-  [driver sql-str]
-  (referenced-tables-raw-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-str))
-
-(defmulti simple-query?-impl
-  "Parser specific implementation of [[simple-query?]]. Do not use directly.
-
-  Returns a map with:
-  - `:is_simple` - boolean indicating if query is simple
-  - `:reason` - string explaining why query is not simple (optional)"
-  {:arglists '([parser sql-string])}
-  parser-dispatch)
-
-(defn simple-query?
+(mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
   Used by Workspaces to determine if automatic checkpoints can be inserted.
 
   Returns a map with:
   - `:is_simple` - boolean indicating if query is simple
   - `:reason` - string explaining why query is not simple (when false)"
-  [sql-string]
-  (simple-query?-impl (sql-tools.settings/sql-tools-parser-backend) sql-string))
+  [sql-string :- :string]
+  (interface/simple-query?-impl (sql-tools.settings/sql-tools-parser-backend) sql-string))
 
-(defmulti add-into-clause-impl
-  "Parser specific implementation of [[add-into-clause]]. Do not use directly.
-
-  Transforms a SELECT statement to include an INTO clause for SQL Server style
-  SELECT INTO syntax."
-  {:arglists '([parser driver sql table-name])}
-  parser-dispatch)
-
-(defn add-into-clause
+(mu/defn add-into-clause :- :string
   "Add an INTO clause to a SELECT statement.
 
   Transforms: 'SELECT * FROM products'
@@ -137,5 +141,7 @@
 
   Used by SQL Server compile-transform which requires SELECT INTO syntax
   instead of CREATE TABLE AS SELECT."
-  [driver sql table-name]
-  (add-into-clause-impl (sql-tools.settings/sql-tools-parser-backend) driver sql table-name))
+  [driver :- :keyword
+   sql :- :string
+   table-name :- :string]
+  (interface/add-into-clause-impl (sql-tools.settings/sql-tools-parser-backend) driver sql table-name))

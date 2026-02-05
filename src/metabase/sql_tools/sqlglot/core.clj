@@ -1,4 +1,3 @@
-^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: remove before merging
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [metabase.driver.sql :as driver.sql]
@@ -6,9 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
-   [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.macaw.core :as sql-tools.macaw]
-   [metabase.util :as u]
+   [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.log :as log]))
 
 (defn driver->dialect
@@ -45,50 +42,9 @@
                             :schema (or table-schema default-schema)}))))
           query-tables)))
 
-(comment
-  ;; REPL usage - requires test metadata:
-  (require '[metabase.lib.test-metadata :as meta])
-  (require '[metabase.lib.core :as lib])
-  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS")]
-    (referenced-tables :h2 query)))
-
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [_parser driver query]
   (referenced-tables driver query))
-
-;;;; referenced-fields
-
-(defn- namespaced-fields
-  "Build a lookup map: table -> field-name -> field metadata."
-  [mp]
-  (reduce (fn [acc table]
-            ;; TODO: Multiple schemas.
-            (assoc acc (:name table) (u/for-map
-                                      [field (lib.metadata/fields mp (:id table))]
-                                      [(:name field) field])))
-          {}
-          (lib.metadata/tables mp)))
-
-(defn- coords->fields
-  "Convert a [catalog schema table field] tuple to field metadata."
-  [namespaced-fields* [_catalog _schema table-name field-name :as _coords]]
-  (if (= "*" field-name)
-    (some-> (get namespaced-fields* table-name) vals)
-    (some-> (get-in namespaced-fields* [table-name field-name]) vector)))
-
-(defn- referenced-fields
-  "Given a driver and a native query, return the set of :metadata/column fields referenced in the query."
-  [driver query]
-  (let [sql (lib/raw-native-query query)
-        field-coords (sql-parsing/referenced-fields (driver->dialect driver) sql)
-        namespaced-fields* (namespaced-fields query)]
-    (into #{}
-          (mapcat (partial coords->fields namespaced-fields*))
-          field-coords)))
-
-(defmethod sql-tools/referenced-fields-impl :sqlglot
-  [_parser driver query]
-  (referenced-fields driver query))
 
 ;;;; field-references
 
@@ -96,19 +52,25 @@
   [_parser driver sql-string]
   (sql-parsing/field-references (driver->dialect driver) sql-string))
 
+;;;; referenced-fields
+
+(defmethod sql-tools/referenced-fields-impl :sqlglot
+  [parser driver query]
+  (sql-tools.common/referenced-fields parser driver query))
+
 ;;;; Validation
 ;; SQLGlot validation uses the same pipeline as Macaw:
 ;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
 (defmethod sql-tools/validate-query-impl :sqlglot
-  [_parser driver query]
-  (sql-tools.macaw/validate-query driver query))
+  [parser driver query]
+  (sql-tools.common/validate-query parser driver query))
 
 ;;;; returned-columns
 ;; SQLGlot returned-columns uses the same pipeline as Macaw:
 ;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
 (defmethod sql-tools/returned-columns-impl :sqlglot
-  [_parser driver query]
-  (sql-tools.macaw/returned-columns driver query))
+  [parser driver query]
+  (sql-tools.common/returned-columns parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
   [_parser driver sql-str]

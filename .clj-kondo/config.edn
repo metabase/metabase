@@ -427,13 +427,10 @@
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-  metabase-enterprise.transforms.api-test/with-transform-tags                           clojure.core/let
-  metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
-  metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
-  metabase-enterprise.transforms.execute/with-transform-lifecycle                       clojure.core/let
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
+  metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
   metabase.app-db.custom-migrations/define-migration                                    clj-kondo.lint-as/def-catch-all
