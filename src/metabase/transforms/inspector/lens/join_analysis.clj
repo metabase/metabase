@@ -204,20 +204,26 @@
                                         (:strategy %))
                             (map-indexed #(assoc %2 :step (inc %1)) join-structure))]
     {:alert_triggers
-     (for [{:keys [step alias]} outer-joins]
+     (for [{:keys [step alias strategy]} outer-joins]
        {:id         (str "high-null-rate-" step)
         :condition  {:name    :high-null-rate
                      :card_id (lens.core/make-card-id (str "join-step-" step) params)}
         :severity   :warning
-        :message    (str "Join '" alias "' has >20% unmatched rows")})
+        :message    (str "Join '" alias "' has >20% unmatched rows")
+        :metadata   {:join_step     step
+                     :join_alias    alias
+                     :join_strategy strategy}})
 
      :drill_lens_triggers
-     (for [{:keys [step alias]} outer-joins]
+     (for [{:keys [step alias strategy]} outer-joins]
        {:lens_id   "unmatched-rows"
         :condition {:name    :has-unmatched-rows
                     :card_id (lens.core/make-card-id (str "join-step-" step) params)}
         :params    {:join_step step}
-        :reason    (str "Unmatched rows in " alias)})}))
+        :reason    (str "Unmatched rows in " alias)
+        :metadata  {:join_step     step
+                    :join_alias    alias
+                    :join_strategy strategy}})}))
 
 (defmethod lens.core/make-lens :join-analysis
   [lens-type ctx params]
