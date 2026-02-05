@@ -36,18 +36,19 @@
   variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
   on dynamic variables."
   {:style/indent 0}
-  [current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  [current-user-id current-user-perms & body]
+  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
+                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
      ~@body))
 
-(defn- can-write? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-write? instance)))
+(defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-write? instance)))
 
-(defn- can-read? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-read? instance)))
+(defn- can-read? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-read? instance)))
 
-(defn- can-query? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-query? instance)))
+(defn- can-query? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? instance)))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
