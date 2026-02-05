@@ -1,6 +1,8 @@
 (ns metabase.metrics.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -193,12 +195,10 @@
 
 (deftest dataset-endpoint-measure-source-test
   (testing "POST /api/metric/dataset with source-measure"
-    ;; Measures require pMBQL (MBQL5) format definition
-    (let [pmbql-definition {:lib/type :mbql/query
-                            :database (mt/id)
-                            :stages   [{:lib/type     :mbql.stage/mbql
-                                        :source-table (mt/id :venues)
-                                        :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}]}]
+    (let [mp               (mt/metadata-provider)
+          table-metadata   (lib.metadata/table mp (mt/id :venues))
+          pmbql-definition (-> (lib/query mp table-metadata)
+                               (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Test Measure"
                                              :table_id   (mt/id :venues)
                                              :definition pmbql-definition}]

@@ -59,10 +59,10 @@
               :id       42
               :metadata sample-metric-metadata}
              (:source definition))))
-    (testing "has dimensions from metadata"
-      (is (= sample-dimensions (:dimensions definition))))
-    (testing "has dimension-mappings from metadata"
-      (is (= sample-mappings (:dimension-mappings definition))))
+    (testing "dimensions are derived later, not stored in definition"
+      (is (nil? (:dimensions definition))))
+    (testing "dimension-mappings are derived later, not stored in definition"
+      (is (nil? (:dimension-mappings definition))))
     (testing "starts with empty filters"
       (is (= [] (:filters definition))))
     (testing "starts with empty projections"
@@ -75,17 +75,9 @@
     (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition definition)))
         "definition should conform to the Malli schema")))
 
-(deftest ^:parallel from-metric-metadata-handles-missing-dimensions-test
-  (let [metadata   (dissoc sample-metric-metadata :dimensions :dimension-mappings)
-        definition (lib-metric.definition/from-metric-metadata mock-provider metadata)]
-    (is (= [] (:dimensions definition)))
-    (is (= [] (:dimension-mappings definition)))))
-
-(deftest ^:parallel from-metric-metadata-handles-nil-dimensions-test
-  (let [metadata   (assoc sample-metric-metadata :dimensions nil :dimension-mappings nil)
-        definition (lib-metric.definition/from-metric-metadata mock-provider metadata)]
-    (is (= [] (:dimensions definition)))
-    (is (= [] (:dimension-mappings definition)))))
+;; Note: dimensions and dimension-mappings are derived when building the AST,
+;; not copied from metadata to definition. Tests for dimension derivation
+;; belong in the AST build tests.
 
 ;;; -------------------------------------------------- from-measure-metadata --------------------------------------------------
 
@@ -98,10 +90,10 @@
               :id       99
               :metadata sample-measure-metadata}
              (:source definition))))
-    (testing "has dimensions from metadata"
-      (is (= sample-dimensions (:dimensions definition))))
-    (testing "has dimension-mappings from metadata"
-      (is (= sample-mappings (:dimension-mappings definition))))
+    (testing "dimensions are derived later, not stored in definition"
+      (is (nil? (:dimensions definition))))
+    (testing "dimension-mappings are derived later, not stored in definition"
+      (is (nil? (:dimension-mappings definition))))
     (testing "starts with empty filters"
       (is (= [] (:filters definition))))
     (testing "starts with empty projections"
@@ -114,11 +106,9 @@
     (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition definition)))
         "definition should conform to the Malli schema")))
 
-(deftest ^:parallel from-measure-metadata-handles-missing-dimensions-test
-  (let [metadata   (dissoc sample-measure-metadata :dimensions :dimension-mappings)
-        definition (lib-metric.definition/from-measure-metadata mock-provider metadata)]
-    (is (= [] (:dimensions definition)))
-    (is (= [] (:dimension-mappings definition)))))
+;; Note: dimensions and dimension-mappings are derived when building the AST,
+;; not copied from metadata to definition. Tests for dimension derivation
+;; belong in the AST build tests.
 
 ;;; -------------------------------------------------- source-metric-id --------------------------------------------------
 
@@ -210,15 +200,13 @@
                                          :metadata {}}))))))
 
 (deftest ^:parallel metric-definition-schema-test
-  (let [valid-definition {:lib/type           :metric/definition
-                          :source             {:type     :source/metric
-                                               :id       1
-                                               :metadata {:lib/type :metadata/metric :id 1}}
-                          :filters            []
-                          :projections        []
-                          :dimensions         []
-                          :dimension-mappings []
-                          :metadata-provider  nil}]
+  (let [valid-definition {:lib/type          :metric/definition
+                          :source            {:type     :source/metric
+                                              :id       1
+                                              :metadata {:lib/type :metadata/metric :id 1}}
+                          :filters           []
+                          :projections       []
+                          :metadata-provider nil}]
     (testing "valid definition"
       (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition valid-definition)))))
     (testing "invalid lib/type"

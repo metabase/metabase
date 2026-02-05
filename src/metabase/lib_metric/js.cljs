@@ -198,19 +198,56 @@
 ;; =============================================================================
 
 (defn ^:export fromJsMetricDefinition
-  "Convert a JS metric definition to a MetricDefinition.
-   STUB: Returns mock data."
-  [_js-definition]
-  {:lib/type :metric/definition
-   :source {:type :source/metric :id 1}})
+  "Convert a JS metric definition (from JSON) to a MetricDefinition.
+
+   The JS definition should match the format accepted by POST /api/metric/dataset:
+   - source-metric OR source-measure (exactly one, as integer ID)
+   - filters (optional array of MBQL filter clauses)
+   - projections (optional array of dimension references)
+
+   Requires a metadata provider to hydrate source metadata."
+  [provider js-definition]
+  (let [definition    (js->clj js-definition :keywordize-keys true)
+        source-metric  (:source-metric definition)
+        source-measure (:source-measure definition)
+        filters        (or (:filters definition) [])
+        projections    (or (:projections definition) [])
+        [source-type source-id] (cond
+                                  source-metric  [:source/metric source-metric]
+                                  source-measure [:source/measure source-measure]
+                                  :else          (throw (ex-info "Definition must have source-metric or source-measure"
+                                                                 {:definition definition})))
+        metadata       (if (= source-type :source/metric)
+                         (lib.metadata.protocols/metadatas
+                          provider {:lib/type :metadata/metric :id #{source-id}})
+                         (lib.metadata.protocols/metadatas
+                          provider {:lib/type :metadata/measure :id #{source-id}}))]
+    {:lib/type          :metric/definition
+     :source            {:type     source-type
+                         :id       source-id
+                         :metadata (first metadata)}
+     :filters           filters
+     :projections       projections
+     :metadata-provider provider}))
 
 (defn ^:export toJsMetricDefinition
-  "Convert a MetricDefinition to a JS metric definition.
-   STUB: Returns mock data."
-  [_definition]
-  #js {:sourceType "mock"
-       :filters #js []
-       :projections #js []})
+  "Convert a MetricDefinition to a JS object for JSON serialization.
+
+   Produces format compatible with POST /api/metric/dataset:
+   - source-metric OR source-measure (integer ID)
+   - filters (array, omitted if empty)
+   - projections (array, omitted if empty)"
+  [definition]
+  (let [source-type (get-in definition [:source :type])
+        source-id   (get-in definition [:source :id])
+        filters     (:filters definition)
+        projections (:projections definition)]
+    (clj->js
+     (cond-> {}
+       (= source-type :source/metric)  (assoc :source-metric source-id)
+       (= source-type :source/measure) (assoc :source-measure source-id)
+       (seq filters)                   (assoc :filters filters)
+       (seq projections)               (assoc :projections projections)))))
 
 (defn ^:export filterableDimensions
   "Get dimensions that can be used for filtering.

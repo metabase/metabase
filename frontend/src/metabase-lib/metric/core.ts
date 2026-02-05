@@ -86,9 +86,13 @@ export function fromMeasureMetadata(
 }
 
 export function fromJsMetricDefinition(
+  metadataProvider: MetadataProviderable,
   jsDefinition: JsMetricDefinition,
 ): MetricDefinition {
-  return LibMetric.fromJsMetricDefinition(jsDefinition) as MetricDefinition;
+  return LibMetric.fromJsMetricDefinition(
+    metadataProvider,
+    jsDefinition,
+  ) as MetricDefinition;
 }
 
 export function toJsMetricDefinition(
