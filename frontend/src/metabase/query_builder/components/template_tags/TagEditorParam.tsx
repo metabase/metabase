@@ -50,6 +50,7 @@ import {
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
+import { TablePartitionBoundaryInput } from "./TagEditorParamParts/TablePartitionBoundaryInput";
 import {
   ContainerLabel,
   InputContainer,
@@ -298,6 +299,18 @@ class TagEditorParamInner extends Component<
     });
   };
 
+  setPartitionStart = (values: unknown[] | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+
+    setTemplateTag({ ...tag, start: values?.[0] as string });
+  };
+
+  setPartitionStop = (values: unknown[] | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+
+    setTemplateTag({ ...tag, stop: values?.[0] as string });
+  };
+
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
@@ -376,6 +389,16 @@ class TagEditorParamInner extends Component<
               database={database}
               databases={databases}
               onChange={this.setField}
+            />
+            <TablePartitionBoundaryInput
+              tag={tag}
+              side="start"
+              onChange={this.setPartitionStart}
+            />
+            <TablePartitionBoundaryInput
+              tag={tag}
+              side="stop"
+              onChange={this.setPartitionStop}
             />
           </>
         )}
