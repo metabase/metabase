@@ -1,25 +1,30 @@
 import type { ReactNode } from "react";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {
-  columnName: string;
+  dimensionName: string;
   children?: ReactNode;
+  readOnly?: boolean;
   onBack?: () => void;
 }
 
 export function FilterPickerHeader({
-  columnName,
+  dimensionName,
   children,
+  readOnly,
   onBack,
 }: FilterPickerHeaderProps) {
-  const tc = useTranslateContent();
   return (
     <Flex px="md" pt="md" justify="space-between">
       {onBack && (
-        <PopoverBackButton pr="md" onClick={onBack}>
-          {tc(columnName)}
+        <PopoverBackButton
+          pr="md"
+          onClick={onBack}
+          disabled={readOnly}
+          withArrow={!readOnly}
+        >
+          {dimensionName}
         </PopoverBackButton>
       )}
       {children}
