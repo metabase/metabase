@@ -46,17 +46,21 @@
 
 (deftest ^:parallel aliased-table-test
   (testing "Table with alias - alias is preserved, only table name changes"
-    (is (= "SELECT p.name FROM users p"
-           (sql-tools/replace-names :postgres
-                                    "SELECT p.name FROM people p"
-                                    {:tables {{:table "people"} "users"}})))))
+    ;; AS is optional in table aliases per SQL standard
+    (is (contains? #{"SELECT p.name FROM users p"
+                     "SELECT p.name FROM users AS p"}
+                   (sql-tools/replace-names :postgres
+                                            "SELECT p.name FROM people p"
+                                            {:tables {{:table "people"} "users"}})))))
 
 (deftest ^:parallel join-rename-test
   (testing "Renames in JOIN queries - alias preserved"
-    (is (= "SELECT p.id, o.total FROM users p JOIN orders o ON p.id = o.user_id"
-           (sql-tools/replace-names :postgres
-                                    "SELECT p.id, o.total FROM people p JOIN orders o ON p.id = o.user_id"
-                                    {:tables {{:table "people"} "users"}})))))
+    ;; AS is optional in table aliases per SQL standard
+    (is (contains? #{"SELECT p.id, o.total FROM users p JOIN orders o ON p.id = o.user_id"
+                     "SELECT p.id, o.total FROM users AS p JOIN orders AS o ON p.id = o.user_id"}
+                   (sql-tools/replace-names :postgres
+                                            "SELECT p.id, o.total FROM people p JOIN orders o ON p.id = o.user_id"
+                                            {:tables {{:table "people"} "users"}})))))
 
 (deftest ^:parallel multiple-table-renames-test
   (testing "Multiple table renames"
@@ -75,10 +79,12 @@
 
 (deftest ^:parallel subquery-rename-test
   (testing "Renames in subqueries"
-    (is (= "SELECT * FROM (SELECT id FROM users) sub"
-           (sql-tools/replace-names :postgres
-                                    "SELECT * FROM (SELECT id FROM people) sub"
-                                    {:tables {{:table "people"} "users"}})))))
+    ;; AS is optional in table aliases per SQL standard
+    (is (contains? #{"SELECT * FROM (SELECT id FROM users) sub"
+                     "SELECT * FROM (SELECT id FROM users) AS sub"}
+                   (sql-tools/replace-names :postgres
+                                            "SELECT * FROM (SELECT id FROM people) sub"
+                                            {:tables {{:table "people"} "users"}})))))
 
 (deftest ^:parallel case-sensitive-match-test
   (testing "Case-sensitive matching - must match exact case"
