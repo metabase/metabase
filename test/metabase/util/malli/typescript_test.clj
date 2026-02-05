@@ -39,11 +39,12 @@
 (deftest registry-type-names-test
   (testing "registry schemas return type names instead of inline expansions"
     ;; Registry schemas now return type names for deduplication
-    (is (= "Metabase_Lib_Schema_Binning_Bin_Width"
+    ;; Entity names use CapitalCase (no underscores), namespace uses Snake_Case
+    (is (= "Metabase_Lib_Schema_Binning_BinWidth"
            (ts/schema->ts ::lib.schema.binning/bin-width)))
     (is (= "Metabase_Lib_Schema_Binning_Strategy"
            (ts/schema->ts ::lib.schema.binning/strategy)))
-    (is (= "Metabase_Lib_Schema_Common_Non_Blank_String"
+    (is (= "Metabase_Lib_Schema_Common_NonBlankString"
            (ts/schema->ts ::lib.schema.common/non-blank-string))))
   (testing "refs in maps use type names"
     (is (= "{\nstrategy: Metabase_Lib_Schema_Binning_Strategy\n}"
@@ -51,17 +52,26 @@
 
 (deftest base-type-name-test
   (testing "converts qualified keywords to TypeScript type names"
+    ;; Dots become underscores, dashes become CapitalCase
     (is (= "Metabase_Lib_Schema_Binning_Strategy"
            (#'ts/base-type-name :metabase.lib.schema.binning/strategy)))
     (is (= "Metabase_Lib_Schema_Query"
            (#'ts/base-type-name :metabase.lib.schema/query))))
-  (testing "handles special characters"
-    ;; Special chars are replaced and then each segment is capitalized (first letter only)
-    (is (= "Metabase_Lib_Schema_Mbql_Clause_Bangeq"
+  (testing "hyphens become CapitalCase in both namespace and entity"
+    (is (= "Metabase_Lib_Schema_Binning_BinWidth"
+           (#'ts/base-type-name :metabase.lib.schema.binning/bin-width)))
+    (is (= "Metabase_Util_Currency_CurrencyInfo"
+           (#'ts/base-type-name :metabase.util.currency/currency-info)))
+    ;; Namespace with hyphen: mbql-clause -> MbqlClause
+    (is (= "Metabase_Lib_Schema_MbqlClause_SomeType"
+           (#'ts/base-type-name :metabase.lib.schema.mbql-clause/some-type))))
+  (testing "handles special characters in entity names"
+    ;; Special chars are replaced with readable names
+    (is (= "Metabase_Lib_Schema_MbqlClause_BangEq"
            (#'ts/base-type-name :metabase.lib.schema.mbql-clause/!=)))
-    (is (= "Metabase_Lib_Schema_Mbql_Clause_Plus"
+    (is (= "Metabase_Lib_Schema_MbqlClause_Plus"
            (#'ts/base-type-name :metabase.lib.schema.mbql-clause/+)))
-    (is (= "Metabase_Lib_Schema_Mbql_Clause_Lt"
+    (is (= "Metabase_Lib_Schema_MbqlClause_Lt"
            (#'ts/base-type-name :metabase.lib.schema.mbql-clause/<)))))
 
 (deftest simplify-union-types-test
