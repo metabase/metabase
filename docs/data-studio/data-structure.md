@@ -129,7 +129,7 @@ Measures are saved aggregations on tables. You can use measures to create an off
 
 People will see measures as options in the Summarize block of the [query builder](../questions/query-builder/editor.md).
 
-To see all segments on a table, select the table in **Data Structure** and switch to **Measures** tab.
+To see all measures on a table, select the table in **Data Structure** and switch to **Measures** tab.
 
 ### Create a measure
 
