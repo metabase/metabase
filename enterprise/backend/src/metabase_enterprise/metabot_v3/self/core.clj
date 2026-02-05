@@ -202,32 +202,33 @@
     :start      -> f:{\"messageId\":...}
     :finish     -> d:{\"finishReason\":\"stop\",\"usage\":{...}}
     :usage      -> (accumulated into finish message)"
-  [rf]
-  (let [usage-acc (volatile! {})]
-    (fn
-      ([] (rf))
-      ([result]
-       ;; Emit finish message with accumulated usage at the end
-       (rf (rf result (format-finish-line @usage-acc))))
-      ([result part]
-       (case (:type part)
-         :text        (rf result (format-text-line part))
-         :data        (rf result (format-data-line part))
-         :error       (rf result (format-error-line part))
-         :tool-input  (rf result (format-tool-call-line part))
-         :tool-output (rf result (format-tool-result-line part))
-         :start       (rf result (format-start-line part))
-         :finish      result ;; Don't emit here, we emit in completion arity
-         :usage       (do
-                        ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
-                        (let [{:keys [usage id]} part
-                              model              (or id "claude-haiku-4-5")]
-                          (vswap! usage-acc assoc model
-                                  {:prompt     (:promptTokens usage 0)
-                                   :completion (:completionTokens usage 0)}))
-                        result)
-         ;; Pass through unknown types as data
-         (rf result (format-data-line part)))))))
+  []
+  (fn [rf]
+    (let [usage-acc (volatile! {})]
+      (fn
+        ([] (rf))
+        ([result]
+         ;; Emit finish message with accumulated usage at the end
+         (rf (rf result (format-finish-line @usage-acc))))
+        ([result part]
+         (case (:type part)
+           :text        (rf result (format-text-line part))
+           :data        (rf result (format-data-line part))
+           :error       (rf result (format-error-line part))
+           :tool-input  (rf result (format-tool-call-line part))
+           :tool-output (rf result (format-tool-result-line part))
+           :start       (rf result (format-start-line part))
+           :finish      result ;; Don't emit here, we emit in completion arity
+           :usage       (do
+                          ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
+                          (let [{:keys [usage id]} part
+                                model              (or id "claude-haiku-4-5")]
+                            (vswap! usage-acc assoc model
+                                    {:prompt     (:promptTokens usage 0)
+                                     :completion (:completionTokens usage 0)}))
+                          result)
+           ;; Pass through unknown types as data
+           (rf result (format-data-line part))))))))
 
 ;;; Tool executor
 

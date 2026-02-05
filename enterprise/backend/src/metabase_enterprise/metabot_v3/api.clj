@@ -134,13 +134,13 @@
   to consolidate streaming chunks into single text parts."
   [{:keys [profile-id message context history conversation-id state]}]
   (let [enriched-context (metabot-v3.context/create-context context)
-        messages (concat history [message])]
+        messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"}
                            [^java.io.OutputStream os _canceled-chan]
       (let [parts-atom (atom [])
-              ;; Compose: collect parts AND convert to lines for streaming
+            ;; Compose: collect parts AND convert to lines for streaming
             xf         (comp (u/tee-xf parts-atom)
-                             self.core/aisdk-line-xf)]
+                             (self.core/aisdk-line-xf))]
         (transduce xf
                    (streaming-writer-rf os)
                    (agent/run-agent-loop
@@ -163,12 +163,12 @@
       (do
         (log/info "Using native Clojure agent" {:profile-id profile-id})
         (native-agent-streaming-request
-         {:profile-id profile-id
-          :message message
-          :context context
-          :history history
+         {:profile-id      profile-id
+          :message         message
+          :context         context
+          :history         history
           :conversation-id conversation_id
-          :state state}))
+          :state           state}))
 
       ;; Fallback to Python AI Service
       (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
@@ -228,12 +228,12 @@
     (store-message! conversation_id profile-id [message])
     (log/info "Using native Clojure agent (direct endpoint)" {:profile-id profile-id})
     (native-agent-streaming-request
-     {:profile-id profile-id
-      :message message
-      :context context
-      :history history
+     {:profile-id      profile-id
+      :message         message
+      :context         context
+      :history         history
       :conversation-id conversation_id
-      :state state})))
+      :state           state})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
