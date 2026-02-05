@@ -1,4 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
+import type {
+  Metabase_Lib_Schema_Query,
+  Metabase_Lib_Schema_Aggregation_Operator,
+  Metabase_Lib_Schema_Metadata_Column,
+  Metabase_Lib_Aggregation_Aggregable,
+  Metabase_Lib_Schema_Aggregation_Aggregation,
+} from "cljs/metabase.lib.js";
 import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
@@ -20,7 +27,7 @@ import type { ColumnExtractionTag } from "./extractions";
  * and in other files it gets treated like `unknown` so it can't be examined, manipulated or a new one created.
  */
 declare const QuerySymbol: unique symbol;
-export type Query = unknown & { _opaque: typeof QuerySymbol };
+export type Query = Metabase_Lib_Schema_Query;
 
 declare const MetadataProviderSymbol: unique symbol;
 export type MetadataProvider = unknown & {
@@ -48,20 +55,12 @@ export type MeasureMetadata = unknown & {
   _opaque: typeof MeasureMetadataSymbol;
 };
 
-declare const AggregationClauseSymbol: unique symbol;
-export type AggregationClause = unknown & {
-  _opaque: typeof AggregationClauseSymbol;
-};
+export type AggregationClause = Metabase_Lib_Schema_Aggregation_Aggregation;
 
-export type Aggregable =
-  | AggregationClause
-  | MetricMetadata
-  | MeasureMetadata
-  | ExpressionClause;
+export type Aggregable = Metabase_Lib_Aggregation_Aggregable;
 
-declare const AggregationOperatorSymbol: unique symbol;
-export type AggregationOperator = unknown & {
-  _opaque: typeof AggregationOperatorSymbol;
+export type AggregationOperator = Metabase_Lib_Schema_Aggregation_Operator & {
+  columns?: Metabase_Lib_Schema_Metadata_Column[];
 };
 
 declare const BreakoutClauseSymbol: unique symbol;
@@ -118,8 +117,7 @@ export type Expressionable =
 
 export type Limit = number | null;
 
-declare const ColumnMetadataSymbol: unique symbol;
-export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadataSymbol };
+export type ColumnMetadata = Metabase_Lib_Schema_Metadata_Column;
 
 declare const ColumnTypeInfoSymbol: unique symbol;
 export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };

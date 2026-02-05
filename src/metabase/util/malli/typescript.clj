@@ -340,6 +340,19 @@
   (let [[child] (mc/children (mc/schema schema))]
     (str (schema->ts child) " | undefined")))
 
+;; :merge combines multiple map schemas into one - produce intersection type
+(defmethod -schema->ts :merge
+  [schema]
+  (let [children (mc/children (mc/schema schema))
+        types    (->> (map schema->ts children)
+                      (remove unknown-type?)
+                      distinct)]
+    (case (count types)
+      0 "unknown"
+      1 (first types)
+      (-> (str/join " & " types)
+          (wrap "()")))))
+
 (defmethod -schema->ts :=
   [schema]
   (let [v (first (mc/children (mc/schema schema)))]

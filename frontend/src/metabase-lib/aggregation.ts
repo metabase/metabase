@@ -12,20 +12,20 @@ import type {
 export function availableAggregationOperators(
   query: Query,
   stageIndex: number,
-): AggregationOperator[] {
+): AggregationOperator[] | null {
   return ML.available_aggregation_operators(query, stageIndex);
 }
 
 export function aggregationOperatorColumns(
   operator: AggregationOperator,
-): ColumnMetadata[] {
+): ColumnMetadata[] | null {
   return ML.aggregation_operator_columns(operator);
 }
 
 export function selectedAggregationOperators(
   operators: AggregationOperator[],
   clause: AggregationClause,
-): AggregationOperator[] {
+): AggregationOperator[] | null {
   return ML.selected_aggregation_operators(operators, clause);
 }
 
@@ -55,7 +55,7 @@ export function aggregateByCount(query: Query, stageIndex: number): Query {
 export function aggregations(
   query: Query,
   stageIndex: number,
-): AggregationClause[] {
+): AggregationClause[] | null {
   return ML.aggregations(query, stageIndex);
 }
 
@@ -68,7 +68,7 @@ export function aggregationClause(
 
 export function aggregableColumns(
   query: Query,
-  stageIndex?: number,
+  stageIndex: number,
   expressionIndex?: number,
 ): ColumnMetadata[] {
   return ML.aggregable_columns(query, stageIndex, expressionIndex);
