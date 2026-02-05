@@ -14,7 +14,12 @@
 
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
-  ['driver 'transforms])
+  '#{driver transforms})
+
+(def modules-triggering-cloud-drivers
+  "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
+  '#{query-processor transforms
+     enterprise/transforms enterprise/transforms-python})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -213,7 +218,8 @@
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
-   (driver-deps-affected? deps modules default-modules-which-trigger-drivers))
+   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
+                                                  modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (boolean
@@ -389,9 +395,9 @@
 
     ;; Priority 7: Cloud driver + query-processor updated → run it
     (and (contains? cloud-drivers driver)
-         (contains? updated 'query-processor))
+         (seq (set/intersection updated modules-triggering-cloud-drivers)))
     {:should-run true
-     :reason "query-processor module updated"}
+     :reason "Module updated which explicitly triggers cloud drivers"}
 
     ;; Priority 8: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
