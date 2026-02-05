@@ -53,17 +53,6 @@ export function isMeasureSourceId(sourceId: MetricSourceId): boolean {
 }
 
 /**
- * Get the card ID from a metric source ID.
- */
-export function getCardIdFromSourceId(sourceId: MetricSourceId): CardId {
-  const { type, id } = parseSourceId(sourceId);
-  if (type !== "metric") {
-    throw new Error(`Expected metric source ID, got: ${sourceId}`);
-  }
-  return id;
-}
-
-/**
  * Get the measure ID from a measure source ID.
  */
 export function getMeasureIdFromSourceId(sourceId: MetricSourceId): MeasureId {
@@ -108,18 +97,6 @@ export function cardIdToSourceId(cardId: number): MetricSourceId {
     return createMeasureSourceId(cardIdToMeasureId(cardId));
   }
   return createMetricSourceId(cardId);
-}
-
-/**
- * Convert a MetricSourceId to a visualization card ID.
- * Returns the real card ID for metrics, or a synthetic negative ID for measures.
- */
-export function sourceIdToCardId(sourceId: MetricSourceId): number {
-  const { type, id } = parseSourceId(sourceId);
-  if (type === "measure") {
-    return measureToCardId(id);
-  }
-  return id;
 }
 
 /**

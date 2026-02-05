@@ -219,7 +219,9 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
-  const prevDash = dashId ? state.dashboards[dashId] : null;
+  const prevDash = dashId
+    ? (state as DashboardState).dashboards[dashId]
+    : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
 

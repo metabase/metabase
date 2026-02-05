@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -10,7 +11,7 @@ import S from "./DimensionPill.module.css";
 export interface DimensionPillProps {
   query: Lib.Query;
   stageIndex: number;
-  column: Lib.ColumnMetadata;
+  column?: Lib.ColumnMetadata;
   color?: string;
   columnFilter?: (col: Lib.ColumnMetadata) => boolean;
   onColumnChange: (newColumn: Lib.ColumnMetadata) => void;
@@ -28,12 +29,13 @@ export function DimensionPill({
 }: DimensionPillProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
-  const iconName = getColumnIcon(column);
+  const columnInfo = column
+    ? Lib.displayInfo(query, stageIndex, Lib.withTemporalBucket(column, null))
+    : null;
+  const iconName = column ? getColumnIcon(column) : "add";
 
   const { columnGroups, totalColumns } = useMemo(() => {
     const columns = Lib.breakoutableColumns(query, stageIndex);
-    // Filter columns: apply custom filter and exclude implicitly joinable columns
     const filtered = columns.filter((col) => {
       const info = Lib.displayInfo(query, stageIndex, col);
       if (info.isImplicitlyJoinable) {
@@ -47,8 +49,9 @@ export function DimensionPill({
     };
   }, [query, stageIndex, columnFilter]);
 
-  // Only show popover if there are multiple column options
-  const hasMultipleOptions = totalColumns > 1;
+  const isPlaceholder = !column;
+  const isEmpty = isPlaceholder && totalColumns === 0;
+  const hasMultipleOptions = totalColumns > 1 || (isPlaceholder && totalColumns > 0);
 
   const handleSelect = (newColumn: Lib.ColumnMetadata) => {
     onColumnChange(newColumn);
@@ -61,6 +64,15 @@ export function DimensionPill({
     return breakoutPositions.length > 0;
   };
 
+  let pillLabel: string;
+  if (isEmpty) {
+    pillLabel = t`No compatible dimensions`;
+  } else if (isPlaceholder) {
+    pillLabel = t`Select a dimension`;
+  } else {
+    pillLabel = columnInfo?.displayName ?? "";
+  }
+
   const pillContent = (
     <Flex
       className={S.pill}
@@ -69,17 +81,17 @@ export function DimensionPill({
       onClick={
         hasMultipleOptions && !disabled ? () => setIsOpen(true) : undefined
       }
-      data-disabled={disabled}
+      data-disabled={disabled || isEmpty}
       data-static={!hasMultipleOptions}
+      data-placeholder={isPlaceholder || undefined}
     >
       <Icon name={iconName} size={14} c={color as Parameters<typeof Icon>[0]["c"]} />
-      <Text size="sm" lh={1}>
-        {columnInfo.displayName}
+      <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
+        {pillLabel}
       </Text>
     </Flex>
   );
 
-  // If only one column option, render just the pill without popover
   if (!hasMultipleOptions) {
     return pillContent;
   }

@@ -9,7 +9,7 @@ export interface DimensionItem {
   id: string | number;
   query: Lib.Query;
   stageIndex: number;
-  column: Lib.ColumnMetadata;
+  column?: Lib.ColumnMetadata;
   color?: string;
 }
 

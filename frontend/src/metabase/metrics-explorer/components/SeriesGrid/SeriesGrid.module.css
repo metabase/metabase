@@ -1,0 +1,18 @@
+.card {
+  overflow: hidden;
+}
+
+.chartArea {
+  aspect-ratio: 8 / 5;
+  min-height: 0;
+}
+
+.chartFrame {
+  height: 100%;
+}
+
+.visualization {
+  background-color: var(--mb-color-background-primary);
+  overflow: hidden;
+  height: 100%;
+}

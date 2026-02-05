@@ -1,27 +1,20 @@
+.list {
+  &::before {
+    display: none;
+  }
+}
+
+
+.allTab :global(.Icon) {
+  display: block;
+}
+
 .removeButton {
   margin-left: 4px;
 }
 
-.overflowButton {
-  margin-left: var(--mantine-spacing-xs);
-  color: var(--mb-color-text-medium);
-}
-
-.overflowButton:hover {
-  color: var(--mb-color-text-dark);
-}
-
-.overflowButton[data-active] {
-  color: var(--mb-color-brand);
-}
-
-.overflowMenuItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .addButton {
+  align-self: center;
   margin-left: var(--mantine-spacing-xs);
   color: var(--mb-color-text-medium);
 }

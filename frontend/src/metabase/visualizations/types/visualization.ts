@@ -166,6 +166,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
+  onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (

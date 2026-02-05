@@ -1,10 +1,9 @@
 import { useCallback } from "react";
-import _ from 'underscore';
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { findBreakoutClause } from "metabase/querying/filters/components/TimeseriesChrome/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -12,20 +11,25 @@ import type { TemporalUnit } from "metabase-types/api";
 import type {
   MetricsExplorerDisplayType,
   ProjectionConfig,
+  SpecificDateFilterSpec,
 } from "metabase-types/store/metrics-explorer";
 import {
   createNumericProjectionConfig,
   createTemporalProjectionConfig,
 } from "metabase-types/store/metrics-explorer";
 
+import { updateTabColumns } from "../../metrics-explorer.slice";
 import {
+  selectActiveTab,
   selectActiveTabType,
   selectDimensionItems,
+  selectDimensionTabs,
+  selectIsAllTabActive,
   selectModifiedQueries,
   selectQuestionForControls,
   selectRawSeries,
+  selectSourceOrder,
 } from "../../selectors";
-import { isGeoColumn } from "../../utils/dimensions";
 import { extractFilterSpecFromQuery } from "../../utils/queries";
 import {
   cardIdToMeasureId,
@@ -33,8 +37,10 @@ import {
   createMetricSourceId,
   isMeasureCardId,
 } from "../../utils/source-ids";
-import { supportsMultipleSeries } from "../../utils/visualization-settings";
+import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../utils/tab-registry";
+import { AllTabsVisualization } from "../AllTabsVisualization/AllTabsVisualization";
 import { MetricControls } from "../MetricControls/MetricControls";
+import { SeriesGrid } from "../SeriesGrid/SeriesGrid";
 
 import S from "./MetricVisualization.module.css";
 
@@ -47,7 +53,6 @@ type MetricVisualizationProps = {
   error: string | null;
   showTimeControls?: boolean;
   onProjectionConfigChange: (config: ProjectionConfig) => void;
-  onDimensionOverrideChange: (cardId: number, columnName: string) => void;
   onDisplayTypeChange: (displayType: MetricsExplorerDisplayType) => void;
 };
 
@@ -58,14 +63,18 @@ export function MetricVisualization({
   error,
   showTimeControls = true,
   onProjectionConfigChange,
-  onDimensionOverrideChange,
   onDisplayTypeChange,
 }: MetricVisualizationProps) {
+  const dispatch = useDispatch();
   const rawSeries = useSelector(selectRawSeries);
   const dimensionItems = useSelector(selectDimensionItems);
   const questionForControls = useSelector(selectQuestionForControls);
   const modifiedQueries = useSelector(selectModifiedQueries);
   const activeTabType = useSelector(selectActiveTabType);
+  const activeTab = useSelector(selectActiveTab);
+  const isAllTabActive = useSelector(selectIsAllTabActive);
+  const dimensionTabs = useSelector(selectDimensionTabs);
+  const sourceOrder = useSelector(selectSourceOrder);
 
   const handleDimensionChange = useCallback(
     (cardId: string | number, newColumn: Lib.ColumnMetadata) => {
@@ -73,23 +82,41 @@ export function MetricVisualization({
         return;
       }
 
+      let sourceId;
       let query: Lib.Query | null = null;
 
       if (isMeasureCardId(cardId)) {
         const measureId = cardIdToMeasureId(cardId);
-        const sourceId = createMeasureSourceId(measureId);
+        sourceId = createMeasureSourceId(measureId);
         query = modifiedQueries[sourceId];
       } else {
-        const sourceId = createMetricSourceId(cardId);
+        sourceId = createMetricSourceId(cardId);
         query = modifiedQueries[sourceId];
       }
 
-      if (query) {
-        const columnInfo = Lib.displayInfo(query, STAGE_INDEX, newColumn);
-        onDimensionOverrideChange(cardId, columnInfo.name);
+      const resolvedQuery = query ?? Object.values(modifiedQueries).find(Boolean);
+      if (resolvedQuery && activeTab) {
+        const columnInfo = Lib.displayInfo(
+          resolvedQuery,
+          STAGE_INDEX,
+          Lib.withTemporalBucket(newColumn, null),
+        );
+        const tabConfig = getTabConfig(activeTab.type);
+        const shouldUpdateLabel =
+          tabConfig.matchMode === "exact-column" &&
+          sourceId === sourceOrder[0];
+
+        dispatch(
+          updateTabColumns({
+            tabId: activeTab.id,
+            sourceId,
+            columnName: columnInfo.name,
+            label: shouldUpdateLabel ? columnInfo.displayName : undefined,
+          }),
+        );
       }
     },
-    [modifiedQueries, onDimensionOverrideChange],
+    [dispatch, modifiedQueries, activeTab, sourceOrder],
   );
 
   const handleQueryChange = useCallback(
@@ -113,7 +140,9 @@ export function MetricVisualization({
         ? extractFilterSpecFromQuery(newQuery, newBreakoutCol)
         : null;
 
-      onProjectionConfigChange(createTemporalProjectionConfig(unit, filterSpec));
+      onProjectionConfigChange(
+        createTemporalProjectionConfig(unit, filterSpec),
+      );
     },
     [onProjectionConfigChange],
   );
@@ -125,49 +154,68 @@ export function MetricVisualization({
     [onProjectionConfigChange],
   );
 
-  const columnFilter = getColumnFilterForTabType(activeTabType);
+  const handleBrush = useCallback(
+    ({ start, end }: { start: number; end: number }) => {
+      const filterSpec: SpecificDateFilterSpec = {
+        operator: "between",
+        values: [new Date(start), new Date(end)],
+        hasTime: true,
+      };
+      const unit =
+        _projectionConfig.type === "temporal"
+          ? _projectionConfig.unit
+          : "month";
+      onProjectionConfigChange(createTemporalProjectionConfig(unit, filterSpec));
+    },
+    [onProjectionConfigChange, _projectionConfig],
+  );
+
+  const columnFilter = activeTabType
+    ? getTabConfig(activeTabType).columnPredicate
+    : undefined;
+
+  if (isAllTabActive) {
+    return <AllTabsVisualization tabs={dimensionTabs} />;
+  }
 
   if (isLoading || error || rawSeries.length === 0) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const renderMultipleCharts = !supportsMultipleSeries(displayType);
+  const displayConfig = DISPLAY_TYPE_REGISTRY[displayType];
+  const renderMultipleCharts =
+    !displayConfig.supportsMultipleSeries && rawSeries.length > 1;
 
   return (
     <div className={S.root}>
       {renderMultipleCharts ? (
-        <div className={S.chartGrid}>
-          {rawSeries.map((series, index) => (
-            <DebouncedFrame key={series.card.id ?? index} className={S.chartGridItem}>
-              <Visualization
-                className={S.visualization}
-                rawSeries={[series]}
-                isQueryBuilder={false}
-                showTitle
-                hideLegend
-                handleVisualizationClick={_.noop}
-              />
-            </DebouncedFrame>
-          ))}
-        </div>
-      ) : (
-        <DebouncedFrame className={S.visualizationWrapper}>
-          <Visualization
-            className={S.visualization}
-            rawSeries={rawSeries}
-            isQueryBuilder={false}
-            showTitle={false}
-            hideLegend
-            handleVisualizationClick={() => {}}
-          />
-        </DebouncedFrame>
-      )}
-      {dimensionItems.length > 0 && (
-        <DimensionPillBar
-          items={dimensionItems}
+        <SeriesGrid
+          rawSeries={rawSeries}
+          dimensionItems={dimensionItems}
           columnFilter={columnFilter}
           onDimensionChange={handleDimensionChange}
         />
+      ) : (
+        <>
+          <DebouncedFrame className={S.visualizationWrapper}>
+            <Visualization
+              className={S.visualization}
+              rawSeries={rawSeries}
+              isQueryBuilder={false}
+              showTitle={!displayConfig.supportsMultipleSeries}
+              hideLegend
+              handleVisualizationClick={() => {}}
+              onBrush={showTimeControls ? handleBrush : undefined}
+            />
+          </DebouncedFrame>
+          {dimensionItems.length > 0 && (
+            <DimensionPillBar
+              items={dimensionItems}
+              columnFilter={columnFilter}
+              onDimensionChange={handleDimensionChange}
+            />
+          )}
+        </>
       )}
       {questionForControls && activeTabType !== "geo" && (
         <div className={S.footer}>
@@ -184,28 +232,4 @@ export function MetricVisualization({
       )}
     </div>
   );
-}
-
-function getColumnFilterForTabType(
-  tabType: string | null,
-): ((col: Lib.ColumnMetadata) => boolean) | undefined {
-  switch (tabType) {
-    case "time":
-      return Lib.isDateOrDateTime;
-    case "geo":
-      return isGeoColumn;
-    case "boolean":
-      return Lib.isBoolean;
-    case "category":
-      return (col) =>
-        (Lib.isCategory(col) || Lib.isString(col)) &&
-        !Lib.isPrimaryKey(col) &&
-        !Lib.isForeignKey(col) &&
-        !Lib.isURL(col) &&
-        !isGeoColumn(col);
-    case "numeric":
-      return Lib.isNumeric;
-    default:
-      return Lib.isDateOrDateTime;
-  }
 }

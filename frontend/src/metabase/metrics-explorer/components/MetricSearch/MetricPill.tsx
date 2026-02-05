@@ -1,7 +1,20 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Icon, Loader, Pill, Popover, TextInput } from "metabase/ui";
+import {
+  dataStudioMetric,
+  dataStudioPublishedTableMeasure,
+} from "metabase/lib/urls/data-studio";
+import {
+  Box,
+  Flex,
+  Icon,
+  Loader,
+  Menu,
+  Pill,
+  Popover,
+  TextInput,
+} from "metabase/ui";
 import type { ConcreteTableId, RecentItem } from "metabase-types/api";
 
 import {
@@ -12,9 +25,9 @@ import {
 import { MetricRecentsList } from "./MetricRecentsList";
 import { MetricResultItem } from "./MetricResultItem";
 import type { SelectedMetric } from "./MetricSearchInput";
-import S from "./MetricSwapPopover.module.css";
+import S from "./MetricPill.module.css";
 
-type MetricSwapPopoverProps = {
+type MetricPillProps = {
   metric: SelectedMetric;
   color?: string;
   recents: RecentItem[];
@@ -25,7 +38,7 @@ type MetricSwapPopoverProps = {
   onOpen?: () => void;
 };
 
-export function MetricSwapPopover({
+export function MetricPill({
   metric,
   color,
   recents,
@@ -34,8 +47,9 @@ export function MetricSwapPopover({
   onSwap,
   onRemove,
   onOpen,
-}: MetricSwapPopoverProps) {
+}: MetricPillProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
 
   const handleSelect = useCallback(
@@ -54,64 +68,112 @@ export function MetricSwapPopover({
 
   const handleOpen = useCallback(() => {
     onOpen?.();
+    setContextMenuOpen(false);
     setIsOpen(true);
   }, [onOpen]);
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsOpen(false);
+      setSearchText("");
+      setContextMenuOpen(true);
+    },
+    [],
+  );
+
+  const handleEditInDataStudio = useCallback(() => {
+    const url =
+      metric.sourceType === "measure"
+        ? dataStudioPublishedTableMeasure(metric.tableId!, metric.id)
+        : dataStudioMetric(metric.id);
+    window.open(url, "_blank");
+    setContextMenuOpen(false);
+  }, [metric]);
+
   return (
-    <Popover
-      opened={isOpen}
-      onChange={setIsOpen}
-      position="bottom-start"
-      shadow="md"
-      withinPortal
-    >
-      <Popover.Target>
-        <Pill
-          className={S.metricPill}
-          withRemoveButton
-          onRemove={() => {
-            onRemove(metric.id);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpen();
-          }}
-          removeButtonProps={{
-            mr: 0,
-            "aria-label": metric.isLoading
-              ? t`Remove metric`
-              : t`Remove ${metric.name}`,
-          }}
-        >
-          <Flex align="center" gap="xs">
-            {metric.isLoading ? (
-              <Loader size="xs" />
-            ) : (
-              <>
-                <Icon
-                  name={metric.sourceType === "measure" ? "sum" : "metric"}
-                  size={14}
-                  c={color as Parameters<typeof Icon>[0]["c"]}
-                />
-                <span>{metric.name}</span>
-              </>
-            )}
-          </Flex>
-        </Pill>
-      </Popover.Target>
-      <Popover.Dropdown p={0}>
-        <SwapDropdownContent
-          searchText={searchText}
-          onSearchChange={setSearchText}
-          recents={recents}
-          selectedMetricIds={selectedMetricIds}
-          selectedMeasureIds={selectedMeasureIds}
-          currentMetricId={metric.id}
-          onSelect={handleSelect}
-          onClose={handleClose}
-        />
-      </Popover.Dropdown>
-    </Popover>
+    <Box component="span" pos="relative" display="inline-flex">
+      <Popover
+        opened={isOpen}
+        onChange={setIsOpen}
+        position="bottom-start"
+        shadow="md"
+        withinPortal
+      >
+        <Popover.Target>
+          <Pill
+            className={S.metricPill}
+            withRemoveButton
+            onRemove={() => {
+              onRemove(metric.id);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpen();
+            }}
+            onContextMenu={handleContextMenu}
+            removeButtonProps={{
+              mr: 0,
+              "aria-label": metric.isLoading
+                ? t`Remove metric`
+                : t`Remove ${metric.name}`,
+            }}
+          >
+            <Flex align="center" gap="xs">
+              {metric.isLoading ? (
+                <Loader size="xs" />
+              ) : (
+                <>
+                  <Icon
+                    name={metric.sourceType === "measure" ? "sum" : "metric"}
+                    size={14}
+                    c={color as Parameters<typeof Icon>[0]["c"]}
+                  />
+                  <span>{metric.name}</span>
+                </>
+              )}
+            </Flex>
+          </Pill>
+        </Popover.Target>
+        <Popover.Dropdown p={0}>
+          <SwapDropdownContent
+            searchText={searchText}
+            onSearchChange={setSearchText}
+            recents={recents}
+            selectedMetricIds={selectedMetricIds}
+            selectedMeasureIds={selectedMeasureIds}
+            currentMetricId={metric.id}
+            onSelect={handleSelect}
+            onClose={handleClose}
+          />
+        </Popover.Dropdown>
+      </Popover>
+      <Menu
+        opened={contextMenuOpen}
+        onChange={setContextMenuOpen}
+        position="bottom-start"
+        withinPortal
+      >
+        <Menu.Target>
+          <Box
+            component="span"
+            pos="absolute"
+            inset={0}
+            style={{ pointerEvents: "none" }}
+          />
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<Icon name="pencil" />}
+            rightSection={<Icon name="external" />}
+            onClick={handleEditInDataStudio}
+          >
+            {t`Edit in Data Studio`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+    </Box>
   );
 }
 

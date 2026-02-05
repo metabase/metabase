@@ -16,6 +16,7 @@ import type {
   SetDimensionOverridePayload,
   SetProjectionConfigPayload,
   StoredDimensionTab,
+  SwapSourcePayload,
 } from "metabase-types/store/metrics-explorer";
 
 import {
@@ -24,6 +25,7 @@ import {
   fetchSourceResult,
 } from "./thunks";
 import { createMeasureSourceId, createMetricSourceId } from "./utils";
+import { ALL_TAB_ID, getTabConfig } from "./utils/tab-registry";
 
 function getInitialState(): MetricsExplorerState {
   return {
@@ -148,6 +150,32 @@ const metricsExplorerSlice = createSlice({
     },
 
     /**
+     * Swap a source in place, preserving its position in the order.
+     */
+    swapSourceInPlace: (state, action: PayloadAction<SwapSourcePayload>) => {
+      const { oldSourceId, newSourceId } = action.payload;
+      const index = state.sourceOrder.indexOf(oldSourceId);
+      if (index === -1) {
+        return;
+      }
+
+      state.sourceOrder[index] = newSourceId;
+
+      delete state.sourceDataById[oldSourceId];
+      delete state.resultsById[oldSourceId];
+      delete state.dimensionOverrides[oldSourceId];
+      delete state.loadingSourceIds[oldSourceId];
+      delete state.loadingResultIds[oldSourceId];
+
+      for (const tab of state.dimensionTabs) {
+        delete tab.columnsBySource[oldSourceId];
+      }
+      state.dimensionTabs = state.dimensionTabs.filter(
+        (tab) => Object.keys(tab.columnsBySource).length > 0,
+      );
+    },
+
+    /**
      * Reorder sources (for drag-and-drop).
      */
     reorderSources: (state, action: PayloadAction<ReorderSourcesPayload>) => {
@@ -200,19 +228,33 @@ const metricsExplorerSlice = createSlice({
      */
     setActiveTab: (
       state,
-      action: PayloadAction<{
-        tabId: string;
-        defaultDisplayType: MetricsExplorerDisplayType;
-        defaultProjectionConfig: ProjectionConfig;
-      }>,
+      action: PayloadAction<{ tabId: string }>,
     ) => {
-      const { tabId, defaultDisplayType, defaultProjectionConfig } = action.payload;
+      const { tabId } = action.payload;
+
+      if (state.activeTabId !== ALL_TAB_ID) {
+        const currentTab = state.dimensionTabs.find(
+          (t) => t.id === state.activeTabId,
+        );
+        if (currentTab && state.projectionConfig) {
+          currentTab.projectionConfig = state.projectionConfig;
+          currentTab.displayType = state.displayType;
+        }
+      }
+
       state.activeTabId = tabId;
-      // Clear dimension overrides when switching tabs
       state.dimensionOverrides = {};
-      // Update display type and projection config for this tab type
-      state.displayType = defaultDisplayType;
-      state.projectionConfig = defaultProjectionConfig;
+
+      if (tabId !== ALL_TAB_ID) {
+        const targetTab = state.dimensionTabs.find((t) => t.id === tabId);
+        if (targetTab) {
+          const tabConfig = getTabConfig(targetTab.type);
+          state.displayType =
+            targetTab.displayType ?? tabConfig.defaultDisplayType;
+          state.projectionConfig =
+            targetTab.projectionConfig ?? tabConfig.defaultProjectionConfig();
+        }
+      }
     },
 
     /**
@@ -259,12 +301,16 @@ const metricsExplorerSlice = createSlice({
         tabId: string;
         sourceId: MetricSourceId;
         columnName: string;
+        label?: string;
       }>,
     ) => {
-      const { tabId, sourceId, columnName } = action.payload;
+      const { tabId, sourceId, columnName, label } = action.payload;
       const tab = state.dimensionTabs.find((t) => t.id === tabId);
       if (tab) {
         tab.columnsBySource[sourceId] = columnName;
+        if (label) {
+          tab.label = label;
+        }
       }
     },
 
@@ -378,6 +424,7 @@ export const {
   addMetricSource,
   addMeasureSource,
   removeSource,
+  swapSourceInPlace,
   reorderSources,
   setProjectionConfig,
   setDimensionOverride,

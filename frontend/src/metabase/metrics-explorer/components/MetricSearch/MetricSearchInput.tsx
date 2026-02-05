@@ -3,19 +3,22 @@ import { type ReactNode, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Paper, TextInput } from "metabase/ui";
-import type { BaseRecentItem, ConcreteTableId, RecentItem } from "metabase-types/api";
+import type {
+  BaseRecentItem,
+  ConcreteTableId,
+  RecentItem,
+} from "metabase-types/api";
 
 type MetricSourceType = "metric" | "measure";
 
 import S from "./MetricSearchInput.module.css";
-import { MetricSwapPopover } from "./MetricSwapPopover";
+import { MetricPill } from "./MetricPill";
 
 export type SelectedMetric = Pick<BaseRecentItem, "id" | "name"> & {
   sourceType: MetricSourceType;
   tableId?: ConcreteTableId;
   isLoading?: boolean;
 };
-
 
 type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
@@ -95,7 +98,7 @@ export function MetricSearchInput({
       >
         <Flex align="center" gap="0.5rem" flex={1} wrap="wrap" mih={36}>
           {selectedMetrics.map((metric) => (
-            <MetricSwapPopover
+            <MetricPill
               key={metric.id}
               metric={metric}
               color={metricColors[metric.id]}
@@ -124,7 +127,7 @@ export function MetricSearchInput({
                 setSearchText(e.target.value);
                 setIsOpen(true);
               }}
-              onFocus={() => setIsOpen(true)}
+              onClick={() => setIsOpen(true)}
               onKeyDown={handleKeyDown}
             />
             {isOpen &&

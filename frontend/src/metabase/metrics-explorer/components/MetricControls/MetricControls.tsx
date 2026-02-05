@@ -10,11 +10,11 @@ import {
 import type { IconName } from "metabase/ui";
 import {
   ActionIcon,
-  Button,
   Divider,
   Flex,
   Icon,
   Popover,
+  Button,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -23,78 +23,22 @@ import type {
   MetricsExplorerDisplayType,
 } from "metabase-types/store/metrics-explorer";
 
+import { getTabConfig } from "../../utils/tab-registry";
 import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
 import S from "./MetricControls.module.css";
 
 const STAGE_INDEX = -1;
 
-interface ChartTypeOption {
-  type: MetricsExplorerDisplayType;
-  icon: IconName;
-}
-
-const TIME_CHART_TYPES: ChartTypeOption[] = [
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
-];
-
-const GEO_CHART_TYPES: ChartTypeOption[] = [
-  { type: "map", icon: "pinmap" },
-];
-
-const CATEGORY_CHART_TYPES: ChartTypeOption[] = [
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
-  { type: "pie", icon: "pie" },
-];
-
-const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
-  { type: "scatter", icon: "bubble" },
-];
-
-function getChartTypesForTab(tabType: DimensionTabType | null): ChartTypeOption[] {
-  switch (tabType) {
-    case "geo":
-      return GEO_CHART_TYPES;
-    case "numeric":
-      return NUMERIC_CHART_TYPES;
-    case "category":
-    case "boolean":
-      return CATEGORY_CHART_TYPES;
-    case "time":
-    default:
-      return TIME_CHART_TYPES;
-  }
-}
-
-function getDefaultDisplayTypeForTab(
-  tabType: DimensionTabType | null,
-): MetricsExplorerDisplayType {
-  switch (tabType) {
-    case "geo":
-      return "map";
-    case "numeric":
-      return "bar";
-    case "category":
-    case "boolean":
-    case "time":
-    default:
-      return "line";
-  }
-}
-
 function isValidDisplayTypeForTab(
   displayType: MetricsExplorerDisplayType,
   tabType: DimensionTabType | null,
 ): boolean {
-  const validTypes = getChartTypesForTab(tabType);
-  return validTypes.some((t) => t.type === displayType);
+  if (!tabType) {
+    return true;
+  }
+  const config = getTabConfig(tabType);
+  return config.availableDisplayTypes.some((t) => t.type === displayType);
 }
 
 interface MetricControlsProps {
@@ -129,10 +73,11 @@ export function MetricControls({
     breakoutInfo.breakoutColumn &&
     (breakoutInfo.isBinnable || breakoutInfo.hasBinning);
 
-  const chartTypes = getChartTypesForTab(tabType);
+  const config = tabType ? getTabConfig(tabType) : null;
+  const chartTypes = config?.availableDisplayTypes ?? getTabConfig("time").availableDisplayTypes;
   const effectiveDisplayType = isValidDisplayTypeForTab(displayType, tabType)
     ? displayType
-    : getDefaultDisplayTypeForTab(tabType);
+    : (config?.defaultDisplayType ?? "line");
 
   return (
     <Flex className={S.container} align="center" gap="xs">
@@ -165,10 +110,10 @@ export function MetricControls({
   );
 }
 
-export { getDefaultDisplayTypeForTab, isValidDisplayTypeForTab };
+export { isValidDisplayTypeForTab };
 
 interface ChartTypePickerProps {
-  chartTypes: ChartTypeOption[];
+  chartTypes: { type: MetricsExplorerDisplayType; icon: IconName }[];
   value: MetricsExplorerDisplayType;
   onChange: (type: MetricsExplorerDisplayType) => void;
 }
@@ -203,11 +148,9 @@ interface BreakoutInfo {
 
 function useBreakoutInfo(query: Lib.Query): BreakoutInfo {
   return useMemo(() => {
-    // Get all breakouts - findBreakoutClause only finds temporal ones
     const allBreakouts = Lib.breakouts(query, STAGE_INDEX);
     const firstBreakout = allBreakouts[0] as Lib.BreakoutClause | undefined;
 
-    // For temporal controls, use the temporal-specific finder
     const temporalBreakout = findBreakoutClause(query, STAGE_INDEX);
 
     const breakoutColumn = firstBreakout
@@ -221,7 +164,6 @@ function useBreakoutInfo(query: Lib.Query): BreakoutInfo {
       : false;
     const hasBinning = firstBreakout ? Lib.binning(firstBreakout) !== null : false;
 
-    // Filter column only makes sense for temporal breakouts
     const filterColumn = temporalBreakout && breakoutColumn
       ? findFilterColumn(query, STAGE_INDEX, breakoutColumn)
       : undefined;

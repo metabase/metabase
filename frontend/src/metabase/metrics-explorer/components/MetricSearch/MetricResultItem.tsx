@@ -14,7 +14,7 @@ interface MetricResultItemProps {
   onClick?: () => void;
 }
 
-export const MetricResultItem = forwardRef<HTMLDivElement, MetricResultItemProps>(
+export const MetricResultItem = forwardRef<HTMLElement, MetricResultItemProps>(
   function MetricResultItem(
     {
       name,
