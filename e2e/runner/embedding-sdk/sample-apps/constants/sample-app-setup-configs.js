@@ -1,6 +1,7 @@
 const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed as an ENV variable.
 
 const BASE_ENV = {
+  PR_NUMBER: process.env.PR_NUMBER,
   WATCH:
     process.env.SAMPLE_APP_ENVIRONMENT === "development" ? "true" : "false",
   PREMIUM_EMBEDDING_TOKEN:
@@ -53,6 +54,13 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
   },
   "shoppy-e2e": {
     ...BASE_SETUP_CONFIG,
+    env: {
+      ...BASE_SETUP_CONFIG.env,
+      INCLUDE_SYNTHETIC_MONITORING_TESTS: true,
+    },
+    // TODO: remove
+    defaultBranch:
+      "emb-1295-allow-to-run-synthetic-monitoring-tests-via-env-var",
     appName: "shoppy",
   },
 };
