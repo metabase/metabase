@@ -15,17 +15,11 @@ import { useTimeFilter } from "./hooks";
 import type { TimeValue } from "./types";
 
 export function TimeFilterPicker({
-  autoFocus,
   definition,
-  source,
   dimension,
   filter,
-  isNew,
-  withAddButton,
-  withSubmitButton,
   onChange,
   onBack,
-  readOnly,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -43,7 +37,6 @@ export function TimeFilterPicker({
     setValues,
   } = useTimeFilter({
     definition,
-    source,
     dimension,
     filter,
   });
@@ -77,9 +70,8 @@ export function TimeFilterPicker({
       onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
-        columnName={dimensionInfo.displayName}
+        dimensionName={dimensionInfo.displayName}
         onBack={onBack}
-        readOnly={readOnly}
       >
         <FilterOperatorPicker
           value={operator}
@@ -91,45 +83,32 @@ export function TimeFilterPicker({
         {valueCount > 0 && (
           <Flex p="md">
             <TimeValueInput
-              autoFocus={autoFocus}
               values={values}
               valueCount={valueCount}
               onChange={setValues}
             />
           </Flex>
         )}
-        <FilterPickerFooter
-          isNew={isNew}
-          isValid
-          withAddButton={withAddButton}
-          withSubmitButton={withSubmitButton}
-          onAddButtonClick={handleAddButtonClick}
-        />
+        <FilterPickerFooter isValid onAddButtonClick={handleAddButtonClick} />
       </Box>
     </Box>
   );
 }
 
 interface TimeValueInputProps {
-  autoFocus: boolean;
   values: TimeValue[];
   valueCount: number;
   onChange: (values: TimeValue[]) => void;
 }
 
-function TimeValueInput({
-  autoFocus,
-  values,
-  valueCount,
-  onChange,
-}: TimeValueInputProps) {
+function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
   if (valueCount === 1) {
     const [value] = values;
     return (
       <TimeInput
         value={value}
         w="100%"
-        autoFocus={autoFocus}
+        autoFocus
         onChange={(newValue) => onChange([newValue])}
       />
     );
@@ -142,7 +121,7 @@ function TimeValueInput({
         <TimeInput
           value={value1}
           w="100%"
-          autoFocus={autoFocus}
+          autoFocus
           onChange={(newValue1) => onChange([newValue1, value2])}
         />
         <Text>{t`and`}</Text>
