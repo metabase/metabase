@@ -4,8 +4,10 @@ run-name: Containerize ${{ inputs.tag }} Uberjar
 on:
   workflow_call:
     inputs:
-      artifact-name:
+      edition:
+        description: Metabase edition (ee or oss)
         type: string
+        required: true
       repo:
         description: owner and repo like "metabase/metabase"
         type: string
@@ -20,9 +22,13 @@ on:
         type: string
   workflow_dispatch:
     inputs:
-      artifact-name:
-        description: usually something like "metabase-release-{{ edition }}-{{ hash }}-uberjar"
-        type: string
+      edition:
+        description: Metabase edition (ee or oss)
+        type: choice
+        options:
+          - ee
+          - oss
+        required: true
       repo:
         description: docker owner and repo like "metabase/metabase"
         type: string
@@ -45,10 +51,12 @@ jobs:
         fetch-depth: 0
       # we want the dockerfile from the commit we're building
     - run: git checkout ${{ inputs.commit }} -- bin/docker
-    - name: Retrieve test build uberjar artifact
+    - name: Retrieve uberjar artifact
       uses: ./.github/actions/fetch-artifact
       with:
-        name: ${{ inputs.artifact-name }}
+        commit: ${{ inputs.commit }}
+        edition: ${{ inputs.edition }}
+        release: ${{ inputs.release }}
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Get platforms
