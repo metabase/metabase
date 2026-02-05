@@ -13,7 +13,9 @@
            (empty? (unchecked-get lens-js "drill_lens_triggers")))
     empty-triggers
     (let [lens-raw (js->clj lens-js :keywordize-keys true)
-          convert-condition (fn [c] (update c :name keyword))
+          convert-condition (fn [c] (-> c
+                                         (update :name keyword)
+                                         (set/rename-keys {:card_id :card-id})))
           lens (-> lens-raw
                    (set/rename-keys {:alert_triggers :alert-triggers
                                      :drill_lens_triggers :drill-lens-triggers})
