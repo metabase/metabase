@@ -2,26 +2,17 @@ import { Box } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
 import { TimeFilterPicker } from "../TimeFilterPicker";
-import type { FilterChangeOpts } from "../types";
 
 interface FilterPickerBodyProps {
   definition: LibMetric.MetricDefinition;
   dimension: LibMetric.DimensionMetadata;
-  source: LibMetric.SourceMetadata;
-  filter?: LibMetric.FilterClause;
-  onChange: (
-    source: LibMetric.SourceMetadata,
-    filter: LibMetric.FilterClause,
-    opts: FilterChangeOpts,
-  ) => void;
+  onChange: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
 }
 
 export function FilterPickerBody({
   definition,
   dimension,
-  source,
-  filter,
   onChange,
   onBack,
 }: FilterPickerBodyProps) {
@@ -35,8 +26,6 @@ export function FilterPickerBody({
       <FilterWidget
         definition={definition}
         dimension={dimension}
-        source={source}
-        filter={filter}
         onChange={onChange}
         onBack={onBack}
       />

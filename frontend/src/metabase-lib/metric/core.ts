@@ -15,6 +15,8 @@ import type {
   DimensionDisplayInfo,
   DimensionMetadata,
   DimensionValuesInfo,
+  DisplayInfo,
+  Displayable,
   ExcludeDateFilterParts,
   FilterClause,
   FilterParts,
@@ -22,6 +24,7 @@ import type {
   MeasureDisplayInfo,
   MeasureMetadata,
   MetadataProvider,
+  MetadataProviderable,
   MetricDefinition,
   MetricDisplayInfo,
   MetricMetadata,
@@ -42,28 +45,28 @@ export function metadataProvider(
 }
 
 export function metricMetadata(
-  _metadataProvider: MetadataProvider,
+  _metadataProvider: MetadataProviderable,
   _metricId: MetricId,
 ): MetricMetadata | null {
   throw new Error("Not implemented");
 }
 
 export function measureMetadata(
-  _metadataProvider: MetadataProvider,
+  _metadataProvider: MetadataProviderable,
   _measureId: MeasureId,
 ): MeasureMetadata | null {
   throw new Error("Not implemented");
 }
 
 export function fromMetricMetadata(
-  _metadataProvider: MetadataProvider,
+  _metadataProvider: MetadataProviderable,
   _metricMetadata: MetricMetadata,
 ): MetricDefinition {
   throw new Error("Not implemented");
 }
 
 export function fromMeasureMetadata(
-  _metadataProvider: MetadataProvider,
+  _metadataProvider: MetadataProviderable,
   _measureMetadata: MeasureMetadata,
 ): MetricDefinition {
   throw new Error("Not implemented");
@@ -357,11 +360,19 @@ export const isCoordinate: TypeFn = () => {
   throw new Error("Not implemented");
 };
 
+export const isTemporal: TypeFn = () => {
+  throw new Error("Not implemented");
+};
+
 export const isDateOrDateTime: TypeFn = () => {
   throw new Error("Not implemented");
 };
 
 export const isForeignKey: TypeFn = () => {
+  throw new Error("Not implemented");
+};
+
+export const isLocation: TypeFn = () => {
   throw new Error("Not implemented");
 };
 
@@ -393,34 +404,40 @@ export const isTime: TypeFn = () => {
   throw new Error("Not implemented");
 };
 
-declare function _DisplayInfoFn(
+export function displayInfo(
   _definition: MetricDefinition,
-  _source: MetricMetadata,
+  _metric: MetricMetadata,
 ): MetricDisplayInfo;
-declare function _DisplayInfoFn(
+export function displayInfo(
   _definition: MetricDefinition,
-  _source: MeasureMetadata,
+  _measure: MeasureMetadata,
 ): MeasureDisplayInfo;
-declare function _DisplayInfoFn(
+export function displayInfo(
   _definition: MetricDefinition,
-  _source: Clause,
+  _clause: Clause,
 ): ClauseDisplayInfo;
-declare function _DisplayInfoFn(
+export function displayInfo(
   _definition: MetricDefinition,
-  _source: DimensionMetadata,
+  _dimension: DimensionMetadata,
 ): DimensionDisplayInfo;
-declare function _DisplayInfoFn(
+export function displayInfo(
   _definition: MetricDefinition,
-  _source: TemporalBucket,
+  _temporalBucket: TemporalBucket,
 ): TemporalBucketDisplayInfo;
-declare function _DisplayInfoFn(
+export function displayInfo(
   _definition: MetricDefinition,
-  _source: BinningStrategy,
+  _binningStrategy: BinningStrategy,
 ): BinningStrategyDisplayInfo;
-
-export const displayInfo: typeof _DisplayInfoFn = () => {
+export function displayInfo(
+  _definition: MetricDefinition,
+  _filterParts: Displayable,
+): DisplayInfo;
+export function displayInfo(
+  _definition: MetricDefinition,
+  _source: Displayable,
+): DisplayInfo {
   throw new Error("Not implemented");
-};
+}
 
 export function dimensionValuesInfo(
   _definition: MetricDefinition,

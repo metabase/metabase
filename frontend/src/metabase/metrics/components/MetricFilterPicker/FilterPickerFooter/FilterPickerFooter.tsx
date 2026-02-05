@@ -10,21 +10,16 @@ import S from "./FilterPickerFooter.module.css";
 interface FilterPickerFooterProps {
   isValid: boolean;
   children?: ReactNode;
-  onAddButtonClick: () => void;
 }
 
 export function FilterPickerFooter({
   isValid,
   children,
-  onAddButtonClick,
 }: FilterPickerFooterProps) {
   return (
     <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
       {isValidElement(children) ? children : <Box />}
-      <FilterSubmitButton
-        isDisabled={!isValid}
-        onAddButtonClick={onAddButtonClick}
-      />
+      <FilterSubmitButton isDisabled={!isValid} />
     </Flex>
   );
 }

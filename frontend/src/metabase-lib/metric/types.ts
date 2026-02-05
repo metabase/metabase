@@ -69,6 +69,8 @@ export type BinningStrategy = unknown & {
   _opaque: typeof _BinningStrategySymbol;
 };
 
+export type MetadataProviderable = MetadataProvider | MetricDefinition;
+
 export type JsMetadataProvider = {
   measures?: Record<MeasureId, NormalizedMeasure>;
   metrics?: Record<MetricId, NormalizedMetric>;
@@ -90,6 +92,8 @@ export type ClauseDisplayInfo = {
 
 export type DimensionDisplayInfo = {
   displayName: string;
+  filterPositions?: number[];
+  projectionPositions?: number[];
 };
 
 export type TemporalBucketDisplayInfo = {
@@ -104,6 +108,22 @@ export type BinningStrategyDisplayInfo = {
   default?: boolean;
   selected?: boolean;
 };
+
+export type Displayable =
+  | MetricMetadata
+  | MeasureMetadata
+  | Clause
+  | DimensionMetadata
+  | TemporalBucket
+  | BinningStrategy;
+
+export type DisplayInfo =
+  | MetricDisplayInfo
+  | MeasureDisplayInfo
+  | ClauseDisplayInfo
+  | DimensionDisplayInfo
+  | TemporalBucketDisplayInfo
+  | BinningStrategyDisplayInfo;
 
 export type FilterParts =
   | StringFilterParts

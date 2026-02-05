@@ -3,13 +3,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
-import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import type { FilterPickerWidgetProps } from "../types";
 
 import { useTimeFilter } from "./hooks";
 import type { TimeValue } from "./types";
@@ -38,25 +39,21 @@ export function TimeFilterPicker({
     dimension,
   });
 
-  const handleOperatorChange = (newOperator: LibMetric.TimeFilterOperator) => {
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleFilterChange = (opts: FilterChangeOpts) => {
+  const handleFilterChange = () => {
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(filter, opts);
+      onChange(filter);
     }
   };
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleFilterChange({ run: true });
-  };
-
-  const handleAddButtonClick = () => {
-    handleFilterChange({ run: false });
+    handleFilterChange();
   };
 
   return (
@@ -86,7 +83,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterPickerFooter isValid onAddButtonClick={handleAddButtonClick} />
+        <FilterPickerFooter isValid />
       </Box>
     </Box>
   );
