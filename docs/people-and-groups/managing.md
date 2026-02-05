@@ -180,6 +180,18 @@ The **All Users** group is another special one. Every Metabase user is always a 
 
 It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
 
+#### Data analysts
+
+{% include plans-blockquote.html feature="Data Analysts group" %}
+
+You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-studio/overview.md).
+
+In addition to access to Data Studio, people in the Data Analysts group will automatically get [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-studio/library.md), and [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your instance. Other permissions will remain unchanged by default (so they will be based on any other groups that a person is a member of), although you can configure permissions for the Data Analyst group separately.
+
+By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-studio/transforms/transforms-overview.md) that use tables which the person otherwise can view.
+
+To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
+
 ## Creating a group
 
 Go to **Admin settings** > **People** > **Groups**, and click the **Add a group** button.
