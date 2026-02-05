@@ -111,10 +111,25 @@
                                :status-code 400}))))
           (some-> value name))})
 
+(def ^:private transform-data-layer
+  {:in  (:in mi/transform-keyword)
+   :out (comp (some-fn data-layers
+                       ;; some databases may retain prior medallion values
+                       ;; this is due to race conditions with migrations (migration runs can contend with running writes)
+                       ;; e.g. we saw the prior values retained for the sync of a new search index table in stats.
+                       ;; we might later have a second migration and risk removing this map or find a better way
+                       ;; to make breaking enum migrations.
+                       {:copper :hidden
+                        :bronze :final
+                        :silver :final
+                        :gold   :final}
+                       identity)
+              (:out mi/transform-keyword))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy

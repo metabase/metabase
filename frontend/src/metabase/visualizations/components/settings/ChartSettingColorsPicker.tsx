@@ -1,11 +1,17 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
 
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
-export class ChartSettingColorsPicker extends Component {
+interface ChartSettingColorsPickerProps {
+  value: Record<string, string>;
+  onChange: (value: Record<string, string>) => void;
+  seriesValues: string[];
+  seriesTitles: string[];
+}
+
+export class ChartSettingColorsPicker extends Component<ChartSettingColorsPickerProps> {
   render() {
     const { value, onChange, seriesValues, seriesTitles } = this.props;
     return (
