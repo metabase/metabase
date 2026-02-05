@@ -1,0 +1,50 @@
+name: JS Stats Update
+
+on:
+  pull_request: ## FIXME: for testing
+  schedule:
+    - cron: 40 1 * * 4 # every Thursday at 1:40
+
+jobs:
+  js-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: get JS file count
+        run: |
+          oss=$(find ./frontend/src/metabase -type f -name "*.js" -o -name "*.jsx" | wc -l)
+          ee=$(find ./enterprise/frontend/src/metabase-enterprise -type f -name "*.js" -o -name "*.jsx" | wc -l)
+
+          echo $(($oss+$ee)) javascript files
+
+          echo "JS_FILES=$(($oss+$ee))" >> $GITHUB_OUTPUT
+      - name: Upload count to Stats
+        uses: actions/github-script@v7
+        env:
+          JS_FILES: ${{ steps.get-js-file-count.outputs.JS_FILES }}
+          API_KEY: ${{ secrets.STATS_API_KEY }}
+        with:
+          script: | # js
+            const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
+
+            console.log("JS_FILES", process.env.JS_FILES);
+
+            const data = [
+              {
+                'Date': new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+                'Js files': Number(process.env.JS_FILES),
+              }
+            ];
+
+            uploadCsvToMb({
+              baseUrl: 'https://stats.metabase.com',
+              jsonData: data,
+              tableId: 73270,
+              mode: 'append',
+            }).then(() => {
+              console.log('Data uploaded successfully');
+            }).catch((error) => {
+              console.error('Error uploading data:', error);
+              process.exit(1);
+            });
