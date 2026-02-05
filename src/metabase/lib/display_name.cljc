@@ -1,7 +1,8 @@
 (ns metabase.lib.display-name
   "Utilities for parsing column display names for content translation."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metabase.util.performance :as perf]))
 
 (def ^:const column-display-name-separator
   "Separator used for temporal bucket and binning suffixes (e.g., 'Total: Month', 'Price: 10 bins')."
@@ -29,17 +30,17 @@
   "Try to parse a display name using aggregation patterns.
    Returns a vector of parts or nil if no pattern matches."
   [display-name patterns]
-  (some (fn [{:keys [prefix suffix]}]
-          (when (and (str/starts-with? display-name prefix)
-                     (str/ends-with? display-name suffix)
+  (perf/some (fn [{:keys [prefix suffix]}]
+               (when (and (str/starts-with? display-name prefix)
+                          (str/ends-with? display-name suffix)
                      ;; Ensure we have a non-empty inner part
-                     (> (- (count display-name) (count prefix) (count suffix)) 0))
-            (let [inner (subs display-name (count prefix) (- (count display-name) (count suffix)))]
-              {:matched   true
-               :prefix    prefix
-               :suffix    suffix
-               :inner     inner})))
-        patterns))
+                          (> (- (count display-name) (count prefix) (count suffix)) 0))
+                 (let [inner (subs display-name (count prefix) (- (count display-name) (count suffix)))]
+                   {:matched   true
+                    :prefix    prefix
+                    :suffix    suffix
+                    :inner     inner})))
+             patterns))
 
 (defn- try-parse-join-to-parts
   "Try to parse a joined column display name.
