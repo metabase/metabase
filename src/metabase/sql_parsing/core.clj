@@ -347,7 +347,7 @@
    Returns modified SQL string.
 
    Examples:
-   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[[{:table \"people\"} \"users\"]]})
+   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
   [dialect sql replacements]
   (with-open [^Closeable ctx (python.pool/python-context)]
