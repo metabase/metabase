@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest current-database-test
   (mt/with-discard-model-updates! [:model/Database]

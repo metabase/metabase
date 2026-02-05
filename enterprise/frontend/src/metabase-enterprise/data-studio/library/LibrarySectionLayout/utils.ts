@@ -114,15 +114,15 @@ function getEmptyStateConfig(
     Omit<EmptyStateConfig, "sectionType" | "actionUrl">
   > = {
     data: {
-      description: t`Cleaned, pre-transformed data sources ready for exploring`,
+      description: t`Cleaned, pre-transformed data sources ready for exploring.`,
       actionLabel: t`Publish a table`,
     },
     metrics: {
-      description: t`Standardized calculations with known dimensions`,
+      description: t`Standardized calculations with known dimensions.`,
       actionLabel: t`New metric`,
     },
     snippets: {
-      description: t`Reusable bits of code that save your time`,
+      description: t`Reusable bits of code that save your time.`,
       actionLabel: t`New snippet`,
     },
   };

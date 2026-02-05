@@ -13,6 +13,7 @@
  [metabase.transforms.settings
   transform-timeout]
  [metabase.transforms.util
+  add-source-readable
   native-query-transform?
   python-transform?
   query-transform?
