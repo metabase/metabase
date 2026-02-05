@@ -458,17 +458,7 @@ export type InspectorSection = {
   layout?: InspectorLayoutType;
 };
 
-export type InspectorCardDisplayType =
-  | "bar"
-  | "row"
-  | "line"
-  | "area"
-  | "pie"
-  | "scalar"
-  | "gauge"
-  | "progress"
-  | "table"
-  | "hidden";
+export type InspectorCardDisplayType = CardDisplayType | "hidden";
 
 export type InspectorCard = {
   id: string;
