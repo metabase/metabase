@@ -28,6 +28,7 @@
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.llm.api]
+   [metabase-enterprise.mcp.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
@@ -127,6 +128,7 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :data-studio)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/mcp"                          (premium-handler metabase-enterprise.mcp.api/routes :data-studio)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)

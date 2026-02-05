@@ -460,7 +460,7 @@
 
 ;;; -------------------------------------------------- Middleware ----------------------------------------------------
 
-(defn- enforce-authentication
+(defn enforce-authentication
   "Middleware that ensures requests are authenticated.
 
    Supports two authentication modes:
