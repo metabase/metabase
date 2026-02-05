@@ -91,7 +91,7 @@
     "inquirer-toggle": "^1.0.1",
     "js-cookie": "^2.1.2",
     "json5": "2.2.2",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.1.0",
     "kbar": "^0.1.0-beta.45",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
