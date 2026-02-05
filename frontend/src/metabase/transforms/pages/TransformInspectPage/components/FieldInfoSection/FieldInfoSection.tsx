@@ -1,13 +1,15 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
-import { formatPercent } from "metabase/static-viz/lib/numbers";
-import { Icon } from "metabase/ui";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import {
-  Accordion,
   Card,
+  EntityNameCell,
+  Flex,
   SimpleGrid,
   Stack,
   Text,
@@ -18,12 +20,10 @@ import {
 } from "metabase/ui";
 import type {
   TransformInspectField,
+  TransformInspectFieldStats,
   TransformInspectSource,
   TransformInspectTarget,
 } from "metabase-types/api";
-import { NUMERIC_BASE_TYPES, TEMPORAL_BASE_TYPES } from "metabase-types/api";
-
-import S from "./FieldInfoSection.module.css";
 
 type FieldInfoSectionProps = {
   sources: TransformInspectSource[];
@@ -37,7 +37,7 @@ type FieldTreeNode = {
   fieldName?: string;
   fieldCount?: number;
   baseType?: string;
-  stats?: string | null;
+  stats?: TransformInspectFieldStats;
   children?: FieldTreeNode[];
 };
 
@@ -58,8 +58,8 @@ export const FieldInfoSection = ({
   );
 
   const columns: TreeTableColumnDef<FieldTreeNode>[] = useMemo(
-    () => getColumns(),
-    [],
+    () => getColumns(sources),
+    [sources],
   );
 
   const handleRowClick = useCallback((row: Row<FieldTreeNode>) => {
@@ -85,51 +85,80 @@ export const FieldInfoSection = ({
   });
 
   return (
-    <Accordion
-      classNames={{
-        chevron: S.chevron,
-        content: S.content,
-        control: S.control,
-        icon: S.icon,
-        item: S.item,
-        label: S.label,
-      }}
-    >
-      <Accordion.Item value="field-info">
-        <Accordion.Control icon={<Icon name="field" />}>
-          {t`Field Information`}
-        </Accordion.Control>
-        <Accordion.Panel>
-          <SimpleGrid cols={2} spacing="lg">
-            <Stack gap="sm">
-              <Title order={5}>{t`Input`}</Title>
-              <Card p={0} shadow="none" withBorder>
-                <TreeTable
-                  instance={sourceInstance}
-                  onRowClick={handleRowClick}
-                />
-              </Card>
-            </Stack>
+    <SimpleGrid cols={2} spacing="lg">
+      <Stack gap="md">
+        <Title order={4}>{t`Input fields`}</Title>
+        <Card p={0} shadow="none" withBorder>
+          <TreeTable instance={sourceInstance} onRowClick={handleRowClick} />
+        </Card>
+      </Stack>
 
-            <Stack gap="sm">
-              <Title order={5}>{t`Output`}</Title>
-              {target ? (
-                <Card p={0} shadow="none" withBorder>
-                  <TreeTable
-                    instance={targetInstance}
-                    onRowClick={handleRowClick}
-                  />
-                </Card>
-              ) : (
-                <Text c="text-tertiary">{t`No output table`}</Text>
-              )}
-            </Stack>
-          </SimpleGrid>
-        </Accordion.Panel>
-      </Accordion.Item>
-    </Accordion>
+      <Stack gap="md">
+        <Title order={4}>{t`Output fields`}</Title>
+        {target ? (
+          <Card p={0} shadow="none" withBorder>
+            <TreeTable instance={targetInstance} onRowClick={handleRowClick} />
+          </Card>
+        ) : (
+          <Text c="text-tertiary">{t`No output table`}</Text>
+        )}
+      </Stack>
+    </SimpleGrid>
   );
 };
+
+type StatsColumn =
+  | "distinct_count"
+  | "nil_percent"
+  | "avg"
+  | "min_max"
+  | "q1_q3"
+  | "earliest_latest";
+
+// type StatsFields = TransformInspectFieldStats
+
+const fieldToColumnMap = new Map([
+  ["distinct_count", "distinct_count"],
+  ["nil_percent", "nil_percent"],
+  ["min", "min_max"],
+  ["max", "min_max"],
+  ["avg", "avg"],
+  ["q1", "q1_q3"],
+  ["q3", "q1_q3"],
+  ["earliest", "earliest_latest"],
+  ["latest", "earliest_latest"],
+]);
+
+function fieldToColumn(distinctFields: Set<string>) {
+  const columns = new Set<string>();
+  for (const field of distinctFields) {
+    columns.add(fieldToColumnMap.get(field) ?? field);
+  }
+  return columns;
+}
+
+function gatherColumnStasticsFields(
+  sources: TransformInspectSource[],
+): Set<StatsColumn> {
+  const distinctFields = new Set<string>();
+  const distinctColumns = new Set<StatsColumn>();
+  sources.forEach((source) => {
+    source.fields.forEach((field) => {
+      if (!field.stats) {
+        return;
+      }
+      for (const [key] of Object.entries(field.stats)) {
+        distinctFields.add(key);
+      }
+    });
+  });
+
+  for (const column of fieldToColumn(distinctFields)) {
+    distinctColumns.add(column);
+  }
+
+  return distinctColumns;
+}
 
 const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
   return tables.map((table) => {
@@ -145,126 +174,113 @@ const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
         tableName: table.table_name,
         fieldName: field.display_name ?? field.name,
         baseType: formatType(field),
-        stats: getFieldStats(field),
+        stats: field.stats,
       })),
     };
   });
 };
 
-function isTemporalField(field: TransformInspectField): boolean {
-  return TEMPORAL_BASE_TYPES.some((type) => type === field.base_type);
-}
+function getColumnLabel(columnName: StatsColumn) {
+  const statisticsInfo = {
+    distinct_count: t`Distinct count`,
+    nil_percent: t`Nil %`,
+    avg: t`Average`,
+    min_max: t`Min/Max`,
+    q1_q3: "Q1/Q3",
+    earliest_latest: "Earliest/Latest",
+  };
 
-function isNumericField(field: TransformInspectField): boolean {
-  return NUMERIC_BASE_TYPES.some((type) => type === field.base_type);
-}
-
-function isDate(field: TransformInspectField): boolean {
-  return field.base_type === "type/Date";
+  return statisticsInfo[columnName];
 }
 
 function formatType(field: TransformInspectField): string {
   return field.base_type?.replace("type/", "") ?? t`Unknown`;
 }
 
-function formatNumber(value: number | undefined | null): string {
-  if (value == null) {
-    return "-";
-  }
+function getColumns(
+  sources: TransformInspectSource[],
+): TreeTableColumnDef<FieldTreeNode>[] {
+  const statColumns = gatherColumnStasticsFields(sources);
 
-  if (Number.isInteger(value)) {
-    return value.toLocaleString();
-  }
-
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-function getFieldStats(field: TransformInspectField): string | null {
-  const stats = field.stats;
-  if (!stats) {
-    return null;
-  }
-
-  const parts: string[] = [];
-
-  if (stats.distinct_count !== undefined) {
-    parts.push(`${formatNumber(stats.distinct_count)} distinct`);
-  }
-  if (stats.nil_percent !== undefined && stats.nil_percent > 0) {
-    parts.push(`${formatPercent(stats.nil_percent)} null`);
-  }
-
-  if (isNumericField(field)) {
-    if (stats.min !== undefined && stats.max !== undefined) {
-      let range = `${formatNumber(stats.min)}–${formatNumber(stats.max)}`;
-      if (stats.avg !== undefined) {
-        range += ` (avg ${formatNumber(stats.avg)})`;
-      }
-      parts.push(range);
-    }
-  } else if (isTemporalField(field)) {
-    if (stats.earliest && stats.latest) {
-      const unit = isDate(field) ? "day" : "hour-of-day";
-      const earliest = getFormattedTime(stats.earliest, unit);
-      const latest = getFormattedTime(stats.latest, unit);
-      parts.push(`${earliest} → ${latest}`);
-    }
-  }
-
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
-
-function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
   return [
     {
       id: "column",
       header: t`Column`,
       minWidth: "auto",
+      maxAutoWidth: 400,
+      accessorFn: (originalRow) =>
+        originalRow.tableName + originalRow.fieldCount,
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "table") {
           return (
-            <Text size="sm" style={{ whiteSpace: "nowrap" }}>
-              {node.tableName}
-              <Text span size="xs" c="text-tertiary" ml="xs" display="inline">
-                ({node.fieldCount})
-              </Text>
-            </Text>
+            <EntityNameCell
+              icon="table"
+              name={
+                <Flex align="center" gap="xs">
+                  <Text fw="bold">{node.tableName}</Text>{" "}
+                  <Text c="text-secondary">({node.fieldCount})</Text>
+                </Flex>
+              }
+            />
           );
         }
-        return <Text size="sm">{node.fieldName}</Text>;
+        return <Ellipsified>{node.fieldName}</Ellipsified>;
       },
     },
     {
       id: "type",
       header: t`Type`,
       width: "auto",
+      accessorFn: (originalRow) => originalRow.baseType,
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "field") {
-          return (
-            <Text size="xs" c="text-tertiary" ta="right">
-              {node.baseType}
-            </Text>
-          );
+          return <Text ta="right">{node.baseType}</Text>;
         }
         return null;
       },
     },
-    {
-      id: "stats",
-      header: t`Stats`,
-      cell: ({ row }) => {
-        const node = row.original;
-        if (node.type === "field" && node.stats) {
-          return (
-            <Text size="xs" c="text-tertiary">
-              {node.stats}
-            </Text>
-          );
-        }
-        return null;
+    ...Array.from(statColumns).map((column) => ({
+      id: column,
+      header: getColumnLabel(column),
+      cell: ({ row }: { row: Row<FieldTreeNode> }) => {
+        return <Text>{getStatsColumnValue(row.original, column)}</Text>;
       },
-    },
+    })),
   ];
+}
+
+function getStatsColumnValue(node: FieldTreeNode, column: StatsColumn) {
+  const { stats } = node;
+  if (!stats) {
+    return "";
+  }
+
+  const {
+    distinct_count,
+    avg,
+    nil_percent,
+    min,
+    max,
+    q1,
+    q3,
+    earliest,
+    latest,
+  } = stats;
+
+  return match(column)
+    .with("distinct_count", () => distinct_count)
+    .with("avg", () => avg)
+    .with("nil_percent", () => nil_percent && formatPercent(nil_percent))
+    .with("min_max", () => (min ? `${min} - ${max}` : ""))
+    .with("q1_q3", () =>
+      q1 && q3 ? `${formatNumber(q1)} - ${formatNumber(q3)}` : "",
+    )
+    .with("earliest_latest", () =>
+      earliest && latest
+        ? `${getFormattedTime(earliest)} - ${getFormattedTime(latest)}`
+        : "",
+    )
+    .exhaustive();
 }

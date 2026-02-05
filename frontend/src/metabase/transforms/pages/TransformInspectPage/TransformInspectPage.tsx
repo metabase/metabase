@@ -14,7 +14,7 @@ import { Box, Button, Center, Flex, Stack, Text } from "metabase/ui";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
-import { FieldInfoSection, LensContent, LensNavigation } from "./components";
+import { LensContent, LensNavigation } from "./components";
 import { useLensNavigation } from "./hooks";
 import { convertLensToRef } from "./utils";
 
@@ -105,7 +105,6 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} />
-      <FieldInfoSection sources={discovery.sources} target={discovery.target} />
       <Flex gap="xl">
         <Box style={{ flex: 1, minWidth: 0 }}>
           <LensContent
