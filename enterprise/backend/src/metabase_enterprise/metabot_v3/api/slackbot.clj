@@ -161,7 +161,7 @@
    - card-id (integer) - fetches saved card from database
    - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
   [card-or-id & {:keys [width padding-x padding-y]
-                 :or {width 400 padding-x 32 padding-y 32}}]
+                 :or {width 1280 padding-x 32 padding-y 0}}]
   (let [options {:channel.render/include-title? true
                  :channel.render/padding-x padding-x
                  :channel.render/padding-y padding-y}]
