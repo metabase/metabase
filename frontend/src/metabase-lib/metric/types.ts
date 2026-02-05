@@ -27,7 +27,6 @@ declare const _MetadataProviderSymbol: unique symbol;
 declare const _MetricMetadataSymbol: unique symbol;
 declare const _MeasureMetadataSymbol: unique symbol;
 declare const _MetricDefinitionSymbol: unique symbol;
-declare const _JsMetricDefinitionSymbol: unique symbol;
 declare const _DimensionMetadataSymbol: unique symbol;
 declare const _FilterClauseSymbol: unique symbol;
 declare const _ProjectionClauseSymbol: unique symbol;
@@ -48,10 +47,6 @@ export type MeasureMetadata = unknown & {
 
 export type MetricDefinition = unknown & {
   _opaque: typeof _MetricDefinitionSymbol;
-};
-
-export type JsMetricDefinition = unknown & {
-  _opaque: typeof _JsMetricDefinitionSymbol;
 };
 
 export type DimensionMetadata = unknown & {

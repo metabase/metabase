@@ -19,3 +19,9 @@ export type MetricDimension = {
   effective_type: string;
   semantic_type: string | null;
 };
+
+export const _JsMetricDefinitionSymbol = Symbol("JsMetricDefinition");
+
+export type JsMetricDefinition = unknown & {
+  _opaque: typeof _JsMetricDefinitionSymbol;
+};
