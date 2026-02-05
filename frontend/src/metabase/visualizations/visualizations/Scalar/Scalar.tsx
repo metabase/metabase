@@ -70,6 +70,9 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
+      get section() {
+        return t`Formatting`;
+      },
       get title() {
         return t`Field to show`;
       },
