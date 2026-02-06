@@ -164,7 +164,7 @@ function WorkspacePageContent({
       const isActive =
         (tab.type === "transform" &&
           activeTransform &&
-          getTransformId(activeTransform) === getTransformId(tab.transform)) ||
+          getTransformId(activeTransform) === tab.transformId) ||
         (tab.type === "table" && activeTable?.tableId === tab.table.tableId);
       const remaining = openedTabs.filter((item) => item.id !== tab.id);
 
