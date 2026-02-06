@@ -111,11 +111,14 @@ export function FilterColumnPicker({
 
   const renderItemName = useCallback(
     (item: Item) =>
-      PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-        item.displayName,
-        tc,
-      ),
-    [tc],
+      searchText
+        ? // When searching, show the untranslated display name to match the search text
+          item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+            item.displayName,
+            tc,
+          ),
+    [tc, searchText],
   );
 
   const handleSectionChange = (section: Section) => {
