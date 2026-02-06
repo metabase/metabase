@@ -81,13 +81,27 @@
                                   body)]
           (is (= "3eZbrw1aBm2rZgRNFdxV2595E9CY3gmdALWMmHkvFXO7tYXAYM8P" response))))
 
-      (testing "handles regular events without challenge"
+      (testing "handles 'unknown' events with ack message"
         (let [body {:type "event_callback"
-                    :event {:text "hi"}}
+                    :event {:type "team_rename"
+                            :event_ts "1234567890.000001"}}
               response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                   (slack-request-options body)
                                   body)]
-          ;; endpoint returns ack-msg with body "ok" for event_callback
+          (is (= "ok" response))))
+
+      (testing "handles message.im events"
+        (let [body {:type "event_callback"
+                    :event {:type "message"
+                            :channel "D123"
+                            :user "U123"
+                            :ts "1234567890.000001"
+                            :event_ts "1234567890.000001"
+                            :channel_type "im"
+                            :text "Hello from DM"}}
+              response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                  (slack-request-options body)
+                                  body)]
           (is (= "ok" response))))
 
       (testing "rejects requests without valid signature"
@@ -175,7 +189,9 @@
                                 :text "Hello!"
                                 :user "U123"
                                 :channel "C123"
-                                :ts "1234567890.000001"}}]
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "im"}}]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
           (fn [{:keys [post-calls delete-calls]}]
@@ -206,6 +222,8 @@
                                 :user "U123"
                                 :channel "C456"
                                 :ts "1234567890.000002"
+                                :event_ts "1234567890.000002"
+                                :channel_type "im"
                                 :thread_ts "1234567890.000000"}}]
         (with-slackbot-mocks
           {:ai-text mock-ai-text
@@ -251,7 +269,9 @@
                                 :text "Hello!"
                                 :user "U-UNKNOWN-USER"
                                 :channel "C123"
-                                :ts "1234567890.000001"}}]
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "im"}}]
         (with-slackbot-mocks
           {:ai-text "Should not be called"
            :user-id ::no-user} ;; Simulate no linked user

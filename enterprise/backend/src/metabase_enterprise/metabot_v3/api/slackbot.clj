@@ -28,6 +28,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -37,6 +38,11 @@
 (set! *warn-on-reflection* true)
 
 ;; ------------------ SLACK CLIENT --------------------
+
+(def ^:private SlackClient
+  "Malli schema for a Slack client."
+  [:map {:closed true}
+   [:token ms/NonBlankString]])
 
 (defn- slack-get
   "GET from slack"
@@ -345,18 +351,59 @@
    [:type      [:= "url_verification"]]
    [:challenge :string]])
 
-;; TODO(appleby 2026-02-04) these are really separate event types and should be modeled
-;; with their own schemas. See BOT-852.
+(def ^:private SlackMessageEvent
+  "Base schema for Slack message events"
+  [:map
+   [:type [:= "message"]]
+   [:channel :string]
+   [:user :string]
+   [:ts :string]
+   [:event_ts :string]
+   [:bot_id {:optional true} [:maybe :string]]])
+
+(def ^:private SlackMessageImEvent
+  "Schema for message.im events (direct messages)"
+  [:merge SlackMessageEvent
+   [:map
+    [:channel_type [:= "im"]]
+    [:text :string]
+    [:thread_ts {:optional true} [:maybe :string]]]])
+
+(def ^:private SlackMessageChannelsEvent
+  "Schema for message.channels events (public channel messages)"
+  [:merge SlackMessageEvent
+   [:map
+    [:channel_type [:= "channel"]]
+    [:text :string]
+    [:thread_ts {:optional true} [:maybe :string]]]])
+
+(def ^:private SlackMessageFileShareEvent
+  "Schema for file_share message events"
+  [:merge SlackMessageEvent
+   [:map
+    [:subtype [:= "file_share"]]
+    [:channel_type :string]
+    [:files [:sequential :map]]
+    [:text {:optional true} [:maybe :string]]
+    [:thread_ts {:optional true} [:maybe :string]]]])
+
+(def ^:private SlackHandledMessageEvent
+  "Schema for event_callback event that we handle."
+  [:or
+   SlackMessageImEvent
+   SlackMessageChannelsEvent
+   SlackMessageFileShareEvent])
+
 (def ^:private SlackEventCallbackEvent
   "Malli schema for Slack event_callback event"
   [:map
-   [:type  [:= "event_callback"]]
-   [:event [:map
-            [:user      {:optional true} [:maybe :string]]
-            [:text      {:optional true} [:maybe :string]]
-            [:channel   {:optional true} [:maybe :string]]
-            [:ts        {:optional true} [:maybe :string]]
-            [:thread_ts {:optional true} [:maybe :string]]]]])
+   [:type [:= "event_callback"]]
+   [:event [:or
+            SlackHandledMessageEvent
+            ;; Fallback for any other valid event type
+            [:map
+             [:type :string]
+             [:event_ts :string]]]]])
 
 (mu/defn- handle-url-verification :- SlackEventsResponse
   "Respond to a url_verification request (docs: https://docs.slack.dev/reference/events/url_verification)"
@@ -366,15 +413,11 @@
    :body    (:challenge event)})
 
 (defn- user-message?
-  "Check if event is a user message (not bot/system message)"
+  "Check if event is a user message (not bot/system message).
+   Returns true if the event has no bot_id and matches a known message schema."
   [event]
-  (let [subtype (:subtype event)
-        has-text (contains? event :text)
-        has-files (contains? event :files)
-        is-bot-message (contains? event :bot_id)]
-    (and (or (nil? subtype) (= subtype "file_share"))
-         (or has-text has-files)
-         (not is-bot-message))))
+  (and (nil? (:bot_id event))
+       (mr/validate SlackHandledMessageEvent event)))
 
 (def ^:private ack-msg
   "Acknowledgement payload"
@@ -401,9 +444,10 @@
    :thread_ts (or (:thread_ts event)
                   (:ts event))})
 
-(defn- send-metabot-response
+(mu/defn- send-metabot-response
   "Send a metabot response to `client` for message `event`."
-  [client event]
+  [client :- SlackClient
+   event  :- SlackMessageImEvent]
   (let [prompt (:text event)
         thread (fetch-thread client event)
         message-ctx (event->reply-context event)
@@ -421,19 +465,53 @@
                         (:channel message-ctx)
                         (:thread_ts message-ctx))))))))
 
-(defn- process-user-message
-  "Respond to an incoming user slack message"
-  [client event]
+(mu/defn- process-message-im
+  "Process a direct message (message.im)"
+  [client  :- SlackClient
+   event   :- SlackMessageImEvent
+   user-id :- :int]
+  (request/with-current-user user-id
+    (send-metabot-response client event)))
+
+(mu/defn- process-message-channels
+  "Process a public channel message (message.channels)"
+  [client   :- SlackClient
+   event    :- SlackMessageChannelsEvent
+   _user-id :- :int]
+  (post-message client
+                (merge (event->reply-context event)
+                       {:text "Sorry, channel messages are not yet implemented"})))
+
+(mu/defn- process-message-file-share
+  "Process a file_share message"
+  [client   :- SlackClient
+   event    :- SlackMessageFileShareEvent
+   _user-id :- :int]
+  (post-message client
+                (merge (event->reply-context event)
+                       {:text "Sorry, file_share messages are not yet implemented"})))
+
+(mu/defn- process-user-message :- :nil
+  "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
+  [client :- SlackClient
+   event  :- SlackHandledMessageEvent]
   (let [slack-user-id (:user event)
         user-id (slack-id->user-id slack-user-id)]
-    (if user-id
-      (request/with-current-user user-id
-        (send-metabot-response client event))
+    (if-not user-id
       (post-ephemeral-message client
                               (merge (event->reply-context event)
                                      {:user slack-user-id
                                       :text (str "You need to link your slack account and authorize the Metabot app. "
-                                                 "Please visit: " slack-user-authorize-link)})))))
+                                                 "Please visit: " slack-user-authorize-link)}))
+      (let [channel-type (:channel_type event)
+            subtype (:subtype event)]
+        (cond
+          (= subtype "file_share")   (process-message-file-share client event user-id)
+          (= channel-type "im")      (process-message-im client event user-id)
+          (= channel-type "channel") (process-message-channels client event user-id)
+          :else                      (log/warnf "Unhandled message type: channel_type=%s subtype=%s"
+                                                channel-type subtype)))))
+  nil)
 
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request (docs: TODO)"
