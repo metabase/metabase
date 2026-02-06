@@ -22,7 +22,12 @@ export function TimeseriesBucketPicker({
   projections,
   onChange,
 }: TimeseriesBucketPickerProps) {
-  const [isOpened, { toggle }] = useDisclosure();
+  const [isOpened, { toggle, close }] = useDisclosure();
+
+  const handleChange = (unit: TemporalUnit) => {
+    onChange(unit);
+    close();
+  };
 
   return (
     <Popover opened={isOpened} onChange={toggle}>
@@ -33,7 +38,7 @@ export function TimeseriesBucketPicker({
         <TimeseriesBucketDropdown
           selectedUnit={selectedUnit}
           projections={projections}
-          onChange={onChange}
+          onChange={handleChange}
         />
       </Popover.Dropdown>
     </Popover>
