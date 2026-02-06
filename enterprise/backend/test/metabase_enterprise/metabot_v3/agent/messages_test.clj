@@ -62,33 +62,32 @@
                 :content [{:type "tool_result"}]}]
               (messages/build-message-history mem)))))
 
-  (testing "handles tool results with underscore key (structured_output)"
-    ;; Some tools return {:structured_output ...} (underscore, from JSON/API responses)
-    ;; instead of {:structured-output ...} (hyphen, Clojure idiomatic)
+  (testing "handles tool results with :output key"
+    ;; All agent tools now return :output as a pre-formatted string
     (let [messages    [{:role :user :content "Search"}]
           tool-input  [{:type      :tool-input
                         :id        "tool_1"
                         :function  "search"
                         :arguments {:query "test"}}]
-          ;; Use underscore key format (as returned by search.clj and other tools)
           tool-output [{:type   :tool-output
                         :id     "tool_1"
-                        :result {:structured_output {:data        [{:name "Result 1"}]
+                        :result {:output "<search-results><result name=\"Result 1\"/></search-results>"
+                                 :structured-output {:data        [{:name "Result 1"}]
                                                      :total_count 1}}}]
           mem         (-> (memory/initialize messages {})
                           (memory/add-step tool-input)
                           (memory/add-step tool-output))]
       (is (=? [{}
                {}
-               ;; Tool result should be formatted as a string containing search results XML
                {:content [{:content #"(?s).*<search-results>.*"}]}]
               (messages/build-message-history mem)))))
 
-  (testing "formats entity results when type is a string"
+  (testing "formats entity results with :output key"
     (let [messages            [{:role :user :content "Details"}]
           tool-output         [{:type   :tool-output
                                 :id     "tool_1"
-                                :result {:structured_output {:type "table"
+                                :result {:output "<table id=\"1\" name=\"users\"/>"
+                                         :structured-output {:type "table"
                                                              :id   1
                                                              :name "users"}}}]
           mem                 (-> (memory/initialize messages {})
@@ -266,7 +265,7 @@
       (is (=? [{:role    "assistant"
                 :content [{:type "tool_use" :input "{bad-json"}]}]
               (messages/build-message-history
-                     (memory/initialize [msg] {}))))))
+               (memory/initialize [msg] {}))))))
 
   (testing "handles string role tool message"
     ;; Frontend sends tool results with string roles too
@@ -276,7 +275,7 @@
       (is (=? [{:role    "user"
                 :content [{:type "tool_result" :tool_use_id "toolu_789"}]}]
               (messages/build-message-history
-                     (memory/initialize [msg] {})))))))
+               (memory/initialize [msg] {})))))))
 
 (deftest build-system-message-test
   (testing "builds basic system message"
