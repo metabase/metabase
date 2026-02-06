@@ -9,7 +9,6 @@
    [metabase.metrics.core :as metrics]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.request.core :as request]
    [metabase.server.core :as server]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -37,15 +36,6 @@
     [:dataset_query      {:optional true} :map]
     [:database_id        {:optional true} [:maybe ms/PositiveInt]]]])
 
-(mr/def ::MetricsResponse
-  [:map
-   [:total  ms/IntGreaterThanOrEqualToZero]
-   [:limit  ms/PositiveInt]
-   [:offset ms/IntGreaterThanOrEqualToZero]
-   [:data   [:sequential ::Metric]]])
-
-(def ^:private default-metrics-limit 500)
-
 (def ^:private visibility-config
   {:include-trash-collection? false
    :include-archived-items    :exclude
@@ -57,36 +47,20 @@
    [:= :archived false]
    (collection/visible-collection-filter-clause :collection_id visibility-config)])
 
-(defn- select-metrics [limit offset]
+(defn- select-metrics []
   (-> (t2/select [:model/Card :id :name :description :collection_id]
                  {:where    (metrics-where-clause)
-                  :order-by [[:name :asc]]
-                  :limit    limit
-                  :offset   offset})
+                  :order-by [[:name :asc]]})
       (t2/hydrate :collection)))
 
-(defn- count-metrics []
-  (t2/count :model/Card {:where (metrics-where-clause)}))
-
-(api.macros/defendpoint :get "/" :- ::MetricsResponse
-  "Get a paginated list of metrics.
+(api.macros/defendpoint :get "/" :- [:sequential ::Metric]
+  "Get a list of metrics.
 
   Returns metrics (Cards with type='metric') that the current user has read access to,
-  filtered by collection visibility permissions.
-
-  Pagination parameters:
-  - `limit`: Maximum number of metrics to return (default: 500)
-  - `offset`: Number of metrics to skip (default: 0)"
+  filtered by collection visibility permissions."
   []
-  (let [limit  (or (request/limit) default-metrics-limit)
-        offset (or (request/offset) 0)
-        total  (count-metrics)
-        data   (->> (select-metrics limit offset)
-                    (mapv #(select-keys % [:id :name :description :collection_id :collection])))]
-    {:total  total
-     :limit  limit
-     :offset offset
-     :data   data}))
+  (->> (select-metrics)
+       (mapv #(select-keys % [:id :name :description :collection_id :collection]))))
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))

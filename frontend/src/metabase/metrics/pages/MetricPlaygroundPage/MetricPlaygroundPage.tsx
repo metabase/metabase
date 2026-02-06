@@ -1,5 +1,4 @@
-import { useState } from "@storybook/preview-api";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -61,7 +60,7 @@ export function MetricPlaygroundPage() {
   };
 
   return (
-    <Stack>
+    <Stack p="md" maw="20rem">
       <MultiSelect
         label="Metrics"
         data={getMetricOptions(metrics)}
@@ -85,7 +84,7 @@ export function MetricPlaygroundPage() {
           />
         </Popover.Dropdown>
       </Popover>
-      <TextInput label={t`Filter`} value={filterDisplayName} readOnly />
+      <TextInput label={t`Last filter`} value={filterDisplayName} readOnly />
     </Stack>
   );
 }
