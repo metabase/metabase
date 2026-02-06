@@ -20,8 +20,7 @@
    :- [:map {:closed true}
        [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try
-    (let [result (read-resource-tools/read-resource {:uris uris})]
-      {:structured-output {:content (:formatted result)}})
+    (read-resource-tools/read-resource {:uris uris})
     (catch Exception e
       (log/error e "Error in read_resource tool")
       {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))
