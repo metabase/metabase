@@ -49,11 +49,61 @@
    [:binning        {:optional true} [:maybe ::lib.schema.binning/binning]]])
 
 (mr/def ::dimension-reference
-  "Dimension reference clause [:dimension opts uuid]."
+  "Dimension reference clause [:dimension opts uuid].
+   Handles normalization from JSON where the tag arrives as a string."
   [:tuple
-   [:= :dimension]
+   {:decode/normalize (fn [x]
+                        (when (and (sequential? x)
+                                   (= 3 (count x)))
+                          (let [[tag opts dimension-id] x]
+                            [:dimension
+                             (or opts {})
+                             dimension-id])))}
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]
    ::dimension-reference.options
    ::dimension-id])
+
+;;; ------------------------------------------------- Filter Clause Normalization -------------------------------------------------
+;;; Filter clauses from the API arrive with string operators and dimension refs that need normalization.
+
+(defn- normalize-dimension-ref
+  "Normalize a dimension reference from API format to internal format."
+  [x]
+  (when (and (sequential? x)
+             (= 3 (count x))
+             (let [tag (first x)]
+               (or (= tag "dimension") (= tag :dimension))))
+    (let [[_tag opts dimension-id] x]
+      [:dimension
+       (lib.schema.common/normalize-options-map (or opts {}))
+       dimension-id])))
+
+(defn normalize-filter-clause
+  "Recursively normalize a filter clause from API format.
+   Converts string operators to keywords and normalizes dimension references."
+  [clause]
+  (when (sequential? clause)
+    (let [[op opts & args] clause
+          operator (lib.schema.common/normalize-keyword op)
+          norm-opts (lib.schema.common/normalize-options-map (or opts {}))]
+      (case operator
+        ;; Compound filters - recursively normalize children
+        (:and :or)
+        (into [operator norm-opts] (map normalize-filter-clause args))
+
+        :not
+        [operator norm-opts (normalize-filter-clause (first args))]
+
+        ;; All other filters - normalize dimension refs in args
+        (into [operator norm-opts]
+              (map (fn [arg]
+                     (or (normalize-dimension-ref arg) arg))
+                   args))))))
+
+(mr/def ::filter-clause
+  "MBQL filter clause with normalization for API input.
+   Handles string operators and dimension references."
+  [:any {:decode/normalize normalize-filter-clause}])
 
 ;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
 ;;; These schemas are used for storage format in the database.
