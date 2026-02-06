@@ -8,7 +8,7 @@ import {
   useListMetricsQuery,
 } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { MetricFilterPicker } from "metabase/metrics/components/MetricFilterPicker";
+import { FilterPicker } from "metabase/metrics/components/FilterPicker";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, MultiSelect, Popover, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
@@ -71,7 +71,7 @@ export function MetricPlaygroundPage() {
           <Button leftSection={<Icon name="filter" />}>{t`Filter`}</Button>
         </Popover.Target>
         <Popover.Dropdown>
-          <MetricFilterPicker
+          <FilterPicker
             definitions={definitions}
             onChange={handleFilterChange}
           />

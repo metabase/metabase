@@ -5,7 +5,7 @@ import type * as LibMetric from "metabase-lib/metric";
 import { FilterDimensionPicker } from "./FilterDimensionPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
 
-type MetricFilterPickerProps = {
+type FilterPickerProps = {
   definitions: LibMetric.MetricDefinition[];
   onChange: (
     definition: LibMetric.MetricDefinition,
@@ -13,10 +13,7 @@ type MetricFilterPickerProps = {
   ) => void;
 };
 
-export function MetricFilterPicker({
-  definitions,
-  onChange,
-}: MetricFilterPickerProps) {
+export function FilterPicker({ definitions, onChange }: FilterPickerProps) {
   const [definition, setDefinition] =
     useState<LibMetric.MetricDefinition | null>(null);
   const [dimension, setDimension] =
