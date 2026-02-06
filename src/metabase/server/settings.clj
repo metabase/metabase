@@ -74,3 +74,17 @@ x.com")
   :default    false
   :visibility :admin
   :export?    false)
+
+;; This is normally set via the env var `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+(defsetting thread-interrupt-escalation-timeout-ms
+  "By default, this is 0 and the thread interrupt escalation does not run."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :doc "Timeout in milliseconds to wait after query cancellation before escalating to Thread.interrupt().
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.")
+
+(def ^:dynamic ^Long *thread-interrupt-escalation-timeout-ms*
+  "Maximum amount of time to wait after query cancellation before escalating to Thread.interrupt(), in ms."
+  (thread-interrupt-escalation-timeout-ms))
