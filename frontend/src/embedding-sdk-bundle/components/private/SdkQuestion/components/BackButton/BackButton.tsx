@@ -1,24 +1,42 @@
-import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
+import type { HTMLAttributes } from "react";
+
+import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
+import { QueryBuilderBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
+import type { ActionIconProps } from "metabase/ui";
+
+import { useSdkQuestionContext } from "../../context";
 
 /**
  * @expand
  * @category InteractiveQuestion
  */
-export type BackButtonProps = {
-  style?: React.CSSProperties;
-  className?: string;
-};
+export type BackButtonProps = Omit<
+  ActionIconProps & HTMLAttributes<HTMLButtonElement>,
+  "noLink" | "onClick"
+>;
 
 /**
- * A navigation button that allows users to go back to the previous view.
- * Visible after performing navigations such as drills or click behaviors.
- *
- * Displays "Back to {name}" where name is the title of the previous dashboard or question.
+ * A navigation button that returns to the previous view.
+ * Only visible when rendered within the {@link InteractiveDashboardProps.renderDrillThroughQuestion} prop.
  *
  * @function
  * @category InteractiveQuestion
  * @param props
  */
-export const BackButton = (props: BackButtonProps) => {
-  return <SdkInternalNavigationBackButton {...props} />;
+export const BackButton = ({ ...actionIconProps }: BackButtonProps) => {
+  const { onNavigateBack, backToDashboard } = useSdkQuestionContext();
+  const { isBreadcrumbEnabled } = useSdkBreadcrumbs();
+
+  if (!onNavigateBack || isBreadcrumbEnabled) {
+    return null;
+  }
+
+  return (
+    <QueryBuilderBackButton
+      noLink
+      onClick={onNavigateBack}
+      parentOverride={backToDashboard}
+      {...actionIconProps}
+    />
+  );
 };
