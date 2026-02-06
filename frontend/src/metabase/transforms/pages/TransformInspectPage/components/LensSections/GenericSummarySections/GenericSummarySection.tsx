@@ -68,35 +68,33 @@ export const GenericSummarySection = ({
     [lens.id, onStatsReady],
   );
 
-  const columns = useMemo<TreeTableColumnDef<TableRow>[]>(
-    () => [
+  const columns = useMemo<TreeTableColumnDef<TableRow>[]>(() => {
+    return [
       {
         id: "table_name",
         header: t`Table`,
-        cell: ({ row }) => {
-          const tableName = row.original.card.title.replace(/ Row Count$/, "");
-          return <Text size="sm">{tableName}</Text>;
+        accessorFn: (original) =>
+          original.card.title.replace(/ Row Count$/, ""),
+        cell: (props) => {
+          return <Text>{String(props.getValue())}</Text>;
         },
       },
       {
         id: "row_count",
         header: t`Rows`,
-        width: 100,
         cell: ({ row }) => renderRowCountCard(row.original.card),
       },
       {
         id: "column_count",
         header: t`Columns`,
-        width: 100,
         cell: ({ row }) => (
-          <Text size="sm" ta="right">
+          <Text ta="right">
             {row.original.columnCount?.toLocaleString() ?? "-"}
           </Text>
         ),
       },
-    ],
-    [renderRowCountCard],
-  );
+    ];
+  }, [renderRowCountCard]);
 
   const inputInstance = useTreeTableInstance({
     data: inputData,

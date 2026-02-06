@@ -115,8 +115,6 @@ type StatsColumn =
   | "q1_q3"
   | "earliest_latest";
 
-// type StatsFields = TransformInspectFieldStats
-
 const fieldToColumnMap = new Map([
   ["distinct_count", "distinct_count"],
   ["nil_percent", "nil_percent"],
@@ -207,7 +205,6 @@ function getColumns(
       id: "column",
       header: t`Column`,
       minWidth: "auto",
-      maxAutoWidth: 400,
       accessorFn: (originalRow) =>
         originalRow.tableName + originalRow.fieldCount,
       cell: ({ row }) => {
@@ -245,7 +242,9 @@ function getColumns(
       id: column,
       header: getColumnLabel(column),
       cell: ({ row }: { row: Row<FieldTreeNode> }) => {
-        return <Text>{getStatsColumnValue(row.original, column)}</Text>;
+        return (
+          <Ellipsified>{getStatsColumnValue(row.original, column)}</Ellipsified>
+        );
       },
     })),
   ];
@@ -273,13 +272,13 @@ function getStatsColumnValue(node: FieldTreeNode, column: StatsColumn) {
     .with("distinct_count", () => distinct_count)
     .with("avg", () => avg)
     .with("nil_percent", () => nil_percent && formatPercent(nil_percent))
-    .with("min_max", () => (min ? `${min} - ${max}` : ""))
+    .with("min_max", () => (min ? `${min} / ${max}` : ""))
     .with("q1_q3", () =>
-      q1 && q3 ? `${formatNumber(q1)} - ${formatNumber(q3)}` : "",
+      q1 && q3 ? `${formatNumber(q1)} / ${formatNumber(q3)}` : "",
     )
     .with("earliest_latest", () =>
       earliest && latest
-        ? `${getFormattedTime(earliest)} - ${getFormattedTime(latest)}`
+        ? `${getFormattedTime(earliest)} / ${getFormattedTime(latest)}`
         : "",
     )
     .exhaustive();
