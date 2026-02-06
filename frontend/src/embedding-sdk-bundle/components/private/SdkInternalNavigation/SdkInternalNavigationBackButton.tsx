@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Button, Icon } from "metabase/ui";
 
 import S from "./SdkInternalNavigationBackButton.module.css";
@@ -18,6 +19,7 @@ export const SdkInternalNavigationBackButton = ({
   className?: string;
 }) => {
   const navigation = useSdkInternalNavigationOptional();
+  const tc = useTranslateContent();
 
   if (!navigation?.canGoBack) {
     return null;
@@ -26,7 +28,9 @@ export const SdkInternalNavigationBackButton = ({
   const { previousEntry, pop } = navigation;
 
   const previousName =
-    previousEntry && "name" in previousEntry ? previousEntry.name : undefined;
+    previousEntry && "name" in previousEntry
+      ? tc(previousEntry.name)
+      : undefined;
 
   const label = previousName ? t`Back to ${previousName}` : t`Back`;
 
