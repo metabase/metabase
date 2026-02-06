@@ -5,6 +5,7 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -12,26 +13,6 @@
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
-
-;;; Templating
-
-(defn- md [& elements]
-  (->> elements
-       flatten
-       (remove nil?)
-       (str/join "\n")))
-
-(defn- code
-  ([content] (code content nil))
-  ([content lang]
-   (when content
-     (str "```" (or lang "") "\n" content "\n```\n"))))
-
-(defn- field [label value]
-  (cond
-    (nil? value)               nil
-    (str/includes? value "\n") (str label ":\n" value)
-    :else                      (str label ": " value "\n")))
 
 ;;; Time Formatting
 
@@ -93,10 +74,10 @@
 
 (defn- format-simple-entity
   [entity]
-  (md
-   (field (:type entity) (str (:name entity) " (ID: " (or (:id entity) "-") ")"))
-   (field "Description" (:description entity))
-   (field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
+  (te/md
+   (te/field (:type entity) (str (:name entity) " (ID: " (or (:id entity) "-") ")"))
+   (te/field "Description" (:description entity))
+   (te/field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
 
 (defn- dispatch-format-entity [entity] (normalize-context-type (:type entity)))
 (defmulti format-entity "Format an entity for LLM representation." {:arglists '([entity])} dispatch-format-entity)
@@ -116,49 +97,49 @@
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
-  (md "The user is currently in the notebook editor."
-      (field "Query data source" (-> item :query :data_source))
-      (field "Tables used" (some->> (:used_tables item)
-                                    (map format-entity)
-                                    md))))
+  (te/md "The user is currently in the notebook editor."
+         (te/field "Query data source" (-> item :query :data_source))
+         (te/field "Tables used" (some->> (:used_tables item)
+                                          (map format-entity)
+                                          te/md))))
 
 ;; Format native SQL query viewing context.
 (defmethod format-entity "native"
   [item]
-  (md
+  (te/md
    "The user is currently in the SQL editor."
-   (field "Current SQL query" (code (:query item) "sql"))
-   (field "Database SQL engine" (:sql_engine item))
-   (field "Query error" (code (:error item)))
-   (field "Tables used" (some->> (:used_tables item)
-                                 (map format-entity)
-                                 md))))
+   (te/field "Current SQL query" (te/code (:query item) "sql"))
+   (te/field "Database SQL engine" (:sql_engine item))
+   (te/field "Query error" (te/code (:error item)))
+   (te/field "Tables used" (some->> (:used_tables item)
+                                    (map format-entity)
+                                    te/md))))
 
 (defmethod format-entity "transform"
   [item]
-  (md "The user is currently viewing a Transform."
-      (field "Transform ID" (:id item))
-      (field "Transform name" (:name item))
-      (field "Source type" (:source_type item))
-      (field "Tables used" (some->> (:used_tables item)
-                                    (map format-entity)
-                                    md))))
+  (te/md "The user is currently viewing a Transform."
+         (te/field "Transform ID" (:id item))
+         (te/field "Transform name" (:name item))
+         (te/field "Source type" (:source_type item))
+         (te/field "Tables used" (some->> (:used_tables item)
+                                          (map format-entity)
+                                          te/md))))
 
 (defmethod format-entity "code-editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
     "The user is in the code editor but no active buffers are available."
-    (md "The user is currently in the code editor with the following buffer(s):"
-        (for [{:keys [source cursor selection] :as buffer} buffers]
-          (md
-           (format "Buffer ID: %s | Language: %s | Database ID: %s"
-                   (:id buffer) (:language source) (:database_id source))
-           (when cursor
-             (format "Cursor: Line %s, Column %s" (:line cursor) (:column cursor)))
-           (when-let [{:keys [start end text]} selection]
-             (md
-              (field "Selected lines" (str (:line start) "-" (:line end)))
-              (field "Selected text" text))))))))
+    (te/md "The user is currently in the code editor with the following buffer(s):"
+           (for [{:keys [source cursor selection] :as buffer} buffers]
+             (te/md
+              (format "Buffer ID: %s | Language: %s | Database ID: %s"
+                      (:id buffer) (:language source) (:database_id source))
+              (when cursor
+                (format "Cursor: Line %s, Column %s" (:line cursor) (:column cursor)))
+              (when-let [{:keys [start end text]} selection]
+                (te/md
+                 (te/field "Selected lines" (str (:line start) "-" (:line end)))
+                 (te/field "Selected text" text))))))))
 
 (defn format-viewing-context
   "Format user's current viewing context for injection into system message.
@@ -190,13 +171,13 @@
   (if-not (:user_recently_viewed context)
     ""
     (let [items (:user_recently_viewed context)]
-      (md "Here are some items the user has recently viewed:"
-          (for [item items]
-            (format-simple-entity (select-keys item [:type :id :name :description])))
-          ""
-          "**Important:** These items might be relevant for answering the user's request."
-          "If any item seems relevant, try to fetch its full details using the appropriate tool."
-          "Otherwise, use the search tool to find relevant entities."))))
+      (te/md "Here are some items the user has recently viewed:"
+             (for [item items]
+               (format-simple-entity (select-keys item [:type :id :name :description])))
+             ""
+             "**Important:** These items might be relevant for answering the user's request."
+             "If any item seems relevant, try to fetch its full details using the appropriate tool."
+             "Otherwise, use the search tool to find relevant entities."))))
 
 ;;; Context Enrichment
 
