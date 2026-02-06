@@ -201,23 +201,13 @@
   (when (instance? PooledContext ctx)
     (reset! (:poisoned? ctx) true)))
 
-(p/defrecord+ DevContext [^Context context]
-  common/PythonEval
-  (eval-python [_this code]
-    (.eval context "python" ^String code))
-
-  Closeable
-  (close [_this]
-    nil))
-
 (defn interrupt!
   "Interrupt Python execution in this context. Returns true if interrupted successfully.
    If interrupt times out (guest in uninterruptible code), forces context closure with close(true).
    This is necessary because future-cancel doesn't actually stop GraalVM execution."
   [ctx ^long timeout-ms]
-  (when-let [^Context raw-ctx (cond
-                                (instance? PooledContext ctx) (:context ctx)
-                                (instance? DevContext ctx)    (:context ctx))]
+  (when-let [^Context raw-ctx (when (instance? PooledContext ctx)
+                                (:context ctx))]
     (try
       (.interrupt raw-ctx (Duration/ofMillis timeout-ms))
       true
@@ -243,12 +233,6 @@
       (allowHostAccess HostAccess/ALL)
       (allowIO true)
       (build)))
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- acquire-dev-context
-  "Create a dev context (not pooled, but still Closeable for consistent API)."
-  []
-  (->DevContext (create-graalvm-context)))
 
 (defn- make-python-context-pool
   "Create a pool of Python contexts. Accepts a generator function and optional config map.
@@ -321,8 +305,6 @@
         (->PooledContext context pool tuple (atom false))))))
 
 (defn python-context
-  "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
+  "Acquire a python context from the pool. Must be closed. Use in a `with-open` context."
   []
-  (if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
-      (acquire-dev-context)
-      (acquire-context @python-context-pool)))
+  (acquire-context @python-context-pool))
