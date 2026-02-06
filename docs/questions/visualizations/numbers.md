@@ -10,7 +10,7 @@ The **Numbers** option is for displaying a single number, nice and big.
 
 ![Number](../images/number.png)
 
-If you also want to display the change in the number from period to period, you can use the [Trend chart](../visualizations/trend.md) instead.
+If you want to display the change in the number from period to period, you can use the [Trend chart](../visualizations/trend.md) instead.
 
 ## Create a number chart
 
@@ -22,10 +22,10 @@ To create a number chart, you need a query that returns a single record with at 
 
 2. Run the query:
 
-   - If you're in the query builder, click "Visualize";
-   - If you're in the native editor, click "Run query".
+   - If you're in the query builder, click **Visualize**;
+   - If you're in the native editor, click **Run query**.
 
-3. If the "Number" visualization has not already been applied by default, change the visualization type by clicking on the **Visualization** button in the bottom left and selecting "Number" from the sidebar.
+3. If the "Number" visualization has not already been applied by default, change the visualization type by clicking **Visualization** in the bottom left and selecting "Number" from the sidebar.
 
    ![Number type](../images/number-type.png)
 
@@ -48,8 +48,6 @@ You can use formatting options to do things like:
 
 ### Conditional colors
 
-You can tell Metabase to change the color of the big number based on the number's value (for example, make the number red if the value is less than 50, and green if it's more than 50).
-
-Go to the **Conditional colors** tab option in chart settings and add the intervals and the corresponding colors. You can leave the lower and/or upper bounds empty.
+To change the color of the displayed number based on the value, go to the **Conditional colors** tab option in chart settings. Add the intervals and the corresponding colors (for example, make the number red if the value is less than 50, and green if it's more than 50). You can leave the lower and/or upper bounds empty.
 
 ![Number color](../images/number-colors.png)
