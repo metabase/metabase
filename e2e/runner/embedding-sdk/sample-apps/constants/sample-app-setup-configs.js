@@ -57,6 +57,12 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     env: {
       ...BASE_SETUP_CONFIG.env,
       INCLUDE_SYNTHETIC_MONITORING_TESTS: true,
+      // These hardcoded for fast test, can be exposed to public
+      VITE_DATADOG_APPLICATION_ID: "067a565f-fff1-4cde-a925-b177b2dd2977",
+      VITE_DATADOG_CLIENT_TOKEN: "pub05c5237d47634b00fdab4facc98b8261",
+      VITE_DATADOG_SITE: "us5.datadoghq.com",
+      VITE_DATADOG_SERVICE: "shoppy",
+      VITE_DATADOG_ENV: "staging",
     },
     // TODO: remove
     defaultBranch:
