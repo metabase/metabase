@@ -37,12 +37,13 @@
   [field]
   (let [semantic-type (:semantic_type field)
         field-name    (some-> (:name field) str)]
-    (or
-     ;; Explicit semantic type indicates dominated column
-     (contains? dominated-semantic-types semantic-type)
-     ;; Name pattern matching for common ID columns
-     (and field-name
-          (re-matches #"(?i).*_id$|^id$|.*_uuid$|^uuid$" field-name)))))
+    (boolean
+     (or
+      ;; Explicit semantic type indicates dominated column
+      (contains? dominated-semantic-types semantic-type)
+      ;; Name pattern matching for common ID columns
+      (and field-name
+           (re-matches #"(?i).*_id$|^id$|.*_uuid$|^uuid$" field-name))))))
 
 (defn- high-cardinality?
   "Returns true if the column has very high cardinality (>1000 distinct values).

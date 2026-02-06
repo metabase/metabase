@@ -127,8 +127,9 @@
 (defn- parse-joined-column-name
   "Parse a joined column name like 'Table__field_name'."
   [name]
-  (when-let [[_ alias field-name] (re-find #"^(.+)__(.+)$" name)]
-    {:alias alias :field-name field-name}))
+  (when name
+    (when-let [[_ alias field-name] (re-find #"^(.+)__(.+)$" name)]
+      {:alias alias :field-name field-name})))
 
 (defn- match-columns-by-name
   "Find columns that relate between input and output tables using name-based matching.
