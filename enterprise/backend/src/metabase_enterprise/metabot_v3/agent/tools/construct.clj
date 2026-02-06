@@ -6,6 +6,8 @@
    [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
    [metabase-enterprise.metabot-v3.tools.filters :as filter-tools]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
+   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase-enterprise.metabot-v3.util :as metabot-u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -225,24 +227,35 @@
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
                              :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])]
-          {:data-parts        (when navigate-url
-                                [(streaming/navigate-to-part navigate-url)])
-           :structured-output (assoc structured
+              navigate-url (get-in chart-result [:reactions 0 :url])
+              full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
                                      :chart-type    (:chart-type chart-result)
                                      :chart-link    (:chart-link chart-result)
                                      :chart-content (:chart-content chart-result))
-           :instructions
-           (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-             (te/md
-              "Your query and chart have been created successfully."
-              ""
-              "Next steps to present the chart to the user:"
-              (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-              "- If creating multiple charts, present all chart links"))})
-        query-result))
+              instruction-text
+              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
+                (te/md
+                 "Your query and chart have been created successfully."
+                 ""
+                 "Next steps to present the chart to the user:"
+                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+                 "- If creating multiple charts, present all chart links"))
+              query-xml (llm-rep/query->xml full-structured)]
+          {:output (str "<result>\n" query-xml "\n</result>\n"
+                        "<instructions>\n" instruction-text "\n</instructions>")
+           :data-parts        (when navigate-url
+                                [(streaming/navigate-to-part navigate-url)])
+           :structured-output full-structured
+           :instructions      instruction-text})
+        ;; query-result may already have :output (error) or only :structured-output
+        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
+          (let [query-xml (llm-rep/query->xml s)]
+            (assoc query-result
+                   :output (str "<result>\n" query-xml "\n</result>\n"
+                                "<instructions>\n" instructions/query-created-instructions "\n</instructions>")))
+          query-result)))
     (catch Exception e
       (log/error e "Failed to construct notebook query")
       (if (:agent-error? (ex-data e))
