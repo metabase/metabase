@@ -247,7 +247,7 @@ function getColumns(
       cell: (props) => {
         const node = props.row.original;
         if (node.type === "field") {
-          return <Text ta="right">{props.getValue() as string}</Text>;
+          return <Text ta="right">{String(props.getValue())}</Text>;
         }
         return null;
       },
@@ -257,7 +257,7 @@ function getColumns(
       header: getColumnLabel(column),
       accessorFn: (row: FieldTreeNode) => getStatsColumnValue(row, column),
       cell: (props: CellContext<FieldTreeNode, unknown>) => {
-        return <Ellipsified>{props.getValue() as string}</Ellipsified>;
+        return <Ellipsified>{String(props.getValue())}</Ellipsified>;
       },
     })),
   ];
