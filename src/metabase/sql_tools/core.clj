@@ -67,11 +67,6 @@
   simple-query?-impl
   add-into-clause-impl])
 
-(defn parser-backend
-  "Get current value of sql-tools-parser-backend."
-  []
-  (sql-tools.settings/sql-tools-parser-backend))
-
 (mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
   [driver :- :keyword

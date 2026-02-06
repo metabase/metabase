@@ -9,7 +9,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.util]
-   [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -178,7 +178,7 @@
                                      databases)
         #_#_db-id->quoted    (u/index-by :id quote-default-schema databases)
         db-id->quoted    (u/index-by :id (fn [{:keys [details engine] :as db}]
-                                           (if (= :macaw (sql-tools/parser-backend))
+                                           (if (= :macaw (sql-tools.settings/sql-tools-parser-backend))
                                              (quote-default-schema db)
                                              (or (driver.sql/default-schema engine)
                                                  ;; For MySQL and similar, use database name from connection details
