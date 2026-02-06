@@ -6,10 +6,10 @@ import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { getIsHosted } from "metabase/databases/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
@@ -32,7 +32,7 @@ export const CreateTransformMenu = () => {
   ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
-  const isPaidPlan = useSelector(getIsPaidPlan);
+  const isHosted = useSelector(getIsHosted);
 
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
@@ -41,6 +41,9 @@ export const CreateTransformMenu = () => {
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
   });
+  const shouldShowPythonScriptOption =
+    isHosted &&
+    (shouldShowPythonTransformsUpsell || hasPythonTransformsFeature);
 
   const handlePythonClick = () => {
     if (hasPythonTransformsFeature) {
@@ -89,25 +92,11 @@ export const CreateTransformMenu = () => {
                 {t`SQL query`}
               </Menu.Item>
 
-              {(shouldShowPythonTransformsUpsell ||
-                hasPythonTransformsFeature) && (
+              {shouldShowPythonScriptOption && (
                 <Menu.Item
                   leftSection={<Icon name="code_block" />}
                   rightSection={
                     !hasPythonTransformsFeature ? <UpsellGem size={14} /> : null
-                  }
-                  onClick={handlePythonClick}
-                >
-                  {t`Python script`}
-                </Menu.Item>
-              )}
-              {isPaidPlan && (
-                <Menu.Item
-                  leftSection={<Icon name="code_block" />}
-                  rightSection={
-                    !hasPythonTransformsFeature ? (
-                      <UpsellGem.New size={14} />
-                    ) : null
                   }
                   onClick={handlePythonClick}
                 >

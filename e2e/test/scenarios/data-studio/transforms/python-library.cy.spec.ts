@@ -7,6 +7,11 @@ describe("scenarios > data studio > transforms > python library", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.createSqlTransform({
+      sourceQuery: "SELECT 1",
+      targetTable: "table_a",
+      targetSchema: "Schema A",
+    });
   });
 
   afterEach(() => {
