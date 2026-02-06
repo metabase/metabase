@@ -21,12 +21,14 @@
     (gobject/get obj k)))
 
 (defn- parse-metric
-  "Parse a single metric from JS object to Clojure map."
+  "Parse a single metric from JS object to Clojure map.
+   Expects metrics from the metrics API (metabase.metrics.api), not Card-based metrics."
   [metric-obj]
   (when metric-obj
-    (let [metric-obj (object-get metric-obj "_plainObject")
-          parsed (-> (js->clj metric-obj :keywordize-keys true)
-                     (update-keys u/->kebab-case-en))]
+    (let [;; Check if this is a Metric class wrapper (has _plainObject) or a plain object
+          raw-obj   (or (object-get metric-obj "_plainObject") metric-obj)
+          parsed    (-> (js->clj raw-obj :keywordize-keys true)
+                        (update-keys u/->kebab-case-en))]
       (assoc parsed :lib/type :metadata/metric))))
 
 (defn- parse-metrics
@@ -42,38 +44,28 @@
           (js-keys metrics-data))))
 
 (defn- filter-metrics
-  "Filter parsed metrics according to metadata-spec."
-  [metrics {id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))]
-    (into []
-          (comp
-           (if id-set
-             (filter #(contains? id-set (:id %)))
-             identity)
-           (if name-set
-             (filter #(contains? name-set (:name %)))
-             identity)
-           (if table-id
-             (filter #(and (= (:table-id %) table-id)
-                           (nil? (:source-card-id %))))
-             identity)
-           (if card-id
-             (filter #(= (:source-card-id %) card-id))
-             identity)
-           (if active-only?
-             (filter #(not (:archived %)))
-             identity)
-           ;; Ensure only metrics (type = :metric)
-           (filter #(= (:type %) :metric)))
-          (vals metrics))))
+  "Filter parsed metrics according to metadata-spec.
+   Works with metrics from the metrics API (metabase.metrics.api)."
+  [metrics {id-set :id, name-set :name, :as _metadata-spec}]
+  (into []
+        (comp
+         (if id-set
+           (filter #(contains? id-set (:id %)))
+           identity)
+         (if name-set
+           (filter #(contains? name-set (:name %)))
+           identity))
+        (vals metrics)))
 
 (defn- parse-measure
-  "Parse a single measure from JS object to Clojure map."
+  "Parse a single measure from JS object to Clojure map.
+   Expects measures from the measures API, not Card-based measures."
   [measure-obj]
   (when measure-obj
-    (let [metric-obj (object-get metric-obj "_plainObject")
-          parsed (-> (js->clj measure-obj :keywordize-keys true)
-                     (update-keys u/->kebab-case-en))]
+    (let [;; Check if this is a Measure class wrapper (has _plainObject) or a plain object
+          raw-obj (or (object-get measure-obj "_plainObject") measure-obj)
+          parsed  (-> (js->clj raw-obj :keywordize-keys true)
+                      (update-keys u/->kebab-case-en))]
       (assoc parsed :lib/type :metadata/measure))))
 
 (defn- parse-measures

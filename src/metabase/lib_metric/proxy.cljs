@@ -108,7 +108,7 @@
          __ctor (fn [target]
                   (cond
                     (implements? IMap target) (js/Proxy. target map-handler)
-                    (implements? IVector target) (js/Proxy. target vec-handler)
+                    (implements? IVector target) (into-array (map js/__ctor target))
                     :else target))]
      __ctor)))
 

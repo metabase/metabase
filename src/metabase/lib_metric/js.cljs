@@ -40,6 +40,16 @@
                             [table-id db-id]))))))
             (js-keys tables)))))
 
+(defn- ->metadata-provider
+  "Extract the metadata provider from a MetadataProviderable.
+   If passed a MetricDefinition, extracts its :metadata-provider.
+   Otherwise, assumes it's already a MetadataProvider and returns it."
+  [providerable]
+  (if (and (map? providerable)
+           (= :metric/definition (:lib/type providerable)))
+    (:metadata-provider providerable)
+    providerable))
+
 (defn ^:export metadataProvider
   "Create a MetricMetadataProvider from JS/Redux metadata.
 
@@ -80,33 +90,37 @@
 
 (defn ^:export metricMetadata
   "Get metadata for the Metric with `metric-id`.
+   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns nil if not found."
-  [metadata-provider metric-id]
+  [providerable metric-id]
   (first (lib.metadata.protocols/metadatas
-          metadata-provider
+          (->metadata-provider providerable)
           {:lib/type :metadata/metric, :id #{metric-id}})))
 
 (defn ^:export measureMetadata
   "Get metadata for the Measure with `measure-id`.
+   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns nil if not found."
-  [metadata-provider measure-id]
+  [providerable measure-id]
   (first (lib.metadata.protocols/metadatas
-          metadata-provider
+          (->metadata-provider providerable)
           {:lib/type :metadata/measure, :id #{measure-id}})))
 
 (defn ^:export fromMetricMetadata
   "Create a MetricDefinition from metric metadata.
+   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns opaque CLJS data (no conversion needed for TypeScript's opaque type).
    The metricMetadata should already be a CLJS data structure from the provider."
-  [provider metric-metadata]
-  (lib-metric.definition/from-metric-metadata provider metric-metadata))
+  [providerable metric-metadata]
+  (lib-metric.definition/from-metric-metadata (->metadata-provider providerable) metric-metadata))
 
 (defn ^:export fromMeasureMetadata
   "Create a MetricDefinition from measure metadata.
+   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns opaque CLJS data (no conversion needed for TypeScript's opaque type).
    The measureMetadata should already be a CLJS data structure from the provider."
-  [provider measure-metadata]
-  (lib-metric.definition/from-measure-metadata provider measure-metadata))
+  [providerable measure-metadata]
+  (lib-metric.definition/from-measure-metadata (->metadata-provider providerable) measure-metadata))
 
 (defn ^:export sourceMetricId
   "Get the source metric ID from a definition, or null if measure-based."
@@ -205,9 +219,11 @@
    - filters (optional array of MBQL filter clauses)
    - projections (optional array of dimension references)
 
-   Requires a metadata provider to hydrate source metadata."
-  [provider js-definition]
-  (let [definition    (js->clj js-definition :keywordize-keys true)
+   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition)
+   to hydrate source metadata."
+  [providerable js-definition]
+  (let [provider       (->metadata-provider providerable)
+        definition     (js->clj js-definition :keywordize-keys true)
         source-metric  (:source-metric definition)
         source-measure (:source-measure definition)
         filters        (or (:filters definition) [])

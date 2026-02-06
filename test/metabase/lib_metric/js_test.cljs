@@ -189,3 +189,65 @@
           round-trip    (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
       (is (= [filter-clause] (:filters round-trip)))
       (is (= [projection] (:projections round-trip))))))
+
+;;; -------------------------------------------------- MetadataProviderable Tests --------------------------------------------------
+
+(def ^:private sample-definition
+  "A sample MetricDefinition that can be used as a MetadataProviderable."
+  {:lib/type          :metric/definition
+   :source            {:type     :source/metric
+                       :id       42
+                       :metadata sample-metric-metadata}
+   :filters           []
+   :projections       []
+   :metadata-provider mock-provider})
+
+(deftest ^:parallel metricMetadata-accepts-definition-test
+  (testing "metricMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [result (lib-metric.js/metricMetadata sample-definition 42)]
+      (is (some? result))
+      (is (= :metadata/metric (:lib/type result)))
+      (is (= 42 (:id result))))))
+
+(deftest ^:parallel metricMetadata-returns-nil-for-missing-metric-test
+  (testing "metricMetadata returns nil for missing metric when using definition"
+    (let [result (lib-metric.js/metricMetadata sample-definition 999)]
+      (is (nil? result)))))
+
+(deftest ^:parallel measureMetadata-accepts-definition-test
+  (testing "measureMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [result (lib-metric.js/measureMetadata sample-definition 99)]
+      (is (some? result))
+      (is (= :metadata/measure (:lib/type result)))
+      (is (= 99 (:id result))))))
+
+(deftest ^:parallel measureMetadata-returns-nil-for-missing-measure-test
+  (testing "measureMetadata returns nil for missing measure when using definition"
+    (let [result (lib-metric.js/measureMetadata sample-definition 999)]
+      (is (nil? result)))))
+
+(deftest ^:parallel fromMetricMetadata-accepts-definition-test
+  (testing "fromMetricMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [new-definition (lib-metric.js/fromMetricMetadata sample-definition sample-metric-metadata)]
+      (is (= :metric/definition (:lib/type new-definition)))
+      (is (= :source/metric (get-in new-definition [:source :type])))
+      (is (= 42 (get-in new-definition [:source :id])))
+      (is (= mock-provider (:metadata-provider new-definition))))))
+
+(deftest ^:parallel fromMeasureMetadata-accepts-definition-test
+  (testing "fromMeasureMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [new-definition (lib-metric.js/fromMeasureMetadata sample-definition sample-measure-metadata)]
+      (is (= :metric/definition (:lib/type new-definition)))
+      (is (= :source/measure (get-in new-definition [:source :type])))
+      (is (= 99 (get-in new-definition [:source :id])))
+      (is (= mock-provider (:metadata-provider new-definition))))))
+
+(deftest ^:parallel fromJsMetricDefinition-accepts-definition-test
+  (testing "fromJsMetricDefinition accepts a MetricDefinition as MetadataProviderable"
+    (let [js-def         #js {:source-metric 42}
+          new-definition (lib-metric.js/fromJsMetricDefinition sample-definition js-def)]
+      (is (= :metric/definition (:lib/type new-definition)))
+      (is (= :source/metric (get-in new-definition [:source :type])))
+      (is (= 42 (get-in new-definition [:source :id])))
+      (is (= sample-metric-metadata (get-in new-definition [:source :metadata])))
+      (is (= mock-provider (:metadata-provider new-definition))))))
