@@ -723,6 +723,12 @@ const configs = [
               group: ["__support__/**", "!__support__/metadata"],
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
             },
+            {
+              group: ["metabase/common/components/LogoIcon"],
+              importNames: ["LogoIcon"],
+              message:
+                "Do not use LogoIcon in the core app. With custom Icon, it doesn't work because it relies on Metabase path",
+            },
           ],
         },
       ],
