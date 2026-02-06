@@ -12,10 +12,6 @@
 
 (comment provider/keep-me)
 
-(def keep-me
-  "Var used to ensure this namespace is loaded."
-  ::keep-me)
-
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
     (gobject/get obj k)))

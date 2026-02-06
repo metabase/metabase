@@ -180,7 +180,3 @@
     db-provider-fn
     setting-fn
     (atom {}))))
-
-(def keep-me
-  "Var used to ensure this namespace is loaded."
-  ::keep-me)

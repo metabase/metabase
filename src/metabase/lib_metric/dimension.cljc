@@ -299,7 +299,3 @@
                          :dimension-id dimension-id
                          :target target})))
       field-id)))
-
-(def keep-me
-  "Var used to ensure this namespace is loaded."
-  ::keep-me)
