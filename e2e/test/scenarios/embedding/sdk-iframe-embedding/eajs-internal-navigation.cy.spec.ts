@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
+import { getSignedJwtForResource, updateSetting } from "e2e/support/helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { Parameter } from "metabase-types/api";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -76,77 +77,79 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
 
       // 3. Create starting dashboard with click behaviors linking to target dashboard and native question
       cy.then(function () {
-        H.createDashboard({ name: "Starting Dashboard" }).then(
-          ({ body: startingDashboard }) => {
-            cy.wrap(startingDashboard.id).as("startingDashboardId");
+        H.createDashboard({
+          name: "Starting Dashboard",
+          enable_embedding: true,
+          embedding_type: "guest-embed",
+        }).then(({ body: startingDashboard }) => {
+          cy.wrap(startingDashboard.id).as("startingDashboardId");
 
-            H.createQuestion({
-              name: "Orders for Starting Dashboard",
-              query: { "source-table": ORDERS_ID, limit: 5 },
-            }).then(({ body: startingQuestion }) => {
-              H.addOrUpdateDashboardCard({
-                card_id: startingQuestion.id,
-                dashboard_id: startingDashboard.id,
-                card: {
-                  row: 0,
-                  col: 0,
-                  size_x: 24,
-                  size_y: 8,
-                  visualization_settings: {
-                    column_settings: {
-                      // ID column links to target dashboard with parameter
-                      [`["ref",["field",${ORDERS.ID},null]]`]: {
-                        click_behavior: {
-                          type: "link",
-                          linkType: "dashboard",
-                          linkTextTemplate: "Go to Target Dashboard",
-                          targetId: this.targetDashboardId,
-                          parameterMapping: {
-                            [TARGET_DASHBOARD_FILTER.id]: {
-                              source: {
-                                type: "column",
-                                id: "ID",
-                                name: "ID",
-                              },
-                              target: {
-                                type: "parameter",
-                                id: TARGET_DASHBOARD_FILTER.id,
-                              },
+          H.createQuestion({
+            name: "Orders for Starting Dashboard",
+            query: { "source-table": ORDERS_ID, limit: 5 },
+          }).then(({ body: startingQuestion }) => {
+            H.addOrUpdateDashboardCard({
+              card_id: startingQuestion.id,
+              dashboard_id: startingDashboard.id,
+              card: {
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 8,
+                visualization_settings: {
+                  column_settings: {
+                    // ID column links to target dashboard with parameter
+                    [`["ref",["field",${ORDERS.ID},null]]`]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "dashboard",
+                        linkTextTemplate: "Go to Target Dashboard",
+                        targetId: this.targetDashboardId,
+                        parameterMapping: {
+                          [TARGET_DASHBOARD_FILTER.id]: {
+                            source: {
+                              type: "column",
+                              id: "ID",
+                              name: "ID",
+                            },
+                            target: {
+                              type: "parameter",
                               id: TARGET_DASHBOARD_FILTER.id,
                             },
+                            id: TARGET_DASHBOARD_FILTER.id,
                           },
                         },
                       },
-                      // PRODUCT_ID column links to native question with parameter
-                      [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
-                        click_behavior: {
-                          type: "link",
-                          linkType: "question",
-                          linkTextTemplate: "Go to Native Question",
-                          targetId: this.nativeQuestionId,
-                          parameterMapping: {
-                            id: {
-                              source: {
-                                type: "column",
-                                id: "PRODUCT_ID",
-                                name: "Product ID",
-                              },
-                              target: {
-                                type: "variable",
-                                id: "id",
-                              },
+                    },
+                    // PRODUCT_ID column links to native question with parameter
+                    [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "question",
+                        linkTextTemplate: "Go to Native Question",
+                        targetId: this.nativeQuestionId,
+                        parameterMapping: {
+                          id: {
+                            source: {
+                              type: "column",
+                              id: "PRODUCT_ID",
+                              name: "Product ID",
+                            },
+                            target: {
+                              type: "variable",
                               id: "id",
                             },
+                            id: "id",
                           },
                         },
                       },
                     },
                   },
                 },
-              });
+              },
             });
-          },
-        );
+          });
+        });
       });
     });
 
@@ -250,6 +253,49 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
         .findByText(/Back to/)
         .should("not.exist");
     });
+
+    it("should not support internal navigation on guest embeds", () => {
+      // Enable guest embedding settings
+      cy.request("PUT", "/api/setting/enable-embedding-simple", {
+        value: true,
+      });
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
+        value: true,
+      });
+      updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
+
+      cy.get("@startingDashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+        });
+
+        const frame = H.loadSdkIframeEmbedTestPage({
+          metabaseConfig: { isGuest: true },
+          elements: [
+            {
+              component: "metabase-dashboard",
+              attributes: {
+                token,
+                drills: true,
+              },
+            },
+          ],
+        });
+
+        frame.within(() => {
+          cy.log("dashboard should render");
+          cy.findByText("Orders for Starting Dashboard", {
+            timeout: 10000,
+          }).should("be.visible");
+
+          cy.log(
+            "click behavior link text should not be shown, actual data values should be visible instead",
+          );
+          cy.findByText("Go to Target Dashboard").should("not.exist");
+        });
+      });
+    });
   });
 
   describe("<metabase-browser> breadcrumbs", () => {
@@ -348,59 +394,6 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
-    });
-  });
-
-  describe("guest embed", () => {
-    beforeEach(() => {
-      H.prepareGuestEmbedSdkIframeEmbedTest({
-        onPrepare: () => {
-          createQuestion({
-            name: "Guest Question",
-            enable_embedding: true,
-            embedding_type: "guest-embed",
-            query: {
-              "source-table": ORDERS_ID,
-              limit: 5,
-            },
-          }).then(({ body: question }) => {
-            cy.wrap(question.id).as("guestQuestionId");
-          });
-        },
-      });
-    });
-
-    it("should not support drills on guest embeds", () => {
-      cy.get("@guestQuestionId").then(async (questionId) => {
-        const token = await getSignedJwtForResource({
-          resourceId: questionId as unknown as number,
-          resourceType: "question",
-        });
-
-        const frame = H.loadSdkIframeEmbedTestPage({
-          metabaseConfig: { isGuest: true },
-          elements: [
-            {
-              component: "metabase-question",
-              attributes: {
-                token,
-                drills: true,
-              },
-            },
-          ],
-        });
-
-        cy.wait("@getCardQuery");
-
-        frame.within(() => {
-          cy.log("question should render");
-          cy.findByText("Product ID").should("be.visible");
-
-          cy.log("clicking on a cell should not show drill options");
-          cy.findAllByText("37.65").first().click();
-          cy.findByText(/Filter by this value/).should("not.exist");
-        });
-      });
     });
   });
 });
