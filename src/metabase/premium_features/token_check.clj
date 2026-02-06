@@ -186,8 +186,7 @@
                      :throw-exceptions false
                      ;; socket is data transfer, connection is handshake and create connection timeout
                      :socket-timeout     5000     ;; in milliseconds
-                     :connection-timeout 2000     ;; in milliseconds
-                     })))
+                     :connection-timeout 2000})))     ;; in milliseconds
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
@@ -566,6 +565,14 @@
   "True if we have a valid premium features token with ANY features."
   []
   (boolean (seq (*token-features*))))
+
+#_(defn has-feature?
+    "Does this instance's premium token have `feature`?
+
+    (has-feature? :sandboxes)          ; -> true
+    (has-feature? :toucan-management)  ; -> false"
+    [feature]
+    (contains? (*token-features*) (name feature)))
 
 (defn has-feature?
   "Does this instance's premium token have `feature`?
