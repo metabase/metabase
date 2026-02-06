@@ -182,7 +182,8 @@ export const getDatabasesPermissionEditor = createSelector(
   getGroup,
   Groups.selectors.getList,
   getIsLoadingDatabaseTables,
-  (state: State) => getSetting(state, "transforms-enabled"),
+  (state: State) =>
+    getSetting(state, "transforms-enabled") || getSetting(state, "is-hosted?"),
   (
     metadata,
     params,
@@ -393,7 +394,9 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getDataPermissions,
     getOriginalDataPermissions,
     getOrderedGroups,
-    (state: State) => getSetting(state, "transforms-enabled"),
+    (state: State) =>
+      getSetting(state, "transforms-enabled") ||
+      getSetting(state, "is-hosted?"),
     (
       metadata,
       params,
