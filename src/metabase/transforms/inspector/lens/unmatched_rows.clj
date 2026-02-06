@@ -103,7 +103,6 @@
    - base-fields: columns from the base table (useful for null-source-key when LHS is from a LEFT JOIN)"
   [ctx step]
   (let [{:keys [preprocessed-query join-structure db-id]} ctx
-        join (nth join-structure (dec step))
         mbql-join (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step))
         rhs-field (get-rhs-field-ref (:conditions mbql-join))
         lhs-field (get-lhs-field-ref (:conditions mbql-join))

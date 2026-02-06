@@ -13,9 +13,10 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.walk.util :as lib.walk.util]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms.util :as transforms.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -39,15 +40,15 @@
   [query]
   (let [stage (get-in query [:stages 0])
         filter-fields (when-let [filters (:filters stage)]
-                        (into #{} (mapcat lib.walk.util/all-field-ids) filters))
+                        (into #{} (mapcat lib/all-field-ids) filters))
         group-by-fields (when-let [breakout (:breakout stage)]
-                          (into #{} (mapcat lib.walk.util/all-field-ids) breakout))
+                          (into #{} (mapcat lib/all-field-ids) breakout))
         order-by-fields (when-let [order-by (:order-by stage)]
-                          (into #{} (mapcat lib.walk.util/all-field-ids) order-by))
+                          (into #{} (mapcat lib/all-field-ids) order-by))
         join-fields (when-let [joins (:joins stage)]
                       (into #{}
                             (mapcat (fn [join]
-                                      (mapcat lib.walk.util/all-field-ids (:conditions join))))
+                                      (mapcat lib/all-field-ids (:conditions join))))
                             joins))]
     {:join_fields      (or join-fields #{})
      :filter_fields    (or filter-fields #{})
@@ -116,7 +117,7 @@
   [driver-kw condition]
   (when (= (:type condition) :macaw.ast/binary-expression)
     (let [{:keys [operator left right]} condition
-          op-upper (str/upper-case (str operator))]
+          op-upper (u/upper-case-en (str operator))]
       (cond
         ;; Compound condition (AND/OR) - recurse into both sides
         (contains? #{"AND" "OR"} op-upper)
@@ -147,7 +148,7 @@
     (some (fn find-rhs [cond]
             (when (= (:type cond) :macaw.ast/binary-expression)
               (let [{:keys [operator left right]} cond
-                    op-upper (str/upper-case (str operator))]
+                    op-upper (u/upper-case-en (str operator))]
                 (if (contains? #{"AND" "OR"} op-upper)
                   ;; Compound - recurse into left side first
                   (or (find-rhs left) (find-rhs right))
@@ -164,7 +165,7 @@
     (some (fn find-lhs [cond]
             (when (= (:type cond) :macaw.ast/binary-expression)
               (let [{:keys [operator left right]} cond
-                    op-upper (str/upper-case (str operator))]
+                    op-upper (u/upper-case-en (str operator))]
                 (if (contains? #{"AND" "OR"} op-upper)
                   ;; Compound - recurse into left side first
                   (or (find-lhs left) (find-lhs right))

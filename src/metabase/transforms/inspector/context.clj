@@ -1,7 +1,6 @@
 (ns metabase.transforms.inspector.context
   "Context building for Transform Inspector."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
