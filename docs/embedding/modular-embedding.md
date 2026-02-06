@@ -161,7 +161,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
-- **Allow downloads**\*: determines whether people can download question results and save dashboards as PDFs.
+- **Allow downloads**. Determines whether people can download question results and save dashboards as PDFs.
 
 - **Allow people to save new questions**. If you embed the query builder but disable this option, people can still do their own explorations, they just won't be able to save them.
 
