@@ -410,7 +410,11 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should select sensible display for new questions (EMB-308)", () => {
-    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    mountSdkContent(
+      <div style={{ height: 10000 }}>
+        <InteractiveQuestion questionId="new" />
+      </div>,
+    );
     cy.log("Select data");
     H.popover().findByRole("link", { name: "Orders" }).click();
 

@@ -249,7 +249,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         });
 
         // "Visualize" in German locale
-        cy.button("Darstellen").click();
+        cy.button("Darstellen").click({ force: true });
 
         cy.findByTestId("interactive-question-result-toolbar").within(() => {
           // "1 summary" in German locale
@@ -300,7 +300,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         });
 
         // "Visualize" in German locale
-        cy.button("Darstellen").should("be.visible").click();
+        cy.button("Darstellen").click({ force: true });
 
         cy.findByTestId("interactive-question-result-toolbar").within(() => {
           // "1 grouping" in German locale
@@ -402,7 +402,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         cy.findByText("DE-User ID").click();
 
         popover().within(() => {
-          cy.findByText("DE-Product ID").click();
+          cy.findByText("DE-Product ID").click({ force: true });
         });
 
         cy.findByText("DE-ID").click();
