@@ -59,6 +59,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
@@ -79,7 +81,9 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -2735,3 +2739,25 @@
       js->clj
       lib.native/validate-template-tags
       clj->js))
+
+(defn- decode-js-key
+  [cljs-key]
+  (cond-> cljs-key
+    (keyword? cljs-key) (name)
+    true (js-key->cljs-key)))
+
+(def parse-query-spec
+  "Parser for query-spec."
+  (mc/coercer [:ref ::lib.schema.test-spec/test-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode decode-js-key})
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
+
+(defn ^:export test-query
+  "Creates a query from a test query spec."
+  [metadata-providerable js-query-spec]
+  (let [query-spec (js->clj js-query-spec :keywordize-keys true)
+        parsed-query-spec (parse-query-spec query-spec)]
+    (lib.query.test-spec/test-query metadata-providerable parsed-query-spec)))

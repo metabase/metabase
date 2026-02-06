@@ -11,7 +11,6 @@ import { createMockDatasetData } from "metabase-types/api/mocks";
 
 import { leaveUntranslated } from "./use-translate-content";
 import {
-  getTranslatedFilterDisplayName,
   translateColumnDisplayName,
   translateFieldValuesInSeries,
 } from "./utils";
@@ -301,88 +300,6 @@ describe("translateFieldValuesInSeries", () => {
 
     expect(result[0].data?.rows).toEqual([]);
     expect(result[0].data?.untranslatedRows).toEqual([]);
-  });
-});
-
-describe("getTranslatedFilterDisplayName", () => {
-  const tcWithPlanTranslation: ContentTranslationFunction = (str) =>
-    str === "Plan" ? "My new name" : str;
-
-  const tcWithStatusTranslation: ContentTranslationFunction = (str) =>
-    str === "Status" ? "Estado" : str;
-
-  const tcWithPriceTranslation: ContentTranslationFunction = (str) =>
-    str === "Price" ? "Preis" : str;
-
-  it("should only replace the first occurrence of column name - 'Plan is Plan' becomes 'My new name is Plan'", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Plan is Plan",
-      tcWithPlanTranslation,
-      "Plan",
-    );
-
-    expect(result).toBe("My new name is Plan");
-  });
-
-  it("should preserve the value when column name appears multiple times", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Status is Status",
-      tcWithStatusTranslation,
-      "Status",
-    );
-
-    expect(result).toBe("Estado is Status");
-  });
-
-  it("should handle column name at the start of the string", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Price is between 10 and 20",
-      tcWithPriceTranslation,
-      "Price",
-    );
-
-    expect(result).toBe("Preis is between 10 and 20");
-  });
-
-  it("should not replace anything if column name is not in display name", () => {
-    const tcWithQuantityTranslation: ContentTranslationFunction = (str) =>
-      str === "Quantity" ? "Menge" : str;
-
-    const result = getTranslatedFilterDisplayName(
-      "Total is greater than 100",
-      tcWithQuantityTranslation,
-      "Quantity",
-    );
-
-    expect(result).toBe("Total is greater than 100");
-  });
-
-  it("should return displayName unchanged when tc returns same value (no translations)", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Total is greater than 100",
-      mockTranslateWithoutTranslations,
-      "Total",
-    );
-
-    expect(result).toBe("Total is greater than 100");
-  });
-
-  it("should return empty string when displayName is empty", () => {
-    const result = getTranslatedFilterDisplayName("", tcWithPlanTranslation);
-
-    expect(result).toBe("");
-  });
-
-  it("should fallback to translating the whole string when no columnDisplayName provided", () => {
-    const tcWithFullTranslation: ContentTranslationFunction = (str) =>
-      str === "Some filter" ? "Ein Filter" : str;
-
-    const result = getTranslatedFilterDisplayName(
-      "Some filter",
-      tcWithFullTranslation,
-    );
-
-    expect(result).toBe("Ein Filter");
   });
 });
 
@@ -745,6 +662,108 @@ describe("translateColumnDisplayName", () => {
         );
         expect(result).toBe("Meine Frage - Teil 2");
       });
+    });
+  });
+
+  describe("filter display name patterns", () => {
+    const tcWithFilterTranslations: ContentTranslationFunction = (str) => {
+      const translations: Record<string, string> = {
+        Total: "Gesamtsumme",
+        Price: "Preis",
+        "Created At": "Erstellt am",
+        Products: "Produkte",
+        Status: "Status",
+      };
+
+      return typeof str === "string" ? (translations[str] ?? str) : str;
+    };
+
+    it("should translate column name in filter: Total is greater than 100", () => {
+      const result = translateColumnDisplayName(
+        "Total is greater than 100",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Gesamtsumme is greater than 100");
+    });
+
+    it("should translate column name in filter: Created At is in the previous 3 months", () => {
+      const result = translateColumnDisplayName(
+        "Created At is in the previous 3 months",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Erstellt am is in the previous 3 months");
+    });
+
+    it("should translate column name in filter: Status is Active", () => {
+      const result = translateColumnDisplayName(
+        "Status is Active",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Status is Active");
+    });
+
+    it("should translate column name in filter: Price is between 10 and 100", () => {
+      const result = translateColumnDisplayName(
+        "Price is between 10 and 100",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Preis is between 10 and 100");
+    });
+
+    it("should translate column name in filter: Total is empty", () => {
+      const result = translateColumnDisplayName(
+        "Total is empty",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Gesamtsumme is empty");
+    });
+
+    it("should translate column name in filter: Total is not empty", () => {
+      const result = translateColumnDisplayName(
+        "Total is not empty",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Gesamtsumme is not empty");
+    });
+
+    it("should translate column name in filter with contains operator", () => {
+      const result = translateColumnDisplayName(
+        "Status contains Active",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Status contains Active");
+    });
+
+    it("should translate aggregation column in filter: Sum of Total is greater than 100", () => {
+      const result = translateColumnDisplayName(
+        "Sum of Total is greater than 100",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Sum of Gesamtsumme is greater than 100");
+    });
+
+    it("should translate joined column in filter: Products → Price is greater than 50", () => {
+      const result = translateColumnDisplayName(
+        "Products → Price is greater than 50",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Produkte → Preis is greater than 50");
+    });
+
+    it("should translate temporal bucket column in filter: Created At: Month is today", () => {
+      const result = translateColumnDisplayName(
+        "Created At: Month is today",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Erstellt am: Month is today");
+    });
+
+    it("should not translate when column has no translation", () => {
+      const result = translateColumnDisplayName(
+        "Unknown Column is greater than 100",
+        tcWithFilterTranslations,
+      );
+      expect(result).toBe("Unknown Column is greater than 100");
     });
   });
 });
