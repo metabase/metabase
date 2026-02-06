@@ -231,6 +231,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
           });
 
           cy.findAllByTestId("action-buttons")
+            .should("have.length", 2)
             .last()
             .within(() => {
               cy.findByText("Filter").click();
