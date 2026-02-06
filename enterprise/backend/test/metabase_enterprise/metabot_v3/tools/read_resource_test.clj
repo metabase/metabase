@@ -69,18 +69,22 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id :name "Test Table"}]
         (testing "fetches basic table info"
-          (is (=? {:resources [{:content map?}]}
+          (is (=? {:resources [{:content {:structured-output map?
+                                          :formatted         string?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)]}))))
 
         (testing "fetches table with fields"
-          (is (=? {:resources [{:content map?}]}
+          (is (=? {:resources [{:content {:structured-output map?
+                                          :formatted         string?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id "/fields")]}))))
 
         (testing "handles multiple URIs"
-          (is (=? {:resources [{:content map?}
-                               {:content map?}]}
+          (is (=? {:resources [{:content {:structured-output map?
+                                          :formatted         string?}}
+                               {:content {:structured-output map?
+                                          :formatted         string?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)
                            (str "metabase://table/" table-id "/fields")]}))))
@@ -93,7 +97,7 @@
 (deftest format-resources-test
   (testing "formats resources with content"
     (let [resources [{:uri "metabase://table/123"
-                      :content "Table details here"}]
+                      :content {:formatted "Table details here"}}]
           formatted (#'read-resource/format-resources resources)]
       (is (str/includes? formatted "<resources>"))
       (is (str/includes? formatted "<resource uri=\"metabase://table/123\">"))
