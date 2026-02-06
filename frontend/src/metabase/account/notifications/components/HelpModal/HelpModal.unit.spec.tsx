@@ -7,7 +7,7 @@ type SetupOpts = {
   onClose?: (confirmed: boolean) => void;
 };
 
-function setup({ onClose }: SetupOpts = {}) {
+function setup({ onClose = jest.fn() }: SetupOpts = {}) {
   renderWithProviders(<HelpModal onClose={onClose} />);
 }
 

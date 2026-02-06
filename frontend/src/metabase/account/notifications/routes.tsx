@@ -4,10 +4,10 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import HelpModal from "./components/HelpModal";
 import { DeleteAlertModal } from "./containers/ArchiveAlertModal";
-import ArchivePulseModal from "./containers/ArchivePulseModal";
+import { ArchivePulseModal } from "./containers/ArchivePulseModal";
 import { NotificationsApp } from "./containers/NotificationsApp";
 import { UnsubscribeAlertModal } from "./containers/UnsubscribeAlertModal";
-import UnsubscribePulseModal from "./containers/UnsubscribePulseModal";
+import { UnsubscribePulseModal } from "./containers/UnsubscribePulseModal";
 
 const getRoutes = (): JSX.Element => (
   <Route path="notifications" component={NotificationsApp}>

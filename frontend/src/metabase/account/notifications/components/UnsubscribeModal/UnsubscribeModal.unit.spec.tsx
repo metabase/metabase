@@ -9,7 +9,16 @@ describe("UnsubscribeModal", () => {
   it("should render an alert", () => {
     const alert = createMockAlert();
 
-    render(<UnsubscribeModal item={alert} type="alert" />);
+    render(
+      <UnsubscribeModal
+        item={alert}
+        type="alert"
+        user={createMockUser()}
+        onUnsubscribe={jest.fn()}
+        onArchive={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
 
     expect(
       screen.getByText("this alert", { exact: false }),
@@ -19,7 +28,16 @@ describe("UnsubscribeModal", () => {
   it("should render a pulse", () => {
     const pulse = createMockDashboardSubscription();
 
-    render(<UnsubscribeModal item={pulse} type="pulse" />);
+    render(
+      <UnsubscribeModal
+        item={pulse}
+        type="pulse"
+        user={createMockUser()}
+        onUnsubscribe={jest.fn()}
+        onArchive={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
 
     expect(
       screen.getByText("this subscription", { exact: false }),
@@ -27,7 +45,8 @@ describe("UnsubscribeModal", () => {
   });
 
   it("should close if unsubscribed successfully", async () => {
-    const alert = createMockAlert();
+    const alert = createMockAlert({ creator_id: 1 });
+    const user = createMockUser({ id: 2 });
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
     const onClose = jest.fn();
@@ -38,6 +57,7 @@ describe("UnsubscribeModal", () => {
       <UnsubscribeModal
         item={alert}
         type="alert"
+        user={user}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         onClose={onClose}

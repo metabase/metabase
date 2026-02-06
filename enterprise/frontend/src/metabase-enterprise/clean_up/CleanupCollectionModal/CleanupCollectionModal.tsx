@@ -40,7 +40,7 @@ interface CleanupCollectionModalProps {
   location: Location;
 }
 
-const CleanupCollectionModalInner = ({
+export const CleanupCollectionModal = ({
   onClose: handleClose,
   params,
 }: CleanupCollectionModalProps) => {
@@ -224,5 +224,3 @@ const CleanupCollectionModalInner = ({
     </Modal.Root>
   );
 };
-
-export const CleanupCollectionModal = CleanupCollectionModalInner;

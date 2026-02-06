@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { FormMessageStyled } from "./FormMessage.styled";
 
-type Response = {
+export type Response = {
   status: number;
   data?: {
     message?: string;

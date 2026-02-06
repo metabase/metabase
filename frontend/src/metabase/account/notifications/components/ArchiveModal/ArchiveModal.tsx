@@ -4,25 +4,26 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { Response } from "metabase/forms/components/FormMessage";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
-import type { FormError, NotificationType } from "../../types";
+import type { NotificationType } from "../../types";
 
 import { ModalMessage } from "./ArchiveModal.styled";
 
 type ArchiveModalProps = {
   item: Alert | DashboardSubscription;
   type: NotificationType;
-  user?: User | null;
-  hasUnsubscribed?: boolean;
-  onArchive?: (
+  user: User;
+  hasUnsubscribed: boolean;
+  onArchive: (
     item: Alert | DashboardSubscription,
     archived: boolean,
   ) => Promise<void>;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 function ArchiveModal({
@@ -33,14 +34,14 @@ function ArchiveModal({
   onArchive,
   onClose,
 }: ArchiveModalProps): JSX.Element {
-  const [error, setError] = useState<FormError>();
+  const [error, setError] = useState<Response>();
 
   const handleArchiveClick = useCallback(async () => {
     try {
-      await onArchive?.(item, true);
-      onClose?.();
+      await onArchive(item, true);
+      onClose();
     } catch (err) {
-      setError(err as FormError);
+      setError(err as Response);
     }
   }, [item, onArchive, onClose]);
 
@@ -74,14 +75,14 @@ function ArchiveModal({
 
 const isCreator = (
   item: Alert | DashboardSubscription,
-  user: User | null | undefined,
+  user: User,
 ): boolean => {
-  return user != null && user.id === item.creator?.id;
+  return user.id === item.creator?.id;
 };
 
 const getTitleMessage = (
   type: NotificationType,
-  hasUnsubscribed: boolean | undefined,
+  hasUnsubscribed: boolean,
 ): string => {
   switch (type) {
     case "alert":
@@ -97,7 +98,7 @@ const getTitleMessage = (
 
 const getSubmitMessage = (
   type: NotificationType,
-  hasUnsubscribed: boolean | undefined,
+  hasUnsubscribed: boolean,
 ): string => {
   switch (type) {
     case "alert":
@@ -109,19 +110,16 @@ const getSubmitMessage = (
   }
 };
 
-const getCancelMessage = (hasUnsubscribed: boolean | undefined): string => {
+const getCancelMessage = (hasUnsubscribed: boolean): string => {
   return hasUnsubscribed ? t`Keep it around` : t`I changed my mind`;
 };
 
-const getCreatorMessage = (
-  type: NotificationType,
-  user: User | null | undefined,
-): string => {
+const getCreatorMessage = (type: NotificationType, user: User): string => {
   switch (type) {
     case "alert":
-      return t`You won't receive this alert at ${user?.email} any more. `;
+      return t`You won't receive this alert at ${user.email} any more. `;
     case "pulse":
-      return t`You won't receive this subscription at ${user?.email} any more. `;
+      return t`You won't receive this subscription at ${user.email} any more. `;
   }
 };
 

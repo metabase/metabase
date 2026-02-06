@@ -4,21 +4,22 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { Response } from "metabase/forms/components/FormMessage";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
-import type { FormError, NotificationType } from "../../types";
+import type { NotificationType } from "../../types";
 
 type UnsubscribeModalProps = {
   item: Alert | DashboardSubscription;
   type: NotificationType;
-  user?: User | null;
-  onUnsubscribe?: (item: Alert | DashboardSubscription) => Promise<void>;
-  onArchive?: (
+  user: User;
+  onUnsubscribe: (item: Alert | DashboardSubscription) => Promise<void>;
+  onArchive: (
     item: Alert | DashboardSubscription,
     type: NotificationType,
     hasUnsubscribed: boolean,
   ) => void;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 function UnsubscribeModal({
@@ -29,19 +30,19 @@ function UnsubscribeModal({
   onArchive,
   onClose,
 }: UnsubscribeModalProps): JSX.Element {
-  const [error, setError] = useState<FormError>();
+  const [error, setError] = useState<Response>();
 
   const handleUnsubscribeClick = useCallback(async () => {
     try {
-      await onUnsubscribe?.(item);
+      await onUnsubscribe(item);
 
       if (isCreator(item, user)) {
-        onArchive?.(item, type, true);
+        onArchive(item, type, true);
       } else {
-        onClose?.();
+        onClose();
       }
     } catch (err) {
-      setError(err as FormError);
+      setError(err as Response);
     }
   }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 
@@ -69,9 +70,9 @@ function UnsubscribeModal({
 
 const isCreator = (
   item: Alert | DashboardSubscription,
-  user: User | null | undefined,
+  user: User,
 ): boolean => {
-  return user != null && user.id === item.creator?.id;
+  return user.id === item.creator?.id;
 };
 
 const getUnsubscribeMessage = (type: NotificationType): string => {

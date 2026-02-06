@@ -1,6 +1,7 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
 
 import { useGetSubscriptionQuery, useUnsubscribeMutation } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
@@ -13,15 +14,19 @@ type UnsubscribePulseModalProps = {
   onClose: () => void;
 };
 
-function UnsubscribePulseModal({
+export function UnsubscribePulseModal({
   params,
   onClose,
-}: UnsubscribePulseModalProps): JSX.Element | null {
+}: UnsubscribePulseModalProps): JSX.Element {
   const dispatch = useDispatch();
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
 
-  const { data: pulse } = useGetSubscriptionQuery(pulseId ?? skipToken);
+  const {
+    data: pulse,
+    isLoading,
+    error,
+  } = useGetSubscriptionQuery(pulseId ?? skipToken);
 
   const [unsubscribe] = useUnsubscribeMutation();
 
@@ -37,21 +42,20 @@ function UnsubscribePulseModal({
     dispatch(navigateToArchive(item, "pulse", hasUnsubscribed));
   };
 
-  if (!pulse) {
-    return null;
-  }
-
   return (
-    <UnsubscribeModal
-      item={pulse}
-      type="pulse"
-      user={user}
-      onUnsubscribe={handleUnsubscribe}
-      onArchive={handleArchive}
-      onClose={onClose}
-    />
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      {() =>
+        pulse && user ? (
+          <UnsubscribeModal
+            item={pulse}
+            type="pulse"
+            user={user}
+            onUnsubscribe={handleUnsubscribe}
+            onArchive={handleArchive}
+            onClose={onClose}
+          />
+        ) : null
+      }
+    </LoadingAndErrorWrapper>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UnsubscribePulseModal;

@@ -10,7 +10,7 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { ModalMessage } from "./HelpModal.styled";
 
 type HelpModalProps = {
-  onClose?: (confirmed: boolean) => void;
+  onClose: (confirmed: boolean) => void;
 };
 
 function HelpModal({ onClose }: HelpModalProps): JSX.Element {

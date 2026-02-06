@@ -5,6 +5,7 @@ import {
   useGetSubscriptionQuery,
   useUpdateSubscriptionMutation,
 } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
@@ -17,15 +18,19 @@ type ArchivePulseModalProps = {
   onClose: () => void;
 };
 
-function ArchivePulseModal({
+export function ArchivePulseModal({
   params,
   location,
   onClose,
-}: ArchivePulseModalProps): JSX.Element | null {
+}: ArchivePulseModalProps): JSX.Element {
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
 
-  const { data: pulse } = useGetSubscriptionQuery(pulseId ?? skipToken);
+  const {
+    data: pulse,
+    isLoading,
+    error,
+  } = useGetSubscriptionQuery(pulseId ?? skipToken);
 
   const [updateSubscription] = useUpdateSubscriptionMutation();
 
@@ -36,21 +41,20 @@ function ArchivePulseModal({
     await updateSubscription({ id: item.id, archived });
   };
 
-  if (!pulse) {
-    return null;
-  }
-
   return (
-    <ArchiveModal
-      item={pulse}
-      type="pulse"
-      user={user}
-      hasUnsubscribed={Boolean(location.query?.unsubscribed)}
-      onArchive={handleArchive}
-      onClose={onClose}
-    />
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      {() =>
+        pulse && user ? (
+          <ArchiveModal
+            item={pulse}
+            type="pulse"
+            user={user}
+            hasUnsubscribed={Boolean(location.query?.unsubscribed)}
+            onArchive={handleArchive}
+            onClose={onClose}
+          />
+        ) : null
+      }
+    </LoadingAndErrorWrapper>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ArchivePulseModal;

@@ -98,7 +98,13 @@ const getEditingPulseWithDefaults = (
   const dashboardId = dashboardWrapper.dashboardId;
 
   if (dashboardId == null) {
-    return pulse;
+    return {
+      ...pulse,
+      cards: cardsToPulseCards(
+        getSupportedCardsForSubscriptions(props.dashboard),
+        pulse.cards,
+      ),
+    };
   }
 
   const currentDashboard = dashboardWrapper.dashboards[dashboardId];
