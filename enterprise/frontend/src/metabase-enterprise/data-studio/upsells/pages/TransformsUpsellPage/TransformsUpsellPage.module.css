@@ -25,3 +25,10 @@
   background-color: var(--mb-color-background-secondary);
   padding-left: 2.5rem;
 }
+
+@media (max-height: 600px) {
+  .UpsellPageContent {
+    height: 100%;
+    overflow-y: auto;
+  }
+}

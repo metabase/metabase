@@ -9,11 +9,11 @@ export const getCostDescription = (
 ) => {
   if (isTrialFlow && formattedTrialEndDate) {
     return billingPeriod === "monthly"
-      ? t`New total monthly cost starting ${formattedTrialEndDate}`
-      : t`New total yearly cost starting ${formattedTrialEndDate}`;
+      ? t`Additional monthly cost starting ${formattedTrialEndDate}`
+      : t`Additional yearly cost starting ${formattedTrialEndDate}`;
   }
 
   return billingPeriod === "monthly"
-    ? t`New total monthly cost`
-    : t`New total yearly cost`;
+    ? t`Additional monthly cost`
+    : t`Additional yearly cost`;
 };

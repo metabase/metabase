@@ -91,22 +91,25 @@ export function TransformsUpsellPage() {
   // - No billing data available (can't show pricing)
   const showSingleColumn = (isHosted && !isStoreUser) || !hasData;
 
-  if (error) {
+  if (error || isLoading) {
     return (
-      <Center h="100%" bg="background-secondary">
-        <LoadingAndErrorWrapper
-          loading={false}
-          error={t`Error fetching information about available add-ons.`}
+      <DottedBackground px="3.5rem" pb="2rem">
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
+          }
         />
-      </Center>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Center h="100%" bg="background-secondary">
-        <LoadingAndErrorWrapper loading={true} error={null} />
-      </Center>
+        <Center h="100%" bg="background-secondary">
+          <LoadingAndErrorWrapper
+            loading={isLoading}
+            error={
+              error
+                ? t`Error fetching information about available add-ons.`
+                : null
+            }
+          />
+        </Center>
+      </DottedBackground>
     );
   }
 
@@ -125,7 +128,12 @@ export function TransformsUpsellPage() {
           <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
         }
       />
-      <Flex align="flex-start" justify="center" py="xl">
+      <Flex
+        align="flex-start"
+        className={S.UpsellPageContent}
+        justify="center"
+        py="xl"
+      >
         <LineDecorator>
           <Card className={cardClassNames} p={0} withBorder>
             <Stack gap="lg" className={leftColumnClassNames} p="xl">
