@@ -15,11 +15,17 @@ This skill covers the Metabase workspace and transform APIs -- creating, testing
 
 2. **Always build on existing transforms.** Before creating ANY new transform, list existing transforms and check if any already has the data you need. Read from existing transform outputs instead of re-querying source tables.
 
-3. **Delete scratch transforms immediately.** After a scratch transform has served its exploratory purpose, delete it before moving on. Don't leave scratch transforms lying around.
+3. **Never duplicate queries -- extract intermediates eagerly.** If you're about to write a subquery that duplicates logic from another transform, STOP. Extract the shared computation into an intermediate transform first, then have both transforms read from it.
 
-4. **Present results in chat.** After running a transform, show the results as an ASCII table in the conversation. The chat is the primary interface; the workspace view is for auditing.
+4. **Delete scratch transforms immediately.** After a scratch transform has served its exploratory purpose, delete it before moving on. Don't leave scratch transforms lying around.
 
-5. **Never reference isolated schemas.** Always use target names (e.g., `FROM cleaned_reviews`). The isolation schema is an internal detail.
+5. **Present results in chat.** After running a transform, show the results as an ASCII table in the conversation. The chat is the primary interface; the workspace view is for auditing.
+
+6. **Always specify schema in targets.** Use `"target": { "type": "table", "schema": "public", "name": "..." }` -- don't rely on defaults.
+
+7. **Never reference isolated schemas.** Always use target names (e.g., `FROM cleaned_reviews`). The isolation schema is an internal detail.
+
+8. **Keep JSON on one line.** The entire `-d '{...}'` body must be on a single line. Don't let the JSON wrap mid-string - use `\n` for newlines in SQL, not actual line breaks.
 
 ## Getting Started
 
@@ -35,12 +41,12 @@ Workspaces provide an isolated environment for:
 
 1. Check if you have superuser access by attempting to list workspaces:
    ```bash
-   curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/ee/workspace/"
+   curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/"
    ```
 
 2. If you're a superuser, create an empty workspace:
    ```bash
-   curl -X POST -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
+   curl -s -X POST -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
      -d '{"name": "My Analysis Workspace"}' \
      "http://localhost:3000/api/ee/workspace/"
    ```
@@ -57,7 +63,7 @@ Ask the user for:
 ### Check workspace status
 
 ```bash
-curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/ee/workspace/$WS_ID"
+curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/WS"
 ```
 
 The workspace should be in `ready` status. Key fields:
@@ -71,28 +77,25 @@ Before starting analysis, discover what data is available.
 ### Find the database from workspace
 
 ```bash
-# Get workspace info
-curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/ee/workspace/$WS_ID"
-# Note the database_id field
+# Get workspace info and note the database_id field
+curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/WS" | jq .database_id
 ```
 
 ### List available tables
 
 ```bash
-# Get database metadata with tables
-curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/database/$DB_ID/metadata"
+# Get database metadata with tables (filter to public schema)
+curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/database/DB_ID/metadata" \
+  | jq '.tables[] | select(.schema == "public") | {id, name}'
 ```
-
-Filter to the `public` schema (or relevant schema) -- ignore internal schemas like `information_schema`.
 
 ### Inspect table schema
 
 ```bash
-# Get detailed column info for a table
-curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/table/$TABLE_ID/query_metadata"
+# Get column info for a specific table
+curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/table/TABLE_ID/query_metadata" \
+  | jq '.fields[] | {name, base_type}'
 ```
-
-This returns column names, types, and semantic information.
 
 ### Explore data with dry-run
 
@@ -100,26 +103,13 @@ Create a quick exploratory transform to preview data:
 
 ```bash
 # Create a scratch transform to explore a table
-curl -X POST -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{
-    "name": "scratch_explore_users",
-    "source": {
-      "type": "query",
-      "query": {
-        "database": '"$DB_ID"',
-        "type": "native",
-        "native": {
-          "query": "SELECT *\nFROM users\nLIMIT 100"
-        }
-      }
-    },
-    "target": { "type": "table", "name": "scratch_explore_users" }
-  }' \
-  "http://localhost:3000/api/ee/workspace/$WS_ID/transform"
+curl -s -X POST -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"scratch_explore_users","source":{"type":"query","query":{"database":DB_ID,"type":"native","native":{"query":"SELECT * FROM users LIMIT 100"}}},"target":{"type":"table","schema":"public","name":"scratch_explore_users"}}' \
+  "http://localhost:3000/api/ee/workspace/WS/transform"
 
 # Dry-run to see data without persisting
-curl -X POST -H "x-api-key: $API_KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS_ID/transform/$REF_ID/dry-run"
+curl -s -X POST -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID/dry-run"
 ```
 
 Use dry-run liberally -- it's fast and doesn't persist anything.
@@ -157,8 +147,18 @@ Use consistent naming to keep your workspace organized:
 | Type | Convention | Example |
 |------|------------|---------|
 | **Final outputs** | `Output N: <Descriptive Title>` | `Output 1: Rating Variance by Reviewer Initial` |
-| **Intermediate transforms** | Descriptive snake_case | `cleaned_reviews`, `reviews_by_prefix` |
+| **Intermediate transforms** | Descriptive snake_case | `cleaned_reviews`, `variance_by_prefix` |
 | **Scratch/exploratory** | Prefix with `scratch_` | `scratch_explore_orders`, `scratch_test_join` |
+
+### Always specify schema in targets
+
+When creating transforms, always specify the schema explicitly in the target:
+
+```json
+"target": { "type": "table", "schema": "public", "name": "variance_by_prefix" }
+```
+
+Don't rely on the default schema -- be explicit.
 
 ### When to use scratch vs. Output
 
@@ -174,8 +174,8 @@ Use consistent naming to keep your workspace organized:
 Delete scratch transforms **immediately after they've served their purpose**, not just at end of session. After you've used a scratch transform to explore and understand the data, delete it before moving on:
 
 ```bash
-curl -X DELETE -H "x-api-key: $API_KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS_ID/transform/$SCRATCH_REF_ID"
+curl -s -X DELETE -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/transform/SCRATCH_REF_ID"
 ```
 
 Scratch transforms should be short-lived. A workspace with many old scratch transforms is poorly maintained.
@@ -185,9 +185,9 @@ Scratch transforms should be short-lived. A workspace with many old scratch tran
 Store analysis notes and findings in transform descriptions:
 
 ```bash
-curl -X PUT -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"description": "Finding: 23% of reviews have rating variance > 2 std devs. Concentrated in reviewers whose names start with J-M."}' \
-  "http://localhost:3000/api/ee/workspace/$WS_ID/transform/$REF_ID"
+curl -s -X PUT -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
+  -d '{"description": "Finding: 23% of reviews have rating variance > 2 std devs."}' \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID"
 ```
 
 This keeps your discoveries attached to the transforms that produced them.
@@ -201,20 +201,52 @@ This keeps your discoveries attached to the transforms that produced them.
 
 **Before creating ANY new transform, you MUST:**
 
-1. **List existing transforms** in the workspace
+1. **List existing transforms** in the workspace:
+   ```bash
+   curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/WS/transform" \
+     | jq '.[] | {name, ref_id, target: .target.name}'
+   ```
 2. **Check if any existing transform already has the data you need** -- if so, read from its output table instead of re-querying source tables
 
-This is not optional. If `Output 1` computed variance by prefix, and the user now asks for summary statistics on those variances, the new query should `SELECT ... FROM rating_variance_by_initial` (the target of Output 1), NOT re-derive the variances from the source tables.
+This is not optional. Don't re-derive data that already exists in a transform output.
 
-Example -- building on existing work:
+### Extract intermediates eagerly (don't duplicate queries)
+
+**Before writing any new transform, check:** Am I about to duplicate a subquery or CTE that exists in another transform?
+
+If yes, **STOP and refactor first:**
+
+1. Extract the shared computation into a new intermediate transform
+2. Update the existing transform to read from the intermediate
+3. Write the new transform to also read from the intermediate
+
+**Never duplicate a subquery across transforms.** If Output 1 computes variance with a complex GROUP BY, and Output 2 needs that same data, don't copy the GROUP BY -- extract it.
+
+Example -- WRONG (duplicated logic):
 ```sql
--- Output 1 already computed: rating_variance_by_initial
--- New Output 2 should read from it:
-SELECT
-  AVG(variance) AS mean_variance,
-  MAX(variance) AS max_variance
-FROM rating_variance_by_initial
+-- Output 1
+SELECT prefix, AVG(rating), VAR_POP(rating)
+FROM reviews GROUP BY prefix
+
+-- Output 2 (BAD: duplicates the aggregation)
+SELECT AVG(variance) FROM (
+  SELECT prefix, VAR_POP(rating) as variance
+  FROM reviews GROUP BY prefix
+)
 ```
+
+Example -- CORRECT (shared intermediate):
+```
+variance_by_prefix              ← intermediate (holds the GROUP BY)
+  ├── Output 1: Variance Details    ← SELECT * FROM variance_by_prefix
+  └── Output 2: Variance Summary    ← SELECT AVG(variance) FROM variance_by_prefix
+```
+
+This keeps Outputs as leaf nodes that present data, while intermediates hold the reusable computations.
+
+### Outputs should not depend on other Outputs
+
+If a new Output needs data computed by an existing Output, don't make Output 2 depend on Output 1. Instead, extract the shared data into an intermediate, then have both Outputs read from it.
 
 ### Refactoring shared logic
 
@@ -234,10 +266,10 @@ Run each phase and verify results before proceeding. This makes debugging easier
 
 Example progression:
 ```
-scratch_raw_sample      → Verify source data looks right
-cleaned_reviews         → Verify cleaning logic
-reviews_by_prefix       → Verify grouping is correct
-Output 1: Rating Variance by Reviewer Initial  → Final answer
+scratch_raw_sample      → Verify source data looks right, then DELETE
+cleaned_reviews         → Verify cleaning logic (intermediate, keep)
+variance_by_prefix      → Verify grouping is correct (intermediate, keep)
+Output 1: Variance Details  → Final answer
 ```
 
 ### Session cleanup
@@ -246,15 +278,16 @@ Before ending an analysis session:
 
 1. List all transforms:
    ```bash
-   curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/ee/workspace/$WS_ID/transform"
+   curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/WS/transform" \
+     | jq '.[] | {name, ref_id}'
    ```
 
 2. Verify no scratch transforms remain (they should have been deleted as you went -- see "Cleaning up scratch transforms" above)
 
 3. If the analysis is complete and you don't need the workspace anymore, archive it:
    ```bash
-   curl -X POST -H "x-api-key: $API_KEY" \
-     "http://localhost:3000/api/ee/workspace/$WS_ID/archive"
+   curl -s -X POST -H "x-api-key: API_KEY" \
+     "http://localhost:3000/api/ee/workspace/WS/archive"
    ```
 
 ## Pipeline Development Workflow
@@ -263,52 +296,27 @@ Before ending an analysis session:
 
 ```bash
 # 1. Check workspace is usable
-curl -H "x-api-key: $KEY" "http://localhost:3000/api/ee/workspace/$WS/transform"
+curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/WS/transform"
 
-# 2. Create a transform (pretty-print SQL for readability)
-curl -X POST -H "x-api-key: $KEY" -H "Content-Type: application/json" \
-  -d '{
-    "name": "Active Users",
-    "description": "Summarizes active user accounts",
-    "source": {
-      "type": "query",
-      "query": {
-        "database": 19,
-        "type": "native",
-        "native": {
-          "query": "SELECT\n  id,\n  email,\n  first_name\nFROM core_user\nWHERE is_active = true"
-        }
-      }
-    },
-    "target": { "type": "table", "name": "active_users" }
-  }' \
-  "http://localhost:3000/api/ee/workspace/$WS/transform"
+# 2. Create a transform (pretty-print SQL, always specify schema)
+curl -s -X POST -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Active Users","description":"Summarizes active user accounts","source":{"type":"query","query":{"database":19,"type":"native","native":{"query":"SELECT id, email, first_name FROM core_user WHERE is_active = true"}}},"target":{"type":"table","schema":"public","name":"active_users"}}' \
+  "http://localhost:3000/api/ee/workspace/WS/transform"
 # Response includes ref_id, target_isolated, target_stale
 
 # 3. Dry-run to preview results (no persistence)
-curl -X POST -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/transform/$REF_ID/dry-run"
+curl -s -X POST -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID/dry-run"
 # Returns: { status, data: { rows, cols, results_metadata } }
 
 # 4. Iterate -- update the transform and dry-run again
-curl -X PUT -H "x-api-key: $KEY" -H "Content-Type: application/json" \
-  -d '{
-    "source": {
-      "type": "query",
-      "query": {
-        "database": 19,
-        "type": "native",
-        "native": {
-          "query": "SELECT\n  id,\n  email,\n  first_name,\n  last_login\nFROM core_user\nWHERE is_active = true\nORDER BY last_login DESC"
-        }
-      }
-    }
-  }' \
-  "http://localhost:3000/api/ee/workspace/$WS/transform/$REF_ID"
+curl -s -X PUT -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
+  -d '{"source":{"type":"query","query":{"database":19,"type":"native","native":{"query":"SELECT id, email, first_name, last_login FROM core_user WHERE is_active = true ORDER BY last_login DESC"}}}}' \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID"
 
 # 5. Run to persist to isolated schema
-curl -X POST -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/transform/$REF_ID/run"
+curl -s -X POST -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID/run"
 # Returns: { status, start_time, end_time, table: { name, schema } }
 ```
 
@@ -316,62 +324,53 @@ curl -X POST -H "x-api-key: $KEY" \
 
 ```bash
 # 1. Dry-run to see the error message
-curl -X POST -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/transform/$REF_ID/dry-run"
+curl -s -X POST -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID/dry-run"
 # Failed response: { "status": "failed", "message": "ERROR: ..." }
 
 # 2. Check transform details for last run info
-curl -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/transform/$REF_ID"
+curl -s -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/transform/REF_ID"
 # Look at: last_run_status, last_run_message, target_stale
 
 # 3. Check workspace-level problems
-curl -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/problem"
+curl -s -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/problem"
 
 # 4. Inspect the dependency graph
-curl -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/graph"
+curl -s -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/graph"
 
 # 5. Check setup/execution logs
-curl -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/log"
+curl -s -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/log"
 ```
 
 ### Run all and prepare for merge
 
 ```bash
 # Run all transforms in dependency order (skip up-to-date ones)
-curl -X POST -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/run?stale_only=1"
+curl -s -X POST -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/run?stale_only=1"
 # Returns: { succeeded: [...], failed: [...], not_run: [...] }
 
 # Verify no merge-blocking problems exist
-curl -H "x-api-key: $KEY" \
-  "http://localhost:3000/api/ee/workspace/$WS/problem"
+curl -s -H "x-api-key: API_KEY" \
+  "http://localhost:3000/api/ee/workspace/WS/problem"
 
 # Merge to production (superuser only)
-curl -X POST -H "x-api-key: $KEY" -H "Content-Type: application/json" \
+curl -s -X POST -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
   -d '{"commit-message": "Add user analytics transforms"}' \
-  "http://localhost:3000/api/ee/workspace/$WS/merge"
+  "http://localhost:3000/api/ee/workspace/WS/merge"
 # Returns: { merged: [{ op, global_id, ref_id }], workspace: { id, name } }
 ```
 
 ### Work with Python transforms
 
 ```bash
-curl -X POST -H "x-api-key: $KEY" -H "Content-Type: application/json" \
-  -d '{
-    "name": "User Order Summary",
-    "source": {
-      "type": "python",
-      "source-database": 19,
-      "source-tables": { "users": 1015, "orders": 1042 },
-      "body": "import pandas as pd\nresult = users_df.merge(orders_df, on='\''user_id'\'')"
-    },
-    "target": { "type": "table", "name": "user_order_summary" }
-  }' \
-  "http://localhost:3000/api/ee/workspace/$WS/transform"
+curl -s -X POST -H "x-api-key: API_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"User Order Summary","source":{"type":"python","source-database":19,"source-tables":{"users":1015,"orders":1042},"body":"import pandas as pd\nresult = users_df.merge(orders_df, on='\''user_id'\'')"},"target":{"type":"table","schema":"public","name":"user_order_summary"}}' \
+  "http://localhost:3000/api/ee/workspace/WS/transform"
 ```
 
 Python transforms receive each source table as a pandas DataFrame named `<table_name>_df`. The result must be a DataFrame assigned to `result`.
@@ -480,7 +479,7 @@ Non-blocking problems (like unused transforms) produce warnings but don't preven
 
 A transform is "stale" when any of the following is true:
 1. It has never run
-2. It's definition has changed since its last successful run
+2. Its definition has changed since its last successful run
 3. A table it depends upon has since been updated by another transform
 4. Any of its ancestor transforms is stale
 
@@ -495,10 +494,10 @@ Workspace transforms are identified by a `ref_id` -- a human-readable slug like 
 Pass an API key via header:
 
 ```bash
-curl -H "x-api-key: $API_KEY" "http://localhost:3000/api/ee/workspace/$WS_ID"
+curl -s -H "x-api-key: API_KEY" "http://localhost:3000/api/ee/workspace/WS"
 ```
 
-The user will provide the API key explicitly when needed.
+The user will provide the API key explicitly.
 
 **Access model:**
 - **Superuser** -- full access to everything, required for merge operations
@@ -590,8 +589,9 @@ The user will provide the API key explicitly when needed.
 
 ## Gotchas
 
-- **SQL quoting in JSON:** Single quotes in SQL need shell escaping when embedded in JSON curl commands. Use `'\''` in bash or pass the body via a file (`-d @body.json`).
-- **`schema` field in target validation:** The `/validate/target` endpoint requires a `schema` field -- omitting it returns an error even though the create endpoint infers it.
+- **Keep curl commands on one line:** The entire `-d '...'` JSON body must be on a single line (or use `\` continuation properly). Do NOT let the JSON wrap with actual newlines inside string values - this breaks JSON parsing.
+- **Escape single quotes for bash:** Since curl JSON is wrapped in bash single quotes, any single quote in your SQL or Python code needs escaping. Use `'\''` for each single quote. Example: `!= ''` becomes `!= '\'''\''` and `on='user_id'` becomes `on='\''user_id'\''`.
+- **Always include `schema` in targets:** The API may reject targets without an explicit schema. Always specify it: `"target": { "type": "table", "schema": "public", "name": "..." }`.
 - **Workspace auto-initializes:** An `uninitialized` workspace transitions to `ready` when you create the first transform. No manual initialization step is needed.
 - **Database set by first transform:** An empty workspace doesn't have a database yet. The database is determined when you create the first transform (from the query's database field).
 - **Never query isolated schemas:** Always reference target names in your SQL (e.g., `FROM cleaned_reviews`). The isolation schema is an internal detail -- the system resolves references automatically.
