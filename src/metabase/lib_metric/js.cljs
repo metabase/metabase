@@ -9,6 +9,7 @@
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib-metric.projection :as lib-metric.projection]
+   [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -342,122 +343,204 @@
   [dimension]
   (to-array (map name (lib-metric.filter/filterable-dimension-operators dimension))))
 
+;;; -------------------------------------------------- Filter Parts JS Conversion --------------------------------------------------
+
+(defn- js-key->cljs-key
+  "Converts idiomatic JavaScript keys (`\"camelCaseStrings\"`) into idiomatic Clojure keys (`:kebab-case-keywords`).
+   Inverse of cljs-key->js-key."
+  [js-key]
+  (-> js-key
+      (str/replace #"([a-z])([A-Z])" "$1-$2")
+      str/lower-case
+      keyword))
+
+(defn- js-options->cljs-options
+  "Convert JS options object to CLJS map with kebab-case keys."
+  [js-options]
+  (when js-options
+    (reduce (fn [acc k]
+              (let [cljs-key (js-key->cljs-key k)
+                    v (gobject/get js-options k)]
+                (assoc acc cljs-key v)))
+            {}
+            (js-keys js-options))))
+
+(defn- cljs-options->js-options
+  "Convert CLJS options map to JS object with camelCase keys."
+  [cljs-options]
+  (when (seq cljs-options)
+    (let [result #js {}]
+      (doseq [[k v] cljs-options]
+        (gobject/set result (cljs-key->js-key k) v))
+      result)))
+
+(defn- filter-parts-js->cljs
+  "Convert JS filter parts object to CLJS map.
+   Handles camelCase -> kebab-case key conversion."
+  [js-parts]
+  (when js-parts
+    (let [operator (some-> (gobject/get js-parts "operator") keyword)
+          dimension (gobject/get js-parts "dimension")
+          values (some-> (gobject/get js-parts "values") js->clj)
+          options (js-options->cljs-options (gobject/get js-parts "options"))
+          ;; For coordinate filters
+          longitude-dimension (gobject/get js-parts "longitudeDimension")
+          ;; For relative date filters
+          unit (some-> (gobject/get js-parts "unit") keyword)
+          value (gobject/get js-parts "value")
+          offset-unit (some-> (gobject/get js-parts "offsetUnit") keyword)
+          offset-value (gobject/get js-parts "offsetValue")
+          ;; For specific date filters
+          has-time (gobject/get js-parts "hasTime")]
+      (cond-> {}
+        operator             (assoc :operator operator)
+        dimension            (assoc :dimension dimension)
+        values               (assoc :values values)
+        options              (assoc :options options)
+        longitude-dimension  (assoc :longitude-dimension longitude-dimension)
+        unit                 (assoc :unit unit)
+        (some? value)        (assoc :value value)
+        offset-unit          (assoc :offset-unit offset-unit)
+        (some? offset-value) (assoc :offset-value offset-value)
+        (some? has-time)     (assoc :has-time has-time)))))
+
+(defn- filter-parts-cljs->js
+  "Convert CLJS filter parts map to JS object.
+   Handles kebab-case -> camelCase key conversion."
+  [cljs-parts]
+  (when cljs-parts
+    (let [result #js {}]
+      (when-let [operator (:operator cljs-parts)]
+        (gobject/set result "operator" (name operator)))
+      (when-let [dimension (:dimension cljs-parts)]
+        (gobject/set result "dimension" dimension))
+      (when-let [values (:values cljs-parts)]
+        (gobject/set result "values" (to-array values)))
+      (when-let [options (:options cljs-parts)]
+        (gobject/set result "options" (cljs-options->js-options options)))
+      (when-let [lon-dim (:longitude-dimension cljs-parts)]
+        (gobject/set result "longitudeDimension" lon-dim))
+      (when-let [unit (:unit cljs-parts)]
+        (gobject/set result "unit" (name unit)))
+      (when (contains? cljs-parts :value)
+        (gobject/set result "value" (:value cljs-parts)))
+      (when-let [offset-unit (:offset-unit cljs-parts)]
+        (gobject/set result "offsetUnit" (name offset-unit)))
+      (when (contains? cljs-parts :offset-value)
+        (gobject/set result "offsetValue" (:offset-value cljs-parts)))
+      (when (contains? cljs-parts :has-time)
+        (gobject/set result "hasTime" (:has-time cljs-parts)))
+      result)))
+
+;;; -------------------------------------------------- Filter Clause/Parts Functions --------------------------------------------------
+
 (defn ^:export stringFilterClause
   "Create a string filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/string
-   :operator :=})
+   Parts: {operator, dimension, values, options}"
+  [parts]
+  (lib-metric.filter/string-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export stringFilterParts
   "Extract string filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, values, options} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/string-filter-parts definition filter-clause)))
 
 (defn ^:export numberFilterClause
   "Create a number filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/number
-   :operator :=})
+   Parts: {operator, dimension, values}"
+  [parts]
+  (lib-metric.filter/number-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export numberFilterParts
   "Extract number filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, values} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/number-filter-parts definition filter-clause)))
 
 (defn ^:export coordinateFilterClause
   "Create a coordinate filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/coordinate
-   :operator :inside})
+   Parts: {operator, dimension, longitudeDimension, values}"
+  [parts]
+  (lib-metric.filter/coordinate-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export coordinateFilterParts
   "Extract coordinate filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, longitudeDimension, values} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/coordinate-filter-parts definition filter-clause)))
 
 (defn ^:export booleanFilterClause
   "Create a boolean filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/boolean
-   :operator :=})
+   Parts: {operator, dimension, values}"
+  [parts]
+  (lib-metric.filter/boolean-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export booleanFilterParts
   "Extract boolean filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, values} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/boolean-filter-parts definition filter-clause)))
 
 (defn ^:export specificDateFilterClause
   "Create a specific date filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/specific-date
-   :operator :=})
+   Parts: {operator, dimension, values, hasTime}"
+  [parts]
+  (lib-metric.filter/specific-date-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export specificDateFilterParts
   "Extract specific date filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, values, hasTime} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/specific-date-filter-parts definition filter-clause)))
 
 (defn ^:export relativeDateFilterClause
   "Create a relative date filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/relative-date
-   :unit :day})
+   Parts: {dimension, unit, value, offsetUnit, offsetValue, options}"
+  [parts]
+  (lib-metric.filter/relative-date-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export relativeDateFilterParts
   "Extract relative date filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {dimension, unit, value, offsetUnit, offsetValue, options} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/relative-date-filter-parts definition filter-clause)))
 
 (defn ^:export excludeDateFilterClause
   "Create an exclude date filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/exclude-date
-   :operator :!=})
+   Parts: {operator, dimension, unit, values}"
+  [parts]
+  (lib-metric.filter/exclude-date-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export excludeDateFilterParts
   "Extract exclude date filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, unit, values} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/exclude-date-filter-parts definition filter-clause)))
 
 (defn ^:export timeFilterClause
   "Create a time filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/time
-   :operator :=})
+   Parts: {operator, dimension, values}"
+  [parts]
+  (lib-metric.filter/time-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export timeFilterParts
   "Extract time filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension, values} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/time-filter-parts definition filter-clause)))
 
 (defn ^:export defaultFilterClause
   "Create a default filter clause from parts.
-   STUB: Returns mock clause."
-  [_parts]
-  {:lib/type :filter/default
-   :operator :is-null})
+   Parts: {operator, dimension}"
+  [parts]
+  (lib-metric.filter/default-filter-clause (filter-parts-js->cljs parts)))
 
 (defn ^:export defaultFilterParts
   "Extract default filter parts from a clause.
-   STUB: Returns nil."
-  [_definition _filter-clause]
-  nil)
+   Returns {operator, dimension} or null."
+  [definition filter-clause]
+  (filter-parts-cljs->js (lib-metric.filter/default-filter-parts definition filter-clause)))
 
 (defn ^:export projectionableDimensions
   "Get dimensions that can be used for projections.
@@ -526,82 +609,69 @@
   dimension)
 
 (defn ^:export isBoolean
-  "Check if dimension is boolean type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is boolean type."
+  [dimension]
+  (types.isa/boolean? dimension))
 
 (defn ^:export isCoordinate
-  "Check if dimension is coordinate type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is coordinate type."
+  [dimension]
+  (types.isa/coordinate? dimension))
 
 (defn ^:export isTemporal
-  "Check if dimension is temporal type.
-   STUB: Returns false."
-  [_dimension]
-  true)
+  "Check if dimension is temporal type."
+  [dimension]
+  (types.isa/temporal? dimension))
 
 (defn ^:export isDateOrDateTime
-  "Check if dimension is date or datetime type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is date or datetime type."
+  [dimension]
+  (types.isa/date-or-datetime? dimension))
 
 (defn ^:export isForeignKey
-  "Check if dimension is a foreign key.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is a foreign key."
+  [dimension]
+  (types.isa/foreign-key? dimension))
 
 (defn ^:export isLocation
-  "Check if dimension is a location type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is a location type."
+  [dimension]
+  (types.isa/location? dimension))
 
 (defn ^:export isLatitude
-  "Check if dimension is a latitude.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is a latitude."
+  [dimension]
+  (types.isa/latitude? dimension))
 
 (defn ^:export isLongitude
-  "Check if dimension is a longitude.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is a longitude."
+  [dimension]
+  (types.isa/longitude? dimension))
 
 (defn ^:export isNumeric
-  "Check if dimension is numeric type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is numeric type."
+  [dimension]
+  (types.isa/numeric? dimension))
 
 (defn ^:export isPrimaryKey
-  "Check if dimension is a primary key.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is a primary key."
+  [dimension]
+  (types.isa/primary-key? dimension))
 
 (defn ^:export isStringLike
-  "Check if dimension is string-like type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is string-like type."
+  [dimension]
+  (types.isa/string-like? dimension))
 
 (defn ^:export isStringOrStringLike
-  "Check if dimension is string or string-like type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is string or string-like type."
+  [dimension]
+  (types.isa/string-or-string-like? dimension))
 
 (defn ^:export isTime
-  "Check if dimension is time type.
-   STUB: Returns false."
-  [_dimension]
-  false)
+  "Check if dimension is time type."
+  [dimension]
+  (types.isa/time? dimension))
 
 (defn ^:export displayInfo
   "Get display info for a displayable item.

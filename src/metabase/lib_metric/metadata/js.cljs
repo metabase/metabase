@@ -102,20 +102,33 @@
 
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
+(defn- parse-dimension
+  "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
+   Similar to how metabase.lib.js.metadata parses fields."
+  [dim]
+  (let [;; Convert all keys to kebab-case keywords (u/->kebab-case-en returns strings)
+        converted (update-keys dim (comp keyword u/->kebab-case-en))]
+    ;; Then convert type values from strings to keywords
+    (cond-> converted
+      (:effective-type converted) (update :effective-type keyword)
+      (:semantic-type converted)  (update :semantic-type keyword)
+      (:base-type converted)      (update :base-type keyword))))
+
 (defn- extract-dimensions-from-entity
   "Extract dimensions from a parsed metric or measure, annotating with source info."
   [entity source-type]
   (let [dims     (:dimensions entity)
         mappings (:dimension-mappings entity)
         mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
-    (for [dim dims]
-      (-> dim
+    (for [dim dims
+          :let [parsed-dim (parse-dimension dim)]]
+      (-> parsed-dim
           (assoc :lib/type :metadata/dimension
                  :source-type source-type
                  :source-id (:id entity))
           (cond->
-           (get mappings-by-dim-id (:id dim))
-            (assoc :dimension-mapping (get mappings-by-dim-id (:id dim))))))))
+           (get mappings-by-dim-id (:id parsed-dim))
+            (assoc :dimension-mapping (get mappings-by-dim-id (:id parsed-dim))))))))
 
 (defn- extract-all-dimensions
   "Extract all dimensions from parsed metrics and measures."
