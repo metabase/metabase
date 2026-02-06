@@ -51,7 +51,8 @@
      get-persisted-dimension-mappings
      get-persisted-dimensions
      mappings-changed?
-     reconcile-dimensions-and-mappings]
+     reconcile-dimensions-and-mappings
+     resolve-dimension-to-field-id]
     [lib-metric.metadata.provider
      database-provider-for-table
      metric-context-metadata-provider]
@@ -76,6 +77,7 @@
      (def dimensions-for-table lib-metric.dimension/dimensions-for-table)
      (def get-persisted-dimensions lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings lib-metric.dimension/get-persisted-dimension-mappings)
+     (def resolve-dimension-to-field-id lib-metric.dimension/resolve-dimension-to-field-id)
      (def database-provider-for-table lib-metric.metadata.provider/database-provider-for-table)
      (def metric-context-metadata-provider lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider lib-metric.metadata.js/metadata-provider)
