@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { t } from "ttag";
 
 import { checkNotNull } from "metabase/lib/types";
 import { isSameSource } from "metabase/transforms/utils";
@@ -560,8 +561,8 @@ export const WorkspaceProvider = ({
         const currentIndex = state.nextUnsavedTransformIndex;
         const name =
           currentIndex === 0
-            ? "New transform"
-            : `New transform (${currentIndex})`;
+            ? t`New transform`
+            : t`New transform (${currentIndex})`;
 
         const newTransform: UnsavedTransform = {
           type: "unsaved-transform",
