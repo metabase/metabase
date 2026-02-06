@@ -388,19 +388,23 @@
     [:text {:optional true} [:maybe :string]]
     [:thread_ts {:optional true} [:maybe :string]]]])
 
-(def ^:private SlackHandledMessageEvent
-  "Schema for event_callback event that we handle."
+(def ^:private SlackKnownMessageEvent
+  "Schema for event_callback events that we handle."
   [:or
+   ;; Events based on :subtype come first as :subtype is unambiguous.
+   SlackMessageFileShareEvent
+   ;; Events based on :channel_type. These are generic message events that might overlap with the above. For example,
+   ;; a SlackMessageFileShareEvent might have either :channel_type. Maybe these should be "mixins", but for now we
+   ;; only need to distinguish file_share vs im vs channel messages.
    SlackMessageImEvent
-   SlackMessageChannelsEvent
-   SlackMessageFileShareEvent])
+   SlackMessageChannelsEvent])
 
 (def ^:private SlackEventCallbackEvent
   "Malli schema for Slack event_callback event"
   [:map
    [:type [:= "event_callback"]]
    [:event [:or
-            SlackHandledMessageEvent
+            SlackKnownMessageEvent
             ;; Fallback for any other valid event type
             [:map
              [:type :string]
@@ -413,12 +417,12 @@
    :headers {"Content-Type" "text/plain"}
    :body    (:challenge event)})
 
-(defn- user-message?
+(defn- known-user-message?
   "Check if event is a user message (not bot/system message).
    Returns true if the event has no bot_id and matches a known message schema."
   [event]
   (and (nil? (:bot_id event))
-       (mr/validate SlackHandledMessageEvent event)))
+       (mr/validate SlackKnownMessageEvent event)))
 
 (def ^:private ack-msg
   "Acknowledgement payload"
@@ -516,7 +520,7 @@
 (mu/defn- process-user-message :- :nil
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- SlackClient
-   event  :- SlackHandledMessageEvent]
+   event  :- SlackKnownMessageEvent]
   (let [slack-user-id (:user event)
         user-id (slack-id->user-id slack-user-id)]
     (if-not user-id
@@ -536,7 +540,7 @@
   [payload :- SlackEventCallbackEvent]
   (let [client {:token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
-    (when (user-message? event)
+    (when (known-user-message? event)
       ;; TODO: should we queue work up another way?
       (future (process-user-message client event)))
     ack-msg))
