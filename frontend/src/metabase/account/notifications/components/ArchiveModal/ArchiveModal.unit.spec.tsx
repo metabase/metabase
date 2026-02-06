@@ -7,9 +7,9 @@ import {
 import { createMockDashboardSubscription } from "metabase-types/api/mocks/pulse";
 import { createMockUser } from "metabase-types/api/mocks/user";
 
-import ArchiveModal from "./ArchiveModal";
+import { ArchiveNotificationModal } from "./ArchiveModal";
 
-describe("ArchiveModal", () => {
+describe("ArchiveNotificationModal", () => {
   it("should render an email alert", () => {
     const alert = createMockAlert({
       id: getNextId(),
@@ -24,7 +24,7 @@ describe("ArchiveModal", () => {
     });
 
     render(
-      <ArchiveModal
+      <ArchiveNotificationModal
         item={alert}
         type="alert"
         user={createMockUser({ id: getNextId() })}
@@ -62,7 +62,7 @@ describe("ArchiveModal", () => {
     });
 
     render(
-      <ArchiveModal
+      <ArchiveNotificationModal
         item={pulse}
         type="pulse"
         user={createMockUser({ id: getNextId() })}
@@ -99,7 +99,7 @@ describe("ArchiveModal", () => {
     });
 
     render(
-      <ArchiveModal
+      <ArchiveNotificationModal
         item={pulse}
         type="pulse"
         user={createMockUser({ id: getNextId() })}
@@ -139,7 +139,7 @@ describe("ArchiveModal", () => {
     });
 
     render(
-      <ArchiveModal
+      <ArchiveNotificationModal
         item={alert}
         type="alert"
         user={createMockUser({ id: getNextId() })}
@@ -162,7 +162,7 @@ describe("ArchiveModal", () => {
     onArchive.mockResolvedValue(undefined);
 
     render(
-      <ArchiveModal
+      <ArchiveNotificationModal
         item={alert}
         type="alert"
         user={createMockUser({ id: getNextId() })}
@@ -191,7 +191,7 @@ describe("ArchiveModal", () => {
     });
 
     render(
-      <ArchiveModal
+      <ArchiveNotificationModal
         item={alert}
         type="alert"
         user={createMockUser({ id: getNextId() })}
