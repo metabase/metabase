@@ -29,13 +29,19 @@
 
 (defmethod compute-card-result [:join-analysis "join_step"]
   [_ _card row]
-  (let [output-count (nth row 0 nil)
-        matched-count (nth row 1 nil)
-        null-count (when (and output-count matched-count)
-                     (- output-count matched-count))
-        null-rate (when (and null-count output-count (pos? output-count))
-                    (/ null-count output-count))]
-    {"output_count"  output-count
-     "matched_count" matched-count
-     "null_count"    null-count
-     "null_rate"     null-rate}))
+  (if (nil? row)
+    {"no_data"       true
+     "output_count"  0
+     "matched_count" 0
+     "null_count"    0
+     "null_rate"     nil}
+    (let [output-count (nth row 0 nil)
+          matched-count (nth row 1 nil)
+          null-count (when (and output-count matched-count)
+                       (- output-count matched-count))
+          null-rate (when (and null-count output-count (pos? output-count))
+                      (/ null-count output-count))]
+      {"output_count"  output-count
+       "matched_count" matched-count
+       "null_count"    null-count
+       "null_rate"     null-rate})))
