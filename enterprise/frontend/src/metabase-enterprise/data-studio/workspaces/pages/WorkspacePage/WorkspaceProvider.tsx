@@ -16,6 +16,7 @@ import type {
   TaggedTransform,
   TransformTargetType,
   UnsavedTransform,
+  WorkspaceId,
   WorkspaceTransform,
 } from "metabase-types/api";
 import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
@@ -51,10 +52,28 @@ export interface Tab {
   type: "transform" | "table";
 }
 
-export interface TransformTab extends Tab {
+export interface TaggedTransformTab extends Tab {
   type: "transform";
-  transform: AnyWorkspaceTransform;
+  transformType: "transform";
+  transformId: TaggedTransform["id"];
 }
+
+export interface WorkspaceTransformTab extends Tab {
+  type: "transform";
+  transformType: "workspace-transform";
+  transformId: WorkspaceTransform["ref_id"];
+}
+
+export interface UnsavedTransformTab extends Tab {
+  type: "transform";
+  transformType: "unsaved-transform";
+  transformId: UnsavedTransform["id"];
+}
+
+export type TransformTab =
+  | TaggedTransformTab
+  | WorkspaceTransformTab
+  | UnsavedTransformTab;
 
 export interface TableTab extends Tab {
   type: "table";
