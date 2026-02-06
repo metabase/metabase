@@ -641,6 +641,139 @@ describe("scenarios > embedding-sdk > content-translations", () => {
     });
   });
 
+  describe("RTL locale (Arabic)", () => {
+    const setupArabicEditor = () => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      uploadTranslationDictionaryViaAPI([
+        // Table translations
+        { locale: "ar", msgid: "Orders", msgstr: "AR-Orders" },
+        { locale: "ar", msgid: "Products", msgstr: "AR-Products" },
+        { locale: "ar", msgid: "People", msgstr: "AR-People" },
+        // Column translations
+        { locale: "ar", msgid: "Total", msgstr: "AR-Total" },
+        { locale: "ar", msgid: "Tax", msgstr: "AR-Tax" },
+        { locale: "ar", msgid: "Quantity", msgstr: "AR-Quantity" },
+        { locale: "ar", msgid: "Created At", msgstr: "AR-Created At" },
+        { locale: "ar", msgid: "Product ID", msgstr: "AR-Product ID" },
+      ]);
+
+      cy.signOut();
+    };
+
+    const mountArabicEditor = () => {
+      mockAuthProviderAndJwtSignIn();
+
+      mountSdkContent(
+        <Flex p="xl">
+          <InteractiveQuestion questionId="new" />
+        </Flex>,
+        {
+          sdkProviderProps: {
+            locale: "ar",
+          },
+        },
+      );
+
+      // "Pick your starting data" in Arabic
+      getSdkRoot().contains("اختر بيانات البداية الخاصة بك");
+    };
+
+    it("should translate aggregation-related columns in RTL locale", () => {
+      setupArabicEditor();
+      mountArabicEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("AR-Orders").click();
+        });
+
+        // "Pick a function or metric" in Arabic
+        cy.findByText("اختر دالة أو مقياسًا").click();
+
+        popover().within(() => {
+          // "Sum of ..." in Arabic
+          cy.findByText("مجموع ...").click();
+          cy.findByText("AR-Total").click();
+        });
+
+        // "Pick a column to group by" in Arabic
+        cy.findByText("اختر عمودًا لتجميعه بواسطة").click();
+
+        popover().within(() => {
+          cy.findByText("AR-Product ID").click();
+        });
+
+        // "Visualize" in Arabic
+        cy.button("تصور").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 summary" in Arabic
+          cy.findByText("1 ملخص").click();
+        });
+
+        popover().within(() => {
+          // "Sum of AR-Total" — aggregation pattern with translated column
+          cy.findByText("مجموع AR-Total").should("be.visible");
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          // "Table" in Arabic
+          cy.findByText("جدول").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("AR-Product ID").should("be.visible");
+          cy.findByText("مجموع AR-Total").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate filter display name in RTL locale", () => {
+      setupArabicEditor();
+      mountArabicEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("AR-Orders").click();
+        });
+
+        // "Add filters to narrow your answer" in Arabic
+        cy.findByText("أضف فلتر لحصر إجاباتك").click();
+
+        popover().within(() => {
+          cy.findByText("AR-Total").click();
+
+          cy.findByTestId("number-filter-picker").within(() => {
+            cy.findByText("AR-Total").should("be.visible");
+
+            cy.findByPlaceholderText("دقيقة").type("100");
+            cy.findByPlaceholderText("الأعلى").type("200");
+
+            // "Add filter" in Arabic
+            cy.button("إضافة مرشح").click();
+          });
+        });
+
+        cy.findByText("AR-Total بين 100 و 200").should("be.visible");
+
+        // "Visualize" in Arabic
+        cy.button("تصور").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 filter" in Arabic
+          cy.findByText("1 فلتر").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("AR-Total بين 100 و 200").should("be.visible");
+        });
+      });
+    });
+  });
+
   describe("collection browser", () => {
     it("should translate collection names, item names, and descriptions", () => {
       signInAsAdminAndEnableEmbeddingSdk();

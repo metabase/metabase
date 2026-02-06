@@ -252,27 +252,45 @@ export const translateColumnDisplayName = (
   // If no direct translation, try space-based iteration for filter patterns
   // (handles cases like "Created At is in the previous 3 months" where only the column name is translatable)
   // TODO: temporary code, in a follow up we will get this from CLJ side
-  let lastTranslatedIndex = -1;
-  let lastTranslatedColumn = "";
+
+  let longestPrefix = -1;
+  let longestPrefixTranslation = "";
+  let longestSuffix = -1;
+  let longestSuffixTranslation = "";
 
   for (let i = 0; i < displayName.length; i++) {
-    if (displayName[i] === " ") {
-      const columnPart = displayName.substring(0, i);
-      const translatedColumn = translateColumnDisplayName(
-        columnPart,
-        tc,
-        patterns,
-      );
+    if (displayName[i] !== " ") {
+      continue;
+    }
 
-      if (translatedColumn !== columnPart) {
-        lastTranslatedIndex = i;
-        lastTranslatedColumn = translatedColumn;
+    // LTR: column at the start (keep last match = longest prefix)
+    const prefix = displayName.substring(0, i);
+    const translatedPrefix = translateColumnDisplayName(prefix, tc, patterns);
+    if (translatedPrefix !== prefix) {
+      longestPrefix = i;
+      longestPrefixTranslation = translatedPrefix;
+    }
+
+    // RTL: column at the end (keep first match = longest suffix)
+    if (longestSuffix === -1) {
+      const suffix = displayName.substring(i + 1);
+      const translatedSuffix = translateColumnDisplayName(suffix, tc, patterns);
+      if (translatedSuffix !== suffix) {
+        longestSuffix = i;
+        longestSuffixTranslation = translatedSuffix;
       }
     }
   }
 
-  if (lastTranslatedIndex > 0) {
-    return lastTranslatedColumn + displayName.substring(lastTranslatedIndex);
+  // Prefer LTR match over RTL
+  if (longestPrefix > 0) {
+    return longestPrefixTranslation + displayName.substring(longestPrefix);
+  }
+
+  if (longestSuffix >= 0) {
+    return (
+      displayName.substring(0, longestSuffix + 1) + longestSuffixTranslation
+    );
   }
 
   return displayName;
