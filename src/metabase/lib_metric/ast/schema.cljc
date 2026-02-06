@@ -155,6 +155,12 @@
    [:value int?]
    [:unit keyword?]])
 
+(mr/def ::filter-mbql
+  "Raw MBQL filter clause passthrough for source filters."
+  [:map
+   [:node/type [:= :filter/mbql]]
+   [:clause :any]])
+
 ;; Forward declare for recursive references
 (mr/def ::filter-node
   "Union of all filter node types (including compound)."
@@ -165,6 +171,7 @@
    ::filter-null
    ::filter-in
    ::filter-temporal
+   ::filter-mbql
    [:map
     [:node/type [:= :filter/and]]
     [:children [:sequential [:ref ::filter-node]]]]

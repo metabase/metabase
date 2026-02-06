@@ -3,6 +3,7 @@
   (:require
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]))
 
@@ -226,11 +227,29 @@
 
 ;;; -------------------- Source Construction --------------------
 
+(defn- mbql-clause->filter-mbql-node
+  "Wrap a raw MBQL filter clause as a passthrough AST node."
+  [mbql-clause]
+  {:node/type :filter/mbql
+   :clause    mbql-clause})
+
+(defn- extract-source-filters
+  "Extract filters from pMBQL query and convert to AST filter node.
+   Returns nil if no filters, a single filter/mbql node if one filter,
+   or a filter/and node containing filter/mbql nodes if multiple."
+  [pmbql-query]
+  (when-let [filters (lib.filter/filters pmbql-query)]
+    (if (= 1 (count filters))
+      (mbql-clause->filter-mbql-node (first filters))
+      {:node/type :filter/and
+       :children  (mapv mbql-clause->filter-mbql-node filters)})))
+
 (defn- pmbql-query->source-node
   "Parse pMBQL query into source node structure using lib functions."
   [source-type id metadata pmbql-query]
-  (let [table-id    (lib.util/source-table-id pmbql-query)
-        aggregation (first (lib.aggregation/aggregations pmbql-query))]
+  (let [table-id      (lib.util/source-table-id pmbql-query)
+        aggregation   (first (lib.aggregation/aggregations pmbql-query))
+        source-filter (extract-source-filters pmbql-query)]
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
@@ -239,8 +258,7 @@
              :base-table  (table-node table-id)
              :metadata    metadata}
       ;; TODO: Add joins extraction when needed
-      ;; TODO: Add source filters extraction when needed
-      )))
+      source-filter (assoc :filters source-filter))))
 
 ;;; -------------------- Main Construction --------------------
 
