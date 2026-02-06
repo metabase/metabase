@@ -1,29 +1,29 @@
 import { type Ref, forwardRef } from "react";
+import { t } from "ttag";
 
+import type { DimensionWithDefinition } from "metabase/metrics/types";
+import { getCommonTemporalUnits } from "metabase/metrics/utils/temporal-buckets";
 import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
-
-import type { ProjectionInfo } from "./types";
-import {
-  getSharedTemporalUnitItems,
-  getSharedTemporalUnits,
-  getTemporalUnitLabel,
-} from "./utils";
 
 type TimeseriesBucketPickerProps = {
   selectedUnit: TemporalUnit | undefined;
-  projections: ProjectionInfo[];
+  dimensions: DimensionWithDefinition[];
   onChange: (unit: TemporalUnit) => void;
 };
 
 export function TimeseriesBucketPicker({
   selectedUnit,
-  projections,
+  dimensions,
   onChange,
 }: TimeseriesBucketPickerProps) {
-  const sharedUnits = getSharedTemporalUnits(projections);
-  const sharedUnitItems = getSharedTemporalUnitItems(sharedUnits);
+  const sharedUnits = getCommonTemporalUnits(dimensions);
+  const sharedUnitItems = sharedUnits.map((unit) => ({
+    value: unit,
+    label: Lib.describeTemporalUnit(unit),
+  }));
 
   return (
     <TemporalUnitPicker
@@ -44,9 +44,13 @@ export const TimeseriesBucketPickerButton = forwardRef(
     { selectedUnit, onClick }: TimeseriesBucketPickerButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
+    const label = selectedUnit
+      ? Lib.describeTemporalUnit(selectedUnit)
+      : t`Unbinned`;
+
     return (
       <Button ref={ref} onClick={onClick}>
-        {getTemporalUnitLabel(selectedUnit)}
+        {label}
       </Button>
     );
   },

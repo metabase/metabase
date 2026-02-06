@@ -4,9 +4,8 @@ import {
   getDateFilterClause,
   getDatePickerUnits,
   getDatePickerValue,
-} from "metabase/metrics/utils/dates";
+} from "metabase/metrics/utils/date";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
-import { SimpleDatePicker } from "metabase/querying/common/components/DatePicker/SimpleDatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { PopoverBackButton } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
@@ -60,46 +59,6 @@ export function DateFilterPicker({
             </PopoverBackButton>
           ) : null
         }
-        onChange={handleChange}
-      />
-    </div>
-  );
-}
-
-interface SimpleDateFilterPickerProps {
-  definition: LibMetric.MetricDefinition;
-  dimension: LibMetric.DimensionMetadata;
-  filter?: LibMetric.FilterClause;
-  onChange: (filter: LibMetric.FilterClause | undefined) => void;
-}
-
-export function SimpleDateFilterPicker({
-  definition,
-  dimension,
-  filter,
-  onChange,
-}: SimpleDateFilterPickerProps) {
-  const value = useMemo(() => {
-    return filter ? getDatePickerValue(definition, filter) : undefined;
-  }, [definition, filter]);
-
-  const availableUnits = useMemo(() => {
-    return getDatePickerUnits(definition, dimension);
-  }, [definition, dimension]);
-
-  const handleChange = (value: DatePickerValue | undefined) => {
-    if (value) {
-      onChange(getDateFilterClause(dimension, value));
-    } else {
-      onChange(undefined);
-    }
-  };
-
-  return (
-    <div data-testid="date-filter-picker">
-      <SimpleDatePicker
-        value={value}
-        availableUnits={availableUnits}
         onChange={handleChange}
       />
     </div>
