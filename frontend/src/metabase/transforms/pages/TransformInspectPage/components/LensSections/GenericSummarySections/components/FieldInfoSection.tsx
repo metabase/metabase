@@ -1,4 +1,4 @@
-import type { Row } from "@tanstack/react-table";
+import type { CellContext, Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -146,6 +146,7 @@ function fieldToColumn(distinctFields: Set<FieldStats>): Set<string> {
   return columns;
 }
 
+// construct a set of column IDs based on the distinct field stats available
 function gatherColumnStasticsFields(
   sources: TransformInspectSource[],
 ): Set<string> {
@@ -243,10 +244,10 @@ function getColumns(
       header: t`Type`,
       width: "auto",
       accessorFn: (originalRow) => originalRow.baseType,
-      cell: ({ row }) => {
-        const node = row.original;
+      cell: (props) => {
+        const node = props.row.original;
         if (node.type === "field") {
-          return <Text ta="right">{node.baseType}</Text>;
+          return <Text ta="right">{props.getValue() as string}</Text>;
         }
         return null;
       },
@@ -254,10 +255,9 @@ function getColumns(
     ...Array.from(statColumns).map((column) => ({
       id: column,
       header: getColumnLabel(column),
-      cell: ({ row }: { row: Row<FieldTreeNode> }) => {
-        return (
-          <Ellipsified>{getStatsColumnValue(row.original, column)}</Ellipsified>
-        );
+      accessorFn: (row: FieldTreeNode) => getStatsColumnValue(row, column),
+      cell: (props: CellContext<FieldTreeNode, unknown>) => {
+        return <Ellipsified>{props.getValue() as string}</Ellipsified>;
       },
     })),
   ];
