@@ -4,7 +4,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupDatabaseEndpoints,
-  setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -37,18 +37,20 @@ function setup({
   remoteSyncType,
 }: SetupOpts) {
   setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
-  setupUsersEndpoints([
-    createMockUser({
-      id: 1,
-      common_name: "Test Owner",
-      email: "test@example.com",
-    }),
-    createMockUser({
-      id: 2,
-      common_name: "Another User",
-      email: "another@example.com",
-    }),
-  ]);
+  setupUserRecipientsEndpoint({
+    users: [
+      createMockUser({
+        id: 1,
+        common_name: "Test Owner",
+        email: "test@example.com",
+      }),
+      createMockUser({
+        id: 2,
+        common_name: "Another User",
+        email: "another@example.com",
+      }),
+    ],
+  });
 
   let state: State;
   if (remoteSyncType) {
