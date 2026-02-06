@@ -3,6 +3,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
+   [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
    [metabase-enterprise.metabot-v3.tools.filters :as filter-tools]
    [metabase-enterprise.metabot-v3.util :as metabot-u]
@@ -125,11 +126,11 @@
    [:chart_type :string]])
 
 (def ^:private construct-operation-aliases
-  {"contains" :string-contains
+  {"contains"     :string-contains
    "not-contains" :string-not-contains
-   "starts-with" :string-starts-with
-   "ends-with" :string-ends-with
-   "is-empty" :string-is-empty
+   "starts-with"  :string-starts-with
+   "ends-with"    :string-ends-with
+   "is-empty"     :string-is-empty
    "is-not-empty" :string-is-not-empty})
 
 (defn- normalize-construct-operation
@@ -188,56 +189,59 @@
                                                 [:query construct-query-schema]
                                                 [:visualization construct-visualization-schema]]]
   (try
-    (let [normalized-query (normalize-ai-args query)
+    (let [normalized-query         (normalize-ai-args query)
           normalized-visualization (normalize-ai-args visualization)
-          query-type (query-type->keyword (:query-type normalized-query))
-          chart-type (chart-type->keyword (:chart-type normalized-visualization))
-          _ (log/debug "construct_notebook_query request"
-                       {:query-type query-type
-                        :chart-type chart-type})
-          query-result (case query-type
-                         :metric
-                         (filter-tools/query-metric
-                          {:metric-id (get-in normalized-query [:source :metric-id])
-                           :filters (normalize-construct-filters (:filters normalized-query))
-                           :group-by (normalize-ai-args (:group-by normalized-query))})
-                         :aggregate
-                         (filter-tools/query-datasource
-                          {:model-id (get-in normalized-query [:source :model-id])
-                           :table-id (get-in normalized-query [:source :table-id])
-                           :aggregations (normalize-ai-args (:aggregations normalized-query))
-                           :filters (normalize-construct-filters (:filters normalized-query))
-                           :group-by (normalize-ai-args (:group-by normalized-query))
-                           :limit (:limit normalized-query)})
-                         :raw
-                         (filter-tools/query-datasource
-                          {:model-id (get-in normalized-query [:source :model-id])
-                           :table-id (get-in normalized-query [:source :table-id])
-                           :fields (normalize-ai-args (:fields normalized-query))
-                           :filters (normalize-construct-filters (:filters normalized-query))
-                           :order-by (normalize-ai-args (:order-by normalized-query))
-                           :limit (:limit normalized-query)})
-                         {:output (str "Unsupported query_type: " query-type)})
-          structured (or (:structured-output query-result) (:structured_output query-result))]
+          query-type               (query-type->keyword (:query-type normalized-query))
+          chart-type               (chart-type->keyword (:chart-type normalized-visualization))
+          _                        (log/debug "construct_notebook_query request"
+                                              {:query-type query-type
+                                               :chart-type chart-type})
+          query-result             (case query-type
+                                     :metric
+                                     (filter-tools/query-metric
+                                      {:metric-id (get-in normalized-query [:source :metric-id])
+                                       :filters   (normalize-construct-filters (:filters normalized-query))
+                                       :group-by  (normalize-ai-args (:group-by normalized-query))})
+                                     :aggregate
+                                     (filter-tools/query-datasource
+                                      {:model-id     (get-in normalized-query [:source :model-id])
+                                       :table-id     (get-in normalized-query [:source :table-id])
+                                       :aggregations (normalize-ai-args (:aggregations normalized-query))
+                                       :filters      (normalize-construct-filters (:filters normalized-query))
+                                       :group-by     (normalize-ai-args (:group-by normalized-query))
+                                       :limit        (:limit normalized-query)})
+                                     :raw
+                                     (filter-tools/query-datasource
+                                      {:model-id (get-in normalized-query [:source :model-id])
+                                       :table-id (get-in normalized-query [:source :table-id])
+                                       :fields   (normalize-ai-args (:fields normalized-query))
+                                       :filters  (normalize-construct-filters (:filters normalized-query))
+                                       :order-by (normalize-ai-args (:order-by normalized-query))
+                                       :limit    (:limit normalized-query)})
+                                     {:output (str "Unsupported query_type: " query-type)})
+          structured               (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
-                            {:query-id (:query-id structured)
-                             :chart-type chart-type
+                            {:query-id      (:query-id structured)
+                             :chart-type    chart-type
                              :queries-state {(:query-id structured) (:query structured)}})
               navigate-url (get-in chart-result [:reactions 0 :url])]
-          {:structured-output (assoc structured
-                                     :result-type :query
-                                     :chart-id (:chart-id chart-result)
-                                     :chart-type (:chart-type chart-result)
-                                     :chart-link (:chart-link chart-result)
+          {:data-parts        (when navigate-url
+                                [(streaming/navigate-to-part navigate-url)])
+           :structured-output (assoc structured
+                                     :result-type   :query
+                                     :chart-id      (:chart-id chart-result)
+                                     :chart-type    (:chart-type chart-result)
+                                     :chart-link    (:chart-link chart-result)
                                      :chart-content (:chart-content chart-result))
-           :instructions (str "Your query and chart have been created successfully.\n\n"
-                              "Next steps to present the chart to the user:\n"
-                              "- Always provide a direct link using: `[Chart](metabase://chart/"
-                              (:chart-id chart-result) ")` where Chart is a meaningful link text\n"
-                              "- If creating multiple charts, present all chart links")
-           :data-parts (when navigate-url
-                         [(streaming/navigate-to-part navigate-url)])})
+           :instructions
+           (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
+             (te/md
+              "Your query and chart have been created successfully."
+              ""
+              "Next steps to present the chart to the user:"
+              (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+              "- If creating multiple charts, present all chart links"))})
         query-result))
     (catch Exception e
       (log/error e "Failed to construct notebook query")
