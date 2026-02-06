@@ -188,6 +188,6 @@
   (let [;; Enrich context with formatted variables for template
         enriched-context (user-context/enrich-context-for-template context)
         ;; Build system message content using template
-        content (prompts/build-system-message-content profile enriched-context tools)]
-    {:role "system"
+        content          (prompts/build-system-message-content profile enriched-context tools)]
+    {:role    "system"
      :content content}))
