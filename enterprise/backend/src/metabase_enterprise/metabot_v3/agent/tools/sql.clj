@@ -6,6 +6,7 @@
    [metabase-enterprise.metabot-v3.tools.create-sql-query :as create-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
+   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -32,6 +33,12 @@
                  first
                  :id)))))
 
+(defn- format-query-output
+  [structured instruction-text]
+  (let [query-xml (llm-rep/query->xml structured)]
+    (str "<result>\n" query-xml "\n</result>\n"
+         "<instructions>\n" instruction-text "\n</instructions>")))
+
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
@@ -48,8 +55,10 @@
     (let [result (create-sql-query-tools/create-sql-query
                   {:database-id database_id
                    :sql sql_query})
+          structured (assoc result :result-type :query)
           results-url (streaming/query->question-url (:query result))]
-      {:structured-output (assoc result :result-type :query)
+      {:output (format-query-output structured instructions/query-created-instructions)
+       :structured-output structured
        :instructions instructions/query-created-instructions
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
@@ -67,9 +76,11 @@
   (let [result (create-sql-query-tools/create-sql-query
                 {:database-id database_id
                  :sql sql_query})
+        structured (assoc result :result-type :query)
         buffer-id (first-code-editor-buffer-id)]
     (if buffer-id
-      {:structured-output (assoc result :result-type :query)
+      {:output (format-query-output structured instructions/query-created-instructions)
+       :structured-output structured
        :instructions instructions/query-created-instructions
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
@@ -90,8 +101,10 @@
                    :edits edits
                    :checklist checklist
                    :queries-state (shared/current-queries-state)})
+          structured (assoc result :result-type :query)
           results-url (streaming/query->question-url (:query result))]
-      {:structured-output (assoc result :result-type :query)
+      {:output (format-query-output structured instructions/query-created-instructions)
+       :structured-output structured
        :instructions instructions/query-created-instructions
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
@@ -115,9 +128,11 @@
                  :edits edits
                  :checklist checklist
                  :queries-state (shared/current-queries-state)})
+        structured (assoc result :result-type :query)
         buffer-id (first-code-editor-buffer-id)]
     (if buffer-id
-      {:structured-output (assoc result :result-type :query)
+      {:output (format-query-output structured instructions/edit-sql-query-instructions)
+       :structured-output structured
        :instructions instructions/edit-sql-query-instructions
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
@@ -135,8 +150,10 @@
                    :sql new_query
                    :checklist checklist
                    :queries-state (shared/current-queries-state)})
+          structured (assoc result :result-type :query)
           results-url (streaming/query->question-url (:query result))]
-      {:structured-output (assoc result :result-type :query)
+      {:output (format-query-output structured instructions/query-created-instructions)
+       :structured-output structured
        :instructions instructions/query-created-instructions
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
@@ -157,9 +174,11 @@
                  :sql new_query
                  :checklist checklist
                  :queries-state (shared/current-queries-state)})
+        structured (assoc result :result-type :query)
         buffer-id (first-code-editor-buffer-id)]
     (if buffer-id
-      {:structured-output (assoc result :result-type :query)
+      {:output (format-query-output structured instructions/query-created-instructions)
+       :structured-output structured
        :instructions instructions/query-created-instructions
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
