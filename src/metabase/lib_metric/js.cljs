@@ -6,13 +6,12 @@
    [goog.object :as gobject]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.definition :as lib-metric.definition]
+   [metabase.lib-metric.display-info :as lib-metric.display-info]
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib-metric.projection :as lib-metric.projection]
    [metabase.lib-metric.types.isa :as types.isa]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
    [metabase.util.memoize :as memoize]))
 
@@ -68,6 +67,7 @@
 
 ;; Ensure all lib-metric code is loaded for any defmethod registrations
 (comment lib-metric/keep-me
+         lib-metric.display-info/keep-me
          lib-metric.metadata.js/keep-me)
 
 (defn- object-get [obj k]
@@ -676,37 +676,9 @@
 (defn ^:export displayInfo
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
-  [_definition source]
+  [definition source]
   (display-info->js
-   (case (:lib/type source)
-     :metadata/metric
-     {:display-name (or (:display-name source) (:name source) "Metric")}
-
-     :metadata/measure
-     {:display-name (or (:display-name source) (:name source) "Measure")}
-
-     :metadata/dimension
-     {:display-name         (or (get-prop source :display-name "display_name")
-                                (get-prop source :name "name")
-                                "Dimension")
-      :filter-positions     (or (get-prop source :filter-positions "filter-positions") [])
-      :projection-positions (or (get-prop source :projection-positions "projection-positions") [])}
-
-     :temporal-bucket
-     {:short-name   (name (:unit source))
-      :display-name (lib.temporal-bucket/describe-temporal-unit (:unit source))
-      :default      (boolean (:default source))
-      :selected     (boolean (:selected source))}
-
-     :binning-strategy
-     {:display-name (lib.binning/binning-display-name source nil)
-      :default      (boolean (:default source))
-      :selected     (boolean (:selected source))}
-
-     ;; Default for filter clauses and other types
-     {:display-name (or (:display-name source)
-                        (when-let [op (:operator source)]
-                          (name op)))})))
+   (lib-metric.display-info/display-info definition source)))
 
 (defn ^:export dimensionValuesInfo
   "Get dimension values info.
