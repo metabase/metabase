@@ -38,6 +38,12 @@ type TableRow = {
   columnCount?: number;
 };
 
+const treeTableStyles = {
+  headerRow: {
+    backgroundColor: "var(--mb-color-background-secondary)",
+  },
+};
+
 export const GenericSummarySection = ({
   lens,
   cards,
@@ -128,10 +134,10 @@ export const GenericSummarySection = ({
         <Box>
           <SimpleGrid cols={2} spacing="lg">
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={inputInstance} />
+              <TreeTable instance={inputInstance} styles={treeTableStyles} />
             </Card>
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={outputInstance} />
+              <TreeTable instance={outputInstance} styles={treeTableStyles} />
             </Card>
           </SimpleGrid>
         </Box>

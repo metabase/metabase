@@ -47,6 +47,12 @@ type TableWithFields = {
   fields: TransformInspectField[];
 };
 
+const treeTableStyles = {
+  headerRow: {
+    backgroundColor: "var(--mb-color-background-secondary)",
+  },
+};
+
 export const FieldInfoSection = ({
   sources,
   target,
@@ -89,7 +95,11 @@ export const FieldInfoSection = ({
       <Stack gap="md">
         <Title order={4}>{t`Input fields`}</Title>
         <Card p={0} shadow="none" withBorder>
-          <TreeTable instance={sourceInstance} onRowClick={handleRowClick} />
+          <TreeTable
+            instance={sourceInstance}
+            onRowClick={handleRowClick}
+            styles={treeTableStyles}
+          />
         </Card>
       </Stack>
 
@@ -97,7 +107,11 @@ export const FieldInfoSection = ({
         <Title order={4}>{t`Output fields`}</Title>
         {target ? (
           <Card p={0} shadow="none" withBorder>
-            <TreeTable instance={targetInstance} onRowClick={handleRowClick} />
+            <TreeTable
+              instance={targetInstance}
+              onRowClick={handleRowClick}
+              styles={treeTableStyles}
+            />
           </Card>
         ) : (
           <Text c="text-tertiary">{t`No output table`}</Text>
