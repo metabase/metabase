@@ -6,7 +6,10 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ALL_USERS_GROUP_ID,
+  NORMAL_USER_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
@@ -4156,7 +4159,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
   });
 
   it(
-    "should have transforms available by default in OSS without upsell gem icon",
+    "should be able to enable transforms in OSS without upsell gem icon",
     { tags: "@OSS" },
     () => {
       cy.log("Visit data studio page");
@@ -4176,6 +4179,11 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
 
       cy.log("Verify transforms page is accessible");
       H.DataStudio.nav().findByText("Transforms").click();
+
+      H.DataStudio.Transforms.enableTransformPage()
+        .findByRole("button", { name: "Enable transforms" })
+        .click();
+
       H.DataStudio.Transforms.list().should("be.visible");
 
       cy.log("Verify can create transforms in OSS");
@@ -4196,8 +4204,16 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
   });
 
   // TODO [OSS]: fix this test. It works in isolation and local setup, but fails consistently on CI
-  it.skip("should have transforms available in self-hosted pro without upsell gem icon", () => {
+  it("should have transforms available in self-hosted pro without upsell gem icon", () => {
     H.activateToken("pro-self-hosted").then(() => {
+      cy.log("ensure that transform permissions are not shown");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
+
       cy.log("Visit data studio page");
       cy.visit("/data-studio");
       H.DataStudio.nav().should("be.visible");
@@ -4215,10 +4231,23 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
 
       cy.log("Verify transforms page is accessible");
       H.DataStudio.nav().findByText("Transforms").click();
+      H.DataStudio.Transforms.enableTransformPage()
+        .findByRole("button", { name: "Enable transforms" })
+        .click();
       H.DataStudio.Transforms.list().should("be.visible");
 
       cy.log("Verify can create transforms in pro-self-hosted");
       cy.button("Create a transform").should("be.visible");
+
+      cy.log("transform permissions should now be visible");
+      H.goToAdmin();
+      H.appBar().findByRole("link", { name: "Permissions" }).click();
+      cy.findByRole("menuitem", { name: "All Users" }).click();
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("exist");
     });
   });
 });

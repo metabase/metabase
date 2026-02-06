@@ -31,7 +31,7 @@ export const EnableTransformsPage = () => {
     });
 
   return (
-    <PageContainer>
+    <PageContainer data-testid="enable-transform-page">
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
