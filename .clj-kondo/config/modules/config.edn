@@ -642,6 +642,7 @@
    :api  #{metabase.embedding-rest.api}
    :uses #{api
            dashboards
+           database-routing
            eid-translation
            embedding
            events
