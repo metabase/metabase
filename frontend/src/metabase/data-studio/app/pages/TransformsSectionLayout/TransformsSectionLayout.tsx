@@ -1,8 +1,7 @@
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
@@ -21,7 +20,7 @@ export function TransformsSectionLayout({
   usePageTitle(t`Transforms`);
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsEnabled = useSetting("transforms-enabled");
-  const isHosted = useHasTokenFeature("hosting");
+  const isHosted = useSetting("is-hosted?");
 
   if (shouldShowUpsell) {
     return <PLUGIN_TRANSFORMS.TransformsUpsellPage />;
