@@ -36,13 +36,18 @@ export function TimeseriesBucketPicker({
 
 type TimeseriesBucketPickerTargetProps = {
   selectedUnit: TemporalUnit | undefined;
+  onClick?: () => void;
 };
 
 export const TimeseriesBucketPickerTarget = forwardRef(
   function TimeseriesBucketPickerTarget(
-    { selectedUnit }: TimeseriesBucketPickerTargetProps,
+    { selectedUnit, onClick }: TimeseriesBucketPickerTargetProps,
     ref: Ref<HTMLButtonElement>,
   ) {
-    return <Button ref={ref}>{getTemporalUnitLabel(selectedUnit)}</Button>;
+    return (
+      <Button ref={ref} onClick={onClick}>
+        {getTemporalUnitLabel(selectedUnit)}
+      </Button>
+    );
   },
 );
