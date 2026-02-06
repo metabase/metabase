@@ -71,12 +71,13 @@
                      :model/Table {allowed-table-id :id} {:is_published true :collection_id allowed-coll-id}
                      :model/Table {blocked-table-id :id} {:is_published true :collection_id blocked-coll-id}
                      :model/Table _ {:is_published false :collection_id allowed-coll-id}]
-        (perms/grant-collection-read-permissions! group-id allowed-coll-id)
-        (perms/revoke-collection-permissions! group-id blocked-coll-id)
-        (perms/revoke-collection-permissions! (perms/all-users-group) blocked-coll-id)
-        (let [clause (published-tables/published-table-visible-clause
-                      :id
-                      {:user-id user-id
-                       :is-superuser? false})]
-          (is (= #{allowed-table-id}
-                 (t2/select-pks-set :model/Table {:where [:and clause [:in :id [allowed-table-id blocked-table-id]]]}))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (perms/grant-collection-read-permissions! group-id allowed-coll-id)
+          (perms/revoke-collection-permissions! group-id blocked-coll-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) blocked-coll-id)
+          (let [clause (published-tables/published-table-visible-clause
+                        :id
+                        {:user-id user-id
+                         :is-superuser? false})]
+            (is (= #{allowed-table-id}
+                   (t2/select-pks-set :model/Table {:where [:and clause [:in :id [allowed-table-id blocked-table-id]]]})))))))))
