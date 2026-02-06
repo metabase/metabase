@@ -21,5 +21,4 @@
   :type       :boolean
   :visibility :authenticated
   :default    false
-  :feature    :transforms
   :audit      :getter)
