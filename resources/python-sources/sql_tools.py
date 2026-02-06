@@ -720,10 +720,13 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             # Capture original values BEFORE any modifications (important for lookup)
             original_schema = node.db
             original_table = node.name
+            # Preserve original quoting status for renamed identifiers
+            original_schema_quoted = node.args.get("db").quoted if node.args.get("db") else False
+            original_table_quoted = node.this.quoted if node.this else False
 
             # Rename schema if present
             if original_schema and original_schema in schemas:
-                node.set("db", exp.Identifier(this=schemas[original_schema], quoted=True))
+                node.set("db", exp.Identifier(this=schemas[original_schema], quoted=original_schema_quoted))
 
             # Rename table - try exact match first (with original schema), then without schema
             new_table = (table_map.get((original_schema, original_table)) or
@@ -732,17 +735,19 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 if isinstance(new_table, dict):
                     # New format: {schema: x, table: y}
                     if new_table.get("schema"):
-                        node.set("db", exp.Identifier(this=new_table["schema"], quoted=True))
+                        node.set("db", exp.Identifier(this=new_table["schema"], quoted=original_schema_quoted))
                     if new_table.get("table"):
-                        node.set("this", exp.Identifier(this=new_table["table"], quoted=True))
+                        node.set("this", exp.Identifier(this=new_table["table"], quoted=original_table_quoted))
                 else:
                     # String: just the table name
-                    node.set("this", exp.Identifier(this=new_table, quoted=True))
+                    node.set("this", exp.Identifier(this=new_table, quoted=original_table_quoted))
 
         # Column rename
         elif isinstance(node, exp.Column):
             col_name = node.name
             col_table = node.table  # May be None if column is unqualified (e.g., "SELECT id" not "SELECT t.id")
+            # Preserve original quoting status
+            original_col_quoted = node.this.quoted if node.this else False
 
             # Try to find a matching column rename.
             # The challenge: replacement key might be {:table "orders" :column "id"}
@@ -771,7 +776,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     break
 
             if new_col:
-                node.set("this", exp.Identifier(this=new_col, quoted=True))
+                node.set("this", exp.Identifier(this=new_col, quoted=original_col_quoted))
 
         return node
 
