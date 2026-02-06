@@ -8,6 +8,18 @@ import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
 from sqlglot.errors import ParseError, OptimizeError
 
+def needs_quoting(name: str) -> bool:
+    """Check if an identifier needs to be quoted due to special characters."""
+    if not name:
+        return False
+    # Check for common problematic characters
+    if '-' in name or ' ' in name:
+        return True
+    # Starts with a digit
+    if name[0].isdigit():
+        return True
+    return False
+
 def parse_sql(sql: str, dialect: str = "postgres"):
     """Parses SQL and returns the root Expression."""
     return sqlglot.parse_one(sql, read=dialect)
@@ -735,12 +747,18 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 if isinstance(new_table, dict):
                     # New format: {schema: x, table: y}
                     if new_table.get("schema"):
-                        node.set("db", exp.Identifier(this=new_table["schema"], quoted=original_schema_quoted))
+                        # When injecting a new schema, quote if it contains special characters
+                        new_schema = new_table["schema"]
+                        schema_quoted = original_schema_quoted or needs_quoting(new_schema)
+                        node.set("db", exp.Identifier(this=new_schema, quoted=schema_quoted))
                     if new_table.get("table"):
-                        node.set("this", exp.Identifier(this=new_table["table"], quoted=original_table_quoted))
+                        new_table_name = new_table["table"]
+                        table_quoted = original_table_quoted or needs_quoting(new_table_name)
+                        node.set("this", exp.Identifier(this=new_table_name, quoted=table_quoted))
                 else:
                     # String: just the table name
-                    node.set("this", exp.Identifier(this=new_table, quoted=original_table_quoted))
+                    table_quoted = original_table_quoted or needs_quoting(new_table)
+                    node.set("this", exp.Identifier(this=new_table, quoted=table_quoted))
 
         # Column rename
         elif isinstance(node, exp.Column):
