@@ -119,7 +119,7 @@
    Returns the modified SQL string."
   ([driver sql-string replacements]
    (replace-names driver sql-string replacements {}))
-  ([driver :- :keyword
+  ([driver :- [:maybe :keyword]
     sql-string :- :string
     replacements :- ::replacements
     opts :- ::replace-names-opts]

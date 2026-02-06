@@ -187,9 +187,9 @@
                                                              :graph graph))))))))
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly finds downstream errors when asked"
-    (let [{:keys [provider graph sql-transform snippet-inner]
-           {direct-sql-card-id       :id} :sql-base
-           {transformed-sql-card-id  :id} :sql-transform-sql-consumer
+    (let [{:keys [provider graph snippet-inner]
+           {_direct-sql-card-id      :id} :sql-base
+           {_transformed-sql-card-id :id} :sql-transform-sql-consumer
            {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
       (testing "when breaking the inner snippet with a nonexistent table"
         (let [snippet' (assoc snippet-inner
@@ -199,7 +199,6 @@
                                                                 :base-provider provider
                                                                 :graph graph
                                                                 :include-native? true)]
-          
           (is (= #{:card :transform} (set (keys errors))))
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.

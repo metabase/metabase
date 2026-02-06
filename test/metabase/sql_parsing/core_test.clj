@@ -383,6 +383,25 @@
       (is (= "error" (:status result)))
       (is (= "invalid_expression" (:type result))))))
 
+(deftest ^:parallel lenient-parsing-incomplete-limit-test
+  (testing "SQLGlot's lenient parsing treats 'SELECT 1 LIMIT' as 'SELECT 1 AS LIMIT'"
+    ;; This documents a known SQLGlot behavior where incomplete LIMIT clauses
+    ;; are parsed as column aliases. Workspace tests that relied on this failing
+    ;; have been updated to use 'SELECT * FROM nonexistent_table' instead.
+    (let [result (sql-parsing/validate-sql-query "postgres" "SELECT 1 LIMIT")]
+      (is (:valid result)
+          "SQLGlot parses 'SELECT 1 LIMIT' as valid SQL (as 'SELECT 1 AS LIMIT')"))
+
+    (let [result (sql-parsing/referenced-tables "postgres" "SELECT 1 LIMIT")]
+      (is (= [] result)
+          "No tables are referenced in 'SELECT 1 LIMIT'")))
+
+  (testing "To reliably trigger SQL errors, use nonexistent tables instead"
+    ;; This is the recommended pattern for tests that need to trigger SQL failures
+    (let [result (sql-parsing/referenced-tables "postgres" "SELECT * FROM nonexistent_table_xyz")]
+      (is (= [[nil nil "nonexistent_table_xyz"]] result)
+          "Nonexistent table reference is parsed and will fail at execution time"))))
+
 ;;; -------------------------------------------- SQL Validation Tests ------------------------------------------------
 
 (defn- load-validation-test-cases
