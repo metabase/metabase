@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [goog.object :as gobject]
+   [metabase.lib-metric.clause :as lib-metric.clause]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.display-info :as lib-metric.display-info]
@@ -562,15 +563,25 @@
 
 (defn ^:export replaceClause
   "Replace a clause in a metric definition.
-   STUB: Returns the definition unchanged."
-  [definition _target-clause _new-clause]
-  definition)
+   Finds the target clause by its :lib/uuid and replaces it with the new clause.
+   Returns the definition unchanged if target clause is not found."
+  [definition target-clause new-clause]
+  (lib-metric.clause/replace-clause definition target-clause new-clause))
 
 (defn ^:export removeClause
   "Remove a clause from a metric definition.
-   STUB: Returns the definition unchanged."
-  [definition _clause]
-  definition)
+   Finds the clause by its :lib/uuid and removes it from :filters or :projections.
+   Returns the definition unchanged if clause is not found."
+  [definition clause]
+  (lib-metric.clause/remove-clause definition clause))
+
+(defn ^:export swapClauses
+  "Swap two clauses in a metric definition.
+   Finds both clauses by their :lib/uuid and swaps their positions.
+   Works within the same vector (both filters, both projections) or across vectors.
+   Returns the definition unchanged if either clause is not found."
+  [definition source-clause target-clause]
+  (lib-metric.clause/swap-clauses definition source-clause target-clause))
 
 (defn ^:export temporalBucket
   "Get the temporal bucket for a clause or dimension.

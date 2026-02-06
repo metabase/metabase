@@ -14,6 +14,7 @@
    #?@(:clj [[metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
              [potemkin :as p]]
        :cljs [[metabase.lib-metric.metadata.js :as lib-metric.metadata.js]])
+   [metabase.lib-metric.clause :as lib-metric.clause]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.measures :as lib-metric.measures]
@@ -32,6 +33,10 @@
 
 #?(:clj
    (p/import-vars
+    [lib-metric.clause
+     remove-clause
+     replace-clause
+     swap-clauses]
     [lib-metric.definition
      filters
      from-measure-metadata
@@ -64,6 +69,9 @@
 
    :cljs
    (do
+     (def remove-clause lib-metric.clause/remove-clause)
+     (def replace-clause lib-metric.clause/replace-clause)
+     (def swap-clauses lib-metric.clause/swap-clauses)
      (def filters lib-metric.definition/filters)
      (def from-measure-metadata lib-metric.definition/from-measure-metadata)
      (def from-metric-metadata lib-metric.definition/from-metric-metadata)

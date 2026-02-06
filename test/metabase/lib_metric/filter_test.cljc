@@ -254,7 +254,7 @@
           parts {:operator :is-null :dimension dimension}
           clause (lib-metric.filter/default-filter-clause parts)]
       (is (= :is-null (first clause)))
-      (is (= {} (second clause)))
+      (is (string? (:lib/uuid (second clause))))
       (is (= [:dimension {} "dim-1"] (nth clause 2))))))
 
 (deftest ^:parallel default-filter-clause-not-null-test
@@ -345,7 +345,9 @@
           parts {:operator :contains :dimension dimension :values ["search"] :options {:case-sensitive false}}
           clause (lib-metric.filter/string-filter-clause parts)]
       (is (= :contains (first clause)))
-      (is (= {:case-sensitive false} (second clause))))))
+      (let [opts (second clause)]
+        (is (false? (:case-sensitive opts)))
+        (is (string? (:lib/uuid opts)))))))
 
 (deftest ^:parallel string-filter-clause-empty-test
   (testing "string-filter-clause creates is-empty and not-empty clauses"
@@ -404,7 +406,7 @@
           parts {:dimension dimension :unit :day :value -30 :offset-unit nil :offset-value nil :options {}}
           clause (lib-metric.filter/relative-date-filter-clause parts)]
       (is (= :time-interval (first clause)))
-      (is (= {} (second clause)))
+      (is (string? (:lib/uuid (second clause))))
       (is (= [:dimension {} "dim-date"] (nth clause 2)))
       (is (= -30 (nth clause 3)))
       (is (= :day (nth clause 4))))))

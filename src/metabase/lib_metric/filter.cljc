@@ -4,6 +4,7 @@
    [metabase.lib-metric.definition :as definition]
    [metabase.lib-metric.dimension :as dimension]
    [metabase.lib-metric.types.isa :as types.isa]
+   [metabase.lib.options :as lib.options]
    [metabase.util.performance :as perf]))
 
 (defn leading-dimension-ref
@@ -136,7 +137,7 @@
   "Create a default filter clause (is-null or not-null) from parts.
    Parts: {:operator :is-null/:not-null, :dimension dimension}"
   [{:keys [operator dimension]}]
-  [operator {} (dimension-ref dimension)])
+  (lib.options/ensure-uuid [operator {} (dimension-ref dimension)]))
 
 (defn default-filter-parts
   "Extract default filter parts from an MBQL clause.
@@ -157,9 +158,10 @@
   "Create a boolean filter clause from parts.
    Parts: {:operator := or :is-null/:not-null, :dimension dimension, :values [boolean]}"
   [{:keys [operator dimension values]}]
-  (case operator
-    (:is-null :not-null) [operator {} (dimension-ref dimension)]
-    := [:= {} (dimension-ref dimension) (first values)]))
+  (lib.options/ensure-uuid
+   (case operator
+     (:is-null :not-null) [operator {} (dimension-ref dimension)]
+     := [:= {} (dimension-ref dimension) (first values)])))
 
 (defn boolean-filter-parts
   "Extract boolean filter parts from an MBQL clause.
@@ -189,11 +191,12 @@
   "Create a number filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [number]}"
   [{:keys [operator dimension values]}]
-  (case operator
-    (:is-null :not-null) [operator {} (dimension-ref dimension)]
-    :between             [:between {} (dimension-ref dimension) (first values) (second values)]
-    ;; Standard comparison operators: =, !=, >, >=, <, <=
-    (into [operator {} (dimension-ref dimension)] values)))
+  (lib.options/ensure-uuid
+   (case operator
+     (:is-null :not-null) [operator {} (dimension-ref dimension)]
+     :between             [:between {} (dimension-ref dimension) (first values) (second values)]
+     ;; Standard comparison operators: =, !=, >, >=, <, <=
+     (into [operator {} (dimension-ref dimension)] values))))
 
 (defn number-filter-parts
   "Extract number filter parts from an MBQL clause.
@@ -225,15 +228,16 @@
   "Create a string filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [string], :options map}"
   [{:keys [operator dimension values options]}]
-  (case operator
-    (:is-empty :not-empty) [operator {} (dimension-ref dimension)]
-    ;; Operators that take a single value and may have options
-    (:contains :does-not-contain :starts-with :ends-with)
-    (if (seq options)
-      [operator options (dimension-ref dimension) (first values)]
-      [operator {} (dimension-ref dimension) (first values)])
-    ;; Equality operators can have multiple values
-    (:= :!=) (into [operator {} (dimension-ref dimension)] values)))
+  (lib.options/ensure-uuid
+   (case operator
+     (:is-empty :not-empty) [operator {} (dimension-ref dimension)]
+     ;; Operators that take a single value and may have options
+     (:contains :does-not-contain :starts-with :ends-with)
+     (if (seq options)
+       [operator options (dimension-ref dimension) (first values)]
+       [operator {} (dimension-ref dimension) (first values)])
+     ;; Equality operators can have multiple values
+     (:= :!=) (into [operator {} (dimension-ref dimension)] values))))
 
 (defn string-filter-parts
   "Extract string filter parts from an MBQL clause.
@@ -272,14 +276,15 @@
   "Create a coordinate filter clause from parts.
    Parts: {:operator :keyword, :dimension lat-dimension, :longitude-dimension lon-dimension, :values [number]}"
   [{:keys [operator dimension longitude-dimension values]}]
-  (case operator
-    :inside [:inside {}
-             (dimension-ref dimension)
-             (dimension-ref longitude-dimension)
-             (nth values 0) (nth values 1) (nth values 2) (nth values 3)]
-    :between [:between {} (dimension-ref dimension) (first values) (second values)]
-    ;; Standard operators
-    (into [operator {} (dimension-ref dimension)] values)))
+  (lib.options/ensure-uuid
+   (case operator
+     :inside [:inside {}
+              (dimension-ref dimension)
+              (dimension-ref longitude-dimension)
+              (nth values 0) (nth values 1) (nth values 2) (nth values 3)]
+     :between [:between {} (dimension-ref dimension) (first values) (second values)]
+     ;; Standard operators
+     (into [operator {} (dimension-ref dimension)] values))))
 
 (defn coordinate-filter-parts
   "Extract coordinate filter parts from an MBQL clause.
@@ -321,10 +326,11 @@
   "Create a specific date filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [date-string], :has-time boolean}"
   [{:keys [operator dimension values]}]
-  (case operator
-    :between [:between {} (dimension-ref dimension) (first values) (second values)]
-    ;; Standard operators: =, >, <
-    [operator {} (dimension-ref dimension) (first values)]))
+  (lib.options/ensure-uuid
+   (case operator
+     :between [:between {} (dimension-ref dimension) (first values) (second values)]
+     ;; Standard operators: =, >, <
+     [operator {} (dimension-ref dimension) (first values)])))
 
 (defn specific-date-filter-parts
   "Extract specific date filter parts from an MBQL clause.
@@ -362,9 +368,10 @@
                        (seq options) (merge options)
                        offset-unit   (assoc :offset-unit offset-unit)
                        offset-value  (assoc :offset-value offset-value))]
-    (if (seq base-options)
-      [:time-interval base-options (dimension-ref dimension) value unit]
-      [:time-interval {} (dimension-ref dimension) value unit])))
+    (lib.options/ensure-uuid
+     (if (seq base-options)
+       [:time-interval base-options (dimension-ref dimension) value unit]
+       [:time-interval {} (dimension-ref dimension) value unit]))))
 
 (defn relative-date-filter-parts
   "Extract relative date filter parts from an MBQL clause.
@@ -395,17 +402,18 @@
   "Create an exclude date filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :unit :day-of-week/etc, :values [int]}"
   [{:keys [operator dimension unit values]}]
-  (case operator
-    (:is-null :not-null) [operator {} (dimension-ref dimension)]
-    ;; For :!= with unit, we need to wrap the dimension in a temporal extraction
-    :!= (let [extraction-fn (case unit
-                              :day-of-week :get-day-of-week
-                              :month-of-year :get-month
-                              :quarter-of-year :get-quarter
-                              :hour-of-day :get-hour
-                              ;; Default
-                              :get-day-of-week)]
-          (into [:!= {} [extraction-fn {} (dimension-ref dimension)]] values))))
+  (lib.options/ensure-uuid
+   (case operator
+     (:is-null :not-null) [operator {} (dimension-ref dimension)]
+     ;; For :!= with unit, we need to wrap the dimension in a temporal extraction
+     :!= (let [extraction-fn (case unit
+                               :day-of-week :get-day-of-week
+                               :month-of-year :get-month
+                               :quarter-of-year :get-quarter
+                               :hour-of-day :get-hour
+                               ;; Default
+                               :get-day-of-week)]
+           (into [:!= {} [extraction-fn {} (dimension-ref dimension)]] values)))))
 
 (defn exclude-date-filter-parts
   "Extract exclude date filter parts from an MBQL clause.
@@ -452,11 +460,12 @@
   "Create a time filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [time-string]}"
   [{:keys [operator dimension values]}]
-  (case operator
-    (:is-null :not-null) [operator {} (dimension-ref dimension)]
-    :between             [:between {} (dimension-ref dimension) (first values) (second values)]
-    ;; Standard operators: >, <
-    [operator {} (dimension-ref dimension) (first values)]))
+  (lib.options/ensure-uuid
+   (case operator
+     (:is-null :not-null) [operator {} (dimension-ref dimension)]
+     :between             [:between {} (dimension-ref dimension) (first values) (second values)]
+     ;; Standard operators: >, <
+     [operator {} (dimension-ref dimension) (first values)])))
 
 (defn time-filter-parts
   "Extract time filter parts from an MBQL clause.

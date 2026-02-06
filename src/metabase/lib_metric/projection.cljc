@@ -4,6 +4,7 @@
   (:require
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
@@ -51,7 +52,7 @@
    Creates a dimension reference and appends it to the definition's projections."
   [definition :- ::lib-metric.schema/metric-definition
    dimension :- ::lib-metric.schema/metadata-dimension]
-  (let [dimension-ref [:dimension {} (:id dimension)]]
+  (let [dimension-ref (lib.options/ensure-uuid [:dimension {} (:id dimension)])]
     (update definition :projections (fnil conj []) dimension-ref)))
 
 (mu/defn projection-dimension :- [:maybe ::lib-metric.schema/metadata-dimension]

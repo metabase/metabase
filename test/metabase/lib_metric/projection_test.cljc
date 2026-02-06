@@ -184,11 +184,11 @@
       (is (= uuid-2 (last (second (:projections result))))))))
 
 (deftest ^:parallel project-creates-correct-dimension-reference-test
-  (testing "project creates a [:dimension {} id] reference"
+  (testing "project creates a [:dimension opts id] reference with :lib/uuid"
     (let [result     (lib-metric.projection/project valid-definition dimension-1)
           projection (first (:projections result))]
       (is (= :dimension (first projection)))
-      (is (= {} (second projection)))
+      (is (string? (:lib/uuid (second projection))))
       (is (= uuid-1 (nth projection 2))))))
 
 (deftest ^:parallel project-allows-same-dimension-multiple-times-test
