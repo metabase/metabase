@@ -10,11 +10,11 @@
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
   (:require
-   [clojure.string :as str]
    ^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: FIXME before merging
    [metabase.analytics.core :as analytics]
    ^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: FIXME before merging
    [metabase.lib.validate :as lib.validate]
+   [clojure.string :as str]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.pool :as python.pool]
    [metabase.util.json :as json]
@@ -31,7 +31,7 @@
 (def ^:private ^:const default-timeout-ms
   "Default timeout for Python operations in milliseconds.
    GraalVM Python can occasionally hang (DEV-1393), so we wrap calls with a timeout."
-  15000) ; 15 seconds
+  30000) ; 30 seconds
 
 (defn- with-timeout*
   "Execute f in a future with timeout. On timeout, throws TimeoutException.
