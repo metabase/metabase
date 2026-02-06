@@ -12,6 +12,10 @@ export type MetricFilterSettings = {
   verified: boolean;
 };
 
+// Static default filter objects to prevent unnecessary re-renders
+const DEFAULT_MODEL_FILTERS: ModelFilterSettings = { verified: false };
+const DEFAULT_METRIC_FILTERS: MetricFilterSettings = { verified: false };
+
 const getDefaultPluginContentVerification = () => ({
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -21,13 +25,11 @@ const getDefaultPluginContentVerification = () => ({
   ) => 0,
 
   ModelFilterControls: (_props: ModelFilterControlsProps) => null,
-  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
-    verified: false,
-  }),
+  getDefaultModelFilters: (_state: State): ModelFilterSettings =>
+    DEFAULT_MODEL_FILTERS,
 
-  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
-    verified: false,
-  }),
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings =>
+    DEFAULT_METRIC_FILTERS,
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 });
 
