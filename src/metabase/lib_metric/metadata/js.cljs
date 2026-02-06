@@ -21,12 +21,14 @@
     (gobject/get obj k)))
 
 (defn- parse-metric
-  "Parse a single metric from JS object to Clojure map."
+  "Parse a single metric from JS object to Clojure map.
+   Expects metrics from the metrics API (metabase.metrics.api), not Card-based metrics."
   [metric-obj]
   (when metric-obj
-    (let [metric-obj (object-get metric-obj "_plainObject")
-          parsed (-> (js->clj metric-obj :keywordize-keys true)
-                     (update-keys u/->kebab-case-en))]
+    (let [;; Check if this is a Metric class wrapper (has _plainObject) or a plain object
+          raw-obj   (or (object-get metric-obj "_plainObject") metric-obj)
+          parsed    (-> (js->clj raw-obj :keywordize-keys true)
+                        (update-keys u/->kebab-case-en))]
       (assoc parsed :lib/type :metadata/metric))))
 
 (defn- parse-metrics
@@ -42,38 +44,28 @@
           (js-keys metrics-data))))
 
 (defn- filter-metrics
-  "Filter parsed metrics according to metadata-spec."
-  [metrics {id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))]
-    (into []
-          (comp
-           (if id-set
-             (filter #(contains? id-set (:id %)))
-             identity)
-           (if name-set
-             (filter #(contains? name-set (:name %)))
-             identity)
-           (if table-id
-             (filter #(and (= (:table-id %) table-id)
-                           (nil? (:source-card-id %))))
-             identity)
-           (if card-id
-             (filter #(= (:source-card-id %) card-id))
-             identity)
-           (if active-only?
-             (filter #(not (:archived %)))
-             identity)
-           ;; Ensure only metrics (type = :metric)
-           (filter #(= (:type %) :metric)))
-          (vals metrics))))
+  "Filter parsed metrics according to metadata-spec.
+   Works with metrics from the metrics API (metabase.metrics.api)."
+  [metrics {id-set :id, name-set :name, :as _metadata-spec}]
+  (into []
+        (comp
+         (if id-set
+           (filter #(contains? id-set (:id %)))
+           identity)
+         (if name-set
+           (filter #(contains? name-set (:name %)))
+           identity))
+        (vals metrics)))
 
 (defn- parse-measure
-  "Parse a single measure from JS object to Clojure map."
+  "Parse a single measure from JS object to Clojure map.
+   Expects measures from the measures API, not Card-based measures."
   [measure-obj]
   (when measure-obj
-    (let [metric-obj (object-get metric-obj "_plainObject")
-          parsed (-> (js->clj measure-obj :keywordize-keys true)
-                     (update-keys u/->kebab-case-en))]
+    (let [;; Check if this is a Measure class wrapper (has _plainObject) or a plain object
+          raw-obj (or (object-get measure-obj "_plainObject") measure-obj)
+          parsed  (-> (js->clj raw-obj :keywordize-keys true)
+                      (update-keys u/->kebab-case-en))]
       (assoc parsed :lib/type :metadata/measure))))
 
 (defn- parse-measures
@@ -110,20 +102,33 @@
 
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
+(defn- parse-dimension
+  "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
+   Similar to how metabase.lib.js.metadata parses fields."
+  [dim]
+  (let [;; Convert all keys to kebab-case keywords (u/->kebab-case-en returns strings)
+        converted (update-keys dim (comp keyword u/->kebab-case-en))]
+    ;; Then convert type values from strings to keywords
+    (cond-> converted
+      (:effective-type converted) (update :effective-type keyword)
+      (:semantic-type converted)  (update :semantic-type keyword)
+      (:base-type converted)      (update :base-type keyword))))
+
 (defn- extract-dimensions-from-entity
   "Extract dimensions from a parsed metric or measure, annotating with source info."
   [entity source-type]
   (let [dims     (:dimensions entity)
         mappings (:dimension-mappings entity)
         mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
-    (for [dim dims]
-      (-> dim
+    (for [dim dims
+          :let [parsed-dim (parse-dimension dim)]]
+      (-> parsed-dim
           (assoc :lib/type :metadata/dimension
                  :source-type source-type
                  :source-id (:id entity))
           (cond->
-           (get mappings-by-dim-id (:id dim))
-            (assoc :dimension-mapping (get mappings-by-dim-id (:id dim))))))))
+           (get mappings-by-dim-id (:id parsed-dim))
+            (assoc :dimension-mapping (get mappings-by-dim-id (:id parsed-dim))))))))
 
 (defn- extract-all-dimensions
   "Extract all dimensions from parsed metrics and measures."

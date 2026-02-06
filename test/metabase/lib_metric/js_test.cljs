@@ -189,3 +189,114 @@
           round-trip    (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
       (is (= [filter-clause] (:filters round-trip)))
       (is (= [projection] (:projections round-trip))))))
+
+;;; -------------------------------------------------- MetadataProviderable Tests --------------------------------------------------
+
+(def ^:private sample-definition
+  "A sample MetricDefinition that can be used as a MetadataProviderable."
+  {:lib/type          :metric/definition
+   :source            {:type     :source/metric
+                       :id       42
+                       :metadata sample-metric-metadata}
+   :filters           []
+   :projections       []
+   :metadata-provider mock-provider})
+
+(deftest ^:parallel metricMetadata-accepts-definition-test
+  (testing "metricMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [result (lib-metric.js/metricMetadata sample-definition 42)]
+      (is (some? result))
+      (is (= :metadata/metric (:lib/type result)))
+      (is (= 42 (:id result))))))
+
+(deftest ^:parallel metricMetadata-returns-nil-for-missing-metric-test
+  (testing "metricMetadata returns nil for missing metric when using definition"
+    (let [result (lib-metric.js/metricMetadata sample-definition 999)]
+      (is (nil? result)))))
+
+(deftest ^:parallel measureMetadata-accepts-definition-test
+  (testing "measureMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [result (lib-metric.js/measureMetadata sample-definition 99)]
+      (is (some? result))
+      (is (= :metadata/measure (:lib/type result)))
+      (is (= 99 (:id result))))))
+
+(deftest ^:parallel measureMetadata-returns-nil-for-missing-measure-test
+  (testing "measureMetadata returns nil for missing measure when using definition"
+    (let [result (lib-metric.js/measureMetadata sample-definition 999)]
+      (is (nil? result)))))
+
+(deftest ^:parallel fromMetricMetadata-accepts-definition-test
+  (testing "fromMetricMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [new-definition (lib-metric.js/fromMetricMetadata sample-definition sample-metric-metadata)]
+      (is (= :metric/definition (:lib/type new-definition)))
+      (is (= :source/metric (get-in new-definition [:source :type])))
+      (is (= 42 (get-in new-definition [:source :id])))
+      (is (= mock-provider (:metadata-provider new-definition))))))
+
+(deftest ^:parallel fromMeasureMetadata-accepts-definition-test
+  (testing "fromMeasureMetadata accepts a MetricDefinition as MetadataProviderable"
+    (let [new-definition (lib-metric.js/fromMeasureMetadata sample-definition sample-measure-metadata)]
+      (is (= :metric/definition (:lib/type new-definition)))
+      (is (= :source/measure (get-in new-definition [:source :type])))
+      (is (= 99 (get-in new-definition [:source :id])))
+      (is (= mock-provider (:metadata-provider new-definition))))))
+
+(deftest ^:parallel fromJsMetricDefinition-accepts-definition-test
+  (testing "fromJsMetricDefinition accepts a MetricDefinition as MetadataProviderable"
+    (let [js-def         #js {:source-metric 42}
+          new-definition (lib-metric.js/fromJsMetricDefinition sample-definition js-def)]
+      (is (= :metric/definition (:lib/type new-definition)))
+      (is (= :source/metric (get-in new-definition [:source :type])))
+      (is (= 42 (get-in new-definition [:source :id])))
+      (is (= sample-metric-metadata (get-in new-definition [:source :metadata])))
+      (is (= mock-provider (:metadata-provider new-definition))))))
+
+;;; -------------------------------------------------- filter --------------------------------------------------
+
+(deftest ^:parallel filter-adds-clause-test
+  (testing "filter adds a filter clause to the definition"
+    (let [filter-clause [:= {} [:dimension {} "dim-uuid"] "value"]
+          result        (lib-metric.js/filter sample-definition filter-clause)]
+      (is (= :metric/definition (:lib/type result)))
+      (is (= [filter-clause] (:filters result))))))
+
+(deftest ^:parallel filter-appends-to-existing-test
+  (testing "filter appends to existing filters"
+    (let [existing-filter [:= {} [:dimension {} "dim-1"] "a"]
+          new-filter      [:= {} [:dimension {} "dim-2"] "b"]
+          definition      (assoc sample-definition :filters [existing-filter])
+          result          (lib-metric.js/filter definition new-filter)]
+      (is (= [existing-filter new-filter] (:filters result))))))
+
+;;; -------------------------------------------------- filterableDimensionOperators --------------------------------------------------
+
+(def ^:private string-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-string"
+   :name           "category"
+   :display-name   "Category"
+   :effective-type :type/Text
+   :semantic-type  nil})
+
+(def ^:private number-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-number"
+   :name           "amount"
+   :display-name   "Amount"
+   :effective-type :type/Float
+   :semantic-type  nil})
+
+(deftest ^:parallel filterableDimensionOperators-string-test
+  (testing "filterableDimensionOperators returns string operators for string dimension"
+    (let [result (lib-metric.js/filterableDimensionOperators string-dimension)]
+      (is (array? result))
+      (is (= ["is-empty" "not-empty" "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]
+             (js->clj result))))))
+
+(deftest ^:parallel filterableDimensionOperators-number-test
+  (testing "filterableDimensionOperators returns number operators for number dimension"
+    (let [result (lib-metric.js/filterableDimensionOperators number-dimension)]
+      (is (array? result))
+      (is (= ["is-null" "not-null" "=" "!=" ">" ">=" "<" "<=" "between"]
+             (js->clj result))))))

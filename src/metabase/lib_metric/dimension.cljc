@@ -240,6 +240,66 @@
    metadata-provider
    {:lib/type :metadata/dimension :table-id table-id}))
 
+;;; ------------------------------------------------- Dimension Resolution -------------------------------------------------
+;;; Functions for resolving dimension UUIDs to field IDs through dimension mappings.
+
+(mu/defn get-dimension-or-throw :- :map
+  "Find a dimension by its UUID from a list of dimensions.
+   Throws 400 if not found."
+  [dimensions   :- [:maybe [:sequential :map]]
+   dimension-id :- :string]
+  (or (m/find-first #(= (:id %) dimension-id) dimensions)
+      (throw (ex-info (i18n/tru "Dimension not found: {0}" dimension-id)
+                      {:status-code 400
+                       :dimension-id dimension-id}))))
+
+(mu/defn get-dimension-mapping-or-throw :- :map
+  "Find a dimension mapping by dimension UUID from a list of mappings.
+   Throws 400 if not found."
+  [dimension-mappings :- [:maybe [:sequential :map]]
+   dimension-id       :- :string]
+  (or (m/find-first #(= (:dimension-id %) dimension-id) dimension-mappings)
+      (throw (ex-info (i18n/tru "Dimension mapping not found for dimension: {0}" dimension-id)
+                      {:status-code 400
+                       :dimension-id dimension-id}))))
+
+(defn dimension-target->field-id
+  "Extract the field ID from a dimension mapping target.
+   Returns nil if the target cannot be resolved to a field ID (e.g., uses a name instead).
+   Handles both valid and invalid field refs gracefully."
+  [target]
+  (when (and (vector? target)
+             (= :field (first target))
+             (>= (count target) 3))
+    (let [id-or-name (nth target 2)]
+      (when (pos-int? id-or-name)
+        id-or-name))))
+
+(mu/defn resolve-dimension-to-field-id :- ::lib.schema.id/field
+  "Resolve a dimension UUID to a field ID through the dimension and mapping.
+   Validates that the dimension is active (not orphaned) and has a valid mapping.
+
+   Returns the field ID or throws an exception with appropriate error message."
+  [dimensions         :- [:maybe [:sequential :map]]
+   dimension-mappings :- [:maybe [:sequential :map]]
+   dimension-id       :- :string]
+  (let [dimension (get-dimension-or-throw dimensions dimension-id)]
+    ;; Check for orphaned dimensions
+    (when (= (:status dimension) "status/orphaned")
+      (throw (ex-info (i18n/tru "Cannot use orphaned dimension: {0}" dimension-id)
+                      {:status-code 400
+                       :dimension-id dimension-id
+                       :dimension-status (:status dimension)})))
+    (let [mapping  (get-dimension-mapping-or-throw dimension-mappings dimension-id)
+          target   (:target mapping)
+          field-id (dimension-target->field-id target)]
+      (when-not field-id
+        (throw (ex-info (i18n/tru "Cannot resolve dimension target to field ID: {0}" dimension-id)
+                        {:status-code 400
+                         :dimension-id dimension-id
+                         :target target})))
+      field-id)))
+
 (def keep-me
   "Var used to ensure this namespace is loaded."
   ::keep-me)

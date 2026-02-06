@@ -289,9 +289,19 @@ export function projectionableDimensions(
 
 export function project(
   definition: MetricDefinition,
-  projectionClause: ProjectionClause,
+  dimension: DimensionMetadata,
 ): MetricDefinition {
-  return LibMetric.project(definition, projectionClause) as MetricDefinition;
+  return LibMetric.project(definition, dimension) as MetricDefinition;
+}
+
+export function projectionDimension(
+  definition: MetricDefinition,
+  projection: ProjectionClause,
+): DimensionMetadata | null {
+  return LibMetric.projectionDimension(
+    definition,
+    projection,
+  ) as DimensionMetadata | null;
 }
 
 export function replaceClause(
