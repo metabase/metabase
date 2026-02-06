@@ -630,8 +630,13 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         cy.findByText("DE-User ID").click();
 
         popover().within(() => {
-          cy.findByText("DE-Orders").should("exist");
+          cy.findByText("DE-Orders").should("be.visible");
 
+          cy.findByTestId("list-search-field").type("Product ID");
+          cy.findByText("DE-Product ID").should("not.exist");
+          cy.findByText("Product ID").should("be.visible");
+
+          cy.findByTestId("list-search-field").clear();
           cy.findByText("DE-Product ID").click();
         });
 
