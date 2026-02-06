@@ -25,7 +25,8 @@ import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
-  | SdkIframeEmbedTagRequestSessionTokenMessage;
+  | SdkIframeEmbedTagRequestSessionTokenMessage
+  | SdkIframeEmbedTagHandleLinkMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -33,13 +34,18 @@ export type SdkIframeEmbedTagIframeReadyMessage = {
 export type SdkIframeEmbedTagRequestSessionTokenMessage = {
   type: "metabase.embed.requestSessionToken";
 };
+export type SdkIframeEmbedTagHandleLinkMessage = {
+  type: "metabase.embed.handleLink";
+  data: { url: string; requestId: string };
+};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSetSettingsMessage
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
-  | SdkIframeEmbedReportAnalytics;
+  | SdkIframeEmbedReportAnalytics
+  | SdkIframeEmbedHandleLinkResponse;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -64,6 +70,10 @@ export type SdkIframeEmbedReportAnalytics = {
     usageAnalytics: EmbeddedAnalyticsJsEventSchema;
     embedHostUrl: string;
   };
+};
+export type SdkIframeEmbedHandleLinkResponse = {
+  type: "metabase.embed.handleLinkResponse";
+  data: { requestId: string; handled: boolean };
 };
 
 // --- Embed Option Interfaces ---
@@ -201,6 +211,11 @@ export type SdkIframeEmbedBaseSettings = {
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
+
+  pluginsConfig?: {
+    // Callback to handle link clicks. Return { handled: true } to prevent default navigation.
+    handleLink?: (url: string) => { handled: boolean };
+  };
 };
 
 export type SdkIframeEmbedAuthTypeSettings = {
