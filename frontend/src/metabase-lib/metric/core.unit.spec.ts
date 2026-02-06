@@ -7,7 +7,11 @@ import {
 } from "metabase-types/api/mocks/metric";
 
 import * as LibMetric from "./core";
-import type { MetadataProvider, MetricDefinition, MetricMetadata } from "./types";
+import type {
+  MetadataProvider,
+  MetricDefinition,
+  MetricMetadata,
+} from "./types";
 
 const SAMPLE_METRIC = createMockMetric({
   id: 1,
@@ -151,16 +155,7 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.filterableDimensions(definition);
 
       expect(dimensions.length).toBeGreaterThan(0);
-      const dimension = dimensions[0] as unknown as Record<string, unknown>;
-
-      // Debug: check what's on the dimension directly
-      console.log("dimension keys:", Object.keys(dimension));
-      console.log("dimension.filterPositions:", dimension.filterPositions);
-      console.log("dimension['filter-positions']:", dimension["filter-positions"]);
-
       const info = LibMetric.displayInfo(definition, dimensions[0]);
-      console.log("info:", info);
-      console.log("info.filterPositions:", info.filterPositions);
 
       // filterPositions should be an array (empty for a new definition with no filters)
       expect(info.filterPositions).toBeDefined();
@@ -359,7 +354,10 @@ describe("metabase-lib/metric/core", () => {
       const { definition, metricMeta } = setupDefinition();
 
       // Create a new definition using the existing definition as MetadataProviderable
-      const newDefinition = LibMetric.fromMetricMetadata(definition, metricMeta);
+      const newDefinition = LibMetric.fromMetricMetadata(
+        definition,
+        metricMeta,
+      );
 
       expect(newDefinition).toBeDefined();
       expect(LibMetric.sourceMetricId(newDefinition)).toBe(SAMPLE_METRIC.id);

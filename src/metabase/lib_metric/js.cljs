@@ -1,21 +1,68 @@
 (ns metabase.lib-metric.js
   "JavaScript-facing API for lib-metric functions."
   (:require
+   [clojure.string :as str]
    [goog.object :as gobject]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib-metric.projection :as lib-metric.projection]
-   [metabase.lib-metric.proxy :as proxy]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.memoize :as memoize]))
 
-(def ^:private camel->kebab-proxy
-  "Proxy builder that converts camelCase JS keys to kebab-case Clojure keywords."
-  (proxy/builder (comp keyword u/->kebab-case-en)))
+;; =============================================================================
+;; CLJS -> JS Conversion Utilities
+;; =============================================================================
+;; These conversion functions transform CLJS data structures to JS objects/arrays.
+;; Adapted from metabase.lib/js.cljs for consistent interop patterns.
+
+(declare ^:private display-info->js)
+
+(defn- cljs-key->js-key
+  "Converts idiomatic Clojure keys (`:kebab-case-keywords`) into idiomatic JavaScript keys (`\"camelCaseStrings\"`).
+
+  Namespaces are preserved. A `?` suffix in Clojure is replaced with an `\"is\"` prefix in JavaScript, eg.
+  `:many-pks?` becomes `isManyPks`."
+  [cljs-key]
+  (let [key-str (u/qualified-name cljs-key)
+        key-str (if (str/ends-with? key-str "?")
+                  (str "is-" (str/replace key-str #"\?$" ""))
+                  key-str)]
+    (u/->camelCaseEn key-str)))
+
+(defn- display-info-map->js* [x]
+  (reduce (fn [obj [cljs-key cljs-val]]
+            (let [js-key (cljs-key->js-key cljs-key)
+                  js-val (display-info->js cljs-val)]
+              (gobject/set obj js-key js-val)
+              obj))
+          #js {}
+          x))
+
+(def ^:private display-info-map->js
+  (memoize/lru display-info-map->js* :lru/threshold 256))
+
+(defn- display-info-seq->js* [x]
+  (to-array (map display-info->js x)))
+
+(def ^:private display-info-seq->js
+  (memoize/lru display-info-seq->js* :lru/threshold 256))
+
+(defn- display-info->js
+  "Converts CLJS display info results into JS objects for the FE to consume.
+  Recursively converts CLJS maps and sequences into JS objects and arrays."
+  [x]
+  (cond
+    (nil? x)     nil
+    (map? x)     (display-info-map->js x)
+    (string? x)  x
+    (seqable? x) (display-info-seq->js x)
+    (keyword? x) (u/qualified-name x)
+    :else        x))
 
 ;; Ensure all lib-metric code is loaded for any defmethod registrations
 (comment lib-metric/keep-me
@@ -24,6 +71,13 @@
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
     (gobject/get obj k)))
+
+(defn- get-prop
+  "Get a property from an object that may be either a CLJS map or a JS Proxy.
+   Tries CLJS keyword access first, then falls back to JS property access."
+  [obj cljs-key js-key]
+  (or (get obj cljs-key)
+      (gobject/get obj js-key)))
 
 (defn- build-table->db-id
   "Build a map of table-id -> database-id from the tables in metadata."
@@ -138,13 +192,13 @@
   "Get the filter clauses from a metric definition.
    Returns a JS array of opaque CLJS values."
   [definition]
-  (proxy/proxy (lib-metric.definition/filters definition)))
+  (to-array (lib-metric.definition/filters definition)))
 
 (defn ^:export projections
   "Get the projection clauses from a metric definition.
    Returns a JS array of opaque CLJS values."
   [definition]
-  (proxy/proxy (lib-metric.definition/projections definition)))
+  (to-array (lib-metric.definition/projections definition)))
 
 ;; =============================================================================
 ;; Mock data for stubs
@@ -271,7 +325,7 @@
   "Get dimensions that can be used for filtering.
    Each dimension includes :filter-positions indicating which filter indices use it."
   [definition]
-  (proxy/proxy (lib-metric.filter/filterable-dimensions definition)))
+  (to-array (lib-metric.filter/filterable-dimensions definition)))
 
 (defn ^:export filter
   "Add a filter clause to a metric definition.
@@ -400,7 +454,7 @@
   "Get dimensions that can be used for projections.
    Returns dimensions with :projection-positions metadata."
   [definition]
-  (proxy/proxy (lib-metric.projection/projectable-dimensions definition)))
+  (to-array (lib-metric.projection/projectable-dimensions definition)))
 
 (defn ^:export project
   "Add a projection clause to a metric definition.
@@ -430,7 +484,7 @@
   "Get available temporal buckets for a dimension.
    STUB: Returns mock temporal buckets."
   [_definition _dimension]
-  (proxy/proxy mock-temporal-buckets))
+  (to-array mock-temporal-buckets))
 
 (defn ^:export withTemporalBucket
   "Apply a temporal bucket to a dimension.
@@ -448,7 +502,7 @@
   "Get available binning strategies for a dimension.
    STUB: Returns mock binning strategies."
   [_definition _dimension]
-  (proxy/proxy mock-binning-strategies))
+  (to-array mock-binning-strategies))
 
 (defn ^:export withBinning
   "Apply a binning strategy to a dimension.
@@ -538,42 +592,42 @@
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
   [_definition source]
-  (let [lib-type (:lib/type source)]
-    (camel->kebab-proxy
-     (case lib-type
-       :metadata/metric
-       {:display-name (or (:display-name source) (:name source) "Metric")}
+  (display-info->js
+   (case (:lib/type source)
+     :metadata/metric
+     {:display-name (or (:display-name source) (:name source) "Metric")}
 
-       :metadata/measure
-       {:display-name (or (:display-name source) (:name source) "Measure")}
+     :metadata/measure
+     {:display-name (or (:display-name source) (:name source) "Measure")}
 
-       :metadata/dimension
-       {:display-name         (or (:display-name source) (:name source) "Dimension")
-        :filter-positions     (or (:filter-positions source) [])
-        :projection-positions (or (:projection-positions source) [])}
+     :metadata/dimension
+     {:display-name         (or (get-prop source :display-name "display_name")
+                                (get-prop source :name "name")
+                                "Dimension")
+      :filter-positions     (or (get-prop source :filter-positions "filter-positions") [])
+      :projection-positions (or (get-prop source :projection-positions "projection-positions") [])}
 
-       :temporal-bucket
-       {:short-name   (name (:unit source))
-        :display-name (lib.temporal-bucket/describe-temporal-unit (:unit source))
-        :default      (boolean (:default source))
-        :selected     (boolean (:selected source))}
+     :temporal-bucket
+     {:short-name   (name (:unit source))
+      :display-name (lib.temporal-bucket/describe-temporal-unit (:unit source))
+      :default      (boolean (:default source))
+      :selected     (boolean (:selected source))}
 
-       :binning-strategy
-       {:display-name (lib.binning/binning-display-name source nil)
-        :default      (boolean (:default source))
-        :selected     (boolean (:selected source))}
+     :binning-strategy
+     {:display-name (lib.binning/binning-display-name source nil)
+      :default      (boolean (:default source))
+      :selected     (boolean (:selected source))}
 
-       ;; Default for filter clauses and other types
-       {:display-name (or (:display-name source)
-                          (when-let [op (:operator source)]
-                            (name op))
-                          "Unknown")}))))
+     ;; Default for filter clauses and other types
+     {:display-name (or (:display-name source)
+                        (when-let [op (:operator source)]
+                          (name op)))})))
 
 (defn ^:export dimensionValuesInfo
   "Get dimension values info.
    STUB: Returns mock info based on dimension."
   [_definition dimension]
-  (camel->kebab-proxy
+  (display-info->js
    {:id                (:id dimension)
     :can-list-values   (= :type/Category (:semantic-type dimension))
     :can-search-values (= :type/Text (:effective-type dimension))
