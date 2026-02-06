@@ -48,9 +48,9 @@
 
 (def ^:private construct-field-aggregation-schema
   [:map {:closed true}
-   [:field_id :string]
-   [:function :string]
-   [:sort_order {:optional true} [:maybe :string]]
+   [:field_id {:optional true} :string]
+   [:function [:enum "count" "count-distinct" "distinct" "sum" "min" "max" "avg"]]
+   [:sort_order {:optional true} [:maybe [:enum "ascending" "descending"]]]
    [:bucket {:optional true} [:maybe :string]]])
 
 (def ^:private construct-measure-aggregation-schema
@@ -66,14 +66,52 @@
    [:field construct-field-schema]
    [:direction :string]])
 
-(def ^:private construct-field-filter-schema
+;; Canonical operation values per filter_type.
+;; These appear as enum constraints in the JSON Schema sent to the LLM.
+(def ^:private multi-value-operations
+  ["equals"             "not-equals"
+   "string-starts-with" "string-ends-with"
+   "string-contains"    "string-not-contains"
+   ;; aliases the LLM may send from system-instruction shorthand
+   "contains"           "not-contains"
+   "starts-with"        "ends-with"])
+
+(def ^:private single-value-operations
+  ["greater-than"          "greater-than-or-equal"
+   "less-than"             "less-than-or-equal"
+   ;; LLM may use equals/not-equals with a single value instead of multi_value
+   "equals"                "not-equals"])
+
+(def ^:private no-value-operations
+  ["is-null"            "is-not-null"
+   "string-is-empty"    "string-is-not-empty"
+   "is-true"            "is-false"
+   ;; aliases
+   "is-empty"           "is-not-empty"])
+
+(def ^:private construct-multi-value-filter-schema
   [:map {:closed true}
-   [:filter_type [:enum "multi_value" "single_value" "no_value"]]
+   [:filter_type [:enum "multi_value"]]
    [:field_id :string]
-   [:operation :string]
+   [:operation (into [:enum] multi-value-operations)]
    [:bucket {:optional true} [:maybe :string]]
    [:value {:optional true} [:maybe :any]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
+
+(def ^:private construct-single-value-filter-schema
+  [:map {:closed true}
+   [:filter_type [:enum "single_value"]]
+   [:field_id :string]
+   [:operation (into [:enum] single-value-operations)]
+   [:bucket {:optional true} [:maybe :string]]
+   [:value {:optional true} [:maybe :any]]
+   [:values {:optional true} [:maybe [:sequential :any]]]])
+
+(def ^:private construct-no-value-filter-schema
+  [:map {:closed true}
+   [:filter_type [:enum "no_value"]]
+   [:field_id :string]
+   [:operation (into [:enum] no-value-operations)]])
 
 (def ^:private construct-segment-filter-schema
   [:map {:closed true}
@@ -81,7 +119,11 @@
    [:segment_id :int]])
 
 (def ^:private construct-filter-schema
-  [:or construct-field-filter-schema construct-segment-filter-schema])
+  [:or
+   construct-multi-value-filter-schema
+   construct-single-value-filter-schema
+   construct-no-value-filter-schema
+   construct-segment-filter-schema])
 
 (def ^:private construct-source-metric-schema
   [:map {:closed true}
@@ -95,12 +137,19 @@
   [:map {:closed true}
    [:table_id :int]])
 
+(def ^:private construct-visualization-schema
+  [:map {:closed true}
+   [:chart_type :string]])
+
+;; The LLM sometimes nests visualization inside query, so we accept it as optional
+;; in each query variant and pull it out during normalization.
 (def ^:private construct-query-metric-schema
   [:map {:closed true}
    [:query_type [:enum "metric"]]
    [:source construct-source-metric-schema]
    [:filters [:sequential construct-filter-schema]]
-   [:group_by [:sequential construct-field-schema]]])
+   [:group_by [:sequential construct-field-schema]]
+   [:visualization {:optional true} construct-visualization-schema]])
 
 (def ^:private construct-query-aggregate-schema
   [:map {:closed true}
@@ -109,7 +158,8 @@
    [:aggregations [:sequential construct-metric-schema]]
    [:filters [:sequential construct-filter-schema]]
    [:group_by [:sequential construct-field-schema]]
-   [:limit [:maybe :int]]])
+   [:limit [:maybe :int]]
+   [:visualization {:optional true} construct-visualization-schema]])
 
 (def ^:private construct-query-raw-schema
   [:map {:closed true}
@@ -118,14 +168,11 @@
    [:filters [:sequential construct-filter-schema]]
    [:fields [:sequential construct-field-schema]]
    [:order_by [:sequential construct-order-by-schema]]
-   [:limit [:maybe :int]]])
+   [:limit [:maybe :int]]
+   [:visualization {:optional true} construct-visualization-schema]])
 
 (def ^:private construct-query-schema
   [:or construct-query-metric-schema construct-query-aggregate-schema construct-query-raw-schema])
-
-(def ^:private construct-visualization-schema
-  [:map {:closed true}
-   [:chart_type :string]])
 
 (def ^:private construct-operation-aliases
   {"contains"     :string-contains
@@ -187,14 +234,17 @@
 (mu/defn ^{:tool-name "construct_notebook_query"} construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [_reasoning query visualization]} :- [:map {:closed true}
-                                                [:reasoning :string]
+                                                [:reasoning {:optional true} :string]
                                                 [:query construct-query-schema]
-                                                [:visualization construct-visualization-schema]]]
+                                                [:visualization {:optional true} construct-visualization-schema]]]
   (try
-    (let [normalized-query         (normalize-ai-args query)
-          normalized-visualization (normalize-ai-args visualization)
+    (let [;; LLM sometimes nests visualization inside query — pull it out
+          effective-viz    (or visualization (:visualization query))
+          normalized-query         (normalize-ai-args (dissoc query :visualization))
+          normalized-visualization (normalize-ai-args effective-viz)
           query-type               (query-type->keyword (:query-type normalized-query))
-          chart-type               (chart-type->keyword (:chart-type normalized-visualization))
+          chart-type               (or (chart-type->keyword (:chart-type normalized-visualization))
+                                       :table)
           _                        (log/debug "construct_notebook_query request"
                                               {:query-type query-type
                                                :chart-type chart-type})

@@ -8,13 +8,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
-(defn- format-tool-result
-  "Format tool result for LLM consumption.
-  All agent tools now return :output as a pre-formatted string."
-  [result]
-  (or (:output result)
-      (pr-str result)))
-
 (defn- normalize-role
   "Normalize role to keyword for comparison.
   Handles both keyword roles (:user) and string roles (\"user\")."
@@ -45,59 +38,62 @@
   - Converts :tool messages to user messages with tool_result content
   - Ensures all roles are strings in output"
   [msg]
-  (let [role (normalize-role (:role msg))
+  (let [role    (normalize-role (:role msg))
         content (:content msg)]
-    (cond
+    (case role
       ;; User message - check if content is already formatted (array vs string)
-      (= role :user)
-      {:role "user"
+      :user
+      {:role    "user"
        ;; If content is already an array (e.g., tool_result parts), keep it as-is
        ;; Otherwise wrap the plain string content
        :content (if (sequential? content) content content)}
 
       ;; Assistant message
-      (= role :assistant)
+      :assistant
       (let [;; Convert OpenAI-style tool_calls to Claude-style content blocks
             tool-use-blocks (when-let [tool-calls (:tool_calls msg)]
                               (mapv (fn [{:keys [id name arguments]}]
-                                      {:type "tool_use"
-                                       :id id
-                                       :name name
+                                      {:type  "tool_use"
+                                       :id    id
+                                       :name  name
                                        ;; Arguments may be JSON string or already parsed
                                        :input (decode-tool-arguments arguments)})
                                     tool-calls))
             ;; Build content: text + tool_use blocks, or just tool_use blocks
-            final-content (cond
-                            ;; Already has array content (pre-formatted)
-                            (and (sequential? content) (seq tool-use-blocks))
-                            (into (vec content) tool-use-blocks)
-                            (sequential? content) content
-                            ;; Has text content + tool calls -> combine them
-                            (and (some? content) (seq tool-use-blocks))
-                            (into [{:type "text" :text content}] tool-use-blocks)
-                            ;; Has only tool calls
-                            (seq tool-use-blocks) tool-use-blocks
-                            ;; Has only text content
-                            (some? content) content
-                            ;; Empty
-                            :else "")]
-        {:role "assistant"
+            final-content   (cond
+                              ;; Already has array content (pre-formatted)
+                              (and (sequential? content)
+                                   (seq tool-use-blocks)) (into (vec content) tool-use-blocks)
+                              (sequential? content)       content
+                              ;; Has text content + tool calls -> combine them
+                              (and (some? content)
+                                   (seq tool-use-blocks)) (into [{:type "text" :text content}] tool-use-blocks)
+                              ;; Has only tool calls
+                              (seq tool-use-blocks)       tool-use-blocks
+                              ;; Has only text content
+                              (some? content)             content
+                              ;; Empty
+                              :else                       "")]
+        {:role    "assistant"
          :content final-content})
 
       ;; Tool result message (simple format from within agent loop)
-      (= role :tool)
-      {:role "user"
-       :content [{:type "tool_result"
+      :tool
+      {:role    "user"
+       :content [{:type        "tool_result"
                   :tool_use_id (:tool_call_id msg)
-                  :content (str content)}]}
+                  :content     (if (map? content)
+                                 (or (:output content) (pr-str content))
+                                 (str content))}]}
 
       ;; System message
-      (= role :system)
+      :system
       {:role "system" :content content}
 
       ;; Fallback - pass through with string role
-      :else
-      (assoc msg :role (name role)))))
+      (do
+        (log/warn "Unknown role" {:role role})
+        (assoc msg :role (name role))))))
 
 (defn- part->message
   "Convert an AI SDK part to a message format.
@@ -120,7 +116,10 @@
     {:role "user"
      :content [{:type "tool_result"
                 :tool_use_id (:id part)
-                :content (format-tool-result (:result part))}]}
+                :content (or (:output (:result part))
+                             (when-let [err (:error part)]
+                               (str "Error: " (:message err)))
+                             (pr-str (:result part)))}]}
 
     ;; Ignore other part types (start, finish, usage, data, etc.)
     nil))
