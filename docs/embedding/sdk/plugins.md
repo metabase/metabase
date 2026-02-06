@@ -44,15 +44,17 @@ See [`mapQuestionClickActions` plugin](./questions.md#mapquestionclickactions) f
 
 To customize what happens when people click a link in your embedded questions and dashboards, use the global plugin `handleLink`:
 
-To create clickable links in your table columns, set the column's formatting to **Display as: Link**. See [Formatting: Display as](../../data-modeling/formatting.md#display-as). 
-
 ```typescript
 {% include_file "{{ dirname }}/snippets/plugins/handlelink.tsx" snippet="example" %}
 ```
 
-The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level.
+By default, links open in a new tab. You can use `handleLink` to intercept link clicks and handle them yourself — for example, to navigate within the same tab to another Metabase question or dashboard.
 
-`handleLink` is also available in [modular embedding](../modular-embedding.md#customizing-link-click-behavior) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
+The function receives a URL string and should return `{ handled: true }` to prevent default navigation, or `{ handled: false }` to fall back to the default behavior (opening in a new tab).
+
+The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level. `handleLink` is also available in [modular embedding](../modular-embedding.md#customizing-link-click-behavior) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
+
+To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/formatting.md#display-as).
 
 ### `getNoDataIllustration` and `getNoObjectIllustration`
 

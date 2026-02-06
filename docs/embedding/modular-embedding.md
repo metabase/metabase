@@ -186,43 +186,10 @@ To define the configuration that applies to every embed on the page, use the `de
 
 - `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
 
-- `pluginsConfig` (optional, Pro and Enterprise only): plugins to customize the behavior of embedded components. Currently supports `handleLink` to customize what happens when people click a link in your embedded questions and dashboards. See [Customizing link click behavior](#customizing-link-click-behavior).
+- `pluginsConfig` (optional, Pro and Enterprise only): plugins to customize the behavior of embedded components. You can customize what happens when people click a link in your embedded questions and dashboards by passing the `handleLink` function inside `pluginsConfig` in the `defineMetabaseConfig()` call. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
+
 
 ## Authentication
 
 For authentication setup including API keys for local testing, SSO with JWT/SAML, and cross-domain configuration, see [Modular embedding - authentication](./authentication.md).
 
-## Customizing link click behavior
-
-{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embbedding=true %}
-
-To customize what happens when people click a link in your embedded questions and dashboards, pass the `handleLink` function inside `pluginsConfig` in the `defineMetabaseConfig()` call.
-
-By default, links open in a new tab. You can use `handleLink` to intercept link clicks and handle them yourself — for example, to navigate within the same tab to another Metabase question or dashboard.
-
-To create clickable links in your table columns, set the column's formatting to **Display as: Link**. See [Formatting: Display as](../data-modeling/formatting.md#display-as). 
-
-The function receives a URL string and should return `{ handled: true }` to prevent default navigation, or `{ handled: false }` to fall back to the default behavior (opening in a new tab).
-
-```html
-<script>
-  defineMetabaseConfig({
-    instanceUrl: "https://your-metabase-url",
-    jwtProviderUri: "https://your-server/sso/metabase",
-    pluginsConfig: {
-      handleLink: (urlString) => {
-        const url = new URL(urlString, window.location.origin);
-        const isInternal = url.origin === window.location.origin;
-        if (isInternal) {
-          // Handle internal navigation (e.g., with your router)
-          window.location.href = url.pathname + url.search + url.hash;
-          return { handled: true }; // prevent default navigation
-        }
-        return { handled: false }; // fallback to the default behavior
-      },
-    },
-  });
-</script>
-```
-
-This plugin has the same API as the React embedding SDK's [`handleLink` plugin](./sdk/plugins.md#handlelink).
