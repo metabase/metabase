@@ -54,19 +54,19 @@ export interface Tab {
 
 export interface TaggedTransformTab extends Tab {
   type: "transform";
-  transformType: "transform";
+  transformType: TaggedTransform["type"];
   transformId: TaggedTransform["id"];
 }
 
 export interface WorkspaceTransformTab extends Tab {
   type: "transform";
-  transformType: "workspace-transform";
+  transformType: WorkspaceTransform["type"];
   transformId: WorkspaceTransform["ref_id"];
 }
 
 export interface UnsavedTransformTab extends Tab {
   type: "transform";
-  transformType: "unsaved-transform";
+  transformType: UnsavedTransform["type"];
   transformId: UnsavedTransform["id"];
 }
 
