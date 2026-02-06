@@ -10,14 +10,7 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { MetricFilterPicker } from "metabase/metrics/components/MetricFilterPicker";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Button,
-  Icon,
-  MultiSelect,
-  Popover,
-  Stack,
-  TextInput,
-} from "metabase/ui";
+import { Button, Icon, MultiSelect, Popover, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 import type { Measure, MeasureId, Metric, MetricId } from "metabase-types/api";
 
@@ -28,7 +21,6 @@ export function MetricPlaygroundPage() {
   const [fetchMeasure] = useLazyGetMeasureQuery();
   const [metricIds, setMetricIds] = useState<MetricId[]>([]);
   const [measureIds, setMeasureIds] = useState<MeasureId[]>([]);
-  const [filterDisplayName, setFilterDisplayName] = useState("");
 
   const metadata = useSelector(getMetadata);
   const metadataProvider = useMemo(
@@ -56,7 +48,8 @@ export function MetricPlaygroundPage() {
     definition: LibMetric.MetricDefinition,
     filter: LibMetric.FilterClause,
   ) => {
-    setFilterDisplayName(LibMetric.displayInfo(definition, filter).displayName);
+    const displayName = LibMetric.displayInfo(definition, filter).displayName;
+    console.warn(displayName);
   };
 
   return (
@@ -84,7 +77,6 @@ export function MetricPlaygroundPage() {
           />
         </Popover.Dropdown>
       </Popover>
-      <TextInput label={t`Last filter`} value={filterDisplayName} readOnly />
     </Stack>
   );
 }
