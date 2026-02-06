@@ -21,7 +21,8 @@
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [toucan2.core :as t2]))
 
 ;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
 
@@ -641,6 +642,45 @@
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
                      (add-aggregation-options {:display-name "My cooler metric" :name "Better Named Metric"})))))))
+
+(deftest ^:sequential metric-rename-breaks-viz-settings-test
+  ;; Regression test for https://github.com/metabase/metabase/issues/60593
+  ;; Naming a metric's aggregation should not change the column :name,
+  ;; which would break viz settings in questions that reference that column.
+  (let [mp (mt/metadata-provider)]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/Card metric {:database_id (mt/id)
+                                       :name "Test Metric"
+                                       :type :metric
+                                       :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))}]
+      ;; We don't set a name, so we expect it to be nil
+      (is (nil? (-> (lib/aggregations (:dataset_query metric))
+                    first
+                    lib/options
+                    :name)))
+      (let [before-results (qp/process-query (lib/query mp (lib.metadata/card mp (:id metric))))
+            agg (first (lib/aggregations (:dataset_query metric)))
+            named-agg (lib/with-expression-name agg "My Custom Metric")
+            named-metric-query (lib/replace-clause (:dataset_query metric) agg named-agg)]
+        (is (= "avg"
+               (-> before-results
+                   mt/cols
+                   last
+                   :name)))
+        ;; Setting the name should only update the display-name
+        (is (nil? (-> (lib/aggregations named-metric-query)
+                      first
+                      lib/options
+                      :name)))
+        (t2/update! :model/Card (:id metric) {:dataset_query named-metric-query})
+        (let [mp (mt/metadata-provider) ;; fresh mp to clear cache
+              after-results (qp/process-query (lib/query mp (lib.metadata/card mp (:id metric))))]
+          (is (= "avg"
+                 (-> after-results
+                     mt/cols
+                     last
+                     :name))))))))
 
 (deftest ^:parallel metric-with-nested-segments-test
   (let [mp (lib.tu/mock-metadata-provider
