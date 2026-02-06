@@ -62,7 +62,7 @@
 
 (deftest published-table-visible-clause-filters-by-collection-perms-test
   (testing "Returns clause that only includes published tables in readable collections"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {allowed-coll-id :id} {}
                      :model/Collection {blocked-coll-id :id} {}
                      :model/PermissionsGroup {group-id :id} {}
