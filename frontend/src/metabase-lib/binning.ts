@@ -1,7 +1,13 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import { displayInfo } from "./metadata";
-import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
+import type {
+  Bucket,
+  BucketOption,
+  Clause,
+  ColumnMetadata,
+  Query,
+} from "./types";
 
 export function binning(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.binning(clause);
@@ -11,8 +17,8 @@ export function availableBinningStrategies(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-): Bucket[] {
-  return ML.available_binning_strategies(query, stageIndex, column);
+): BucketOption[] {
+  return ML.available_binning_strategies(query, stageIndex, column) || [];
 }
 
 export function isBinnable(
@@ -25,7 +31,7 @@ export function isBinnable(
 
 export function withBinning(
   column: ColumnMetadata,
-  binningStrategy: Bucket | null,
+  binningStrategy: Bucket | BucketOption | null,
 ): ColumnMetadata {
   return ML.with_binning(column, binningStrategy);
 }

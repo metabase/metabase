@@ -486,7 +486,9 @@ export class Table extends Component<TableProps, TableState> {
     );
 
     if (column != null) {
+      debugger;
       const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      console.log({ columnInfo });
       if (columnInfo.orderByPosition != null) {
         const orderBys = Lib.orderBys(query, stageIndex);
         const orderBy = orderBys[columnInfo.orderByPosition];

@@ -37,15 +37,15 @@ export function expressions(
   query: Query,
   stageIndex: number,
 ): ExpressionClause[] {
-  return ML.expressions(query, stageIndex);
+  return ML.expressions(query, stageIndex) || [];
 }
 
 export function expressionableColumns(
   query: Query,
-  stageIndex?: number,
+  stageIndex: number = -1,
   expressionIndex?: number,
 ): ColumnMetadata[] {
-  return ML.expressionable_columns(query, stageIndex, expressionIndex);
+  return ML.expressionable_columns(query, stageIndex, expressionIndex) || [];
 }
 
 export function expressionParts(

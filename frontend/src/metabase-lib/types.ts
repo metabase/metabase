@@ -3,8 +3,29 @@ import type {
   Metabase_Lib_Aggregation_Aggregable,
   Metabase_Lib_Schema_Aggregation_Aggregation,
   Metabase_Lib_Schema_Aggregation_Operator,
+  Metabase_Lib_Schema_Binning_Binning,
+  Metabase_Lib_Schema_Binning_BinningOption,
+  Metabase_Lib_Schema_DrillThru_DrillThru,
+  Metabase_Lib_Schema_Expression_Expression,
+  Metabase_Lib_Schema_Extraction_Extraction,
+  Metabase_Lib_Schema_Filter_Operator,
+  Metabase_Lib_Schema_Filters,
+  Metabase_Lib_Schema_Join_Conditions,
+  Metabase_Lib_Schema_Join_Join,
+  Metabase_Lib_Schema_Join_Joins,
+  Metabase_Lib_Schema_Join_Strategy,
+  Metabase_Lib_Schema_Join_StrategyOption,
+  Metabase_Lib_Schema_MbqlClause_Clause,
+  Metabase_Lib_Schema_Metadata_Card,
   Metabase_Lib_Schema_Metadata_Column,
+  Metabase_Lib_Schema_Metadata_Measure,
+  Metabase_Lib_Schema_Metadata_Metric,
+  Metabase_Lib_Schema_Metadata_Segment,
+  Metabase_Lib_Schema_Metadata_Table,
+  Metabase_Lib_Schema_OrderBy_OrderBy,
+  Metabase_Lib_Schema_OrderBy_OrderBys,
   Metabase_Lib_Schema_Query,
+  Metabase_Lib_Schema_TemporalBucketing_Option,
 } from "cljs/metabase.lib.js";
 import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
@@ -34,26 +55,15 @@ export type MetadataProvider = unknown & {
   _opaque: typeof MetadataProviderSymbol;
 };
 
-declare const TableMetadataSymbol: unique symbol;
-export type TableMetadata = unknown & { _opaque: typeof TableMetadataSymbol };
+export type TableMetadata = Metabase_Lib_Schema_Metadata_Table;
 
-declare const CardMetadataSymbol: unique symbol;
-export type CardMetadata = unknown & { _opaque: typeof CardMetadataSymbol };
+export type CardMetadata = Metabase_Lib_Schema_Metadata_Card;
 
-declare const SegmentMetadataSymbol: unique symbol;
-export type SegmentMetadata = unknown & {
-  _opaque: typeof SegmentMetadataSymbol;
-};
+export type SegmentMetadata = Metabase_Lib_Schema_Metadata_Segment;
 
-declare const MetricMetadataSymbol: unique symbol;
-export type MetricMetadata = unknown & {
-  _opaque: typeof MetricMetadataSymbol;
-};
+export type MetricMetadata = Metabase_Lib_Schema_Metadata_Metric;
 
-declare const MeasureMetadataSymbol: unique symbol;
-export type MeasureMetadata = unknown & {
-  _opaque: typeof MeasureMetadataSymbol;
-};
+export type MeasureMetadata = Metabase_Lib_Schema_Metadata_Measure;
 
 export type AggregationClause = Metabase_Lib_Schema_Aggregation_Aggregation;
 
@@ -63,32 +73,23 @@ export type AggregationOperator = Metabase_Lib_Schema_Aggregation_Operator & {
   columns?: Metabase_Lib_Schema_Metadata_Column[];
 };
 
-declare const BreakoutClauseSymbol: unique symbol;
-export type BreakoutClause = unknown & { _opaque: typeof BreakoutClauseSymbol };
+export type BreakoutClause = Metabase_Lib_Schema_Expression_Expression;
 
-declare const ExpressionClauseSymbol: unique symbol;
-export type ExpressionClause = unknown & {
-  _opaque: typeof ExpressionClauseSymbol;
-};
+export type ExpressionClause = Metabase_Lib_Schema_MbqlClause_Clause;
 
-declare const OrderByClauseSymbol: unique symbol;
-export type OrderByClause = unknown & { _opaque: typeof OrderByClauseSymbol };
+export type OrderByClause = Metabase_Lib_Schema_OrderBy_OrderBy;
 
 export type OrderByDirection = "asc" | "desc";
 
-declare const FilterClauseSymbol: unique symbol;
-export type FilterClause = unknown & { _opaque: typeof FilterClauseSymbol };
+export type FilterClause = Metabase_Lib_Schema_MbqlClause_Clause;
 
 export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
 
-declare const JoinSymbol: unique symbol;
-export type Join = unknown & { _opaque: typeof JoinSymbol };
+export type Join = Metabase_Lib_Schema_Join_Join;
 
-declare const JoinStrategySymbol: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
+export type JoinStrategy = Metabase_Lib_Schema_Join_Strategy | Metabase_Lib_Schema_Join_StrategyOption;
 
-declare const JoinConditionSymbol: unique symbol;
-export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
+export type JoinCondition = Metabase_Lib_Schema_MbqlClause_Clause;
 
 export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
@@ -122,11 +123,17 @@ export type ColumnMetadata = Metabase_Lib_Schema_Metadata_Column;
 declare const ColumnTypeInfoSymbol: unique symbol;
 export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
 
-declare const ColumnGroupSymbol: unique symbol;
-export type ColumnGroup = unknown & { _opaque: typeof ColumnGroupSymbol };
+export type ColumnGroup = {
+  type: "column-group";
+  "group-type": "main" | "join.explicit" | "join.implicit";
+  columns: ColumnMetadata[];
+} & (
+  | { "join-alias"?: string; "table-id"?: number; "card-id"?: number }
+  | { "fk-field-id": number }
+);
 
-declare const BucketSymbol: unique symbol;
-export type Bucket = unknown & { _opaque: typeof BucketSymbol };
+export type Bucket = Metabase_Lib_Schema_Binning_Binning | Metabase_Lib_Schema_TemporalBucketing_Option;
+export type BucketOption = Metabase_Lib_Schema_Binning_BinningOption | Metabase_Lib_Schema_TemporalBucketing_Option;
 
 export type BucketDisplayInfo = {
   shortName: TemporalUnit;
@@ -159,8 +166,10 @@ type TableInlineDisplayInfo = Pick<
 
 export type ColumnDisplayInfo = {
   name: string;
+  default?: boolean;
   description?: string;
   displayName: string;
+  shortName: string;
   longDisplayName: string;
   semanticType: string | null;
   effectiveType: string;
@@ -302,8 +311,7 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-declare const FilterOperatorSymbol: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperatorSymbol };
+export type FilterOperator = Metabase_Lib_Schema_Filter_Operator;
 
 export type FilterOperatorName =
   | StringFilterOperator
@@ -486,8 +494,7 @@ export type JoinStrategyDisplayInfo = {
   shortName: string;
 };
 
-declare const DrillThruSymbol: unique symbol;
-export type DrillThru = unknown & { _opaque: typeof DrillThruSymbol };
+export type DrillThru = Metabase_Lib_Schema_DrillThru_DrillThru;
 
 export type DrillThruType =
   | "drill-thru/automatic-insights"
@@ -511,10 +518,7 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
-declare const ColumnExtractionSymbol: unique symbol;
-export type ColumnExtraction = unknown & {
-  _opaque: typeof ColumnExtractionSymbol;
-};
+export type ColumnExtraction = Metabase_Lib_Schema_Extraction_Extraction;
 
 export type ColumnExtractionInfo = {
   tag: ColumnExtractionTag;

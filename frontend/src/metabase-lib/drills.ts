@@ -23,15 +23,15 @@ export function availableDrillThrus(
   row: ClickObjectDataRow[] | undefined,
   dimensions: ClickObjectDimension[] | undefined,
 ): DrillThru[] {
-  return ML.available_drill_thrus(
-    query,
-    stageIndex,
-    cardId,
-    column,
-    value,
+  const context = {
+    column: column ?? null,
+    "column-ref": null,
+    value: value ?? null,
     row,
     dimensions,
-  );
+    "card-id": cardId,
+  };
+  return ML.available_drill_thrus(query, stageIndex, context);
 }
 
 // TODO: Precise types for each of the various extra args?
@@ -42,7 +42,7 @@ export function drillThru(
   drillThru: DrillThru,
   ...args: unknown[]
 ): Query {
-  return ML.drill_thru(query, stageIndex, cardId, drillThru, ...args);
+  return ML.drill_thru(query, stageIndex, cardId, drillThru, args);
 }
 
 export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
@@ -63,5 +63,5 @@ export function pivotColumnsForType(
   drillThru: DrillThru,
   pivotType: PivotType,
 ): ColumnMetadata[] {
-  return ML.pivot_columns_for_type(drillThru, pivotType);
+  return ML.pivot_columns_for_type(drillThru as any, pivotType);
 }

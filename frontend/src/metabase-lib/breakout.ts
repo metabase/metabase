@@ -7,11 +7,11 @@ export function breakoutableColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.breakoutable_columns(query, stageIndex);
+  return ML.breakoutable_columns(query, stageIndex) || [];
 }
 
 export function breakouts(query: Query, stageIndex: number): BreakoutClause[] {
-  return ML.breakouts(query, stageIndex);
+  return ML.breakouts(query, stageIndex) || [];
 }
 
 export function breakout(

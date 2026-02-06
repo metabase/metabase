@@ -12,8 +12,8 @@ import type {
 export function availableAggregationOperators(
   query: Query,
   stageIndex: number,
-): AggregationOperator[] | null {
-  return ML.available_aggregation_operators(query, stageIndex);
+): AggregationOperator[] {
+  return ML.available_aggregation_operators(query, stageIndex) || [];
 }
 
 export function aggregationOperatorColumns(

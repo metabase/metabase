@@ -153,7 +153,7 @@ declare function DisplayInfoFn(
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = ML.display_info;
+export const displayInfo = ML.display_info as typeof DisplayInfoFn;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return ML.group_columns(columns);
@@ -190,14 +190,14 @@ export function visibleColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.visible_columns(query, stageIndex);
+  return ML.visible_columns(query, stageIndex) || [];
 }
 
 export function returnedColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.returned_columns(query, stageIndex);
+  return ML.returned_columns(query, stageIndex) || [];
 }
 
 export function fromLegacyColumn(

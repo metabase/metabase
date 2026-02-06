@@ -32,7 +32,7 @@ export type JoinOrJoinable = Join | Joinable;
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
 export function joins(query: Query, stageIndex: number): Join[] {
-  return ML.joins(query, stageIndex);
+  return ML.joins(query, stageIndex) || [];
 }
 
 export function joinClause(
@@ -89,7 +89,7 @@ export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
 }
 
 export function joinConditions(join: Join): JoinCondition[] {
-  return ML.join_conditions(join);
+  return ML.join_conditions(join) || [];
 }
 
 export function withJoinConditions(
@@ -200,7 +200,7 @@ export function suggestedJoinConditions(
   joinable: Joinable,
   joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
+  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon) || [];
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";

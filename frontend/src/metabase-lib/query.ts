@@ -43,7 +43,7 @@ export function withDifferentTable(query: Query, tableId: TableId): Query {
   return ML.with_different_table(query, tableId);
 }
 
-export function suggestedName(query: Query): string {
+export function suggestedName(query: Query): string | null {
   return ML.suggestedName(query);
 }
 

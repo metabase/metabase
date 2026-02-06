@@ -12,11 +12,11 @@ export function orderableColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.orderable_columns(query, stageIndex);
+  return ML.orderable_columns(query, stageIndex) || [];
 }
 
 export function orderBys(query: Query, stageIndex: number): OrderByClause[] {
-  return ML.order_bys(query, stageIndex);
+  return ML.order_bys(query, stageIndex) || [];
 }
 
 export function orderBy(

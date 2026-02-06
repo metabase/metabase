@@ -35,13 +35,13 @@ export function filterableColumns(
   stageIndex: number,
   opts?: FilterableColumnsOpts,
 ): ColumnMetadata[] {
-  return ML.filterable_columns(query, stageIndex, opts);
+  return ML.filterable_columns(query, stageIndex, opts as any) || [];
 }
 
 export function filterableColumnOperators(
   column: ColumnMetadata,
 ): FilterOperator[] {
-  return ML.filterable_column_operators(column);
+  return ML.filterable_column_operators(column) || [];
 }
 
 export function filter(
@@ -53,7 +53,7 @@ export function filter(
 }
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
-  return ML.filters(query, stageIndex);
+  return ML.filters(query, stageIndex) || [];
 }
 
 export function removeFilters(query: Query, stageIndex: number): Query {
