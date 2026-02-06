@@ -172,17 +172,19 @@
 (defn format-tool-result-line
   "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}"
   [{:keys [id result error]}]
-  (str "a:" (json/encode (cond-> {:toolCallId id}
-                           result (assoc :result (if (string? result)
-                                                   result
-                                                   (json/encode result)))
-                           error  (assoc :error (json/encode error))))))
+  (let [output (cond
+                 (string? result) result
+                 (map? result)    (or (:output result) (json/encode result))
+                 :else            (str result))]
+    (str "a:" (json/encode (cond-> {:toolCallId id}
+                             result (assoc :result output)
+                             error  (assoc :error (json/encode error)))))))
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
-  [error? accumulated-usage]
-  (str "d:" (json/encode {:finishReason (if error? "error" "stop")
-                          :usage        (or accumulated-usage {})})))
+  [error? usage]
+  (str "d:" (json/encode (cond-> {:finishReason (if error? "error" "stop")}
+                           usage (assoc :usage usage)))))
 
 (defn format-start-line
   "Format start part as AI SDK line: f:{\"messageId\":...}"
@@ -210,9 +212,9 @@
         ([] (rf))
         ([result]
          (-> result
-           ;; Emit finish message with accumulated usage at the end
-           (rf (format-finish-line @error? @usage-acc))
-           (rf)))
+             ;; Emit finish message with accumulated usage at the end
+             (rf (format-finish-line @error? @usage-acc))
+             (rf)))
         ([result part]
          (case (:type part)
            :text        (rf result (format-text-line part))
@@ -224,14 +226,12 @@
            :tool-output (rf result (format-tool-result-line part))
            :start       (rf result (format-start-line part))
            :finish      result ;; Don't emit here, we emit in completion arity
-           :usage       (do
+           :usage       (let [{:keys [usage model]} part]
                           ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
-                          (let [{:keys [usage id]} part
-                                ;; FIXME: this is not the model id right now, plus it's not accumulated
-                                model              (or id "claude-haiku-4-5")]
-                            (vswap! usage-acc assoc model
-                                    {:prompt     (:promptTokens usage 0)
-                                     :completion (:completionTokens usage 0)}))
+                          (vswap! usage-acc update (or model "unknown")
+                                  (fn [prev]
+                                    {:prompt     (+ (:prompt prev 0) (:promptTokens usage 0))
+                                     :completion (+ (:completion prev 0) (:completionTokens usage 0))}))
                           result)
            ;; Pass through unknown types as data
            (rf result (format-data-line part))))))))
@@ -263,6 +263,18 @@
             result)
       [(assoc ids :type :tool-output-available :result result)])))
 
+(defn- concise-tool-error
+  "Produce a concise error message for the LLM from a tool execution exception.
+  For malli validation errors, extracts the humanized map and summarizes it.
+  For other errors, uses the exception message."
+  [^Exception e]
+  (let [data (ex-data e)]
+    (if-let [humanized (:humanized data)]
+      ;; Malli validation error — produce a short summary the LLM can act on
+      (str "Invalid tool arguments: " (pr-str humanized))
+      ;; Other errors
+      (or (ex-message e) "Unknown error"))))
+
 (defn- run-tool
   "Execute a tool and return output chunks. Handles errors gracefully."
   [tool-call-id tool-name tool-fn chunks]
@@ -273,11 +285,11 @@
         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
         (collect-tool-result tool-call-id tool-name result)))
     (catch Exception e
-      (log/error e "Tool execution failed" {:tool-name tool-name})
+      (log/warn e "Tool execution failed" {:tool-name tool-name})
       [{:type       :tool-output-available
         :toolCallId tool-call-id
         :toolName   tool-name
-        :error      {:message (.getMessage e)
+        :error      {:message (concise-tool-error e)
                      :type    (str (type e))}}])))
 
 (defn tool-executor-xf

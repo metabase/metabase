@@ -33,6 +33,7 @@
   (let [current-type (volatile! nil)
         current-id   (volatile! nil)
         message-id   (volatile! nil)
+        model-name   (volatile! nil)
         payload      (volatile! {})]
     (fn
       ([result]
@@ -55,7 +56,8 @@
            ;; start of message
            (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
                                            (u/prog1
-                                             (vreset! message-id (:id message))))
+                                             (vreset! message-id (:id message))
+                                             (vreset! model-name (:model message))))
            ;; start of new content block
            (= t "content_block_start") (-> (u/prog1
                                              (vreset! current-type block-type)
@@ -94,7 +96,8 @@
                                        usage (rf {:type  :usage
                                                   :usage {:promptTokens     (:input_tokens usage)
                                                           :completionTokens (:output_tokens usage)}
-                                                  :id    @message-id}))
+                                                  :id    @message-id
+                                                  :model @model-name}))
 
            ;; end of message
            (= t "message_stop") identity))))))

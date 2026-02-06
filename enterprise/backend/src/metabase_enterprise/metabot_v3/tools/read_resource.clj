@@ -221,7 +221,7 @@
       (let [result (handler parsed)]
         {:uri uri :content result}))
     (catch Exception e
-      (log/error e "Error fetching resource" {:uri uri})
+      (log/warn "Error fetching resource" {:uri uri :error (ex-message e)})
       {:uri uri :error (or (ex-message e) "Unknown error")})))
 
 (defn- format-resources
