@@ -161,7 +161,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
     });
 
     describe("filter step", () => {
-      it.only("should translate content for numeric field", () => {
+      it("should translate content for numeric field", () => {
         setupEditor();
         mountEditor();
 
