@@ -35,12 +35,13 @@
      "matched_count" 0
      "null_count"    0
      "null_rate"     nil}
-    (let [output-count (nth row 0 nil)
-          matched-count (nth row 1 nil)
-          null-count (when (and output-count matched-count)
-                       (- output-count matched-count))
-          null-rate (when (and null-count output-count (pos? output-count))
-                      (/ null-count output-count))]
+    (let [output-count  (nth row 0 nil)
+          ;; Non-outer joins return only COUNT(*); matched = output by definition
+          matched-count (or (nth row 1 nil) output-count)
+          null-count    (when (and output-count matched-count)
+                          (- output-count matched-count))
+          null-rate     (when (and null-count output-count (pos? output-count))
+                          (/ null-count output-count))]
       {"output_count"  output-count
        "matched_count" matched-count
        "null_count"    null-count
