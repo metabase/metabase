@@ -84,5 +84,4 @@ const getUnsubscribeMessage = (type: NotificationType): string => {
   }
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UnsubscribeModal;
+export { UnsubscribeModal };

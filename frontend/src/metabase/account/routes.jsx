@@ -2,7 +2,7 @@ import { IndexRedirect, Route } from "react-router";
 
 import AccountApp from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
-import getNotificationRoutes from "./notifications/routes";
+import { NotificationRoutes } from "./notifications/routes";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import UserProfileApp from "./profile/containers/UserProfileApp";
 
@@ -14,7 +14,7 @@ const getRoutes = (store, IsAuthenticated) => {
         <Route path="profile" component={UserProfileApp} />
         <Route path="password" component={UserPasswordApp} />
         <Route path="login-history" component={LoginHistoryApp} />
-        {getNotificationRoutes()}
+        <NotificationRoutes />
       </Route>
     </Route>
   );

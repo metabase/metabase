@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
 import { navigateToArchive } from "../../actions";
-import UnsubscribeModal from "../../components/UnsubscribeModal";
+import { UnsubscribeModal } from "../../components/UnsubscribeModal";
 import { getPulseId } from "../../selectors";
 
 type UnsubscribePulseModalProps = {

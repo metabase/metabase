@@ -33,33 +33,45 @@ function HelpModal({ onClose }: HelpModalProps): JSX.Element {
         {t`It's possible you may also receive emails from ${applicationName} if you're a member of an email distribution list, like "team@mycompany.com" and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
       </ModalMessage>
       <ModalMessage>
-        {getAdminMessage(email, applicationName)}
+        <AdminMessage email={email} applicationName={applicationName} />
         {t`Hopefully they'll be able to help you out!`}
       </ModalMessage>
     </ModalContent>
   );
 }
 
-const getAdminLink = (
-  email: string | null | undefined,
-  text: string,
-): React.ReactNode => {
+function AdminLink({
+  email,
+  text,
+}: {
+  email: string | null | undefined;
+  text: string;
+}) {
   return email ? (
     <ExternalLink key="admin-link" href={`mailto:${email}`}>
       {text}
     </ExternalLink>
   ) : (
-    text
+    <>{text}</>
   );
-};
+}
 
-const getAdminMessage = (
-  email: string | null | undefined,
-  applicationName: string,
-): React.ReactNode => {
-  const adminLink = getAdminLink(email, t`your instance administrator`);
+function AdminMessage({
+  email,
+  applicationName,
+}: {
+  email: string | null | undefined;
+  applicationName: string;
+}) {
+  const adminLink = (
+    <AdminLink
+      key="admin-link"
+      email={email}
+      text={t`your instance administrator`}
+    />
+  );
   return jt`${applicationName} doesn't manage those lists, so we'd recommend contacting ${adminLink}. `;
-};
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HelpModal;

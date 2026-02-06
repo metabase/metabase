@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from "__support__/ui";
+import { getNextId } from "__support__/utils";
 import { createMockAlert } from "metabase-types/api/mocks/alert";
 import { createMockDashboardSubscription } from "metabase-types/api/mocks/pulse";
 import { createMockUser } from "metabase-types/api/mocks/user";
 
-import UnsubscribeModal from "./UnsubscribeModal";
+import { UnsubscribeModal } from "./UnsubscribeModal";
 
 describe("UnsubscribeModal", () => {
   it("should render an alert", () => {
@@ -45,8 +46,8 @@ describe("UnsubscribeModal", () => {
   });
 
   it("should close if unsubscribed successfully", async () => {
-    const alert = createMockAlert({ creator_id: 1 });
-    const user = createMockUser({ id: 2 });
+    const alert = createMockAlert({ creator_id: getNextId() });
+    const user = createMockUser({ id: getNextId() });
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
     const onClose = jest.fn();
@@ -74,7 +75,7 @@ describe("UnsubscribeModal", () => {
   });
 
   it("should proceed with archiving if the notification is created by the user", async () => {
-    const user = createMockUser({ id: 1 });
+    const user = createMockUser({ id: getNextId() });
     const alert = createMockAlert({ creator_id: user.id, creator: user });
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
@@ -103,8 +104,8 @@ describe("UnsubscribeModal", () => {
   });
 
   it("should not close on a submit error", async () => {
-    const user = createMockUser();
-    const alert = createMockAlert();
+    const user = createMockUser({ id: getNextId() });
+    const alert = createMockAlert({ creator_id: user.id, creator: user });
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
     const onClose = jest.fn();
