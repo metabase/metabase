@@ -68,7 +68,7 @@ The `<metabase-dashboard>` web component automatically resizes to fit its conten
 To render a question (chart):
 
 ```html
-<metabase-question question-id="1" with-alerts="true"></metabase-question>
+<metabase-question question-id="1"></metabase-question>
 ```
 
 ### Required parameters
