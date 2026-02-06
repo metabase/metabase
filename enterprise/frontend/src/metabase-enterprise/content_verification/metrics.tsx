@@ -7,17 +7,19 @@ import type {
 } from "metabase/browse/metrics";
 import { useUserSetting } from "metabase/common/hooks";
 import { getSetting } from "metabase/selectors/settings";
+import { createSelector } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 
 import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 
 const USER_SETTING_KEY = "browse-filter-only-verified-metrics";
 
-export function getDefaultMetricFilters(state: State): MetricFilterSettings {
-  return {
-    verified: getSetting(state, USER_SETTING_KEY) ?? false,
-  };
-}
+export const getDefaultMetricFilters = createSelector(
+  (state: State) => getSetting(state, USER_SETTING_KEY),
+  (verified): MetricFilterSettings => ({
+    verified: verified ?? false,
+  }),
+);
 
 /**
  * This was originally designed to support multiple filters but it currently
