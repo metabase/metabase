@@ -30,6 +30,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
@@ -433,9 +434,11 @@
                     :provider "slack-connect"
                     :provider_id slack-user-id))
 
-(def ^:private slack-user-authorize-link
+(defn- slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
-  (str (system/site-url) "/auth/login?redirect=/auth/sso?preferred_method=slack-connect"))
+  []
+  (let [sso-url "/auth/sso?preferred_method=slack-connect&redirect=/slack-connect-success"]
+    (str (system/site-url) "/auth/login?redirect=" (codec/url-encode sso-url))))
 
 (defn- event->reply-context
   "Extract the necessary context for a reply from the given `event`"
@@ -453,6 +456,7 @@
         message-ctx (event->reply-context event)
         thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
         ;; TODO: handle case where this errors
+        ;; TODO: send constant conversation id
         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
     (delete-message client thinking-message)
     (post-message client (merge message-ctx {:text text}))
@@ -464,6 +468,24 @@
             (post-image client png-bytes filename
                         (:channel message-ctx)
                         (:thread_ts message-ctx))))))))
+
+(defn- send-auth-link
+  "Respond to an incoming slack message with a request to authorize"
+  [client event]
+  (post-ephemeral-message
+   client
+   (merge (event->reply-context event)
+          {:user (:user event)
+           :text "Connect your Slack account to Metabase to use Metabot."
+           :blocks [{:type "section"
+                     :text {:type "mrkdwn"
+                            :text "To use Metabot, connect your Slack account to Metabase."}}
+                    {:type "actions"
+                     :elements [{:type "button"
+                                 :text {:type "plain_text"
+                                        :text ":link: Connect to Metabase"
+                                        :emoji true}
+                                 :url (slack-user-authorize-link)}]}]})))
 
 (mu/defn- process-message-im
   "Process a direct message (message.im)"
@@ -498,11 +520,7 @@
   (let [slack-user-id (:user event)
         user-id (slack-id->user-id slack-user-id)]
     (if-not user-id
-      (post-ephemeral-message client
-                              (merge (event->reply-context event)
-                                     {:user slack-user-id
-                                      :text (str "You need to link your slack account and authorize the Metabot app. "
-                                                 "Please visit: " slack-user-authorize-link)}))
+      (send-auth-link client event)
       (let [channel-type (:channel_type event)
             subtype (:subtype event)]
         (cond
@@ -560,18 +578,18 @@
   ;; Guide to set yourself up for local development
   ;;
   ;; New slack app
-  ;; 1. create a tunnel via `cloudflared tunnel --url http://localhost:3000`
+  ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
-  (system/site-url! "https://personal-hear-sugar-graduates.trycloudflare.com")
+  (system/site-url! "https://<random-id>.ngrok-free.app")
   ;; 4. visit this url in yoru browser, following the setup flow outlined there
   (str (system/site-url) "/admin/metabot/slackbot")
   ;; 6. verify you've setup your instance correctly
   (setup-complete?)
 
   ;; Updating an existing slack app
-  ;; 1. create a tunnel via `cloudflared tunnel --url http://localhost:3000`
+  ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
-  (system/site-url! "https://personal-hear-sugar-graduates.trycloudflare.com")
+  (system/site-url! "https://<random-id>.ngrok-free.app")
   ;; 3. visit the app manifest slack settings page for your slack app (https://app.slack.com/app-settings/.../..../app-manifest)
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do

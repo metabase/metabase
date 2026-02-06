@@ -126,6 +126,7 @@ export const getRoutes = (store) => {
           <Route path="logout" component={Logout} />
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
+          <Route path="sso" onEnter={() => window.location.reload()} />
         </Route>
 
         {/* MAIN */}

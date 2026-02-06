@@ -16,6 +16,7 @@ import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
+import { SlackConnectSuccess } from "./components/SlackConnectSuccess";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
@@ -45,7 +46,12 @@ export function initializePlugin() {
       getMetabotVisible,
       // routes
       getAdminRoutes,
-      getMetabotRoutes: getMetabotQuickLinks,
+      getMetabotRoutes: () => (
+        <>
+          {getMetabotQuickLinks()}
+          <Route path="slack-connect-success" component={SlackConnectSuccess} />
+        </>
+      ),
       getMetabotQueryBuilderRoute: () => (
         <Route path="ask" component={MetabotQueryBuilder} />
       ),
