@@ -65,7 +65,7 @@
 (defn- try-parse-filter-to-parts
   "Try to parse a display name using filter patterns.
    Filter patterns have :prefix (text before column) and :separator (text between column and first value/end).
-   Returns {:column str, :prefix str, :rest str-or-nil} or nil."
+   Returns {:column str, :prefix str, :suffix str-or-nil} or nil."
   [display-name patterns]
   (perf/some (fn [{:keys [prefix separator]}]
                (when (str/starts-with? display-name prefix)
@@ -76,12 +76,12 @@
                        (when (pos? sep-idx) ;; column must be non-empty
                          {:column (subs after-prefix 0 sep-idx)
                           :prefix prefix
-                          :rest   (subs after-prefix sep-idx)}))
+                          :suffix (subs after-prefix sep-idx)}))
                      ;; Unary: no separator, everything after prefix is the column
                      (when (seq after-prefix)
                        {:column after-prefix
                         :prefix prefix
-                        :rest   nil})))))
+                        :suffix nil})))))
              patterns))
 
 (defn- try-parse-colon-suffix-to-parts
@@ -162,11 +162,11 @@
 
       ;; Then try filter patterns (column + operator + values)
       ;; Must be before join/colon parsing since filter text may contain ": " or " → "
-      (when-let [{:keys [column prefix rest]} (try-parse-filter-to-parts display-name filter-patterns)]
+      (when-let [{:keys [column prefix suffix]} (try-parse-filter-to-parts display-name filter-patterns)]
         (-> []
             (cond-> (seq prefix) (conj (static-part prefix)))
             (into (parse-inner column))
-            (cond-> rest (conj (static-part rest)))))
+            (cond-> suffix (conj (static-part suffix)))))
 
       ;; Then try join pattern
       (when-let [{:keys [join-alias column]} (try-parse-join-to-parts display-name)]
