@@ -22,9 +22,7 @@ export function FilterDimensionPicker({
   definitions,
   onChange,
 }: FilterDimensionPickerProps) {
-  console.log("DEFS", definitions)
   const sections = useMemo(() => getSections(definitions), [definitions]);
-  console.log("sections", sections)
 
   const handleSelect = useCallback(
     (item: DimensionListItem) => {

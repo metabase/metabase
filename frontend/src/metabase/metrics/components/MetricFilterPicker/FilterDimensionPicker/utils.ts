@@ -9,7 +9,6 @@ export function getSections(
 ): DimensionSection[] {
   return definitions.map((definition) => {
     const dimensions = LibMetric.filterableDimensions(definition);
-    console.log(dimensions)
     const items: DimensionListItem[] = dimensions.map((dimension) => ({
       name: getDimensionName(definition, dimension),
       definition,
@@ -26,7 +25,6 @@ export function getSections(
 
 export function getSectionName(definition: LibMetric.MetricDefinition): string {
   const metricId = LibMetric.sourceMetricId(definition);
-  console.log(metricId)
   if (metricId != null) {
     const metric = LibMetric.metricMetadata(definition, metricId);
     if (metric) {
