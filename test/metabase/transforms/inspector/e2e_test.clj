@@ -84,15 +84,23 @@
                       (lib/with-join-alias "Reviews")
                       (lib/with-join-fields :all))))))
 
-(defn- qt
-  "Quote a table name for the current driver."
+(defn- qi
+  "Quote an identifier for the current driver."
   [s]
-  (sql.u/quote-name driver/*driver* :table (ddl.i/format-name driver/*driver* s)))
+  (sql.u/quote-name driver/*driver* :field (ddl.i/format-name driver/*driver* s)))
+
+(defn- qt
+  "Quote a table name for the current driver, with schema qualification."
+  [s]
+  (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id (keyword s)))]
+    (if schema
+      (str (qi schema) "." (qi s))
+      (qi s))))
 
 (defn- qf
   "Quote a field/column name for the current driver."
   [s]
-  (sql.u/quote-name driver/*driver* :field (ddl.i/format-name driver/*driver* s)))
+  (qi s))
 
 (defn- native-multi-join-query
   "Native SQL: ORDERS INNER JOIN PEOPLE, LEFT JOIN PRODUCTS, LEFT JOIN REVIEWS."
