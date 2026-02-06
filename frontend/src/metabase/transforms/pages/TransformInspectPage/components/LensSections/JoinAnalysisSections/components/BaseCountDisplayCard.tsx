@@ -8,7 +8,7 @@ import type {
 import type { InspectorCard } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
-import type { CardStats, LensRef } from "../../../../types";
+import type { CardStats } from "../../../../types";
 import { CardAlerts } from "../../../CardAlerts";
 import { CardDrills } from "../../../CardDrills";
 
@@ -18,7 +18,7 @@ type BaseCountDisplayCardProps = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const BaseCountDisplayCard = ({

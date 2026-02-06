@@ -17,7 +17,7 @@ import type {
 import type { InspectorCard } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
-import type { CardStats, LensRef } from "../../../../types";
+import type { CardStats } from "../../../../types";
 import { CardAlerts } from "../../../CardAlerts";
 import { CardDrills } from "../../../CardDrills";
 import { JOIN_ICONS, JOIN_LABELS } from "../constants";
@@ -31,7 +31,7 @@ type JoinStepRowCardProps = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 type JoinStepStats = {

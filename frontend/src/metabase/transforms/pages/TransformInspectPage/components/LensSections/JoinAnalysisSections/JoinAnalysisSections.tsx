@@ -8,7 +8,7 @@ import type {
   InspectorSection,
 } from "metabase-types/api";
 
-import type { CardStats, LensRef } from "../../../types";
+import type { CardStats } from "../../../types";
 import { SectionsRenderer } from "../SectionsRenderer";
 
 import { JoinAnalysisSection } from "./JoinAnalysisSection";
@@ -20,7 +20,7 @@ type JoinAnalysisSectionsProps = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const JoinAnalysisSections = ({

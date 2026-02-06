@@ -14,6 +14,8 @@ import {
   rem,
 } from "metabase/ui";
 
+import { isDrillLens } from "../../utils";
+
 import styles from "./LensNavigator.css";
 import type { LensTab } from "./types";
 
@@ -39,41 +41,42 @@ export const LensNavigator = ({
     >
       <Tabs.List px="lg" className={styles.tabsList}>
         {tabs.map((tab) => (
-          <Tabs.Tab key={tab.id} value={tab.id} className={styles.tab}>
+          <Tabs.Tab key={tab.key} value={tab.key} className={styles.tab}>
             <Group gap="xs" wrap="nowrap">
               <Text
                 size="md"
                 fw={700}
-                c={tab.id === activeTabKey ? "text-brand" : "text-primary"}
+                c={tab.key === activeTabKey ? "text-brand" : "text-primary"}
                 truncate
                 miw={0}
               >
-                {tab.lensRef.title}
+                {tab.title}
               </Text>
-              {match(tab.complexity?.level)
-                .with("slow", "very-slow", (level) => (
-                  <Tooltip
-                    label={match(level)
-                      .with(
-                        "slow",
-                        () => t`This analysis may take longer to load`,
-                      )
-                      .with(
-                        "very-slow",
-                        () =>
-                          t`This analysis may take significantly longer to load`,
-                      )
-                      .exhaustive()}
-                  >
-                    <Icon name="clock" size={12} c="text-tertiary" />
-                  </Tooltip>
-                ))
-                .otherwise(() => null)}
+              {!isDrillLens(tab.lens) &&
+                match(tab.lens.complexity?.level)
+                  .with("slow", "very-slow", (level) => (
+                    <Tooltip
+                      label={match(level)
+                        .with(
+                          "slow",
+                          () => t`This analysis may take longer to load`,
+                        )
+                        .with(
+                          "very-slow",
+                          () =>
+                            t`This analysis may take significantly longer to load`,
+                        )
+                        .exhaustive()}
+                    >
+                      <Icon name="clock" size={12} c="text-tertiary" />
+                    </Tooltip>
+                  ))
+                  .otherwise(() => null)}
               {!tab.isStatic && (
                 <UnstyledButton
                   onClick={(e) => {
                     e.stopPropagation();
-                    onCloseTab(tab.id);
+                    onCloseTab(tab.key);
                   }}
                   aria-label={t`Close tab`}
                   ml={rem("2px")}

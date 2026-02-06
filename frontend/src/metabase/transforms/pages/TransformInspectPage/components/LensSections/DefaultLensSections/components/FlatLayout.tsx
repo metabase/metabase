@@ -6,8 +6,6 @@ import type {
 } from "metabase-lib/transforms-inspector";
 import type { InspectorCard, InspectorLens } from "metabase-types/api";
 
-import type { LensRef } from "../../../../types";
-
 import { ScalarCard } from "./ScalarCard";
 import { VisualizationCard } from "./VisualizationCard";
 
@@ -17,7 +15,7 @@ type FlatLayoutProps = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const FlatLayout = ({

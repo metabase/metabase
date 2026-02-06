@@ -1,19 +1,15 @@
-import type {
-  InspectorLensComplexity,
-  InspectorLensMetadata,
-} from "metabase-types/api";
+import type { Lens } from "../../types";
+import { isDrillLens } from "../../utils";
 
-import type { LensRef, LensTab } from "./types";
+import type { LensTab } from "./types";
 
-export const convertLensToRef = (lens: InspectorLensMetadata): LensRef => ({
-  id: lens.id,
-  title: lens.display_name,
-});
-
-export const getLensRefKey = (lensRef: LensRef): string => {
-  const { params } = lensRef;
+export const getDrillLensTabKey = (lens: Lens): string => {
+  if (!isDrillLens(lens)) {
+    return lens.id;
+  }
+  const { params, lens_id: id } = lens;
   if (!params || Object.keys(params).length === 0) {
-    return lensRef.id;
+    return id;
   }
   const sorted = Object.keys(params)
     .sort()
@@ -21,16 +17,22 @@ export const getLensRefKey = (lensRef: LensRef): string => {
       acc[key] = params[key];
       return acc;
     }, {});
-  return `${lensRef.id}::${JSON.stringify(sorted)}`;
+  return `${id}::${JSON.stringify(sorted)}`;
 };
 
-export const createTab = (
-  lensRef: LensRef,
-  isStatic: boolean,
-  complexity?: InspectorLensComplexity,
-): LensTab => ({
-  id: getLensRefKey(lensRef),
-  lensRef,
-  isStatic,
-  complexity,
-});
+export const createTab = (lens: Lens): LensTab => {
+  if (isDrillLens(lens)) {
+    return {
+      key: getDrillLensTabKey(lens),
+      title: lens.reason ?? lens.lens_id,
+      isStatic: false,
+      lens,
+    };
+  }
+  return {
+    key: lens.id,
+    title: lens.display_name,
+    isStatic: true,
+    lens,
+  };
+};

@@ -1,14 +1,8 @@
-import type { InspectorLensComplexity } from "metabase-types/api";
+import type { Lens } from "../../types";
 
 export type LensTab = {
-  id: string;
-  lensRef: LensRef;
-  isStatic?: boolean;
-  complexity?: InspectorLensComplexity;
-};
-
-export type LensRef = {
-  id: string;
+  key: string;
   title: string;
-  params?: Record<string, unknown>;
+  isStatic?: boolean;
+  lens: Lens;
 };

@@ -23,7 +23,6 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { useLensCardLoader } from "../../../../hooks";
-import type { LensRef } from "../../../../types";
 import { CardAlerts } from "../../../CardAlerts";
 import { CardDrills } from "../../../CardDrills";
 
@@ -33,7 +32,7 @@ type VisualizationCardProps = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
   height?: number;
 };
 

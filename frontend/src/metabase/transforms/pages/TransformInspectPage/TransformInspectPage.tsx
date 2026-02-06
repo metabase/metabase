@@ -40,14 +40,8 @@ export const TransformInspectPage = ({
     error: discoveryError,
   } = useGetInspectorDiscoveryQuery(transformId ?? skipToken);
 
-  const {
-    tabs,
-    activeTabKey,
-    currentLensRef,
-    addDrillLens,
-    closeTab,
-    switchTab,
-  } = useLensNavigation(discovery?.available_lenses ?? [], location);
+  const { tabs, activeTabKey, currentLens, addDrillLens, closeTab, switchTab } =
+    useLensNavigation(discovery?.available_lenses ?? [], location);
 
   const isLoading = isLoadingTransform || isLoadingDiscovery;
   const error = transformError ?? discoveryError;
@@ -78,7 +72,7 @@ export const TransformInspectPage = ({
     );
   }
 
-  if (!currentLensRef) {
+  if (!currentLens) {
     return null;
   }
 
@@ -93,7 +87,7 @@ export const TransformInspectPage = ({
       >
         <LensContent
           transformId={transform.id}
-          currentLensRef={currentLensRef}
+          currentLens={currentLens}
           discovery={discovery}
           onDrill={addDrillLens}
         />
