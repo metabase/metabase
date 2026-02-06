@@ -63,6 +63,9 @@
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
+  ;; `our-metadata` returned by `sync-instances!` includes newly created/reactivated fields but may also
+  ;; contain fields that were retired. This is fine because `update-metadata!` only processes fields present
+  ;; in `db-metadata`, so retired entries are ignored.
   (let [{:keys [num-updates our-metadata]} (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))]
     (+ num-updates
        (sync-metadata/update-metadata! database table db-metadata our-metadata))))

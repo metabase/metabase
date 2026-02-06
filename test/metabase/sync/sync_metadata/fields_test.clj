@@ -600,9 +600,17 @@
     (with-test-db
       (sync/sync-database! (mt/db))
       (let [call-count  (atom 0)
-            original-fn fields.our-metadata/our-metadata]
-        (with-redefs [fields.our-metadata/our-metadata (fn [table]
+            original-fn fields.our-metadata/our-metadata
+            table       (t2/select-one :model/Table :db_id (u/the-id (mt/db)))]
+        (with-redefs [fields.our-metadata/our-metadata (fn [tbl]
                                                          (swap! call-count inc)
-                                                         (original-fn table))]
-          (sync-fields/sync-fields-for-table! (mt/db) (t2/select-one :model/Table :db_id (u/the-id (mt/db))))
-          (is (= 1 @call-count)))))))
+                                                         (original-fn tbl))]
+          (let [result (sync-fields/sync-fields-for-table! (mt/db) table)]
+            (testing "our-metadata is fetched exactly once"
+              (is (= 1 @call-count)))
+            (testing "fields are still synced correctly"
+              (is (=? {:total-fields   2
+                       :updated-fields 0}
+                      result))
+              (is (= #{"species" "example_name"}
+                     (t2/select-fn-set :name :model/Field :table_id (u/the-id table) :active true))))))))))
