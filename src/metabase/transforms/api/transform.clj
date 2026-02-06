@@ -53,6 +53,90 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
+(def ^:private CreatorResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:email :string]
+   [:first_name [:maybe :string]]
+   [:last_name [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]
+   [:last_login {:optional true} [:maybe :any]]
+   [:is_qbnewb {:optional true} :boolean]
+   [:is_superuser {:optional true} :boolean]
+   [:is_data_analyst {:optional true} :boolean]
+   [:tenant_id {:optional true} [:maybe :any]]
+   [:date_joined {:optional true} :any]])
+
+(def ^:private OwnerResponse
+  [:map {:closed true}
+   [:id {:optional true} pos-int?]
+   [:email :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
+
+(def ^:private TransformLastRunResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:transform_id pos-int?]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]])
+
+(def ^:private TransformResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:name :string]
+   [:description [:maybe :string]]
+   [:source :any]
+   [:target :any]
+   [:source_type :keyword]
+   [:source_database_id {:optional true} [:maybe pos-int?]]
+   [:source_readable {:optional true} :boolean]
+   [:entity_id [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]
+   [:creator_id pos-int?]
+   [:collection_id [:maybe pos-int?]]
+   [:target_db_id {:optional true} [:maybe pos-int?]]
+   [:run_trigger {:optional true} [:maybe :keyword]]
+   [:dependency_analysis_version :int]
+   [:creator CreatorResponse]
+   [:last_run {:optional true} [:maybe TransformLastRunResponse]]
+   [:tag_ids {:optional true} [:sequential pos-int?]]
+   [:table {:optional true} [:maybe :map]]
+   [:owner_user_id {:optional true} [:maybe pos-int?]]
+   [:owner_email {:optional true} [:maybe :string]]
+   [:owner {:optional true} [:maybe OwnerResponse]]])
+
+(def ^:private TransformRunResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:transform_id [:maybe pos-int?]]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   ;; Transform can have id/name when exists, or be nil when deleted
+   [:transform {:optional true} [:maybe [:map {:closed true}
+                                         [:id {:optional true} pos-int?]
+                                         [:name {:optional true} :string]
+                                         [:deleted {:optional true} :boolean]
+                                         [:collection_id {:optional true} [:maybe pos-int?]]
+                                         [:collection {:optional true} [:maybe :map]]
+                                         [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
+
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
 
@@ -115,13 +199,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/" :- [:sequential TransformResponse]
   "Get a list of transforms."
   [_route-params
    query-params :-
@@ -238,8 +317,7 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- TransformResponse
   "Create a new transform."
   [_route-params
    _query-params
@@ -277,21 +355,13 @@
         python-source-table-ref->table-id
         transforms.util/add-source-readable)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (get-transform id))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/dependencies"
+(api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -334,13 +404,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/run"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/run" :- [:map {:closed true}
+                                        [:data [:sequential TransformRunResponse]]
+                                        [:limit pos-int?]
+                                        [:offset :int]
+                                        [:total :int]]
   "Get transform runs based on a set of filter params."
   [_route-params
    query-params :-
@@ -392,11 +461,7 @@
         python-source-table-ref->table-id
         transforms.util/add-source-readable)))
 
-;; TODO (Cam 2025-11-25) -- please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
+(api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
@@ -423,21 +488,13 @@
                           :user-id api/*current-user-id*})
   nil)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (delete-transform! (api/write-check :model/Transform id)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/table"
+(api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -445,11 +502,7 @@
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/cancel"
+(api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -479,11 +532,11 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-;; TODO (Cam 2025-11-25) -- please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/run"
+(api.macros/defendpoint :post "/:id/run" :- [:map
+                                             [:status [:= 202]]
+                                             [:body [:map {:closed true}
+                                                     [:message :any]
+                                                     [:run_id [:maybe pos-int?]]]]]
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -521,11 +574,9 @@
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
-;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/is-simple-query"
+(api.macros/defendpoint :post "/is-simple-query" :- [:map
+                                                     [:is_simple :boolean]
+                                                     [:reason {:optional true} :string]]
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
   [_route-params
    _query-params

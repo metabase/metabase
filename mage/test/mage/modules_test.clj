@@ -166,17 +166,20 @@
       (is (true? (:should-run result)))
       (is (re-find #"driver files changed" (:reason result))))))
 
-(deftest cloud-driver-with-query-processor-changes-runs
-  (testing "Cloud driver runs when query-processor module is updated"
-    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+(deftest modules-can-trigger-cloud-drivers
+  (doseq [module '#{query-processor transforms
+                    enterprise/transforms enterprise/transforms-python}
+          driver [:athena :bigquery :databricks :redshift :snowflake]]
+    (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
-                                                 false ; not affected
-                                                 #{} ; quarantined
-                                                 #{'query-processor})] ; updated
+                                                 false       ; not affected
+                                                 #{}         ; quarantined
+                                                 #{module})] ; updated
         (is (true? (:should-run result))
             (str driver " should run when query-processor updated"))
-        (is (= "query-processor module updated" (:reason result)))))))
+        (is (= "Module updated which explicitly triggers cloud drivers"
+               (:reason result)))))))
 
 (deftest cloud-driver-without-changes-skips
   (testing "Cloud driver skips when no relevant changes"
@@ -250,7 +253,7 @@
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This count was 33 as of 2026-01-20. Update this number ONLY if you
           ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 33]
+          max-allowed-count 35]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

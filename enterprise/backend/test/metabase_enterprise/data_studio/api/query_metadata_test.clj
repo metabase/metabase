@@ -8,7 +8,7 @@
    [metabase.util :as u]))
 
 (deftest table-query-metadata-collection-permissions-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "GET /api/table/:id/query_metadata"
       (testing "Published tables in collections should be accessible with collection read permission (no data permissions)"
         (mt/with-temp [:model/Collection coll     {}
@@ -57,7 +57,7 @@
                 (is (= (u/the-id table) (:id response)))))))))))
 
 (deftest table-card-query-metadata-published-table-collection-perms-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "GET /api/table/card__:id/query_metadata"
       (testing "Should include Field metadata for published tables accessible via collection permissions"
         (mt/with-temp [:model/Collection table-coll {}
@@ -77,7 +77,7 @@
 
 (deftest card-query-metadata-published-table-collection-perms-test
   (testing "GET /api/card/:id/query_metadata should include published tables accessible via collection permissions"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {}
                      :model/Database db {}
                      :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
@@ -103,7 +103,7 @@
 
 (deftest dashboard-query-metadata-published-table-collection-perms-test
   (testing "GET /api/dashboard/:id/query_metadata should include published tables accessible via collection permissions"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {}
                      :model/Database db {}
                      :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
@@ -132,7 +132,7 @@
 (deftest automagic-dashboards-query-metadata-published-table-collection-perms-test
   (testing "GET /api/automagic-dashboards/:entity/:entity-id-or-query/query_metadata"
     (testing "Should include published tables accessible via collection permissions"
-      (mt/with-premium-features #{:data-studio}
+      (mt/with-premium-features #{:library}
         (mt/with-temp [:model/Collection table-coll {}
                        :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
                        :model/PermissionsGroup custom-group {}
