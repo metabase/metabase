@@ -4,37 +4,16 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
-   [metabase-enterprise.metabot-v3.agent.tool-results :as tool-results]
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
-(defn- get-structured-output
-  "Extract structured output from result, handling both key formats.
-  Tools may use :structured-output (hyphen, Clojure idiomatic) or
-  :structured_output (underscore, from JSON/API responses)."
-  [result]
-  (or (:structured-output result)
-      (:structured_output result)))
-
 (defn- format-tool-result
   "Format tool result for LLM consumption.
-  Handles both :output (plain string) and :structured-output (structured data).
-  Uses InstructionResultSchema pattern to wrap results with LLM guidance."
+  All agent tools now return :output as a pre-formatted string."
   [result]
-  (cond
-    ;; Plain output string (usually errors)
-    (:output result)
-    (:output result)
-
-    ;; Structured output - format based on type
-    (get-structured-output result)
-    (let [structured (get-structured-output result)]
-      (tool-results/format-structured-result structured))
-
-    ;; Fallback - stringify the whole result
-    :else
-    (pr-str result)))
+  (or (:output result)
+      (pr-str result)))
 
 (defn- normalize-role
   "Normalize role to keyword for comparison.

@@ -8,17 +8,48 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- format-transform-details-output
+  [{:keys [id name description source target] :as transform}]
+  (str "<transform id=\"" id "\" name=\"" name "\">\n"
+       (when description (str "<description>" description "</description>\n"))
+       (when source
+         (str "<source type=\"" (:type source) "\">\n"
+              (when (:query source) (str "<query>\n" (:query source) "\n</query>\n"))
+              (when (:source-database source) (str "<database>" (:source-database source) "</database>\n"))
+              "</source>\n"))
+       (when target (str "<target>" (pr-str target) "</target>\n"))
+       "</transform>"))
+
+(defn- format-python-library-output
+  [{:keys [path] :as lib}]
+  (str "<python-library path=\"" path "\">\n"
+       (when-let [content (:content lib)] (str "<content>\n" content "\n</content>\n"))
+       "</python-library>"))
+
+(defn- format-transform-write-output
+  [{:keys [message]}]
+  (or message "Transform updated successfully."))
+
+(defn- add-output
+  "Add :output to a tool result. Handles both :structured_output and :structured-output."
+  [result format-fn]
+  (if-let [structured (or (:structured_output result) (:structured-output result))]
+    (assoc result :output (format-fn structured))
+    result))
+
 (mu/defn ^{:tool-name "get_transform_details"} get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true}
                               [:transform_id :int]]]
-  (transform-tools/get-transform-details {:transform-id transform_id}))
+  (add-output (transform-tools/get-transform-details {:transform-id transform_id})
+              format-transform-details-output))
 
 (mu/defn ^{:tool-name "get_transform_python_library_details"} get-transform-python-library-details-tool
   "Get information about a Python library by path."
   [{:keys [path]} :- [:map {:closed true}
                       [:path :string]]]
-  (transform-tools/get-transform-python-library-details {:path path}))
+  (add-output (transform-tools/get-transform-python-library-details {:path path})
+              format-python-library-output))
 
 (mu/defn ^{:tool-name "write_transform_sql"
            :capabilities #{:feature-transforms :permission-write-transforms}}
@@ -48,16 +79,18 @@
        [:source_database {:optional true} [:maybe :int]]
        [:source_tables {:optional true} [:maybe :map]]]]
   (try
-    (transforms-write-tools/write-transform-sql
-     {:transform_id transform_id
-      :edit_action edit_action
-      :thinking thinking
-      :transform_name transform_name
-      :transform_description transform_description
-      :source_database source_database
-      :source_tables source_tables
-      :memory-atom shared/*memory-atom*
-      :context (shared/current-context)})
+    (add-output
+     (transforms-write-tools/write-transform-sql
+      {:transform_id transform_id
+       :edit_action edit_action
+       :thinking thinking
+       :transform_name transform_name
+       :transform_description transform_description
+       :source_database source_database
+       :source_tables source_tables
+       :memory-atom shared/*memory-atom*
+       :context (shared/current-context)})
+     format-transform-write-output)
     (catch Exception e
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
@@ -91,16 +124,18 @@
        [:source_database {:optional true} [:maybe :int]]
        [:source_tables {:optional true} [:maybe :map]]]]
   (try
-    (transforms-write-tools/write-transform-python
-     {:transform_id transform_id
-      :edit_action edit_action
-      :thinking thinking
-      :transform_name transform_name
-      :transform_description transform_description
-      :source_database source_database
-      :source_tables source_tables
-      :memory-atom shared/*memory-atom*
-      :context (shared/current-context)})
+    (add-output
+     (transforms-write-tools/write-transform-python
+      {:transform_id transform_id
+       :edit_action edit_action
+       :thinking thinking
+       :transform_name transform_name
+       :transform_description transform_description
+       :source_database source_database
+       :source_tables source_tables
+       :memory-atom shared/*memory-atom*
+       :context (shared/current-context)})
+     format-transform-write-output)
     (catch Exception e
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}

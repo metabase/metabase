@@ -489,18 +489,22 @@
       :metadata_models_xml metadata-models
       :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 
+(def formatters
+  {:metric     metric->xml
+   :table      table->xml
+   :model      model->xml
+   :question   question->xml
+   :dashboard  dashboard->xml
+   :database   database->xml
+   :user       user->xml
+   :query      query->xml
+   :collection collection->xml})
+
 (defn entity->xml
   "Dispatch to appropriate XML formatter based on entity type."
-  [{:keys [type] :as entity}]
-  (case type
-    :metric (metric->xml entity)
-    :table (table->xml entity)
-    :model (model->xml entity)
-    :question (question->xml entity)
-    :dashboard (dashboard->xml entity)
-    :database (database->xml entity)
-    :user (user->xml entity)
-    :query (query->xml entity)
-    :collection (collection->xml entity)
-    ;; Fallback for unknown types
-    (pr-str entity)))
+  [entity]
+  (if-let [formatter (get formatters (:type entity))]
+    (formatter entity)
+    (do
+      (log/warn "Unknown entity type" {:type (:type entity)})
+      (pr-str entity))))
