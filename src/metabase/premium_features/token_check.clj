@@ -6,6 +6,8 @@
 
   TODO -- We should move the settings in this namespace into [[metabase.premium-features.settings]]."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -30,10 +32,7 @@
    [metabase.util.string :as u.str]
    [potemkin.types :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2])
-  (:import
-   (com.google.common.cache CacheBuilder RemovalCause RemovalNotification)
-   (java.util.concurrent TimeUnit)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -295,54 +294,17 @@
 
 (def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
 
-(p/defprotocol+ GracePeriod
-  "A protocol for providing a grace period for token features in the event they are not fetchable for a little while."
-  (save! [_ token features] "Save the features for a particular token.")
-  (retrieve [_ token] "Attempt to retrieve features associated with a token. This is best effort, perhaps never set,
-  perhaps has timed out. Possible this is nil."))
-
-(defn guava-cache-grace-period
-  "Create a grace period of n units. This is just an expiring map using a guava cache. Note this is not sensitive to read times but to write times.
-
-
-  (let [grace (guava-cache-grace-period 20 TimeUnit/MILLISECONDS)]
-    (save! grace \"token\" #{\"features\"})
-    (println \"found tokens?: \"
-             (if (= (retrieve grace \"token\") #{\"features\"})
-               \"🟢\"
-               \"🔴\"))
-    (Thread/sleep 40)
-    (println \"expecting not to find tokens?: \"
-             (if (retrieve grace \"token\")
-               \"🔴\"
-               \"🟢\")))
-  found tokens?:  🟢
-  expecting not to find tokens?:  🟢
-  nil"
-  [^long n ^TimeUnit units]
-  (let [guava-cache (.. (CacheBuilder/newBuilder)
-                        (expireAfterWrite n units)
-                        (removalListener (fn [^RemovalNotification rn]
-                                           (let [cause (.getCause rn)]
-                                             (when (= RemovalCause/EXPIRED cause)
-                                               (log/warnf "Removing token: %s from grace period cache"
-                                                          (u.str/mask (.getKey rn)))))))
-                        (build))]
-    (reify GracePeriod
-      (save! [_ token features] (.put guava-cache token features))
-      (retrieve [_ token]
-        (when token
-          (let [value (.get guava-cache token (constantly ::not-present))]
-            (when-not (identical? value ::not-present)
-              value)))))))
-
 (p/defprotocol+ TokenChecker
   "Protocol for checking tokens with cache management."
   (-check-token [this token]
     "Check a token and return TokenStatus map. May throw exceptions on failure.")
   (-clear-cache! [this]
     "Clear any caches in this checker and any wrapped checkers.
-     Returns nil. Implementations should delegate to wrapped checkers."))
+     Returns nil. Implementations should delegate to wrapped checkers.")
+  (-clear-local-cache! [this]
+    "Clear only in-memory caches, leaving DB-level caches intact.
+     Used for cross-instance cookie-based invalidation where the DB already has fresh data.
+     Implementations should delegate to wrapped checkers."))
 
 (def store-and-airgap-token-checker
   "Creates a basic token checker that handles HTTP requests and airgap tokens.
@@ -350,9 +312,8 @@
   (reify TokenChecker
     (-check-token [_ token]
       (decode-token* token))
-    (-clear-cache! [_]
-      ;; No cache to clear at this level
-      nil)))
+    (-clear-cache! [_] nil)
+    (-clear-local-cache! [_] nil)))
 
 (defn circuit-breaker-token-checker
   "Wraps a token checker with circuit breaker and timeout logic."
@@ -383,46 +344,107 @@
                  (catch dev.failsafe.FailsafeException e
                    (throw (.getCause e)))))))
       (-clear-cache! [_]
-        ;; No cache at this level, but delegate to wrapped checker
-        (-clear-cache! token-checker)))))
+        (-clear-cache! token-checker))
+      (-clear-local-cache! [_]
+        (-clear-local-cache! token-checker)))))
 
-(defn cached-token-checker
-  "Wraps a token checker with TTL-based memoization."
-  [token-checker {:keys [ttl-ms]}]
+(defn- hash-token
+  "SHA-256 hex hash of a token string. Used as cache table key so the raw token never appears in plaintext."
+  ^String [^String token]
+  (codecs/bytes->hex (buddy-hash/sha256 (.getBytes token "UTF-8"))))
+
+(defn- read-cache-from-db
+  "Read a cached token status from the premium_features_token_cache table. Returns nil if not found."
+  [token-hash]
+  (t2/select-one [:model/PremiumFeaturesCache :token_status :updated_at] :token_hash token-hash))
+
+(defn- write-cache-to-db!
+  "Upsert a token check result into the premium_features_token_cache table.
+   Uses insert-first to avoid TOCTOU race between instances."
+  [token-hash result]
+  (let [now (t/offset-date-time)]
+    (try
+      (t2/insert! :model/PremiumFeaturesCache {:token_hash   token-hash
+                                               :token_status result
+                                               :updated_at   now})
+      (catch Exception _
+        (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+                    {:token_status result :updated_at now})))))
+
+(defn- clear-db-cache!
+  "Delete all rows from the premium_features_token_cache table."
+  []
+  (t2/delete! :model/PremiumFeaturesCache))
+
+(def ^:dynamic *testing-only-call-after-refresh*
+  "When non-nil, a zero-arg function called after async background refresh completes.
+   For testing only — do not use in production."
+  nil)
+
+(defn table-backed-token-checker
+  "Wraps a token checker with a DB-table-backed cross-instance cache.
+   - `soft-ttl`: DB entries younger than this are fresh; older triggers async refresh
+   - `hard-ttl`: DB entries older than this are expired; synchronous fetch required"
+  [token-checker {:keys [soft-ttl hard-ttl]}]
+  (let [refresh-in-progress? (atom false)]
+    (reify TokenChecker
+      (-check-token [_ token]
+        (let [token-hash  (hash-token token)
+              now         (t/instant)
+              db-row      (read-cache-from-db token-hash)
+              updated-at  (some-> db-row :updated_at t/instant)
+              db-result   (:token_status db-row)]
+          (cond
+            ;; Fresh (< soft-ttl): return from DB
+            (and updated-at (t/before? now (t/plus updated-at soft-ttl)))
+            db-result
+
+            ;; Stale (soft..hard): return from DB + async refresh
+            (and updated-at (t/before? now (t/plus updated-at hard-ttl)))
+            (do
+              (when (compare-and-set! refresh-in-progress? false true)
+                (future
+                  (try
+                    (let [result (-check-token token-checker token)]
+                      (write-cache-to-db! token-hash result))
+                    (catch Exception e
+                      (log/error e "Background premium features refresh failed"))
+                    (finally
+                      (reset! refresh-in-progress? false)
+                      (when-let [after *testing-only-call-after-refresh*]
+                        (after))))))
+              db-result)
+
+            ;; Expired or missing: synchronous delegate
+            :else
+            (let [result (-check-token token-checker token)]
+              (write-cache-to-db! token-hash result)
+              result))))
+      (-clear-cache! [_]
+        (try
+          (clear-db-cache!)
+          (catch Exception e
+            (log/warn e "Failed to clear premium features cache table")))
+        (-clear-cache! token-checker))
+      (-clear-local-cache! [_]
+        (-clear-local-cache! token-checker)))))
+
+(defn local-cached-token-checker
+  "Wraps a token checker with short-lived in-memory TTL memoization.
+   Avoids hitting the DB on every request."
+  [token-checker {:keys [local-ttl]}]
   (let [cached-check (memoize/ttl
                       (fn [token] (-check-token token-checker token))
-                      :ttl/threshold ttl-ms)]
+                      :ttl/threshold (.toMillis ^java.time.Duration local-ttl))]
     (reify TokenChecker
       (-check-token [_ token]
         (cached-check token))
       (-clear-cache! [_]
-        ;; Clear THIS layer's cache
         (memoize/memo-clear! cached-check)
-        ;; AND delegate to wrapped checker
-        (-clear-cache! token-checker)))))
-
-(defn grace-period-token-checker
-  "Wraps a token checker with grace period fallback logic."
-  [token-checker {:keys [grace-period]}]
-  (let [periodic-logger (memoize/ttl
-                         (fn [_token] (log/info "Using token from grace period"))
-                         :ttl/threshold (u/hours->ms 4))]
-    (reify TokenChecker
-      (-check-token [_ token]
-        (try (let [response (-check-token token-checker token)]
-               (save! grace-period token response)
-               response)
-             (catch Exception e
-               (or (when-let [grace (retrieve grace-period token)]
-                     (periodic-logger token)
-                     grace)
-                   (throw e)))))
-      (-clear-cache! [_]
-        ;; The grace period itself doesn't need clearing (it expires naturally)
-        ;; but we should clear the periodic logger cache
-        (memoize/memo-clear! periodic-logger)
-        ;; AND delegate to wrapped checker
-        (-clear-cache! token-checker)))))
+        (-clear-cache! token-checker))
+      (-clear-local-cache! [_]
+        (memoize/memo-clear! cached-check)
+        (-clear-local-cache! token-checker)))))
 
 (defn- error-catching-token-checker
   [token-checker]
@@ -436,7 +458,8 @@
              {:valid         false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
-    (-clear-cache! [_] (-clear-cache! token-checker))))
+    (-clear-cache! [_] (-clear-cache! token-checker))
+    (-clear-local-cache! [_] (-clear-local-cache! token-checker))))
 
 (def ^:dynamic *customize-checker*
   "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
@@ -445,45 +468,51 @@
 
 (defn make-checker
   "Make a token checker. Takes a base [[TokenChecker]] token checker and then arguments for the middleware-style
-  wrapping [[TokenChecker]] arguments. "
-  [{:keys [base circuit-breaker timeout-ms ttl-ms grace-period]
+  wrapping [[TokenChecker]] arguments."
+  [{:keys [base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl]
     :or   {base store-and-airgap-token-checker}}]
   (when-not *customize-checker*
-    (assert (and base circuit-breaker timeout-ms ttl-ms grace-period)
+    (assert (and base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl)
             "Must provide all arguments for token checker"))
   (cond-> base
-    ;; don't do it too much
     circuit-breaker
     (circuit-breaker-token-checker {:circuit-breaker circuit-breaker
                                     :timeout-ms      timeout-ms})
-    ;; hold onto results for a while
-    ttl-ms
-    (cached-token-checker {:ttl-ms ttl-ms})
-    ;; in case of errors, if we have a recent response use it
-    grace-period
-    (grace-period-token-checker {:grace-period grace-period})
+
+    (and soft-ttl hard-ttl)
+    (table-backed-token-checker {:soft-ttl soft-ttl
+                                 :hard-ttl hard-ttl})
+
+    local-ttl
+    (local-cached-token-checker {:local-ttl local-ttl})
+
     :always
     (error-catching-token-checker)))
 
 (def token-checker
-  "The token checker. Combines http/airgapping validation, circuit breaking, grace periods, caching, and error
-  handling."
+  "The token checker. Combines http/airgapping validation, circuit breaking, table-backed caching, and error handling."
   (make-checker {:base            store-and-airgap-token-checker
                  :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
-
                                    :delay-ms          (u/seconds->ms 30)
                                    :success-threshold 1
                                    :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
                                    :on-half-open      (fn [_] (log/info "In token check circuit breaker but attempting check"))
                                    :on-close          (fn [_] (log/info "Token Check restored"))}
-                 :timeout-ms   (u/seconds->ms 10)
-                 :ttl-ms       (u/hours->ms 12)
-                 :grace-period (guava-cache-grace-period 36 TimeUnit/HOURS)}))
+                 :timeout-ms      (u/seconds->ms 10)
+                 :local-ttl       (t/seconds 5)
+                 :soft-ttl        (t/hours 12)
+                 :hard-ttl        (t/hours 36)}))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
   []
   (-clear-cache! token-checker))
+
+(defn clear-local-cache!
+  "Clear only in-memory caches, leaving the DB-level cache intact.
+   Used by cookie-based cross-instance invalidation where the DB already has fresh data."
+  []
+  (-clear-local-cache! token-checker))
 
 (defn check-token
   "Public entrypoint to the token checking."
