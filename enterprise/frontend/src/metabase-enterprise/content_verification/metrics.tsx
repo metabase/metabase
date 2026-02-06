@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import { createSelector } from "reselect";
 
 import type {
   MetricFilterControlsProps,
@@ -13,11 +14,13 @@ import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 
 const USER_SETTING_KEY = "browse-filter-only-verified-metrics";
 
-export function getDefaultMetricFilters(state: State): MetricFilterSettings {
-  return {
-    verified: getSetting(state, USER_SETTING_KEY) ?? false,
-  };
-}
+const getVerifiedMetricSetting = (state: State) =>
+  getSetting(state, USER_SETTING_KEY) ?? false;
+
+export const getDefaultMetricFilters = createSelector(
+  [getVerifiedMetricSetting],
+  (verified): MetricFilterSettings => ({ verified }),
+);
 
 /**
  * This was originally designed to support multiple filters but it currently
