@@ -319,11 +319,13 @@ export function QueryColumnPicker({
 
   const renderItemName = useCallback(
     (item: Item) =>
-      PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-        item.displayName,
-        tc,
-      ),
-    [tc],
+      isSearching
+        ? item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+            item.displayName,
+            tc,
+          ),
+    [tc, isSearching],
   );
 
   return (
