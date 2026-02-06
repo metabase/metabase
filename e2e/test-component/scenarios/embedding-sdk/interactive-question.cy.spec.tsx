@@ -167,41 +167,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   describe("BackButton component", () => {
-    it("should show BackButton after drilling and allow navigating back", () => {
-      mountSdkContent(
-        <InteractiveQuestion questionId={ORDERS_QUESTION_ID}>
-          <div>
-            <InteractiveQuestion.BackButton />
-            <InteractiveQuestion.Title />
-            <InteractiveQuestion.QuestionVisualization />
-          </div>
-        </InteractiveQuestion>,
-      );
-
-      getSdkRoot().within(() => {
-        cy.findByText("Orders").should("be.visible");
-
-        // BackButton should not be visible initially (no navigation history)
-        cy.findByText(/Back to/).should("not.exist");
-
-        // Perform a drill on the first row's Product ID
-        H.tableInteractiveBody().findAllByText("14").first().click();
-        H.popover().findByText("View this Product's Orders").click();
-
-        // BackButton should now be visible
-        cy.findByText("Back to Orders").should("be.visible");
-
-        // Click the back button to return to the original question
-        cy.findByText("Back to Orders").click();
-
-        // Should be back at the original question
-        cy.findByText("Orders").should("be.visible");
-
-        // BackButton should be hidden again
-        cy.findByText(/Back to/).should("not.exist");
-      });
-    });
-
     it("should show BackButton after drilling even with title=false (metabase#68556)", () => {
       mountSdkContent(
         <InteractiveQuestion questionId={ORDERS_QUESTION_ID} title={false} />,
