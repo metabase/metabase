@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Button, Icon } from "metabase/ui";
 
+import { withPublicComponentWrapper } from "../PublicComponentWrapper";
+
 import S from "./SdkInternalNavigationBackButton.module.css";
 import { useSdkInternalNavigationOptional } from "./context";
 
@@ -11,7 +13,7 @@ import { useSdkInternalNavigationOptional } from "./context";
  * A back button that navigates to the previous entry in the SDK internal navigation stack.
  * Returns null if there's no navigation context or if there's no previous entry to go back to.
  */
-export const SdkInternalNavigationBackButton = ({
+const SdkInternalNavigationBackButtonInner = ({
   style,
   className,
 }: {
@@ -50,3 +52,10 @@ export const SdkInternalNavigationBackButton = ({
     </Button>
   );
 };
+
+export const SdkInternalNavigationBackButton = withPublicComponentWrapper(
+  SdkInternalNavigationBackButtonInner,
+  {
+    supportsGuestEmbed: false,
+  },
+);

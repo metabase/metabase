@@ -504,6 +504,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "drills",
   "initial-parameters",
   "hidden-parameters",
+  "enable-entity-navigation",
 ]);
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
@@ -529,6 +530,7 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
   "with-new-question",
   "with-new-dashboard",
   "read-only",
+  "enable-entity-navigation",
 ]);
 
 const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
