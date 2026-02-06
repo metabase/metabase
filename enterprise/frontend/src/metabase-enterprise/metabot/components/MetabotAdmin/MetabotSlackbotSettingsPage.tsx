@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { useUpdateSettingsMutation } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import {
@@ -39,16 +40,15 @@ export function MetabotSlackbotAdminPage() {
   );
   const ssoSlackEnabled = useHasTokenFeature("sso_slack");
 
-  const { value: botToken, updateSetting: updateBotToken } = useAdminSetting(
-    "metabot-slack-bot-token",
+  const [updateSettings] = useUpdateSettingsMutation();
+  const { value: botToken } = useAdminSetting("metabot-slack-bot-token");
+  const { value: signingSecret } = useAdminSetting(
+    "metabot-slack-signing-secret",
   );
-  const { value: signingSecret, updateSetting: updateSigningSecret } =
-    useAdminSetting("metabot-slack-signing-secret");
-  const { value: clientId, updateSetting: updateClientId } = useAdminSetting(
-    "slack-connect-client-id",
+  const { value: clientId } = useAdminSetting("slack-connect-client-id");
+  const { value: clientSecret } = useAdminSetting(
+    "slack-connect-client-secret",
   );
-  const { value: clientSecret, updateSetting: updateClientSecret } =
-    useAdminSetting("slack-connect-client-secret");
 
   const { data: manifest } = useGetSlackbotManifestQuery();
 
@@ -60,42 +60,12 @@ export function MetabotSlackbotAdminPage() {
   }, [manifest]);
 
   const handleSubmit = async (values: SlackbotFormValues) => {
-    // TODO: this is hacky for now, eventually need to build on top of the existing save slack settings endpoint instead.
-    // Update both settings - errors will propagate and be caught by FormProvider
-    const result = await updateBotToken({
-      key: "metabot-slack-bot-token",
-      value: values.botToken,
-      toast: false,
-    });
-    if (result.error) {
-      throw result.error;
-    }
-
-    const result2 = await updateSigningSecret({
-      key: "metabot-slack-signing-secret",
-      value: values.signingSecret,
-      toast: false,
-    });
-    if (result2.error) {
-      throw result2.error;
-    }
-
-    const result3 = await updateClientId({
-      key: "slack-connect-client-id",
-      value: values.clientId,
-      toast: false,
-    });
-    if (result3.error) {
-      throw result3.error;
-    }
-
-    const result4 = await updateClientSecret({
-      key: "slack-connect-client-secret",
-      value: values.clientSecret,
-    });
-    if (result4.error) {
-      throw result4.error;
-    }
+    await updateSettings({
+      "metabot-slack-bot-token": values.botToken,
+      "metabot-slack-signing-secret": values.signingSecret,
+      "slack-connect-client-id": values.clientId,
+      "slack-connect-client-secret": values.clientSecret,
+    }).unwrap();
   };
 
   return (

@@ -308,6 +308,26 @@
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
 
+(defn- setup-complete?
+  "Returns true if all required Slack settings are configured to process events."
+  []
+  (boolean
+   (and (some? (system/site-url))
+        (premium-features/enable-sso-slack?)
+        (sso-settings/slack-connect-client-id)
+        (sso-settings/slack-connect-client-secret)
+        (metabot.settings/metabot-slack-signing-secret)
+        ;; TODO: we need to factor in this or make it always true if metabot-v3 is enabled?
+        ;; (metabase-enterprise.sso.settings/slack-connect-enabled)
+        (metabot.settings/metabot-slack-bot-token)
+        (encryption/default-encryption-enabled?))))
+
+(defn- assert-setup-complete
+  "Asserts that all required Slack settings have been configured."
+  []
+  (when-not (setup-complete?)
+    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
+
 ;; ------------------------- EVENT HANDLING ------------------------------
 
 (def ^:private SlackEventsResponse
@@ -388,6 +408,7 @@
         thread (fetch-thread client event)
         message-ctx (event->reply-context event)
         thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
+        ;; TODO: handle case where this errors
         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
     (delete-message client thinking-message)
     (post-message client (merge message-ctx {:text text}))
@@ -434,24 +455,6 @@
     (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
   (slackbot-manifest (system/site-url)))
 
-(defn- setup-complete?
-  "Returns true if all required Slack settings are configured to process events."
-  []
-  (boolean
-   (and (some? (system/site-url))
-        (premium-features/enable-sso-slack?)
-        (sso-settings/slack-connect-client-id)
-        (sso-settings/slack-connect-client-secret)
-        (metabot.settings/metabot-slack-signing-secret)
-        (metabot.settings/metabot-slack-bot-token)
-        (encryption/default-encryption-enabled?))))
-
-(defn- assert-setup-complete
-  "Asserts that all required Slack settings have been configured."
-  []
-  (when-not (setup-complete?)
-    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
-
 (api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"
   [_route-params
@@ -473,7 +476,33 @@
   "`/api/ee/metabot-v3/slack` routes."
   (api.macros/ns-handler *ns*))
 
-;; --------------------------------------------
+;; -------------- DEV SETUP -------------------
+
+(comment
+  ;; Guide to set yourself up for local development
+  ;;
+  ;; New slack app
+  ;; 1. create a tunnel via `cloudflared tunnel --url http://localhost:3000`
+  ;; 2. update your site url to the provided tunnel url
+  (system/site-url! "https://personal-hear-sugar-graduates.trycloudflare.com")
+  ;; 4. visit this url in yoru browser, following the setup flow outlined there
+  (str (system/site-url) "/admin/metabot/slackbot")
+  ;; 6. verify you've setup your instance correctly
+  (setup-complete?)
+
+  ;; Updating an existing slack app
+  ;; 1. create a tunnel via `cloudflared tunnel --url http://localhost:3000`
+  ;; 2. update your site url to the provided tunnel url
+  (system/site-url! "https://personal-hear-sugar-graduates.trycloudflare.com")
+  ;; 3. visit the app manifest slack settings page for your slack app (https://app.slack.com/app-settings/.../..../app-manifest)
+  ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
+  (do
+    (require '[clojure.java.shell :refer [sh]])
+    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true})))
+  ;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
+  )
+
+;; ----------------- DEV -----------------------
 
 (comment
   ;; env vars, get these from https://api.slack.com/apps

@@ -416,10 +416,9 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :default false
   :feature :sso-slack
   :audit   :getter
-  :getter  (fn []
-             (if (slack-connect-configured)
-               (setting/get-value-of-type :boolean :slack-connect-enabled)
-               false)))
+  :getter  slack-connect-configured)
+
+(slack-connect-enabled)
 
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
