@@ -1125,7 +1125,7 @@
       (ws.tu/with-workspaces! [ws {:name "Workspace for failure test"}]
         (let [bad-transform {:name   "Bad Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query "SELECT 1 LIMIT"})}
+                                      :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}
                              :target {:type     "table"
                                       :database (mt/id)
                                       :schema   "public"
@@ -1294,7 +1294,7 @@
           (testing "returns failed status with message"
             (t2/update! :model/WorkspaceTransform {:workspace_id (:id ws1) :ref_id ref-id}
                         {:source {:type  "query"
-                                  :query (mt/native-query {:query "SELECT 1 LIMIT"})}})
+                                  :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}})
             (is (=? {:status  "failed"
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
