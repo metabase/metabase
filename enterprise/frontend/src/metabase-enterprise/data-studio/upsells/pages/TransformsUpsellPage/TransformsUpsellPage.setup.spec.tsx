@@ -1,7 +1,9 @@
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import {
+  setupBillingEndpoints,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettings,
@@ -21,8 +23,8 @@ type SetupOpts = {
   isStoreUser: boolean;
 };
 
-export const transformsAddOnPrice = 100;
-export const transformsPlusPyAddOnPrice = 250;
+export const transformsBasicPrice = 100;
+export const transformsAdvancedPrice = 250;
 
 export const setup = ({
   isHosted,
@@ -45,7 +47,10 @@ export const setup = ({
     settings: createMockSettingsState(settings),
     currentUser: createMockUser(),
   });
-  setupBillingEndpoints();
+  setupBillingEndpoints({
+    transformsBasicPrice,
+    transformsAdvancedPrice,
+  });
   setupPropertiesEndpoints(settings);
 
   renderWithProviders(
@@ -59,59 +64,6 @@ export const setup = ({
       initialRoute: "/data-studio/transforms",
     },
   );
-};
-
-const setupBillingEndpoints = () => {
-  fetchMock
-    .get("path:/api/ee/cloud-add-ons/addons", [
-      {
-        id: 1,
-        name: "Transforms (basic)",
-        short_name: "Transforms",
-        description: null,
-        active: true,
-        self_service: true,
-        deployment: "cloud",
-        billing_period_months: 12,
-        default_base_fee: transformsAddOnPrice,
-        default_included_units: 0,
-        default_prepaid_units: 0,
-        default_price_per_unit: 0,
-        default_total_units: 0,
-        is_metered: false,
-        product_type: "transforms-basic",
-        token_features: [],
-        trial_days: null,
-        product_tiers: [],
-      },
-      {
-        id: 2,
-        name: "Transforms (advanced)",
-        short_name: "Transforms + Python",
-        description: null,
-        active: true,
-        self_service: true,
-        deployment: "cloud",
-        billing_period_months: 12,
-        default_base_fee: transformsPlusPyAddOnPrice,
-        default_included_units: 0,
-        default_prepaid_units: 0,
-        default_price_per_unit: 0,
-        default_total_units: 0,
-        is_metered: false,
-        product_type: "transforms-advanced",
-        token_features: [],
-        trial_days: null,
-        product_tiers: [],
-      },
-    ])
-    .get("path:/api/ee/billing", {
-      version: "0",
-      data: {
-        billing_period_months: 12,
-        previous_add_ons: [],
-      },
-    });
 };
 
 export const assertLeftColumnContent = () => {

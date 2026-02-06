@@ -5,8 +5,8 @@ import { screen } from "__support__/ui";
 import {
   assertLeftColumnContent,
   setup,
-  transformsAddOnPrice,
-  transformsPlusPyAddOnPrice,
+  transformsAdvancedPrice,
+  transformsBasicPrice,
   waitForLoadingToFinish,
 } from "./TransformsUpsellPage.setup.spec";
 
@@ -63,12 +63,12 @@ describe("TransformsUpsellPage", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: /SQL only/ }));
     expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsAddOnPrice}`,
+      `$${transformsBasicPrice}`,
     );
 
     await userEvent.click(screen.getByRole("radio", { name: /SQL \+ Python/ }));
     expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsPlusPyAddOnPrice}`,
+      `$${transformsAdvancedPrice}`,
     );
   });
 
@@ -80,7 +80,7 @@ describe("TransformsUpsellPage", () => {
     expect(screen.queryByText(/SQL only/)).not.toBeInTheDocument();
     expect(screen.getByText(/SQL \+ Python/)).toBeInTheDocument();
     expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsPlusPyAddOnPrice}`,
+      `$${transformsAdvancedPrice}`,
     );
   });
 });

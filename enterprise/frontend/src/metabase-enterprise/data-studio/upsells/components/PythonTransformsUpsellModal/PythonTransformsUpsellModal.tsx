@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
@@ -16,23 +16,19 @@ import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
-  Button,
-  Card,
   Center,
   Divider,
   Flex,
-  Group,
   Icon,
   Modal,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { useTransformsBilling } from "../../hooks";
-import { TransformsSettingUpModal } from "../TransformsSettingUpModal";
 
+import { CloudPurchaseContent } from "./CloudPurchaseContent";
 import S from "./PythonTransformsUpsellModal.module.css";
 
 const CAMPAIGN = "data-studio-python-transforms";
@@ -56,22 +52,22 @@ export function PythonTransformsUpsellModal({
 
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
-  const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
-  const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
-    usePurchaseCloudAddOnMutation();
 
   // Track if we should force the modal open after a purchase error
-  const [forceOpenAfterError, setForceOpenAfterError] = useState(false);
+  const [
+    forceModalToOpen,
+    { open: enableForceModalToOpen, close: disableForceModalToOpen },
+  ] = useDisclosure(false);
 
   // Reset forceOpenAfterError when parent reopens the modal
   useEffect(() => {
     if (isOpen) {
-      setForceOpenAfterError(false);
+      disableForceModalToOpen();
     }
-  }, [isOpen]);
+  }, [isOpen, disableForceModalToOpen]);
 
   // Modal is open if parent says so OR if we're forcing it open after an error
-  const modalOpen = isOpen || forceOpenAfterError;
+  const modalOpen = isOpen || forceModalToOpen;
 
   const {
     isLoading,
@@ -108,40 +104,17 @@ export function PythonTransformsUpsellModal({
     ? dayjs(trialEndDate).format("MMMM D, YYYY")
     : undefined;
 
-  const dueToday = isTrialFlow ? 0 : pythonPrice;
-
   const showSingleColumn = isHosted && !isStoreUser;
 
   const handleModalClose = useCallback(() => {
-    setForceOpenAfterError(false);
+    disableForceModalToOpen();
     onClose();
-  }, [onClose]);
+  }, [onClose, disableForceModalToOpen]);
 
   const handleSelfHostedClick = () => {
     trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
     triggerUpsellFlow?.();
     handleModalClose();
-  };
-
-  const handleCloudPurchase = useCallback(async () => {
-    trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
-    settingUpModalHandlers.open();
-    handleModalClose();
-    try {
-      await purchaseCloudAddOn({
-        product_type: "transforms-advanced",
-      }).unwrap();
-    } catch {
-      settingUpModalHandlers.close();
-      setForceOpenAfterError(true);
-    }
-  }, [purchaseCloudAddOn, settingUpModalHandlers, handleModalClose]);
-
-  const getButtonText = () => {
-    if (isTrialFlow) {
-      return t`Add to trial`;
-    }
-    return t`Confirm purchase`;
   };
 
   const renderNonStoreUserContent = () => (
@@ -196,43 +169,14 @@ export function PythonTransformsUpsellModal({
     }
 
     return (
-      <Stack gap="lg">
-        <Card withBorder p="md" radius="md">
-          <Flex direction="column" style={{ flex: 1 }}>
-            <Group justify="space-between" align="flex-start">
-              <Text fw="bold">{t`SQL + Python`}</Text>
-              <Text fw="bold">{`$${pythonPrice} / ${billingPeriod}`}</Text>
-            </Group>
-            <Text size="sm" c="text-secondary" mt="sm">
-              {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
-            </Text>
-          </Flex>
-        </Card>
-        <Divider />
-        <Stack gap="sm">
-          <Group justify="space-between">
-            <Text c="text-secondary">{t`Due today:`}</Text>
-            <Text fw="bold">{`$${dueToday}`}</Text>
-          </Group>
-          <Group justify="space-between">
-            <Text c="text-secondary">
-              {isTrialFlow && formattedTrialEndDate
-                ? t`New total ${billingPeriod}ly cost starting ${formattedTrialEndDate}`
-                : t`New total ${billingPeriod}ly cost`}
-            </Text>
-            <Text fw="bold">{`$${pythonPrice}`}</Text>
-          </Group>
-        </Stack>
-        <Button
-          variant="filled"
-          size="md"
-          onClick={handleCloudPurchase}
-          loading={isPurchasing}
-          fullWidth
-        >
-          {getButtonText()}
-        </Button>
-      </Stack>
+      <CloudPurchaseContent
+        billingPeriod={billingPeriod}
+        formattedTrialEndDate={formattedTrialEndDate}
+        handleModalClose={handleModalClose}
+        isTrialFlow={isTrialFlow}
+        onError={enableForceModalToOpen}
+        pythonPrice={pythonPrice}
+      />
     );
   };
 
@@ -245,60 +189,50 @@ export function PythonTransformsUpsellModal({
   };
 
   return (
-    <>
-      <Modal.Root
-        opened={modalOpen}
-        onClose={handleModalClose}
-        size={showSingleColumn ? "md" : "xl"}
-      >
-        <Modal.Overlay />
-        <Modal.Content>
-          <Modal.Body p={0}>
-            <Flex className={S.container}>
-              {/* Left Column - Info */}
-              <Stack gap="lg" className={S.leftColumn} p="xl">
-                <Title
-                  order={2}
-                >{t`Go beyond SQL with advanced transforms`}</Title>
-                <Text c="text-secondary">
-                  {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
-                </Text>
-                <Stack gap="lg" py="sm">
-                  {bulletPoints.map((point) => (
-                    <Flex direction="row" gap="sm" key={point}>
-                      <Center w={24} h={24}>
-                        <Icon name="check_filled" size={16} c="text-brand" />
-                      </Center>
-                      <Text c="text-secondary">{point}</Text>
-                    </Flex>
-                  ))}
-                </Stack>
-                {showSingleColumn && renderNonStoreUserContent()}
+    <Modal.Root
+      opened={modalOpen}
+      onClose={handleModalClose}
+      size={showSingleColumn ? "md" : "xl"}
+    >
+      <Modal.Overlay />
+      <Modal.Content>
+        <Modal.Body p={0}>
+          <Flex className={S.container}>
+            {/* Left Column - Info */}
+            <Stack gap="lg" className={S.leftColumn} p="xl">
+              <Title
+                order={2}
+              >{t`Go beyond SQL with advanced transforms`}</Title>
+              <Text c="text-secondary">
+                {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
+              </Text>
+              <Stack gap="lg" py="sm">
+                {bulletPoints.map((point) => (
+                  <Flex direction="row" gap="sm" key={point}>
+                    <Center w={24} h={24}>
+                      <Icon name="check_filled" size={16} c="text-brand" />
+                    </Center>
+                    <Text c="text-secondary">{point}</Text>
+                  </Flex>
+                ))}
               </Stack>
-              {/* Right Column - Purchase Card (hidden for non-store users) */}
-              {!showSingleColumn && (
-                <>
-                  <Divider orientation="vertical" />
-                  <Stack gap="lg" className={S.rightColumn} p="xl">
-                    <Title
-                      order={3}
-                    >{t`Add advanced transforms to your plan`}</Title>
-                    {renderRightColumnContent()}
-                  </Stack>
-                </>
-              )}
-            </Flex>
-          </Modal.Body>
-        </Modal.Content>
-      </Modal.Root>
-      <TransformsSettingUpModal
-        opened={settingUpModalOpened}
-        onClose={() => {
-          settingUpModalHandlers.close();
-          window.location.reload();
-        }}
-        isPython
-      />
-    </>
+              {showSingleColumn && renderNonStoreUserContent()}
+            </Stack>
+            {/* Right Column - Purchase Card (hidden for non-store users) */}
+            {!showSingleColumn && (
+              <>
+                <Divider orientation="vertical" />
+                <Stack gap="lg" className={S.rightColumn} p="xl">
+                  <Title
+                    order={3}
+                  >{t`Add advanced transforms to your plan`}</Title>
+                  {renderRightColumnContent()}
+                </Stack>
+              </>
+            )}
+          </Flex>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 }
