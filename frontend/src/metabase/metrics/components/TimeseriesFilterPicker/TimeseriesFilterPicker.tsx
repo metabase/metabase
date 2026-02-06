@@ -1,4 +1,5 @@
 import { type Ref, forwardRef } from "react";
+import { t } from "ttag";
 
 import type { DimensionWithDefinition } from "metabase/metrics/types";
 import {
@@ -7,6 +8,7 @@ import {
 } from "metabase/metrics/utils/dates";
 import { SimpleDatePicker } from "metabase/querying/common/components/DatePicker/SimpleDatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
+import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
 import { Button } from "metabase/ui";
 
 type TimeseriesFilterPickerProps = {
@@ -39,12 +41,16 @@ type TimeseriesFilterPickerButtonProps = {
 
 export const TimeseriesFilterPickerButton = forwardRef(
   function TimeseriesFilterPickerButton(
-    { onClick }: TimeseriesFilterPickerButtonProps,
+    { selectedFilter, onClick }: TimeseriesFilterPickerButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
+    const label = selectedFilter
+      ? getDateFilterDisplayName(selectedFilter)
+      : t`All time`;
+
     return (
       <Button ref={ref} onClick={onClick}>
-        {`TODO`}
+        {label}
       </Button>
     );
   },
