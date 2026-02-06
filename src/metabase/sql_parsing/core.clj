@@ -10,11 +10,9 @@
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
   (:require
-   ^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: FIXME before merging
-   [metabase.analytics.core :as analytics]
-   ^{:clj-kondo/ignore [:metabase/modules]} ;; TODO: FIXME before merging
-   [metabase.lib.validate :as lib.validate]
    [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
+   [metabase.lib.core :as lib]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.pool :as python.pool]
    [metabase.util.json :as json]
@@ -393,7 +391,7 @@
     (catch TimeoutException e
       {:used-fields #{}
        :returned-fields []
-       :errors #{(lib.validate/validation-exception-error (.getMessage e))}})))
+       :errors #{(lib/validation-exception-error (.getMessage e))}})))
 
 (defn replace-names
   "Replace schema, table, and column names in SQL.
