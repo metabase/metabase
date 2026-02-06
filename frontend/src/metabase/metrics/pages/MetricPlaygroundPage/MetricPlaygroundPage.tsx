@@ -90,7 +90,9 @@ export function MetricPlaygroundPage() {
     closeFilterPicker();
   };
 
-  const handleTimeseriesFilterChange = (filter: DatePickerValue) => {
+  const handleTimeseriesFilterChange = (
+    filter: DatePickerValue | undefined,
+  ) => {
     setSelectedFilter(filter);
     closeTimeseriesFilterPicker();
   };
@@ -115,7 +117,7 @@ export function MetricPlaygroundPage() {
       />
       <Stack gap="xs">
         <Box fw="bold">{`FilterPicker`}</Box>
-        <Popover opened={isFilterPickerOpen} onClose={closeFilterPicker}>
+        <Popover opened={isFilterPickerOpen} onDismiss={closeFilterPicker}>
           <Popover.Target>
             <FilterPickerButton onClick={openFilterPicker} />
           </Popover.Target>
@@ -131,7 +133,7 @@ export function MetricPlaygroundPage() {
         <Box fw="bold">{`TimeseriesFilterPicker`}</Box>
         <Popover
           opened={isTimeseriesFilterPickerOpen}
-          onClose={closeTimeseriesFilterPicker}
+          onDismiss={closeTimeseriesFilterPicker}
         >
           <Popover.Target>
             <TimeseriesFilterPickerButton
@@ -152,7 +154,7 @@ export function MetricPlaygroundPage() {
         <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
         <Popover
           opened={isTimeseriesBucketPickerOpen}
-          onClose={closeTimeseriesBucketPicker}
+          onDismiss={closeTimeseriesBucketPicker}
         >
           <Popover.Target>
             <TimeseriesBucketPickerButton
