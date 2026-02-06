@@ -26,6 +26,9 @@ import type {
   GroupListQuery,
   LoggerPreset,
   Measure,
+  MeasureId,
+  Metric,
+  MetricId,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -559,6 +562,31 @@ export function provideMeasureTags(
     idTag("measure", measure.id),
     ...(measure.table ? provideTableTags(measure.table) : []),
   ];
+}
+
+export function provideMeasureDimensionValuesTags(
+  measureId: MeasureId,
+): TagDescription<TagType>[] {
+  return [idTag("measure", measureId)];
+}
+
+export function provideMetricListTags(
+  metrics: Metric[],
+): TagDescription<TagType>[] {
+  return [listTag("card"), ...metrics.flatMap(provideMetricTags)];
+}
+
+export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
+  return [
+    idTag("card", metric.id),
+    ...(metric.collection ? provideCollectionTags(metric.collection) : []),
+  ];
+}
+
+export function provideMetricDimensionValuesTags(
+  metricId: MetricId,
+): TagDescription<TagType>[] {
+  return [idTag("card", metricId)];
 }
 
 export function provideSnippetListTags(

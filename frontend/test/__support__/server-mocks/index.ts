@@ -31,6 +31,7 @@ export * from "./library";
 export * from "./llm";
 export * from "./logger";
 export * from "./measure";
+export * from "./metric";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./performance";

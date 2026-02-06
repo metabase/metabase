@@ -8,6 +8,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
+import Metric from "metabase-lib/v1/metadata/Metric";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
@@ -22,6 +23,7 @@ import type {
   NormalizedField,
   NormalizedForeignKey,
   NormalizedMeasure,
+  NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
@@ -101,6 +103,8 @@ const getNormalizedSegments = (state: StateWithEntities) =>
   state.entities.segments;
 const getNormalizedMeasures = (state: StateWithEntities) =>
   state.entities.measures ?? {};
+const getNormalizedMetrics = (state: StateWithEntities) =>
+  state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: StateWithEntities) =>
   state.entities.questions;
 const getNormalizedSnippets = (state: StateWithEntities) =>
@@ -111,6 +115,7 @@ export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
 export const getShallowMeasures = getNormalizedMeasures;
+export const getShallowMetrics = getNormalizedMetrics;
 
 type StateWithEntities = {
   entities: EntitiesState;
@@ -127,6 +132,7 @@ export const getMetadataWithoutSettings: (
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMeasures,
+    getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
   ],
@@ -137,6 +143,7 @@ export const getMetadataWithoutSettings: (
     fields,
     segments,
     measures,
+    metrics,
     questions,
     snippets,
   ) => {
@@ -161,6 +168,9 @@ export const getMetadataWithoutSettings: (
     );
     metadata.measures = Object.fromEntries(
       Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+    );
+    metadata.metrics = Object.fromEntries(
+      Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
@@ -293,6 +303,12 @@ function createMeasure(
   metadata: Metadata,
 ): Measure {
   const instance = new Measure(measure);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
+  const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }

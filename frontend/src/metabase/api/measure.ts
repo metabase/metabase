@@ -17,6 +17,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideMeasureDimensionValuesTags,
   provideMeasureListTags,
   provideMeasureTags,
   tag,
@@ -55,6 +56,8 @@ export const measureApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/values`,
       }),
+      providesTags: (_, error, { measureId }) =>
+        provideMeasureDimensionValuesTags(measureId),
     }),
     searchMeasureDimensionValues: builder.query<
       FieldValue[],
@@ -65,6 +68,8 @@ export const measureApi = Api.injectEndpoints({
         url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/search`,
         params,
       }),
+      providesTags: (_, error, { measureId }) =>
+        provideMeasureDimensionValuesTags(measureId),
     }),
     getRemappedMeasureDimensionValue: builder.query<
       FieldValue,
@@ -75,6 +80,8 @@ export const measureApi = Api.injectEndpoints({
         url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/remapping`,
         params: { value },
       }),
+      providesTags: (_, error, { measureId }) =>
+        provideMeasureDimensionValuesTags(measureId),
     }),
     createMeasure: builder.mutation<Measure, CreateMeasureRequest>({
       query: (body) => ({
