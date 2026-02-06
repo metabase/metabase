@@ -1231,7 +1231,7 @@
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [tenant (t2/select-one :model/Tenant :slug "new-tenant-with-attrs")]
                     (is (some? tenant))
                     (is (= {"plan" "enterprise" "region" "us-west"}
@@ -1257,7 +1257,7 @@
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [tenant (t2/select-one :model/Tenant tenant-id)]
                     (testing "existing 'plan' attribute is preserved, not overwritten"
                       (is (= "enterprise" (get (:attributes tenant) "plan"))))
@@ -1281,7 +1281,7 @@
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [tenant (t2/select-one :model/Tenant :slug "tenant-invalid-attrs")]
                     (is (some? tenant))
                     (testing "tenant created but with no attributes since the value wasn't a map"
