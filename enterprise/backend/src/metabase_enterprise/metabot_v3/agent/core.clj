@@ -188,11 +188,14 @@
                          (memory/load-todos-from-state seeded))
         memory-atom  (atom memory)
         tools        (agent-tools/wrap-tools-with-state base-tools memory-atom)]
-    (log/info "Starting agent" {:profile profile-id
+    (log/info "Starting agent" {:profile  profile-id
+                                :tools    (count tools)
                                 :max-iter (:max-iterations profile)
-                                :tools (count tools)
-                                :msgs (count messages)})
-    {:memory-atom memory-atom, :context context, :profile profile, :tools tools}))
+                                :msgs     (count messages)})
+    {:profile     profile
+     :tools       tools
+     :context     context
+     :memory-atom memory-atom}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -215,7 +218,7 @@
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
   [{:keys [agent rf result iteration] :as loop-state}]
-  (let [{:keys [memory-atom context profile tools]} agent
+  (let [{:keys [profile tools context memory-atom]} agent
         max-iter   (:max-iterations profile 10)
         parts-atom (atom [])
         ;; Compose: post-process for streaming output, accumulate for later decisions
