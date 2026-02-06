@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 
 import {
@@ -45,6 +46,18 @@ export function MetricPlaygroundPage() {
   const [selectedUnit, setSelectedUnit] = useState<TemporalUnit | undefined>(
     undefined,
   );
+  const [
+    isFilterPickerOpen,
+    { open: openFilterPicker, close: closeFilterPicker },
+  ] = useDisclosure();
+  const [
+    isTimeseriesBucketPickerOpen,
+    { open: openTimeseriesBucketPicker, close: closeTimeseriesBucketPicker },
+  ] = useDisclosure();
+  const [
+    isTimeseriesFilterPickerOpen,
+    { open: openTimeseriesFilterPicker, close: closeTimeseriesFilterPicker },
+  ] = useDisclosure();
 
   const metadata = useSelector(getMetadata);
   const metadataProvider = useMemo(
@@ -74,8 +87,18 @@ export function MetricPlaygroundPage() {
   ) => {
     const displayName = LibMetric.displayInfo(definition, filter).displayName;
     console.warn(displayName);
+    closeFilterPicker();
   };
 
+  const handleTimeseriesFilterChange = (filter: DatePickerValue) => {
+    setSelectedFilter(filter);
+    closeTimeseriesFilterPicker();
+  };
+
+  const handleTimeseriesBucketChange = (unit: TemporalUnit) => {
+    setSelectedUnit(unit);
+    closeTimeseriesBucketPicker();
+  };
   return (
     <Stack p="md" maw="20rem">
       <MultiSelect
@@ -92,9 +115,9 @@ export function MetricPlaygroundPage() {
       />
       <Stack gap="xs">
         <Box fw="bold">{`FilterPicker`}</Box>
-        <Popover>
+        <Popover opened={isFilterPickerOpen} onClose={closeFilterPicker}>
           <Popover.Target>
-            <FilterPickerButton />
+            <FilterPickerButton onClick={openFilterPicker} />
           </Popover.Target>
           <Popover.Dropdown>
             <FilterPicker
@@ -106,30 +129,42 @@ export function MetricPlaygroundPage() {
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`TimeseriesFilterPicker`}</Box>
-        <Popover>
+        <Popover
+          opened={isTimeseriesFilterPickerOpen}
+          onClose={closeTimeseriesFilterPicker}
+        >
           <Popover.Target>
-            <TimeseriesFilterPickerButton selectedFilter={selectedFilter} />
+            <TimeseriesFilterPickerButton
+              selectedFilter={selectedFilter}
+              onClick={openTimeseriesFilterPicker}
+            />
           </Popover.Target>
           <Popover.Dropdown>
             <TimeseriesFilterPicker
               dimensions={getDateDimensionsWithDefinition(definitions)}
               selectedFilter={selectedFilter}
-              onChange={setSelectedFilter}
+              onChange={handleTimeseriesFilterChange}
             />
           </Popover.Dropdown>
         </Popover>
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
-        <Popover>
+        <Popover
+          opened={isTimeseriesBucketPickerOpen}
+          onClose={closeTimeseriesBucketPicker}
+        >
           <Popover.Target>
-            <TimeseriesBucketPickerButton selectedUnit={selectedUnit} />
+            <TimeseriesBucketPickerButton
+              selectedUnit={selectedUnit}
+              onClick={openTimeseriesBucketPicker}
+            />
           </Popover.Target>
           <Popover.Dropdown>
             <TimeseriesBucketPicker
               selectedUnit={selectedUnit}
               dimensions={getDateDimensionsWithDefinition(definitions)}
-              onChange={setSelectedUnit}
+              onChange={handleTimeseriesBucketChange}
             />
           </Popover.Dropdown>
         </Popover>
