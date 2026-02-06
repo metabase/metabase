@@ -505,45 +505,9 @@
 ;; ----------------- DEV -----------------------
 
 (comment
-  ;; env vars, get these from https://api.slack.com/apps
-  ;;
-  ;; MB_METABOT_SLACK_BOT_TOKEN
-  ;; MB_METABOT_SLACK_SIGNING_SECRET
-  ;; MB_SLACK_CONNECT_CLIENT_ID
-  ;; MB_SLACK_CONNECT_CLIENT_SECRET
-  ;; MB_SLACK_CONNECT_ENABLED
-  ;;
-  ;; Optional, either: "link-only" or "sso" (default)
-  ;; MB_SLACK_CONNECT_AUTHENTICATION_MODE
-  ;;
-  ;; for verifying values are set:
-  (metabot.settings/metabot-slack-signing-secret)
-  (metabot.settings/metabot-slack-bot-token)
-
-  ;; These are commented-out to avoid a kondo warning about using the sso.settings module
-  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-enabled))
-  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-id))
-  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-secret))
-  #_((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-authentication-mode))
-
-  ;; constants for hacking
   (def user-id "XXXXXXXXXXX") ; your slack user id (not the bot's)
   (def channel "XXXXXXXXXXX") ; slack channel id (e.g. bot's dms)
   (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
-
-  ;; create a tunnel via `cloudflared tunnel --url http://localhost:3000` copy tunnel url
-  ;; to clipboard and execute to get a manifest file you can paste into the app manifest
-  ;; page of your app settings (remember to verify the url after saving -- a warning w/
-  ;; link appears at the top of the page after saving)
-  (require '[clojure.java.shell :refer [sh]])
-  (let [new-url (:out (sh "pbpaste"))
-        ;; Sanity check clipboard-content. site-url! validates and normalizes the URL, but random clipboard content
-        ;; like "ababa" will validate and get normalized to https://ababa.
-        _ (assert (str/starts-with? new-url "https://"))
-        _ (assert (str/ends-with? new-url ".com"))
-        manifest (slackbot-manifest new-url)]
-    (system/site-url! new-url)
-    (sh "pbcopy" :in (json/encode manifest {:pretty true})))
 
   (def client {:token (metabot.settings/metabot-slack-bot-token)})
   (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
