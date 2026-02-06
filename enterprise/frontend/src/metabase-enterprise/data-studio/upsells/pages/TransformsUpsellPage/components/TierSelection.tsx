@@ -57,6 +57,7 @@ export const TierSelection = (props: TierSelectionProps) => {
       advancedTierOption,
     };
   }, [pythonPrice, transformsPrice]);
+  const billingPeriodLabel = billingPeriod === "monthly" ? t`month` : t`year`;
 
   if (showAdvancedOnly) {
     // Single tier display (trial or upgrade from basic)
@@ -65,7 +66,7 @@ export const TierSelection = (props: TierSelectionProps) => {
         <Flex direction="column" style={{ flex: 1 }}>
           <Group justify="space-between" align="flex-start">
             <Text fw="bold">{advancedTierOption.label}</Text>
-            <Text fw="bold">{`$${advancedTierOption.price} / ${billingPeriod}`}</Text>
+            <Text fw="bold">{`$${advancedTierOption.price} / ${billingPeriodLabel}`}</Text>
           </Group>
           {advancedTierOption.description && (
             <Text size="sm" c="text-secondary" mt="sm">
@@ -102,7 +103,7 @@ export const TierSelection = (props: TierSelectionProps) => {
                   <Flex direction="column" style={{ flex: 1 }}>
                     <Group justify="space-between" align="flex-start">
                       <Text fw="bold">{option.label}</Text>
-                      <Text fw="bold">{`$${option.price} / ${billingPeriod}`}</Text>
+                      <Text fw="bold">{`$${option.price} / ${billingPeriodLabel}`}</Text>
                     </Group>
                     {option.description && (
                       <Text size="sm" c="text-secondary" mt="sm">

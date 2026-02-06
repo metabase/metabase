@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import dayjs from "dayjs";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
@@ -61,14 +60,8 @@ export function PythonTransformsUpsellModal({
   // Modal is open if parent says so OR if we're forcing it open after an error
   const modalOpen = isOpen || forceModalToOpen;
 
-  const {
-    isLoading,
-    error,
-    billingPeriodMonths,
-    pythonProduct,
-    isOnTrial,
-    trialEndDate,
-  } = useTransformsBilling();
+  const { isLoading, error, billingPeriodMonths, pythonProduct, isOnTrial } =
+    useTransformsBilling();
 
   useEffect(() => {
     if (isOpen) {
@@ -82,9 +75,6 @@ export function PythonTransformsUpsellModal({
   const pythonPrice = pythonProduct?.default_base_fee ?? 0;
 
   const isTrialFlow = isOnTrial;
-  const formattedTrialEndDate = trialEndDate
-    ? dayjs(trialEndDate).format("MMMM D, YYYY")
-    : undefined;
 
   const showSingleColumn = isHosted && !isStoreUser;
 
@@ -132,7 +122,6 @@ export function PythonTransformsUpsellModal({
     return (
       <CloudPurchaseContent
         billingPeriod={billingPeriod}
-        formattedTrialEndDate={formattedTrialEndDate}
         handleModalClose={handleModalClose}
         isTrialFlow={isTrialFlow}
         onError={enableForceModalToOpen}

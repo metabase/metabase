@@ -6,14 +6,10 @@ import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics"
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
-import {
-  type BillingPeriod,
-  getCostDescription,
-} from "metabase-enterprise/data-studio/upsells/utils";
+import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 type CloudPurchaseContentProps = {
   billingPeriod: BillingPeriod;
-  formattedTrialEndDate?: string;
   handleModalClose: VoidFunction;
   isTrialFlow: boolean;
   onError: VoidFunction;
@@ -24,14 +20,8 @@ const CAMPAIGN = "data-studio-python-transforms";
 const LOCATION = "data-studio-transforms";
 
 export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
-  const {
-    billingPeriod,
-    formattedTrialEndDate,
-    handleModalClose,
-    isTrialFlow,
-    onError,
-    pythonPrice,
-  } = props;
+  const { billingPeriod, handleModalClose, isTrialFlow, onError, pythonPrice } =
+    props;
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
@@ -50,6 +40,7 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
       onError();
     }
   }, [purchaseCloudAddOn, settingUpModalHandlers, handleModalClose, onError]);
+  const billingPeriodLabel = billingPeriod === "monthly" ? t`month` : t`year`;
 
   return (
     <>
@@ -58,7 +49,7 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
           <Flex direction="column" style={{ flex: 1 }}>
             <Group justify="space-between" align="flex-start">
               <Text fw="bold">{t`SQL + Python`}</Text>
-              <Text fw="bold">{`$${pythonPrice} / ${billingPeriod}`}</Text>
+              <Text fw="bold">{`$${pythonPrice} / ${billingPeriodLabel}`}</Text>
             </Group>
             <Text size="sm" c="text-secondary" mt="sm">
               {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
@@ -66,22 +57,10 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
           </Flex>
         </Card>
         <Divider />
-        <Stack gap="sm">
-          <Group justify="space-between">
-            <Text c="text-secondary">{t`Due today:`}</Text>
-            <Text fw="bold">{`$${dueToday}`}</Text>
-          </Group>
-          <Group justify="space-between">
-            <Text c="text-secondary">
-              {getCostDescription(
-                billingPeriod,
-                isTrialFlow,
-                formattedTrialEndDate,
-              )}
-            </Text>
-            <Text fw="bold">{`$${pythonPrice}`}</Text>
-          </Group>
-        </Stack>
+        <Group justify="space-between" mb="sm">
+          <Text c="text-secondary">{t`Due today:`}</Text>
+          <Text fw="bold">{`$${dueToday}`}</Text>
+        </Group>
         <Button
           variant="filled"
           size="md"

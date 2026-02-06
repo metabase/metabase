@@ -1,27 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
-import dayjs from "dayjs";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Button, Divider, Group, Stack, Text } from "metabase/ui";
+import { Button, Divider, Group, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
-import {
-  type BillingPeriod,
-  getCostDescription,
-} from "metabase-enterprise/data-studio/upsells/utils";
 
 import type { TransformTier } from "./TierSelection";
 
 type PricingSummaryProps = {
-  billingPeriod: BillingPeriod;
   isTrialFlow: boolean;
   pythonPrice: number;
   selectedTier: TransformTier;
   setSelectedTier: (tier: TransformTier) => void;
   showAdvancedOnly: boolean;
   transformsPrice: number;
-  trialEndDate?: string;
 };
 
 export const PricingSummary = (props: PricingSummaryProps) => {
@@ -31,8 +24,6 @@ export const PricingSummary = (props: PricingSummaryProps) => {
     pythonPrice,
     selectedTier,
     transformsPrice,
-    trialEndDate,
-    billingPeriod,
   } = props;
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
@@ -46,9 +37,6 @@ export const PricingSummary = (props: PricingSummaryProps) => {
       : pythonPrice;
   // For trial flow, due today is $0
   const dueToday = isTrialFlow ? 0 : selectedPrice;
-  const formattedTrialEndDate = trialEndDate
-    ? dayjs(trialEndDate).format("MMMM D, YYYY")
-    : undefined;
 
   const handlePurchase = useCallback(async () => {
     // When showing advanced only (trial or existing basic), always purchase advanced
@@ -75,22 +63,10 @@ export const PricingSummary = (props: PricingSummaryProps) => {
   return (
     <>
       <Divider />
-      <Stack gap="sm">
-        <Group justify="space-between">
-          <Text c="text-secondary">{t`Due today:`}</Text>
-          <Text fw="bold" data-testid="due-today-amount">{`$${dueToday}`}</Text>
-        </Group>
-        <Group justify="space-between">
-          <Text c="text-secondary">
-            {getCostDescription(
-              billingPeriod,
-              isTrialFlow,
-              formattedTrialEndDate,
-            )}
-          </Text>
-          <Text fw="bold">{`$${selectedPrice}`}</Text>
-        </Group>
-      </Stack>
+      <Group justify="space-between" mb="sm">
+        <Text c="text-secondary">{t`Due today:`}</Text>
+        <Text fw="bold" data-testid="due-today-amount">{`$${dueToday}`}</Text>
+      </Group>
       <Button
         variant="filled"
         size="md"

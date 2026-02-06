@@ -47,7 +47,6 @@ export function TransformsUpsellPage() {
     transformsProduct,
     pythonProduct,
     isOnTrial,
-    trialEndDate,
     hasBasicTransforms,
   } = useTransformsBilling();
 
@@ -77,12 +76,18 @@ export function TransformsUpsellPage() {
 
   // Determine the title based on scenario
   const getRightColumnTitle = () => {
-    if (isTrialFlow) {
+    if (isTrialFlow && hasBasicTransforms) {
       return t`Add advanced transforms to your trial`;
     }
+
+    if (isTrialFlow) {
+      return t`Add transforms to your trial`;
+    }
+
     if (hasBasicTransforms) {
       return t`Add advanced transforms to your plan`;
     }
+
     return t`Add transforms to your plan`;
   };
 
@@ -181,14 +186,12 @@ export function TransformsUpsellPage() {
                     transformsPrice={transformsPrice}
                   />
                   <PricingSummary
-                    billingPeriod={billingPeriod}
                     isTrialFlow={isTrialFlow}
                     pythonPrice={pythonPrice}
                     selectedTier={selectedTier}
                     setSelectedTier={setSelectedTier}
                     showAdvancedOnly={showAdvancedOnly}
                     transformsPrice={transformsPrice}
-                    trialEndDate={trialEndDate}
                   />
                 </Stack>
               </>

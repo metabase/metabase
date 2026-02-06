@@ -16,11 +16,9 @@ import { CloudPurchaseContent } from "./CloudPurchaseContent";
 
 const setup = ({
   isTrialFlow,
-  formattedTrialEndDate,
   pythonPrice = 250,
 }: {
   isTrialFlow: boolean;
-  formattedTrialEndDate?: string;
   pythonPrice?: number;
 }) => {
   const handleModalClose = jest.fn();
@@ -44,7 +42,6 @@ const setup = ({
   renderWithProviders(
     <CloudPurchaseContent
       billingPeriod="yearly"
-      formattedTrialEndDate={formattedTrialEndDate}
       handleModalClose={handleModalClose}
       isTrialFlow={isTrialFlow}
       onError={onError}
@@ -66,7 +63,6 @@ describe("CloudPurchaseContent", () => {
   it("shows due today as $0 in trial flow", () => {
     setup({
       isTrialFlow: true,
-      formattedTrialEndDate: "Jan 1, 2026",
       pythonPrice: 250,
     });
 
