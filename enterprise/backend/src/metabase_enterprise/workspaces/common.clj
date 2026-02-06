@@ -149,8 +149,9 @@
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.
    If workspace db_status is uninitialized, initializes it with the transform's target database.
-   If workspace base_status is empty, transitions it to active."
-  [creator-id workspace entity-type global-id body]
+   If workspace base_status is empty, transitions it to active.
+   Optional :ref-id parameter allows specifying a custom ref_id (e.g., for upsert operations)."
+  [creator-id workspace entity-type global-id body & {:keys [ref-id]}]
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:db_status workspace))
@@ -164,7 +165,7 @@
             body            (assoc-in body [:target :database] workspace-db-id)
             transform       (ws.u/insert-returning-ws-tx!
                              (assoc (select-keys body [:name :description :source :target])
-                                    :ref_id (ws.u/generate-ref-id)
+                                    :ref_id (or ref-id (ws.u/generate-ref-id))
                                     :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]

@@ -867,7 +867,9 @@
   (fetch-ws-transform ws-id tx-id))
 
 (api.macros/defendpoint :put "/:ws-id/transform/:tx-id" :- WorkspaceTransform
-  "Update a transform in a workspace."
+  "Update or create a transform in a workspace.
+   If the transform exists, updates it. If it doesn't exist, creates a new transform with the provided ref_id.
+   For creation, name, source, and target are required."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
    _query-params
@@ -876,23 +878,56 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
-  (t2/with-transaction [_tx]
-    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
-          ;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
-          ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
-          base (select-keys (:target existing) [:database :schema])
-          merged-body (cond-> body
-                        (:target body) (update :target #(merge base %)))
-          source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
-      ;; If source or target changed, increment versions for re-analysis
-      (when source-or-target-changed?
-        (ws.impl/increment-analysis-version! ws-id tx-id)
-        ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
-        ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
-        ;; serialize the fields in the body, but the increment requires using an SQL expression.
-        (ws.impl/increment-graph-version! ws-id)))
-    (fetch-ws-transform ws-id tx-id)))
+  (let [existing (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id)]
+    (if existing
+      ;; UPDATE path (existing behavior)
+      (t2/with-transaction [_tx]
+        (let [;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
+              ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
+              base (select-keys (:target existing) [:database :schema])
+              merged-body (cond-> body
+                            (:target body) (update :target #(merge base %)))
+              source-or-target-changed? (or (:source body) (:target body))]
+          (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
+          ;; If source or target changed, increment versions for re-analysis
+          (when source-or-target-changed?
+            (ws.impl/increment-analysis-version! ws-id tx-id)
+            ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
+            ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
+            ;; serialize the fields in the body, but the increment requires using an SQL expression.
+            (ws.impl/increment-graph-version! ws-id)))
+        (fetch-ws-transform ws-id tx-id))
+      ;; INSERT path (new behavior for upsert)
+      (do
+        ;; Validate required fields for creation
+        (api/check-400 (:name body) "name is required when creating a new transform")
+        (api/check-400 (:source body) "source is required when creating a new transform")
+        (api/check-400 (:target body) "target is required when creating a new transform")
+        ;; Check premium feature requirements
+        (api/check (transforms.util/check-feature-enabled body)
+                   [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
+        (t2/with-transaction [_tx]
+          (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+                            (api/check-400 (not= :archived (:base_status <>)) "Cannot create transforms in an archived workspace"))
+                global-id (:global_id body (:id body))
+                ;; Verify transform source is allowed in workspaces (not MBQL, no card references, etc.)
+                _         (let [source-type (transforms/transform-source-type (:source body))
+                                reason      (checkout-disabled-reason {:source_type source-type :source (:source body)})]
+                            (api/check-400 (nil? reason)
+                                           (case reason
+                                             "mbql"           (deferred-tru "MBQL transforms cannot be added to workspaces.")
+                                             "card-reference" (deferred-tru "Transforms that reference other questions cannot be added to workspaces.")
+                                             (deferred-tru "This transform cannot be added to a workspace: {0}." reason))))
+                ;; For uninitialized workspaces, preserve the target database from the request body
+                ;; For initialized workspaces, ensure the target database matches the workspace database
+                body      (-> body (dissoc :global_id)
+                              (cond-> (not= :uninitialized (:db_status workspace))
+                                (update :target assoc :database (:database_id workspace))))
+                ;; Check for internal target conflict AFTER adding database to target
+                _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
+                                         (deferred-tru "Another transform in this workspace already targets that table"))
+                transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body :ref-id tx-id)]
+            (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform))))))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.

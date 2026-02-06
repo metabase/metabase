@@ -1050,11 +1050,154 @@
                                         {:name        "Updated Name"
                                          :description "Updated description"})))
           (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :workspace_id (:id workspace1) :ref_id (:ref_id transform)))))
-        (testing "returns 404 if transform not in workspace"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :put 404
+        (testing "returns 400 if transform not in workspace (upsert requires all fields)"
+          ;; With upsert behavior, PUT to non-existent transform attempts to create,
+          ;; so missing required fields returns 400 instead of 404
+          (is (= "source is required when creating a new transform"
+                 (mt/user-http-request :crowberto :put 400
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
+
+(deftest upsert-workspace-transform-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid (upsert behavior)"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (testing "creates new transform when ref_id doesn't exist"
+            (let [result (mt/user-http-request :crowberto :put 200
+                                               (ws-url (:id workspace) "/transform" new-ref-id)
+                                               {:name   "New Transform via Upsert"
+                                                :source {:type  "query"
+                                                         :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                :target {:type   "table"
+                                                         :schema target-schema
+                                                         :name   "upsert_test_table"}})]
+              (is (=? {:ref_id new-ref-id
+                       :name   "New Transform via Upsert"
+                       :source {:type "query"}}
+                      result))
+              (is (t2/exists? :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id new-ref-id))))
+
+          (testing "updates existing transform with same ref_id"
+            (let [result (mt/user-http-request :crowberto :put 200
+                                               (ws-url (:id workspace) "/transform" new-ref-id)
+                                               {:name "Updated Transform Name"})]
+              (is (=? {:ref_id new-ref-id
+                       :name   "Updated Transform Name"}
+                      result))
+              (is (= "Updated Transform Name"
+                     (t2/select-one-fn :name :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id new-ref-id))))))))))
+
+(deftest upsert-transform-missing-required-fields-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when creating without required fields"
+    (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+      (let [new-ref-id (ws.u/generate-ref-id)
+            target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+        (testing "missing name returns 400"
+          (is (= "name is required when creating a new transform"
+                 (mt/user-http-request :crowberto :put 400
+                                       (ws-url (:id workspace) "/transform" new-ref-id)
+                                       {:source {:type  "query"
+                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                        :target {:type   "table"
+                                                 :schema target-schema
+                                                 :name   "missing_name_test"}}))))
+
+        (testing "missing source returns 400"
+          (is (= "source is required when creating a new transform"
+                 (mt/user-http-request :crowberto :put 400
+                                       (ws-url (:id workspace) "/transform" new-ref-id)
+                                       {:name   "Test Transform"
+                                        :target {:type   "table"
+                                                 :schema target-schema
+                                                 :name   "missing_source_test"}}))))
+
+        (testing "missing target returns 400"
+          (is (= "target is required when creating a new transform"
+                 (mt/user-http-request :crowberto :put 400
+                                       (ws-url (:id workspace) "/transform" new-ref-id)
+                                       {:name   "Test Transform"
+                                        :source {:type  "query"
+                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}}))))))))
+
+(deftest upsert-transform-archived-workspace-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for archived workspace"
+    (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+      ;; Archive the workspace
+      (t2/update! :model/Workspace (:id workspace) {:base_status :archived})
+      (let [new-ref-id (ws.u/generate-ref-id)
+            target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+        (is (= "Cannot create transforms in an archived workspace"
+               (mt/user-http-request :crowberto :put 400
+                                     (ws-url (:id workspace) "/transform" new-ref-id)
+                                     {:name   "New Transform"
+                                      :source {:type  "query"
+                                               :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                      :target {:type   "table"
+                                               :schema target-schema
+                                               :name   "archived_ws_test"}})))))))
+
+(deftest upsert-transform-internal-target-conflict-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for internal target conflict"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+        ;; Create first transform targeting a specific table via POST API
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
+                              {:name   "Existing Transform"
+                               :source {:type  "query"
+                                        :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                               :target {:type   "table"
+                                        :schema target-schema
+                                        :name   "conflict_target_table"}})
+        ;; Try to upsert a new transform with the same target
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (is (= "Another transform in this workspace already targets that table"
+                 (mt/user-http-request :crowberto :put 400
+                                       (ws-url (:id workspace) "/transform" new-ref-id)
+                                       {:name   "Conflicting Transform"
+                                        :source {:type  "query"
+                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                        :target {:type   "table"
+                                                 :schema target-schema
+                                                 :name   "conflict_target_table"}}))))))))
+
+(deftest upsert-transform-initializes-workspace-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid initializes uninitialized workspace"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Uninitialized WS"}]
+        ;; Verify workspace starts uninitialized
+        (is (= :uninitialized (:db_status (t2/select-one :model/Workspace :id (:id workspace)))))
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (mt/user-http-request :crowberto :put 200
+                                (ws-url (:id workspace) "/transform" new-ref-id)
+                                {:name   "First Transform"
+                                 :source {:type  "query"
+                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                 :target {:type     "table"
+                                          :database (mt/id)
+                                          :schema   target-schema
+                                          :name     "init_ws_test"}})
+          ;; Verify workspace is now initialized
+          (let [ws (t2/select-one :model/Workspace :id (:id workspace))]
+            (is (not= :uninitialized (:db_status ws)))))))))
+
+(deftest upsert-transform-transitions-base-status-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid transitions base_status from :empty to :active"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Empty WS" :database_id (mt/id)}]
+        ;; Verify workspace starts with :empty base_status
+        (is (= :empty (:base_status (t2/select-one :model/Workspace :id (:id workspace)))))
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (mt/user-http-request :crowberto :put 200
+                                (ws-url (:id workspace) "/transform" new-ref-id)
+                                {:name   "First Transform"
+                                 :source {:type  "query"
+                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                 :target {:type   "table"
+                                          :schema target-schema
+                                          :name   "status_transition_test"}})
+          ;; Verify base_status transitioned to :active
+          (is (= :active (:base_status (t2/select-one :model/Workspace :id (:id workspace))))))))))
 
 (deftest delete-workspace-transform-test
   (testing "DELETE /api/ee/workspace/:id/transform/:txid"
