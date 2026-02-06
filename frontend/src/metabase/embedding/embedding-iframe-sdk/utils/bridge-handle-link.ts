@@ -1,5 +1,3 @@
-import { isWithinIframe } from "metabase/lib/dom";
-
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedTagMessage,
@@ -16,7 +14,7 @@ export function bridgeHandleLinkForEmbedJs(
     const requestId = crypto.randomUUID();
 
     const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
-      if (!isWithinIframe() || !event.data) {
+      if (!event.data) {
         return;
       }
 
