@@ -5,11 +5,13 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms.util :as transforms.util]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -316,3 +318,36 @@
                       (binding [api/*current-user-id* (:id user)]
                         (is (false? (transforms.util/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
+
+(deftest handle-transform-complete-sets-transform-id-test
+  (testing "handle-transform-complete! sets transform_id on the target table"
+    (mt/with-premium-features #{:transforms}
+      (let [target {:type "table" :schema nil :name "test_output_table"}]
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
+                       :model/Transform {transform-id :id :as transform} {:target target}
+                       :model/Table {table-id :id :as table} {:db_id db-id :name "test_output_table" :schema nil}
+                       :model/TransformRun {run-id :id} {:transform_id transform-id
+                                                         :status "running"
+                                                         :run_method "manual"}]
+          (with-redefs [transforms.util/sync-target!                       (constantly table)
+                        events/publish-event!                              (constantly nil)
+                        transforms.util/execute-secondary-index-ddl-if-required! (constantly nil)]
+            (transforms.util/handle-transform-complete! :run-id run-id :transform transform :db db)
+            (is (= transform-id
+                   (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))
+
+(deftest transform-hydration-test
+  (testing "hydrating :transform on a table"
+    (mt/with-premium-features #{:transforms}
+      (let [target {:type "table" :schema nil :name "hydration_test_table"}]
+        (mt/with-temp [:model/Transform {transform-id :id} {:target target :name "Test Hydration Transform"}
+                       :model/Table table {:transform_id transform-id}]
+          (let [hydrated (t2/hydrate table :transform)]
+            (is (some? (:transform hydrated)))
+            (is (= transform-id (-> hydrated :transform :id))))))))
+
+  (testing "hydrating :transform returns nil when transform_id is nil"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Table table {:transform_id nil}]
+        (let [hydrated (t2/hydrate table :transform)]
+          (is (nil? (:transform hydrated))))))))

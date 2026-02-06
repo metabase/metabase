@@ -44,7 +44,8 @@ type PermissionsPageTab =
   | "data"
   | "collections"
   | "application"
-  | "tenant-collections";
+  | "tenant-collections"
+  | "tenant-specific-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;

@@ -9,7 +9,7 @@
    [metabase.transforms.jobs :as transforms.jobs]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.util :as transforms.util]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -21,11 +21,71 @@
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
+(def ^:private LastRunResponse
+  "Schema for a job's last run information."
+  [:map {:closed true}
+   [:id pos-int?]
+   [:job_id pos-int?]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]])
+
+(def ^:private NextRunResponse
+  [:map {:closed true}
+   [:start_time :any]])
+
+(def ^:private TransformJobResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:name [:or :string LocalizedString]]
+   [:description [:maybe [:or :string LocalizedString]]]
+   [:schedule :string]
+   [:ui_display_type [:enum :cron/raw :cron/builder]]
+   [:entity_id [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]
+   [:built_in_type {:optional true} [:maybe :string]]
+   [:tag_ids {:optional true} [:sequential pos-int?]]
+   [:last_run {:optional true} [:maybe LastRunResponse]]
+   [:next_run {:optional true} [:maybe NextRunResponse]]])
+
+(def ^:private CreatorResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:email :string]
+   [:date_joined {:optional true} :any]
+   [:first_name [:maybe :string]]
+   [:last_name [:maybe :string]]
+   [:last_login {:optional true} [:maybe :any]]
+   [:is_superuser {:optional true} :boolean]
+   [:is_qbnewb {:optional true} :boolean]
+   [:is_data_analyst {:optional true} :boolean]
+   [:tenant_id {:optional true} [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
+
+(def ^:private TransformResponse
+  [:map
+   [:id pos-int?]
+   [:name :string]
+   [:description [:maybe :string]]
+   [:source :any]
+   [:target :any]
+   [:source_type :keyword]
+   [:entity_id [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]
+   [:creator_id pos-int?]
+   [:collection_id [:maybe pos-int?]]
+   [:run_trigger {:optional true} [:maybe :keyword]]
+   [:dependency_analysis_version :int]
+   [:creator CreatorResponse]])
+
+(api.macros/defendpoint :post "/" :- TransformJobResponse
   "Create a new transform job."
   [_route-params
    _query-params
@@ -65,11 +125,7 @@
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:job-id"
+(api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]
@@ -114,11 +170,7 @@
     (-> (t2/select-one :model/TransformJob :id job-id)
         (t2/hydrate :tag_ids :last_run))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:job-id"
+(api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
@@ -127,11 +179,9 @@
   (transforms.schedule/delete-job! job-id)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:job-id/run"
+(api.macros/defendpoint :post "/:job-id/run" :- [:map {:closed true}
+                                                 [:message :string]
+                                                 [:job_run_id :string]]
   "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual run of transform job" job-id)
@@ -146,11 +196,7 @@
   {:message "Job run started"
    :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:job-id"
+(api.macros/defendpoint :get "/:job-id" :- TransformJobResponse
   "Get a transform job by ID."
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
@@ -164,11 +210,7 @@
     (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
     job))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:job-id/transforms"
+(api.macros/defendpoint :get "/:job-id/transforms" :- [:sequential TransformResponse]
   "Get the transforms of job specified by the job's ID."
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
@@ -181,13 +223,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/" :- [:sequential TransformJobResponse]
   "Get all transform jobs."
   [_route-params
    {:keys [last_run_start_time next_run_start_time last_run_statuses tag_ids]} :-

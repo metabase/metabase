@@ -91,7 +91,7 @@ function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
-  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const hasLibraryFeature = useHasTokenFeature("library");
 
   if (!hasLibraryFeature) {
     return <LibraryUpsellPage />;

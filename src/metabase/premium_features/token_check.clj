@@ -103,7 +103,8 @@
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
    :enabled-embedding-sdk         false
-   :enabled-embedding-simple      false})
+   :enabled-embedding-simple      false
+   :use-tenants                   false})
 
 (defn- yesterday []
   (-> (t/offset-date-time (t/zone-offset "+00"))
@@ -154,7 +155,9 @@
                                           :embedding-question-count  embedding-question-count
                                           :external-users            ext-users
                                           :internal-users            (- users ext-users)
-                                          :domains                   (internal-stats/email-domain-count)})]
+                                          :domains                   (internal-stats/email-domain-count)
+                                          :tenant-users              (internal-stats/tenant-users-count)
+                                          :tenants                   (internal-stats/tenants-with-active-users-count)})]
     (log/info "Reporting Metabase stats:" stats)
     stats))
 
