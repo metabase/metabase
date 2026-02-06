@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
-import ArchiveModal from "../../components/ArchiveModal";
+import { ArchiveNotificationModal } from "../../components/ArchiveModal";
 import { getPulseId } from "../../selectors";
 
 type ArchivePulseModalProps = {
@@ -45,7 +45,7 @@ export function ArchivePulseModal({
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
       {() =>
         pulse && user ? (
-          <ArchiveModal
+          <ArchiveNotificationModal
             item={pulse}
             type="pulse"
             user={user}

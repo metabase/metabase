@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
-import type { Response } from "metabase/forms/components/FormMessage";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 import type { NotificationType } from "../../types";
@@ -30,7 +29,7 @@ function UnsubscribeModal({
   onArchive,
   onClose,
 }: UnsubscribeModalProps): JSX.Element {
-  const [error, setError] = useState<Response>();
+  const [error, setError] = useState<unknown>();
 
   const handleUnsubscribeClick = useCallback(async () => {
     try {
@@ -42,7 +41,7 @@ function UnsubscribeModal({
         onClose();
       }
     } catch (err) {
-      setError(err as Response);
+      setError(err);
     }
   }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 

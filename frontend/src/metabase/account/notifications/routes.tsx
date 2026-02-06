@@ -2,7 +2,7 @@ import { Route } from "react-router";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import HelpModal from "./components/HelpModal";
+import { HelpModal } from "./components/HelpModal";
 import { DeleteAlertModal } from "./containers/ArchiveAlertModal";
 import { ArchivePulseModal } from "./containers/ArchivePulseModal";
 import { NotificationsApp } from "./containers/NotificationsApp";

@@ -9,12 +9,21 @@ export type Response = {
   };
 };
 
+function isResponse(value: unknown): value is Response {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "status" in value &&
+    typeof (value as Response).status === "number"
+  );
+}
+
 interface FormMessageProps {
   className?: string;
   message?: string;
   noPadding?: boolean;
   formSuccess?: Response;
-  formError?: Response;
+  formError?: unknown;
 }
 
 const getMessage = ({
@@ -34,15 +43,16 @@ const getMessage = ({
 /**
  * @deprecated
  */
-export const getErrorMessage = (formError?: Response) => {
-  if (formError) {
-    if (formError.data && formError.data.message) {
+export const getErrorMessage = (formError?: unknown) => {
+  if (isResponse(formError)) {
+    if (formError.data?.message) {
       return formError.data.message;
     } else if (formError.status >= 400) {
       return t`Server error encountered`;
-    } else {
-      return t`Unknown error encountered`;
     }
+  }
+  if (formError) {
+    return t`Unknown error encountered`;
   }
 };
 

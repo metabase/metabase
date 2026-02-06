@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
-import type { Response } from "metabase/forms/components/FormMessage";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
@@ -34,14 +33,14 @@ function ArchiveNotificationModal({
   onArchive,
   onClose,
 }: ArchiveModalProps): JSX.Element {
-  const [error, setError] = useState<Response>();
+  const [error, setError] = useState<unknown>();
 
   const handleArchiveClick = useCallback(async () => {
     try {
       await onArchive(item, true);
       onClose();
     } catch (err) {
-      setError(err as Response);
+      setError(err);
     }
   }, [item, onArchive, onClose]);
 
