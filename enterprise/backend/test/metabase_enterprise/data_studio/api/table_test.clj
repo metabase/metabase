@@ -254,7 +254,7 @@
 ;;; ------------------------------------------ Publish/Unpublish requires write and query perms ------------------------------------------
 
 (deftest publish-tables-requires-write-and-query-perms-test
-  (mt/with-premium-features #{:data-studio :advanced-permissions}
+  (mt/with-premium-features #{:library :advanced-permissions}
     (testing "POST /api/ee/data-studio/table/publish-tables requires write and query permission on all tables"
       (mt/with-temp [:model/Collection _              {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}    {}
@@ -274,7 +274,7 @@
                                        {:table_ids [table-id]}))))))))
 
 (deftest unpublish-tables-requires-write-and-query-perms-test
-  (mt/with-premium-features #{:data-studio :advanced-permissions}
+  (mt/with-premium-features #{:library :advanced-permissions}
     (testing "POST /api/ee/data-studio/table/unpublish-tables requires write and query permission on all tables"
       (mt/with-temp [:model/Collection {coll-id :id}  {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}    {}
