@@ -723,7 +723,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
             # Rename schema if present
             if original_schema and original_schema in schemas:
-                node.set("db", exp.Identifier(this=schemas[original_schema]))
+                node.set("db", exp.Identifier(this=schemas[original_schema], quoted=True))
 
             # Rename table - try exact match first (with original schema), then without schema
             new_table = (table_map.get((original_schema, original_table)) or
@@ -732,12 +732,12 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 if isinstance(new_table, dict):
                     # New format: {schema: x, table: y}
                     if new_table.get("schema"):
-                        node.set("db", exp.Identifier(this=new_table["schema"]))
+                        node.set("db", exp.Identifier(this=new_table["schema"], quoted=True))
                     if new_table.get("table"):
-                        node.set("this", exp.Identifier(this=new_table["table"]))
+                        node.set("this", exp.Identifier(this=new_table["table"], quoted=True))
                 else:
                     # String: just the table name
-                    node.set("this", exp.Identifier(this=new_table))
+                    node.set("this", exp.Identifier(this=new_table, quoted=True))
 
         # Column rename
         elif isinstance(node, exp.Column):
@@ -771,7 +771,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     break
 
             if new_col:
-                node.set("this", exp.Identifier(this=new_col))
+                node.set("this", exp.Identifier(this=new_col, quoted=True))
 
         return node
 
