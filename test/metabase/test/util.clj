@@ -629,8 +629,22 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (setting/read-setting setting-k)]
-          (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
+        ;; Get the raw value from the database (not the computed value with init/default)
+        ;; This avoids saving computed init values to the database
+        (let [original-value (t2/select-one-fn :value :model/Setting :key (name setting-k))]
+          (try
+            (thunk)
+            (finally
+              ;; Restore the original database state
+              (if original-value
+                ;; If it existed in the database, restore it
+                (do
+                  (t2/update! :model/Setting :key (name setting-k) {:value original-value})
+                  (setting.cache/restore-cache!))
+                ;; If it didn't exist in the database, delete any value that may have been created
+                (do
+                  (t2/delete! :model/Setting :key (name setting-k))
+                  (setting.cache/restore-cache!))))))))
     thunk
     settings)))
 
