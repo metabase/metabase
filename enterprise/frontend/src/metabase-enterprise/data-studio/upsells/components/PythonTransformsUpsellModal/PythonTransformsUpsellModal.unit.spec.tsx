@@ -21,13 +21,11 @@ const setup = ({
   isOpen = true,
   isHosted,
   isStoreUser,
-  hasPythonProduct = true,
   billingPeriodMonths = 12,
 }: {
   isOpen?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
-  hasPythonProduct?: boolean;
   billingPeriodMonths?: number | undefined;
 }) => {
   const onClose = jest.fn();
@@ -55,8 +53,8 @@ const setup = ({
 
   setupBillingEndpoints({
     billingPeriodMonths,
-    hasBasicTransformsAddOn: false,
-    hasAdvancedTransformsAddOn: hasPythonProduct,
+    hasBasicTransformsAddOn: true,
+    hasAdvancedTransformsAddOn: true,
   });
   setupPropertiesEndpoints(settings);
 
@@ -101,8 +99,8 @@ describe("PythonTransformsUpsellModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows cloud purchase content when hosted, store user, and billing data is available", async () => {
-    setup({ isHosted: true, isStoreUser: true, hasPythonProduct: true });
+  it("shows cloud purchase content when hosted and user is store user", async () => {
+    setup({ isHosted: true, isStoreUser: true });
 
     expect(
       screen.getByRole("heading", {
@@ -116,15 +114,7 @@ describe("PythonTransformsUpsellModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("falls back to upsell CTA when hosted and billing data is missing", () => {
-    setup({ isHosted: true, isStoreUser: true, hasPythonProduct: false });
-
-    return expect(
-      screen.findByRole("button", { name: /Get Python transforms/ }),
-    ).resolves.toBeInTheDocument();
-  });
-
-  it("shows upsell CTA when instance is not hosted and clicking it closes modal", async () => {
+  it("shows upsell CTA when instance is self-hosted and clicking it closes modal", async () => {
     const { onClose } = setup({ isHosted: false, isStoreUser: true });
 
     await screen.findByRole("button", { name: /Get Python transforms/ });

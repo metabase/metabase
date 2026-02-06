@@ -9,6 +9,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
@@ -31,6 +32,7 @@ export const CreateTransformMenu = () => {
   ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const isPaidPlan = useSelector(getIsPaidPlan);
 
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
@@ -99,18 +101,19 @@ export const CreateTransformMenu = () => {
                   {t`Python script`}
                 </Menu.Item>
               )}
-
-              <Menu.Item
-                leftSection={<Icon name="code_block" />}
-                rightSection={
-                  !hasPythonTransformsFeature ? (
-                    <UpsellGem.New size={14} />
-                  ) : null
-                }
-                onClick={handlePythonClick}
-              >
-                {t`Python script`}
-              </Menu.Item>
+              {isPaidPlan && (
+                <Menu.Item
+                  leftSection={<Icon name="code_block" />}
+                  rightSection={
+                    !hasPythonTransformsFeature ? (
+                      <UpsellGem.New size={14} />
+                    ) : null
+                  }
+                  onClick={handlePythonClick}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="insight" />}
                 onClick={() => {
