@@ -234,38 +234,6 @@
     :source-type    :metric
     :source-id      1}])
 
-(def ^:private mock-temporal-buckets
-  "Mock temporal buckets for date/time dimensions."
-  [{:lib/type :temporal-bucket
-    :unit     :day}
-   {:lib/type :temporal-bucket
-    :unit     :week}
-   {:lib/type :temporal-bucket
-    :unit     :month
-    :default  true}
-   {:lib/type :temporal-bucket
-    :unit     :quarter}
-   {:lib/type :temporal-bucket
-    :unit     :year}])
-
-(def ^:private mock-binning-strategies
-  "Mock binning strategies for numeric dimensions."
-  [{:lib/type :binning-strategy
-    :strategy :default
-    :default  true}
-   {:lib/type    :binning-strategy
-    :strategy    :num-bins
-    :num-bins    10}
-   {:lib/type    :binning-strategy
-    :strategy    :num-bins
-    :num-bins    50}
-   {:lib/type    :binning-strategy
-    :strategy    :num-bins
-    :num-bins    100}
-   {:lib/type    :binning-strategy
-    :strategy    :bin-width
-    :bin-width   1.0}])
-
 ;; =============================================================================
 ;; NotImplemented stubs with mock data
 ;; =============================================================================
@@ -584,40 +552,35 @@
   (lib-metric.clause/swap-clauses definition source-clause target-clause))
 
 (defn ^:export temporalBucket
-  "Get the temporal bucket for a clause or dimension.
-   STUB: Returns nil."
-  [_clause-or-dimension]
-  nil)
+  "Get the temporal bucket for a projection clause."
+  [projection]
+  (lib-metric.projection/temporal-bucket projection))
 
 (defn ^:export availableTemporalBuckets
-  "Get available temporal buckets for a dimension.
-   STUB: Returns mock temporal buckets."
-  [_definition _dimension]
-  (to-array mock-temporal-buckets))
+  "Get available temporal buckets for a dimension."
+  [definition dimension]
+  (to-array (lib-metric.projection/available-temporal-buckets definition dimension)))
 
 (defn ^:export withTemporalBucket
-  "Apply a temporal bucket to a dimension.
-   STUB: Returns the dimension unchanged."
-  [dimension _bucket]
-  dimension)
+  "Apply a temporal bucket to a projection."
+  [projection bucket]
+  (lib-metric.projection/with-temporal-bucket projection bucket))
 
 (defn ^:export binning
-  "Get the binning strategy for a clause or dimension.
-   STUB: Returns nil."
-  [_clause-or-dimension]
-  nil)
+  "Get the binning strategy for a projection clause."
+  [projection]
+  (lib-metric.projection/binning projection))
 
 (defn ^:export availableBinningStrategies
-  "Get available binning strategies for a dimension.
-   STUB: Returns mock binning strategies."
-  [_definition _dimension]
-  (to-array mock-binning-strategies))
+  "Get available binning strategies for a dimension."
+  [definition dimension]
+  (some-> (lib-metric.projection/available-binning-strategies definition dimension)
+          to-array))
 
 (defn ^:export withBinning
-  "Apply a binning strategy to a dimension.
-   STUB: Returns the dimension unchanged."
-  [dimension _binning-strategy]
-  dimension)
+  "Apply a binning strategy to a projection."
+  [projection binning-strategy]
+  (lib-metric.projection/with-binning projection binning-strategy))
 
 (defn ^:export isBoolean
   "Check if dimension is boolean type."

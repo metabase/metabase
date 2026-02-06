@@ -127,11 +127,27 @@
      :is-temporal-extraction (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
                                   (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units unit)))}))
 
+(defmethod display-info-method :option/temporal-bucketing
+  [_definition bucket]
+  (let [unit (:unit bucket)]
+    {:short-name (u/qualified-name unit)
+     :display-name (lib.temporal-bucket/describe-temporal-unit unit)
+     :default (boolean (:default bucket))
+     :selected (boolean (:selected bucket))
+     :is-temporal-extraction (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+                                  (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units unit)))}))
+
 ;;; -------------------------------------------------- Binning Strategy --------------------------------------------------
 
 (defmethod display-info-method :binning-strategy
   [_definition strategy]
   {:display-name (lib.binning/binning-display-name strategy nil)
+   :default (boolean (:default strategy))
+   :selected (boolean (:selected strategy))})
+
+(defmethod display-info-method :option/binning
+  [_definition strategy]
+  {:display-name (:display-name strategy)
    :default (boolean (:default strategy))
    :selected (boolean (:selected strategy))})
 

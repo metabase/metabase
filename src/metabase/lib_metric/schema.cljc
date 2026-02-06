@@ -1,9 +1,11 @@
 (ns metabase.lib-metric.schema
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
   (:require
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
 (comment lib.schema.ref/keep-me)
@@ -42,7 +44,9 @@
    {:decode/normalize lib.schema.common/normalize-options-map}
    [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:temporal-unit  {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+   [:binning        {:optional true} [:maybe ::lib.schema.binning/binning]]])
 
 (mr/def ::dimension-reference
   "Dimension reference clause [:dimension opts uuid]."

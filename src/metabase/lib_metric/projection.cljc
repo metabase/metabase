@@ -4,7 +4,11 @@
   (:require
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.binning :as lib.schema.binning]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
@@ -64,3 +68,99 @@
   (let [dimension-id (projection-dimension-id projection)
         dimensions   (projectable-dimensions definition)]
     (some #(when (= (:id %) dimension-id) %) dimensions)))
+
+;;; -------------------------------------------------- Temporal Bucket Functions --------------------------------------------------
+
+(mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
+  "Get available temporal buckets for a dimension based on its effective-type."
+  [definition :- ::lib-metric.schema/metric-definition
+   dimension  :- ::lib-metric.schema/metadata-dimension]
+  (let [effective-type (or (:effective-type dimension) (:base-type dimension))
+        ;; Find if this dimension already has a projection with a temporal unit
+        selected-unit (some (fn [proj]
+                              (when (= (:id dimension) (projection-dimension-id proj))
+                                (:temporal-unit (second proj))))
+                            (:projections definition))]
+    (if (isa? effective-type :type/Temporal)
+      (lib.temporal-bucket/available-temporal-buckets-for-type
+       effective-type
+       :month  ;; default unit
+       selected-unit)
+      [])))
+
+(mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
+  "Get the current temporal bucket from a projection clause."
+  [projection :- ::lib-metric.schema/dimension-reference]
+  (when-let [unit (:temporal-unit (second projection))]
+    {:lib/type :option/temporal-bucketing
+     :unit     unit}))
+
+(mu/defn with-temporal-bucket :- ::lib-metric.schema/dimension-reference
+  "Apply a temporal bucket to a projection. Pass nil to remove the bucket."
+  [projection :- ::lib-metric.schema/dimension-reference
+   bucket     :- [:maybe [:or ::lib.schema.temporal-bucketing/option
+                          ::lib.schema.temporal-bucketing/unit]]]
+  (let [unit (cond
+               (nil? bucket) nil
+               (keyword? bucket) bucket
+               (map? bucket) (:unit bucket))]
+    (lib.options/update-options projection
+                                (fn [opts]
+                                  (if unit
+                                    (assoc opts :temporal-unit unit)
+                                    (dissoc opts :temporal-unit))))))
+
+;;; -------------------------------------------------- Binning Functions --------------------------------------------------
+
+(mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
+  "Get available binning strategies for a dimension based on its type and fingerprint."
+  [definition :- ::lib-metric.schema/metric-definition
+   dimension  :- ::lib-metric.schema/metadata-dimension]
+  (let [effective-type (:effective-type dimension)
+        semantic-type  (:semantic-type dimension)
+        fingerprint    (:fingerprint dimension)
+        existing       (some (fn [proj]
+                               (when (= (:id dimension) (projection-dimension-id proj))
+                                 (:binning (second proj))))
+                             (:projections definition))
+        strategies     (cond
+                         ;; Need fingerprint with min/max for binning
+                         (not (and (get-in fingerprint [:type :type/Number :min])
+                                   (get-in fingerprint [:type :type/Number :max])))
+                         nil
+
+                         ;; Coordinate binning for lat/long
+                         (isa? semantic-type :type/Coordinate)
+                         (lib.binning/coordinate-binning-strategies)
+
+                         ;; Numeric binning for numbers (not relations)
+                         (and (isa? effective-type :type/Number)
+                              (not (isa? semantic-type :Relation/*)))
+                         (lib.binning/numeric-binning-strategies)
+
+                         :else nil)]
+    (when strategies
+      (for [strategy strategies]
+        (cond-> strategy
+          existing (dissoc :default)
+          (lib.binning/strategy= strategy existing) (assoc :selected true))))))
+
+(mu/defn binning :- [:maybe ::lib.schema.binning/binning]
+  "Get the current binning from a projection clause."
+  [projection :- ::lib-metric.schema/dimension-reference]
+  (:binning (second projection)))
+
+(mu/defn with-binning :- ::lib-metric.schema/dimension-reference
+  "Apply a binning strategy to a projection. Pass nil to remove binning."
+  [projection :- ::lib-metric.schema/dimension-reference
+   binning-option :- [:maybe [:or ::lib.schema.binning/binning
+                              ::lib.schema.binning/binning-option]]]
+  (let [binning-val (cond
+                      (nil? binning-option) nil
+                      (contains? binning-option :mbql) (:mbql binning-option)
+                      :else binning-option)]
+    (lib.options/update-options projection
+                                (fn [opts]
+                                  (if binning-val
+                                    (assoc opts :binning binning-val)
+                                    (dissoc opts :binning))))))
