@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.agent.prompts-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]))
 
@@ -109,28 +110,10 @@
       (is (some? template)))))
 
 (deftest extract-tool-instructions-test
-  (testing "extracts instructions from tool metadata"
-    (let [tool-var (with-meta (fn []) {:system-instructions "Do this carefully"})
-          tools {"test-tool" tool-var}
-          instructions (prompts/extract-tool-instructions tools)]
-      (is (= 1 (count instructions)))
-      (is (= "test-tool" (:tool-name (first instructions))))
-      (is (= "Do this carefully" (:instructions (first instructions))))))
-
-  (testing "returns empty vector when no tools have instructions"
-    (let [tool-var (with-meta (fn []) {})
-          tools {"test-tool" tool-var}
-          instructions (prompts/extract-tool-instructions tools)]
-      (is (empty? instructions))))
-
-  (testing "handles multiple tools with instructions"
-    (let [tool1 (with-meta (fn []) {:system-instructions "Instruction 1"})
-          tool2 (with-meta (fn []) {:system-instructions "Instruction 2"})
-          tools {"tool1" tool1 "tool2" tool2}
-          instructions (prompts/extract-tool-instructions tools)]
-      (is (= 2 (count instructions)))
-      (is (every? #(contains? % :tool-name) instructions))
-      (is (every? #(contains? % :instructions) instructions)))))
+  (testing "finds correct instructions"
+    (is (=? [{:tool-name "read_resource"
+              :instructions #(str/includes? % "you have access to a unified interface")}]
+            (prompts/extract-tool-instructions {"read_resource" identity})))))
 
 (deftest build-system-message-content-test
   (testing "builds complete system message"
