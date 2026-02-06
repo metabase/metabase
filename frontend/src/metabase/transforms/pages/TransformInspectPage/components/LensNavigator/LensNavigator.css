@@ -1,0 +1,17 @@
+.tabs {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tabsList {
+  --tab-border-color: none;
+
+  gap: var(--mantine-spacing-sm);
+}
+
+.tab {
+  max-width: 236px;
+
+  &[data-orientation="horizontal"] {
+    padding: 0.625rem 0.625rem 0.625rem var(--mantine-spacing-sm);
+  }
+}

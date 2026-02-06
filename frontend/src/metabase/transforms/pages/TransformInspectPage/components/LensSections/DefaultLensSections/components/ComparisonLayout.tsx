@@ -15,8 +15,6 @@ import type {
   TransformInspectVisitedFields,
 } from "metabase-types/api";
 
-import type { LensRef } from "../../../../types";
-
 import { ScalarCard } from "./ScalarCard";
 import { VisualizationCard } from "./VisualizationCard";
 
@@ -42,7 +40,7 @@ type ComparisonLayoutProps = {
   sources: TransformInspectSource[];
   visitedFields?: TransformInspectVisitedFields;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const ComparisonLayout = ({

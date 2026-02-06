@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import type { Location } from "history";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -10,23 +10,22 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
-import { Box, Button, Center, Flex, Stack, Text } from "metabase/ui";
+import { Button, Center, Stack, Text } from "metabase/ui";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
-import { LensContent, LensNavigation } from "./components";
-import { useLensNavigation } from "./hooks";
-import { convertLensToRef } from "./utils";
-
-type TransformInspectPageParams = {
-  transformId: string;
-};
+import { LensContent } from "./components";
+import { LensNavigator, useLensNavigation } from "./components/LensNavigator";
 
 type TransformInspectPageProps = {
-  params: TransformInspectPageParams;
+  params: { transformId: string };
+  location: Location;
 };
 
-export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
+export const TransformInspectPage = ({
+  params,
+  location,
+}: TransformInspectPageProps) => {
   const transformId = Urls.extractEntityId(params.transformId);
 
   const {
@@ -41,33 +40,8 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
     error: discoveryError,
   } = useGetInspectorDiscoveryQuery(transformId ?? skipToken);
 
-  const availableLenses = useMemo(
-    () => discovery?.available_lenses ?? [],
-    [discovery],
-  );
-
-  const rootSiblings = useMemo(
-    () => availableLenses.map(convertLensToRef),
-    [availableLenses],
-  );
-
-  const initialLensRef = useMemo(() => {
-    const initialLens = availableLenses[0];
-    return initialLens ? convertLensToRef(initialLens) : undefined;
-  }, [availableLenses]);
-
-  const {
-    currentLensRef,
-    parentSiblings,
-    currentSiblings,
-    drillLenses,
-    setDrillLenses,
-    drill,
-    zoomOut,
-    setCurrentLens,
-    selectParentLens,
-    canZoomOut,
-  } = useLensNavigation(initialLensRef, rootSiblings);
+  const { tabs, activeTabKey, currentLens, addDrillLens, closeTab, switchTab } =
+    useLensNavigation(discovery?.available_lenses ?? [], location);
 
   const isLoading = isLoadingTransform || isLoadingDiscovery;
   const error = transformError ?? discoveryError;
@@ -98,35 +72,26 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
     );
   }
 
-  if (!currentLensRef) {
+  if (!currentLens) {
     return null;
   }
 
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} />
-      <Flex gap="xl">
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <LensContent
-            transformId={transform.id}
-            currentLensRef={currentLensRef}
-            discovery={discovery}
-            onDrill={drill}
-            onDrillLensesChange={setDrillLenses}
-          />
-        </Box>
-        <LensNavigation
-          currentLensRef={currentLensRef}
-          parentLenses={parentSiblings}
-          siblingLenses={currentSiblings}
-          drillLenses={drillLenses}
-          canZoomOut={canZoomOut}
-          onZoomOut={zoomOut}
-          onSelectLens={setCurrentLens}
-          onSelectParentLens={selectParentLens}
-          onDrill={drill}
+      <LensNavigator
+        tabs={tabs}
+        activeTabKey={activeTabKey}
+        onSwitchTab={switchTab}
+        onCloseTab={closeTab}
+      >
+        <LensContent
+          transformId={transform.id}
+          currentLens={currentLens}
+          discovery={discovery}
+          onDrill={addDrillLens}
         />
-      </Flex>
+      </LensNavigator>
     </PageContainer>
   );
 };

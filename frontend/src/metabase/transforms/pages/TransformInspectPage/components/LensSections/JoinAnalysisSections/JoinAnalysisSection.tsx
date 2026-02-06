@@ -8,7 +8,7 @@ import type {
 } from "metabase-lib/transforms-inspector";
 import type { InspectorCard, InspectorLens } from "metabase-types/api";
 
-import type { CardStats, LensRef } from "../../../types";
+import type { CardStats } from "../../../types";
 
 import { BaseCountDisplayCard } from "./components/BaseCountDisplayCard";
 import { JoinStepRowCard } from "./components/JoinStepRowCard";
@@ -19,7 +19,7 @@ type JoinAnalysisSectionProps = {
   alerts: TriggeredAlert[];
   drillLenses: TriggeredDrillLens[];
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lensRef: LensRef) => void;
+  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const JoinAnalysisSection = ({
