@@ -59,17 +59,19 @@
                                        (apply +))})))
 
 (defn- extract-usage
-  "Extract usage from parts, combining multiple :usage parts if present."
+  "Extract usage from parts, combining multiple :usage parts if present.
+  Returns a map keyed by model name: {\"model-name\" {:prompt X :completion Y}}"
   [parts]
   (transduce
-   (comp (filter #(= :usage (:type %)))
-         (map :usage))
+   (comp (filter #(= :usage (:type %))))
    (completing
-    (fn [acc {:keys [promptTokens completionTokens] :as _usage}]
-      (-> acc
-          (update :prompt + (or promptTokens 0))
-          (update :completion + (or completionTokens 0)))))
-   {:prompt 0 :completion 0}
+    (fn [acc {:keys [usage model]}]
+      (let [model (or model "unknown")]
+        (update acc model
+                (fn [prev]
+                  {:prompt     (+ (:prompt prev 0) (:promptTokens usage 0))
+                   :completion (+ (:completion prev 0) (:completionTokens usage 0))})))))
+   {}
    parts))
 
 (defn- store-parts!
@@ -98,7 +100,9 @@
                  :usage           usage
                  :role            :assistant
                  :profile_id      profile-id
-                 :total_tokens    (+ (:prompt usage) (:completion usage))})))
+                 :total_tokens    (->> (vals usage)
+                                       (map #(+ (:prompt %) (:completion %)))
+                                       (reduce + 0))})))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
