@@ -53,7 +53,10 @@
    [:database_id ::ws.t/appdb-id]
    [:status ::status]
    [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]])
+   [:updated_at ms/TemporalInstant]
+   ;; Only present in POST response - the unmasked API key for workspace service user.
+   ;; This is the only time the key is available; after creation it's hashed and unrecoverable.
+   [:api_key {:optional true} :string]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
 ;; TODO (Chris 2026-02-02) -- We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
@@ -170,10 +173,11 @@
   (routes.common/wrap-middleware-for-open-api-spec-generation authorize*))
 
 (defn- ws->response
-  "Transform a workspace record into an API response, computing the backwards-compatible status."
+  "Transform a workspace record into an API response, computing the backwards-compatible status.
+   If :api_key is present (only at creation time), it is preserved in the response."
   [ws]
   (-> ws
-      (select-keys [:id :name :collection_id :database_id :created_at :updated_at])
+      (select-keys [:id :name :collection_id :database_id :created_at :updated_at :api_key])
       (assoc :status (ws.model/computed-status ws))))
 
 ;;; routes
