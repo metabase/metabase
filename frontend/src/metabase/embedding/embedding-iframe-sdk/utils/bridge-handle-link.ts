@@ -1,8 +1,9 @@
+import { isWithinIframe } from "metabase/lib/dom";
+
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedTagMessage,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import { isWithinIframe } from "metabase/lib/dom";
+} from "../types/embed";
 
 /**
  * Requests the parent window (embed.js) to handle a link click.
