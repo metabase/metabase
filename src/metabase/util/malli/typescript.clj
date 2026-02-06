@@ -176,9 +176,20 @@
 (defmethod -schema->ts :uuid     [_] "string")
 (defmethod -schema->ts :uri      [_] "string")
 (defmethod -schema->ts :nil      [_] "null")
-(defmethod -schema->ts :any      [_schema]
-  (record-weak-type! :any)
-  "any")
+(defmethod -schema->ts :any      [schema]
+  (let [props (mc/properties schema)]
+    (cond
+      ;; [:any {:ts/array-of <element-schema>}] => "ElementType[]"
+      (:ts/array-of props)
+      (str (schema->ts (:ts/array-of props)) "[]")
+
+      ;; [:any {:ts/object-of [:map [:key Type] ...]}] => "{ key: Type; ... }"
+      (:ts/object-of props)
+      (schema->ts (:ts/object-of props))
+
+      :else
+      (do (record-weak-type! :any)
+          "any"))))
 (defmethod -schema->ts :re       [_] "string")
 (defmethod -schema->ts 'pos-int? [_] "number")
 (defmethod -schema->ts 'int      [_] "number")
@@ -194,6 +205,14 @@
 (defmethod -schema->ts 'vector?  [_]
   (record-weak-type! :unknown)
   "unknown[]")
+
+;; Java Time types - serialized as ISO-8601 strings in JS/TS
+(defmethod -schema->ts :time/local-date          [_] "string")
+(defmethod -schema->ts :time/local-time          [_] "string")
+(defmethod -schema->ts :time/offset-time         [_] "string")
+(defmethod -schema->ts :time/local-date-time     [_] "string")
+(defmethod -schema->ts :time/offset-date-time    [_] "string")
+(defmethod -schema->ts :time/zoned-date-time     [_] "string")
 
 (defmethod -schema->ts :vector
   [schema]
@@ -246,18 +265,23 @@
 (defn- simplify-union-types
   "Simplify a collection of union type strings:
    - If any type is 'any', return [\"any\"] (any absorbs everything)
-   - If any type is 'unknown', return [\"unknown\"] (unknown is supertype of all)
-   - Return distinct types"
+   - Return distinct types
+   Note: callers should filter out 'unknown' types before calling this."
   [types]
   (cond
-    (some #(= % "any") types)     ["any"]
-    (some unknown-type? types)    ["unknown"]
-    :else                         (vec (distinct types))))
+    (some #(= % "any") types) ["any"]
+    :else                     (vec (distinct types))))
 
 (defmethod -schema->ts :or
   [schema]
   (let [children (mc/children schema)
-        types    (simplify-union-types (map schema->ts children))]
+        ;; Filter out unknown types from union children before simplification.
+        ;; If a union branch produces unknown (e.g., from :fn schemas), we don't
+        ;; want it to invalidate the entire union - other branches may be useful.
+        types    (->> children
+                      (map schema->ts)
+                      (remove unknown-type?)
+                      simplify-union-types)]
     (case (count types)
       0 "unknown"
       1 (first types)
@@ -267,10 +291,12 @@
 (defmethod -schema->ts :orn
   [schema]
   (let [children (mc/children schema)
-        types    (simplify-union-types
-                  (map (fn [[_name _opts child-schema]]
-                         (schema->ts child-schema))
-                       children))]
+        ;; Filter out unknown types from union children before simplification.
+        types    (->> children
+                      (map (fn [[_name _opts child-schema]]
+                             (schema->ts child-schema)))
+                      (remove unknown-type?)
+                      simplify-union-types)]
     (case (count types)
       0 "unknown"
       1 (first types)
@@ -720,9 +746,8 @@
                                      "unknown")))
                   ;; Use base-type-name for the definition (no Shared. prefix)
                   type-name    (base-type-name current-ref)
-                  ;; Skip useless `type X = unknown;` aliases
-                  alias-decl   (when-not (unknown-type? type-def)
-                                 (str "export type " type-name " = " type-def ";"))
+                  ;; Generate alias even for unknown types - they may be referenced elsewhere
+                  alias-decl   (str "export type " type-name " = " type-def ";")
                   ;; Filter new refs to only valid registry schemas, exclude self-refs, sort for determinism
                   new-refs     (->> @new-refs-atom
                                     (remove #(= % current-ref))
@@ -731,9 +756,7 @@
                                     (sort-by str))]
               (recur (vec (concat remaining new-refs))
                      (conj processed current-ref)
-                     (if alias-decl
-                       (conj aliases alias-decl)
-                       aliases)))))))))
+                     (conj aliases alias-decl)))))))))
 
 (defn- collect-refs-from-defs
   "Collect all registry schema refs used by a set of defs (without generating full TypeScript).
@@ -904,7 +927,10 @@
                             (ts-content defs shared-refs this-ns-refs))
                   ;; Add re-exports for metabase.lib.js
                   content (if (= ns 'metabase.lib.js)
-                            (str content (generate-reexports lib-namespaces))
+                            (let [all-nses (if (seq shared-refs)
+                                             (cons 'metabase.lib.shared lib-namespaces)
+                                             lib-namespaces)]
+                              (str content (generate-reexports all-nses)))
                             content)]
               (spit f content)
               (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))))
