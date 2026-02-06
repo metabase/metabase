@@ -146,6 +146,10 @@ function fieldToColumn(distinctFields: Set<FieldStats>): Set<string> {
   return columns;
 }
 
+function isKey<T extends object>(x: T, k: PropertyKey): k is keyof T {
+  return k in x;
+}
+
 // construct a set of column IDs based on the distinct field stats available
 function gatherColumnStasticsFields(
   sources: TransformInspectSource[],
@@ -158,7 +162,9 @@ function gatherColumnStasticsFields(
         return;
       }
       for (const key of Object.keys(field.stats)) {
-        distinctFields.add(key as FieldStats);
+        if (isKey(field.stats, key)) {
+          distinctFields.add(key);
+        }
       }
     });
   });
