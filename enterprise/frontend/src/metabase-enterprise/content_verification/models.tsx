@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import { createSelector } from "reselect";
 
 import type {
   ModelFilterControlsProps,
@@ -13,11 +14,13 @@ import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 
 const USER_SETTING_KEY = "browse-filter-only-verified-models";
 
-export function getDefaultModelFilters(state: State): ModelFilterSettings {
-  return {
-    verified: getSetting(state, USER_SETTING_KEY) ?? false,
-  };
-}
+const getVerifiedModelSetting = (state: State) =>
+  getSetting(state, USER_SETTING_KEY) ?? false;
+
+export const getDefaultModelFilters = createSelector(
+  [getVerifiedModelSetting],
+  (verified): ModelFilterSettings => ({ verified }),
+);
 
 /**
  * This was originally designed to support multiple filters but it currently
