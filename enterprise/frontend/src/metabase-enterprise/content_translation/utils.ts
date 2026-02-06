@@ -251,7 +251,7 @@ export const translateColumnDisplayName = (
 
   // If no direct translation, try space-based iteration for filter patterns
   // (handles cases like "Created At is in the previous 3 months" where only the column name is translatable)
-  // TODO: temporal code, in a follow up we will get this from CLJ side
+  // TODO: temporary code, in a follow up we will get this from CLJ side
   let lastTranslatedIndex = -1;
   let lastTranslatedColumn = "";
 
