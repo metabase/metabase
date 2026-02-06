@@ -35,8 +35,10 @@
   (try
     (let [result (navigate-tools/navigate {:destination destination
                                            :memory-atom shared/*memory-atom*})
+          structured (:structured-output result)
           reactions (:reactions result)]
-      (cond-> {:structured-output (:structured-output result)}
+      (cond-> {:output (:message structured)
+               :structured-output structured}
         (seq reactions) (assoc :reactions reactions)))
     (catch Exception e
       (log/error e "Error navigating")
