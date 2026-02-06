@@ -13,6 +13,7 @@
    Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
   [driver]
   (case driver
+    nil                  nil
     :postgres            "postgres"
     :mysql               "mysql"
     :snowflake           "snowflake"
