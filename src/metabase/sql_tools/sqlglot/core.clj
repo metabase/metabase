@@ -8,6 +8,19 @@
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.log :as log]))
 
+(defn- convert-error
+  "Convert sql-parsing generic error format to lib.validate format.
+   sql-parsing returns generic maps like {:type :syntax-error} or {:type :timeout :message \"...\"},
+   and this function translates them to the lib.validate error format."
+  [error]
+  (case (:type error)
+    :syntax-error       (lib/syntax-error)
+    :missing-column     (lib/missing-column-error (:name error))
+    :missing-table-alias (lib/missing-table-alias-error (:name error))
+    :timeout            (lib/validation-exception-error (:message error))
+    ;; Fallback: pass through if already in correct format or unknown type
+    error))
+
 (defn driver->dialect
   "Map a Metabase driver keyword to a SQLGlot dialect string.
    Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
@@ -51,7 +64,8 @@
 
 (defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
-  (sql-parsing/field-references (driver->dialect driver) sql-string))
+  (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)]
+    (update result :errors #(set (map convert-error %)))))
 
 ;;;; referenced-fields
 
