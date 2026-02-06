@@ -8,11 +8,14 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (def ^:private test-signing-secret "test-signing-secret")
 (def ^:private test-encryption-key (byte-array (repeat 64 42)))
