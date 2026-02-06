@@ -9,7 +9,6 @@ import type {
 } from "metabase-types/api";
 
 import type { CardStats } from "../../../types";
-import { SectionsRenderer } from "../SectionsRenderer";
 
 import { JoinAnalysisSection } from "./JoinAnalysisSection";
 
@@ -17,8 +16,9 @@ type JoinAnalysisSectionsProps = {
   lens: InspectorLens;
   sections: InspectorSection[];
   cardsBySection: Record<string, InspectorCard[]>;
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alertsByCardId: Record<string, TriggeredAlert[]>;
+  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
+  collectedCardStats: Record<string, CardStats>;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
   onDrill: (lens: TriggeredDrillLens) => void;
 };
@@ -27,23 +27,24 @@ export const JoinAnalysisSections = ({
   lens,
   sections,
   cardsBySection,
-  alerts,
-  drillLenses,
+  alertsByCardId,
+  drillLensesByCardId,
+  collectedCardStats,
   onStatsReady,
   onDrill,
-}: JoinAnalysisSectionsProps) => {
-  return (
-    <SectionsRenderer sections={sections} cardsBySection={cardsBySection}>
-      {(cards) => (
-        <JoinAnalysisSection
-          lens={lens}
-          cards={cards}
-          alerts={alerts}
-          drillLenses={drillLenses}
-          onStatsReady={onStatsReady}
-          onDrill={onDrill}
-        />
-      )}
-    </SectionsRenderer>
-  );
-};
+}: JoinAnalysisSectionsProps) =>
+  sections.map((section) => {
+    const cards = cardsBySection[section.id];
+    return (
+      <JoinAnalysisSection
+        key={section.id}
+        lens={lens}
+        cards={cards}
+        alertsByCardId={alertsByCardId}
+        drillLensesByCardId={drillLensesByCardId}
+        collectedCardStats={collectedCardStats}
+        onStatsReady={onStatsReady}
+        onDrill={onDrill}
+      />
+    );
+  });

@@ -44,13 +44,9 @@ export const ScalarCard = ({
           </Text>
         )}
 
-        <CardAlerts alerts={alerts} cardId={card.id} fullWidth />
+        <CardAlerts alerts={alerts} fullWidth />
 
-        <CardDrills
-          drillLenses={drillLenses}
-          cardId={card.id}
-          onDrill={onDrill}
-        />
+        <CardDrills drillLenses={drillLenses} onDrill={onDrill} />
       </Stack>
     </Card>
   );

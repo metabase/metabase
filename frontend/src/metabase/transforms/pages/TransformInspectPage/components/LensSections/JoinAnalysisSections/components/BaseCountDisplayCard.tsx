@@ -45,13 +45,9 @@ export const BaseCountDisplayCard = ({
           )}
         </Flex>
 
-        <CardAlerts alerts={alerts} cardId={card.id} />
+        <CardAlerts alerts={alerts} />
 
-        <CardDrills
-          drillLenses={drillLenses}
-          cardId={card.id}
-          onDrill={onDrill}
-        />
+        <CardDrills drillLenses={drillLenses} onDrill={onDrill} />
       </Stack>
     </Card>
   );

@@ -35,8 +35,8 @@ const parseTitleParts = (title: string): { field: string; table?: string } => {
 type ComparisonLayoutProps = {
   lens: InspectorLens;
   cards: InspectorCard[];
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alertsByCardId: Record<string, TriggeredAlert[]>;
+  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   sources: TransformInspectSource[];
   visitedFields?: TransformInspectVisitedFields;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
@@ -46,8 +46,8 @@ type ComparisonLayoutProps = {
 export const ComparisonLayout = ({
   lens,
   cards,
-  alerts,
-  drillLenses,
+  alertsByCardId,
+  drillLensesByCardId,
   sources,
   visitedFields,
   onStatsReady,
@@ -161,8 +161,8 @@ export const ComparisonLayout = ({
         key={card.id}
         lensId={lens.id}
         card={card}
-        alerts={alerts}
-        drillLenses={drillLenses}
+        alerts={alertsByCardId[card.id] ?? []}
+        drillLenses={drillLensesByCardId[card.id] ?? []}
         onStatsReady={onStatsReady}
         onDrill={onDrill}
       />
@@ -171,8 +171,8 @@ export const ComparisonLayout = ({
         key={card.id}
         lensId={lens.id}
         card={card}
-        alerts={alerts}
-        drillLenses={drillLenses}
+        alerts={alertsByCardId[card.id] ?? []}
+        drillLenses={drillLensesByCardId[card.id] ?? []}
         onStatsReady={onStatsReady}
         onDrill={onDrill}
       />

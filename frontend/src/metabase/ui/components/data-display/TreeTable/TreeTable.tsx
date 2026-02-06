@@ -37,6 +37,8 @@ export function TreeTable<TData extends TreeNodeData>({
   isRowDisabled,
   getRowProps,
   getRowHref,
+  renderSubRow,
+  hierarchical = true,
   classNames,
   styles,
   ariaLabel,
@@ -97,7 +99,7 @@ export function TreeTable<TData extends TreeNodeData>({
     return () => observer.disconnect();
   }, [containerRef, setContainerWidth, showCheckboxes]);
 
-  const hasExpandableNodes = useMemo(
+  const hasExpandableRows = useMemo(
     () => rows.some((row) => row.getCanExpand()),
     [rows],
   );
@@ -144,7 +146,7 @@ export function TreeTable<TData extends TreeNodeData>({
       table={table}
       columnWidths={columnWidths}
       showCheckboxes={showCheckboxes}
-      showExpandButtons={hasExpandableNodes}
+      showExpandButtons={hasExpandableRows}
       indentWidth={indentWidth}
       activeRowId={activeRowId}
       selectedRowId={selectedRowId}
@@ -161,6 +163,8 @@ export function TreeTable<TData extends TreeNodeData>({
       styles={styles}
       getRowProps={getRowProps}
       href={getRowHref?.(row)}
+      renderSubRow={renderSubRow}
+      hierarchical={hierarchical}
     />
   );
 

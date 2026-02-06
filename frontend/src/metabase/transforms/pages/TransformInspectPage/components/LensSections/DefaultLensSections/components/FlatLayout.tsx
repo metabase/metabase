@@ -12,8 +12,8 @@ import { VisualizationCard } from "./VisualizationCard";
 type FlatLayoutProps = {
   lens: InspectorLens;
   cards: InspectorCard[];
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alertsByCardId: Record<string, TriggeredAlert[]>;
+  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
   onDrill: (lens: TriggeredDrillLens) => void;
 };
@@ -21,8 +21,8 @@ type FlatLayoutProps = {
 export const FlatLayout = ({
   lens,
   cards,
-  alerts,
-  drillLenses,
+  alertsByCardId,
+  drillLensesByCardId,
   onStatsReady,
   onDrill,
 }: FlatLayoutProps) => {
@@ -38,8 +38,8 @@ export const FlatLayout = ({
               key={card.id}
               lensId={lens.id}
               card={card}
-              alerts={alerts}
-              drillLenses={drillLenses}
+              alerts={alertsByCardId[card.id] ?? []}
+              drillLenses={drillLensesByCardId[card.id] ?? []}
               onStatsReady={onStatsReady}
               onDrill={onDrill}
             />
@@ -51,8 +51,8 @@ export const FlatLayout = ({
           key={card.id}
           lensId={lens.id}
           card={card}
-          alerts={alerts}
-          drillLenses={drillLenses}
+          alerts={alertsByCardId[card.id] ?? []}
+          drillLenses={drillLensesByCardId[card.id] ?? []}
           onStatsReady={onStatsReady}
           onDrill={onDrill}
         />

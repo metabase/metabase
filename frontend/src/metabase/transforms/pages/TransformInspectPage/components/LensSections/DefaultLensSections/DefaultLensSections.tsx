@@ -22,8 +22,8 @@ type DefaultLensSectionsProps = {
   lens: InspectorLens;
   sections: InspectorSection[];
   cardsBySection: Record<string, InspectorCard[]>;
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alertsByCardId: Record<string, TriggeredAlert[]>;
+  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   sources: TransformInspectSource[];
   visitedFields?: TransformInspectVisitedFields;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
@@ -34,8 +34,8 @@ export const DefaultLensSections = ({
   lens,
   sections,
   cardsBySection,
-  alerts,
-  drillLenses,
+  alertsByCardId,
+  drillLensesByCardId,
   sources,
   visitedFields,
   onStatsReady,
@@ -48,8 +48,8 @@ export const DefaultLensSections = ({
           <ComparisonLayout
             lens={lens}
             cards={cards}
-            alerts={alerts}
-            drillLenses={drillLenses}
+            alertsByCardId={alertsByCardId}
+            drillLensesByCardId={drillLensesByCardId}
             sources={sources}
             visitedFields={visitedFields}
             onStatsReady={onStatsReady}
@@ -60,8 +60,8 @@ export const DefaultLensSections = ({
           <FlatLayout
             lens={lens}
             cards={cards}
-            alerts={alerts}
-            drillLenses={drillLenses}
+            alertsByCardId={alertsByCardId}
+            drillLensesByCardId={drillLensesByCardId}
             onStatsReady={onStatsReady}
             onDrill={onDrill}
           />

@@ -49,7 +49,12 @@ export const LensContent = ({
     error,
   } = useGetInspectorLensQuery({ transformId, ...queryParams });
 
-  const { alerts, drillLenses, pushNewStats } = useTriggerEvaluation(lens);
+  const {
+    alertsByCardId,
+    drillLensesByCardId,
+    pushNewStats,
+    collectedCardStats,
+  } = useTriggerEvaluation(lens);
 
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
@@ -70,7 +75,7 @@ export const LensContent = ({
   return (
     <Stack gap="xl">
       {match(lens.id)
-        .with("generic-summary", () => null)
+        .with("generic-summary", "join-analysis", () => null)
         .otherwise(
           () => lens.summary && <LensSummary summary={lens.summary} />,
         )}
@@ -90,8 +95,9 @@ export const LensContent = ({
             lens={lens}
             sections={lens.sections}
             cardsBySection={cardsBySection}
-            alerts={alerts}
-            drillLenses={drillLenses}
+            alertsByCardId={alertsByCardId}
+            drillLensesByCardId={drillLensesByCardId}
+            collectedCardStats={collectedCardStats}
             onStatsReady={pushNewStats}
             onDrill={onDrill}
           />
@@ -101,8 +107,8 @@ export const LensContent = ({
             lens={lens}
             sections={lens.sections}
             cardsBySection={cardsBySection}
-            alerts={alerts}
-            drillLenses={drillLenses}
+            alertsByCardId={alertsByCardId}
+            drillLensesByCardId={drillLensesByCardId}
             sources={discovery.sources}
             visitedFields={discovery.visited_fields}
             onStatsReady={pushNewStats}

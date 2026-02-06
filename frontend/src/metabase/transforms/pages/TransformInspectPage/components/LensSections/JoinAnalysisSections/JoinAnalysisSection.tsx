@@ -1,7 +1,15 @@
 import { useMemo } from "react";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { Stack } from "metabase/ui";
+import {
+  Card,
+  Stack,
+  Title,
+  TreeTable,
+  type TreeTableColumnDef,
+  useTreeTableInstance,
+} from "metabase/ui";
 import type {
   TriggeredAlert,
   TriggeredDrillLens,
@@ -10,14 +18,21 @@ import type { InspectorCard, InspectorLens } from "metabase-types/api";
 
 import type { CardStats } from "../../../types";
 
-import { BaseCountDisplayCard } from "./components/BaseCountDisplayCard";
-import { JoinStepRowCard } from "./components/JoinStepRowCard";
+import { AlertSubRow } from "./components/AlertSubRow";
+import { DrillLensesCell } from "./components/DrillLensesCell";
+import { JoinHeaderCell } from "./components/JoinHeaderCell";
+import { JoinNameCell } from "./components/JoinNameCell";
+import { JoinStepStatCell } from "./components/JoinStepStatCell";
+import { TableCountCard } from "./components/TableCountCard";
+import type { JoinTableRow } from "./types";
+import { getMaxSeverity } from "./utils";
 
 type JoinAnalysisSectionProps = {
   lens: InspectorLens;
   cards: InspectorCard[];
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alertsByCardId: Record<string, TriggeredAlert[]>;
+  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
+  collectedCardStats: Record<string, CardStats>;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
   onDrill: (lens: TriggeredDrillLens) => void;
 };
@@ -25,52 +40,166 @@ type JoinAnalysisSectionProps = {
 export const JoinAnalysisSection = ({
   lens,
   cards,
-  alerts,
-  drillLenses,
+  alertsByCardId,
+  drillLensesByCardId,
+  collectedCardStats,
   onStatsReady,
   onDrill,
 }: JoinAnalysisSectionProps) => {
-  const baseCountCard = cards.find((c) => c.id === "base-count");
-  const joinStepCards = cards.filter((c) => c.id.startsWith("join-step-"));
-  const tableCountCards = cards.filter((c) => /^table-.*-count$/.test(c.id));
-
-  const sortedJoinSteps = useMemo(
-    () => _.sortBy(joinStepCards, (card) => card.metadata?.join_step),
-    [joinStepCards],
+  const { joinStepCards, tableCountCards } = useMemo(
+    () => ({
+      joinStepCards: cards.filter((c) => c.id.startsWith("join-step-")),
+      tableCountCards: cards.filter((c) => /^table-.*-count$/.test(c.id)),
+    }),
+    [cards],
   );
+
+  const treeData = useMemo<JoinTableRow[]>(() => {
+    const sortedCards = _.sortBy(
+      joinStepCards,
+      (card) => card.metadata?.join_step,
+    );
+    return sortedCards.map((card) => {
+      const tableCard = tableCountCards.find(
+        ({ metadata }) => metadata?.join_step === metadata?.join_step,
+      );
+      const alerts = alertsByCardId[card.id] ?? [];
+      return {
+        id: card.id,
+        card,
+        tableCard,
+        joinAlias: String(card.metadata?.join_alias ?? "Unknown"),
+        joinStrategy: String(card.metadata?.join_strategy ?? "left-join"),
+        alerts,
+        severity: alerts.length > 0 ? getMaxSeverity(alerts) : null,
+        drillLenses: drillLensesByCardId[card.id] ?? [],
+        cardStats: collectedCardStats[card.id],
+      };
+    });
+  }, [
+    joinStepCards,
+    tableCountCards,
+    alertsByCardId,
+    drillLensesByCardId,
+    collectedCardStats,
+  ]);
+
+  const columns = useMemo<TreeTableColumnDef<JoinTableRow>[]>(
+    () => [
+      {
+        id: "alert",
+        width: 42,
+        cell: ({ row }) => (
+          <JoinHeaderCell
+            lensId={lens.id}
+            card={row.original.card}
+            severity={row.original.severity}
+            onStatsReady={onStatsReady}
+            onToggleAlerts={() => row.toggleExpanded()}
+          />
+        ),
+      },
+      {
+        id: "name",
+        header: t`Join`,
+        width: 436,
+        cell: ({ row }) => (
+          <JoinNameCell
+            joinAlias={row.original.joinAlias}
+            joinStrategy={row.original.joinStrategy}
+          />
+        ),
+      },
+      {
+        id: "output",
+        header: t`Output`,
+        width: 150,
+        cell: ({ row }) => (
+          <JoinStepStatCell
+            cardStats={row.original.cardStats}
+            statKey="output_count"
+          />
+        ),
+      },
+      {
+        id: "matched",
+        header: t`Matched`,
+        width: 150,
+        cell: ({ row }) => (
+          <JoinStepStatCell
+            cardStats={row.original.cardStats}
+            statKey="matched_count"
+          />
+        ),
+      },
+      {
+        id: "table-rows-count",
+        header: t`Table rows`,
+        width: 150,
+        cell: ({ row }) =>
+          row.original.tableCard ? (
+            <TableCountCard
+              lensId={lens.id}
+              card={row.original.tableCard}
+              onStatsReady={onStatsReady}
+            />
+          ) : null,
+      },
+      {
+        id: "drills",
+        cell: ({ row }) => (
+          <DrillLensesCell
+            drillLenses={row.original.drillLenses}
+            onDrill={onDrill}
+          />
+        ),
+      },
+    ],
+    [lens.id, onStatsReady, onDrill],
+  );
+
+  const instance = useTreeTableInstance({
+    data: treeData,
+    columns,
+    getNodeId: (node) => node.id,
+    enableSorting: false,
+  });
+
+  const joinsCount = treeData.length;
 
   return (
     <Stack gap="md">
-      {baseCountCard && (
-        <BaseCountDisplayCard
-          lensId={lens.id}
-          card={baseCountCard}
-          alerts={alerts}
-          drillLenses={drillLenses}
-          onStatsReady={onStatsReady}
-          onDrill={onDrill}
-        />
-      )}
-      {sortedJoinSteps.length > 0 && (
-        <Stack gap="sm">
-          {sortedJoinSteps.map((card) => {
-            const tableCard = tableCountCards.find(
-              (tc) => tc.metadata?.join_step === card.metadata?.join_step,
-            );
-            return (
-              <JoinStepRowCard
-                key={card.id}
-                lensId={lens.id}
-                card={card}
-                tableCard={tableCard}
-                alerts={alerts}
-                drillLenses={drillLenses}
-                onStatsReady={onStatsReady}
-                onDrill={onDrill}
-              />
-            );
-          })}
-        </Stack>
+      {joinsCount > 0 && (
+        <>
+          <Title order={4}>
+            {ngettext(
+              msgid`${joinsCount} join`,
+              `${joinsCount} joins`,
+              joinsCount,
+            )}
+          </Title>
+          <Card p={0} shadow="none" withBorder>
+            <TreeTable
+              instance={instance}
+              hierarchical={false}
+              styles={{
+                cell: { padding: "var(--mantine-spacing-sm)" },
+                headerCell: { padding: "var(--mantine-spacing-sm)" },
+              }}
+              renderSubRow={(row) => {
+                if (!row.getIsExpanded()) {
+                  return null;
+                }
+                return (
+                  <AlertSubRow
+                    alerts={row.original.alerts}
+                    severity={row.original.severity}
+                  />
+                );
+              }}
+            />
+          </Card>
+        </>
       )}
     </Stack>
   );
