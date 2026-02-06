@@ -2971,6 +2971,19 @@ databaseChangeLog:
             constraintName: fk_metabase_table_transform_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v59.2026-02-06T00:00:01
+      author: troyharvey
+      comment: Add secondary_roles_attribute column to connection_impersonations for Snowflake secondary roles
+      changes:
+        - addColumn:
+            tableName: connection_impersonations
+            columns:
+              - column:
+                  name: secondary_roles_attribute
+                  type: ${text.type}
+                  remarks: User attribute for Snowflake secondary roles (USE SECONDARY ROLES). Nullable - only used for Snowflake.
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

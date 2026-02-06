@@ -86,6 +86,10 @@ const ImpersonationModalInner = ({
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;
 
+  const selectedSecondaryRolesAttribute =
+    draftImpersonation?.secondary_roles_attribute ??
+    impersonation?.secondary_roles_attribute;
+
   const dispatch = useDispatch();
 
   const close = useCallback(() => {
@@ -93,7 +97,10 @@ const ImpersonationModalInner = ({
   }, [dispatch, route]);
 
   const handleSave = useCallback(
-    (attribute: UserAttributeKey) => {
+    (
+      attribute: UserAttributeKey,
+      secondaryRolesAttribute?: UserAttributeKey,
+    ) => {
       dispatch(
         updateDataPermission({
           groupId,
@@ -106,10 +113,14 @@ const ImpersonationModalInner = ({
         }),
       );
 
-      if (attribute !== selectedAttribute) {
+      if (
+        attribute !== selectedAttribute ||
+        secondaryRolesAttribute !== selectedSecondaryRolesAttribute
+      ) {
         dispatch(
           updateImpersonation({
             attribute,
+            secondary_roles_attribute: secondaryRolesAttribute,
             db_id: databaseId,
             group_id: groupId,
           }),
@@ -118,7 +129,14 @@ const ImpersonationModalInner = ({
 
       close();
     },
-    [close, databaseId, dispatch, groupId, selectedAttribute],
+    [
+      close,
+      databaseId,
+      dispatch,
+      groupId,
+      selectedAttribute,
+      selectedSecondaryRolesAttribute,
+    ],
   );
 
   const handleCancel = useCallback(() => {
@@ -148,6 +166,7 @@ const ImpersonationModalInner = ({
   return (
     <ImpersonationModalView
       selectedAttribute={selectedAttribute}
+      selectedSecondaryRolesAttribute={selectedSecondaryRolesAttribute}
       attributes={attributes}
       database={database}
       onSave={handleSave}
