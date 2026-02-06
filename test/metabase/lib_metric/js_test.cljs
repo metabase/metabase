@@ -251,3 +251,52 @@
       (is (= 42 (get-in new-definition [:source :id])))
       (is (= sample-metric-metadata (get-in new-definition [:source :metadata])))
       (is (= mock-provider (:metadata-provider new-definition))))))
+
+;;; -------------------------------------------------- filter --------------------------------------------------
+
+(deftest ^:parallel filter-adds-clause-test
+  (testing "filter adds a filter clause to the definition"
+    (let [filter-clause [:= {} [:dimension {} "dim-uuid"] "value"]
+          result        (lib-metric.js/filter sample-definition filter-clause)]
+      (is (= :metric/definition (:lib/type result)))
+      (is (= [filter-clause] (:filters result))))))
+
+(deftest ^:parallel filter-appends-to-existing-test
+  (testing "filter appends to existing filters"
+    (let [existing-filter [:= {} [:dimension {} "dim-1"] "a"]
+          new-filter      [:= {} [:dimension {} "dim-2"] "b"]
+          definition      (assoc sample-definition :filters [existing-filter])
+          result          (lib-metric.js/filter definition new-filter)]
+      (is (= [existing-filter new-filter] (:filters result))))))
+
+;;; -------------------------------------------------- filterableDimensionOperators --------------------------------------------------
+
+(def ^:private string-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-string"
+   :name           "category"
+   :display-name   "Category"
+   :effective-type :type/Text
+   :semantic-type  nil})
+
+(def ^:private number-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-number"
+   :name           "amount"
+   :display-name   "Amount"
+   :effective-type :type/Float
+   :semantic-type  nil})
+
+(deftest ^:parallel filterableDimensionOperators-string-test
+  (testing "filterableDimensionOperators returns string operators for string dimension"
+    (let [result (lib-metric.js/filterableDimensionOperators string-dimension)]
+      (is (array? result))
+      (is (= ["is-empty" "not-empty" "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]
+             (js->clj result))))))
+
+(deftest ^:parallel filterableDimensionOperators-number-test
+  (testing "filterableDimensionOperators returns number operators for number dimension"
+    (let [result (lib-metric.js/filterableDimensionOperators number-dimension)]
+      (is (array? result))
+      (is (= ["is-null" "not-null" "=" "!=" ">" ">=" "<" "<=" "between"]
+             (js->clj result))))))

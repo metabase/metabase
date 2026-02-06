@@ -105,6 +105,129 @@
 (deftest ^:parallel build-filter-positions-nil-filters-test
   (is (= {} (lib-metric.filter/build-filter-positions nil))))
 
+;;; -------------------------------------------------- operators-for-dimension --------------------------------------------------
+
+(def ^:private string-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-string"
+   :name           "category"
+   :display-name   "Category"
+   :effective-type :type/Text
+   :semantic-type  nil})
+
+(def ^:private number-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-number"
+   :name           "amount"
+   :display-name   "Amount"
+   :effective-type :type/Float
+   :semantic-type  nil})
+
+(def ^:private boolean-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-boolean"
+   :name           "is_active"
+   :display-name   "Is Active"
+   :effective-type :type/Boolean
+   :semantic-type  nil})
+
+(def ^:private datetime-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-datetime"
+   :name           "created_at"
+   :display-name   "Created At"
+   :effective-type :type/DateTime
+   :semantic-type  :type/CreationTimestamp})
+
+(def ^:private time-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-time"
+   :name           "start_time"
+   :display-name   "Start Time"
+   :effective-type :type/Time
+   :semantic-type  nil})
+
+(def ^:private coordinate-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-coord"
+   :name           "latitude"
+   :display-name   "Latitude"
+   :effective-type :type/Float
+   :semantic-type  :type/Latitude})
+
+(deftest ^:parallel operators-for-dimension-string-test
+  (testing "String dimensions get string operators"
+    (is (= [:is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with]
+           (lib-metric.filter/operators-for-dimension string-dimension)))))
+
+(deftest ^:parallel operators-for-dimension-number-test
+  (testing "Number dimensions get numeric operators"
+    (is (= [:is-null :not-null := :!= :> :>= :< :<= :between]
+           (lib-metric.filter/operators-for-dimension number-dimension)))))
+
+(deftest ^:parallel operators-for-dimension-boolean-test
+  (testing "Boolean dimensions get boolean operators"
+    (is (= [:is-null :not-null :=]
+           (lib-metric.filter/operators-for-dimension boolean-dimension)))))
+
+(deftest ^:parallel operators-for-dimension-datetime-test
+  (testing "DateTime dimensions get temporal operators"
+    (is (= [:is-null :not-null := :!= :> :< :between]
+           (lib-metric.filter/operators-for-dimension datetime-dimension)))))
+
+(deftest ^:parallel operators-for-dimension-time-test
+  (testing "Time dimensions get time operators"
+    (is (= [:is-null :not-null :> :< :between]
+           (lib-metric.filter/operators-for-dimension time-dimension)))))
+
+(deftest ^:parallel operators-for-dimension-coordinate-test
+  (testing "Coordinate dimensions get coordinate operators"
+    (is (= [:= :!= :> :>= :< :<= :between :inside]
+           (lib-metric.filter/operators-for-dimension coordinate-dimension)))))
+
+(deftest ^:parallel operators-for-dimension-unknown-test
+  (testing "Unknown type dimensions get default operators"
+    (is (= [:is-null :not-null]
+           (lib-metric.filter/operators-for-dimension {:effective-type :type/Unknown})))))
+
+;;; -------------------------------------------------- filterable-dimension-operators --------------------------------------------------
+
+(deftest ^:parallel filterable-dimension-operators-test
+  (testing "filterable-dimension-operators returns same result as operators-for-dimension"
+    (is (= (lib-metric.filter/operators-for-dimension string-dimension)
+           (lib-metric.filter/filterable-dimension-operators string-dimension)))
+    (is (= (lib-metric.filter/operators-for-dimension number-dimension)
+           (lib-metric.filter/filterable-dimension-operators number-dimension)))))
+
+;;; -------------------------------------------------- add-filter --------------------------------------------------
+
+(deftest ^:parallel add-filter-test
+  (testing "add-filter adds a filter clause to the definition"
+    (let [definition {:lib/type    :metric/definition
+                      :filters     []
+                      :projections []}
+          filter-clause [:= {} dim-ref-1 "value"]
+          result (lib-metric.filter/add-filter definition filter-clause)]
+      (is (= [filter-clause] (:filters result))))))
+
+(deftest ^:parallel add-filter-appends-test
+  (testing "add-filter appends to existing filters"
+    (let [existing-filter [:= {} dim-ref-1 "a"]
+          new-filter [:= {} dim-ref-2 "b"]
+          definition {:lib/type    :metric/definition
+                      :filters     [existing-filter]
+                      :projections []}
+          result (lib-metric.filter/add-filter definition new-filter)]
+      (is (= [existing-filter new-filter] (:filters result))))))
+
+(deftest ^:parallel add-filter-nil-filters-test
+  (testing "add-filter works when :filters is nil"
+    (let [definition {:lib/type    :metric/definition
+                      :projections []}
+          filter-clause [:= {} dim-ref-1 "value"]
+          result (lib-metric.filter/add-filter definition filter-clause)]
+      (is (= [filter-clause] (:filters result))))))
+
 ;;; -------------------------------------------------- filterable-dimensions --------------------------------------------------
 ;;; Note: Full integration tests for filterable-dimensions require a mock metadata provider
 ;;; These tests verify the basic shape of the function

@@ -45,3 +45,21 @@
                       :source/metric  (lib-metric.dimension/dimensions-for-metric metadata-provider source-id)
                       :source/measure (lib-metric.dimension/dimensions-for-measure metadata-provider source-id))]
     (add-projection-positions dimensions (or projections []))))
+
+(mu/defn project :- ::lib-metric.schema/metric-definition
+  "Add a projection for a dimension to a metric definition.
+   Creates a dimension reference and appends it to the definition's projections."
+  [definition :- ::lib-metric.schema/metric-definition
+   dimension :- ::lib-metric.schema/metadata-dimension]
+  (let [dimension-ref [:dimension {} (:id dimension)]]
+    (update definition :projections (fnil conj []) dimension-ref)))
+
+(mu/defn projection-dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
+  "Get the dimension metadata for a projection clause.
+   The projection is a dimension-reference [:dimension opts uuid].
+   Returns the dimension metadata or nil if not found."
+  [definition :- ::lib-metric.schema/metric-definition
+   projection :- ::lib-metric.schema/dimension-reference]
+  (let [dimension-id (projection-dimension-id projection)
+        dimensions   (projectable-dimensions definition)]
+    (some #(when (= (:id %) dimension-id) %) dimensions)))

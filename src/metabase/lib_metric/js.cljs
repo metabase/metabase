@@ -1,5 +1,6 @@
 (ns metabase.lib-metric.js
   "JavaScript-facing API for lib-metric functions."
+  (:refer-clojure :exclude [filter])
   (:require
    [clojure.string :as str]
    [goog.object :as gobject]
@@ -323,15 +324,23 @@
 
 (defn ^:export filterableDimensions
   "Get dimensions that can be used for filtering.
-   Each dimension includes :filter-positions indicating which filter indices use it."
+   Each dimension includes :filter-positions indicating which filter indices use it,
+   and :operators containing available filter operators for that dimension type."
   [definition]
   (to-array (lib-metric.filter/filterable-dimensions definition)))
 
 (defn ^:export filter
   "Add a filter clause to a metric definition.
-   STUB: Returns the definition unchanged."
-  [definition _filter-clause]
-  definition)
+   Returns a new MetricDefinition with the filter added."
+  [definition filter-clause]
+  (lib-metric.filter/add-filter definition filter-clause))
+
+(defn ^:export filterableDimensionOperators
+  "Get available filter operators for a dimension.
+   Returns a JS array of operator keyword strings (e.g., ['=', '!=', 'contains', ...]).
+   Unlike metabase.lib which wraps operators in maps, this returns simple strings."
+  [dimension]
+  (to-array (map name (lib-metric.filter/filterable-dimension-operators dimension))))
 
 (defn ^:export stringFilterClause
   "Create a string filter clause from parts.
@@ -457,10 +466,16 @@
   (to-array (lib-metric.projection/projectable-dimensions definition)))
 
 (defn ^:export project
-  "Add a projection clause to a metric definition.
-   STUB: Returns the definition unchanged."
-  [definition _projection-clause]
-  definition)
+  "Add a projection for a dimension to a metric definition.
+   Returns the updated definition with the new projection."
+  [definition dimension]
+  (lib-metric.projection/project definition dimension))
+
+(defn ^:export projectionDimension
+  "Get the dimension metadata for a projection clause.
+   Returns the dimension or null if not found."
+  [definition projection]
+  (lib-metric.projection/projection-dimension definition projection))
 
 (defn ^:export replaceClause
   "Replace a clause in a metric definition.

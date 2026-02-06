@@ -185,6 +185,57 @@ describe("metabase-lib/metric/core", () => {
     });
   });
 
+  describe("project", () => {
+    it("should add a projection to the definition", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      expect(dimensions.length).toBeGreaterThan(0);
+
+      const updatedDefinition = LibMetric.project(definition, dimensions[0]);
+      const projectionClauses = LibMetric.projections(updatedDefinition);
+
+      expect(projectionClauses.length).toBe(1);
+    });
+
+    it("should allow adding multiple projections", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      expect(dimensions.length).toBeGreaterThan(1);
+
+      let updatedDefinition = LibMetric.project(definition, dimensions[0]);
+      updatedDefinition = LibMetric.project(updatedDefinition, dimensions[1]);
+      const projectionClauses = LibMetric.projections(updatedDefinition);
+
+      expect(projectionClauses.length).toBe(2);
+    });
+  });
+
+  describe("projectionDimension", () => {
+    it("should return the dimension for a projection clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      expect(dimensions.length).toBeGreaterThan(0);
+
+      const updatedDefinition = LibMetric.project(definition, dimensions[0]);
+      const projectionClauses = LibMetric.projections(updatedDefinition);
+      expect(projectionClauses.length).toBe(1);
+
+      const dimension = LibMetric.projectionDimension(
+        updatedDefinition,
+        projectionClauses[0],
+      );
+      expect(dimension).not.toBeNull();
+
+      // Verify it's the same dimension we projected
+      const info = LibMetric.displayInfo(updatedDefinition, dimension!);
+      const originalInfo = LibMetric.displayInfo(
+        updatedDefinition,
+        dimensions[0],
+      );
+      expect(info.displayName).toBe(originalInfo.displayName);
+    });
+  });
+
   describe("displayInfo", () => {
     it("should return display info for metric metadata", () => {
       const { definition, metricMeta } = setupDefinition();

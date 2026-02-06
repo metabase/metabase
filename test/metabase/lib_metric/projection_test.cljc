@@ -1,6 +1,7 @@
 (ns metabase.lib-metric.projection-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
    [metabase.lib-metric.projection :as lib-metric.projection]))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
@@ -108,3 +109,133 @@
       ;; Integration tests with real providers are needed for full coverage
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (lib-metric.projection/projectable-dimensions definition))))))
+
+;;; -------------------------------------------------- project --------------------------------------------------
+
+(def ^:private sample-metric-metadata
+  {:lib/type :metadata/metric :id 1 :name "Test Metric"})
+
+(def ^:private valid-definition
+  {:lib/type          :metric/definition
+   :source            {:type     :source/metric
+                       :id       1
+                       :metadata sample-metric-metadata}
+   :filters           []
+   :projections       []
+   :metadata-provider nil})
+
+;;; -------------------------------------------------- Mock Provider --------------------------------------------------
+
+(defn- make-mock-provider
+  "Create a mock metadata provider that returns the given dimensions for metric-id queries."
+  [dimensions]
+  (lib-metric.metadata.provider/metric-context-metadata-provider
+   ;; metric-fetcher-fn
+   (fn [_metadata-spec] [])
+   ;; measure-fetcher-fn
+   nil
+   ;; dimension-fetcher-fn - returns dimensions when queried by metric-id
+   (fn [{:keys [metric-id]}]
+     (if metric-id
+       (filterv #(and (= :metric (:source-type %))
+                      (= metric-id (:source-id %)))
+                dimensions)
+       dimensions))
+   ;; table->db-fn
+   (constantly nil)
+   ;; db-provider-fn
+   (constantly nil)
+   ;; setting-fn
+   (constantly nil)))
+
+(def ^:private mock-dimensions
+  "Dimensions annotated as metadata/dimension with source info."
+  [(assoc dimension-1
+          :lib/type :metadata/dimension
+          :source-type :metric
+          :source-id 1)
+   (assoc dimension-2
+          :lib/type :metadata/dimension
+          :source-type :metric
+          :source-id 1)
+   (assoc dimension-3
+          :lib/type :metadata/dimension
+          :source-type :metric
+          :source-id 1)])
+
+(def ^:private definition-with-provider
+  "A valid definition with a mock metadata provider."
+  (assoc valid-definition
+         :metadata-provider (make-mock-provider mock-dimensions)))
+
+(deftest ^:parallel project-adds-projection-to-definition-test
+  (testing "project adds a dimension reference to projections"
+    (let [result (lib-metric.projection/project valid-definition dimension-1)]
+      (is (= 1 (count (:projections result))))
+      (is (= :dimension (first (first (:projections result)))))
+      (is (= uuid-1 (last (first (:projections result))))))))
+
+(deftest ^:parallel project-appends-to-existing-projections-test
+  (testing "project appends new projection to existing projections"
+    (let [definition (assoc valid-definition :projections [dim-ref-1])
+          result     (lib-metric.projection/project definition dimension-2)]
+      (is (= 2 (count (:projections result))))
+      (is (= uuid-1 (last (first (:projections result)))))
+      (is (= uuid-2 (last (second (:projections result))))))))
+
+(deftest ^:parallel project-creates-correct-dimension-reference-test
+  (testing "project creates a [:dimension {} id] reference"
+    (let [result     (lib-metric.projection/project valid-definition dimension-1)
+          projection (first (:projections result))]
+      (is (= :dimension (first projection)))
+      (is (= {} (second projection)))
+      (is (= uuid-1 (nth projection 2))))))
+
+(deftest ^:parallel project-allows-same-dimension-multiple-times-test
+  (testing "project allows adding the same dimension multiple times"
+    (let [result (-> valid-definition
+                     (lib-metric.projection/project dimension-1)
+                     (lib-metric.projection/project dimension-1))]
+      (is (= 2 (count (:projections result))))
+      (is (= uuid-1 (last (first (:projections result)))))
+      (is (= uuid-1 (last (second (:projections result))))))))
+
+;;; -------------------------------------------------- projection-dimension --------------------------------------------------
+
+(deftest ^:parallel projection-dimension-requires-valid-provider-test
+  (testing "projection-dimension throws when projectable-dimensions fails"
+    ;; Since projectable-dimensions requires a valid metadata provider,
+    ;; we can't fully test projection-dimension without integration tests.
+    ;; This test verifies the function exists and handles errors appropriately.
+    (let [definition (assoc valid-definition :projections [dim-ref-1])]
+      (is (thrown? #?(:clj Exception :cljs js/Error)
+                   (lib-metric.projection/projection-dimension definition dim-ref-1))))))
+
+(deftest ^:parallel projection-dimension-finds-matching-dimension-test
+  (testing "projection-dimension returns the dimension matching the projection"
+    (let [definition (-> definition-with-provider
+                         (lib-metric.projection/project (first mock-dimensions)))
+          projection (first (:projections definition))
+          result     (lib-metric.projection/projection-dimension definition projection)]
+      (is (some? result))
+      (is (= uuid-1 (:id result)))
+      (is (= "created_at" (:name result))))))
+
+(deftest ^:parallel projection-dimension-returns-nil-for-unknown-test
+  (testing "projection-dimension returns nil for unknown projection"
+    (let [definition      definition-with-provider
+          ;; Use a valid UUID format that doesn't match any dimension
+          fake-projection [:dimension {} "00000000-0000-0000-0000-000000000000"]]
+      (is (nil? (lib-metric.projection/projection-dimension definition fake-projection))))))
+
+(deftest ^:parallel projection-dimension-works-with-multiple-projections-test
+  (testing "projection-dimension finds correct dimension among multiple projections"
+    (let [definition (-> definition-with-provider
+                         (lib-metric.projection/project (first mock-dimensions))
+                         (lib-metric.projection/project (second mock-dimensions)))
+          proj-1     (first (:projections definition))
+          proj-2     (second (:projections definition))
+          result-1   (lib-metric.projection/projection-dimension definition proj-1)
+          result-2   (lib-metric.projection/projection-dimension definition proj-2)]
+      (is (= uuid-1 (:id result-1)))
+      (is (= uuid-2 (:id result-2))))))
