@@ -11,17 +11,17 @@ import {
   getTemporalUnitLabel,
 } from "./utils";
 
-type TimeseriesUnitPickerProps = {
-  projections: ProjectionInfo[];
+type TimeseriesBucketPickerProps = {
   selectedUnit: TemporalUnit | undefined;
+  projections: ProjectionInfo[];
   onChange: (unit: TemporalUnit) => void;
 };
 
-export function TimeseriesUnitPicker({
-  projections,
+export function TimeseriesBucketPicker({
   selectedUnit,
+  projections,
   onChange,
-}: TimeseriesUnitPickerProps) {
+}: TimeseriesBucketPickerProps) {
   const [isOpened, { toggle }] = useDisclosure();
 
   return (
@@ -30,7 +30,7 @@ export function TimeseriesUnitPicker({
         <Button onClick={toggle}>{getTemporalUnitLabel(selectedUnit)}</Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <TimeseriesUnitDropdown
+        <TimeseriesBucketDropdown
           selectedUnit={selectedUnit}
           projections={projections}
           onChange={onChange}
@@ -41,14 +41,14 @@ export function TimeseriesUnitPicker({
 }
 
 type TimeseriesBucketDropdownProps = {
-  projections: ProjectionInfo[];
   selectedUnit: TemporalUnit | undefined;
+  projections: ProjectionInfo[];
   onChange: (unit: TemporalUnit) => void;
 };
 
-function TimeseriesUnitDropdown({
-  projections,
+function TimeseriesBucketDropdown({
   selectedUnit,
+  projections,
   onChange,
 }: TimeseriesBucketDropdownProps) {
   const sharedUnits = getSharedTemporalUnits(projections);

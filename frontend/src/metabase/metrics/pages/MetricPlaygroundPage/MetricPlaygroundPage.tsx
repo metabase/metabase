@@ -9,10 +9,20 @@ import {
 } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { FilterPicker } from "metabase/metrics/components/FilterPicker";
+import {
+  type ProjectionInfo,
+  TimeseriesBucketPicker,
+} from "metabase/metrics/components/TimeseriesBucketPicker";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Icon, MultiSelect, Popover, Stack } from "metabase/ui";
+import { Box, Button, Icon, MultiSelect, Popover, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
-import type { Measure, MeasureId, Metric, MetricId } from "metabase-types/api";
+import type {
+  Measure,
+  MeasureId,
+  Metric,
+  MetricId,
+  TemporalUnit,
+} from "metabase-types/api";
 
 export function MetricPlaygroundPage() {
   const { data: metrics = [] } = useListMetricsQuery();
@@ -21,6 +31,9 @@ export function MetricPlaygroundPage() {
   const [fetchMeasure] = useLazyGetMeasureQuery();
   const [metricIds, setMetricIds] = useState<MetricId[]>([]);
   const [measureIds, setMeasureIds] = useState<MeasureId[]>([]);
+  const [selectedUnit, setSelectedUnit] = useState<TemporalUnit | undefined>(
+    undefined,
+  );
 
   const metadata = useSelector(getMetadata);
   const metadataProvider = useMemo(
@@ -66,17 +79,28 @@ export function MetricPlaygroundPage() {
         value={measureIds.map(getMeasureIdValue)}
         onChange={handleMeasureChange}
       />
-      <Popover>
-        <Popover.Target>
-          <Button leftSection={<Icon name="filter" />}>{t`Filter`}</Button>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <FilterPicker
-            definitions={definitions}
-            onChange={handleFilterChange}
-          />
-        </Popover.Dropdown>
-      </Popover>
+      <Stack gap="xs">
+        <Box fw="bold">{`FilterPicker`}</Box>
+        <Popover>
+          <Popover.Target>
+            <Button leftSection={<Icon name="filter" />}>{t`Filter`}</Button>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <FilterPicker
+              definitions={definitions}
+              onChange={handleFilterChange}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      </Stack>
+      <Stack gap="xs">
+        <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
+        <TimeseriesBucketPicker
+          selectedUnit={selectedUnit}
+          projections={getProjections(definitions)}
+          onChange={setSelectedUnit}
+        />
+      </Stack>
     </Stack>
   );
 }
@@ -131,4 +155,17 @@ function getMetricDefinitions(
       LibMetric.fromMeasureMetadata(metadataProvider, measure),
     ),
   ];
+}
+
+function getProjections(definitions: LibMetric.MetricDefinition[]) {
+  return definitions.reduce((projections: ProjectionInfo[], definition) => {
+    const dimensions = LibMetric.projectionableDimensions(definition);
+    const dateDimension = dimensions.find(LibMetric.isDateOrDateTime);
+
+    if (dateDimension) {
+      projections.push({ definition, dimension: dateDimension });
+    }
+
+    return projections;
+  }, []);
 }
