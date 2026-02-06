@@ -520,7 +520,7 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          ...baseMetabaseRestrictedConfig,
+          paths: baseMetabaseRestrictedConfig.paths,
           patterns: [
             ...baseMetabaseRestrictedConfig.patterns,
             {
@@ -716,7 +716,7 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          ...baseMetabaseRestrictedConfig,
+          paths: baseMetabaseRestrictedConfig.paths,
           patterns: [
             ...baseMetabaseRestrictedConfig.patterns,
             {
@@ -755,7 +755,7 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          ...baseMetabaseRestrictedConfig,
+          paths: baseMetabaseRestrictedConfig.paths,
           patterns: [
             ...baseMetabaseRestrictedConfig.patterns,
             {
