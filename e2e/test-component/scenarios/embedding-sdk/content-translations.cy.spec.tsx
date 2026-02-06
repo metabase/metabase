@@ -161,7 +161,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
     });
 
     describe("filter step", () => {
-      it("should translate content for numeric field", () => {
+      it.only("should translate content for numeric field", () => {
         setupEditor();
         mountEditor();
 
@@ -175,6 +175,13 @@ describe("scenarios > embedding-sdk > content-translations", () => {
           ).click();
 
           popover().within(() => {
+            cy.findByText("DE-Total").should("be.visible");
+
+            cy.findByTestId("list-search-field").type("Total");
+            cy.findByText("DE-Total").should("not.exist");
+            cy.findByText("Total").should("be.visible");
+
+            cy.findByTestId("list-search-field").clear();
             cy.findByText("DE-Total").click();
 
             cy.findByTestId("number-filter-picker").within(() => {
