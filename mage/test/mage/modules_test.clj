@@ -253,7 +253,7 @@
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This count was 33 as of 2026-01-20. Update this number ONLY if you
           ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 35]
+          max-allowed-count 37]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
