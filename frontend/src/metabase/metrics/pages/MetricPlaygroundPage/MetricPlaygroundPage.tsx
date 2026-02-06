@@ -12,6 +12,7 @@ import { FilterPicker } from "metabase/metrics/components/FilterPicker";
 import {
   type ProjectionInfo,
   TimeseriesBucketPicker,
+  TimeseriesBucketPickerTarget,
 } from "metabase/metrics/components/TimeseriesBucketPicker";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Icon, MultiSelect, Popover, Stack } from "metabase/ui";
@@ -95,11 +96,18 @@ export function MetricPlaygroundPage() {
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
-        <TimeseriesBucketPicker
-          selectedUnit={selectedUnit}
-          projections={getProjections(definitions)}
-          onChange={setSelectedUnit}
-        />
+        <Popover>
+          <Popover.Target>
+            <TimeseriesBucketPickerTarget selectedUnit={selectedUnit} />
+          </Popover.Target>
+          <Popover.Dropdown>
+            <TimeseriesBucketPicker
+              selectedUnit={selectedUnit}
+              projections={getProjections(definitions)}
+              onChange={setSelectedUnit}
+            />
+          </Popover.Dropdown>
+        </Popover>
       </Stack>
     </Stack>
   );
