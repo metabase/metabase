@@ -96,7 +96,7 @@
    [:target :any]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
-   [:source_readable {:optional true} :boolean]
+   [:source_readable {:optional true} [:maybe :boolean]]
    [:entity_id [:maybe :string]]
    [:created_at :any]
    [:updated_at :any]
