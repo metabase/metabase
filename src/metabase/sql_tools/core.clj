@@ -123,7 +123,9 @@
     sql-string :- :string
     replacements :- ::replacements
     opts :- ::replace-names-opts]
-   (interface/replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
+   ;; Temporarily route all replace-names works to :macaw. There are test failures to figure out
+   ;; prior using sqlglot.
+   (interface/replace-names-impl :macaw #_(sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
