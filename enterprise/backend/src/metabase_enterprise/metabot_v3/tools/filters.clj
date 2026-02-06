@@ -254,11 +254,15 @@
                            (lib/count)
                            (let [expr (bucketed-column aggregation)]
                              (case (:function aggregation)
-                               :count-distinct (lib/distinct expr)
+                               (:count-distinct :distinct) (lib/distinct expr)
                                :sum            (lib/sum expr)
                                :min            (lib/min expr)
                                :max            (lib/max expr)
-                               :avg            (lib/avg expr))))]
+                               :avg            (lib/avg expr)
+                               (throw (ex-info (str "Unsupported aggregation function: " (:function aggregation)
+                                                    ". Supported: count, count-distinct, sum, min, max, avg")
+                                               {:agent-error? true
+                                                :status-code 400})))))]
             (lib/aggregate query agg-expr)))]
     (apply-aggregation-sort-order query-with-aggregation sort-order)))
 
