@@ -18,13 +18,15 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.measures :as lib-metric.measures]
    [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
-   [metabase.lib-metric.metrics :as lib-metric.metrics]))
+   [metabase.lib-metric.metrics :as lib-metric.metrics]
+   [metabase.lib-metric.projection :as lib-metric.projection]))
 
 ;; Ensure multimethod implementations are loaded
 (comment lib-metric.dimension/keep-me
          lib-metric.measures/keep-me
          lib-metric.metrics/keep-me
          lib-metric.metadata.provider/keep-me
+         lib-metric.projection/keep-me
          #?(:clj lib-metric.metadata.jvm/keep-me
             :cljs lib-metric.metadata.js/keep-me))
 
@@ -54,7 +56,10 @@
      database-provider-for-table
      metric-context-metadata-provider]
     [lib-metric.metadata.jvm
-     metadata-provider])
+     metadata-provider]
+    [lib-metric.projection
+     add-projection-positions
+     projectable-dimensions])
 
    :cljs
    (do
@@ -73,4 +78,6 @@
      (def get-persisted-dimension-mappings lib-metric.dimension/get-persisted-dimension-mappings)
      (def database-provider-for-table lib-metric.metadata.provider/database-provider-for-table)
      (def metric-context-metadata-provider lib-metric.metadata.provider/metric-context-metadata-provider)
-     (def metadata-provider lib-metric.metadata.js/metadata-provider)))
+     (def metadata-provider lib-metric.metadata.js/metadata-provider)
+     (def add-projection-positions lib-metric.projection/add-projection-positions)
+     (def projectable-dimensions lib-metric.projection/projectable-dimensions)))

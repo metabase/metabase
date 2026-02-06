@@ -4,7 +4,9 @@
    [goog.object :as gobject]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.definition :as lib-metric.definition]
+   [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
+   [metabase.lib-metric.projection :as lib-metric.projection]
    [metabase.lib-metric.proxy :as proxy]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -267,9 +269,9 @@
 
 (defn ^:export filterableDimensions
   "Get dimensions that can be used for filtering.
-   STUB: Returns mock dimensions."
-  [_definition]
-  (proxy/proxy mock-dimensions))
+   Each dimension includes :filter-positions indicating which filter indices use it."
+  [definition]
+  (proxy/proxy (lib-metric.filter/filterable-dimensions definition)))
 
 (defn ^:export filter
   "Add a filter clause to a metric definition.
@@ -396,9 +398,9 @@
 
 (defn ^:export projectionableDimensions
   "Get dimensions that can be used for projections.
-   STUB: Returns mock dimensions."
-  [_definition]
-  (proxy/proxy mock-dimensions))
+   Returns dimensions with :projection-positions metadata."
+  [definition]
+  (proxy/proxy (lib-metric.projection/projectable-dimensions definition)))
 
 (defn ^:export project
   "Add a projection clause to a metric definition.
@@ -547,8 +549,8 @@
 
        :metadata/dimension
        {:display-name         (or (:display-name source) (:name source) "Dimension")
-        :filter-positions     []
-        :projection-positions []}
+        :filter-positions     (or (:filter-positions source) [])
+        :projection-positions (or (:projection-positions source) [])}
 
        :temporal-bucket
        {:short-name   (name (:unit source))

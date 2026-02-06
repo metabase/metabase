@@ -7,6 +7,7 @@ import {
 } from "metabase-types/api/mocks/metric";
 
 import * as LibMetric from "./core";
+import type { MetadataProvider, MetricDefinition, MetricMetadata } from "./types";
 
 const SAMPLE_METRIC = createMockMetric({
   id: 1,
@@ -41,6 +42,23 @@ function createSampleMetadata(): Metadata {
   return metadata;
 }
 
+/**
+ * Helper to set up a definition from SAMPLE_METRIC.
+ * Returns provider, metricMeta, and definition.
+ */
+function setupDefinition(): {
+  provider: MetadataProvider;
+  metricMeta: MetricMetadata;
+  definition: MetricDefinition;
+} {
+  const metadata = createSampleMetadata();
+  const provider = LibMetric.metadataProvider(metadata);
+  const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+  expect(metricMeta).not.toBeNull();
+  const definition = LibMetric.fromMetricMetadata(provider, metricMeta!);
+  return { provider, metricMeta: metricMeta!, definition };
+}
+
 describe("metabase-lib/metric/core", () => {
   describe("metadataProvider", () => {
     it("should create a metadata provider from JS metadata", () => {
@@ -70,423 +88,288 @@ describe("metabase-lib/metric/core", () => {
 
   describe("fromMetricMetadata", () => {
     it("should create a MetricDefinition from metric metadata", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
-
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        expect(definition).toBeDefined();
-      }
+      const { definition } = setupDefinition();
+      expect(definition).toBeDefined();
     });
   });
 
   describe("sourceMetricId", () => {
     it("should return the source metric ID for a metric-based definition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
-
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const sourceId = LibMetric.sourceMetricId(definition);
-
-        expect(sourceId).toBe(SAMPLE_METRIC.id);
-      }
+      const { definition } = setupDefinition();
+      const sourceId = LibMetric.sourceMetricId(definition);
+      expect(sourceId).toBe(SAMPLE_METRIC.id);
     });
   });
 
   describe("sourceMeasureId", () => {
     it("should return null for a metric-based definition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
-
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const sourceId = LibMetric.sourceMeasureId(definition);
-
-        expect(sourceId).toBeNull();
-      }
+      const { definition } = setupDefinition();
+      const sourceId = LibMetric.sourceMeasureId(definition);
+      expect(sourceId).toBeNull();
     });
   });
 
   describe("filters", () => {
     it("should return filters for a new definition (empty by default)", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const filterClauses = LibMetric.filters(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const filterClauses = LibMetric.filters(definition);
-
-        // filters returns a CLJS array-like structure
-        expect(filterClauses).toBeDefined();
-        expect(filterClauses.length).toBe(0);
-      }
+      expect(filterClauses).toBeDefined();
+      expect(filterClauses.length).toBe(0);
     });
   });
 
   describe("projections", () => {
     it("should return projections for a new definition (empty by default)", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const projectionClauses = LibMetric.projections(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const projectionClauses = LibMetric.projections(definition);
-
-        // projections returns a CLJS array-like structure
-        expect(projectionClauses).toBeDefined();
-        expect(projectionClauses.length).toBe(0);
-      }
+      expect(projectionClauses).toBeDefined();
+      expect(projectionClauses.length).toBe(0);
     });
   });
 
   describe("filterableDimensions", () => {
     it("should return filterable dimensions for a definition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
+      expect(dimensions).toBeDefined();
+      expect(typeof dimensions.length).toBe("number");
+    });
 
-        // Returns a CLJS array-like structure (may be proxied)
-        expect(dimensions).toBeDefined();
-        expect(typeof dimensions.length).toBe("number");
-      }
+    it("should return dimensions matching the metric's dimensions", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+
+      // The metric has 2 dimensions defined
+      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions!.length);
+    });
+
+    it("should include filter-positions in dimension display info", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+
+      expect(dimensions.length).toBeGreaterThan(0);
+      const info = LibMetric.displayInfo(definition, dimensions[0]);
+
+      // filterPositions should be an array (empty for a new definition with no filters)
+      expect(info.filterPositions).toBeDefined();
+      expect(Array.isArray(info.filterPositions)).toBe(true);
+      expect(info.filterPositions).toEqual([]);
+    });
+
+    it("should return empty filter-positions for a definition with no filters", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+
+      // All dimensions should have empty filter-positions since no filters are applied
+      dimensions.forEach((dimension) => {
+        const info = LibMetric.displayInfo(definition, dimension);
+        expect(info.filterPositions).toEqual([]);
+      });
     });
   });
 
   describe("projectionableDimensions", () => {
     it("should return projectionable dimensions for a definition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.projectionableDimensions(definition);
-
-        // Returns a CLJS array-like structure (may be proxied)
-        expect(dimensions).toBeDefined();
-        expect(typeof dimensions.length).toBe("number");
-      }
+      expect(dimensions).toBeDefined();
+      expect(typeof dimensions.length).toBe("number");
     });
   });
 
   describe("displayInfo", () => {
     it("should return display info for metric metadata", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition, metricMeta } = setupDefinition();
+      const info = LibMetric.displayInfo(definition, metricMeta);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const info = LibMetric.displayInfo(definition, metricMeta);
+      expect(info).toBeDefined();
+      expect(info.displayName).toBeDefined();
+    });
 
-        expect(info).toBeDefined();
-        // displayName is accessed via proxy, may be camelCase
-        expect(info.displayName).toBeDefined();
-      }
+    it("should return display info with filterPositions for dimensions", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+
+      expect(dimensions.length).toBeGreaterThan(0);
+      const info = LibMetric.displayInfo(definition, dimensions[0]);
+
+      expect(info).toBeDefined();
+      expect(info.displayName).toBeDefined();
+      expect(info.filterPositions).toBeDefined();
+      expect(info.projectionPositions).toBeDefined();
     });
   });
 
   describe("availableTemporalBuckets", () => {
     it("should return available temporal buckets for a dimension", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          const buckets = LibMetric.availableTemporalBuckets(
-            definition,
-            dimensions[0],
-          );
-          // Returns a CLJS array-like structure
-          expect(buckets).toBeDefined();
-          expect(typeof buckets.length).toBe("number");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      const buckets = LibMetric.availableTemporalBuckets(
+        definition,
+        dimensions[0],
+      );
+      expect(buckets).toBeDefined();
+      expect(typeof buckets.length).toBe("number");
     });
   });
 
   describe("isTemporalBucketable", () => {
     it("should check if a dimension can have temporal buckets applied", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          const result = LibMetric.isTemporalBucketable(
-            definition,
-            dimensions[0],
-          );
-          expect(typeof result).toBe("boolean");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      const result = LibMetric.isTemporalBucketable(definition, dimensions[0]);
+      expect(typeof result).toBe("boolean");
     });
   });
 
   describe("availableBinningStrategies", () => {
     it("should return available binning strategies for a dimension", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          const strategies = LibMetric.availableBinningStrategies(
-            definition,
-            dimensions[0],
-          );
-          // Returns a CLJS array-like structure
-          expect(strategies).toBeDefined();
-          expect(typeof strategies.length).toBe("number");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      const strategies = LibMetric.availableBinningStrategies(
+        definition,
+        dimensions[0],
+      );
+      expect(strategies).toBeDefined();
+      expect(typeof strategies.length).toBe("number");
     });
   });
 
   describe("isBinnable", () => {
     it("should check if a dimension can have binning applied", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          const result = LibMetric.isBinnable(definition, dimensions[0]);
-          expect(typeof result).toBe("boolean");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      const result = LibMetric.isBinnable(definition, dimensions[0]);
+      expect(typeof result).toBe("boolean");
     });
   });
 
   describe("type checking functions", () => {
     it("isBoolean should return a boolean", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          expect(typeof LibMetric.isBoolean(dimensions[0])).toBe("boolean");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      expect(typeof LibMetric.isBoolean(dimensions[0])).toBe("boolean");
     });
 
     it("isNumeric should return a boolean", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          expect(typeof LibMetric.isNumeric(dimensions[0])).toBe("boolean");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      expect(typeof LibMetric.isNumeric(dimensions[0])).toBe("boolean");
     });
 
     it("isTemporal should return a boolean", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          expect(typeof LibMetric.isTemporal(dimensions[0])).toBe("boolean");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      expect(typeof LibMetric.isTemporal(dimensions[0])).toBe("boolean");
     });
 
     it("isStringLike should return a boolean", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          expect(typeof LibMetric.isStringLike(dimensions[0])).toBe("boolean");
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      expect(typeof LibMetric.isStringLike(dimensions[0])).toBe("boolean");
     });
   });
 
   describe("toJsMetricDefinition and fromJsMetricDefinition", () => {
     it("should round-trip a metric definition through JS format", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { provider, definition } = setupDefinition();
+      const jsDefinition = LibMetric.toJsMetricDefinition(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const jsDefinition = LibMetric.toJsMetricDefinition(definition);
+      expect(jsDefinition).toBeDefined();
+      expect((jsDefinition as Record<string, unknown>)["source-metric"]).toBe(
+        SAMPLE_METRIC.id,
+      );
 
-        expect(jsDefinition).toBeDefined();
-        // Access the source-metric property using bracket notation for kebab-case key
-        expect((jsDefinition as Record<string, unknown>)["source-metric"]).toBe(
-          SAMPLE_METRIC.id,
-        );
-
-        const roundTripped = LibMetric.fromJsMetricDefinition(
-          provider,
-          jsDefinition,
-        );
-        expect(LibMetric.sourceMetricId(roundTripped)).toBe(SAMPLE_METRIC.id);
-      }
+      const roundTripped = LibMetric.fromJsMetricDefinition(
+        provider,
+        jsDefinition,
+      );
+      expect(LibMetric.sourceMetricId(roundTripped)).toBe(SAMPLE_METRIC.id);
     });
   });
 
   describe("filterParts", () => {
     it("should return null for clauses that do not match any filter type", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const filterClauses = LibMetric.filters(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const filterClauses = LibMetric.filters(definition);
-
-        // New definition has no filters
-        expect(filterClauses).toBeDefined();
-        expect(filterClauses.length).toBe(0);
-      }
+      // New definition has no filters
+      expect(filterClauses).toBeDefined();
+      expect(filterClauses.length).toBe(0);
     });
   });
 
   describe("dimensionValuesInfo", () => {
     it("should return dimension values info for a dimension", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
-        const dimensions = LibMetric.filterableDimensions(definition);
-
-        if (dimensions.length > 0) {
-          const info = LibMetric.dimensionValuesInfo(definition, dimensions[0]);
-          expect(info).toBeDefined();
-          // Properties may be accessed via proxy with camelCase
-          expect(info.canListValues !== undefined).toBe(true);
-          expect(info.canSearchValues !== undefined).toBe(true);
-          expect(info.canRemapValues !== undefined).toBe(true);
-        }
-      }
+      expect(dimensions.length).toBeGreaterThan(0);
+      const info = LibMetric.dimensionValuesInfo(definition, dimensions[0]);
+      expect(info).toBeDefined();
+      expect(info.canListValues !== undefined).toBe(true);
+      expect(info.canSearchValues !== undefined).toBe(true);
+      expect(info.canRemapValues !== undefined).toBe(true);
     });
   });
 
   describe("MetadataProviderable - using MetricDefinition as provider", () => {
     it("metricMetadata should accept a MetricDefinition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
+      // Use the definition as MetadataProviderable to look up the same metric
+      const metricMetaFromDefinition = LibMetric.metricMetadata(
+        definition,
+        SAMPLE_METRIC.id,
+      );
 
-        // Use the definition as MetadataProviderable to look up the same metric
-        const metricMetaFromDefinition = LibMetric.metricMetadata(
-          definition,
-          SAMPLE_METRIC.id,
-        );
-
-        expect(metricMetaFromDefinition).not.toBeNull();
-      }
+      expect(metricMetaFromDefinition).not.toBeNull();
     });
 
     it("fromMetricMetadata should accept a MetricDefinition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition, metricMeta } = setupDefinition();
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
+      // Create a new definition using the existing definition as MetadataProviderable
+      const newDefinition = LibMetric.fromMetricMetadata(definition, metricMeta);
 
-        // Create a new definition using the existing definition as MetadataProviderable
-        const newDefinition = LibMetric.fromMetricMetadata(
-          definition,
-          metricMeta,
-        );
-
-        expect(newDefinition).toBeDefined();
-        expect(LibMetric.sourceMetricId(newDefinition)).toBe(SAMPLE_METRIC.id);
-      }
+      expect(newDefinition).toBeDefined();
+      expect(LibMetric.sourceMetricId(newDefinition)).toBe(SAMPLE_METRIC.id);
     });
 
     it("fromJsMetricDefinition should accept a MetricDefinition", () => {
-      const metadata = createSampleMetadata();
-      const provider = LibMetric.metadataProvider(metadata);
-      const metricMeta = LibMetric.metricMetadata(provider, SAMPLE_METRIC.id);
+      const { definition } = setupDefinition();
 
-      expect(metricMeta).not.toBeNull();
-      if (metricMeta) {
-        const definition = LibMetric.fromMetricMetadata(provider, metricMeta);
+      // Create a new definition from JS format using the existing definition as MetadataProviderable
+      const jsDefinition = {
+        "source-metric": SAMPLE_METRIC.id,
+      } as unknown as JsMetricDefinition;
+      const newDefinition = LibMetric.fromJsMetricDefinition(
+        definition,
+        jsDefinition,
+      );
 
-        // Create a new definition from JS format using the existing definition as MetadataProviderable
-        const jsDefinition = {
-          "source-metric": SAMPLE_METRIC.id,
-        } as unknown as JsMetricDefinition;
-        const newDefinition = LibMetric.fromJsMetricDefinition(
-          definition,
-          jsDefinition,
-        );
-
-        expect(newDefinition).toBeDefined();
-        expect(LibMetric.sourceMetricId(newDefinition)).toBe(SAMPLE_METRIC.id);
-      }
+      expect(newDefinition).toBeDefined();
+      expect(LibMetric.sourceMetricId(newDefinition)).toBe(SAMPLE_METRIC.id);
     });
   });
 });

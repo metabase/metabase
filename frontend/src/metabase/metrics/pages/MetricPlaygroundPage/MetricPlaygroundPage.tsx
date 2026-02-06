@@ -32,6 +32,8 @@ export function MetricPlaygroundPage() {
     [metricIds, measureIds, metadataProvider],
   );
 
+  console.log("DEFS", definitions)
+
   const handleMetricChange = (value: string[]) => {
     const metricIds = value.map(getMetricId);
     setMetricIds(metricIds);
