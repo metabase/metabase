@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.aggregation :as lib.aggregation]
-   [metabase.lib.display-name :as lib.display-name]))
+   [metabase.lib.display-name :as lib.display-name]
+   [metabase.lib.filter :as lib.filter]))
 
 (deftest ^:parallel parse-column-display-name-parts-plain-column-test
   (testing "Plain column names should be translatable"
@@ -120,3 +121,61 @@
               {:type :translatable, :value "Total"}
               {:type :static, :value " של סכום"}]
              (lib.display-name/parse-column-display-name-parts "Products → Total של סכום" patterns))))))
+
+(deftest ^:parallel parse-column-display-name-parts-filter-test
+  (let [filter-patterns (lib.filter/filter-display-name-patterns)]
+    (testing "Simple binary filter"
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " is between 100 and 200"}]
+             (lib.display-name/parse-column-display-name-parts "Total is between 100 and 200" nil filter-patterns))))
+
+    (testing "Greater than filter"
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " is greater than 100"}]
+             (lib.display-name/parse-column-display-name-parts "Total is greater than 100" nil filter-patterns))))
+
+    (testing "Unary filter (not)"
+      (is (= [{:type :static, :value "not "}
+              {:type :translatable, :value "Total"}]
+             (lib.display-name/parse-column-display-name-parts "not Total" nil filter-patterns))))
+
+    (testing "Unary filter (is empty)"
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " is empty"}]
+             (lib.display-name/parse-column-display-name-parts "Total is empty" nil filter-patterns))))
+
+    (testing "Filter with join"
+      (is (= [{:type :translatable, :value "Products"}
+              {:type :static, :value " → "}
+              {:type :translatable, :value "Total"}
+              {:type :static, :value " is between 100 and 200"}]
+             (lib.display-name/parse-column-display-name-parts "Products → Total is between 100 and 200" nil filter-patterns))))
+
+    (testing "Filter with temporal bucket"
+      (is (= [{:type :translatable, :value "Created At"}
+              {:type :static, :value ": "}
+              {:type :static, :value "Month"}
+              {:type :static, :value " is before 2024"}]
+             (lib.display-name/parse-column-display-name-parts "Created At: Month is before 2024" nil filter-patterns))))
+
+    (testing "Contains filter"
+      (is (= [{:type :translatable, :value "Category"}
+              {:type :static, :value " contains Widget"}]
+             (lib.display-name/parse-column-display-name-parts "Category contains Widget" nil filter-patterns))))
+
+    (testing "Does not contain filter"
+      (is (= [{:type :translatable, :value "Category"}
+              {:type :static, :value " does not contain Widget"}]
+             (lib.display-name/parse-column-display-name-parts "Category does not contain Widget" nil filter-patterns))))))
+
+(deftest ^:parallel parse-column-display-name-parts-filter-with-aggregation-test
+  (let [agg-patterns    (lib.aggregation/aggregation-display-name-patterns)
+        filter-patterns (lib.filter/filter-display-name-patterns)]
+    (testing "Filter patterns should not interfere with aggregation patterns"
+      (is (= [{:type :static, :value "Sum of "}
+              {:type :translatable, :value "Total"}]
+             (lib.display-name/parse-column-display-name-parts "Sum of Total" agg-patterns filter-patterns))))
+
+    (testing "Plain column name is unchanged when filter patterns are present"
+      (is (= [{:type :translatable, :value "Total"}]
+             (lib.display-name/parse-column-display-name-parts "Total" agg-patterns filter-patterns))))))

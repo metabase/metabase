@@ -74,6 +74,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
@@ -558,8 +559,9 @@
 
   Uses the standard aggregation display name patterns internally."
   [display-name]
-  (let [patterns (lib.aggregation/aggregation-display-name-patterns)
-        parts (lib.display-name/parse-column-display-name-parts display-name patterns)]
+  (let [aggregation-patterns (lib.aggregation/aggregation-display-name-patterns)
+        filter-patterns      (lib.filter/filter-display-name-patterns)
+        parts (lib.display-name/parse-column-display-name-parts display-name aggregation-patterns filter-patterns)]
     (clj->js parts)))
 
 (defn ^:export numeric-binning-strategies

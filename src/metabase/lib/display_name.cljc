@@ -62,6 +62,28 @@
        :table    (subs join-alias 0 dash-idx)
        :fk-field (subs join-alias (+ dash-idx (count implicit-join-display-name-separator)))})))
 
+(defn- try-parse-filter-to-parts
+  "Try to parse a display name using filter patterns.
+   Filter patterns have :prefix (text before column) and :separator (text between column and first value/end).
+   Returns {:column str, :prefix str, :rest str-or-nil} or nil."
+  [display-name patterns]
+  (perf/some (fn [{:keys [prefix separator]}]
+               (when (str/starts-with? display-name prefix)
+                 (let [after-prefix (subs display-name (count prefix))]
+                   (if (seq separator)
+                     ;; Binary/ternary: has separator between column and values
+                     (when-let [sep-idx (str/index-of after-prefix separator)]
+                       (when (pos? sep-idx) ;; column must be non-empty
+                         {:column (subs after-prefix 0 sep-idx)
+                          :prefix prefix
+                          :rest   (subs after-prefix sep-idx)}))
+                     ;; Unary: no separator, everything after prefix is the column
+                     (when (seq after-prefix)
+                       {:column after-prefix
+                        :prefix prefix
+                        :rest   nil})))))
+             patterns))
+
 (defn- try-parse-colon-suffix-to-parts
   "Try to parse a display name with a colon suffix.
    Returns {:matched true, :column str, :suffix str} or nil."
@@ -112,11 +134,13 @@
       {:type :static, :value \": \"}
       {:type :static, :value \"Month\"}]"
   ([display-name]
-   (parse-column-display-name-parts display-name nil))
+   (parse-column-display-name-parts display-name nil nil))
   ([display-name aggregation-patterns]
+   (parse-column-display-name-parts display-name aggregation-patterns nil))
+  ([display-name aggregation-patterns filter-patterns]
    (letfn [(parse-inner [string]
                         ;; Recursively parse the inner part which may have more patterns
-             (parse-column-display-name-parts string aggregation-patterns))
+             (parse-column-display-name-parts string aggregation-patterns filter-patterns))
 
            (parse-join-alias [join-alias]
              ;; Parse join alias which may be an implicit join like "People - Product"
@@ -135,6 +159,14 @@
             (cond-> (seq prefix) (conj (static-part prefix)))
             (into (parse-inner inner))
             (cond-> (seq suffix) (conj (static-part suffix)))))
+
+      ;; Then try filter patterns (column + operator + values)
+      ;; Must be before join/colon parsing since filter text may contain ": " or " → "
+      (when-let [{:keys [column prefix rest]} (try-parse-filter-to-parts display-name filter-patterns)]
+        (-> []
+            (cond-> (seq prefix) (conj (static-part prefix)))
+            (into (parse-inner column))
+            (cond-> rest (conj (static-part rest)))))
 
       ;; Then try join pattern
       (when-let [{:keys [join-alias column]} (try-parse-join-to-parts display-name)]

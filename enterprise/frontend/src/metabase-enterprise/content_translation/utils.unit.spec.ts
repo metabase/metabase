@@ -604,4 +604,53 @@ describe("translateColumnDisplayName", () => {
       });
     });
   });
+
+  describe("filter display name patterns", () => {
+    const tcWithFilterTranslations: ContentTranslationFunction = (str) => {
+      const translations: Record<string, string> = {
+        Total: "Gesamtsumme",
+        Price: "Preis",
+        "Created At": "Erstellt am",
+        Products: "Produkte",
+        Status: "Status",
+      };
+
+      return typeof str === "string" ? (translations[str] ?? str) : str;
+    };
+
+    it.each([
+      ["Total is greater than 100", "Gesamtsumme is greater than 100"],
+      [
+        "Created At is in the previous 3 months",
+        "Erstellt am is in the previous 3 months",
+      ],
+      ["Status is Active", "Status is Active"],
+      ["Price is between 10 and 100", "Preis is between 10 and 100"],
+      ["Total is empty", "Gesamtsumme is empty"],
+      ["Total is not empty", "Gesamtsumme is not empty"],
+      ["Status contains Active", "Status contains Active"],
+      [
+        "Sum of Total is greater than 100",
+        "Sum of Gesamtsumme is greater than 100",
+      ],
+      [
+        "Products → Price is greater than 50",
+        "Produkte → Preis is greater than 50",
+      ],
+      ["Created At: Month is today", "Erstellt am: Month is today"],
+      [
+        "Unknown Column is greater than 100",
+        "Unknown Column is greater than 100",
+      ],
+    ])(
+      "should translate column name in filter: %s -> %s",
+      (input, expected) => {
+        const result = translateColumnDisplayName(
+          input,
+          tcWithFilterTranslations,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+  });
 });
