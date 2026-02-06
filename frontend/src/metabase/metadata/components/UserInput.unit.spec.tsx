@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import { setupUsersEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UserInput } from "metabase/metadata/components/UserInput";
 import { createMockUserListResult } from "metabase-types/api/mocks";
@@ -26,25 +26,23 @@ describe("UserInput", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    setupUserRecipientsEndpoint({
-      users: [
-        createMockUserListResult({
-          id: 1,
-          common_name: "Alice Anderson",
-          email: "alice@test.com",
-        }),
-        createMockUserListResult({
-          id: 2,
-          common_name: "Bob Builder",
-          email: "bob@test.com",
-        }),
-        createMockUserListResult({
-          id: 3,
-          common_name: "Charlie Chen",
-          email: "charlie@test.com",
-        }),
-      ],
-    });
+    setupUsersEndpoints([
+      createMockUserListResult({
+        id: 1,
+        common_name: "Alice Anderson",
+        email: "alice@test.com",
+      }),
+      createMockUserListResult({
+        id: 2,
+        common_name: "Bob Builder",
+        email: "bob@test.com",
+      }),
+      createMockUserListResult({
+        id: 3,
+        common_name: "Charlie Chen",
+        email: "charlie@test.com",
+      }),
+    ]);
   });
 
   describe("basic component functionality", () => {

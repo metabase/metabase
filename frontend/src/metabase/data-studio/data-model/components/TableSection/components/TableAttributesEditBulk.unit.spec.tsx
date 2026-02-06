@@ -6,7 +6,7 @@ import _ from "underscore";
 import {
   setupTableEndpoints,
   setupUserKeyValueEndpoints,
-  setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
@@ -83,7 +83,7 @@ function setup({
   isAdmin = false,
   isDataAnalyst = false,
 }: SetupOpts = {}) {
-  setupUserRecipientsEndpoint({ users: [createMockUser()] });
+  setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "seen-publish-tables-info",
