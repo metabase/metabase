@@ -62,7 +62,7 @@ export const setup = async ({
 export const DEFAULT_EE_SETTINGS: Partial<SetupOps> = {
   enterprisePlugins: ["library", "remote_sync"],
   tokenFeatures: {
-    data_studio: true,
+    library: true,
     remote_sync: true,
   },
 };

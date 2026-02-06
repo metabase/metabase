@@ -235,7 +235,7 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
   tokenFeatures: {
     remote_sync: true,
     advanced_permissions: true,
-    data_studio: true,
+    library: true,
     dependencies: true,
   },
 };
@@ -251,7 +251,7 @@ export const DEFAULT_EE_SETTINGS_WITH_WORKSPACES: Partial<SetupOpts> = {
   tokenFeatures: {
     remote_sync: true,
     advanced_permissions: true,
-    data_studio: true,
+    library: true,
     dependencies: true,
     workspaces: true,
   },

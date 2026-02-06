@@ -193,10 +193,6 @@
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
                        (when-not multi-level-schema [:= :c.table_catalog catalog])
-                       ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
-                       ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
-                       ;; is resolved by Databricks in underlying jdbc driver.
-                       [:not= :c.full_data_type [:inline "timestamp_ntz"]]
                        [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
                        [:not [:in :c.table_schema [[:inline "information_schema"]]]]
                        (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)

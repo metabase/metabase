@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -454,21 +453,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (if config/ee-available?
-    (mi/instances-with-hydrated-data
-     tables k
-     #(let [table-ids                (map :id tables)
-            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
-                                                       :from_entity_type "table"
-                                                       :from_entity_id [:in table-ids]
-                                                       :to_entity_type "transform")
-            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
-                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-        (update-vals table-id->transform-id transform-id->transform))
-     :id
-     {:default nil})
-    ;; EE not available, so no transforms
-    tables))
+  (mi/instances-with-hydrated-data
+   tables k
+   #(let [transform-ids (->> tables (keep :transform_id) distinct)
+          id->transform (when (seq transform-ids)
+                          (t2/select-fn->fn :id identity :model/Transform
+                                            :id [:in transform-ids]))]
+      (into {}
+            (keep (fn [{:keys [id transform_id]}]
+                    (when transform_id
+                      [id (get id->transform transform_id)])))
+            tables))
+   :id
+   {:default nil}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
@@ -595,7 +592,8 @@
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database :name)
-               :collection_id  (serdes/fk :model/Collection)}})
+               :collection_id  (serdes/fk :model/Collection)
+               :transform_id   (serdes/fk :model/Transform)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
