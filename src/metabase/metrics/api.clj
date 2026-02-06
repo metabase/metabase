@@ -194,15 +194,15 @@
      (:dimension_mappings metric)
      dimension-key)))
 
-(api.macros/defendpoint :get "/:id/dimension/:dimension-key/search/:query"
-  :- ms/FieldValuesResult
+(api.macros/defendpoint :get "/:id/dimension/:dimension-key/search"
+  :- [:sequential [:vector :string]]
   "Search for values of a dimension that contain the query string.
 
    Returns field values matching the search query in the same format as the field values API."
-  [{:keys [id dimension-key query]} :- [:map
-                                        [:id            ms/PositiveInt]
-                                        [:dimension-key ms/UUIDString]
-                                        [:query         ms/NonBlankString]]]
+  [{:keys [id dimension-key]} :- [:map
+                                  [:id            ms/PositiveInt]
+                                  [:dimension-key ms/UUIDString]]
+   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
   (let [metric (hydrated-metric id)]
     (metrics.dimension/dimension-search-values
      (:dimensions metric)

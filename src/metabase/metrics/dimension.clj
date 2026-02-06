@@ -17,14 +17,14 @@
         field    (t2/select-one :model/Field :id field-id)]
     (parameters/field->values field)))
 
-(mu/defn dimension-search-values :- ms/FieldValuesResult
+(mu/defn dimension-search-values :- [:sequential [:vector :string]]
   "Search for values of a dimension that contain the query string."
   [dimensions         :- [:maybe [:sequential :map]]
    dimension-mappings :- [:maybe [:sequential :map]]
    dimension-id       :- :string
    query-string       :- ms/NonBlankString]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)]
-    (parameters/search-values-from-field-id field-id query-string)))
+    (:values (parameters/search-values-from-field-id field-id query-string))))
 
 (mu/defn dimension-remapped-value :- [:or [:tuple :any] [:tuple :any :string]]
   "Get the remapped value for a specific dimension value.

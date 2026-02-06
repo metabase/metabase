@@ -69,7 +69,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest dimension-search-endpoint-test
-  (testing "GET /api/metric/:id/dimension/:key/search/:query searches field values"
+  (testing "GET /api/metric/:id/dimension/:key/search searches field values"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :database_id   (mt/id)
@@ -80,18 +80,19 @@
             dim-id          (get-dimension-id hydrated-metric "NAME")]
         (is (some? dim-id) "NAME dimension should exist")
         (let [response (mt/user-http-request :rasta :get 200
-                                             (str "metric/" (:id metric) "/dimension/" dim-id "/search/Red%20Med"))]
-          (is (= (mt/id :venues :name) (:field_id response)))
-          (is (= [["Red Medicine"]] (:values response))))))))
+                                             (str "metric/" (:id metric) "/dimension/" dim-id "/search")
+                                             :query "Red Med")]
+          (is (= [["Red Medicine"]] response)))))))
 
 (deftest dimension-search-missing-metric-test
-  (testing "GET /api/metric/:id/dimension/:key/search/:query returns 404 for non-existent metric"
+  (testing "GET /api/metric/:id/dimension/:key/search returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404
-                                 (str "metric/" Integer/MAX_VALUE "/dimension/" fake-dimension-id "/search/test"))))))
+                                 (str "metric/" Integer/MAX_VALUE "/dimension/" fake-dimension-id "/search")
+                                 :query "test")))))
 
 (deftest dimension-search-missing-dimension-test
-  (testing "GET /api/metric/:id/dimension/:key/search/:query returns 400 for non-existent dimension"
+  (testing "GET /api/metric/:id/dimension/:key/search returns 400 for non-existent dimension"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :database_id   (mt/id)
@@ -99,7 +100,8 @@
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [response (mt/user-http-request :rasta :get 400
-                                           (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search/test"))]
+                                           (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
+                                           :query "test")]
         (is (re-find #"Dimension not found" (:message response)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -175,7 +177,7 @@
                                      (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))))))))
 
 (deftest dimension-search-permission-test
-  (testing "GET /api/metric/:id/dimension/:key/search/:query respects collection permissions"
+  (testing "GET /api/metric/:id/dimension/:key/search respects collection permissions"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection {}
                      :model/Card       metric {:name          "Protected Metric"
@@ -186,7 +188,8 @@
                                                :dataset_query (metric-query)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403
-                                     (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search/test"))))))))
+                                     (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
+                                     :query "test")))))))
 
 (deftest dimension-remapping-permission-test
   (testing "GET /api/metric/:id/dimension/:key/remapping respects collection permissions"
