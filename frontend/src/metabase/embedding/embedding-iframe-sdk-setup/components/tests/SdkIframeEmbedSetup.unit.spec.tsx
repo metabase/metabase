@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
@@ -122,6 +123,7 @@ describe("Embed flow > forward and backward navigation", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
+    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
