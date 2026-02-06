@@ -500,7 +500,10 @@
                         :labels [:status]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
-                        :labels [:status]})])
+                        :labels [:status]})
+   ;; SQL parsing metrics
+   (prometheus/counter :metabase-sql-parsing/timeouts
+                       {:description "Number of Python/GraalVM SQL parsing execution timeouts."})])
 
 (defn- quartz-collectors
   []
