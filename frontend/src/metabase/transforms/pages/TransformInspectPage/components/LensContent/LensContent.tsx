@@ -72,7 +72,11 @@ export const LensContent = ({
   return (
     <Stack gap="xl">
       <Title order={2}>{currentLensRef.title}</Title>
-      {lens.summary && <LensSummary summary={lens.summary} />}
+      {match(lens.id)
+        .with("generic-summary", () => null)
+        .otherwise(
+          () => lens.summary && <LensSummary summary={lens.summary} />,
+        )}
       {match(lens.id)
         .with("generic-summary", () => (
           <GenericSummarySections

@@ -7,7 +7,6 @@ import type {
 } from "metabase-types/api";
 
 import type { CardStats } from "../../../types";
-import { SectionsRenderer } from "../SectionsRenderer";
 
 import { GenericSummarySection } from "./GenericSummarySection";
 
@@ -27,16 +26,17 @@ export const GenericSummarySections = ({
   sources,
   target,
   onStatsReady,
-}: GenericSummarySectionsProps) => (
-  <SectionsRenderer sections={sections} cardsBySection={cardsBySection}>
-    {(cards) => (
+}: GenericSummarySectionsProps) =>
+  sections.map((section) => {
+    const cards = cardsBySection[section.id];
+    return (
       <GenericSummarySection
+        key={section.id}
         lens={lens}
         cards={cards}
         sources={sources}
         target={target}
         onStatsReady={onStatsReady}
       />
-    )}
-  </SectionsRenderer>
-);
+    );
+  });
