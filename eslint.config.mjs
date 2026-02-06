@@ -520,7 +520,7 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          ...baseMetabaseRestrictedConfig,
+          paths: baseMetabaseRestrictedConfig.paths,
           patterns: [
             ...baseMetabaseRestrictedConfig.patterns,
             {
@@ -716,12 +716,18 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          ...baseMetabaseRestrictedConfig,
+          paths: baseMetabaseRestrictedConfig.paths,
           patterns: [
             ...baseMetabaseRestrictedConfig.patterns,
             {
               group: ["__support__/**", "!__support__/metadata"],
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
+            },
+            {
+              group: ["metabase/common/components/LogoIcon"],
+              importNames: ["LogoIcon"],
+              message:
+                "Do not use LogoIcon in the SDK. With custom Icon, it doesn't work because it uses the Metabase instance's relative path.",
             },
           ],
         },
@@ -755,7 +761,7 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          ...baseMetabaseRestrictedConfig,
+          paths: baseMetabaseRestrictedConfig.paths,
           patterns: [
             ...baseMetabaseRestrictedConfig.patterns,
             {

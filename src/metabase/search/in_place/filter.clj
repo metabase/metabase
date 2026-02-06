@@ -287,8 +287,8 @@
 
 (defmethod build-optional-filter-query [:collection "table"]
   [_filter model query collection-id]
-  ;; Tables in collections are an EE feature (data-studio)
-  (if (premium-features/has-feature? :data-studio)
+  ;; Tables in collections are an EE feature (library)
+  (if (premium-features/has-feature? :library)
     (let [collection-col (search.config/column-with-model-alias model :collection_id)
           published-col  (search.config/column-with-model-alias model :is_published)]
       (sql.helpers/where query [:and

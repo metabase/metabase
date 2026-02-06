@@ -59,7 +59,7 @@ export const setup = ({
       "remote-sync-branch": "main",
       "remote-sync-type": "read-write",
       "token-features": createMockTokenFeatures({
-        data_studio: true,
+        library: true,
         remote_sync: true,
       }),
     });

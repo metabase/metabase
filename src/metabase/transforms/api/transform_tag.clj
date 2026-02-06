@@ -5,18 +5,24 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-tag :as transform-tag]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
+(def ^:private TransformTagResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:name [:or :string LocalizedString]]
+   [:entity_id [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]
+   [:built_in_type {:optional true} [:maybe :string]]
+   [:can_run {:optional true} :boolean]])
+
+(api.macros/defendpoint :post "/" :- TransformTagResponse
   "Create a new transform tag."
   [_route-params
    _query-params
@@ -28,11 +34,7 @@
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:tag-id"
+(api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag."
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]
@@ -46,24 +48,16 @@
   (t2/update! :model/TransformTag tag-id {:name name})
   (t2/select-one :model/TransformTag :id tag-id))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:tag-id"
+(api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs."
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
   (api/write-check (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
-  api/generic-204-no-content)
+  nil)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]
   "Get a list of all transform tags."
   [_route-params
    _query-params]

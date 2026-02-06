@@ -271,8 +271,8 @@
                                                (t2/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
-                                       ;; Tables in collections are an EE feature (data-studio)
-                                       (when (premium-features/has-feature? :data-studio)
+                                       ;; Tables in collections are an EE feature (library)
+                                       (when (premium-features/has-feature? :library)
                                          {:table (->> (t2/query {:select-distinct [:collection_id]
                                                                  :from :metabase_table
                                                                  :where [:and
@@ -741,6 +741,10 @@
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
+        ;; never show tenant-specific root collections as children of another collection
+        [:or
+         [:= :type nil]
+         [:not= :type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
@@ -814,9 +818,9 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
-        ;; Tables in collections are an EE feature (data-studio)
+        ;; Tables in collections are an EE feature (library)
         collections-containing-tables
-        (if (premium-features/has-feature? :data-studio)
+        (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :metabase_table
@@ -1121,8 +1125,8 @@
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
-                                      ;; Tables in collections are an EE feature (data-studio)
-                                      (premium-features/has-feature? :data-studio) (conj :table))
+                                      ;; Tables in collections are an EE feature (library)
+                                      (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1643,7 +1647,7 @@
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
-     (not= (:type collection-before-update) "tenant-specific-root-collection"))
+     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))

@@ -2933,6 +2933,44 @@ databaseChangeLog:
             constraintName: fk_transform_target_db_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v59.2026-02-04T10:45:00
+      author: nvoxland
+      comment: Add transform_id column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: Foreign key to the transform that created this table
+
+  - changeSet:
+      id: v59.2026-02-04T10:45:01
+      author: nvoxland
+      comment: Add index for metabase_table.transform_id
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_transform_id
+            columns:
+              - column:
+                  name: transform_id
+
+  - changeSet:
+      id: v59.2026-02-04T10:45:02
+      author: nvoxland
+      comment: Add foreign key on metabase_table(transform_id) to transform(id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_metabase_table_transform_id
+            onDelete: SET NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
