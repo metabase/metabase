@@ -206,7 +206,26 @@ export function getColors(
     ),
   };
 
-  return getColorsForValues(dimensionValues, existingColorMapping);
+  // historically we used "null" rather than NULL_DISPLAY_VALUE in `getColorsForValues`
+  // to avoid changing existing charts, we'll convert NULL_DISPLAY_VALUE to "null"
+  const colors = getColorsForValues(
+    dimensionValues.map((value) =>
+      value === NULL_DISPLAY_VALUE ? "null" : value,
+    ),
+    Object.fromEntries(
+      Object.entries(existingColorMapping).map(([key, value]) => [
+        key === NULL_DISPLAY_VALUE ? "null" : key,
+        value,
+      ]),
+    ),
+  );
+  // then flip it back
+  return Object.fromEntries(
+    Object.entries(colors).map(([key, value]) => [
+      key === "null" ? NULL_DISPLAY_VALUE : key,
+      value,
+    ]),
+  );
 }
 
 export function getPieRows(
