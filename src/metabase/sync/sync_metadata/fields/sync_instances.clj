@@ -190,11 +190,12 @@
         metabase-nested-fields (:nested-fields metabase-field)]
     (when (or (seq nested-fields-metadata)
               (seq metabase-nested-fields))
-      (sync-instances!
-       table
-       (set nested-fields-metadata)
-       (set metabase-nested-fields)
-       (some-> metabase-field u/the-id)))))
+      (:num-updates
+       (sync-instances!
+        table
+        (set nested-fields-metadata)
+        (set metabase-nested-fields)
+        (some-> metabase-field u/the-id))))))
 
 (mu/defn- sync-nested-field-instances! :- [:maybe ms/IntGreaterThanOrEqualToZero]
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
@@ -212,9 +213,11 @@
                               metabase-field (get name->metabase-field field-name)]]
       (sync-nested-fields-of-one-field! table field-metadata metabase-field))))
 
-(mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn sync-instances! :- Updates
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
-  creating Field objects or marking them active/inactive as needed."
+  creating Field objects or marking them active/inactive as needed.
+  Returns a map with `:num-updates` (count of synced Fields) and `:our-metadata` (the updated set of Field metadata
+  reflecting any newly created or reactivated Fields)."
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
@@ -232,6 +235,7 @@
                (pr-str (sort (map common/canonical-name db-metadata)))
                (pr-str (sort (map common/canonical-name our-metadata))))
    (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
-     (+ num-updates
-        (retire-fields! table db-metadata our-metadata)
-        (sync-nested-field-instances! table db-metadata our-metadata)))))
+     {:num-updates  (+ num-updates
+                       (retire-fields! table db-metadata our-metadata)
+                       (sync-nested-field-instances! table db-metadata our-metadata))
+      :our-metadata our-metadata})))

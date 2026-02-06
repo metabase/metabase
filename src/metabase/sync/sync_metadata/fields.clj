@@ -63,11 +63,9 @@
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-     ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-     ;; Re-fetch our metadata because there might be some things that have changed after calling
-     ;; `sync-instances`
-     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
+  (let [{:keys [num-updates our-metadata]} (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))]
+    (+ num-updates
+       (sync-metadata/update-metadata! database table db-metadata our-metadata))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

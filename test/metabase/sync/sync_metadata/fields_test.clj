@@ -11,6 +11,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
@@ -593,3 +594,15 @@
             {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
         (is (true? (:database_is_nullable a)))
         (is (false? (:database_is_nullable b)))))))
+
+(deftest our-metadata-fetched-once-per-table-test
+  (testing "our-metadata is only fetched once per table during sync-and-update! (#38941)"
+    (with-test-db
+      (sync/sync-database! (mt/db))
+      (let [call-count  (atom 0)
+            original-fn fields.our-metadata/our-metadata]
+        (with-redefs [fields.our-metadata/our-metadata (fn [table]
+                                                         (swap! call-count inc)
+                                                         (original-fn table))]
+          (sync-fields/sync-fields-for-table! (mt/db) (t2/select-one :model/Table :db_id (u/the-id (mt/db))))
+          (is (= 1 @call-count)))))))
