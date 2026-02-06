@@ -4,8 +4,6 @@
    [buddy.core.mac :as mac]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
-   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
-   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -26,10 +24,11 @@
   `(with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
                  encryption/default-secret-key test-encryption-key]
      (mt/with-premium-features #{:metabot-v3 :sso-slack}
-       (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                          metabot.settings/metabot-slack-bot-token "xoxb-test"
-                                          sso-settings/slack-connect-client-id "test-client-id"
-                                          sso-settings/slack-connect-client-secret "test-secret"]
+       (mt/with-temporary-setting-values [site-url "https://localhost:3000"
+                                          metabot-slack-signing-secret test-signing-secret
+                                          metabot-slack-bot-token "xoxb-test"
+                                          slack-connect-client-id "test-client-id"
+                                          slack-connect-client-secret "test-secret"]
          ~@body))))
 
 (defn- compute-slack-signature
@@ -279,10 +278,12 @@
   "Helper to test setup-complete? with one setting disabled.
    `override` is a map that can contain:
    - :encryption - set to nil to disable encryption
+   - :site-url - set to nil to disable site-url
    - :sso-slack - set to false to disable sso-slack feature
    - :signing-secret, :bot-token, :client-id, :client-secret - set to nil to disable"
-  [{:keys [encryption sso-slack signing-secret bot-token client-id client-secret]
+  [{:keys [encryption site-url sso-slack signing-secret bot-token client-id client-secret]
     :or {encryption test-encryption-key
+         site-url "https://localhost:3000"
          sso-slack true
          signing-secret test-signing-secret
          bot-token "xoxb-test"
@@ -293,10 +294,11 @@
                 encryption/default-secret-key encryption
                 premium-features/enable-sso-slack? (constantly sso-slack)]
     (mt/with-premium-features #{:metabot-v3 :sso-slack}
-      (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret signing-secret
-                                         metabot.settings/metabot-slack-bot-token bot-token
-                                         sso-settings/slack-connect-client-id client-id
-                                         sso-settings/slack-connect-client-secret client-secret]
+      (mt/with-temporary-setting-values [site-url site-url
+                                         metabot-slack-signing-secret signing-secret
+                                         metabot-slack-bot-token bot-token
+                                         slack-connect-client-id client-id
+                                         slack-connect-client-secret client-secret]
         (thunk)))))
 
 (deftest setup-complete-test
@@ -311,7 +313,8 @@
                              ["client-id missing"             {:client-id nil}]
                              ["client-secret missing"         {:client-secret nil}]
                              ["bot-token missing"             {:bot-token nil}]
-                             ["encryption disabled"           {:encryption nil}]]]
+                             ["encryption disabled"           {:encryption nil}]
+                             ["site-url disabled"             {:site-url nil}]]]
       (testing (str "returns 503 when " desc)
         (do-with-setup-override override
                                 #(is (= "Slack integration is not fully configured." (post-events 503))))))
