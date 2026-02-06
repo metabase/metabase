@@ -206,9 +206,11 @@ function getColumnLabel(columnName: StatsColumn | string) {
     earliest_latest: "Earliest/Latest",
   };
 
-  return columnName in statisticsInfo
-    ? statisticsInfo[columnName as StatsColumn]
-    : columnName;
+  if (isKey(statisticsInfo, columnName)) {
+    return statisticsInfo[columnName];
+  }
+
+  return columnName;
 }
 
 function formatType(field: TransformInspectField): string {
