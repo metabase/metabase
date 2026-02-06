@@ -756,4 +756,441 @@ describe("metabase-lib/metric/core", () => {
       expect(LibMetric.sourceMetricId(newDefinition)).toBe(SAMPLE_METRIC.id);
     });
   });
+
+  // ============================================================================
+  // FilterParts Extraction Tests
+  // ============================================================================
+
+  describe("stringFilterParts", () => {
+    it("should extract parts from equals filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1]; // Category - type/Text
+
+      const parts = {
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["Electronics", "Clothing"],
+        options: {},
+      };
+
+      const clause = LibMetric.stringFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.stringFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("=");
+      expect(extractedParts?.values).toEqual(["Electronics", "Clothing"]);
+    });
+
+    it("should extract parts from contains filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const parts = {
+        operator: "contains" as const,
+        dimension: stringDimension,
+        values: ["search term"],
+        options: {},
+      };
+
+      const clause = LibMetric.stringFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.stringFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("contains");
+      expect(extractedParts?.values).toEqual(["search term"]);
+    });
+
+    it("should extract parts from is-empty filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const parts = {
+        operator: "is-empty" as const,
+        dimension: stringDimension,
+        values: [],
+        options: {},
+      };
+
+      const clause = LibMetric.stringFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.stringFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("is-empty");
+      expect(extractedParts?.values).toEqual([]);
+    });
+
+    it("should return null for non-string dimension filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0]; // DateTime dimension
+
+      // Create a default filter on a non-string dimension
+      const clause = LibMetric.defaultFilterClause({
+        operator: "not-null" as const,
+        dimension: dateDimension,
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+
+      // stringFilterParts should return null for non-string filters
+      const extractedParts = LibMetric.stringFilterParts(updatedDef, clause);
+      expect(extractedParts).toBeNull();
+    });
+  });
+
+  describe("defaultFilterParts", () => {
+    it("should extract is-null parts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dimension = dimensions[0];
+
+      const parts = {
+        operator: "is-null" as const,
+        dimension: dimension,
+      };
+
+      const clause = LibMetric.defaultFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.defaultFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("is-null");
+    });
+
+    it("should extract not-null parts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dimension = dimensions[0];
+
+      const parts = {
+        operator: "not-null" as const,
+        dimension: dimension,
+      };
+
+      const clause = LibMetric.defaultFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.defaultFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("not-null");
+    });
+  });
+
+  describe("relativeDateFilterParts", () => {
+    it("should extract parts from simple time-interval", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0]; // DateTime dimension
+
+      const parts = {
+        dimension: dateDimension,
+        unit: "day" as const,
+        value: -30,
+        offsetUnit: null,
+        offsetValue: null,
+        options: {},
+      };
+
+      const clause = LibMetric.relativeDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.relativeDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.unit).toBe("day");
+      expect(extractedParts?.value).toBe(-30);
+    });
+
+    it("should extract offset values when present", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const parts = {
+        dimension: dateDimension,
+        unit: "day" as const,
+        value: -7,
+        offsetUnit: "week" as const,
+        offsetValue: -1,
+        options: {},
+      };
+
+      const clause = LibMetric.relativeDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.relativeDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.offsetUnit).toBe("week");
+      expect(extractedParts?.offsetValue).toBe(-1);
+    });
+  });
+
+  describe("excludeDateFilterParts", () => {
+    it("should extract day-of-week exclusion parts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const parts = {
+        operator: "!=" as const,
+        dimension: dateDimension,
+        unit: "day-of-week" as const,
+        values: [1, 7], // Exclude Sunday and Saturday
+      };
+
+      const clause = LibMetric.excludeDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.excludeDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("!=");
+      expect(extractedParts?.unit).toBe("day-of-week");
+      expect(extractedParts?.values).toEqual([1, 7]);
+    });
+  });
+
+  // ============================================================================
+  // filterParts Type Discrimination Tests
+  // ============================================================================
+
+  describe("filterParts type discrimination", () => {
+    it("should identify string filter and return StringFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1]; // Category - type/Text
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["Electronics"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      // StringFilterParts has an options property
+      expect(parts).toHaveProperty("options");
+      expect((parts as { operator: string }).operator).toBe("=");
+    });
+
+    it("should identify default filter and return DefaultFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dimension = dimensions[0];
+
+      const clause = LibMetric.defaultFilterClause({
+        operator: "is-null" as const,
+        dimension: dimension,
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe("is-null");
+    });
+
+    it("should identify relative date filter and return RelativeDateFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const clause = LibMetric.relativeDateFilterClause({
+        dimension: dateDimension,
+        unit: "day" as const,
+        value: -30,
+        offsetUnit: null,
+        offsetValue: null,
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      // RelativeDateFilterParts has unit and value properties
+      expect(parts).toHaveProperty("unit");
+      expect(parts).toHaveProperty("value");
+      expect((parts as { unit: string }).unit).toBe("day");
+      expect((parts as { value: number }).value).toBe(-30);
+    });
+  });
+
+  // ============================================================================
+  // Round-Trip Invariant Tests
+  // ============================================================================
+
+  describe("filter round-trip invariants", () => {
+    it("string filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const original = {
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["value1", "value2"],
+        options: {},
+      };
+
+      const clause = LibMetric.stringFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.stringFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+      expect(extracted?.values).toEqual(original.values);
+    });
+
+    it("default filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dimension = dimensions[0];
+
+      const original = {
+        operator: "not-null" as const,
+        dimension: dimension,
+      };
+
+      const clause = LibMetric.defaultFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.defaultFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+    });
+
+    it("relative date filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const original = {
+        dimension: dateDimension,
+        unit: "week" as const,
+        value: -4,
+        offsetUnit: null,
+        offsetValue: null,
+        options: {},
+      };
+
+      const clause = LibMetric.relativeDateFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.relativeDateFilterParts(updatedDef, clause);
+
+      expect(extracted?.unit).toBe(original.unit);
+      expect(extracted?.value).toBe(original.value);
+    });
+
+    it("exclude date filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const original = {
+        operator: "!=" as const,
+        dimension: dateDimension,
+        unit: "day-of-week" as const,
+        values: [1, 7],
+      };
+
+      const clause = LibMetric.excludeDateFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.excludeDateFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+      expect(extracted?.unit).toBe(original.unit);
+      expect(extracted?.values).toEqual(original.values);
+    });
+  });
+
+  // ============================================================================
+  // Filter Position Tracking Tests
+  // ============================================================================
+
+  describe("filter position tracking", () => {
+    it("should track filter positions after adding filters", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      // Add a filter on the string dimension
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["Electronics"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+
+      // Get dimensions from the updated definition
+      const updatedDimensions = LibMetric.filterableDimensions(updatedDef);
+      const updatedStringDim = updatedDimensions[1];
+
+      const info = LibMetric.displayInfo(updatedDef, updatedStringDim);
+      // The string dimension should now have a filter at position 0
+      expect(info.filterPositions).toEqual([0]);
+    });
+
+    it("should track multiple filter positions on same dimension", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      // Add two filters on the same dimension
+      const clause1 = LibMetric.stringFilterClause({
+        operator: "!=" as const,
+        dimension: stringDimension,
+        values: ["Excluded"],
+        options: {},
+      });
+      let updatedDef = LibMetric.filter(definition, clause1);
+
+      const clause2 = LibMetric.stringFilterClause({
+        operator: "contains" as const,
+        dimension: stringDimension,
+        values: ["search"],
+        options: {},
+      });
+      updatedDef = LibMetric.filter(updatedDef, clause2);
+
+      const updatedDimensions = LibMetric.filterableDimensions(updatedDef);
+      const updatedStringDim = updatedDimensions[1];
+
+      const info = LibMetric.displayInfo(updatedDef, updatedStringDim);
+      expect(info.filterPositions).toEqual([0, 1]);
+    });
+
+    it("should not affect other dimensions filter positions", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      // Add a filter only on the string dimension
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["Electronics"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+
+      const updatedDimensions = LibMetric.filterableDimensions(updatedDef);
+      const updatedDateDim = updatedDimensions[0];
+
+      const info = LibMetric.displayInfo(updatedDef, updatedDateDim);
+      // The date dimension should have no filters
+      expect(info.filterPositions).toEqual([]);
+    });
+  });
 });
