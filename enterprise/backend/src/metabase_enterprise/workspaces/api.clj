@@ -862,9 +862,12 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
-    (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    (let [source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} body)
+    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+          ;; Merge incoming target with existing to preserve fields like :database when not explicitly provided
+          merged-body (cond-> body
+                        (:target body) (update :target #(merge (:target existing) %)))
+          source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
