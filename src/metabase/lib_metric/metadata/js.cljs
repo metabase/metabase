@@ -24,7 +24,8 @@
   "Parse a single metric from JS object to Clojure map."
   [metric-obj]
   (when metric-obj
-    (let [parsed (-> (js->clj metric-obj :keywordize-keys true)
+    (let [metric-obj (object-get metric-obj "_plainObject")
+          parsed (-> (js->clj metric-obj :keywordize-keys true)
                      (update-keys u/->kebab-case-en))]
       (assoc parsed :lib/type :metadata/metric))))
 
@@ -70,7 +71,8 @@
   "Parse a single measure from JS object to Clojure map."
   [measure-obj]
   (when measure-obj
-    (let [parsed (-> (js->clj measure-obj :keywordize-keys true)
+    (let [metric-obj (object-get metric-obj "_plainObject")
+          parsed (-> (js->clj measure-obj :keywordize-keys true)
                      (update-keys u/->kebab-case-en))]
       (assoc parsed :lib/type :metadata/measure))))
 
