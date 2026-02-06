@@ -2,8 +2,6 @@
   "Integration tests for the Transform Inspector API."
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.inspector :as inspector]
@@ -12,10 +10,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- default-schema-or-public []
-  (or (when (isa? driver/hierarchy driver/*driver* :sql)
-        (driver.sql/default-schema driver/*driver*))
-      "public"))
+(defn- default-schema []
+  (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
 
 (defn- make-mbql-transform
   "Create a transform map for testing with an MBQL query."
@@ -23,7 +19,7 @@
   {:source {:type :query
             :query query}
    :name (str "inspector_test_" target-name)
-   :target {:schema (or schema (default-schema-or-public))
+   :target {:schema (or schema (default-schema))
             :name target-name
             :type :table}})
 
@@ -34,14 +30,14 @@
     (testing "discover-lenses returns :not-run when transform has no target table"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_nr"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
                                :type "query"
                                :query {:source-table (mt/id :orders)}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform transform transform-data]
             (let [result (inspector/discover-lenses transform)]
               (is (= :not-run (:status result)))
@@ -54,14 +50,14 @@
     (testing "discover-lenses returns :ready with available lenses after transform is run"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_rdy"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
                                :type "query"
                                :query {:source-table (mt/id :orders)}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             ;; Run the transform to create the target table
             (transforms.execute/execute! transform {:run-method :manual})
@@ -81,14 +77,14 @@
     (testing "discover-lenses populates source table info with fields"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_src"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
                                :type "query"
                                :query {:source-table (mt/id :orders)}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
@@ -114,14 +110,14 @@
     (testing "get-lens returns generic-summary lens with sections and cards"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_gs"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
                                :type "query"
                                :query {:source-table (mt/id :orders)}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
@@ -143,7 +139,7 @@
     (testing "get-lens returns join-analysis lens for transforms with joins"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_ja"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
@@ -160,7 +156,7 @@
                                                               :join-alias "Products"}]]
                                                 :source-table (mt/id :products)}]}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
@@ -182,14 +178,14 @@
     (testing "get-lens throws for inapplicable lens"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_na"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
                                :type "query"
                                :query {:source-table (mt/id :orders)}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
@@ -205,7 +201,7 @@
     (testing "discover-lenses includes join-related lenses for transforms with joins"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
-                              :schema (default-schema-or-public)
+                              :schema (default-schema)
                               :name "g_inspector_ji"}]
         (let [transform-data (make-mbql-transform
                               {:database (mt/id)
@@ -222,7 +218,7 @@
                                                               :join-alias "Products"}]]
                                                 :source-table (mt/id :products)}]}}
                               target-name
-                              (default-schema-or-public))]
+                              (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)

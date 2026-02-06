@@ -4,8 +4,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,9 +19,7 @@
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
 (defn- default-schema []
-  (or (when (isa? driver/hierarchy driver/*driver* :sql)
-        (driver.sql/default-schema driver/*driver*))
-      "public"))
+  (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
 
 (defn- execute-card
   "Execute a card's dataset_query and return the first row."
@@ -36,11 +32,12 @@
    Returns a map of card-id -> result map."
   [lens-id lens]
   (into {}
-        (for [card (:cards lens)
-              :let [row    (execute-card card)
-                    result (inspector.core/compute-card-result
-                            (keyword lens-id) card row)]]
-          [(:id card) result])))
+        (pmap (fn [card]
+                (let [row    (execute-card card)
+                      result (inspector.core/compute-card-result
+                              (keyword lens-id) card row)]
+                  [(:id card) result]))
+              (:cards lens))))
 
 (defn- make-transform
   "Create a transform map for testing."
@@ -84,23 +81,19 @@
                       (lib/with-join-alias "Reviews")
                       (lib/with-join-fields :all))))))
 
-(defn- qi
-  "Quote an identifier for the current driver."
-  [s]
-  (sql.u/quote-name driver/*driver* :field (ddl.i/format-name driver/*driver* s)))
-
 (defn- qt
-  "Quote a table name for the current driver, with schema qualification."
+  "Quote a table name for the current driver, with schema qualification.
+   Uses actual physical table name from metadata."
   [s]
-  (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id (keyword s)))]
-    (if schema
-      (str (qi schema) "." (qi s))
-      (qi s))))
+  (let [{:keys [name schema]} (t2/select-one [:model/Table :name :schema] :id (mt/id (keyword s)))]
+    (sql.u/quote-name driver/*driver* :table schema name)))
 
 (defn- qf
-  "Quote a field/column name for the current driver."
-  [s]
-  (qi s))
+  "Quote a field/column name for the current driver.
+   Uses actual physical column name from metadata."
+  [table-key col-key]
+  (let [col-name (t2/select-one-fn :name :model/Field :id (mt/id table-key col-key))]
+    (sql.u/quote-name driver/*driver* :field col-name)))
 
 (defn- native-multi-join-query
   "Native SQL: ORDERS INNER JOIN PEOPLE, LEFT JOIN PRODUCTS, LEFT JOIN REVIEWS."
@@ -108,17 +101,17 @@
   (lib/native-query
    (mt/metadata-provider)
    (str "SELECT o.*, "
-        "p." (qf "name") " AS person_name, "
-        "p." (qf "state") " AS person_state, "
-        "pr." (qf "title") " AS product_title, "
-        "pr." (qf "category") " AS product_category, "
-        "pr." (qf "price") " AS product_price, "
-        "r." (qf "rating") " AS review_rating, "
-        "r." (qf "body") " AS review_body "
+        "p." (qf :people :name) " AS person_name, "
+        "p." (qf :people :state) " AS person_state, "
+        "pr." (qf :products :title) " AS product_title, "
+        "pr." (qf :products :category) " AS product_category, "
+        "pr." (qf :products :price) " AS product_price, "
+        "r." (qf :reviews :rating) " AS review_rating, "
+        "r." (qf :reviews :body) " AS review_body "
         "FROM " (qt "orders") " o "
-        "JOIN " (qt "people") " p ON o." (qf "user_id") " = p." (qf "id") " "
-        "LEFT JOIN " (qt "products") " pr ON o." (qf "product_id") " = pr." (qf "id") " "
-        "LEFT JOIN " (qt "reviews") " r ON o." (qf "id") " = r." (qf "id"))))
+        "JOIN " (qt "people") " p ON o." (qf :orders :user_id) " = p." (qf :people :id) " "
+        "LEFT JOIN " (qt "products") " pr ON o." (qf :orders :product_id) " = pr." (qf :products :id) " "
+        "LEFT JOIN " (qt "reviews") " r ON o." (qf :orders :id) " = r." (qf :reviews :id))))
 
 ;;; -------------------------------------------------- Full loop helper --------------------------------------------------
 
