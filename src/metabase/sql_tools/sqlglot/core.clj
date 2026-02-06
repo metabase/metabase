@@ -77,10 +77,15 @@
   [_parser driver sql-str]
   (let [dialect (driver->dialect driver)
         ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
-        ;; Convert to [{:schema ... :table ...} ...] with driver-appropriate case normalization
+        ;; Convert to [{:schema ... :table ...} ...] format.
+        ;; Do NOT normalize case here — SQLGlot already applies dialect-appropriate case rules
+        ;; (e.g., uppercase for Snowflake, lowercase for Postgres). Additional normalization
+        ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
+        ;; AppDB lookups where identifiers are stored in their native case.
+        ;; This matches the Macaw implementation which also returns raw identifiers.
         table-tuples (sql-parsing/referenced-tables dialect sql-str)]
     (mapv (fn [[_catalog schema table]]
-            (sql-tools.common/normalize-table-spec driver {:schema schema :table table}))
+            {:schema schema :table table})
           table-tuples)))
 
 (defmethod sql-tools/simple-query?-impl :sqlglot
