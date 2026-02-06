@@ -64,7 +64,7 @@ export interface TableTab extends Tab {
 export type WorkspaceTab = TransformTab | TableTab;
 
 export interface WorkspaceContextValue {
-  workspaceId: number;
+  workspaceId: WorkspaceId;
   openedTabs: WorkspaceTab[];
   activeTab: WorkspaceTab | null;
   activeTable: OpenTable | null;
