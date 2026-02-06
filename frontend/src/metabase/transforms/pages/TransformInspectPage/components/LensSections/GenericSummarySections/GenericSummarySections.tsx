@@ -26,8 +26,8 @@ export const GenericSummarySections = ({
   sources,
   target,
   onStatsReady,
-}: GenericSummarySectionsProps) => {
-  return sections.map((section) => {
+}: GenericSummarySectionsProps) =>
+  sections.map((section) => {
     const cards = cardsBySection[section.id];
     return (
       <GenericSummarySection
@@ -40,4 +40,3 @@ export const GenericSummarySections = ({
       />
     );
   });
-};

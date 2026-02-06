@@ -176,7 +176,7 @@ function gatherColumnStasticsFields(
   return distinctColumns;
 }
 
-const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
+function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
   return tables.map((table) => {
     const tableKey = table.table_id ?? table.table_name;
     return {
@@ -194,7 +194,7 @@ const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
       })),
     };
   });
-};
+}
 
 function getColumnLabel(columnName: StatsColumn | string) {
   const statisticsInfo = {
@@ -262,9 +262,9 @@ function getColumns(
       id: column,
       header: getColumnLabel(column),
       accessorFn: (row: FieldTreeNode) => getStatsColumnValue(row, column),
-      cell: (props: CellContext<FieldTreeNode, unknown>) => {
-        return <Ellipsified>{String(props.getValue())}</Ellipsified>;
-      },
+      cell: (props: CellContext<FieldTreeNode, unknown>) => (
+        <Ellipsified>{String(props.getValue())}</Ellipsified>
+      ),
     })),
   ];
 }
