@@ -17,11 +17,7 @@ import type {
   TransformInspectSource,
 } from "metabase-types/api";
 
-import type {
-  FieldTreeNode,
-  StatsColumn,
-  TableWithFields,
-} from "./FieldInfoSection.types";
+import type { FieldTreeNode, StatsColumn, TableWithFields } from "./types";
 
 const fieldToColumnMap = new Map<FieldStats, StatsColumn>([
   ["distinct_count", "distinct_count"],

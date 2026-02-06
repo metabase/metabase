@@ -21,7 +21,7 @@ import type {
 
 import type { CardStats } from "../../../types";
 
-import { FieldInfoSection } from "./components/FieldInfoSection";
+import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
 import { RowCountCard } from "./components/RowCountCard";
 import { treeTableStyles } from "./styles";
 

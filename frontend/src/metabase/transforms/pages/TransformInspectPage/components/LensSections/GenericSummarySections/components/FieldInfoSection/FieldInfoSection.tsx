@@ -13,13 +13,10 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 
-import { treeTableStyles } from "../styles";
+import { treeTableStyles } from "../../styles";
 
-import type {
-  FieldInfoSectionProps,
-  FieldTreeNode,
-} from "./FieldInfoSection.types";
-import { buildTableNodes, getColumns } from "./FieldInfoSection.utils";
+import type { FieldInfoSectionProps, FieldTreeNode } from "./types";
+import { buildTableNodes, getColumns } from "./utils";
 
 export const FieldInfoSection = ({
   sources,
