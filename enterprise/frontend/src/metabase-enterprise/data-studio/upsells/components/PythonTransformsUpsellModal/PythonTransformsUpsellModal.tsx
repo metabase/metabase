@@ -3,16 +3,9 @@ import dayjs from "dayjs";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
-import {
-  trackUpsellClicked,
-  trackUpsellViewed,
-} from "metabase/admin/upsells/components/analytics";
-import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import { UPGRADE_URL } from "metabase/admin/upsells/constants";
+import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
@@ -29,10 +22,8 @@ import {
 import { useTransformsBilling } from "../../hooks";
 
 import { CloudPurchaseContent } from "./CloudPurchaseContent";
-import S from "./PythonTransformsUpsellModal.module.css";
-
-const CAMPAIGN = "data-studio-python-transforms";
-const LOCATION = "data-studio-transforms";
+import { SelfHostedContent } from "./SelfHostedContent";
+import { CAMPAIGN, LOCATION } from "./constants";
 
 type PythonTransformsUpsellModalProps = {
   isOpen: boolean;
@@ -78,17 +69,6 @@ export function PythonTransformsUpsellModal({
     trialEndDate,
   } = useTransformsBilling();
 
-  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
-    campaign: CAMPAIGN,
-    location: LOCATION,
-  });
-
-  const upsellUrl = useUpsellLink({
-    url: UPGRADE_URL,
-    campaign: CAMPAIGN,
-    location: LOCATION,
-  });
-
   useEffect(() => {
     if (isOpen) {
       trackUpsellViewed({ location: LOCATION, campaign: CAMPAIGN });
@@ -111,12 +91,6 @@ export function PythonTransformsUpsellModal({
     onClose();
   }, [onClose, disableForceModalToOpen]);
 
-  const handleSelfHostedClick = () => {
-    trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
-    triggerUpsellFlow?.();
-    handleModalClose();
-  };
-
   const renderNonStoreUserContent = () => (
     <Text fw="bold">
       {anyStoreUserEmailAddress
@@ -125,21 +99,6 @@ export function PythonTransformsUpsellModal({
         : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
           t`Please ask a Metabase Store Admin to enable this for you.`}
     </Text>
-  );
-
-  const renderSelfHostedContent = () => (
-    <Flex justify="flex-end">
-      <UpsellCta
-        onClick={handleSelfHostedClick}
-        url={upsellUrl}
-        internalLink={undefined}
-        buttonText={t`Get Python transforms`}
-        onClickCapture={() =>
-          trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN })
-        }
-        size="large"
-      />
-    </Flex>
   );
 
   const renderCloudPurchaseContent = () => {
@@ -165,7 +124,7 @@ export function PythonTransformsUpsellModal({
     // If no billing data available (e.g., product not available for this plan),
     // fall back to showing the upsell CTA
     if (!hasData) {
-      return renderSelfHostedContent();
+      return;
     }
 
     return (
@@ -182,7 +141,7 @@ export function PythonTransformsUpsellModal({
 
   const renderRightColumnContent = () => {
     if (!isHosted) {
-      return renderSelfHostedContent();
+      return <SelfHostedContent handleModalClose={handleModalClose} />;
     }
 
     return renderCloudPurchaseContent();
@@ -197,9 +156,9 @@ export function PythonTransformsUpsellModal({
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Body p={0}>
-          <Flex className={S.container}>
+          <Flex>
             {/* Left Column - Info */}
-            <Stack gap="lg" className={S.leftColumn} p="xl">
+            <Stack gap="lg" p="xl" flex={1}>
               <Title
                 order={2}
               >{t`Go beyond SQL with advanced transforms`}</Title>
@@ -222,7 +181,7 @@ export function PythonTransformsUpsellModal({
             {!showSingleColumn && (
               <>
                 <Divider orientation="vertical" />
-                <Stack gap="lg" className={S.rightColumn} p="xl">
+                <Stack bg="background-secondary" flex={1} gap="lg" p="xl">
                   <Title
                     order={3}
                   >{t`Add advanced transforms to your plan`}</Title>

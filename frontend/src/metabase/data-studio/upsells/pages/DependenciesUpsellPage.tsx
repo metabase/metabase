@@ -2,13 +2,13 @@ import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
-import { DataStudioUpsellPage } from "./DataStudioUpsellPage";
+import { BaseUpsellPage } from "./BaseUpsellPage";
 
 export function DependenciesUpsellPage() {
   usePageTitle(t`Dependency graph`);
 
   return (
-    <DataStudioUpsellPage
+    <BaseUpsellPage
       campaign="data-studio-dependencies"
       location="data-studio-dependencies-page"
       header={t`Dependency graph`}

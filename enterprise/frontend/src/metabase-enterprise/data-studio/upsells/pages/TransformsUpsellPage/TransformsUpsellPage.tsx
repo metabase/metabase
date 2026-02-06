@@ -115,9 +115,7 @@ export function TransformsUpsellPage() {
   const leftColumnClassNames = showSingleColumn
     ? S.leftColumnSingleColumn
     : S.leftColumn;
-  const rightColumnClassNames = showSingleColumn
-    ? S.rightColumnSingleColumn
-    : S.rightColumn;
+  const rightColumnClassNames = showSingleColumn ? undefined : S.rightColumn;
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">

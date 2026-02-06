@@ -10,6 +10,7 @@ import {
 } from "metabase/admin/upsells/components/analytics";
 import { UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
@@ -26,12 +27,12 @@ import {
   Title,
 } from "metabase/ui";
 
-import { DottedBackground } from "../../components/DottedBackground";
-import { LineDecorator } from "../../components/LineDecorator";
+import { DottedBackground } from "../components/DottedBackground";
+import { LineDecorator } from "../components/LineDecorator";
 
-import S from "./DataStudioUpsellPage.module.css";
+import S from "./BaseUpsellPage.module.css";
 
-export type DataStudioUpsellPageProps = {
+export type BaseUpsellPageProps = {
   campaign: string;
   location: string;
   header: string;
@@ -41,7 +42,7 @@ export type DataStudioUpsellPageProps = {
   image?: string;
 };
 
-export function DataStudioUpsellPage({
+export function BaseUpsellPage({
   campaign,
   location,
   header,
@@ -49,7 +50,7 @@ export function DataStudioUpsellPage({
   description,
   bulletPoints,
   image,
-}: DataStudioUpsellPageProps) {
+}: BaseUpsellPageProps) {
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: UPGRADE_URL,
     campaign,
@@ -58,33 +59,26 @@ export function DataStudioUpsellPage({
 
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
-
-  const {
-    data: trialData,
-    // isLoading: isTrialLoading,
-    // isError: isTrialError,
-  } = useCheckTrialAvailableQuery();
-
-  // const genericUpsellUrl = useUpsellLink({
-  //   url: DATA_STUDIO_UPGRADE_URL,
-  //   campaign,
-  //   location,
-  // });
-  // const storeManagePlansUrl = useStoreUrl("account/manage/plans");
+  const { data: trialData, isLoading } = useCheckTrialAvailableQuery();
 
   useEffect(() => {
     trackUpsellViewed({ location, campaign });
   }, [location, campaign]);
 
+  if (isLoading) {
+    return (
+      <DottedBackground px="3.5rem" pb="2rem">
+        <PaneHeader
+          breadcrumbs={<DataStudioBreadcrumbs>{header}</DataStudioBreadcrumbs>}
+        />
+        <Center h="100%" bg="background-secondary">
+          <LoadingAndErrorWrapper loading={isLoading} />
+        </Center>
+      </DottedBackground>
+    );
+  }
+
   const shouldShowContactAdmin = isHosted && !isStoreUser;
-
-  // const getUpsellUrl = () => {
-  //   if (isHosted && isStoreUser) {
-  //     return storeManagePlansUrl;
-  //   }
-  //   return genericUpsellUrl;
-  // };
-
   const maxWidth = image ? 700 : 450;
   const isTrialAvailable = trialData?.available ?? false;
 
@@ -132,7 +126,7 @@ export function DataStudioUpsellPage({
                     </Text>
                   )}
                   {isTrialAvailable && (
-                    <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
+                    <Text>{t`Get a 14-day free trial of this and other pro features`}</Text>
                   )}
                 </Stack>
                 {!shouldShowContactAdmin && (

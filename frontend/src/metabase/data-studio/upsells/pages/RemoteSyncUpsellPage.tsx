@@ -4,10 +4,9 @@ import { useUpgradeAction } from "metabase/admin/upsells/components/UpgradeModal
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
-// import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
 import { UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
-// import { useStoreUrl } from "metabase/common/hooks";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
@@ -29,8 +28,7 @@ import {
 import { DottedBackground } from "../components/DottedBackground";
 import { LineDecorator } from "../components/LineDecorator";
 
-import S from "./DataStudioUpsellPage/DataStudioUpsellPage.module.css";
-// import { DATA_STUDIO_UPGRADE_URL } from "./constants";
+import S from "./BaseUpsellPage.module.css";
 
 const CAMPAIGN = "remote-sync";
 const LOCATION = "data-studio-remote-sync";
@@ -46,32 +44,28 @@ export function RemoteSyncUpsellPage() {
   const applicationName = useSelector(getApplicationName);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const {
-    data: trialData,
-    // isLoading: isTrialLoading,
-    // isError: isTrialError,
-  } = useCheckTrialAvailableQuery();
+  const { data: trialData, isLoading } = useCheckTrialAvailableQuery();
 
-  // const genericUpsellUrl = useUpsellLink({
-  //   url: DATA_STUDIO_UPGRADE_URL,
-  //   campaign: CAMPAIGN,
-  //   location: LOCATION,
-  // });
-  // const storeManagePlansUrl = useStoreUrl("account/manage/plans");
-
-  // const getUpsellUrl = () => {
-  //   if (isHosted && isStoreUser) {
-  //     return storeManagePlansUrl;
-  //   }
-  //   return genericUpsellUrl;
-  // };
+  if (isLoading) {
+    return (
+      <DottedBackground px="3.5rem" pb="2rem">
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Remote sync`}</DataStudioBreadcrumbs>
+          }
+        />
+        <Center h="100%" bg="background-secondary">
+          <LoadingAndErrorWrapper loading={isLoading} />
+        </Center>
+      </DottedBackground>
+    );
+  }
 
   const shouldShowContactAdmin = isHosted && !isStoreUser;
 
   const copy = {
     title: t`Manage your ${applicationName} content in Git`,
     description: t`Keep your most important datasets, metrics, and SQL logic under version control. Sync content to a Git repository to review changes, collaborate, and maintain a production-ready source of truth.`,
-    // trialUpCta:
   };
 
   const isTrialAvailable = trialData?.available ?? false;

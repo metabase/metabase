@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { DataStudioUpsellPage } from "./DataStudioUpsellPage";
+import { BaseUpsellPage } from "./BaseUpsellPage";
 
 export function LibraryUpsellPage() {
   return (
-    <DataStudioUpsellPage
+    <BaseUpsellPage
       campaign="data-studio-library"
       location="data-studio-library-page"
       header={t`Library`}
