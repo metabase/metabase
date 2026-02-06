@@ -160,10 +160,10 @@ function getMetricDefinitions(
 function getProjections(definitions: LibMetric.MetricDefinition[]) {
   return definitions.reduce((projections: ProjectionInfo[], definition) => {
     const dimensions = LibMetric.projectionableDimensions(definition);
-    const dateDimension = dimensions.find(LibMetric.isDateOrDateTime);
+    const dimension = dimensions.find(LibMetric.isDateOrDateTime);
 
-    if (dateDimension) {
-      projections.push({ definition, dimension: dateDimension });
+    if (dimension) {
+      projections.push({ definition, dimension });
     }
 
     return projections;
