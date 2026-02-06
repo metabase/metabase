@@ -33,7 +33,7 @@ export const LensNavigator = ({
   onCloseTab,
   children,
 }: PropsWithChildren<LensNavigatorProps>) => (
-  <Stack gap="0" bd="1px solid border" bdrs="sm" bg="white" pt="0.375rem">
+  <Stack gap="0" bd="1px solid border" bdrs="sm" bg="white" pt={rem(6)}>
     <Tabs
       value={activeTabKey}
       onChange={(value) => value && onSwitchTab(value)}
