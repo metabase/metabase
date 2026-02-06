@@ -543,6 +543,10 @@ describe("scenarios > embedding-sdk > content-translations", () => {
 
         cy.findByTestId("interactive-question-top-toolbar").within(() => {
           cy.findByText(
+            // Currently we receive from BE display names with translated static parts and untranslated table/column names
+            // It's currently unclear what we should do for such ad-hock question names:
+            // - fully translate them, taking in mind that the same translated name is added to the Save Question modal
+            // - ignore translation for such names at all
             "Eindeutige Werte von People - Product → Created At: Monat von People - Product → Created At: Monat",
           ).should("be.visible");
         });
