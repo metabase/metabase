@@ -26,6 +26,8 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.util :as transforms.util]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -269,8 +271,8 @@
                                                (t2/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
-                                       ;; Tables in collections are an EE feature (data-studio)
-                                       (when (premium-features/has-feature? :data-studio)
+                                       ;; Tables in collections are an EE feature (library)
+                                       (when (premium-features/has-feature? :library)
                                          {:table (->> (t2/query {:select-distinct [:collection_id]
                                                                  :from :metabase_table
                                                                  :where [:and
@@ -485,15 +487,17 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-   :from   [[:transform :transform]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
-              [:=
-               [:inline 0]
-               [:inline 1]])]})
+  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
+    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+     :from   [[:transform :transform]]
+     :where  [:and
+              (poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              (if (seq enabled-types)
+                [:in :source_type enabled-types]
+                [:=
+                 [:inline 0]
+                 [:inline 1]])]}))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -737,6 +741,10 @@
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
+        ;; never show tenant-specific root collections as children of another collection
+        [:or
+         [:= :type nil]
+         [:not= :type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
@@ -810,9 +818,9 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
-        ;; Tables in collections are an EE feature (data-studio)
+        ;; Tables in collections are an EE feature (library)
         collections-containing-tables
-        (if (premium-features/has-feature? :data-studio)
+        (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :metabase_table
@@ -825,11 +833,13 @@
           #{})
 
         collections-containing-transforms
-        (if (premium-features/has-feature? :transforms)
+        (if (seq (transforms.gating/enabled-source-types))
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :transform
-                            :where [:in :collection_id descendant-collection-ids]}))
+                            :where [:and
+                                    [:in :collection_id descendant-collection-ids]
+                                    [:in :source_type (transforms.gating/enabled-source-types)]]}))
                (map :collection_id)
                (into #{}))
           #{})
@@ -1115,8 +1125,8 @@
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
-                                      ;; Tables in collections are an EE feature (data-studio)
-                                      (premium-features/has-feature? :data-studio) (conj :table))
+                                      ;; Tables in collections are an EE feature (library)
+                                      (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1637,7 +1647,7 @@
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
-     (not= (:type collection-before-update) "tenant-specific-root-collection"))
+     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))

@@ -11,10 +11,13 @@ type CoordinatePickerOperator =
   | ">="
   | "<=";
 
-export interface OperatorOption
-  extends FilterOperatorOption<CoordinatePickerOperator> {
+export type CoordinateFilterOperatorOption =
+  FilterOperatorOption<CoordinatePickerOperator>;
+
+export type CoordinateFilterOperatorInfo = {
+  operator: CoordinatePickerOperator;
   valueCount: number;
   hasMultipleValues?: boolean;
-}
+};
 
 export type NumberOrEmptyValue = Lib.NumberFilterValue | null;

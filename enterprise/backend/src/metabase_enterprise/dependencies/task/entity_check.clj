@@ -21,7 +21,7 @@
                       (log/info "Updated" processed "entities of type" entity-type))
                     (- batch-size processed))))
               (deps.settings/dependency-entity-check-batch-size)
-              deps.findings/supported-entities)
+              deps.findings/analyzable-entities)
       (< 1)))
 
 (defn- check-entities!
