@@ -43,7 +43,7 @@ const setup = ({
 
   renderWithProviders(
     <CloudPurchaseContent
-      billingPeriod="year"
+      billingPeriod="yearly"
       formattedTrialEndDate={formattedTrialEndDate}
       handleModalClose={handleModalClose}
       isTrialFlow={isTrialFlow}
