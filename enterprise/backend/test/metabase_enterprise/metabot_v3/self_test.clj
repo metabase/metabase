@@ -153,7 +153,7 @@
                 frequencies)))
     (is (=? [{:type :start :id string?}
              {:type :text :id string? :text string?}
-             {:type :usage :id string? :usage {:promptTokens 13}}]
+             {:type :usage :id string? :model string? :usage {:promptTokens 13}}]
             (->> (json-resource "llm/claude-text.json")
                  (into [] (comp self/claude->aisdk-xf (self/aisdk-xf)))))))
   (testing "tool input (also structured output) is mapped well"
@@ -170,8 +170,7 @@
              {:type :tool-input :arguments {:currencies [{:country "CAN" :currency "CAD"}
                                                          {:country "USA" :currency "USD"}
                                                          {:country "MEX" :currency "MXN"}]}}
-             ;; TODO: convert usage to common format
-             {:type :usage :usage {:promptTokens 737}}]
+             {:type :usage :model string? :usage {:promptTokens 737}}]
             (->> (json-resource "llm/claude-tool-input.json")
                  (into [] (comp self/claude->aisdk-xf (self/aisdk-xf))))))))
 
@@ -403,7 +402,7 @@
 
 (deftest format-finish-line-test
   (testing "formats finish message with usage"
-    (let [line (self/format-finish-line {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
+    (let [line (self/format-finish-line false {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
       (is (str/starts-with? line "d:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "stop" (:finishReason parsed)))
@@ -423,7 +422,7 @@
                  {:type :text :text "Hello"}
                  {:type :tool-input :id "call-1" :function "search" :arguments {:q "test"}}
                  {:type :tool-output :id "call-1" :result {:data []}}
-                 {:type :usage :id "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
+                 {:type :usage :id "msg-1" :model "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
                  {:type :finish}]
           lines (into [] (self/aisdk-line-xf) parts)]
       ;; Should have: start, text, tool-call, tool-result, finish (usage is folded into finish)
