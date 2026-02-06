@@ -61,17 +61,13 @@
                        :tenant-slug/is-active (:is_active existing-tenant)
                        :status-code 403})))))
 
-(defn- merge-tenant-attributes
-  "Merge new attributes into existing, preserving existing values (existing wins)."
-  [existing-attrs new-attrs]
-  (merge new-attrs existing-attrs))
-
 (defn- maybe-update-tenant-attributes!
   "If tenant exists and there are new attributes to add, update the tenant.
    Only adds attributes that don't already exist (preserves existing)."
   [existing-tenant tenant-attributes]
   (when (and existing-tenant tenant-attributes)
-    (let [merged (merge-tenant-attributes (:attributes existing-tenant) tenant-attributes)]
+    ;; merge new attrs into existing, with existing taking precedence (existing wins)
+    (let [merged (merge tenant-attributes (:attributes existing-tenant))]
       (when (not= merged (:attributes existing-tenant))
         (request/as-admin
          (api.tenants/update-tenant! (:id existing-tenant) {:attributes merged}))))))
