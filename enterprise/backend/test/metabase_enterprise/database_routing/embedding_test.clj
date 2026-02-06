@@ -2,21 +2,15 @@
   "Tests for database routing with embedding functionality."
   (:require
    [buddy.sign.jwt :as jwt]
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
-   [metabase.app-db.core :as mdb]
+   [metabase-enterprise.database-routing.e2e-test :refer [with-temp-dbs! execute-statement!]]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql Connection)))
+   [toucan2.core :as t2]))
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
@@ -43,37 +37,10 @@
                 :params   {}}
                additional-token-keys)))
 
-(defmacro with-temp-dbs!
-  "Creates databases like `mt/with-temp`, but creating an actual underlying H2 database with a single table,
-  `my_database_name`, with a single column, `str`."
-  [bindings & body]
-  (letfn [(wrap [names body]
-            (if (empty? names)
-              `(do ~@body)
-              `(one-off-dbs/with-blank-db
-                 (let [~(first names) (data/db)]
-                   (doseq [statement# ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
-                                       "SET DB_CLOSE_DELAY -1;"
-                                       "CREATE TABLE \"my_database_name\" (str TEXT NOT NULL);"
-                                       "GRANT ALL ON \"my_database_name\" TO GUEST;"]]
-                     (jdbc/execute! one-off-dbs/*conn* [statement#]))
-                   ~(wrap (rest names) body)))))]
-    (wrap bindings body)))
-
-(defn execute-statement! [db statement]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :h2
-   (mdb/spec :h2 (:details db))
-   {:write? true}
-   (fn [^Connection conn]
-     (jdbc/execute! {:connection conn} [statement]))))
-
 (deftest guest-embedding-with-database-routing-test
   (testing "Guest embedding should work with database routing by bypassing routing"
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
-        ;; clj-kondo doesn't understand the with-temp-dbs! macro binding
-        #_{:clj-kondo/ignore [:unresolved-symbol]}
         (with-temp-dbs! [router-db destination-db]
           ;; Set up router and destination database
           (t2/update! :model/Database (u/the-id destination-db) {:name "destination-db" :router_database_id (u/the-id router-db)})
