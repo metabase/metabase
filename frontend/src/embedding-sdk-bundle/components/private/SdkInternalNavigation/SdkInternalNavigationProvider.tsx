@@ -13,7 +13,10 @@ import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
-import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
+import type {
+  DrillThroughQuestionProps,
+  SdkQuestionProps,
+} from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
 
@@ -119,16 +122,25 @@ const SdkInternalNavigationProviderInner = ({
         initialParameters={activeEntry.parameters}
       />
     ))
-    .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => (
-      <SdkQuestion
-        questionId={activeEntry.id}
-        onNavigateBack={pop}
-        initialSqlParameters={activeEntry.parameters}
-        {...drillThroughQuestionProps}
-      >
-        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
-      </SdkQuestion>
-    ))
+    .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => {
+      // We try to infer question props from the starting dashboard when they have a 1:1 mapping
+      const questionPropsInferredFromDashboard: Partial<SdkQuestionProps> = {
+        withDownloads: dashboardProps?.withDownloads,
+      };
+
+      return (
+        <SdkQuestion
+          questionId={activeEntry.id}
+          onNavigateBack={pop}
+          initialSqlParameters={activeEntry.parameters}
+          isSaveEnabled
+          {...questionPropsInferredFromDashboard}
+          {...drillThroughQuestionProps}
+        >
+          {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+        </SdkQuestion>
+      );
+    })
     .otherwise(() => children);
 
   // When we don't render the children directly, we need to render a wrapper with the styles applied.

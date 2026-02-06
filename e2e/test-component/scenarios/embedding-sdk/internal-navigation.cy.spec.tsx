@@ -464,6 +464,31 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
+    it("should forward `withDownloads` prop from the dashboard to the question", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+            withDownloads
+          />,
+        );
+      });
+
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        H.getDashboardCard()
+          .findAllByText("Go to Native Question")
+          .first()
+          .click();
+
+        cy.findByTestId("visualization-root").should("be.visible");
+
+        cy.findByTestId("question-download-widget-button").should("be.visible");
+      });
+    });
+
     it("should support nested navigations dashboard -> dashboard -> question -> multiple drills -> back through all", () => {
       cy.get<number>("@dashboardAId").then((dashboardAId) => {
         mountSdkContent(
