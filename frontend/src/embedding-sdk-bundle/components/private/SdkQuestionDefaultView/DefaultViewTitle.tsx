@@ -27,6 +27,10 @@ export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
   if (title === undefined || title === true) {
     const titleText = getQuestionTitle(question, tc);
 
+    if (titleText === null) {
+      return null;
+    }
+
     return (
       <DefaultViewTitleText
         title={

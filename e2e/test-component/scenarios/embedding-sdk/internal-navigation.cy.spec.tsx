@@ -1,6 +1,7 @@
 import {
   InteractiveDashboard,
   InteractiveQuestion,
+  StaticDashboard,
 } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -461,6 +462,55 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // Verify no back button exists (we're at the root)
         cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should forward `withDownloads` prop from the dashboard to the question", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+            withDownloads
+          />,
+        );
+      });
+
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        H.getDashboardCard()
+          .findAllByText("Go to Native Question")
+          .first()
+          .click();
+
+        cy.findByTestId("visualization-root").should("be.visible");
+
+        cy.findByTestId("question-download-widget-button").should("be.visible");
+      });
+    });
+
+    it("should not be able to navigate when using StaticDashboard even if click behaviors are configured", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <StaticDashboard
+            dashboardId={dashboardAId}
+            // this prop isn't actually accepted
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        // Verify we're on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Click behavior link text should not be rendered in static mode
+        H.getDashboardCard()
+          .findByText("Go to Dashboard B")
+          .should("not.exist");
       });
     });
 
