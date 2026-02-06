@@ -208,6 +208,66 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         });
       });
 
+      it("should translate column name in second filter step after aggregation step", () => {
+        setupEditor();
+        mountEditor();
+
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-Orders").click();
+          });
+
+          cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+          popover().within(() => {
+            cy.findByText("Anzahl eindeutiger Werte von...").click();
+            cy.findByText("DE-Total").click();
+          });
+
+          cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+          popover().within(() => {
+            cy.findByText("DE-Created At").click();
+          });
+
+          cy.findAllByTestId("action-buttons")
+            .last()
+            .within(() => {
+              cy.findByText("Filter").click();
+            });
+
+          popover().within(() => {
+            cy.findByText("DE-Created At: Monat").click();
+
+            cy.findByText("DE-Created At: Monat").should("be.visible");
+            cy.findByText("Vorherige 3 Monate").click();
+          });
+
+          // "Visualize" in German locale
+          cy.button("Darstellen").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").within(() => {
+            cy.findByText("1 Filter").click();
+          });
+
+          popover().within(() => {
+            cy.findByText(
+              "DE-Created At: Monat ist in der vorherige 3 monate",
+            ).should("be.visible");
+          });
+
+          cy.findByTestId("chart-type-selector-button").click();
+
+          popover().within(() => {
+            cy.findByText("Tabelle").click();
+          });
+
+          cy.findByTestId("table-header").within(() => {
+            cy.findByText("DE-Created At: Monat").should("be.visible");
+          });
+        });
+      });
+
       it("should translate content for date field", () => {
         setupEditor();
         mountEditor();
