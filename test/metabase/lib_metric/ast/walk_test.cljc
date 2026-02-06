@@ -1,20 +1,64 @@
 (ns metabase.lib-metric.ast.walk-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib-metric.ast.build :as ast.build]
    [metabase.lib-metric.ast.walk :as ast.walk]))
+
+;;; -------------------------------------------------- Test Helpers --------------------------------------------------
+;;; These helpers construct AST nodes directly for testing purposes.
+
+(defn- dimension-ref
+  "Create an AST dimension-ref node for testing."
+  ([dimension-id] (dimension-ref dimension-id nil))
+  ([dimension-id options]
+   (cond-> {:node/type    :ast/dimension-ref
+            :dimension-id dimension-id}
+     (seq options) (assoc :options options))))
+
+(defn- comparison-filter
+  "Create a comparison filter node for testing."
+  [operator dim-ref value]
+  {:node/type :filter/comparison
+   :operator  operator
+   :dimension dim-ref
+   :value     value})
+
+(defn- string-filter
+  "Create a string filter node for testing."
+  [operator dim-ref value]
+  {:node/type :filter/string
+   :operator  operator
+   :dimension dim-ref
+   :value     value})
+
+(defn- and-filter
+  "Create an AND filter node for testing."
+  [& children]
+  {:node/type :filter/and
+   :children  (vec children)})
+
+(defn- or-filter
+  "Create an OR filter node for testing."
+  [& children]
+  {:node/type :filter/or
+   :children  (vec children)})
+
+(defn- not-filter
+  "Create a NOT filter node for testing."
+  [child]
+  {:node/type :filter/not
+   :child     child})
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
 (def ^:private uuid-1 "550e8400-e29b-41d4-a716-446655440001")
 (def ^:private uuid-2 "550e8400-e29b-41d4-a716-446655440002")
 
-(def ^:private dim-ref-1 (ast.build/dimension-ref uuid-1))
-(def ^:private dim-ref-2 (ast.build/dimension-ref uuid-2))
+(def ^:private dim-ref-1 (dimension-ref uuid-1))
+(def ^:private dim-ref-2 (dimension-ref uuid-2))
 
-(def ^:private filter-a (ast.build/comparison-filter := dim-ref-1 "a"))
-(def ^:private filter-b (ast.build/comparison-filter :> dim-ref-2 10))
-(def ^:private filter-c (ast.build/string-filter :contains dim-ref-1 "foo"))
+(def ^:private filter-a (comparison-filter := dim-ref-1 "a"))
+(def ^:private filter-b (comparison-filter :> dim-ref-2 10))
+(def ^:private filter-c (string-filter :contains dim-ref-1 "foo"))
 
 (def ^:private sample-ast
   {:node/type  :ast/root
@@ -27,7 +71,7 @@
    :mappings   [{:node/type    :ast/dimension-mapping
                  :dimension-id uuid-1
                  :column       {:node/type :ast/column :id 1}}]
-   :filter     (ast.build/and-filter filter-a filter-b)
+   :filter     (and-filter filter-a filter-b)
    :group-by   [dim-ref-1]})
 
 ;;; -------------------------------------------------- Predicates --------------------------------------------------
@@ -48,8 +92,8 @@
   (testing "returns true for filter nodes"
     (is (ast.walk/filter-node? filter-a))
     (is (ast.walk/filter-node? filter-b))
-    (is (ast.walk/filter-node? (ast.build/and-filter filter-a filter-b)))
-    (is (ast.walk/filter-node? (ast.build/not-filter filter-a))))
+    (is (ast.walk/filter-node? (and-filter filter-a filter-b)))
+    (is (ast.walk/filter-node? (not-filter filter-a))))
 
   (testing "returns false for non-filter nodes"
     (is (not (ast.walk/filter-node? {:node/type :ast/root})))
@@ -68,7 +112,7 @@
 (deftest ^:parallel dimension-ref-node?-test
   (testing "returns true for dimension ref nodes"
     (is (ast.walk/dimension-ref-node? dim-ref-1))
-    (is (ast.walk/dimension-ref-node? (ast.build/dimension-ref uuid-1 {:temporal-unit :month}))))
+    (is (ast.walk/dimension-ref-node? (dimension-ref uuid-1 {:temporal-unit :month}))))
 
   (testing "returns false for other nodes"
     (is (not (ast.walk/dimension-ref-node? {:node/type :ast/dimension :id uuid-1})))
@@ -205,8 +249,8 @@
 
   (testing "handles nested compound filters"
     (let [nested-ast (assoc sample-ast
-                            :filter (ast.build/and-filter
-                                     (ast.build/or-filter filter-a filter-b)
+                            :filter (and-filter
+                                     (or-filter filter-a filter-b)
                                      filter-c))
           result     (ast.walk/remove-filters
                       #(= :> (:operator %))
@@ -222,14 +266,14 @@
 
 (deftest ^:parallel complex-transformation-test
   (testing "can inject audit filter into source"
-    (let [audit-filter (ast.build/comparison-filter := (ast.build/dimension-ref audit-uuid) 123)
+    (let [audit-filter (comparison-filter := (dimension-ref audit-uuid) 123)
           result       (ast.walk/transform
                         ast.walk/source-node?
                         (fn [source]
                           (update source :filters
                                   (fn [existing]
                                     (if existing
-                                      (ast.build/and-filter existing audit-filter)
+                                      (and-filter existing audit-filter)
                                       audit-filter))))
                         sample-ast)]
       (is (= audit-filter (get-in result [:source :filters]))))))
@@ -240,12 +284,12 @@
                            :source    (:source sample-ast)
                            :dimensions []
                            :mappings  []
-                           :filter    (ast.build/and-filter
-                                       (ast.build/comparison-filter := dim-ref-1 1)
-                                       (ast.build/comparison-filter := dim-ref-2 2)
-                                       (ast.build/or-filter
-                                        (ast.build/comparison-filter := dim-ref-1 3)
-                                        (ast.build/comparison-filter := dim-ref-2 4)))
+                           :filter    (and-filter
+                                       (comparison-filter := dim-ref-1 1)
+                                       (comparison-filter := dim-ref-2 2)
+                                       (or-filter
+                                        (comparison-filter := dim-ref-1 3)
+                                        (comparison-filter := dim-ref-2 4)))
                            :group-by  []}
           refs            (ast.walk/collect-dimension-refs filter-only-ast)]
       (is (= 4 (count refs)))

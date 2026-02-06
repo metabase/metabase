@@ -84,15 +84,19 @@ export function fromMeasureMetadata(
 }
 
 export function fromJsMetricDefinition(
-  _jsDefinition: JsMetricDefinition,
+  metadataProvider: MetadataProviderable,
+  jsDefinition: JsMetricDefinition,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.fromJsMetricDefinition(
+    metadataProvider,
+    jsDefinition,
+  ) as MetricDefinition;
 }
 
 export function toJsMetricDefinition(
-  _definition: MetricDefinition,
+  definition: MetricDefinition,
 ): JsMetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.toJsMetricDefinition(definition) as JsMetricDefinition;
 }
 
 export function sourceMetricId(definition: MetricDefinition): MetricId | null {
@@ -110,123 +114,150 @@ export function filters(definition: MetricDefinition): FilterClause[] {
 }
 
 export function filterableDimensions(
-  _definition: MetricDefinition,
+  definition: MetricDefinition,
 ): DimensionMetadata[] {
-  throw new Error("Not implemented");
+  return LibMetric.filterableDimensions(definition) as DimensionMetadata[];
 }
 
 export function filter(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
-export function stringFilterClause(_parts: StringFilterParts): FilterClause {
-  throw new Error("Not implemented");
+export function stringFilterClause(parts: StringFilterParts): FilterClause {
+  return LibMetric.stringFilterClause(parts) as FilterClause;
 }
 
 export function stringFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): StringFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.stringFilterParts(
+    definition,
+    filterClause,
+  ) as StringFilterParts | null;
 }
 
-export function numberFilterClause(_parts: NumberFilterParts): FilterClause {
-  throw new Error("Not implemented");
+export function numberFilterClause(parts: NumberFilterParts): FilterClause {
+  return LibMetric.numberFilterClause(parts) as FilterClause;
 }
 
 export function numberFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): NumberFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.numberFilterParts(
+    definition,
+    filterClause,
+  ) as NumberFilterParts | null;
 }
 
 export function coordinateFilterClause(
-  _parts: CoordinateFilterParts,
+  parts: CoordinateFilterParts,
 ): FilterClause {
-  throw new Error("Not implemented");
+  return LibMetric.coordinateFilterClause(parts) as FilterClause;
 }
 
 export function coordinateFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): CoordinateFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.coordinateFilterParts(
+    definition,
+    filterClause,
+  ) as CoordinateFilterParts | null;
 }
 
-export function booleanFilterClause(_parts: BooleanFilterParts): FilterClause {
-  throw new Error("Not implemented");
+export function booleanFilterClause(parts: BooleanFilterParts): FilterClause {
+  return LibMetric.booleanFilterClause(parts) as FilterClause;
 }
 
 export function booleanFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.booleanFilterParts(
+    definition,
+    filterClause,
+  ) as BooleanFilterParts | null;
 }
 
 export function specificDateFilterClause(
-  _parts: SpecificDateFilterParts,
+  parts: SpecificDateFilterParts,
 ): FilterClause {
-  throw new Error("Not implemented");
+  return LibMetric.specificDateFilterClause(parts) as FilterClause;
 }
 
 export function specificDateFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.specificDateFilterParts(
+    definition,
+    filterClause,
+  ) as SpecificDateFilterParts | null;
 }
 
 export function relativeDateFilterClause(
-  _parts: RelativeDateFilterParts,
+  parts: RelativeDateFilterParts,
 ): FilterClause {
-  throw new Error("Not implemented");
+  return LibMetric.relativeDateFilterClause(parts) as FilterClause;
 }
 
 export function relativeDateFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.relativeDateFilterParts(
+    definition,
+    filterClause,
+  ) as RelativeDateFilterParts | null;
 }
 
 export function excludeDateFilterClause(
-  _parts: ExcludeDateFilterParts,
+  parts: ExcludeDateFilterParts,
 ): FilterClause {
-  throw new Error("Not implemented");
+  return LibMetric.excludeDateFilterClause(parts) as FilterClause;
 }
 
 export function excludeDateFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.excludeDateFilterParts(
+    definition,
+    filterClause,
+  ) as ExcludeDateFilterParts | null;
 }
 
-export function timeFilterClause(_parts: TimeFilterParts): FilterClause {
-  throw new Error("Not implemented");
+export function timeFilterClause(parts: TimeFilterParts): FilterClause {
+  return LibMetric.timeFilterClause(parts) as FilterClause;
 }
 
 export function timeFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): TimeFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.timeFilterParts(
+    definition,
+    filterClause,
+  ) as TimeFilterParts | null;
 }
 
-export function defaultFilterClause(_parts: DefaultFilterParts): FilterClause {
-  throw new Error("Not implemented");
+export function defaultFilterClause(parts: DefaultFilterParts): FilterClause {
+  return LibMetric.defaultFilterClause(parts) as FilterClause;
 }
 
 export function defaultFilterParts(
-  _definition: MetricDefinition,
-  _filterClause: FilterClause,
+  definition: MetricDefinition,
+  filterClause: FilterClause,
 ): DefaultFilterParts | null {
-  throw new Error("Not implemented");
+  return LibMetric.defaultFilterParts(
+    definition,
+    filterClause,
+  ) as DefaultFilterParts | null;
 }
 
 export function filterParts(
@@ -251,44 +282,51 @@ export function projections(definition: MetricDefinition): ProjectionClause[] {
 }
 
 export function projectionableDimensions(
-  _definition: MetricDefinition,
+  definition: MetricDefinition,
 ): DimensionMetadata[] {
-  throw new Error("Not implemented");
+  return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
 }
 
 export function project(
-  _definition: MetricDefinition,
-  _projectionClause: ProjectionClause,
+  definition: MetricDefinition,
+  projectionClause: ProjectionClause,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.project(definition, projectionClause) as MetricDefinition;
 }
 
 export function replaceClause(
-  _definition: MetricDefinition,
-  _targetClause: Clause,
-  _newClause: Clause,
+  definition: MetricDefinition,
+  targetClause: Clause,
+  newClause: Clause,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.replaceClause(
+    definition,
+    targetClause,
+    newClause,
+  ) as MetricDefinition;
 }
 
 export function removeClause(
-  _definition: MetricDefinition,
-  _clause: Clause,
+  definition: MetricDefinition,
+  clause: Clause,
 ): MetricDefinition {
-  throw new Error("Not implemented");
+  return LibMetric.removeClause(definition, clause) as MetricDefinition;
 }
 
 export function temporalBucket(
-  _clause: Clause | DimensionMetadata,
+  clause: Clause | DimensionMetadata,
 ): TemporalBucket | null {
-  throw new Error("Not implemented");
+  return LibMetric.temporalBucket(clause) as TemporalBucket | null;
 }
 
 export function availableTemporalBuckets(
-  _definition: MetricDefinition,
-  _dimension: DimensionMetadata,
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
 ): TemporalBucket[] {
-  throw new Error("Not implemented");
+  return LibMetric.availableTemporalBuckets(
+    definition,
+    dimension,
+  ) as TemporalBucket[];
 }
 
 export function isTemporalBucketable(
@@ -299,10 +337,10 @@ export function isTemporalBucketable(
 }
 
 export function withTemporalBucket(
-  _dimension: DimensionMetadata,
-  _bucket: TemporalBucket | null,
+  dimension: DimensionMetadata,
+  bucket: TemporalBucket | null,
 ): DimensionMetadata {
-  throw new Error("Not implemented");
+  return LibMetric.withTemporalBucket(dimension, bucket) as DimensionMetadata;
 }
 
 export function withDefaultTemporalBucket(
@@ -324,16 +362,19 @@ export function defaultTemporalBucket(
 }
 
 export function binning(
-  _clause: Clause | DimensionMetadata,
+  clause: Clause | DimensionMetadata,
 ): BinningStrategy | null {
-  throw new Error("Not implemented");
+  return LibMetric.binning(clause) as BinningStrategy | null;
 }
 
 export function availableBinningStrategies(
-  _definition: MetricDefinition,
-  _dimension: DimensionMetadata,
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
 ): BinningStrategy[] {
-  throw new Error("Not implemented");
+  return LibMetric.availableBinningStrategies(
+    definition,
+    dimension,
+  ) as BinningStrategy[];
 }
 
 export function isBinnable(
@@ -344,10 +385,10 @@ export function isBinnable(
 }
 
 export function withBinning(
-  _dimension: DimensionMetadata,
-  _binningStrategy: BinningStrategy | null,
+  dimension: DimensionMetadata,
+  binningStrategy: BinningStrategy | null,
 ): DimensionMetadata {
-  throw new Error("Not implemented");
+  return LibMetric.withBinning(dimension, binningStrategy) as DimensionMetadata;
 }
 
 export function withDefaultBinning(
@@ -363,96 +404,99 @@ export function withDefaultBinning(
 
 type TypeFn = (dimension: DimensionMetadata) => boolean;
 
-export const isBoolean: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isBoolean: TypeFn = (dimension) => {
+  return LibMetric.isBoolean(dimension) as boolean;
 };
 
-export const isCoordinate: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isCoordinate: TypeFn = (dimension) => {
+  return LibMetric.isCoordinate(dimension) as boolean;
 };
 
-export const isTemporal: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isTemporal: TypeFn = (dimension) => {
+  return LibMetric.isTemporal(dimension) as boolean;
 };
 
-export const isDateOrDateTime: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isDateOrDateTime: TypeFn = (dimension) => {
+  return LibMetric.isDateOrDateTime(dimension) as boolean;
 };
 
-export const isForeignKey: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isForeignKey: TypeFn = (dimension) => {
+  return LibMetric.isForeignKey(dimension) as boolean;
 };
 
-export const isLocation: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isLocation: TypeFn = (dimension) => {
+  return LibMetric.isLocation(dimension) as boolean;
 };
 
-export const isLatitude: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isLatitude: TypeFn = (dimension) => {
+  return LibMetric.isLatitude(dimension) as boolean;
 };
 
-export const isLongitude: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isLongitude: TypeFn = (dimension) => {
+  return LibMetric.isLongitude(dimension) as boolean;
 };
 
-export const isNumeric: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isNumeric: TypeFn = (dimension) => {
+  return LibMetric.isNumeric(dimension) as boolean;
 };
 
-export const isPrimaryKey: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isPrimaryKey: TypeFn = (dimension) => {
+  return LibMetric.isPrimaryKey(dimension) as boolean;
 };
 
-export const isStringLike: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isStringLike: TypeFn = (dimension) => {
+  return LibMetric.isStringLike(dimension) as boolean;
 };
 
-export const isStringOrStringLike: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isStringOrStringLike: TypeFn = (dimension) => {
+  return LibMetric.isStringOrStringLike(dimension) as boolean;
 };
 
-export const isTime: TypeFn = () => {
-  throw new Error("Not implemented");
+export const isTime: TypeFn = (dimension) => {
+  return LibMetric.isTime(dimension) as boolean;
 };
 
 export function displayInfo(
-  _definition: MetricDefinition,
-  _metric: MetricMetadata,
+  definition: MetricDefinition,
+  metric: MetricMetadata,
 ): MetricDisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _measure: MeasureMetadata,
+  definition: MetricDefinition,
+  measure: MeasureMetadata,
 ): MeasureDisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _clause: Clause,
+  definition: MetricDefinition,
+  clause: Clause,
 ): ClauseDisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _dimension: DimensionMetadata,
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
 ): DimensionDisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _temporalBucket: TemporalBucket,
+  definition: MetricDefinition,
+  temporalBucket: TemporalBucket,
 ): TemporalBucketDisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _binningStrategy: BinningStrategy,
+  definition: MetricDefinition,
+  binningStrategy: BinningStrategy,
 ): BinningStrategyDisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _filterParts: Displayable,
+  definition: MetricDefinition,
+  filterParts: Displayable,
 ): DisplayInfo;
 export function displayInfo(
-  _definition: MetricDefinition,
-  _source: Displayable,
+  definition: MetricDefinition,
+  source: Displayable,
 ): DisplayInfo {
-  throw new Error("Not implemented");
+  return LibMetric.displayInfo(definition, source) as DisplayInfo;
 }
 
 export function dimensionValuesInfo(
-  _definition: MetricDefinition,
-  _dimension: DimensionMetadata,
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
 ): DimensionValuesInfo {
-  throw new Error("Not implemented");
+  return LibMetric.dimensionValuesInfo(
+    definition,
+    dimension,
+  ) as DimensionValuesInfo;
 }

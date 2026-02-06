@@ -314,15 +314,7 @@
                               {:name       "Venue Count"
                                :table_id   (mt/id :venues)
                                :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
-            ;; Query using the measure
-            measure-query {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :aggregation  [[:measure measure-id]]}}
-            ;; Equivalent direct query
-            direct-query  {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :aggregation  [[:count]]}}]
+            measure-query (mt/mbql-query venues {:aggregation [[:measure measure-id]]})
+            direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]
         (is (= (mt/rows (qp/process-query direct-query))
                (mt/rows (qp/process-query measure-query))))))))

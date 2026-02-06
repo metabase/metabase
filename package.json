@@ -336,7 +336,7 @@
     "react-refresh": "^0.14.2",
     "reg-cli": "^0.17.7",
     "semver": "^7.6.3",
-    "shadow-cljs": "^2.28.20",
+    "shadow-cljs": "^3.3.5",
     "source-map-loader": "^4.0.1",
     "storybook": "^8.6.15",
     "storybook-addon-pseudo-states": "^4.0.2",
