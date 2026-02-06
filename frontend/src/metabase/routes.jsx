@@ -36,6 +36,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
+import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsExplorerPage } from "metabase/metrics-explorer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
@@ -286,6 +287,7 @@ export const getRoutes = (store) => {
           </Route>
 
           {/* METRICS V2 */}
+          {getMetricRoutes()}
           <Route path="/metric">
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />

@@ -111,6 +111,7 @@ export const measureApi = Api.injectEndpoints({
 export const {
   useListMeasuresQuery,
   useGetMeasureQuery,
+  useLazyGetMeasureQuery,
   useGetMeasureDimensionValuesQuery,
   useSearchMeasureDimensionValuesQuery,
   useGetRemappedMeasureDimensionValueQuery,

@@ -83,6 +83,7 @@ export const metricApi = Api.injectEndpoints({
 export const {
   useListMetricsQuery,
   useGetMetricQuery,
+  useLazyGetMetricQuery,
   useGetMetricDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
   useGetRemappedMetricDimensionValueQuery,

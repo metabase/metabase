@@ -1,11 +1,4 @@
-import type {
-  DimensionId,
-  MeasureId,
-  MetricId,
-  NormalizedMeasure,
-  NormalizedMetric,
-  TemporalUnit,
-} from "metabase-types/api";
+import type { DimensionId, TemporalUnit } from "metabase-types/api";
 
 import type {
   BooleanFilterOperator,
@@ -70,11 +63,6 @@ export type BinningStrategy = unknown & {
 };
 
 export type MetadataProviderable = MetadataProvider | MetricDefinition;
-
-export type JsMetadataProvider = {
-  measures?: Record<MeasureId, NormalizedMeasure>;
-  metrics?: Record<MetricId, NormalizedMetric>;
-};
 
 export type Clause = FilterClause | ProjectionClause;
 

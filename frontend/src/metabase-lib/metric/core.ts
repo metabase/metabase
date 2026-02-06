@@ -1,4 +1,5 @@
 import * as LibMetric from "cljs/metabase.lib_metric.js";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   JsMetricDefinition,
   MeasureId,
@@ -21,7 +22,6 @@ import type {
   ExcludeDateFilterParts,
   FilterClause,
   FilterParts,
-  JsMetadataProvider,
   MeasureDisplayInfo,
   MeasureMetadata,
   MetadataProvider,
@@ -39,9 +39,7 @@ import type {
   TimeFilterParts,
 } from "./types";
 
-export function metadataProvider(
-  jsMetadata: JsMetadataProvider,
-): MetadataProvider {
+export function metadataProvider(jsMetadata: Metadata): MetadataProvider {
   return LibMetric.metadataProvider(jsMetadata) as MetadataProvider;
 }
 
