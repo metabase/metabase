@@ -9,6 +9,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.util]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -175,7 +176,14 @@
                                        (or (driver.sql/default-schema engine)
                                            ((some-fn :dbname :db) details)))
                                      databases)
-        db-id->quoted    (u/index-by :id quote-default-schema databases)
+        #_#_db-id->quoted    (u/index-by :id quote-default-schema databases)
+        db-id->quoted    (u/index-by :id (fn [{:keys [details engine] :as db}]
+                                           (if (= :macaw (sql-tools/parser-backend))
+                                             (quote-default-schema db)
+                                             (or (driver.sql/default-schema engine)
+                                                 ;; For MySQL and similar, use database name from connection details
+                                                 ((some-fn :dbname :db) details))))
+                                     databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
                           (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))

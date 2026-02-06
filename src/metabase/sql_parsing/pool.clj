@@ -18,7 +18,8 @@
     Pools)
    (java.io Closeable File)
    (java.nio.file Files Path)
-   (java.util.concurrent TimeUnit)
+   (java.time Duration)
+   (java.util.concurrent TimeUnit TimeoutException)
    (org.graalvm.polyglot Context HostAccess)))
 
 (set! *warn-on-reflection* true)
@@ -179,14 +180,26 @@
 
 ;;; -------------------------------------------- Context Wrappers ----------------------------------------------------
 
-(p/defrecord+ PooledContext [^Context context ^Pool pool tuple]
+(p/defrecord+ PooledContext [^Context context ^Pool pool tuple poisoned?]
   common/PythonEval
   (eval-python [_this code]
     (.eval context "python" ^String code))
 
   Closeable
   (close [_this]
-    (.release pool :python tuple)))
+    (if @poisoned?
+      (do
+        (log/warn "Disposing poisoned Python context (likely hung GraalVM)")
+        (.dispose pool :python tuple))
+      (.release pool :python tuple))))
+
+(defn poison!
+  "Mark a PooledContext as poisoned. When closed, it will be disposed from the pool
+   rather than released back. Use this when GraalVM hangs to prevent returning a
+   broken context to the pool."
+  [ctx]
+  (when (instance? PooledContext ctx)
+    (reset! (:poisoned? ctx) true)))
 
 (p/defrecord+ DevContext [^Context context]
   common/PythonEval
@@ -196,6 +209,24 @@
   Closeable
   (close [_this]
     nil))
+
+(defn interrupt!
+  "Interrupt Python execution in this context. Returns true if interrupted successfully.
+   If interrupt times out (guest in uninterruptible code), forces context closure with close(true).
+   This is necessary because future-cancel doesn't actually stop GraalVM execution."
+  [ctx ^long timeout-ms]
+  (when-let [^Context raw-ctx (cond
+                                (instance? PooledContext ctx) (:context ctx)
+                                (instance? DevContext ctx)    (:context ctx))]
+    (try
+      (.interrupt raw-ctx (Duration/ofMillis timeout-ms))
+      true
+      (catch TimeoutException _
+        ;; Interrupt timed out - guest app may be in uninterruptible native code
+        ;; Force close cannot be denied by guest application
+        (log/warn "GraalVM interrupt timed out, forcing context closure")
+        (.close raw-ctx true)
+        false))))
 
 (defn- create-graalvm-context
   "Create a new GraalVM Python context configured for sqlglot.
@@ -242,7 +273,11 @@
                 ;; Generate a tuple of the context and the expiry timestamp.
                 [(context-generator)
                  (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES ttl-minutes))])
-              (destroy [_ _ _v]))
+              (destroy [_ _ [^Context ctx _expiry]]
+                ;; Close context when disposed from pool (expiry, poison, or shutdown)
+                (try
+                  (.close ctx true) ;; Force close - can't wait for running code
+                  (catch Exception _))))
             ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below min-size.
             (reify IPool$Controller
               (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
@@ -283,12 +318,11 @@
       (if (>= (System/nanoTime) expiry-ts)
         (do (.dispose pool :python tuple)
             (recur))
-        (->PooledContext context pool tuple)))))
+        (->PooledContext context pool tuple (atom false))))))
 
 (defn python-context
   "Acquire a python context. In dev, will be a one off; in production comes from a pool. Must be closed. Use in a `with-open` context"
   []
-  #_(if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
-        (acquire-dev-context)
-        (acquire-context @python-context-pool))
-  (acquire-context @python-context-pool))
+  (if #_config/is-dev? false ;; TODO: see if the repl hanging continues with the dev context
+      (acquire-dev-context)
+      (acquire-context @python-context-pool)))
