@@ -19,6 +19,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 
@@ -52,8 +53,8 @@ export function TransformsUpsellPage() {
 
   const hasData =
     billingPeriodMonths !== undefined && (transformsProduct || pythonProduct);
-  const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`year`;
-
+  const billingPeriod: BillingPeriod =
+    billingPeriodMonths === 1 ? "monthly" : "yearly";
   // Determine which scenario we're in:
   // - Trial user: show advanced only, $0 due today, "Add to trial"
   // - User with basic transforms: show advanced only, upgrade flow

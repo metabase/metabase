@@ -87,7 +87,7 @@ export function BaseUpsellPage({
       <PaneHeader
         breadcrumbs={<DataStudioBreadcrumbs>{header}</DataStudioBreadcrumbs>}
       />
-      <Stack align="center" p={40}>
+      <Stack align="center" p={40} className={S.UpsellPageContent}>
         <LineDecorator>
           <Card shadow="md" p="xl" maw={maxWidth} withBorder>
             <Flex direction="row" gap="lg">

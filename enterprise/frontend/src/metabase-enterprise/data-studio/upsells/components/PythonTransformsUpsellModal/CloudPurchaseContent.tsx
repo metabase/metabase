@@ -6,9 +6,13 @@ import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics"
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
+import {
+  type BillingPeriod,
+  getCostDescription,
+} from "metabase-enterprise/data-studio/upsells/utils";
 
 type CloudPurchaseContentProps = {
-  billingPeriod: string;
+  billingPeriod: BillingPeriod;
   formattedTrialEndDate?: string;
   handleModalClose: VoidFunction;
   isTrialFlow: boolean;
@@ -69,9 +73,11 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
           </Group>
           <Group justify="space-between">
             <Text c="text-secondary">
-              {isTrialFlow && formattedTrialEndDate
-                ? t`New total ${billingPeriod}ly cost starting ${formattedTrialEndDate}`
-                : t`New total ${billingPeriod}ly cost`}
+              {getCostDescription(
+                billingPeriod,
+                isTrialFlow,
+                formattedTrialEndDate,
+              )}
             </Text>
             <Text fw="bold">{`$${pythonPrice}`}</Text>
           </Group>

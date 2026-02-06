@@ -18,6 +18,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 import { useTransformsBilling } from "../../hooks";
 
@@ -76,7 +77,8 @@ export function PythonTransformsUpsellModal({
   }, [isOpen]);
 
   const hasData = billingPeriodMonths !== undefined && pythonProduct;
-  const billingPeriod = billingPeriodMonths === 1 ? t`month` : t`year`;
+  const billingPeriod: BillingPeriod =
+    billingPeriodMonths === 1 ? "monthly" : "yearly";
   const pythonPrice = pythonProduct?.default_base_fee ?? 0;
 
   const isTrialFlow = isOnTrial;

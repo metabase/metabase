@@ -3,6 +3,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { Card, Center, Flex, Group, Radio, Stack, Text } from "metabase/ui";
+import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 import S from "./TierSelection.module.css";
 
@@ -16,7 +17,7 @@ type TierOption = {
 };
 
 type TierSelectionProps = {
-  billingPeriod: string;
+  billingPeriod: BillingPeriod;
   pythonPrice: number;
   selectedTier: TransformTier;
   setSelectedTier: (tier: TransformTier) => void;

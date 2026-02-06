@@ -40,3 +40,10 @@
   border-color: color-mix(in srgb, var(--mb-color-brand), transparent 12%);
   background-color: color-mix(in srgb, var(--mb-color-brand), transparent 12%);
 }
+
+@media screen and (max-height: 520px) {
+  .UpsellPageContent {
+    height: 100%;
+    overflow-y: auto;
+  }
+}

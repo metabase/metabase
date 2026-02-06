@@ -5,13 +5,16 @@ import { t } from "ttag";
 
 import { Button, Divider, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
-
-import { TransformsSettingUpModal } from "../../../components/TransformsSettingUpModal";
+import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
+import {
+  type BillingPeriod,
+  getCostDescription,
+} from "metabase-enterprise/data-studio/upsells/utils";
 
 import type { TransformTier } from "./TierSelection";
 
 type PricingSummaryProps = {
-  billingPeriod: string;
+  billingPeriod: BillingPeriod;
   isTrialFlow: boolean;
   pythonPrice: number;
   selectedTier: TransformTier;
@@ -79,9 +82,11 @@ export const PricingSummary = (props: PricingSummaryProps) => {
         </Group>
         <Group justify="space-between">
           <Text c="text-secondary">
-            {isTrialFlow && formattedTrialEndDate
-              ? t`New total ${billingPeriod}ly cost starting ${formattedTrialEndDate}`
-              : t`New total ${billingPeriod}ly cost`}
+            {getCostDescription(
+              billingPeriod,
+              isTrialFlow,
+              formattedTrialEndDate,
+            )}
           </Text>
           <Text fw="bold">{`$${selectedPrice}`}</Text>
         </Group>
