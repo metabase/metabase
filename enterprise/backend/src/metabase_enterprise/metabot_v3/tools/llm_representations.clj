@@ -208,9 +208,10 @@
       :model_database_engine    (database-engine-or-unknown database_engine)
       :model_fqn                fqn
       :model_description        description
-      :model_fields_xml         (when (seq fields) (str/join "" (map field->xml fields)))
+      :model_fields_xml         (when (seq fields)
+                                  (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (when (seq related_tables)
-                                  (str/join "" (map related-table->xml related_tables)))})))
+                                  (str/join "\n" (map related-table->xml related_tables)))})))
 
 (defn- format-markdown-row
   "Format a sequence of values as a markdown table row."
