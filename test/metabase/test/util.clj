@@ -629,7 +629,9 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (setting/read-setting setting-k)]
+        ;; Use setting/get instead of setting/read-setting to ensure :init functions
+        ;; are called and we get the actual computed value, not nil
+        (let [value (setting/get setting-k)]
           (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
     thunk
     settings)))
