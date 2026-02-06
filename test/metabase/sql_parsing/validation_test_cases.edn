@@ -309,4 +309,22 @@
    :sql "SELECT id,, name FROM users"
    :dialect "postgres"
    :expected :valid
-   :note "sqlglot allows double comma (treats as null between)"}]}
+   :note "sqlglot allows double comma (treats as null between)"}
+
+  {:name "incomplete-limit-clause"
+   :sql "SELECT 1 LIMIT"
+   :dialect "postgres"
+   :expected :valid
+   :note "sqlglot parses as 'SELECT 1 AS LIMIT' treating LIMIT as column alias"}
+
+  {:name "incomplete-limit-clause-snowflake"
+   :sql "SELECT 1 LIMIT"
+   :dialect "snowflake"
+   :expected :valid
+   :note "sqlglot parses as 'SELECT 1 AS LIMIT' treating LIMIT as column alias"}
+
+  {:name "incomplete-limit-clause-mysql"
+   :sql "SELECT 1 LIMIT"
+   :dialect "mysql"
+   :expected :valid
+   :note "sqlglot parses as 'SELECT 1 AS LIMIT' treating LIMIT as column alias"}]}
