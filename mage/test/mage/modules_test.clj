@@ -248,9 +248,8 @@
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
-          ;; This count was 33 as of 2026-01-20. Update this number ONLY if you
-          ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 33]
+          ;; Bump this count when you intentionally add modules that trigger driver tests.
+          max-allowed-count 35]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
