@@ -25,7 +25,11 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 ## Workspaces & Transforms
 
-- **[workspace-transforms](.claude/skills/workspace-transforms/SKILL.md)** - Develop and debug transforms in isolated workspaces via the enterprise API
+- **[workspace-admin](.claude/skills/workspace-admin/SKILL.md)** - Initialize analysis projects and merge to production (superuser operations)
+- **[workspace-sync](.claude/skills/workspace-sync/SKILL.md)** - Sync local transform files with the workspace API
+- **[workspace-files](.claude/skills/workspace-files/SKILL.md)** - Manage local file representations of transforms and table schemas
+- **[workspace-transforms](.claude/skills/workspace-transforms/SKILL.md)** - Develop and debug workspace transforms, or perform ad-hoc data analysis using the Metabase enterprise API for isolated transform editing, testing, and merging
+- **[data-workspace](.claude/skills/data-workspace/SKILL.md)** - Unified workflow for data analysis and pipeline building in workspaces
 
 ## Tool Preferences
 
