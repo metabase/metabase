@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { type Ref, forwardRef, useState } from "react";
+import { t } from "ttag";
 
+import { Button, Icon } from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
 
 import { FilterDimensionPicker } from "./FilterDimensionPicker";
@@ -58,3 +60,18 @@ export function FilterPicker({ definitions, onChange }: FilterPickerProps) {
     />
   );
 }
+
+type FilterPickerButtonProps = {
+  onClick?: () => void;
+};
+
+export const FilterPickerButton = forwardRef(function FilterPickerButton(
+  { onClick }: FilterPickerButtonProps,
+  ref: Ref<HTMLButtonElement>,
+) {
+  return (
+    <Button ref={ref} leftSection={<Icon name="filter" />} onClick={onClick}>
+      {t`Filter`}
+    </Button>
+  );
+});

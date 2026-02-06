@@ -36,6 +36,10 @@ export function FilterDimensionPicker({
     return <Icon name={icon} size={18} />;
   }, []);
 
+  if (definitions.length === 0) {
+    return null;
+  }
+
   return (
     <AccordionList<DimensionListItem, DimensionSection>
       sections={sections}

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 
 import {
   useLazyGetMeasureQuery,
@@ -8,14 +7,17 @@ import {
   useListMetricsQuery,
 } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { FilterPicker } from "metabase/metrics/components/FilterPicker";
+import {
+  FilterPicker,
+  FilterPickerButton,
+} from "metabase/metrics/components/FilterPicker";
 import {
   type ProjectionInfo,
   TimeseriesBucketPicker,
-  TimeseriesBucketPickerTarget,
+  TimeseriesBucketPickerButton,
 } from "metabase/metrics/components/TimeseriesBucketPicker";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Icon, MultiSelect, Popover, Stack } from "metabase/ui";
+import { Box, MultiSelect, Popover, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   Measure,
@@ -84,7 +86,7 @@ export function MetricPlaygroundPage() {
         <Box fw="bold">{`FilterPicker`}</Box>
         <Popover>
           <Popover.Target>
-            <Button leftSection={<Icon name="filter" />}>{t`Filter`}</Button>
+            <FilterPickerButton />
           </Popover.Target>
           <Popover.Dropdown>
             <FilterPicker
@@ -98,7 +100,7 @@ export function MetricPlaygroundPage() {
         <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
         <Popover>
           <Popover.Target>
-            <TimeseriesBucketPickerTarget selectedUnit={selectedUnit} />
+            <TimeseriesBucketPickerButton selectedUnit={selectedUnit} />
           </Popover.Target>
           <Popover.Dropdown>
             <TimeseriesBucketPicker

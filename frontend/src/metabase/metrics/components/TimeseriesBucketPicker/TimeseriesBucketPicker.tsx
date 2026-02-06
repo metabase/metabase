@@ -34,14 +34,14 @@ export function TimeseriesBucketPicker({
   );
 }
 
-type TimeseriesBucketPickerTargetProps = {
+type TimeseriesBucketPickerButtonProps = {
   selectedUnit: TemporalUnit | undefined;
   onClick?: () => void;
 };
 
-export const TimeseriesBucketPickerTarget = forwardRef(
-  function TimeseriesBucketPickerTarget(
-    { selectedUnit, onClick }: TimeseriesBucketPickerTargetProps,
+export const TimeseriesBucketPickerButton = forwardRef(
+  function TimeseriesBucketPickerButton(
+    { selectedUnit, onClick }: TimeseriesBucketPickerButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
     return (
