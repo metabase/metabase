@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { IndexRedirect, Route } from "react-router";
 
 import AccountApp from "./app/containers/AccountApp";
@@ -6,9 +7,13 @@ import { NotificationRoutes } from "./notifications/routes";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import UserProfileApp from "./profile/containers/UserProfileApp";
 
-const getRoutes = (store, IsAuthenticated) => {
+export function AccountRoutes({
+  isAuthenticated,
+}: {
+  isAuthenticated: ComponentType;
+}) {
   return (
-    <Route path="/account" component={IsAuthenticated}>
+    <Route path="/account" component={isAuthenticated}>
       <Route component={AccountApp}>
         <IndexRedirect to="profile" />
         <Route path="profile" component={UserProfileApp} />
@@ -18,7 +23,4 @@ const getRoutes = (store, IsAuthenticated) => {
       </Route>
     </Route>
   );
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default getRoutes;
+}
