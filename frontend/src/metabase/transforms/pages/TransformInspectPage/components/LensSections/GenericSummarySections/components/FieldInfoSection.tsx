@@ -19,6 +19,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
+  FieldStats,
   TransformInspectField,
   TransformInspectFieldStats,
   TransformInspectSource,
@@ -125,7 +126,7 @@ type StatsColumn =
   | "q1_q3"
   | "earliest_latest";
 
-const fieldToColumnMap = new Map([
+const fieldToColumnMap = new Map<FieldStats, StatsColumn>([
   ["distinct_count", "distinct_count"],
   ["nil_percent", "nil_percent"],
   ["min", "min_max"],
@@ -137,7 +138,7 @@ const fieldToColumnMap = new Map([
   ["latest", "earliest_latest"],
 ]);
 
-function fieldToColumn(distinctFields: Set<string>) {
+function fieldToColumn(distinctFields: Set<FieldStats>): Set<string> {
   const columns = new Set<string>();
   for (const field of distinctFields) {
     columns.add(fieldToColumnMap.get(field) ?? field);
@@ -147,16 +148,16 @@ function fieldToColumn(distinctFields: Set<string>) {
 
 function gatherColumnStasticsFields(
   sources: TransformInspectSource[],
-): Set<StatsColumn> {
-  const distinctFields = new Set<string>();
-  const distinctColumns = new Set<StatsColumn>();
+): Set<string> {
+  const distinctFields = new Set<FieldStats>();
+  const distinctColumns = new Set<StatsColumn | string>();
   sources.forEach((source) => {
     source.fields.forEach((field) => {
       if (!field.stats) {
         return;
       }
-      for (const [key] of Object.entries(field.stats)) {
-        distinctFields.add(key);
+      for (const key of Object.keys(field.stats)) {
+        distinctFields.add(key as FieldStats);
       }
     });
   });
@@ -188,7 +189,7 @@ const buildTableNodes = (tables: TableWithFields[]): FieldTreeNode[] => {
   });
 };
 
-function getColumnLabel(columnName: StatsColumn) {
+function getColumnLabel(columnName: StatsColumn | string) {
   const statisticsInfo = {
     distinct_count: t`Distinct count`,
     nil_percent: t`Nil %`,
@@ -198,7 +199,9 @@ function getColumnLabel(columnName: StatsColumn) {
     earliest_latest: "Earliest/Latest",
   };
 
-  return statisticsInfo[columnName];
+  return columnName in statisticsInfo
+    ? statisticsInfo[columnName as StatsColumn]
+    : columnName;
 }
 
 function formatType(field: TransformInspectField): string {
@@ -260,7 +263,7 @@ function getColumns(
   ];
 }
 
-function getStatsColumnValue(node: FieldTreeNode, column: StatsColumn) {
+function getStatsColumnValue(node: FieldTreeNode, column: string) {
   const { stats } = node;
   if (!stats) {
     return "";
@@ -291,5 +294,7 @@ function getStatsColumnValue(node: FieldTreeNode, column: StatsColumn) {
         ? `${getFormattedTime(earliest)} / ${getFormattedTime(latest)}`
         : "",
     )
-    .exhaustive();
+    .otherwise(() =>
+      column in stats ? String(stats[column as FieldStats]) : "",
+    );
 }

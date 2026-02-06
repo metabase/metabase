@@ -304,6 +304,14 @@ export type QueryComplexity = {
   reason: string;
 };
 
+type FieldStatsGeneric = "distinct_count" | "nil_percent";
+type FieldStatsNumeric = "min" | "max" | "avg" | "q1" | "q3";
+type FieldStatsTemporal = "earliest" | "latest";
+export type FieldStats =
+  | FieldStatsGeneric
+  | FieldStatsNumeric
+  | FieldStatsTemporal;
+
 export type TransformInspectFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
@@ -313,7 +321,6 @@ export type TransformInspectFieldStats = {
   avg?: number;
   q1?: number;
   q3?: number;
-  sd?: number;
   // Temporal stats
   earliest?: string;
   latest?: string;
