@@ -4,7 +4,7 @@ import {
   getDateFilterClause,
   getDatePickerUnits,
   getDatePickerValue,
-} from "metabase/metrics/utils/date";
+} from "metabase/metrics/utils/dates";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { PopoverBackButton } from "metabase/ui";

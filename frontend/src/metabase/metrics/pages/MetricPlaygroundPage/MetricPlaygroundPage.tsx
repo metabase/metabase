@@ -12,10 +12,15 @@ import {
   FilterPickerButton,
 } from "metabase/metrics/components/FilterPicker";
 import {
-  type ProjectionInfo,
   TimeseriesBucketPicker,
   TimeseriesBucketPickerButton,
 } from "metabase/metrics/components/TimeseriesBucketPicker";
+import {
+  TimeseriesFilterPicker,
+  TimeseriesFilterPickerButton,
+} from "metabase/metrics/components/TimeseriesFilterPicker";
+import type { DimensionWithDefinition } from "metabase/metrics/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, MultiSelect, Popover, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
@@ -34,6 +39,9 @@ export function MetricPlaygroundPage() {
   const [fetchMeasure] = useLazyGetMeasureQuery();
   const [metricIds, setMetricIds] = useState<MetricId[]>([]);
   const [measureIds, setMeasureIds] = useState<MeasureId[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState<
+    DatePickerValue | undefined
+  >(undefined);
   const [selectedUnit, setSelectedUnit] = useState<TemporalUnit | undefined>(
     undefined,
   );
@@ -97,6 +105,21 @@ export function MetricPlaygroundPage() {
         </Popover>
       </Stack>
       <Stack gap="xs">
+        <Box fw="bold">{`TimeseriesFilterPicker`}</Box>
+        <Popover>
+          <Popover.Target>
+            <TimeseriesFilterPickerButton selectedFilter={selectedFilter} />
+          </Popover.Target>
+          <Popover.Dropdown>
+            <TimeseriesFilterPicker
+              dimensions={getDateDimensionsWithDefinition(definitions)}
+              selectedFilter={selectedFilter}
+              onChange={setSelectedFilter}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      </Stack>
+      <Stack gap="xs">
         <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
         <Popover>
           <Popover.Target>
@@ -105,7 +128,7 @@ export function MetricPlaygroundPage() {
           <Popover.Dropdown>
             <TimeseriesBucketPicker
               selectedUnit={selectedUnit}
-              projections={getProjections(definitions)}
+              dimensions={getDateDimensionsWithDefinition(definitions)}
               onChange={setSelectedUnit}
             />
           </Popover.Dropdown>
@@ -167,15 +190,20 @@ function getMetricDefinitions(
   ];
 }
 
-function getProjections(definitions: LibMetric.MetricDefinition[]) {
-  return definitions.reduce((projections: ProjectionInfo[], definition) => {
-    const dimensions = LibMetric.projectionableDimensions(definition);
-    const dimension = dimensions.find(LibMetric.isDateOrDateTime);
+function getDateDimensionsWithDefinition(
+  definitions: LibMetric.MetricDefinition[],
+) {
+  return definitions.reduce(
+    (projections: DimensionWithDefinition[], definition) => {
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const dimension = dimensions.find(LibMetric.isDateOrDateTime);
 
-    if (dimension) {
-      projections.push({ definition, dimension });
-    }
+      if (dimension) {
+        projections.push({ definition, dimension });
+      }
 
-    return projections;
-  }, []);
+      return projections;
+    },
+    [],
+  );
 }
