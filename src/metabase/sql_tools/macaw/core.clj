@@ -1,5 +1,6 @@
 (ns metabase.sql-tools.macaw.core
   (:require
+   [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -80,6 +81,25 @@
 
 ;;;; referenced-tables
 
+(defn split-compound-table-spec
+  "Macaw doesn't understand multi-part identifiers like BigQuery's `dataset.table` or
+   `project.dataset.table`, returning them as a single compound `:table` value.
+   This splits such compound names into separate `:schema` and `:table` parts.
+
+   - `table`                 → `{:table \"table\"}`
+   - `schema.table`          → `{:schema \"schema\", :table \"table\"}`
+   - `catalog.schema.table`  → `{:schema \"schema\", :table \"table\"}`"
+  [{:keys [table schema] :as table-spec}]
+  (if (and table (nil? schema) (str/includes? table "."))
+    (let [parts (str/split table #"\.")]
+      (case (count parts)
+        1 table-spec
+        2 {:schema (first parts) :table (second parts)}
+        ;; 3+ parts: take last two as schema.table (drop catalog/project prefix)
+        {:schema (nth parts (- (count parts) 2))
+         :table  (last parts)}))
+    table-spec))
+
 (mu/defn referenced-tables
   "WIP"
   [driver :- :keyword
@@ -92,6 +112,7 @@
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
+        (->> (map split-compound-table-spec))
         (->> (into #{} (keep #(->> (sql-tools.common/normalize-table-spec driver %)
                                    (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
 
@@ -126,7 +147,7 @@
 
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
   [_parser _driver sql-str]
-  (vec (:tables (macaw/query->tables sql-str {:mode :compound-select}))))
+  (mapv split-compound-table-spec (:tables (macaw/query->tables sql-str {:mode :compound-select}))))
 
 (defmethod sql-tools/simple-query?-impl :macaw
   [_parser sql-string]
