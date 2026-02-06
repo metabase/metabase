@@ -25,6 +25,8 @@ import type {
   TransformInspectTarget,
 } from "metabase-types/api";
 
+import { treeTableStyles } from "../styles";
+
 type FieldInfoSectionProps = {
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
@@ -45,12 +47,6 @@ type TableWithFields = {
   table_id?: number | null;
   table_name: string;
   fields: TransformInspectField[];
-};
-
-const treeTableStyles = {
-  headerRow: {
-    backgroundColor: "var(--mb-color-background-secondary)",
-  },
 };
 
 export const FieldInfoSection = ({

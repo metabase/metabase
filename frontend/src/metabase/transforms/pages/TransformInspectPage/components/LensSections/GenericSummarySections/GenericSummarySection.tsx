@@ -20,9 +20,10 @@ import type {
 } from "metabase-types/api";
 
 import type { CardStats } from "../../../types";
-import { FieldInfoSection } from "../../FieldInfoSection/FieldInfoSection";
 
+import { FieldInfoSection } from "./components/FieldInfoSection";
 import { RowCountCard } from "./components/RowCountCard";
+import { treeTableStyles } from "./styles";
 
 type GenericSummarySectionProps = {
   lens: InspectorLens;
@@ -36,12 +37,6 @@ type TableRow = {
   id: string;
   card: InspectorCard;
   columnCount?: number;
-};
-
-const treeTableStyles = {
-  headerRow: {
-    backgroundColor: "var(--mb-color-background-secondary)",
-  },
 };
 
 export const GenericSummarySection = ({
