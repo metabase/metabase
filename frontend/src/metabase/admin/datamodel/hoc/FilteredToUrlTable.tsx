@@ -42,7 +42,7 @@ export const FilteredToUrlTable =
         constructor(props: FilteredToUrlTableProps) {
           super(props);
           const { table } = props.location.query || {};
-          this.state = { tableId: table != null ? parseInt(table) : null };
+          this.state = { tableId: table != null ? parseInt(table, 10) : null };
         }
 
         setTableId = (tableId: number | null) => {
