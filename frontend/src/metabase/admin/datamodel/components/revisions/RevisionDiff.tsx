@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -8,13 +7,16 @@ import { QueryDiff } from "./QueryDiff";
 import { EditIcon, ErrorIcon, SuccessIcon } from "./RevisionDiff.styled";
 import { TextDiff } from "./TextDiff";
 
-export class RevisionDiff extends Component {
-  static propTypes = {
-    property: PropTypes.string.isRequired,
-    diff: PropTypes.object.isRequired,
-    tableId: PropTypes.number.isRequired,
+interface RevisionDiffProps {
+  property: string;
+  diff: {
+    before?: any;
+    after?: any;
   };
+  tableId: number;
+}
 
+export class RevisionDiff extends Component<RevisionDiffProps> {
   render() {
     const {
       diff: { before, after },

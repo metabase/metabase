@@ -1,27 +1,36 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import dayjs from "dayjs";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
+import type { User } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 
-export class Revision extends Component {
-  static propTypes = {
-    objectName: PropTypes.string.isRequired,
-    revision: PropTypes.object.isRequired,
-    currentUser: PropTypes.object.isRequired,
-    tableId: PropTypes.number.isRequired,
-  };
+interface RevisionType {
+  user: User;
+  timestamp: string;
+  message?: string;
+  is_creation?: boolean;
+  is_reversion?: boolean;
+  diff?: Record<string, { before?: any; after?: any }>;
+}
 
+interface RevisionProps {
+  objectName: string;
+  revision: RevisionType;
+  currentUser: User;
+  tableId: number;
+  userColor?: string;
+}
+
+export class Revision extends Component<RevisionProps> {
   getAction() {
     const { revision, objectName } = this.props;
     if (revision.is_creation) {
-      return t`created` + ' "' + revision.diff.name.after + '"';
+      return t`created` + ' "' + revision.diff?.name?.after + '"';
     }
     if (revision.is_reversion) {
       return t`reverted to a previous version`;
@@ -60,7 +69,7 @@ export class Revision extends Component {
 
     if (revision.is_creation) {
       // these are included in the
-      message = revision.diff.description.after;
+      message = revision.diff?.description?.after;
       diffKeys = diffKeys.filter((k) => k !== "name" && k !== "description");
     }
 
@@ -89,7 +98,7 @@ export class Revision extends Component {
             <RevisionDiff
               key={key}
               property={key}
-              diff={revision.diff[key]}
+              diff={revision.diff![key]}
               tableId={tableId}
             />
           ))}

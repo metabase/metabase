@@ -1,12 +1,14 @@
 import { diffWords } from "diff";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
-export class TextDiff extends Component {
-  static propTypes = {
-    diff: PropTypes.object.isRequired,
+interface TextDiffProps {
+  diff: {
+    before?: string;
+    after?: string;
   };
+}
 
+export class TextDiff extends Component<TextDiffProps> {
   render() {
     const {
       diff: { before, after },
