@@ -68,7 +68,11 @@
    Returns {:column str, :prefix str, :suffix str-or-nil} or nil."
   [display-name patterns]
   (perf/some (fn [{:keys [prefix separator]}]
-               (when (str/starts-with? display-name prefix)
+               ;; Skip degenerate patterns where both prefix and separator are empty.
+               ;; This can happen when a locale translates e.g. "not {0}" to just "{0}",
+               ;; which would match everything and cause infinite recursion.
+               (when (and (or (seq prefix) (seq separator))
+                          (str/starts-with? display-name prefix))
                  (let [after-prefix (subs display-name (count prefix))]
                    (if (seq separator)
                      ;; Binary/ternary: has separator between column and values
