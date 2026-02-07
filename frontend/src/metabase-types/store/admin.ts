@@ -27,6 +27,14 @@ export type AdminPath = {
 
 export interface AdminState {
   app: AdminAppState;
+  datamodel: {
+    previewSummary: any;
+    revisions: any[];
+  };
+  people: {
+    temporaryPasswords: Record<number, string | null>;
+    memberships?: any[];
+  };
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
