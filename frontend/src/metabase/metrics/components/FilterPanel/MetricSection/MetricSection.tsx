@@ -5,16 +5,11 @@ import { FilterSection } from "../FilterSection";
 
 type MetricSectionProps = {
   definition: LibMetric.MetricDefinition;
-  onChange: (definition: LibMetric.MetricDefinition) => void;
+  onRemove: (filter: LibMetric.FilterClause) => void;
 };
 
-export function MetricSection({ definition, onChange }: MetricSectionProps) {
+export function MetricSection({ definition, onRemove }: MetricSectionProps) {
   const filters = LibMetric.filters(definition);
-
-  const handleRemove = (filter: LibMetric.FilterClause) => {
-    onChange(LibMetric.removeClause(definition, filter));
-  };
-
   if (filters.length === 0) {
     return null;
   }
@@ -28,7 +23,7 @@ export function MetricSection({ definition, onChange }: MetricSectionProps) {
             key={filterIndex}
             definition={definition}
             filter={filter}
-            onRemove={() => handleRemove(filter)}
+            onRemove={() => onRemove(filter)}
           />
         ))}
       </Stack>

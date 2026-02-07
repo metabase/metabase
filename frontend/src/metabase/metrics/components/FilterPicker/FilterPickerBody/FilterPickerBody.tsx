@@ -15,7 +15,7 @@ interface FilterPickerBodyProps {
   filter?: LibMetric.FilterClause;
   isNew?: boolean;
   readOnly?: boolean;
-  onChange: (filter: LibMetric.FilterClause) => void;
+  onSelect: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
 }
 
@@ -25,7 +25,7 @@ export function FilterPickerBody({
   filter,
   isNew,
   readOnly,
-  onChange,
+  onSelect,
   onBack,
 }: FilterPickerBodyProps) {
   const FilterWidget = getFilterWidget(dimension);
@@ -41,7 +41,7 @@ export function FilterPickerBody({
         filter={filter}
         isNew={isNew}
         readOnly={readOnly}
-        onChange={onChange}
+        onSelect={onSelect}
         onBack={onBack}
       />
     </Box>

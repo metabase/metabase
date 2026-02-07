@@ -14,13 +14,13 @@ import { Button } from "metabase/ui";
 type TemporalFilterPickerProps = {
   dimensions: DimensionWithDefinition[];
   selectedFilter: DatePickerValue | undefined;
-  onChange: (filter: DatePickerValue | undefined) => void;
+  onSelect: (filter: DatePickerValue | undefined) => void;
 };
 
 export function TemporalFilterPicker({
   dimensions,
   selectedFilter,
-  onChange,
+  onSelect,
 }: TemporalFilterPickerProps) {
   const availableUnits =
     getCommonTemporalUnits(dimensions).filter(isDatePickerUnit);
@@ -29,7 +29,7 @@ export function TemporalFilterPicker({
     <SimpleDatePicker
       value={selectedFilter}
       availableUnits={availableUnits}
-      onChange={onChange}
+      onChange={onSelect}
     />
   );
 }

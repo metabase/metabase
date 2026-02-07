@@ -3,18 +3,13 @@ import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as LibMetric from "metabase-lib/metric";
 
 import { FilterSectionLayout } from "../FilterSectionLayout";
-
-type DateFilterSectionProps = {
-  definition: LibMetric.MetricDefinition;
-  filter: LibMetric.FilterClause;
-  onRemove: () => void;
-};
+import type { FilterSectionWidgetProps } from "../types";
 
 export function DateFilterSection({
   definition,
   filter,
   onRemove,
-}: DateFilterSectionProps) {
+}: FilterSectionWidgetProps) {
   const filterParts = LibMetric.filterParts(definition, filter);
   const filterValue = getDatePickerValue(definition, filter);
   if (filterParts == null || filterValue == null) {

@@ -66,7 +66,7 @@ export function MetricPlaygroundPage() {
     setRawDefinitions(definitions.map(LibMetric.toJsMetricDefinition));
   };
 
-  const handleFilterChange = (
+  const handleFilterSelect = (
     definition: LibMetric.MetricDefinition,
     filter: LibMetric.FilterClause,
   ) => {
@@ -77,12 +77,22 @@ export function MetricPlaygroundPage() {
     closeFilterPicker();
   };
 
-  const handleTemporalFilterChange = (filter: DatePickerValue | undefined) => {
+  const handleFilterRemove = (
+    definition: LibMetric.MetricDefinition,
+    filter: LibMetric.FilterClause,
+  ) => {
+    const selectedIndex = definitions.indexOf(definition);
+    const newDefinitions = [...definitions];
+    newDefinitions[selectedIndex] = LibMetric.removeClause(definition, filter);
+    handleDefinitionChange(newDefinitions);
+  };
+
+  const handleTemporalFilterSelect = (filter: DatePickerValue | undefined) => {
     setTemporalFilter(filter);
     closeTemporalFilterPicker();
   };
 
-  const handleTemporalBucketChange = (unit: TemporalUnit) => {
+  const handleTemporalBucketSelect = (unit: TemporalUnit) => {
     setTemporalUnit(unit);
     closeTemporalBucketPicker();
   };
@@ -105,17 +115,14 @@ export function MetricPlaygroundPage() {
           <Popover.Dropdown>
             <FilterPicker
               definitions={definitions}
-              onChange={handleFilterChange}
+              onSelect={handleFilterSelect}
             />
           </Popover.Dropdown>
         </Popover>
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`FilterPanel`}</Box>
-        <FilterPanel
-          definitions={definitions}
-          onChange={handleDefinitionChange}
-        />
+        <FilterPanel definitions={definitions} onRemove={handleFilterRemove} />
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`TemporalFilterPicker`}</Box>
@@ -133,7 +140,7 @@ export function MetricPlaygroundPage() {
             <TemporalFilterPicker
               dimensions={getDateDimensionsWithDefinition(definitions)}
               selectedFilter={temporalFilter}
-              onChange={handleTemporalFilterChange}
+              onSelect={handleTemporalFilterSelect}
             />
           </Popover.Dropdown>
         </Popover>
@@ -154,7 +161,7 @@ export function MetricPlaygroundPage() {
             <TemporalBucketPicker
               selectedUnit={temporalUnit}
               dimensions={getDateDimensionsWithDefinition(definitions)}
-              onChange={handleTemporalBucketChange}
+              onSelect={handleTemporalBucketSelect}
             />
           </Popover.Dropdown>
         </Popover>

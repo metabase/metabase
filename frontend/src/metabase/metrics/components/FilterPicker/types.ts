@@ -12,6 +12,6 @@ export type FilterPickerWidgetProps = {
   filter?: LibMetric.FilterClause;
   isNew?: boolean;
   readOnly?: boolean;
-  onChange: (filter: LibMetric.FilterClause) => void;
+  onSelect: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
 };

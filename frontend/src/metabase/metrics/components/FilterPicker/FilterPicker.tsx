@@ -9,13 +9,13 @@ import { FilterPickerBody } from "./FilterPickerBody";
 
 type FilterPickerProps = {
   definitions: LibMetric.MetricDefinition[];
-  onChange: (
+  onSelect: (
     definition: LibMetric.MetricDefinition,
     filter: LibMetric.FilterClause,
   ) => void;
 };
 
-export function FilterPicker({ definitions, onChange }: FilterPickerProps) {
+export function FilterPicker({ definitions, onSelect }: FilterPickerProps) {
   const [definition, setDefinition] =
     useState<LibMetric.MetricDefinition | null>(null);
   const [dimension, setDimension] =
@@ -29,11 +29,11 @@ export function FilterPicker({ definitions, onChange }: FilterPickerProps) {
     setDimension(dimension);
   };
 
-  const handleFilterChange = (filter: LibMetric.FilterClause) => {
+  const handleFilterSelect = (filter: LibMetric.FilterClause) => {
     if (!definition) {
       return;
     }
-    onChange(definition, filter);
+    onSelect(definition, filter);
   };
 
   const handleBack = () => {
@@ -55,7 +55,7 @@ export function FilterPicker({ definitions, onChange }: FilterPickerProps) {
       definition={definition}
       dimension={dimension}
       isNew
-      onChange={handleFilterChange}
+      onSelect={handleFilterSelect}
       onBack={handleBack}
     />
   );
