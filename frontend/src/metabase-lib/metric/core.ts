@@ -103,10 +103,30 @@ export function sourceMetricId(definition: MetricDefinition): MetricId | null {
   return LibMetric.sourceMetricId(definition) as MetricId | null;
 }
 
+export function sourceMetricMetadata(
+  definition: MetricDefinition,
+): MetricMetadata | null {
+  const metricId = sourceMetricId(definition);
+  return metricId != null ? metricMetadata(definition, metricId) : null;
+}
+
 export function sourceMeasureId(
   definition: MetricDefinition,
 ): MeasureId | null {
   return LibMetric.sourceMeasureId(definition) as MeasureId | null;
+}
+
+export function sourceMeasureMetadata(
+  definition: MetricDefinition,
+): MeasureMetadata | null {
+  const measureId = sourceMeasureId(definition);
+  return measureId != null ? measureMetadata(definition, measureId) : null;
+}
+
+export function sourceMetricOrMeasureMetadata(
+  definition: MetricDefinition,
+): MetricMetadata | MeasureMetadata | null {
+  return sourceMetricMetadata(definition) ?? sourceMeasureMetadata(definition);
 }
 
 export function filters(definition: MetricDefinition): FilterClause[] {

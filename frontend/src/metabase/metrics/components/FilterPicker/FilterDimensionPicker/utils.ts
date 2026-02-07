@@ -24,24 +24,11 @@ export function getSections(
 }
 
 export function getSectionName(definition: LibMetric.MetricDefinition): string {
-  const metricId = LibMetric.sourceMetricId(definition);
-  if (metricId != null) {
-    const metric = LibMetric.metricMetadata(definition, metricId);
-    if (metric) {
-      const metricInfo = LibMetric.displayInfo(definition, metric);
-      return metricInfo.displayName;
-    }
+  const metric = LibMetric.sourceMetricOrMeasureMetadata(definition);
+  if (metric) {
+    const metricInfo = LibMetric.displayInfo(definition, metric);
+    return metricInfo.displayName;
   }
-
-  const measureId = LibMetric.sourceMeasureId(definition);
-  if (measureId != null) {
-    const measure = LibMetric.measureMetadata(definition, measureId);
-    if (measure) {
-      const measureInfo = LibMetric.displayInfo(definition, measure);
-      return measureInfo.displayName;
-    }
-  }
-
   return t`Unknown`;
 }
 

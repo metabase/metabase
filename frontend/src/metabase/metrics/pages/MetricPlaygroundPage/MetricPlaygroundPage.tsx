@@ -1,17 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 
-import {
-  useLazyGetMeasureQuery,
-  useLazyGetMetricQuery,
-  useListMeasuresQuery,
-  useListMetricsQuery,
-} from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import {
   FilterPicker,
   FilterPickerButton,
 } from "metabase/metrics/components/FilterPicker";
+import { MetricPicker } from "metabase/metrics/components/MetricPicker";
 import {
   TemporalBucketPicker,
   TemporalBucketPickerButton,
@@ -23,40 +18,32 @@ import {
 import type { DimensionWithDefinition } from "metabase/metrics/types";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, MultiSelect, Popover, Stack } from "metabase/ui";
+import { Box, Popover, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
-import type {
-  Measure,
-  MeasureId,
-  Metric,
-  MetricId,
-  TemporalUnit,
-} from "metabase-types/api";
+import type { JsMetricDefinition, TemporalUnit } from "metabase-types/api";
 
 export function MetricPlaygroundPage() {
-  const { data: metrics = [] } = useListMetricsQuery();
-  const { data: measures = [] } = useListMeasuresQuery();
-  const [fetchMetric] = useLazyGetMetricQuery();
-  const [fetchMeasure] = useLazyGetMeasureQuery();
-  const [metricIds, setMetricIds] = useState<MetricId[]>([]);
-  const [measureIds, setMeasureIds] = useState<MeasureId[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<
+  const [rawDefinitions, setRawDefinitions] = useState<JsMetricDefinition[]>(
+    [],
+  );
+  const [temporalFilter, setTemporalFilter] = useState<
     DatePickerValue | undefined
   >(undefined);
-  const [selectedUnit, setSelectedUnit] = useState<TemporalUnit | undefined>(
+  const [temporalUnit, setTemporalUnit] = useState<TemporalUnit | undefined>(
     undefined,
   );
+
   const [
     isFilterPickerOpen,
     { open: openFilterPicker, close: closeFilterPicker },
   ] = useDisclosure();
   const [
-    isTimeseriesBucketPickerOpen,
-    { open: openTimeseriesBucketPicker, close: closeTimeseriesBucketPicker },
+    isTemporalBucketPickerOpen,
+    { open: openTemporalBucketPicker, close: closeTemporalBucketPicker },
   ] = useDisclosure();
   const [
-    isTimeseriesFilterPickerOpen,
-    { open: openTimeseriesFilterPicker, close: closeTimeseriesFilterPicker },
+    isTemporalFilterPickerOpen,
+    { open: openTemporalFilterPicker, close: closeTemporalFilterPicker },
   ] = useDisclosure();
 
   const metadata = useSelector(getMetadata);
@@ -65,20 +52,15 @@ export function MetricPlaygroundPage() {
     [metadata],
   );
   const definitions = useMemo(
-    () => getMetricDefinitions(metricIds, measureIds, metadataProvider),
-    [metricIds, measureIds, metadataProvider],
+    () =>
+      rawDefinitions.map((definition) =>
+        LibMetric.fromJsMetricDefinition(metadataProvider, definition),
+      ),
+    [rawDefinitions, metadataProvider],
   );
 
-  const handleMetricChange = (value: string[]) => {
-    const metricIds = value.map(getMetricId);
-    setMetricIds(metricIds);
-    metricIds.forEach((metricId) => fetchMetric(metricId));
-  };
-
-  const handleMeasureChange = (value: string[]) => {
-    const measureIds = value.map(getMeasureId);
-    setMeasureIds(measureIds);
-    measureIds.forEach((measureId) => fetchMeasure(measureId));
+  const handleMetricChange = (definitions: LibMetric.MetricDefinition[]) => {
+    setRawDefinitions(definitions.map(LibMetric.toJsMetricDefinition));
   };
 
   const handleFilterChange = (
@@ -90,31 +72,22 @@ export function MetricPlaygroundPage() {
     closeFilterPicker();
   };
 
-  const handleTimeseriesFilterChange = (
-    filter: DatePickerValue | undefined,
-  ) => {
-    setSelectedFilter(filter);
-    closeTimeseriesFilterPicker();
+  const handleTemporalFilterChange = (filter: DatePickerValue | undefined) => {
+    setTemporalFilter(filter);
+    closeTemporalFilterPicker();
   };
 
-  const handleTimeseriesBucketChange = (unit: TemporalUnit) => {
-    setSelectedUnit(unit);
-    closeTimeseriesBucketPicker();
+  const handleTemporalBucketChange = (unit: TemporalUnit) => {
+    setTemporalUnit(unit);
+    closeTemporalBucketPicker();
   };
+
   return (
     <Stack p="md" maw="20rem">
-      <MultiSelect
-        label="Metrics"
-        data={getMetricOptions(metrics)}
-        value={metricIds.map(getMetricIdValue)}
-        onChange={handleMetricChange}
-      />
-      <MultiSelect
-        label="Measures"
-        data={getMeasureOptions(measures)}
-        value={measureIds.map(getMeasureIdValue)}
-        onChange={handleMeasureChange}
-      />
+      <Stack gap="xs">
+        <Box fw="bold">{`MetricPicker`}</Box>
+        <MetricPicker definitions={definitions} onChange={handleMetricChange} />
+      </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`FilterPicker`}</Box>
         <Popover opened={isFilterPickerOpen} onDismiss={closeFilterPicker}>
@@ -130,101 +103,49 @@ export function MetricPlaygroundPage() {
         </Popover>
       </Stack>
       <Stack gap="xs">
-        <Box fw="bold">{`TimeseriesFilterPicker`}</Box>
+        <Box fw="bold">{`TemporalFilterPicker`}</Box>
         <Popover
-          opened={isTimeseriesFilterPickerOpen}
-          onDismiss={closeTimeseriesFilterPicker}
+          opened={isTemporalFilterPickerOpen}
+          onDismiss={closeTemporalFilterPicker}
         >
           <Popover.Target>
             <TemporalFilterPickerButton
-              selectedFilter={selectedFilter}
-              onClick={openTimeseriesFilterPicker}
+              selectedFilter={temporalFilter}
+              onClick={openTemporalFilterPicker}
             />
           </Popover.Target>
           <Popover.Dropdown>
             <TemporalFilterPicker
               dimensions={getDateDimensionsWithDefinition(definitions)}
-              selectedFilter={selectedFilter}
-              onChange={handleTimeseriesFilterChange}
+              selectedFilter={temporalFilter}
+              onChange={handleTemporalFilterChange}
             />
           </Popover.Dropdown>
         </Popover>
       </Stack>
       <Stack gap="xs">
-        <Box fw="bold">{`TimeseriesBucketPicker`}</Box>
+        <Box fw="bold">{`TemporalBucketPicker`}</Box>
         <Popover
-          opened={isTimeseriesBucketPickerOpen}
-          onDismiss={closeTimeseriesBucketPicker}
+          opened={isTemporalBucketPickerOpen}
+          onDismiss={closeTemporalBucketPicker}
         >
           <Popover.Target>
             <TemporalBucketPickerButton
-              selectedUnit={selectedUnit}
-              onClick={openTimeseriesBucketPicker}
+              selectedUnit={temporalUnit}
+              onClick={openTemporalBucketPicker}
             />
           </Popover.Target>
           <Popover.Dropdown>
             <TemporalBucketPicker
-              selectedUnit={selectedUnit}
+              selectedUnit={temporalUnit}
               dimensions={getDateDimensionsWithDefinition(definitions)}
-              onChange={handleTimeseriesBucketChange}
+              onChange={handleTemporalBucketChange}
             />
           </Popover.Dropdown>
         </Popover>
       </Stack>
     </Stack>
   );
-}
-
-function getMetricId(value: string): MetricId {
-  return Number(value);
-}
-
-function getMetricIdValue(metricId: MetricId): string {
-  return String(metricId);
-}
-
-function getMetricOptions(metrics: Metric[]) {
-  return metrics.map((metric) => ({
-    value: getMetricIdValue(metric.id),
-    label: metric.name,
-  }));
-}
-
-function getMeasureId(value: string): MeasureId {
-  return Number(value);
-}
-
-function getMeasureIdValue(measureId: MeasureId): string {
-  return String(measureId);
-}
-
-function getMeasureOptions(measures: Measure[]) {
-  return measures.map((measure) => ({
-    value: getMeasureIdValue(measure.id),
-    label: measure.name,
-  }));
-}
-
-function getMetricDefinitions(
-  metricIds: MetricId[],
-  measureIds: MeasureId[],
-  metadataProvider: LibMetric.MetadataProvider,
-) {
-  const metrics = metricIds
-    .map((metricId) => LibMetric.metricMetadata(metadataProvider, metricId))
-    .filter((metric) => metric !== null);
-  const measures = measureIds
-    .map((measureId) => LibMetric.measureMetadata(metadataProvider, measureId))
-    .filter((measure) => measure !== null);
-
-  return [
-    ...metrics.map((metric) =>
-      LibMetric.fromMetricMetadata(metadataProvider, metric),
-    ),
-    ...measures.map((measure) =>
-      LibMetric.fromMeasureMetadata(metadataProvider, measure),
-    ),
-  ];
 }
 
 function getDateDimensionsWithDefinition(
