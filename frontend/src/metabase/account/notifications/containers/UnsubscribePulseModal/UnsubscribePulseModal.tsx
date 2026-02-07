@@ -12,6 +12,7 @@ import UnsubscribeModal from "../../components/UnsubscribeModal";
 import { getPulseId } from "../../selectors";
 
 interface OwnProps {
+  // Note: Pulses (dashboard subscriptions) use the Alert type
   pulse: Alert;
   params: {
     pulseId?: string;

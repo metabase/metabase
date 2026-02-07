@@ -19,10 +19,6 @@ const AccountLayout = ({ children, user, ...props }: AccountLayoutProps) => {
     return null;
   }
 
-  if (!user) {
-    return null;
-  }
-
   return (
     <div>
       <AccountHeader user={user} {...props} />

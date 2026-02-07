@@ -11,6 +11,7 @@ import ArchiveModal from "../../components/ArchiveModal";
 import { getPulseId } from "../../selectors";
 
 interface OwnProps {
+  // Note: Pulses (dashboard subscriptions) use the Alert type
   pulse: Alert;
   location: {
     query: {
