@@ -1,9 +1,5 @@
-import type {
-  DatabaseEntityId,
-  EntityId,
-  SchemaEntityId,
-  TableEntityId,
-} from "../types";
+import type { EntityId } from "../types";
+
 import {
   isDatabaseEntityId,
   isSchemaEntityId,

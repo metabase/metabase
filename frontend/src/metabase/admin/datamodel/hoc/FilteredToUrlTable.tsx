@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ComponentType } from "react";
 import { Component } from "react";
-import type { InjectedRouter, PlainRoute } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 

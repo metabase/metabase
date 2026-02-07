@@ -388,19 +388,19 @@ const saveError = handleActions(
   {
     [SAVE_DATA_PERMISSIONS]: savePermission,
     [LOAD_DATA_PERMISSIONS]: {
-      next: (state) => null,
+      next: () => null,
     },
     [SAVE_COLLECTION_PERMISSIONS]: savePermission,
     [LOAD_COLLECTION_PERMISSIONS]: {
-      next: (state) => null,
+      next: () => null,
     },
     [SAVE_TENANT_COLLECTION_PERMISSIONS]: savePermission,
     [LOAD_TENANT_COLLECTION_PERMISSIONS]: {
-      next: (state) => null,
+      next: () => null,
     },
     [SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: savePermission,
     [LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
-      next: (state) => null,
+      next: () => null,
     },
     [CLEAR_SAVE_ERROR]: { next: () => null },
   },

@@ -12,7 +12,7 @@ import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -21,11 +21,11 @@ import {
   updateCollectionPermission,
 } from "../../permissions";
 import {
+  type CollectionPermissionEditorType,
   collectionsQuery,
   getCollectionEntity,
   getCollectionsPermissionEditor,
   getIsDirty,
-  type CollectionPermissionEditorType,
 } from "../../selectors/collection-permissions";
 import { PermissionsTable } from "../PermissionsTable";
 

@@ -106,7 +106,9 @@ export function GroupMappingsWidgetView({
         value: mappingsMinusDeletedMapping,
       });
 
-      onSuccess && (await onSuccess());
+      if (onSuccess) {
+        await onSuccess();
+      }
       setSaveError(null);
     } catch (error) {
       setSaveError(error);

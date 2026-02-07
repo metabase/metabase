@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import type { ReactNode } from "react";
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";

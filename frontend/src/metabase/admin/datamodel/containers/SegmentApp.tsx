@@ -1,7 +1,7 @@
 import type { LocationDescriptor } from "history";
 import { useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import type { PlainRoute } from "react-router";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
