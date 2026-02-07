@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -6,7 +5,12 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { Button, Modal, Title } from "metabase/ui";
 
-const Alert = ({ message, onClose }) => (
+interface AlertProps {
+  message?: string | null;
+  onClose: () => void;
+}
+
+export const Alert = ({ message, onClose }: AlertProps) => (
   <Modal
     size="md"
     opened={!!message}
@@ -26,6 +30,3 @@ const Alert = ({ message, onClose }) => (
     </div>
   </Modal>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Alert;
