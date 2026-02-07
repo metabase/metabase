@@ -285,7 +285,7 @@
    dimension-id       :- :string]
   (let [dimension (get-dimension-or-throw dimensions dimension-id)]
     ;; Check for orphaned dimensions
-    (when (= (:status dimension) "status/orphaned")
+    (when (= (:status dimension) :status/orphaned)
       (throw (ex-info (i18n/tru "Cannot use orphaned dimension: {0}" dimension-id)
                       {:status-code 400
                        :dimension-id dimension-id

@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.query-processor :as qp]
@@ -85,8 +86,8 @@
    [:map
     [:source-measure {:optional true} [:maybe ms/PositiveInt]]
     [:source-metric  {:optional true} [:maybe ms/PositiveInt]]
-    [:filters        {:optional true} [:maybe [:sequential :any]]]
-    [:projections    {:optional true} [:maybe [:sequential :any]]]]
+    [:filters        {:optional true} [:maybe [:sequential ::lib-metric.schema/filter-clause]]]
+    [:projections    {:optional true} [:maybe [:sequential ::lib-metric.schema/dimension-reference]]]]
    [:fn {:error/message "Exactly one of source-measure or source-metric must be provided"}
     (fn [{:keys [source-measure source-metric]}]
       (and (or source-measure source-metric)

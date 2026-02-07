@@ -86,6 +86,36 @@
         agg          (first (get-in result [:stages 0 :aggregation]))]
     (is (= :avg (first agg)))))
 
+(deftest ^:parallel compile-min-aggregation-test
+  (let [ast-with-min (assoc-in sample-ast [:source :aggregation]
+                               {:node/type :aggregation/min
+                                :column    {:node/type :ast/column :id 10}})
+        result       (ast.compile/compile-to-mbql ast-with-min)
+        agg          (first (get-in result [:stages 0 :aggregation]))]
+    (is (= :min (first agg)))
+    (is (= :field (first (nth agg 2))))
+    (is (= 10 (nth (nth agg 2) 2)))))
+
+(deftest ^:parallel compile-max-aggregation-test
+  (let [ast-with-max (assoc-in sample-ast [:source :aggregation]
+                               {:node/type :aggregation/max
+                                :column    {:node/type :ast/column :id 10}})
+        result       (ast.compile/compile-to-mbql ast-with-max)
+        agg          (first (get-in result [:stages 0 :aggregation]))]
+    (is (= :max (first agg)))
+    (is (= :field (first (nth agg 2))))
+    (is (= 10 (nth (nth agg 2) 2)))))
+
+(deftest ^:parallel compile-distinct-aggregation-test
+  (let [ast-with-distinct (assoc-in sample-ast [:source :aggregation]
+                                    {:node/type :aggregation/distinct
+                                     :column    {:node/type :ast/column :id 10}})
+        result            (ast.compile/compile-to-mbql ast-with-distinct)
+        agg               (first (get-in result [:stages 0 :aggregation]))]
+    (is (= :distinct (first agg)))
+    (is (= :field (first (nth agg 2))))
+    (is (= 10 (nth (nth agg 2) 2)))))
+
 (deftest ^:parallel compile-mbql-aggregation-test
   (let [raw-clause  [:custom-agg {} [:field {} 10]]
         ast-with-mbql (assoc-in sample-ast [:source :aggregation]
@@ -160,6 +190,19 @@
     (is (= "b" (nth filter 4)))
     (is (= "c" (nth filter 5)))))
 
+(deftest ^:parallel compile-not-in-filter-test
+  (let [ast-with-filter (assoc sample-ast :filter
+                               {:node/type :filter/in
+                                :operator  :not-in
+                                :dimension dim-ref-1
+                                :values    ["x" "y"]})
+        result          (ast.compile/compile-to-mbql ast-with-filter)
+        filter          (first (get-in result [:stages 0 :filters]))]
+    (is (= :not-in (first filter)))
+    (is (= :field (first (nth filter 2))))
+    (is (= "x" (nth filter 3)))
+    (is (= "y" (nth filter 4)))))
+
 (deftest ^:parallel compile-temporal-filter-test
   (let [ast-with-filter (assoc sample-ast :filter
                                {:node/type :filter/temporal
@@ -231,6 +274,40 @@
         result           (ast.compile/compile-to-mbql ast-with-groupby)
         breakout         (get-in result [:stages 0 :breakout])]
     (is (= 2 (count breakout)))))
+
+(deftest ^:parallel compile-group-by-with-binning-test
+  (testing "compiles group-by with binning strategy :default"
+    (let [dim-ref-with-binning {:node/type    :ast/dimension-ref
+                                :dimension-id uuid-1
+                                :options      {:binning {:strategy :default}}}
+          ast-with-binning     (assoc sample-ast :group-by [dim-ref-with-binning])
+          result               (ast.compile/compile-to-mbql ast-with-binning)
+          breakout             (get-in result [:stages 0 :breakout])
+          field-ref            (first breakout)]
+      (is (= :field (first field-ref)))
+      (is (= {:strategy :default} (get-in field-ref [1 :binning])))))
+
+  (testing "compiles group-by with binning strategy :num-bins"
+    (let [dim-ref-with-binning {:node/type    :ast/dimension-ref
+                                :dimension-id uuid-1
+                                :options      {:binning {:strategy :num-bins :num-bins 10}}}
+          ast-with-binning     (assoc sample-ast :group-by [dim-ref-with-binning])
+          result               (ast.compile/compile-to-mbql ast-with-binning)
+          breakout             (get-in result [:stages 0 :breakout])
+          field-ref            (first breakout)]
+      (is (= :field (first field-ref)))
+      (is (= {:strategy :num-bins :num-bins 10} (get-in field-ref [1 :binning])))))
+
+  (testing "compiles group-by with binning strategy :bin-width"
+    (let [dim-ref-with-binning {:node/type    :ast/dimension-ref
+                                :dimension-id uuid-1
+                                :options      {:binning {:strategy :bin-width :bin-width 5}}}
+          ast-with-binning     (assoc sample-ast :group-by [dim-ref-with-binning])
+          result               (ast.compile/compile-to-mbql ast-with-binning)
+          breakout             (get-in result [:stages 0 :breakout])
+          field-ref            (first breakout)]
+      (is (= :field (first field-ref)))
+      (is (= {:strategy :bin-width :bin-width 5} (get-in field-ref [1 :binning]))))))
 
 ;;; -------------------------------------------------- Options --------------------------------------------------
 

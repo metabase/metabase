@@ -87,6 +87,10 @@
   [:not {:lib/uuid (random-uuid-str)}
    (compile-filter-node child mappings)])
 
+(defmethod compile-filter-node :filter/mbql
+  [{:keys [clause]} _mappings]
+  clause)
+
 ;;; -------------------- Aggregation Compilation --------------------
 
 (defn- compile-aggregation-node
