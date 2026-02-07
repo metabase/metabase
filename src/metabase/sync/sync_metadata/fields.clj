@@ -63,12 +63,12 @@
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  ;; `our-metadata` returned by `sync-instances!` includes newly created/reactivated fields but may also
+  ;; `updated-metadata` returned by `sync-instances!` includes newly created/reactivated fields but may also
   ;; contain fields that were retired. This is fine because `update-metadata!` only processes fields present
   ;; in `db-metadata`, so retired entries are ignored.
-  (let [{:keys [num-updates our-metadata]} (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))]
+  (let [{:keys [num-updates updated-metadata]} (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))]
     (+ num-updates
-       (sync-metadata/update-metadata! database table db-metadata our-metadata))))
+       (sync-metadata/update-metadata! database table db-metadata updated-metadata))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

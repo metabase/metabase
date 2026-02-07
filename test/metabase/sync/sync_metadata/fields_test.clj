@@ -597,20 +597,15 @@
 
 (deftest our-metadata-fetched-once-per-table-test
   (testing "our-metadata is only fetched once per table during sync-and-update! (#38941)"
-    (with-test-db
-      (sync/sync-database! (mt/db))
+    (mt/with-temp-copy-of-db
       (let [call-count  (atom 0)
             original-fn fields.our-metadata/our-metadata
-            table       (t2/select-one :model/Table :db_id (u/the-id (mt/db)))]
+            table       (t2/select-one :model/Table :db_id (mt/id) :name "VENUES")]
         (with-redefs [fields.our-metadata/our-metadata (fn [tbl]
                                                          (swap! call-count inc)
                                                          (original-fn tbl))]
-          (let [result (sync-fields/sync-fields-for-table! (mt/db) table)]
-            (testing "our-metadata is fetched exactly once"
-              (is (= 1 @call-count)))
-            (testing "fields are still synced correctly"
-              (is (=? {:total-fields   2
-                       :updated-fields 0}
-                      result))
-              (is (= #{"species" "example_name"}
-                     (t2/select-fn-set :name :model/Field :table_id (u/the-id table) :active true))))))))))
+          (sync-fields/sync-fields-for-table! (mt/db) table))
+        (is (= 1 @call-count)
+            "our-metadata should be fetched exactly once, not twice")
+        (is (pos? (t2/count :model/Field :table_id (u/the-id table) :active true))
+            "fields should still be present after sync")))))

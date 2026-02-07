@@ -117,8 +117,8 @@
   parent Fields when recursively syncing nested Fields, we need to propagate the updates to `our-metadata` made by
   this function and pass them to other steps of the `sync-instances!` process."
   [:map
-   [:num-updates  ms/IntGreaterThanOrEqualToZero]
-   [:our-metadata [:set common/TableMetadataFieldWithID]]])
+   [:num-updates      ms/IntGreaterThanOrEqualToZero]
+   [:updated-metadata [:set common/TableMetadataFieldWithID]]])
 
 (mu/defn- sync-active-instances! :- Updates
   "Sync instances of `Field` in the application database with 'active' Fields in the DB being synced (i.e., ones that
@@ -144,7 +144,7 @@
            ;; now return count of rows updated
            (count new-fields))))
 
-     :our-metadata
+     :updated-metadata
      @our-metadata}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -216,7 +216,7 @@
 (mu/defn sync-instances! :- Updates
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
   creating Field objects or marking them active/inactive as needed.
-  Returns a map with `:num-updates` (count of synced Fields) and `:our-metadata` (the updated set of Field metadata
+  Returns a map with `:num-updates` (count of synced Fields) and `:updated-metadata` (the updated set of Field metadata
   reflecting any newly created or reactivated Fields)."
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
@@ -234,8 +234,8 @@
                (sync-util/name-for-logging table)
                (pr-str (sort (map common/canonical-name db-metadata)))
                (pr-str (sort (map common/canonical-name our-metadata))))
-   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
-     {:num-updates  (+ num-updates
-                       (retire-fields! table db-metadata our-metadata)
-                       (sync-nested-field-instances! table db-metadata our-metadata))
-      :our-metadata our-metadata})))
+   (let [{:keys [num-updates updated-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+     {:num-updates      (+ num-updates
+                           (retire-fields! table db-metadata updated-metadata)
+                           (sync-nested-field-instances! table db-metadata updated-metadata))
+      :updated-metadata updated-metadata})))
