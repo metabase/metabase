@@ -11,17 +11,17 @@ import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
 import { Button } from "metabase/ui";
 
-type TimeseriesFilterPickerProps = {
+type TemporalFilterPickerProps = {
   dimensions: DimensionWithDefinition[];
   selectedFilter: DatePickerValue | undefined;
   onChange: (filter: DatePickerValue | undefined) => void;
 };
 
-export function TimeseriesFilterPicker({
+export function TemporalFilterPicker({
   dimensions,
   selectedFilter,
   onChange,
-}: TimeseriesFilterPickerProps) {
+}: TemporalFilterPickerProps) {
   const availableUnits =
     getCommonTemporalUnits(dimensions).filter(isDatePickerUnit);
 
@@ -34,14 +34,14 @@ export function TimeseriesFilterPicker({
   );
 }
 
-type TimeseriesFilterPickerButtonProps = {
+type TemporalFilterPickerButtonProps = {
   selectedFilter: DatePickerValue | undefined;
   onClick?: () => void;
 };
 
-export const TimeseriesFilterPickerButton = forwardRef(
-  function TimeseriesFilterPickerButton(
-    { selectedFilter, onClick }: TimeseriesFilterPickerButtonProps,
+export const TemporalFilterPickerButton = forwardRef(
+  function TemporalFilterPickerButton(
+    { selectedFilter, onClick }: TemporalFilterPickerButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
     const label = selectedFilter

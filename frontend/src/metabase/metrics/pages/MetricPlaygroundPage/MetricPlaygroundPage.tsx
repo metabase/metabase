@@ -13,13 +13,13 @@ import {
   FilterPickerButton,
 } from "metabase/metrics/components/FilterPicker";
 import {
-  TimeseriesBucketPicker,
-  TimeseriesBucketPickerButton,
-} from "metabase/metrics/components/TimeseriesBucketPicker";
+  TemporalBucketPicker,
+  TemporalBucketPickerButton,
+} from "metabase/metrics/components/TemporalBucketPicker";
 import {
-  TimeseriesFilterPicker,
-  TimeseriesFilterPickerButton,
-} from "metabase/metrics/components/TimeseriesFilterPicker";
+  TemporalFilterPicker,
+  TemporalFilterPickerButton,
+} from "metabase/metrics/components/TemporalFilterPicker";
 import type { DimensionWithDefinition } from "metabase/metrics/types";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -136,13 +136,13 @@ export function MetricPlaygroundPage() {
           onDismiss={closeTimeseriesFilterPicker}
         >
           <Popover.Target>
-            <TimeseriesFilterPickerButton
+            <TemporalFilterPickerButton
               selectedFilter={selectedFilter}
               onClick={openTimeseriesFilterPicker}
             />
           </Popover.Target>
           <Popover.Dropdown>
-            <TimeseriesFilterPicker
+            <TemporalFilterPicker
               dimensions={getDateDimensionsWithDefinition(definitions)}
               selectedFilter={selectedFilter}
               onChange={handleTimeseriesFilterChange}
@@ -157,13 +157,13 @@ export function MetricPlaygroundPage() {
           onDismiss={closeTimeseriesBucketPicker}
         >
           <Popover.Target>
-            <TimeseriesBucketPickerButton
+            <TemporalBucketPickerButton
               selectedUnit={selectedUnit}
               onClick={openTimeseriesBucketPicker}
             />
           </Popover.Target>
           <Popover.Dropdown>
-            <TimeseriesBucketPicker
+            <TemporalBucketPicker
               selectedUnit={selectedUnit}
               dimensions={getDateDimensionsWithDefinition(definitions)}
               onChange={handleTimeseriesBucketChange}

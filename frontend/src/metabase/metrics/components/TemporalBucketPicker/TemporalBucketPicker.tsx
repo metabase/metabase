@@ -8,17 +8,17 @@ import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-type TimeseriesBucketPickerProps = {
+type TemporalBucketPickerProps = {
   selectedUnit: TemporalUnit | undefined;
   dimensions: DimensionWithDefinition[];
   onChange: (unit: TemporalUnit) => void;
 };
 
-export function TimeseriesBucketPicker({
+export function TemporalBucketPicker({
   selectedUnit,
   dimensions,
   onChange,
-}: TimeseriesBucketPickerProps) {
+}: TemporalBucketPickerProps) {
   const sharedUnits = getCommonTemporalUnits(dimensions);
   const sharedUnitItems = sharedUnits.map((unit) => ({
     value: unit,
@@ -34,14 +34,14 @@ export function TimeseriesBucketPicker({
   );
 }
 
-type TimeseriesBucketPickerButtonProps = {
+type TemporalBucketPickerButtonProps = {
   selectedUnit: TemporalUnit | undefined;
   onClick?: () => void;
 };
 
-export const TimeseriesBucketPickerButton = forwardRef(
-  function TimeseriesBucketPickerButton(
-    { selectedUnit, onClick }: TimeseriesBucketPickerButtonProps,
+export const TemporalBucketPickerButton = forwardRef(
+  function TemporalBucketPickerButton(
+    { selectedUnit, onClick }: TemporalBucketPickerButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
     const label = selectedUnit
