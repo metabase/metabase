@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
+import { FilterPanel } from "metabase/metrics/components/FilterPanel";
 import {
   FilterPicker,
   FilterPickerButton,
@@ -59,7 +60,9 @@ export function MetricPlaygroundPage() {
     [rawDefinitions, metadataProvider],
   );
 
-  const handleMetricChange = (definitions: LibMetric.MetricDefinition[]) => {
+  const handleDefinitionChange = (
+    definitions: LibMetric.MetricDefinition[],
+  ) => {
     setRawDefinitions(definitions.map(LibMetric.toJsMetricDefinition));
   };
 
@@ -67,8 +70,10 @@ export function MetricPlaygroundPage() {
     definition: LibMetric.MetricDefinition,
     filter: LibMetric.FilterClause,
   ) => {
-    const displayName = LibMetric.displayInfo(definition, filter).displayName;
-    console.warn(displayName);
+    const selectedIndex = definitions.indexOf(definition);
+    const newDefinitions = [...definitions];
+    newDefinitions[selectedIndex] = LibMetric.filter(definition, filter);
+    handleDefinitionChange(newDefinitions);
     closeFilterPicker();
   };
 
@@ -86,7 +91,10 @@ export function MetricPlaygroundPage() {
     <Stack p="md" maw="20rem">
       <Stack gap="xs">
         <Box fw="bold">{`MetricPicker`}</Box>
-        <MetricPicker definitions={definitions} onChange={handleMetricChange} />
+        <MetricPicker
+          definitions={definitions}
+          onChange={handleDefinitionChange}
+        />
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`FilterPicker`}</Box>
@@ -101,6 +109,13 @@ export function MetricPlaygroundPage() {
             />
           </Popover.Dropdown>
         </Popover>
+      </Stack>
+      <Stack gap="xs">
+        <Box fw="bold">{`FilterPanel`}</Box>
+        <FilterPanel
+          definitions={definitions}
+          onChange={handleDefinitionChange}
+        />
       </Stack>
       <Stack gap="xs">
         <Box fw="bold">{`TemporalFilterPicker`}</Box>
