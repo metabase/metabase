@@ -14,6 +14,7 @@ export const Alert = ({ message, onClose }: AlertProps) => (
   <Modal
     size="md"
     opened={!!message}
+    onClose={onClose}
     withCloseButton={false}
     padding="0"
     data-testid="alert-modal"

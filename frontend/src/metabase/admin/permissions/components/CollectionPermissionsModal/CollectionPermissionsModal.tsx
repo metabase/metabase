@@ -25,8 +25,8 @@ import {
   getCollectionEntity,
   getCollectionsPermissionEditor,
   getIsDirty,
+  type CollectionPermissionEditorType,
 } from "../../selectors/collection-permissions";
-import type { PermissionEditorType } from "../PermissionsEditor";
 import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";
@@ -43,7 +43,7 @@ interface OwnProps {
 }
 
 interface StateProps {
-  permissionEditor?: PermissionEditorType;
+  permissionEditor?: CollectionPermissionEditorType;
   collection?: Collection;
   collectionsList?: Collection[];
   isDirty: boolean;

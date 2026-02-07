@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import type { ReactNode } from "react";
 import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
@@ -15,8 +16,18 @@ import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import type { Segment } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-class SegmentListAppInner extends Component {
+interface SegmentListAppInnerProps {
+  segments: Segment[];
+  tableSelector: ReactNode;
+  setArchived: (segment: Segment, archived: boolean) => void;
+  isAdmin: boolean;
+  isRemoteSyncReadOnly: boolean;
+}
+
+class SegmentListAppInner extends Component<SegmentListAppInnerProps> {
   render() {
     const {
       segments,
@@ -75,7 +86,7 @@ export const SegmentListApp = _.compose(
   Segments.loadList(),
   FilteredToUrlTable("segments"),
   connect(
-    (state) => ({
+    (state: State) => ({
       isAdmin: getUserIsAdmin(state),
       isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
     }),
