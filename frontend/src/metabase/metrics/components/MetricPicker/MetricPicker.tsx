@@ -1,7 +1,12 @@
 import { type KeyboardEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListMeasuresQuery, useListMetricsQuery } from "metabase/api";
+import {
+  useLazyGetMeasureQuery,
+  useLazyGetMetricQuery,
+  useListMeasuresQuery,
+  useListMetricsQuery,
+} from "metabase/api";
 import {
   Combobox,
   Group,
@@ -33,6 +38,8 @@ export function MetricPicker({
   const [searchValue, setSearchValue] = useState("");
   const { data: metrics = [] } = useListMetricsQuery();
   const { data: measures = [] } = useListMeasuresQuery();
+  const [fetchMetric] = useLazyGetMetricQuery();
+  const [fetchMeasure] = useLazyGetMeasureQuery();
 
   const items = useMemo(
     () => getItems(definitions, metrics, measures),
@@ -44,11 +51,17 @@ export function MetricPicker({
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
 
-  const handleSelect = (value: string) => {
+  const handleSelect = async (value: string) => {
     const item = items.find((item) => item.value === value);
-    if (item != null) {
-      onSelect(item);
+    if (item == null) {
+      return;
     }
+    if (item.type === "metric") {
+      await fetchMetric(item.data.id, true);
+    } else {
+      await fetchMeasure(item.data.id, true);
+    }
+    onSelect(item);
   };
 
   const handleRemove = (definitionIndex: number) => {

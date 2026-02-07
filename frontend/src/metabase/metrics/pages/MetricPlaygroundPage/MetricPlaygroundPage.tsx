@@ -1,13 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { FilterPanel } from "metabase/metrics/components/FilterPanel";
 import {
   FilterPicker,
   FilterPickerButton,
 } from "metabase/metrics/components/FilterPicker";
-import { MetricPicker } from "metabase/metrics/components/MetricPicker";
+import {
+  MetricPicker,
+  type MetricPickerItem,
+} from "metabase/metrics/components/MetricPicker";
 import {
   TemporalBucketPicker,
   TemporalBucketPickerButton,
@@ -24,6 +27,13 @@ import * as LibMetric from "metabase-lib/metric";
 import type { JsMetricDefinition, TemporalUnit } from "metabase-types/api";
 
 export function MetricPlaygroundPage() {
+  const store = useStore();
+  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMemo(
+    () => LibMetric.metadataProvider(metadata),
+    [metadata],
+  );
+
   const [rawDefinitions, setRawDefinitions] = useState<JsMetricDefinition[]>(
     [],
   );
@@ -47,11 +57,6 @@ export function MetricPlaygroundPage() {
     { open: openTemporalFilterPicker, close: closeTemporalFilterPicker },
   ] = useDisclosure();
 
-  const metadata = useSelector(getMetadata);
-  const metadataProvider = useMemo(
-    () => LibMetric.metadataProvider(metadata),
-    [metadata],
-  );
   const definitions = useMemo(
     () =>
       rawDefinitions.map((definition) =>
@@ -64,6 +69,24 @@ export function MetricPlaygroundPage() {
     definitions: LibMetric.MetricDefinition[],
   ) => {
     setRawDefinitions(definitions.map(LibMetric.toJsMetricDefinition));
+  };
+
+  const handleMetricSelect = (item: MetricPickerItem) => {
+    const metadata = getMetadata(store.getState());
+    const metadataProvider = LibMetric.metadataProvider(metadata);
+    const definition = getMetricDefinition(metadataProvider, item);
+    if (definition) {
+      handleDefinitionChange([...definitions, definition]);
+    }
+  };
+
+  const handleMetricRemove = (
+    _definition: LibMetric.MetricDefinition,
+    definitionIndex: number,
+  ) => {
+    const newDefinitions = [...definitions];
+    newDefinitions.splice(definitionIndex, 1);
+    handleDefinitionChange(newDefinitions);
   };
 
   const handleFilterSelect = (
@@ -105,8 +128,8 @@ export function MetricPlaygroundPage() {
         <Box fw="bold">{`MetricPicker`}</Box>
         <MetricPicker
           definitions={definitions}
-          onSelect={() => undefined}
-          onRemove={() => undefined}
+          onSelect={handleMetricSelect}
+          onRemove={handleMetricRemove}
         />
       </Stack>
       <Stack gap="xs">
@@ -171,6 +194,24 @@ export function MetricPlaygroundPage() {
       </Stack>
     </Stack>
   );
+}
+
+function getMetricDefinition(
+  metadataProvider: LibMetric.MetadataProvider,
+  item: MetricPickerItem,
+) {
+  if (item.type === "metric") {
+    const metric = LibMetric.metricMetadata(metadataProvider, item.data.id);
+    if (metric) {
+      return LibMetric.fromMetricMetadata(metadataProvider, metric);
+    }
+  } else {
+    const measure = LibMetric.measureMetadata(metadataProvider, item.data.id);
+    if (measure) {
+      return LibMetric.fromMeasureMetadata(metadataProvider, measure);
+    }
+  }
+  return null;
 }
 
 function getDateDimensionsWithDefinition(
