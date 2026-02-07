@@ -10,11 +10,15 @@ describe("getDataColumns", () => {
   });
 
   describe("schemas subject (database level)", () => {
-    it("returns 4 columns with Transforms when PLUGIN_TRANSFORMS.isEnabled is true", () => {
+    it("returns 4 permissions including transforms when PLUGIN_TRANSFORMS.isEnabled is true and transforms are enabled on the instance", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
       expect(
-        getDataColumns({ subject: "schemas", groupType: "admin" }),
+        getDataColumns({
+          subject: "schemas",
+          groupType: "admin",
+          transformsEnabled: true,
+        }),
       ).toStrictEqual([
         {
           name: "Download results",
@@ -26,10 +30,40 @@ describe("getDataColumns", () => {
       ]);
     });
 
-    it("returns 3 columns without Transforms when PLUGIN_TRANSFORMS.isEnabled is false", () => {
+    it("returns 3 permissions when the transform token feature is disabled", () => {
       PLUGIN_TRANSFORMS.isEnabled = false;
 
       expect(getDataColumns({ subject: "schemas" })).toStrictEqual([
+        {
+          name: "Download results",
+          hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
+        },
+        { name: "Manage table metadata" },
+        { name: "Manage database" },
+      ]);
+    });
+
+    it("returns 3 permissions when the transform token feature is present, but transforms are disabled", () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
+      expect(
+        getDataColumns({ subject: "schemas", transformsEnabled: false }),
+      ).toStrictEqual([
+        {
+          name: "Download results",
+          hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
+        },
+        { name: "Manage table metadata" },
+        { name: "Manage database" },
+      ]);
+    });
+
+    it("returns 3 permissions when the transform token feature is missing, but transforms are enabled (possible downgrade screnario)", () => {
+      PLUGIN_TRANSFORMS.isEnabled = false;
+
+      expect(
+        getDataColumns({ subject: "schemas", transformsEnabled: true }),
+      ).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",

@@ -4204,7 +4204,7 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
   });
 
   // TODO [OSS]: fix this test. It works in isolation and local setup, but fails consistently on CI
-  it("should have transforms available in self-hosted pro without upsell gem icon", () => {
+  it.only("should have transforms available in self-hosted pro without upsell gem icon", () => {
     H.activateToken("pro-self-hosted").then(() => {
       cy.log("ensure that transform permissions are not shown");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
