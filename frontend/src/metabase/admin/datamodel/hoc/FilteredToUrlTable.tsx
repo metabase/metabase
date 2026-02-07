@@ -49,7 +49,7 @@ export const FilteredToUrlTable =
           this.setState({ tableId });
           this.props.push({
             ...this.props.location,
-            query: tableId == null ? {} : { table: tableId.toString() },
+            query: tableId == null ? {} : { table: tableId },
           });
         };
 
