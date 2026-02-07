@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box } from "metabase/ui";
+import { Box, Flex, Text, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -25,15 +25,19 @@ import type {
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
 import { PreviousValueComparison } from "./PreviousValueComparison";
+import { VariationPercent } from "./PreviousValueComparison/VariationPercent";
 import { ScalarPeriod } from "./ScalarPeriod";
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 import { computeTrend } from "./compute";
 import {
+  COMPACT_HEIGHT_THRESHOLD,
   DASHCARD_HEADER_HEIGHT,
+  ICON_SIZE,
   MAX_COMPARISONS,
   VIZ_SETTINGS_DEFAULTS,
 } from "./constants";
 import {
+  formatChange,
   getColumnsForComparison,
   getComparisonOptions,
   getComparisons,
@@ -110,6 +114,75 @@ export function SmartScalar({
     innerHeight,
     comparisons.length,
   );
+
+  const isCompact = height < COMPACT_HEIGHT_THRESHOLD;
+  const firstComparison = comparisons[0];
+  const compactPercentDisplay =
+    firstComparison?.percentChange != null
+      ? formatChange(firstComparison.percentChange)
+      : firstComparison?.display?.percentChange;
+
+  // In compact mode, render value with period and percent change stacked vertically
+  if (isCompact) {
+    return (
+      <Flex
+        align="center"
+        justify="flex-start"
+        gap="sm"
+        wrap="nowrap"
+        h="100%"
+        pl={16}
+      >
+        <ScalarValueContainer
+          className={DashboardS.fullscreenNormalText}
+          tooltip={fullScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
+          isClickable={isClickable}
+        >
+          <span onClick={handleClick} ref={scalarRef}>
+            <ScalarValue
+              fontFamily={fontFamily}
+              gridSize={gridSize}
+              height={valueHeight}
+              totalNumGridCols={totalNumGridCols}
+              value={displayValue as string}
+              width={getValueWidth(width)}
+              isCompact
+            />
+          </span>
+        </ScalarValueContainer>
+        <Flex direction="column" align="flex-start" gap={0}>
+          {display.date && (
+            <Text
+              fw={700}
+              lh="1rem"
+              className={DashboardS.fullscreenNormalText}
+            >
+              {display.date}
+            </Text>
+          )}
+          {firstComparison && compactPercentDisplay && (
+            <Tooltip
+              label={firstComparison.comparisonDescStr}
+              position="bottom"
+              disabled={!firstComparison.comparisonDescStr}
+            >
+              <Box>
+                <VariationPercent
+                  color="text-tertiary"
+                  comparison={firstComparison}
+                  iconSize={ICON_SIZE}
+                  iconGap={4}
+                >
+                  {compactPercentDisplay}
+                </VariationPercent>
+              </Box>
+            </Tooltip>
+          )}
+        </Flex>
+      </Flex>
+    );
+  }
 
   return (
     <ScalarWrapper>

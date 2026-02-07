@@ -830,6 +830,14 @@ class Visualization extends PureComponent<
       !replacementContent &&
       (!isVisualizerDashCard || React.Children.count(titleMenuItems) === 1);
 
+    // Compact mode for small scalar/smartscalar cards (< 100px height)
+    const displayType = series?.[0]?.card?.display;
+    const isScalarDisplay =
+      displayType === "scalar" || displayType === "smartscalar";
+    const COMPACT_HEIGHT_THRESHOLD = 100;
+    const isCompactScalar =
+      isScalarDisplay && height < COMPACT_HEIGHT_THRESHOLD;
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -845,7 +853,7 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <VisualizationHeader>
+            <VisualizationHeader isCompact={isCompactScalar}>
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}

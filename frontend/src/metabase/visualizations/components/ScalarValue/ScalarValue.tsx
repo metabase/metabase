@@ -17,6 +17,9 @@ export const ScalarWrapper = ({ children }: PropsWithChildren) => (
   <ScalarRoot data-testid="scalar-root">{children}</ScalarRoot>
 );
 
+// Fixed font size for compact mode (when card height < 100px)
+const COMPACT_FONT_SIZE = "2.25rem"; // 36px
+
 interface ScalarValueProps {
   value: string;
   height: number;
@@ -25,6 +28,7 @@ interface ScalarValueProps {
   totalNumGridCols?: number;
   fontFamily: string;
   color?: string;
+  isCompact?: boolean;
 }
 
 export const ScalarValue = ({
@@ -35,12 +39,17 @@ export const ScalarValue = ({
   totalNumGridCols,
   fontFamily,
   color = "inherit",
+  isCompact,
 }: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
   } = useMantineTheme();
 
   const fontSize = useMemo(() => {
+    if (isCompact) {
+      return COMPACT_FONT_SIZE;
+    }
+
     if (numberTheme?.value?.fontSize) {
       return numberTheme.value?.fontSize;
     }
@@ -62,6 +71,7 @@ export const ScalarValue = ({
     fontFamily,
     gridSize,
     height,
+    isCompact,
     totalNumGridCols,
     value,
     width,
