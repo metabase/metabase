@@ -503,14 +503,18 @@
   [:and
    [:map
     [:dashboard_id :int]
-    [:email :string]
+    [:channel_type {:optional true, :default "email"}
+     [:enum {:encode/tool-api-request keyword} "email" "slack"]]
+    [:email {:optional true} :string]
+    [:slack_channel {:optional true} :string]
     [:schedule ::subscription-schedule]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/create-dashboard-subscription"
   "Create a dashboard subscription."
   {:args-schema   ::create-dashboard-subscription-arguments
-   :result-schema [:map [:output :string]]
+   :result-schema [:map [:error  {:optional true} :string
+                         :output {:optional true} :string]]
    :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
 
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
