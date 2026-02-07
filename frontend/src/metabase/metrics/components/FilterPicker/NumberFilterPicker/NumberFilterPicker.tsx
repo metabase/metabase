@@ -15,7 +15,8 @@ import { NumberFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
-import { type NumberOrEmptyValue, useNumberFilter } from "./hooks";
+import { useNumberFilter } from "./hooks";
+import type { NumberOrEmptyValue } from "./types";
 
 export function NumberFilterPicker({
   definition,
@@ -23,7 +24,7 @@ export function NumberFilterPicker({
   filter,
   isNew,
   readOnly,
-  onChange,
+  onSelect,
   onBack,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
@@ -57,7 +58,7 @@ export function NumberFilterPicker({
     event.preventDefault();
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(filter);
+      onSelect(filter);
     }
   };
 
@@ -76,7 +77,7 @@ export function NumberFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={handleOperatorChange}
+          onSelect={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>

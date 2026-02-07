@@ -15,7 +15,7 @@ interface CoordinateDimensionPickerProps {
   dimension: LibMetric.DimensionMetadata;
   secondDimension: LibMetric.DimensionMetadata | undefined;
   availableDimensions: LibMetric.DimensionMetadata[];
-  onChange: (secondDimension: LibMetric.DimensionMetadata) => void;
+  onSelect: (secondDimension: LibMetric.DimensionMetadata) => void;
 }
 
 export function CoordinateDimensionPicker({
@@ -23,7 +23,7 @@ export function CoordinateDimensionPicker({
   dimension,
   secondDimension,
   availableDimensions,
-  onChange,
+  onSelect,
 }: CoordinateDimensionPickerProps) {
   const options = useMemo(() => {
     return getDimensionOptions(definition, availableDimensions);
@@ -39,7 +39,7 @@ export function CoordinateDimensionPicker({
       options.find((option) => option.value === value),
     );
     setValue(option.value);
-    onChange(option.dimension);
+    onSelect(option.dimension);
   };
 
   return (

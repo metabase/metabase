@@ -20,7 +20,7 @@ export function TimeFilterPicker({
   filter,
   isNew,
   readOnly,
-  onChange,
+  onSelect,
   onBack,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
@@ -52,7 +52,7 @@ export function TimeFilterPicker({
   const handleFilterChange = () => {
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(filter);
+      onSelect(filter);
     }
   };
 
@@ -76,7 +76,7 @@ export function TimeFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={handleOperatorChange}
+          onSelect={handleOperatorChange}
         />
       </FilterPickerHeader>
       <Box>

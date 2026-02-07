@@ -7,6 +7,7 @@ type FilterPanelProps = {
   definitions: LibMetric.MetricDefinition[];
   onRemove: (
     definition: LibMetric.MetricDefinition,
+    definitionIndex: number,
     filter: LibMetric.FilterClause,
   ) => void;
 };
@@ -18,7 +19,7 @@ export function FilterPanel({ definitions, onRemove }: FilterPanelProps) {
         <MetricSection
           key={definitionIndex}
           definition={definition}
-          onRemove={(filter) => onRemove(definition, filter)}
+          onRemove={(filter) => onRemove(definition, definitionIndex, filter)}
         />
       ))}
     </Stack>

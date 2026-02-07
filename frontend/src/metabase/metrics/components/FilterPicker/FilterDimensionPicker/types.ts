@@ -4,6 +4,7 @@ import type * as LibMetric from "metabase-lib/metric";
 export type DimensionListItem = {
   name: string;
   definition: LibMetric.MetricDefinition;
+  definitionIndex: number;
   dimension: LibMetric.DimensionMetadata;
 };
 

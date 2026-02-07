@@ -68,22 +68,24 @@ export function MetricPlaygroundPage() {
 
   const handleFilterSelect = (
     definition: LibMetric.MetricDefinition,
+    definitionIndex: number,
     filter: LibMetric.FilterClause,
   ) => {
-    const selectedIndex = definitions.indexOf(definition);
+    const newDefinition = LibMetric.filter(definition, filter);
     const newDefinitions = [...definitions];
-    newDefinitions[selectedIndex] = LibMetric.filter(definition, filter);
+    newDefinitions[definitionIndex] = newDefinition;
     handleDefinitionChange(newDefinitions);
     closeFilterPicker();
   };
 
   const handleFilterRemove = (
     definition: LibMetric.MetricDefinition,
+    definitionIndex: number,
     filter: LibMetric.FilterClause,
   ) => {
-    const selectedIndex = definitions.indexOf(definition);
+    const newDefinition = LibMetric.removeClause(definition, filter);
     const newDefinitions = [...definitions];
-    newDefinitions[selectedIndex] = LibMetric.removeClause(definition, filter);
+    newDefinitions[definitionIndex] = newDefinition;
     handleDefinitionChange(newDefinitions);
   };
 
@@ -103,7 +105,8 @@ export function MetricPlaygroundPage() {
         <Box fw="bold">{`MetricPicker`}</Box>
         <MetricPicker
           definitions={definitions}
-          onChange={handleDefinitionChange}
+          onSelect={() => undefined}
+          onRemove={() => undefined}
         />
       </Stack>
       <Stack gap="xs">

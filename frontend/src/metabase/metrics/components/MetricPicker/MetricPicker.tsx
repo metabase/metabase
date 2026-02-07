@@ -1,14 +1,7 @@
 import { type KeyboardEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useLazyGetMeasureQuery,
-  useLazyGetMetricQuery,
-  useListMeasuresQuery,
-  useListMetricsQuery,
-} from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useListMeasuresQuery, useListMetricsQuery } from "metabase/api";
 import {
   Combobox,
   Group,
@@ -18,7 +11,6 @@ import {
   useCombobox,
 } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
-import type { MeasureId, MetricId } from "metabase-types/api";
 
 import S from "./MetricPicker.module.css";
 import type { MetricPickerItem } from "./types";
@@ -26,68 +18,41 @@ import { getItems } from "./utils";
 
 type MetricPickerProps = {
   definitions: LibMetric.MetricDefinition[];
-  onChange: (definitions: LibMetric.MetricDefinition[]) => void;
+  onSelect: (item: MetricPickerItem) => void;
+  onRemove: (
+    definition: LibMetric.MetricDefinition,
+    definitionIndex: number,
+  ) => void;
 };
 
-export function MetricPicker({ definitions, onChange }: MetricPickerProps) {
+export function MetricPicker({
+  definitions,
+  onSelect,
+  onRemove,
+}: MetricPickerProps) {
   const [searchValue, setSearchValue] = useState("");
-
   const { data: metrics = [] } = useListMetricsQuery();
   const { data: measures = [] } = useListMeasuresQuery();
-  const [fetchMetric] = useLazyGetMetricQuery();
-  const [fetchMeasure] = useLazyGetMeasureQuery();
-
-  const metadata = useSelector(getMetadata);
-  const metadataProvider = useMemo(
-    () => LibMetric.metadataProvider(metadata),
-    [metadata],
-  );
 
   const items = useMemo(
-    () => getItems(metrics, measures, definitions),
-    [metrics, measures, definitions],
+    () => getItems(definitions, metrics, measures),
+    [definitions, metrics, measures],
   );
+
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
 
-  const handleSelectMetric = async (metricId: MetricId) => {
-    await fetchMetric(metricId);
-    const metric = LibMetric.metricMetadata(metadataProvider, metricId);
-    if (metric != null) {
-      onChange([
-        ...definitions,
-        LibMetric.fromMetricMetadata(metadataProvider, metric),
-      ]);
-    }
-  };
-
-  const handleSelectMeasure = async (measureId: MeasureId) => {
-    await fetchMeasure(measureId);
-    const measure = LibMetric.measureMetadata(metadataProvider, measureId);
-    if (measure != null) {
-      onChange([
-        ...definitions,
-        LibMetric.fromMeasureMetadata(metadataProvider, measure),
-      ]);
-    }
-  };
-
-  const handleSelect = async (value: string) => {
+  const handleSelect = (value: string) => {
     const item = items.find((item) => item.value === value);
-    if (item == null) {
-      return;
-    }
-    if (item.type === "metric") {
-      await handleSelectMetric(item.data.id);
-    } else {
-      await handleSelectMeasure(item.data.id);
+    if (item != null) {
+      onSelect(item);
     }
   };
 
-  const handleRemove = (removedIndex: number) => {
-    onChange(definitions.filter((_, index) => index !== removedIndex));
+  const handleRemove = (definitionIndex: number) => {
+    onRemove(definitions[definitionIndex], definitionIndex);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {

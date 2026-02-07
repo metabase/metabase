@@ -16,7 +16,8 @@ import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { CoordinateDimensionPicker } from "./CoordinateDimensionPicker";
-import { type NumberOrEmptyValue, useCoordinateFilter } from "./hooks";
+import { useCoordinateFilter } from "./hooks";
+import type { NumberOrEmptyValue } from "./types";
 
 export function CoordinateFilterPicker({
   definition,
@@ -24,7 +25,7 @@ export function CoordinateFilterPicker({
   filter,
   isNew,
   readOnly,
-  onChange,
+  onSelect,
   onBack,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
@@ -62,7 +63,7 @@ export function CoordinateFilterPicker({
     event.preventDefault();
     const filter = getFilterClause(operator, secondDimension, values);
     if (filter) {
-      onChange(filter);
+      onSelect(filter);
     }
   };
 
@@ -81,7 +82,7 @@ export function CoordinateFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={handleOperatorChange}
+          onSelect={handleOperatorChange}
         />
       </FilterPickerHeader>
       <Box>
@@ -91,7 +92,7 @@ export function CoordinateFilterPicker({
             dimension={dimension}
             secondDimension={secondDimension}
             availableDimensions={availableDimensions}
-            onChange={setSecondDimension}
+            onSelect={setSecondDimension}
           />
         )}
         <CoordinateValueInput

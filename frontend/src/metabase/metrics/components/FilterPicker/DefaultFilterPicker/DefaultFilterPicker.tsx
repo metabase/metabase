@@ -17,7 +17,7 @@ export function DefaultFilterPicker({
   filter,
   isNew,
   onBack,
-  onChange,
+  onSelect,
   readOnly,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
@@ -46,7 +46,7 @@ export function DefaultFilterPicker({
     event.preventDefault();
     const filter = getFilterClause(operator);
     if (filter) {
-      onChange(filter);
+      onSelect(filter);
     }
   };
 

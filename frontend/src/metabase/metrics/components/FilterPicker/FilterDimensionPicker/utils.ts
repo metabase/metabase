@@ -7,11 +7,12 @@ import type { DimensionListItem, DimensionSection } from "./types";
 export function getSections(
   definitions: LibMetric.MetricDefinition[],
 ): DimensionSection[] {
-  return definitions.map((definition) => {
+  return definitions.map((definition, definitionIndex) => {
     const dimensions = LibMetric.filterableDimensions(definition);
     const items: DimensionListItem[] = dimensions.map((dimension) => ({
       name: getDimensionName(definition, dimension),
       definition,
+      definitionIndex,
       dimension,
     }));
 

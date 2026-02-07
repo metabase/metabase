@@ -13,7 +13,8 @@ import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
-import { type OperatorType, useStringFilter } from "./hooks";
+import { useStringFilter } from "./hooks";
+import type { OperatorType } from "./types";
 
 export function StringFilterPicker({
   definition,
@@ -21,7 +22,7 @@ export function StringFilterPicker({
   filter,
   isNew,
   readOnly,
-  onChange,
+  onSelect,
   onBack,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
@@ -56,7 +57,7 @@ export function StringFilterPicker({
     event.preventDefault();
     const filter = getFilterClause(operator, values, options);
     if (filter) {
-      onChange(filter);
+      onSelect(filter);
     }
   };
 
@@ -75,7 +76,7 @@ export function StringFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={handleOperatorChange}
+          onSelect={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>

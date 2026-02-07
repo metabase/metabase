@@ -19,7 +19,7 @@ export function DateFilterPicker({
   filter,
   isNew,
   readOnly,
-  onChange,
+  onSelect,
   onBack,
 }: FilterPickerWidgetProps) {
   const value = useMemo(() => {
@@ -35,7 +35,7 @@ export function DateFilterPicker({
   }, [definition, dimension]);
 
   const handleChange = (value: DatePickerValue) => {
-    onChange(getDateFilterClause(dimension, value));
+    onSelect(getDateFilterClause(dimension, value));
   };
 
   return (

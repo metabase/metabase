@@ -12,23 +12,24 @@ import { getSections } from "./utils";
 
 interface FilterDimensionPickerProps {
   definitions: LibMetric.MetricDefinition[];
-  onChange: (
+  onSelect: (
     definition: LibMetric.MetricDefinition,
+    definitionIndex: number,
     dimension: LibMetric.DimensionMetadata,
   ) => void;
 }
 
 export function FilterDimensionPicker({
   definitions,
-  onChange,
+  onSelect,
 }: FilterDimensionPickerProps) {
   const sections = useMemo(() => getSections(definitions), [definitions]);
 
   const handleSelect = useCallback(
     (item: DimensionListItem) => {
-      onChange(item.definition, item.dimension);
+      onSelect(item.definition, item.definitionIndex, item.dimension);
     },
-    [onChange],
+    [onSelect],
   );
 
   const renderItemIcon = useCallback((item: DimensionListItem) => {

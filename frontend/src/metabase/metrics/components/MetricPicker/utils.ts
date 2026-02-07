@@ -67,9 +67,9 @@ function getItemIdFromDefinition(
 }
 
 export function getItems(
+  definitions: LibMetric.MetricDefinition[],
   metrics: Metric[],
   measures: Measure[],
-  definitions: LibMetric.MetricDefinition[],
 ): MetricPickerItem[] {
   return getUnselectedItems(
     getCombinedItems(metrics, measures),

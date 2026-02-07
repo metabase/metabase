@@ -18,8 +18,8 @@ export function BooleanFilterPicker({
   filter,
   isNew,
   readOnly,
+  onSelect,
   onBack,
-  onChange,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -34,7 +34,7 @@ export function BooleanFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(getFilterClause());
+    onSelect(getFilterClause());
   };
 
   return (
