@@ -8,16 +8,24 @@ import { AccountHeader } from "../AccountHeader";
 import { AccountContent } from "./AccountLayout.styled";
 
 interface AccountLayoutProps {
-  user: User;
+  user: User | null;
   path?: string;
   onChangeLocation?: (nextLocation: Path) => void;
   children?: ReactNode;
 }
 
-const AccountLayout = ({ children, ...props }: AccountLayoutProps) => {
+const AccountLayout = ({ children, user, ...props }: AccountLayoutProps) => {
+  if (!user) {
+    return null;
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div>
-      <AccountHeader {...props} />
+      <AccountHeader user={user} {...props} />
       <AccountContent>{children}</AccountContent>
     </div>
   );

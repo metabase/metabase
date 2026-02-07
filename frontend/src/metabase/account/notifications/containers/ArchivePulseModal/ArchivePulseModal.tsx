@@ -17,6 +17,9 @@ interface OwnProps {
       unsubscribed?: string;
     };
   };
+  params: {
+    pulseId?: string;
+  };
 }
 
 const mapStateToProps = (state: State, { pulse, location }: OwnProps) => ({

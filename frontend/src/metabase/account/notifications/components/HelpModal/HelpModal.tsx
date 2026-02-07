@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
-import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
@@ -15,7 +14,7 @@ interface HelpModalProps {
 }
 
 const HelpModal = ({ onClose }: HelpModalProps) => {
-  const email = Settings.get("admin-email");
+  const email = (Settings.get("admin-email") as string | null) ?? null;
 
   const handleClose = () => onClose?.(true);
 
@@ -44,9 +43,13 @@ const HelpModal = ({ onClose }: HelpModalProps) => {
 
 const getAdminLink = (email: string | null, text: string): ReactNode => {
   return email ? (
-    <Link variant="brand" key="admin-link" href={`mailto:${email}`}>
+    <a
+      key="admin-link"
+      href={`mailto:${email}`}
+      style={{ color: "var(--mb-color-brand)", fontWeight: 700 }}
+    >
       {text}
-    </Link>
+    </a>
   ) : (
     text
   );

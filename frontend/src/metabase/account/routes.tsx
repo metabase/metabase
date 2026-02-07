@@ -6,7 +6,8 @@ import getNotificationRoutes from "./notifications/routes";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import UserProfileApp from "./profile/containers/UserProfileApp";
 
-const getRoutes = (store, IsAuthenticated) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getRoutes = (store: any, IsAuthenticated: any) => {
   return (
     <Route path="/account" component={IsAuthenticated}>
       <Route component={AccountApp}>

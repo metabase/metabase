@@ -11,5 +11,5 @@ export default function LoginHistoryApp() {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <LoginHistoryList loginHistory={loginHistory} />;
+  return <LoginHistoryList loginHistory={loginHistory ?? []} />;
 }

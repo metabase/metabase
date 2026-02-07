@@ -13,6 +13,9 @@ import { getPulseId } from "../../selectors";
 
 interface OwnProps {
   pulse: Alert;
+  params: {
+    pulseId?: string;
+  };
 }
 
 const mapStateToProps = (state: State, { pulse }: OwnProps) => ({

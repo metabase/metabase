@@ -7,16 +7,16 @@ import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
-import type { Alert, Notification, User } from "metabase-types/api";
+import type { Alert, User } from "metabase-types/api";
 
 import { ModalMessage } from "./ArchiveModal.styled";
 
 interface ArchiveModalProps {
-  item: Alert | Notification;
+  item: Alert;
   type: "alert" | "pulse";
   user?: User | null;
   hasUnsubscribed?: boolean;
-  onArchive?: (item: Alert | Notification, archived: boolean) => Promise<void>;
+  onArchive?: (item: Alert, archived: boolean) => Promise<void>;
   onClose?: () => void;
 }
 
@@ -28,14 +28,14 @@ const ArchiveModal = ({
   onArchive,
   onClose,
 }: ArchiveModalProps) => {
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<{ status: number; data?: { message?: string } }>();
 
   const handleArchiveClick = useCallback(async () => {
     try {
       await onArchive?.(item, true);
       onClose?.();
     } catch (error) {
-      setError(error as string);
+      setError({ status: 500, data: { message: String(error) } });
     }
   }, [item, onArchive, onClose]);
 
@@ -53,7 +53,7 @@ const ArchiveModal = ({
       ]}
       onClose={onClose}
     >
-      {isCreator(item, user) && hasUnsubscribed && (
+      {isCreator(item, user) && hasUnsubscribed && user && (
         <ModalMessage data-server-date>
           {getCreatorMessage(type, user)}
           {t`As the creator you can also choose to delete this if it’s no longer relevant to others as well.`}
@@ -67,7 +67,7 @@ const ArchiveModal = ({
   );
 };
 
-const isCreator = (item: Alert | Notification, user?: User | null) => {
+const isCreator = (item: Alert, user?: User | null) => {
   return user != null && user.id === item.creator?.id;
 };
 
@@ -108,19 +108,21 @@ const getCreatorMessage = (type: "alert" | "pulse", user: User) => {
   }
 };
 
-const getDateMessage = (item: Alert | Notification, type: "alert" | "pulse") => {
+const getDateMessage = (item: Alert, type: "alert" | "pulse") => {
   const options = Settings.formattingOptions();
-  const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
+  const createdAt = item.created_at
+    ? formatDateTimeWithUnit(item.created_at, "day", options)
+    : "";
 
   switch (type) {
     case "alert":
-      return t`You created this alert on ${createdAt}. `;
+      return createdAt ? t`You created this alert on ${createdAt}. ` : "";
     case "pulse":
-      return t`You created this subscription on ${createdAt}. `;
+      return createdAt ? t`You created this subscription on ${createdAt}. ` : "";
   }
 };
 
-const getRecipientsMessage = (item: Alert | Notification) => {
+const getRecipientsMessage = (item: Alert) => {
   return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 

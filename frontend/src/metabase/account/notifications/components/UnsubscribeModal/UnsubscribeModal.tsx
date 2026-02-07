@@ -4,14 +4,14 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
-import type { Alert, Notification, User } from "metabase-types/api";
+import type { Alert, User } from "metabase-types/api";
 
 interface UnsubscribeModalProps {
-  item: Alert | Notification;
+  item: Alert;
   type: "alert" | "pulse";
   user?: User | null;
-  onUnsubscribe?: (item: Alert | Notification) => Promise<void>;
-  onArchive?: (item: Alert | Notification, type: "alert" | "pulse", hasUnsubscribed: boolean) => void;
+  onUnsubscribe?: (item: Alert) => Promise<void>;
+  onArchive?: (item: Alert, type: "alert" | "pulse", hasUnsubscribed: boolean) => void;
   onClose?: () => void;
 }
 
@@ -23,7 +23,7 @@ const UnsubscribeModal = ({
   onArchive,
   onClose,
 }: UnsubscribeModalProps) => {
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<{ status: number; data?: { message?: string } }>();
 
   const handleUnsubscribeClick = useCallback(async () => {
     try {
@@ -35,7 +35,7 @@ const UnsubscribeModal = ({
         onClose?.();
       }
     } catch (error) {
-      setError(error as string);
+      setError({ status: 500, data: { message: String(error) } });
     }
   }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 
@@ -61,7 +61,7 @@ const UnsubscribeModal = ({
   );
 };
 
-const isCreator = (item: Alert | Notification, user?: User | null) => {
+const isCreator = (item: Alert, user?: User | null) => {
   return user != null && user.id === item.creator?.id;
 };
 
