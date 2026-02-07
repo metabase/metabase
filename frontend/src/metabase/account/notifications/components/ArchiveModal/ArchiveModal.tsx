@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -8,17 +7,18 @@ import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
+import type { Alert, Notification, User } from "metabase-types/api";
 
 import { ModalMessage } from "./ArchiveModal.styled";
 
-const propTypes = {
-  item: PropTypes.object.isRequired,
-  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  user: PropTypes.object,
-  hasUnsubscribed: PropTypes.bool,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
-};
+interface ArchiveModalProps {
+  item: Alert | Notification;
+  type: "alert" | "pulse";
+  user?: User | null;
+  hasUnsubscribed?: boolean;
+  onArchive?: (item: Alert | Notification, archived: boolean) => Promise<void>;
+  onClose?: () => void;
+}
 
 const ArchiveModal = ({
   item,
@@ -27,15 +27,15 @@ const ArchiveModal = ({
   hasUnsubscribed,
   onArchive,
   onClose,
-}) => {
-  const [error, setError] = useState();
+}: ArchiveModalProps) => {
+  const [error, setError] = useState<string>();
 
   const handleArchiveClick = useCallback(async () => {
     try {
-      await onArchive(item, true);
-      onClose();
+      await onArchive?.(item, true);
+      onClose?.();
     } catch (error) {
-      setError(error);
+      setError(error as string);
     }
   }, [item, onArchive, onClose]);
 
@@ -67,13 +67,11 @@ const ArchiveModal = ({
   );
 };
 
-ArchiveModal.propTypes = propTypes;
-
-const isCreator = (item, user) => {
+const isCreator = (item: Alert | Notification, user?: User | null) => {
   return user != null && user.id === item.creator?.id;
 };
 
-const getTitleMessage = (type, hasUnsubscribed) => {
+const getTitleMessage = (type: "alert" | "pulse", hasUnsubscribed?: boolean) => {
   switch (type) {
     case "alert":
       return hasUnsubscribed
@@ -86,7 +84,7 @@ const getTitleMessage = (type, hasUnsubscribed) => {
   }
 };
 
-const getSubmitMessage = (type, hasUnsubscribed) => {
+const getSubmitMessage = (type: "alert" | "pulse", hasUnsubscribed?: boolean) => {
   switch (type) {
     case "alert":
       return hasUnsubscribed ? t`Delete this alert` : t`Yes, delete this alert`;
@@ -97,11 +95,11 @@ const getSubmitMessage = (type, hasUnsubscribed) => {
   }
 };
 
-const getCancelMessage = (hasUnsubscribed) => {
+const getCancelMessage = (hasUnsubscribed?: boolean) => {
   return hasUnsubscribed ? t`Keep it around` : t`I changed my mind`;
 };
 
-const getCreatorMessage = (type, user) => {
+const getCreatorMessage = (type: "alert" | "pulse", user: User) => {
   switch (type) {
     case "alert":
       return t`You won’t receive this alert at ${user.email} any more. `;
@@ -110,7 +108,7 @@ const getCreatorMessage = (type, user) => {
   }
 };
 
-const getDateMessage = (item, type) => {
+const getDateMessage = (item: Alert | Notification, type: "alert" | "pulse") => {
   const options = Settings.formattingOptions();
   const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
 
@@ -122,7 +120,7 @@ const getDateMessage = (item, type) => {
   }
 };
 
-const getRecipientsMessage = (item) => {
+const getRecipientsMessage = (item: Alert | Notification) => {
   return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 

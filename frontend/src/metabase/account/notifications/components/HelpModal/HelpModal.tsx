@@ -1,4 +1,4 @@
-import PropTypes from "prop-types";
+import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
@@ -10,14 +10,14 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 
 import { ModalMessage } from "./HelpModal.styled";
 
-const propTypes = {
-  onClose: PropTypes.func,
-};
+interface HelpModalProps {
+  onClose?: (result?: boolean) => void;
+}
 
-const HelpModal = ({ onClose }) => {
+const HelpModal = ({ onClose }: HelpModalProps) => {
   const email = Settings.get("admin-email");
 
-  const handleClose = () => onClose(true);
+  const handleClose = () => onClose?.(true);
 
   const applicationName = useSelector(getApplicationName);
 
@@ -42,9 +42,7 @@ const HelpModal = ({ onClose }) => {
   );
 };
 
-HelpModal.propTypes = propTypes;
-
-const getAdminLink = (email, text) => {
+const getAdminLink = (email: string | null, text: string): ReactNode => {
   return email ? (
     <Link variant="brand" key="admin-link" href={`mailto:${email}`}>
       {text}
@@ -54,7 +52,7 @@ const getAdminLink = (email, text) => {
   );
 };
 
-const getAdminMessage = (email, applicationName) => {
+const getAdminMessage = (email: string | null, applicationName: string) => {
   const adminLink = getAdminLink(email, t`your instance administrator`);
   return jt`${applicationName} doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
 };

@@ -1,19 +1,19 @@
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { Alert, Notification, User } from "metabase-types/api";
 
-const propTypes = {
-  item: PropTypes.object.isRequired,
-  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  user: PropTypes.object,
-  onUnsubscribe: PropTypes.func,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
-};
+interface UnsubscribeModalProps {
+  item: Alert | Notification;
+  type: "alert" | "pulse";
+  user?: User | null;
+  onUnsubscribe?: (item: Alert | Notification) => Promise<void>;
+  onArchive?: (item: Alert | Notification, type: "alert" | "pulse", hasUnsubscribed: boolean) => void;
+  onClose?: () => void;
+}
 
 const UnsubscribeModal = ({
   item,
@@ -22,20 +22,20 @@ const UnsubscribeModal = ({
   onUnsubscribe,
   onArchive,
   onClose,
-}) => {
-  const [error, setError] = useState();
+}: UnsubscribeModalProps) => {
+  const [error, setError] = useState<string>();
 
   const handleUnsubscribeClick = useCallback(async () => {
     try {
-      await onUnsubscribe(item);
+      await onUnsubscribe?.(item);
 
       if (isCreator(item, user)) {
-        onArchive(item, type, true);
+        onArchive?.(item, type, true);
       } else {
-        onClose();
+        onClose?.();
       }
     } catch (error) {
-      setError(error);
+      setError(error as string);
     }
   }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 
@@ -61,13 +61,11 @@ const UnsubscribeModal = ({
   );
 };
 
-UnsubscribeModal.propTypes = propTypes;
-
-const isCreator = (item, user) => {
+const isCreator = (item: Alert | Notification, user?: User | null) => {
   return user != null && user.id === item.creator?.id;
 };
 
-const getUnsubscribeMessage = (type) => {
+const getUnsubscribeMessage = (type: "alert" | "pulse") => {
   switch (type) {
     case "alert":
       return t`You’ll stop receiving this alert from now on. `;
