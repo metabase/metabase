@@ -3,6 +3,11 @@ import type { ReactNode, RefObject } from "react";
 
 import { Box, type BoxProps } from "metabase/ui";
 
+import {
+  FLEXIBLE_SIZE_DEFAULT_HEIGHT,
+  FLEXIBLE_SIZE_DEFAULT_WIDTH,
+} from "./FlexibleSizeComponent";
+
 /**
  * Props for the ResizeWrapper component.
  * @extends BoxProps
@@ -36,12 +41,14 @@ interface ResizeWrapperProps extends BoxProps {
 export function ResizeWrapper({
   children,
   ref: divRef,
+  h = FLEXIBLE_SIZE_DEFAULT_HEIGHT,
+  w = FLEXIBLE_SIZE_DEFAULT_WIDTH,
   ...props
 }: ResizeWrapperProps) {
   const [ref, rect] = useResizeObserver();
 
   return (
-    <Box ref={ref} w="100%" h="100%" {...props}>
+    <Box ref={ref} w={w} h={h} {...props}>
       <div
         ref={divRef}
         style={{

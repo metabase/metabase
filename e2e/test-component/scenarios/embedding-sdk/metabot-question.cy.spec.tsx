@@ -35,6 +35,10 @@ const metabotResponseWithNavigateTo = `${metabotResponse}
 
 const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
 
+const mockTextOnlyResponse = (text: string) =>
+  `0:"${text}"
+d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -115,6 +119,25 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
             "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
           ).should("be.visible");
         });
+      });
+    });
+  });
+
+  it.only("should handle scrolling", () => {
+    const question = "mlem ".repeat(100);
+    setup(
+      mockTextOnlyResponse(
+        "You're absolutely right, let me rephrase that for you: " + question,
+      ),
+    );
+
+    cy.get("@collectionId").then((collectionId) => {
+      mountSdkContent(
+        <MetabotQuestion isSaveEnabled targetCollection={collectionId} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("metabot-chat-input").type(question + " {enter}");
       });
     });
   });
