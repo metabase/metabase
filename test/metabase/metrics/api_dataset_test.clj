@@ -721,6 +721,119 @@
             (is (pos? (first-result response)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                              Category 9b: Measure Source - Advanced Features                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- hydrate-measure
+  "Fetch measure via API to hydrate dimensions, returns the measure with dimensions."
+  [measure-id]
+  (mt/user-http-request :crowberto :get 200 (str "measure/" measure-id)))
+
+(defn- find-measure-dimension-by-name
+  "Find a dimension by column name from hydrated measure's dimensions."
+  [measure column-name]
+  (some #(when (= column-name (:name %)) %)
+        (:dimensions measure)))
+
+(deftest dataset-measure-with-filter-test
+  (testing "POST /api/metric/dataset with source-measure and filter"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Venue Count"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [hydrated  (hydrate-measure (:id measure))
+                price-dim (find-measure-dimension-by-name hydrated "PRICE")]
+            (when price-dim
+              (let [response (dataset-request {:source-measure (:id measure)
+                                               :filters        [[:= {} [:dimension {} (:id price-dim)] 2]]})]
+                (is (= "completed" (:status response)))
+                ;; Should return count of venues with price = 2
+                (is (pos? (first-result response)))
+                (is (< (first-result response) 100))))))))))
+
+(deftest dataset-measure-with-projection-test
+  (testing "POST /api/metric/dataset with source-measure and projection"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Venue Count"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [hydrated  (hydrate-measure (:id measure))
+                price-dim (find-measure-dimension-by-name hydrated "PRICE")]
+            (when price-dim
+              (let [response (dataset-request {:source-measure (:id measure)
+                                               :projections    [[:dimension {} (:id price-dim)]]})]
+                (is (= "completed" (:status response)))
+                ;; Should have multiple rows (one per price value)
+                (is (> (:row_count response) 1))))))))))
+
+(deftest dataset-measure-temporal-bucket-test
+  (testing "POST /api/metric/dataset with source-measure and temporal bucket"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :checkins))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Checkin Count"
+                                             :table_id   (mt/id :checkins)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [hydrated (hydrate-measure (:id measure))
+                date-dim (find-measure-dimension-by-name hydrated "DATE")]
+            (when date-dim
+              (let [response (dataset-request {:source-measure (:id measure)
+                                               :projections    [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
+                (is (= "completed" (:status response)))
+                ;; Should have multiple rows grouped by month
+                (is (> (:row_count response) 1))))))))))
+
+(deftest dataset-measure-binning-test
+  (testing "POST /api/metric/dataset with source-measure and binning"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Venue Count"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [hydrated (hydrate-measure (:id measure))
+                lat-dim  (find-measure-dimension-by-name hydrated "LATITUDE")]
+            (when lat-dim
+              (let [response (dataset-request {:source-measure (:id measure)
+                                               :projections    [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]})]
+                (is (= "completed" (:status response)))
+                ;; Should have at most 5 bins
+                (is (<= (:row_count response) 6))))))))))
+
+(deftest dataset-measure-filter-and-projection-test
+  (testing "POST /api/metric/dataset with source-measure combining filter and projection"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Venue Count"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [hydrated  (hydrate-measure (:id measure))
+                price-dim (find-measure-dimension-by-name hydrated "PRICE")
+                cat-dim   (find-measure-dimension-by-name hydrated "CATEGORY_ID")]
+            (when (and price-dim cat-dim)
+              (let [response (dataset-request {:source-measure (:id measure)
+                                               :filters        [[:>= {} [:dimension {} (:id price-dim)] 2]]
+                                               :projections    [[:dimension {} (:id cat-dim)]]})]
+                (is (= "completed" (:status response)))
+                ;; Should have rows broken out by category for venues with price >= 2
+                (is (> (:row_count response) 1))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Category 10: Error Cases                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

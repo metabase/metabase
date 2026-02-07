@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -124,3 +125,63 @@
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
   (write-check-and-update-measure! id body))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension Value Endpoints                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(mr/def ::RemappedValueResponse
+  "Response schema for dimension remapping endpoint.
+   Returns [value] if no remapping, or [value, display-name] if remapped."
+  [:or
+   [:tuple :any]
+   [:tuple :any :string]])
+
+(api.macros/defendpoint :get "/:id/dimension/:dimension-key/values"
+  :- ms/FieldValuesResult
+  "Fetch values for a dimension of a measure.
+
+   Returns field values in the same format as the field values API:
+   - values: list of [value] or [value, display-name] tuples
+   - field_id: the underlying field ID
+   - has_more_values: boolean indicating if there are more values"
+  [{:keys [id dimension-key]} :- [:map
+                                  [:id            ms/PositiveInt]
+                                  [:dimension-key ms/UUIDString]]]
+  (let [measure (hydrated-measure id)]
+    (metrics.dimension/dimension-values
+     (:dimensions measure)
+     (:dimension_mappings measure)
+     dimension-key)))
+
+(api.macros/defendpoint :get "/:id/dimension/:dimension-key/search"
+  :- [:sequential [:vector :string]]
+  "Search for values of a dimension that contain the query string.
+
+   Returns field values matching the search query in the same format as the field values API."
+  [{:keys [id dimension-key]} :- [:map
+                                  [:id            ms/PositiveInt]
+                                  [:dimension-key ms/UUIDString]]
+   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
+  (let [measure (hydrated-measure id)]
+    (metrics.dimension/dimension-search-values
+     (:dimensions measure)
+     (:dimension_mappings measure)
+     dimension-key
+     query)))
+
+(api.macros/defendpoint :get "/:id/dimension/:dimension-key/remapping"
+  :- ::RemappedValueResponse
+  "Fetch remapped value for a specific dimension value.
+
+   Returns a pair [value, display-name] if remapping exists, or [value] otherwise."
+  [{:keys [id dimension-key]} :- [:map
+                                  [:id            ms/PositiveInt]
+                                  [:dimension-key ms/UUIDString]]
+   {:keys [value]}             :- [:map [:value :string]]]
+  (let [measure (hydrated-measure id)]
+    (metrics.dimension/dimension-remapped-value
+     (:dimensions measure)
+     (:dimension_mappings measure)
+     dimension-key
+     value)))

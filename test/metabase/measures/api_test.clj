@@ -318,3 +318,62 @@
             direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]
         (is (= (mt/rows (qp/process-query direct-query))
                (mt/rows (qp/process-query measure-query))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension Endpoint Tests                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- hydrate-measure [measure-id]
+  "Fetch measure via API to hydrate dimensions."
+  (mt/user-http-request :crowberto :get 200 (str "measure/" measure-id)))
+
+(defn- find-dimension-by-name [measure column-name]
+  "Find a dimension by column name from hydrated measure."
+  (some #(when (= column-name (:name %)) %) (:dimensions measure)))
+
+(deftest dimension-values-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/values"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated  (hydrate-measure id)
+              price-dim (find-dimension-by-name hydrated "PRICE")]
+          (when price-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/values" id (:id price-dim)))]
+              (is (contains? response :values))
+              (is (contains? response :field_id))
+              (is (contains? response :has_more_values))
+              ;; Price values are 1, 2, 3, 4
+              (is (seq (:values response))))))))))
+
+(deftest dimension-search-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/search"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated (hydrate-measure id)
+              name-dim (find-dimension-by-name hydrated "NAME")]
+          (when name-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/search" id (:id name-dim))
+                                                 :query "Red")]
+              ;; Should return matching venue names
+              (is (sequential? response)))))))))
+
+(deftest dimension-remapping-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/remapping"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated  (hydrate-measure id)
+              price-dim (find-dimension-by-name hydrated "PRICE")]
+          (when price-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/remapping" id (:id price-dim))
+                                                 :value "2")]
+              ;; Should return [value] or [value, display-name]
+              (is (= [2] response)))))))))
