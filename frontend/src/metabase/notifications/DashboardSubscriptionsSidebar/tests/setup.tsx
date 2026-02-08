@@ -8,6 +8,7 @@ import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { scheduleSettingsToCron } from "metabase/admin/performance/utils";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -25,6 +26,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { Notification } from "metabase-types/api/notification";
 import {
   createMockDashboardState,
   createMockState,
@@ -81,6 +83,78 @@ function createDashboardState(
   });
 }
 
+/** Convert pulse-shaped test data to a notification mock object */
+function pulseToMockNotification(
+  pulse: Partial<DashboardSubscription> & { id: number },
+  dashboardId: number,
+  creator: ReturnType<typeof createMockUser>,
+): Notification {
+  const channel = pulse.channels?.[0];
+  const cronSchedule = channel
+    ? scheduleSettingsToCron({
+        schedule_day: channel.schedule_day,
+        schedule_frame: channel.schedule_frame,
+        schedule_hour: channel.schedule_hour,
+        schedule_type: channel.schedule_type,
+      })
+    : "0 0 * * * ? *";
+
+  return {
+    id: pulse.id,
+    active: !pulse.archived,
+    payload_type: "notification/dashboard",
+    payload: {
+      dashboard_id: pulse.dashboard_id ?? dashboardId,
+      parameters: (pulse.parameters as Record<string, unknown>[]) ?? null,
+      skip_if_empty: pulse.skip_if_empty ?? false,
+      dashboard_subscription_dashcards: null,
+    },
+    handlers: (pulse.channels ?? []).map((ch) => {
+      if (ch.channel_type === "email") {
+        return {
+          channel_type: "channel/email" as const,
+          active: ch.enabled !== false,
+          recipients: (ch.recipients ?? []).map((u) => ({
+            type: "notification-recipient/user" as const,
+            user_id: u.id,
+            details: null,
+            user: u,
+          })),
+        };
+      }
+      if (ch.channel_type === "slack") {
+        return {
+          channel_type: "channel/slack" as const,
+          active: ch.enabled !== false,
+          recipients: ch.details?.channel
+            ? [
+                {
+                  type: "notification-recipient/raw-value" as const,
+                  details: { value: String(ch.details.channel) },
+                },
+              ]
+            : [],
+        };
+      }
+      return {
+        channel_type: `channel/${ch.channel_type}` as any,
+        active: ch.enabled !== false,
+        recipients: [],
+      };
+    }),
+    subscriptions: [
+      {
+        type: "notification-subscription/cron" as const,
+        event_name: null,
+        cron_schedule: cronSchedule,
+        ui_display_type: null,
+      },
+    ],
+    creator_id: creator.id,
+    creator,
+  } as Notification;
+}
+
 type SetupOpts = {
   email?: boolean;
   slack?: boolean;
@@ -117,6 +191,17 @@ export function setup({
     dashcards,
     parameters,
   });
+
+  const currentUserMock = createMockUser({
+    first_name: currentUser?.firstName,
+    last_name: currentUser?.lastName,
+    is_superuser: isAdmin,
+  });
+
+  // Convert pulse-shaped test data to notification format for the API mock
+  const notifications: Notification[] = pulses.map((p) =>
+    pulseToMockNotification(p, dashboard.id, currentUserMock),
+  );
 
   const channelData: {
     channels: {
@@ -163,23 +248,43 @@ export function setup({
     users: [user],
   });
 
+  // Mock notification API
   fetchMock.get({
-    url: `path:/api/pulse`,
-    query: { dashboard_id: dashboard.id },
-    response: () => pulses,
+    url: `path:/api/notification`,
+    response: () => notifications,
     // Delay is crucial to reproduce (EMB-1060), otherwise, the state updates too fast which isn't realistic
     delay: pulseListDelay,
   });
 
-  // Mock POST that updates the GET response
-  fetchMock.post("path:/api/pulse", ({ options }) => {
+  // Mock POST that creates a notification and updates the GET response
+  fetchMock.post("path:/api/notification", ({ options }) => {
     const body = JSON.parse(options.body as string);
-    const newPulse = { ...body, id: getNextId() } as DashboardSubscription;
-    pulses.push(newPulse);
-    return newPulse;
+    const newNotification = {
+      ...body,
+      id: getNextId(),
+      active: true,
+      creator_id: currentUserMock.id,
+      creator: currentUserMock,
+    } as Notification;
+    notifications.push(newNotification);
+    return newNotification;
   });
 
-  fetchMock.post("path:/api/pulse/test", 200);
+  // Mock PUT for archive/update — removes from notifications array so refetch returns updated list
+  fetchMock.put({
+    url: "express:/api/notification/:id",
+    response: (callLog: any) => {
+      const notificationId = parseInt(callLog.expressParams?.id);
+      const idx = notifications.findIndex((n: any) => n.id === notificationId);
+      if (idx !== -1) {
+        const [removed] = notifications.splice(idx, 1);
+        return { ...removed, active: false };
+      }
+      return {};
+    },
+  });
+
+  fetchMock.post("path:/api/notification/send", 200);
 
   const features = createMockTokenFeatures(tokenFeatures);
   const storeSettings = mockSettings({ "token-features": features });
@@ -197,11 +302,7 @@ export function setup({
     {
       storeInitialState: createMockState({
         settings: storeSettings,
-        currentUser: createMockUser({
-          first_name: currentUser?.firstName,
-          last_name: currentUser?.lastName,
-          is_superuser: isAdmin,
-        }),
+        currentUser: currentUserMock,
         dashboard: createDashboardState(dashboard, dashcards),
       }),
     },
@@ -211,7 +312,7 @@ export function setup({
 export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
   expect(
     screen.queryByText(
-      /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+      /If a dashboard filter has a default value, it'll be applied when your subscription is sent./i,
     ),
   ).not.toBeInTheDocument();
 
