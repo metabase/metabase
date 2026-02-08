@@ -7,7 +7,7 @@ import {
   BreadcrumbsSeparator,
 } from "./PermissionsEditorBreadcrumbs.styled";
 
-export interface BreadcrumbItem {
+interface BreadcrumbItem {
   text: string;
   subtext?: string;
 }
