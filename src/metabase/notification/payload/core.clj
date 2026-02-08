@@ -51,10 +51,7 @@
     [:notification/dashboard
      [:map
       [:creator_id ms/PositiveInt]
-      ;; new path: hydrated NotificationDashboard record
-      [:payload                  {:optional true} ::models.notification/NotificationDashboard]
-      ;; legacy path: inline dashboard_subscription from pulse/send.clj
-      [:dashboard_subscription   {:optional true} [:maybe :map]]]]]
+      [:payload    {:optional true} ::models.notification/NotificationDashboard]]]]
     ;; for testing only
     [:notification/testing :map]]])
 

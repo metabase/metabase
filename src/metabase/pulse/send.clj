@@ -64,7 +64,7 @@
     {:id                     (:id pulse)
      :payload_type           :notification/dashboard
      :creator_id             (:creator_id pulse)
-     :dashboard_subscription {:id                               (:id pulse)
+     :payload                {:id                               (:id pulse)
                               :dashboard_id                     (:id dashboard)
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
