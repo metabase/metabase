@@ -26,16 +26,13 @@
    (the-parameters dashboard-subscription-params dashboard-params)))
 
 (mu/defmethod notification.payload/payload :notification/dashboard
-  [{:keys [creator_id payload dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
-  ;; `payload` comes from the hydrated NotificationDashboard record (new path).
-  ;; `dashboard_subscription` is used for backwards compatibility with the legacy pulse send path.
-  (let [sub          (or payload dashboard_subscription)
-        dashboard-id (:dashboard_id sub)]
+  [{:keys [creator_id payload] :as _notification-info} :- ::notification.payload/Notification]
+  (let [dashboard-id (:dashboard_id payload)]
     (log/with-context {:dashboard_id dashboard-id}
       (let [dashboard  (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
-            parameters (parameters (:parameters sub) (:parameters dashboard))]
+            parameters (parameters (:parameters payload) (:parameters dashboard))]
         {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
-                                   (:skip_if_empty sub)
+                                   (:skip_if_empty payload)
                                    (remove (fn [{part-type :type :as part}]
                                              (and
                                               (= part-type :card)
@@ -45,7 +42,7 @@
                                   :color_text_light  channel.render/color-text-light
                                   :color_text_medium channel.render/color-text-medium}
          :parameters             parameters
-         :dashboard_subscription sub}))))
+         :dashboard_subscription payload}))))
 
 (mu/defmethod notification.payload/skip-reason :notification/dashboard
   [{:keys [payload] :as _noti-payload}]
@@ -74,5 +71,4 @@
                            {:id      id
                             :user-id creator_id
                             :object  {:recipients (handlers->audit-recipients handlers)
-                                      :filters    (or (-> notification-info :payload :parameters)
-                                                      (-> notification-info :dashboard_subscription :parameters))}})))
+                                      :filters    (-> notification-info :payload :parameters)}})))

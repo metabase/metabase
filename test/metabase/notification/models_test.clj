@@ -80,6 +80,62 @@
           (t2/delete! :model/Notification (:id notification))
           (is (not (t2/exists? :model/NotificationCard notification-card-id))))))))
 
+(deftest delete-notification-clean-up-dashboard-payload-test
+  (testing "cleanup :model/NotificationDashboard on delete"
+    (notification.tu/with-dashboard-notification [notification {}]
+      (let [notification-dashboard-id (-> notification :payload :id)]
+        (testing "sanity check"
+          (is (t2/exists? :model/NotificationDashboard notification-dashboard-id)))
+        (testing "delete notification will delete notification dashboard"
+          (t2/delete! :model/Notification (:id notification))
+          (is (not (t2/exists? :model/NotificationDashboard notification-dashboard-id))))))))
+
+(deftest create-dashboard-notification-test
+  (testing "create-notification! works for dashboard notifications"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (let [noti (models.notification/create-notification!
+                    {:payload_type :notification/dashboard
+                     :creator_id   (mt/user->id :crowberto)
+                     :payload      {:dashboard_id  dashboard-id
+                                    :skip_if_empty true
+                                    :parameters    [{:id "abc" :type "category"}]}}
+                    [{:type          :notification-subscription/cron
+                      :cron_schedule "0 0 6 * * ? *"}]
+                    [{:channel_type :channel/email
+                      :recipients   [{:type    :notification-recipient/user
+                                      :user_id (mt/user->id :rasta)}]}])]
+          (testing "notification is created with correct payload_type"
+            (is (= :notification/dashboard (:payload_type noti))))
+          (testing "hydration returns dashboard payload"
+            (let [hydrated (models.notification/hydrate-notification noti)]
+              (is (=? {:payload {:dashboard_id  dashboard-id
+                                 :skip_if_empty true
+                                 :parameters    [{:id "abc" :type "category"}]}
+                       :subscriptions [{:type          :notification-subscription/cron
+                                        :cron_schedule "0 0 6 * * ? *"}]
+                       :handlers      [{:channel_type :channel/email
+                                        :recipients   [{:type    :notification-recipient/user
+                                                        :user_id (mt/user->id :rasta)}]}]}
+                      hydrated)))))))))
+
+(deftest notifications-for-dashboard-test
+  (testing "notifications-for-dashboard returns notifications for a given dashboard"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (let [noti (models.notification/create-notification!
+                    {:payload_type :notification/dashboard
+                     :creator_id   (mt/user->id :crowberto)
+                     :payload      {:dashboard_id dashboard-id}}
+                    [{:type          :notification-subscription/cron
+                      :cron_schedule "0 0 6 * * ? *"}]
+                    [])]
+          (testing "returns the notification for the dashboard"
+            (is (= [(:id noti)]
+                   (map :id (models.notification/notifications-for-dashboard dashboard-id)))))
+          (testing "returns nothing for a different dashboard"
+            (is (empty? (models.notification/notifications-for-dashboard Integer/MAX_VALUE)))))))))
+
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
