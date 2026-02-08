@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
+import { cronToScheduleSettings } from "metabase/admin/performance/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -316,17 +316,12 @@ function DashboardSubscriptionsSidebarInner({
     [setPulse],
   );
 
-  // changedProp contains the schedule property that user just changed
-  // newSchedule may contain also other changed properties as some property changes reset other properties
   const onChannelScheduleChange = useCallback(
-    (
-      index: number,
-      newSchedule: ScheduleSettings,
-      _changedProp: ScheduleChangeProp,
-    ) => {
+    (index: number, cronString: string, schedule: ScheduleSettings) => {
       const p = pulseRef.current;
       const channels = [...p.channels];
-      channels[index] = { ...channels[index], ...newSchedule };
+      const scheduleSettings = cronToScheduleSettings(cronString) ?? schedule;
+      channels[index] = { ...channels[index], ...scheduleSettings };
       setPulse({ ...p, channels });
     },
     [setPulse],
@@ -557,8 +552,8 @@ interface AddEditEmailSidebarWithHooksProps {
   ) => void;
   onChannelScheduleChange: (
     index: number,
+    cronString: string,
     schedule: ScheduleSettings,
-    changedProp: ScheduleChangeProp,
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;

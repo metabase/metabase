@@ -25,6 +25,7 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.app-db.custom-migrations.pulse-subscription-to-notification :as pulse-subscription-to-notification]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
@@ -1854,3 +1855,11 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
+
+;; Migrate dashboard subscriptions to notifications
+;; on migrate up:
+;; - migrate dashboard subscriptions from pulse table to notification table
+;; - And then on startup new send notification triggers are created by running
+;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+(define-migration MigrateDashboardSubscriptionsToNotification
+  (pulse-subscription-to-notification/migrate-subscriptions!))

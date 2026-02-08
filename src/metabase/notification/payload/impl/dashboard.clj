@@ -26,23 +26,26 @@
    (the-parameters dashboard-subscription-params dashboard-params)))
 
 (mu/defmethod notification.payload/payload :notification/dashboard
-  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
-  (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
-    (let [dashboard-id (:dashboard_id dashboard_subscription)
-          dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
-          parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
-      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
-                                 (:skip_if_empty dashboard_subscription)
-                                 (remove (fn [{part-type :type :as part}]
-                                           (and
-                                            (= part-type :card)
-                                            (zero? (get-in part [:result :row_count] 0))))))
-       :dashboard              dashboard
-       :style                  {:color_text_dark   channel.render/color-text-dark
-                                :color_text_light  channel.render/color-text-light
-                                :color_text_medium channel.render/color-text-medium}
-       :parameters             parameters
-       :dashboard_subscription dashboard_subscription})))
+  [{:keys [creator_id payload dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
+  ;; `payload` comes from the hydrated NotificationDashboard record (new path).
+  ;; `dashboard_subscription` is used for backwards compatibility with the legacy pulse send path.
+  (let [sub          (or payload dashboard_subscription)
+        dashboard-id (:dashboard_id sub)]
+    (log/with-context {:dashboard_id dashboard-id}
+      (let [dashboard  (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
+            parameters (parameters (:parameters sub) (:parameters dashboard))]
+        {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
+                                   (:skip_if_empty sub)
+                                   (remove (fn [{part-type :type :as part}]
+                                             (and
+                                              (= part-type :card)
+                                              (zero? (get-in part [:result :row_count] 0))))))
+         :dashboard              dashboard
+         :style                  {:color_text_dark   channel.render/color-text-dark
+                                  :color_text_light  channel.render/color-text-light
+                                  :color_text_medium channel.render/color-text-medium}
+         :parameters             parameters
+         :dashboard_subscription sub}))))
 
 (mu/defmethod notification.payload/skip-reason :notification/dashboard
   [{:keys [payload] :as _noti-payload}]
@@ -71,4 +74,5 @@
                            {:id      id
                             :user-id creator_id
                             :object  {:recipients (handlers->audit-recipients handlers)
-                                      :filters    (-> notification-info :dashboard_subscription :parameters)}})))
+                                      :filters    (or (-> notification-info :payload :parameters)
+                                                      (-> notification-info :dashboard_subscription :parameters))}})))

@@ -31,9 +31,13 @@
   [notification]
   (= :notification/card (:payload_type notification)))
 
+(defn- dashboard-notification?
+  [notification]
+  (= :notification/dashboard (:payload_type notification)))
+
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
-  [{:keys [creator_id creator_or_recipient_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
+  [{:keys [creator_id creator_or_recipient_id recipient_id card_id dashboard_id payload_type include_inactive legacy-active legacy-user-id]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {:select-distinct [:notification.*]}
                               creator_id
@@ -61,6 +65,14 @@
                                     [:= :notification_card.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/card"]])
                                   (sql.helpers/where [:= :notification_card.card_id card_id]))
+
+                              dashboard_id
+                              (-> (sql.helpers/left-join
+                                   :notification_dashboard
+                                   [:and
+                                    [:= :notification_dashboard.id :notification.payload_id]
+                                    [:= :notification.payload_type "notification/dashboard"]])
+                                  (sql.helpers/where [:= :notification_dashboard.dashboard_id dashboard_id]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
@@ -99,20 +111,23 @@
   - `creator_id`: if provided returns only notifications created by this user
   - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
   - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient
-  - `card_id`: if provided returns only notification that has card_id as payload"
+  - `card_id`: if provided returns only notification that has card_id as payload
+  - `dashboard_id`: if provided returns only notification that has dashboard_id as payload"
   [_route-params
-   {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
+   {:keys [creator_id creator_or_recipient_id recipient_id card_id dashboard_id include_inactive payload_type]} :-
    [:map
     [:creator_id              {:optional true} ms/PositiveInt]
     [:recipient_id            {:optional true} ms/PositiveInt]
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
     [:card_id                 {:optional true} ms/PositiveInt]
+    [:dashboard_id            {:optional true} ms/PositiveInt]
     [:include_inactive        {:optional true} ms/BooleanValue]
     [:payload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
   (list-notifications {:creator_id              creator_id
                        :recipient_id            recipient_id
                        :creator_or_recipient_id creator_or_recipient_id
                        :card_id                 card_id
+                       :dashboard_id            dashboard_id
                        :include_inactive        include_inactive
                        :payload_type            payload_type}))
 
@@ -171,9 +186,11 @@
     notification))
 
 (defn- notify-notification-updates!
-  "Send notification emails based on changes between updated and existing notification"
+  "Send notification emails based on changes between updated and existing notification.
+  Currently only sends emails for card notifications."
   [updated-notification existing-notification]
-  (when (channel.settings/email-configured?)
+  (when (and (card-notification? existing-notification)
+             (channel.settings/email-configured?))
     (let [was-active?  (:active existing-notification)
           is-active?   (:active updated-notification)
           current-user @api/*current-user*
@@ -209,8 +226,7 @@
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
-    (when (card-notification? existing-notification)
-      (notify-notification-updates! body existing-notification))
+    (notify-notification-updates! body existing-notification)
     (u/prog1 (get-notification id)
       (events/publish-event! :event/notification-update {:object          <>
                                                          :previous-object existing-notification
