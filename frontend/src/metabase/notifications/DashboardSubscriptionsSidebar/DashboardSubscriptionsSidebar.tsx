@@ -1,36 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
-import { cronToScheduleSettings } from "metabase/admin/performance/utils";
+import {
+  cronToScheduleSettings,
+  scheduleSettingsToCron,
+} from "metabase/admin/performance/utils";
+import {
+  useCreateNotificationMutation,
+  useListNotificationsQuery,
+  useSendUnsavedNotificationMutation,
+  useUpdateNotificationMutation,
+} from "metabase/api/notification";
+import { useGetChannelInfoQuery } from "metabase/api/subscription";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Pulses } from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   cleanPulse,
   createChannel,
 } from "metabase/lib/pulse";
-import { connect } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import {
   AddEditEmailSidebar,
   AddEditSlackSidebar,
 } from "metabase/notifications/AddEditSidebar/AddEditSidebar";
 import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
 import { PulsesListSidebar } from "metabase/notifications/PulsesListSidebar";
-import {
-  cancelEditingPulse,
-  fetchPulseFormInput,
-  saveEditingPulse,
-  testPulse,
-  updateEditingPulse,
-} from "metabase/notifications/pulse/actions";
-import {
-  getEditingPulse,
-  getPulseFormInput,
-} from "metabase/notifications/pulse/selectors";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -45,7 +43,19 @@ import type {
   SubscriptionSupportingCard,
   User,
 } from "metabase-types/api";
-import type { DraftDashboardSubscription, State } from "metabase-types/store";
+import type {
+  CreateDashboardNotificationRequest,
+  DashboardSubscriptionDashcard,
+  Notification,
+  NotificationHandler,
+  NotificationHandlerEmail,
+  NotificationHandlerSlack,
+  NotificationRecipient,
+  NotificationRecipientRawValue,
+  NotificationRecipientUser,
+  UpdateDashboardNotificationRequest,
+} from "metabase-types/api/notification";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
@@ -68,6 +78,279 @@ const CHANNEL_TYPES = {
   SLACK: "slack",
 } as const;
 
+// ─── Adapter functions: notification ↔ pulse ────────────────────────────────
+
+function handlerRecipientsToChannelRecipients(
+  recipients: NotificationRecipient[],
+): User[] {
+  return recipients
+    .filter(
+      (r): r is NotificationRecipientUser =>
+        r.type === "notification-recipient/user",
+    )
+    .map((r) => r.user as User)
+    .filter(Boolean);
+}
+
+function handlerToChannel(
+  handler: NotificationHandler,
+  subscription?: { cron_schedule: string },
+): Channel {
+  const scheduleSettings: Partial<ScheduleSettings> = subscription
+    ? (cronToScheduleSettings(subscription.cron_schedule) ?? {})
+    : {};
+
+  if (handler.channel_type === "channel/email") {
+    return {
+      channel_type: "email",
+      enabled: handler.active !== false,
+      recipients: handlerRecipientsToChannelRecipients(handler.recipients),
+      ...scheduleSettings,
+    } as Channel;
+  }
+
+  if (handler.channel_type === "channel/slack") {
+    const slackChannel =
+      handler.recipients?.[0]?.type === "notification-recipient/raw-value"
+        ? (handler.recipients[0] as NotificationRecipientRawValue).details.value
+        : undefined;
+    return {
+      channel_type: "slack",
+      enabled: handler.active !== false,
+      recipients: [],
+      details: slackChannel ? { channel: slackChannel } : undefined,
+      ...scheduleSettings,
+    } as Channel;
+  }
+
+  return {
+    channel_type: handler.channel_type.replace("channel/", "") as ChannelType,
+    channel_id: handler.channel_id ?? undefined,
+    enabled: handler.active !== false,
+    recipients: [],
+    ...scheduleSettings,
+  } as Channel;
+}
+
+function mergeCardsWithDashcards(
+  supportedCards: SubscriptionSupportingCard[],
+  dashcards?: DashboardSubscriptionDashcard[] | null,
+): SubscriptionSupportingCard[] {
+  if (!dashcards || dashcards.length === 0) {
+    return supportedCards;
+  }
+
+  return supportedCards.map((card) => {
+    const dashcard = dashcards.find(
+      (dc) =>
+        dc.card_id === card.id &&
+        (dc.dashboard_card_id == null ||
+          dc.dashboard_card_id === card.dashboard_card_id),
+    );
+    if (dashcard) {
+      return {
+        ...card,
+        include_csv: dashcard.include_csv ?? false,
+        include_xls: dashcard.include_xls ?? false,
+        format_rows: dashcard.format_rows ?? true,
+        pivot_results: dashcard.pivot_results ?? false,
+      };
+    }
+    return card;
+  });
+}
+
+function notificationToPulse(
+  notification: Notification,
+  dashboard: Dashboard,
+): DashboardSubscription {
+  if (notification.payload_type !== "notification/dashboard") {
+    throw new Error(`Unexpected payload_type: ${notification.payload_type}`);
+  }
+
+  const subscription = notification.subscriptions[0];
+  const channels = notification.handlers.map((handler) =>
+    handlerToChannel(handler, subscription),
+  );
+
+  const supportedCards = getSupportedCardsForSubscriptions(dashboard);
+  const cards = mergeCardsWithDashcards(
+    supportedCards,
+    notification.payload.dashboard_subscription_dashcards,
+  );
+
+  return {
+    id: notification.id,
+    name: dashboard.name,
+    dashboard_id: notification.payload.dashboard_id,
+    cards,
+    channels,
+    skip_if_empty: notification.payload.skip_if_empty ?? false,
+    parameters: (notification.payload.parameters ??
+      []) as DashboardSubscription["parameters"],
+    archived: !notification.active,
+    can_write: true,
+    collection_id: null,
+    collection_position: null,
+    created_at: notification.created_at ?? "",
+    creator: notification.creator as User,
+    creator_id: notification.creator_id,
+    disable_links: false,
+    entity_id: "" as DashboardSubscription["entity_id"],
+    updated_at: notification.updated_at ?? "",
+  };
+}
+
+function recipientToNotificationRecipient(
+  user: User,
+): NotificationRecipientUser {
+  return {
+    type: "notification-recipient/user",
+    user_id: user.id,
+    details: null,
+  };
+}
+
+function channelToHandler(channel: Channel): NotificationHandler {
+  if (channel.channel_type === "email") {
+    return {
+      channel_type: "channel/email",
+      active: channel.enabled !== false,
+      recipients: (channel.recipients ?? []).map(
+        recipientToNotificationRecipient,
+      ),
+      template_id: null,
+      channel_id: null,
+    } as NotificationHandlerEmail;
+  }
+
+  if (channel.channel_type === "slack") {
+    const slackChannel = channel.details?.channel;
+    return {
+      channel_type: "channel/slack",
+      active: channel.enabled !== false,
+      recipients: slackChannel
+        ? [
+            {
+              type: "notification-recipient/raw-value" as const,
+              details: { value: String(slackChannel) },
+            },
+          ]
+        : [],
+      template_id: null,
+      channel_id: null,
+    } as NotificationHandlerSlack;
+  }
+
+  return {
+    channel_type:
+      `channel/${channel.channel_type}` as NotificationHandler["channel_type"],
+    active: channel.enabled !== false,
+    recipients: [],
+    channel_id: channel.channel_id ?? null,
+    template_id: null,
+  } as NotificationHandler;
+}
+
+function pulseCardsToDashcards(
+  cards: SubscriptionSupportingCard[],
+): DashboardSubscriptionDashcard[] {
+  return cards.map((card) => ({
+    card_id: card.id,
+    dashboard_card_id: card.dashboard_card_id,
+    include_csv: card.include_csv ?? false,
+    include_xls: card.include_xls ?? false,
+    format_rows: card.format_rows ?? true,
+    pivot_results: card.pivot_results ?? false,
+  }));
+}
+
+function pulseToCreateNotification(
+  pulse: DraftDashboardSubscription,
+): CreateDashboardNotificationRequest {
+  const channel = pulse.channels[0];
+  const cronSchedule = scheduleSettingsToCron(
+    _.pick(
+      channel,
+      "schedule_day",
+      "schedule_frame",
+      "schedule_hour",
+      "schedule_type",
+    ),
+  );
+
+  return {
+    payload_type: "notification/dashboard",
+    payload: {
+      dashboard_id: pulse.dashboard_id!,
+      parameters: (pulse.parameters ?? []) as Record<string, unknown>[],
+      skip_if_empty: pulse.skip_if_empty ?? false,
+      dashboard_subscription_dashcards: pulseCardsToDashcards(pulse.cards),
+    },
+    handlers: pulse.channels.filter((ch) => ch.enabled).map(channelToHandler),
+    subscriptions: [
+      {
+        type: "notification-subscription/cron",
+        event_name: null,
+        cron_schedule: cronSchedule,
+        ui_display_type: null,
+      },
+    ],
+  };
+}
+
+function pulseToUpdateNotification(
+  pulse: DraftDashboardSubscription,
+  originalNotification: Notification,
+): UpdateDashboardNotificationRequest {
+  const channel = pulse.channels[0];
+  const cronSchedule = scheduleSettingsToCron(
+    _.pick(
+      channel,
+      "schedule_day",
+      "schedule_frame",
+      "schedule_hour",
+      "schedule_type",
+    ),
+  );
+
+  const existingSubscription = originalNotification.subscriptions[0];
+
+  return {
+    id: originalNotification.id,
+    active: !pulse.archived,
+    payload_type: "notification/dashboard",
+    payload: {
+      ...originalNotification.payload,
+      dashboard_id: pulse.dashboard_id!,
+      parameters: (pulse.parameters ?? []) as Record<string, unknown>[],
+      skip_if_empty: pulse.skip_if_empty ?? false,
+      dashboard_subscription_dashcards: pulseCardsToDashcards(pulse.cards),
+    },
+    handlers: pulse.channels
+      .filter((ch) => ch.enabled)
+      .map((ch, i) => {
+        const handler = channelToHandler(ch);
+        const existingHandler = originalNotification.handlers[i];
+        if (existingHandler?.id) {
+          return { ...handler, id: existingHandler.id };
+        }
+        return handler;
+      }),
+    subscriptions: [
+      {
+        ...(existingSubscription ?? {}),
+        type: "notification-subscription/cron" as const,
+        event_name: null,
+        cron_schedule: cronSchedule,
+        ui_display_type: existingSubscription?.ui_display_type ?? null,
+      },
+    ],
+  };
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 const cardsToPulseCards = (
   cards: SubscriptionSupportingCard[],
   pulseCards: DashboardSubscription["cards"],
@@ -89,53 +372,6 @@ const cardsToPulseCards = (
   });
 };
 
-const getEditingPulseWithDefaults = (
-  state: State,
-  props: { dashboard: Dashboard },
-): DraftDashboardSubscription => {
-  const pulse = getEditingPulse(state);
-  const dashboardWrapper = state.dashboard;
-  const dashboardId = dashboardWrapper.dashboardId;
-
-  if (dashboardId == null) {
-    return {
-      ...pulse,
-      cards: cardsToPulseCards(
-        getSupportedCardsForSubscriptions(props.dashboard),
-        pulse.cards,
-      ),
-    };
-  }
-
-  const currentDashboard = dashboardWrapper.dashboards[dashboardId];
-
-  return {
-    ...pulse,
-    name: pulse.name ?? currentDashboard.name,
-    dashboard_id: pulse.dashboard_id ?? currentDashboard.id,
-    cards: cardsToPulseCards(
-      getSupportedCardsForSubscriptions(props.dashboard),
-      pulse.cards,
-    ),
-  };
-};
-
-const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
-  isAdmin: getUserIsAdmin(state),
-  pulse: getEditingPulseWithDefaults(state, props),
-  formInput: getPulseFormInput(state),
-  user: getUser(state),
-});
-
-const mapDispatchToProps = {
-  updateEditingPulse,
-  saveEditingPulse,
-  cancelEditingPulse,
-  fetchPulseFormInput,
-  setPulseArchived: Pulses.actions.setArchived,
-  testPulse,
-};
-
 function shouldDisplayNewPulse(
   editingMode: EditingMode,
   pulses?: DashboardSubscription[],
@@ -154,42 +390,51 @@ function shouldDisplayNewPulse(
   return false;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────────
+
 interface DashboardSubscriptionsSidebarInnerProps {
   dashboard: Dashboard;
-  fetchPulseFormInput: () => void;
-  formInput: ChannelApiResponse;
-  initialCollectionId?: number;
-  isAdmin?: boolean;
-  pulse: DraftDashboardSubscription;
-  saveEditingPulse: () => Promise<DashboardSubscription>;
-  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
-  updateEditingPulse: (pulse: DraftDashboardSubscription) => void;
-  cancelEditingPulse: () => void;
-  pulses?: DashboardSubscription[];
   onCancel: () => void;
-  setPulseArchived: (
-    pulse: DraftDashboardSubscription,
-    archived: boolean,
-  ) => Promise<void>;
-  params?: Record<string, string>;
-  loading?: boolean;
 }
 
 function DashboardSubscriptionsSidebarInner({
   dashboard,
-  fetchPulseFormInput: fetchFormInput,
-  formInput,
-  isAdmin,
-  pulse,
-  saveEditingPulse: saveEditing,
-  testPulse: testPulseFn,
-  updateEditingPulse: updateEditing,
-  cancelEditingPulse: cancelEditing,
-  pulses,
   onCancel,
-  setPulseArchived,
-  loading: isSubscriptionListLoading,
 }: DashboardSubscriptionsSidebarInnerProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  // ── RTK Query: notifications + channel info ──
+  const { data: notifications, isLoading: isNotificationsLoading } =
+    useListNotificationsQuery({
+      dashboard_id: dashboard.id,
+      payload_type: "notification/dashboard",
+    });
+
+  const { data: formInput } = useGetChannelInfoQuery();
+
+  const [createNotification] = useCreateNotificationMutation();
+  const [updateNotification] = useUpdateNotificationMutation();
+  const [sendUnsavedNotification] = useSendUnsavedNotificationMutation();
+
+  // ── Derived pulse list ──
+  const pulses = useMemo<DashboardSubscription[] | undefined>(() => {
+    if (!notifications) {
+      return undefined;
+    }
+    return notifications.map((n) => notificationToPulse(n, dashboard));
+  }, [notifications, dashboard]);
+
+  // ── Map notification id → Notification for reverse lookup ──
+  const notificationById = useMemo(() => {
+    if (!notifications) {
+      return new Map<number, Notification>();
+    }
+    return new Map(notifications.map((n) => [n.id, n]));
+  }, [notifications]);
+
+  // ── Local editing state ──
+  const [editingPulse, setEditingPulse] =
+    useState<DraftDashboardSubscription | null>(null);
   const [editingMode, setEditingMode] = useState<EditingMode>(
     EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
   );
@@ -198,19 +443,42 @@ function DashboardSubscriptionsSidebarInner({
   const [users, setUsers] = useState<User[] | undefined>(undefined);
 
   const prevPulsesRef = useRef(pulses);
+
+  // Build pulse with dashboard defaults
+  const pulse = useMemo<DraftDashboardSubscription>(() => {
+    const p =
+      editingPulse ??
+      ({
+        ...NEW_PULSE_TEMPLATE,
+        dashboard_id: dashboard.id,
+        name: dashboard.name,
+      } as DraftDashboardSubscription);
+
+    const supportedCards = getSupportedCardsForSubscriptions(dashboard);
+    return {
+      ...p,
+      name: p.name || dashboard.name,
+      dashboard_id: p.dashboard_id || dashboard.id,
+      cards: cardsToPulseCards(supportedCards, p.cards ?? []),
+    };
+  }, [editingPulse, dashboard]);
+
   const pulseRef = useRef(pulse);
   pulseRef.current = pulse;
 
-  const setPulse = useCallback(
-    (p: DraftDashboardSubscription) => {
-      updateEditing(p);
-    },
-    [updateEditing],
-  );
+  const setPulse = useCallback((p: DraftDashboardSubscription) => {
+    setEditingPulse(
+      (prev) =>
+        ({
+          ...(prev ?? {}),
+          ...p,
+        }) as DraftDashboardSubscription,
+    );
+  }, []);
 
   const setPulseWithChannel = useCallback(
     (type: ChannelType) => {
-      const channelSpec = formInput.channels[type];
+      const channelSpec = formInput?.channels[type];
       if (!channelSpec) {
         return;
       }
@@ -227,46 +495,31 @@ function DashboardSubscriptionsSidebarInner({
     [dashboard, formInput, setPulse],
   );
 
-  // componentDidMount
+  // Fetch users on mount
   useEffect(() => {
-    fetchFormInput();
-
     async function fetchUsers() {
       if (isEmbeddingSdk()) {
-        // We don't need the the list of users in modular embedding/SDK context because we will hard code the recipient to the logged in user.
         setUsers([]);
       } else {
         setUsers((await UserApi.list()).data);
       }
     }
     fetchUsers();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // componentDidUpdate - SDK forwarding
+  // SDK forwarding
   useEffect(() => {
-    /**
-     * (EMB-976): In modular embedding/modular embedding SDK context we need to avoid showing the NEW_PULSE view
-     * (the view that lets users select * between Email and Slack options) because we only allow email subscriptions there.
-     *
-     * And it's guaranteed that email would already be set up in modular embedding/SDK context.
-     * Otherwise, we won't show the subscription button to open this sidebar
-     * in the first place.
-     */
     if (
       isEmbeddingSdk() &&
       shouldDisplayNewPulse(editingMode, pulses) &&
-      /**
-       * Ensure we don't prematurely switch to ADD_EMAIL while the pulse list is loading.
-       * When loading completes, shouldDisplayNewPulse() will correctly return false if the list is empty.
-       */
-      !isSubscriptionListLoading
+      !isNotificationsLoading
     ) {
       setEditingMode(EDITING_MODES.ADD_EMAIL);
       setPulseWithChannel(CHANNEL_TYPES.EMAIL);
     }
-  }, [editingMode, pulses, isSubscriptionListLoading, setPulseWithChannel]);
+  }, [editingMode, pulses, isNotificationsLoading, setPulseWithChannel]);
 
-  // componentDidUpdate - non-admin forwarding
+  // Non-admin forwarding
   useEffect(() => {
     if (isAdmin) {
       return;
@@ -341,7 +594,7 @@ function DashboardSubscriptionsSidebarInner({
   );
 
   const handleSave = useCallback(async () => {
-    if (isSaving) {
+    if (isSaving || !formInput) {
       return;
     }
 
@@ -350,18 +603,48 @@ function DashboardSubscriptionsSidebarInner({
 
     try {
       setIsSaving(true);
-      await updateEditing(cleanedPulse);
-      await saveEditing();
+
+      if (cleanedPulse.id != null) {
+        const originalNotification = notificationById.get(cleanedPulse.id);
+        if (originalNotification) {
+          await updateNotification(
+            pulseToUpdateNotification(cleanedPulse, originalNotification),
+          ).unwrap();
+        }
+      } else {
+        await createNotification(
+          pulseToCreateNotification(cleanedPulse),
+        ).unwrap();
+      }
+
+      setEditingPulse(null);
       setEditingMode(EDITING_MODES.LIST_PULSES_OR_NEW_PULSE);
       setReturnMode([]);
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, pulse, formInput, dashboard.name, updateEditing, saveEditing]);
+  }, [
+    isSaving,
+    pulse,
+    formInput,
+    dashboard.name,
+    notificationById,
+    createNotification,
+    updateNotification,
+  ]);
+
+  const testPulseFn = useCallback(
+    async (cleanedPulse: DraftDashboardSubscription) => {
+      const notificationReq = pulseToCreateNotification(cleanedPulse);
+      await sendUnsavedNotification(notificationReq);
+    },
+    [sendUnsavedNotification],
+  );
 
   const createSubscription = useCallback(() => {
     setReturnMode((prev) => [...prev, editingMode]);
     setEditingMode(EDITING_MODES.NEW_PULSE);
+    setEditingPulse(null);
   }, [editingMode]);
 
   const editPulse = useCallback(
@@ -383,15 +666,26 @@ function DashboardSubscriptionsSidebarInner({
   );
 
   const handleArchive = useCallback(async () => {
-    await setPulseArchived(pulse, true);
+    if (pulse.id == null) {
+      return;
+    }
+
+    const originalNotification = notificationById.get(pulse.id);
+    if (originalNotification) {
+      await updateNotification({
+        ...pulseToUpdateNotification(pulse, originalNotification),
+        active: false,
+      }).unwrap();
+    }
 
     if (isEmbeddingSdk() && pulses?.length === 1) {
       onCancel();
     } else {
+      setEditingPulse(null);
       setEditingMode(EDITING_MODES.LIST_PULSES_OR_NEW_PULSE);
       setReturnMode([]);
     }
-  }, [pulse, pulses, setPulseArchived, onCancel]);
+  }, [pulse, pulses, notificationById, updateNotification, onCancel]);
 
   // Because you can navigate down the sidebar, we need to wrap
   // onCancel from props and either call that or reset back a screen
@@ -403,10 +697,10 @@ function DashboardSubscriptionsSidebarInner({
     } else {
       onCancel();
     }
-    cancelEditing();
-  }, [returnMode, onCancel, cancelEditing]);
+    setEditingPulse(null);
+  }, [returnMode, onCancel]);
 
-  const isLoading = !pulses || !users || !pulse || !formInput?.channels;
+  const isLoading = !pulses || !users || !formInput?.channels;
 
   if (isLoading) {
     return (
@@ -537,6 +831,8 @@ function DashboardSubscriptionsSidebarInner({
   return <Sidebar>{null}</Sidebar>;
 }
 
+// ─── AddEditEmailSidebar wrapper (memoizes partial-applied callbacks) ────────
+
 interface AddEditEmailSidebarWithHooksProps {
   index: number;
   pulse: DraftDashboardSubscription;
@@ -620,16 +916,6 @@ function AddEditEmailSidebarWithHooks({
   );
 }
 
-const DashboardSubscriptionsSidebarConnected = _.compose(
-  Pulses.loadList({
-    query: (_state: State, { dashboard }: { dashboard: Dashboard }) => ({
-      dashboard_id: dashboard.id,
-    }),
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(DashboardSubscriptionsSidebarInner);
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DashboardSubscriptionsSidebar() {
   const { dashboard, setSharing } = useDashboardContext();
@@ -639,7 +925,7 @@ export default function DashboardSubscriptionsSidebar() {
   }
 
   return (
-    <DashboardSubscriptionsSidebarConnected
+    <DashboardSubscriptionsSidebarInner
       dashboard={dashboard}
       onCancel={() => setSharing(false)}
     />

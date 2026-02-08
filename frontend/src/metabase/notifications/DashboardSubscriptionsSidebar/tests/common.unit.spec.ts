@@ -118,19 +118,6 @@ describe("DashboardSubscriptionsSidebar", () => {
         },
       ] satisfies (Partial<DashboardSubscription> & { id: number })[];
 
-      // Dynamically modify `pulses` so that we get the new updated list of pulses after archiving
-      fetchMock.put({
-        url: "express:/api/pulse/:id",
-        response: ({ expressParams = {} }) => {
-          const pulseId = parseInt(expressParams?.id);
-          pulses.splice(
-            pulses.findIndex((pulse) => pulse.id === pulseId),
-            1,
-          );
-          return {};
-        },
-      });
-
       const setSharing = jest.fn();
 
       setup({
@@ -281,10 +268,14 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(await screen.findByText("Send email now"));
 
-      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/notification/send",
+      );
       const payload = await lastCall?.request?.json();
-      expect(payload.cards).toHaveLength(1);
-      expect(payload.cards[0].id).toEqual(dashcard.id);
+      expect(payload.payload.dashboard_subscription_dashcards).toHaveLength(1);
+      expect(
+        payload.payload.dashboard_subscription_dashcards[0].card_id,
+      ).toEqual(dashcard.card_id);
     });
   });
 });
