@@ -25,12 +25,14 @@
 (methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
 (methodical/defmethod t2/table-name :model/NotificationCard         [_model] :notification_card)
+(methodical/defmethod t2/table-name :model/NotificationDashboard    [_model] :notification_dashboard)
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
                :model/NotificationHandler
                :model/NotificationRecipient
-               :model/NotificationCard]]
+               :model/NotificationCard
+               :model/NotificationDashboard]]
   (doto model
     (derive :metabase/model)
     (derive (if (= model :model/NotificationSubscription)
@@ -82,6 +84,11 @@
                                                                      :card)]
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
+                                           :notification/dashboard
+                                           (let [notification-dashboards (t2/select :model/NotificationDashboard
+                                                                                    :id [:in payload-ids])]
+                                             (into {} (for [nd notification-dashboards]
+                                                        [[:notification/dashboard (:id nd)] nd])))
                                            {[payload-type nil] nil})))]
 
     (for [notification notifications]
@@ -108,6 +115,11 @@
      [:map
       [:payload_id {:optional true} nil?]]]
     [:notification/card
+     [:map
+      ;; optional during creation
+      [:payload_id {:optional true} int?]
+      [:creator_id {:optional true} int?]]]
+    [:notification/dashboard
      [:map
       ;; optional during creation
       [:payload_id {:optional true} int?]
@@ -156,8 +168,8 @@
     (delete-trigger-for-subscription! subscription-id))
   (when-let [payload-id (:payload_id instance)]
     (t2/delete! (case (:payload_type instance)
-                  :notification/card
-                  :model/NotificationCard)
+                  :notification/card      :model/NotificationCard
+                  :notification/dashboard :model/NotificationDashboard)
                 payload-id))
   instance)
 
@@ -409,6 +421,34 @@
          instance))
 
 ;; ------------------------------------------------------------------------------------------------;;
+;;                                  :model/NotificationDashboard                                   ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(t2/deftransforms :model/NotificationDashboard
+  {:parameters                       mi/transform-json
+   :dashboard_subscription_dashcards mi/transform-json})
+
+(mr/def ::NotificationDashboard
+  "Schema for :model/NotificationDashboard."
+  [:map
+   [:dashboard_id                                              ms/PositiveInt]
+   [:parameters                       {:optional true}         [:maybe [:sequential :map]]]
+   [:skip_if_empty                    {:optional true}         :boolean]
+   [:disable_links                    {:optional true}         :boolean]
+   [:dashboard_subscription_dashcards {:optional true}         [:maybe [:sequential [:map
+                                                                                     [:card_id                        [:maybe ms/PositiveInt]]
+                                                                                     [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
+                                                                                     [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
+                                                                                     [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
+                                                                                     [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]])
+
+(t2/define-before-insert :model/NotificationDashboard
+  [instance]
+  (merge {:skip_if_empty  false
+          :disable_links  false}
+         instance))
+
+;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
@@ -433,6 +473,9 @@
   (case (:payload_type notification)
     :notification/card
     (mi/can-read? :model/Card (-> notification :payload :card_id))
+
+    :notification/dashboard
+    (mi/can-read? :model/Dashboard (-> notification :payload :dashboard_id))
 
     :notification/system-event
     (mi/superuser?)
@@ -503,9 +546,9 @@
                                                     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
                                                     [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]]]]
    [:multi {:dispatch (comp keyword :payload_type)}
-    [:notification/card [:map
-                         [:payload ::NotificationCard]]]
-    [::mc/default       :map]]])
+    [:notification/card      [:map [:payload ::NotificationCard]]]
+    [:notification/dashboard [:map [:payload ::NotificationDashboard]]]
+    [::mc/default            :map]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
@@ -525,6 +568,16 @@
                                    :payload_id [:in {:select [:id]
                                                      :from   [:notification_card]
                                                      :where  [:= :card_id card-id]}])))
+
+(mu/defn notifications-for-dashboard :- [:sequential ::FullyHydratedNotification]
+  "Find all active dashboard notifications (subscriptions) for a given dashboard-id."
+  [dashboard-id :- pos-int?]
+  (hydrate-notification (t2/select :model/Notification
+                                   :active true
+                                   :payload_type :notification/dashboard
+                                   :payload_id [:in {:select [:id]
+                                                     :from   [:notification_dashboard]
+                                                     :where  [:= :dashboard_id dashboard-id]}])))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
@@ -548,7 +601,9 @@
                             (:notification/system-event :notification/testing)
                             nil
                             :notification/card
-                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification)))
+                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification))
+                            :notification/dashboard
+                            (t2/insert-returning-pk! :model/NotificationDashboard (:payload notification)))
           notification    (-> notification
                               (assoc :payload_id payload-id)
                               (dissoc :payload))
@@ -569,35 +624,55 @@
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
 
-(models.u.spec-update/define-spec notification-update-spec
-  "Spec for updating a notification."
+(def ^:private common-notification-nested-specs
+  {:subscriptions {:model        :model/NotificationSubscription
+                   :fk-column    :notification_id
+                   :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
+                   :multi-row?   true}
+   :handlers      {:model        :model/NotificationHandler
+                   :fk-column    :notification_id
+                   :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
+                   :multi-row?   true
+                   :nested-specs {:recipients {:model        :model/NotificationRecipient
+                                               :fk-column    :notification_handler_id
+                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
+                                               :multi-row?   true}
+                                  :template   {:model         :model/ChannelTemplate
+                                               :ref-in-parent :template_id
+                                               :compare-cols  [:channel_type :name :details]}}}})
+
+(models.u.spec-update/define-spec notification-card-update-spec
+  "Spec for updating a card notification (alert)."
   {:model        :model/Notification
    :compare-cols [:active]
    :extra-cols   [:payload_type :internal_id :payload_id]
-   :nested-specs {:payload       {:model        :model/NotificationCard
+   :nested-specs (assoc common-notification-nested-specs
+                        :payload {:model        :model/NotificationCard
                                   :compare-cols [:send_condition :send_once]
-                                  :extra-cols   [:card_id]}
-                  :subscriptions {:model        :model/NotificationSubscription
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
-                                  :multi-row?   true}
-                  :handlers      {:model        :model/NotificationHandler
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
-                                  :multi-row?   true
-                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
-                                                              :fk-column    :notification_handler_id
-                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}
-                                                 :template   {:model         :model/ChannelTemplate
-                                                              :ref-in-parent :template_id
-                                                              :compare-cols  [:channel_type :name :details]}}}}})
+                                  :extra-cols   [:card_id]})})
+
+(models.u.spec-update/define-spec notification-dashboard-update-spec
+  "Spec for updating a dashboard notification (subscription)."
+  {:model        :model/Notification
+   :compare-cols [:active]
+   :extra-cols   [:payload_type :internal_id :payload_id]
+   :nested-specs (assoc common-notification-nested-specs
+                        :payload {:model        :model/NotificationDashboard
+                                  :compare-cols [:skip_if_empty :disable_links :parameters :dashboard_subscription_dashcards]
+                                  :extra-cols   [:dashboard_id]})})
+
+(defn- notification-update-spec
+  "Return the appropriate update spec based on the notification's payload type."
+  [notification]
+  (case (:payload_type notification)
+    :notification/card      notification-card-update-spec
+    :notification/dashboard notification-dashboard-update-spec))
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
   (validate-email-handlers! (:handlers new-notification))
-  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+  (models.u.spec-update/do-update! existing-notification new-notification (notification-update-spec existing-notification)))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."

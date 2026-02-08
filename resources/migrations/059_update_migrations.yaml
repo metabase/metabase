@@ -3574,6 +3574,95 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-08T10:00:00
+      author: jseidner
+      comment: Create the notification_dashboard table
+      changes:
+        - createTable:
+            tableName: notification_dashboard
+            remarks: Dashboard related notifications (subscriptions)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that this subscription is connected to
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_dashboard_dashboard_id
+                    deleteCascade: true
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: JSON serialized dashboard filter parameters for this subscription
+                  constraints:
+                    nullable: true
+              - column:
+                  name: skip_if_empty
+                  type: ${boolean.type}
+                  remarks: Whether to skip sending the notification if all cards return empty results
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: Whether to disable links in notification emails
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dashboard_subscription_dashcards
+                  type: ${text.type}
+                  remarks: JSON serialized per-card export options (include_csv, include_xls, format_rows, pivot_results)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the record was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the record was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-08T10:00:01
+      author: jseidner
+      comment: Add an index for notification_dashboard.dashboard_id
+      rollback: # will be removed with the column
+      changes:
+        - createIndex:
+            indexName: idx_notification_dashboard_dashboard_id
+            tableName: notification_dashboard
+            columns:
+              - column:
+                  name: dashboard_id
+
+  - changeSet:
+      id: v59.2026-02-08T10:00:02
+      author: jseidner
+      comment: Migrate dashboard subscriptions from pulse to notification
+      validCheckSum: ANY
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MigrateDashboardSubscriptionsToNotification"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

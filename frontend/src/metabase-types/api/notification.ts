@@ -1,4 +1,5 @@
 import type { Card, CardId } from "./card";
+import type { DashboardId } from "./dashboard";
 import type { Channel } from "./notification-channels";
 import type { PaginationRequest } from "./pagination";
 import type { ScheduleDisplayType } from "./settings";
@@ -27,7 +28,33 @@ type NotificationCardPayload = {
   payload_id?: number;
 };
 
-type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
+export type DashboardSubscriptionDashcard = {
+  card_id: CardId | null;
+  dashboard_card_id?: number;
+  include_csv?: boolean;
+  include_xls?: boolean;
+  format_rows?: boolean;
+  pivot_results?: boolean;
+};
+
+type NotificationDashboardPayload = {
+  payload_type: "notification/dashboard";
+  payload: {
+    dashboard_id: DashboardId;
+    parameters?: Record<string, unknown>[] | null;
+    skip_if_empty?: boolean;
+    dashboard_subscription_dashcards?: DashboardSubscriptionDashcard[] | null;
+
+    id?: number;
+    created_at?: string;
+    updated_at?: string;
+  };
+  payload_id?: number;
+};
+
+type NotificationPayload =
+  | NotificationCardPayload
+  | NotificationDashboardPayload;
 
 //#endregion
 
@@ -124,6 +151,8 @@ export interface ListNotificationsRequest extends PaginationRequest {
   recipient_id?: UserId;
   creator_or_recipient_id?: UserId;
   card_id?: CardId;
+  dashboard_id?: DashboardId;
+  payload_type?: "notification/card" | "notification/dashboard";
   permission_group_id?: number;
 }
 
@@ -132,7 +161,15 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
   subscriptions: NotificationCronSubscription[];
 };
 
-export type CreateNotificationRequest = CreateAlertNotificationRequest; // will be populated with more variants later on
+export type CreateDashboardNotificationRequest =
+  NotificationDashboardPayload & {
+    handlers: NotificationHandler[];
+    subscriptions: NotificationCronSubscription[];
+  };
+
+export type CreateNotificationRequest =
+  | CreateAlertNotificationRequest
+  | CreateDashboardNotificationRequest;
 
 export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   id: NotificationId;
@@ -141,7 +178,17 @@ export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   subscriptions: NotificationCronSubscription[];
 };
 
-export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
+export type UpdateDashboardNotificationRequest =
+  NotificationDashboardPayload & {
+    id: NotificationId;
+    active: boolean;
+    handlers: NotificationHandler[];
+    subscriptions: NotificationCronSubscription[];
+  };
+
+export type UpdateNotificationRequest =
+  | UpdateAlertNotificationRequest
+  | UpdateDashboardNotificationRequest;
 
 export type Notification = NotificationPayload & {
   id: NotificationId;
