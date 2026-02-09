@@ -93,6 +93,7 @@ export type DimensionDisplayInfo = {
   projectionPositions?: number[];
   isFromJoin?: boolean;
   isCalculated?: boolean;
+  isImplicitlyJoinable?: boolean;
 };
 
 export type TemporalBucketDisplayInfo = {

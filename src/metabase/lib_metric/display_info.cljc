@@ -47,6 +47,7 @@
    ;; Source indicators
    [:is-from-join {:optional true} :boolean]
    [:is-calculated {:optional true} :boolean]
+   [:is-implicitly-joinable {:optional true} :boolean]
    ;; Temporal bucket specific
    [:is-temporal-extraction {:optional true} :boolean]])
 
@@ -113,7 +114,8 @@
          ;; Add source indicators if present
          (when-let [source (:lib/source dimension)]
            {:is-from-join (= source :source/joins)
-            :is-calculated (= source :source/expressions)})))
+            :is-calculated (= source :source/expressions)
+            :is-implicitly-joinable (= source :source/implicitly-joinable)})))
 
 ;;; -------------------------------------------------- Temporal Bucket --------------------------------------------------
 

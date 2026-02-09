@@ -309,6 +309,50 @@
       (is (= :field (first field-ref)))
       (is (= {:strategy :bin-width :bin-width 5} (get-in field-ref [1 :binning]))))))
 
+;;; -------------------------------------------------- FK Dimension Compilation --------------------------------------------------
+
+(def ^:private uuid-fk "550e8400-e29b-41d4-a716-446655440003")
+
+(def ^:private fk-dim-ref {:node/type :ast/dimension-ref :dimension-id uuid-fk})
+
+(def ^:private sample-ast-with-fk
+  (-> sample-ast
+      (update :dimensions conj {:node/type    :ast/dimension
+                                :id           uuid-fk
+                                :name         "fk_category_name"
+                                :display-name "Category Name"})
+      (update :mappings conj {:node/type    :ast/dimension-mapping
+                              :dimension-id uuid-fk
+                              :table-id     200
+                              :column       {:node/type    :ast/column
+                                             :id           123
+                                             :source-field 42
+                                             :table-id     200}})))
+
+(deftest ^:parallel compile-fk-dimension-breakout-test
+  (testing "FK dimension produces :source-field in breakout field ref"
+    (let [ast-with-fk-groupby (assoc sample-ast-with-fk :group-by [fk-dim-ref])
+          result              (ast.compile/compile-to-mbql ast-with-fk-groupby)
+          breakout            (get-in result [:stages 0 :breakout])
+          field-ref           (first breakout)]
+      (is (= :field (first field-ref)))
+      (is (= 123 (nth field-ref 2)))
+      (is (= 42 (get-in field-ref [1 :source-field]))))))
+
+(deftest ^:parallel compile-fk-dimension-filter-test
+  (testing "FK dimension produces :source-field in filter field ref"
+    (let [ast-with-fk-filter (assoc sample-ast-with-fk :filter
+                                    {:node/type :filter/comparison
+                                     :operator  :=
+                                     :dimension fk-dim-ref
+                                     :value     "Widgets"})
+          result             (ast.compile/compile-to-mbql ast-with-fk-filter)
+          filter-clause      (first (get-in result [:stages 0 :filters]))
+          field-ref          (nth filter-clause 2)]
+      (is (= :field (first field-ref)))
+      (is (= 123 (nth field-ref 2)))
+      (is (= 42 (get-in field-ref [1 :source-field]))))))
+
 ;;; -------------------------------------------------- Options --------------------------------------------------
 
 (deftest ^:parallel compile-with-limit-test

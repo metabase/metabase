@@ -142,6 +142,37 @@
     (is (nil? (:status-message dim)))
     (is (= "Custom Name" (:display-name dim)))))
 
+;;; -------------------------------------------------- FK Dimension Reconciliation --------------------------------------------------
+
+(deftest ^:parallel reconcile-fk-dimension-preserves-source-field-test
+  (testing "FK dimension target with :source-field is preserved through reconciliation"
+    (let [fk-target      [:field {:lib/uuid "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+                                  :source-field 42} 123]
+          computed-pairs [{:dimension {:id nil :name "fk_col" :lib/source :source/implicitly-joinable}
+                           :mapping   {:type :table :table-id 200 :target fk-target}}]
+          {:keys [dimensions dimension-mappings]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings computed-pairs nil nil)
+          mapping (first dimension-mappings)]
+      (is (= 1 (count dimensions)))
+      (is (= :status/active (:status (first dimensions))))
+      (is (= 1 (count dimension-mappings)))
+      (is (= 42 (get-in (:target mapping) [1 :source-field])))
+      (is (= 123 (nth (:target mapping) 2))))))
+
+(deftest ^:parallel reconcile-fk-dimension-matches-persisted-test
+  (testing "FK dimension matches persisted mapping by normalized target"
+    (let [fk-target-a    [:field {:lib/uuid "aaaa" :source-field 42} 123]
+          fk-target-b    [:field {:lib/uuid "bbbb" :source-field 42} 123]
+          computed-pairs [{:dimension {:id nil :name "fk_col"}
+                           :mapping   {:type :table :table-id 200 :target fk-target-a}}]
+          persisted-dims [{:id uuid-1 :name "fk_col" :display-name "FK Column" :status :status/active}]
+          persisted-mappings [{:type :table :table-id 200 :dimension-id uuid-1 :target fk-target-b}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings
+           computed-pairs persisted-dims persisted-mappings)]
+      (is (= uuid-1 (:id (first dimensions))))
+      (is (= "FK Column" (:display-name (first dimensions)))))))
+
 ;;; -------------------------------------------------- Persistence Helpers --------------------------------------------------
 
 (deftest ^:parallel extract-persisted-dimensions-filters-by-status-test

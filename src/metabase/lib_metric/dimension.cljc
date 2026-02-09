@@ -4,10 +4,12 @@
    and reconciled with persisted dimensions on each read."
   (:require
    [medley.core :as m]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -68,16 +70,28 @@
                          :target target}
                   (:table-id column) (assoc :table-id (:table-id column)))}))
 
+(defn- db-provider-for-query
+  "When the metadata provider is a MetricContextMetadataProvider, return the
+   database-specific provider for the query's source table. The DB provider can
+   resolve column-by-ID lookups that the metric context provider cannot, which
+   is required for FK / implicitly-joinable column resolution."
+  [mp query-with-mp]
+  (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
+    (when-let [table-id (lib.util/source-table-id query-with-mp)]
+      (lib-metric.provider/database-provider-for-table mp table-id))))
+
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
    Only includes actual database fields, not expressions."
   [metadata-providerable query]
   (let [mp            (lib/->metadata-provider metadata-providerable)
         query-with-mp (lib/query mp query)
+        db-mp         (db-provider-for-query mp query-with-mp)
+        vc-query      (if db-mp (lib/query db-mp query) query-with-mp)
         columns       (lib/visible-columns
-                       query-with-mp
+                       vc-query
                        -1
-                       {:include-implicitly-joinable?                 false
+                       {:include-implicitly-joinable?                 (boolean db-mp)
                         :include-implicitly-joinable-for-source-card? false})]
     (->> columns
          (remove #(= :source/expressions (:lib/source %)))

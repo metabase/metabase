@@ -77,6 +77,8 @@ export function getDimensionsByType(
   const dims = LibMetric.projectionableDimensions(def);
 
   for (const dim of dims) {
+    const info = LibMetric.displayInfo(def, dim);
+
     if (!isDimensionCandidate(dim)) {
       continue;
     }
@@ -86,7 +88,6 @@ export function getDimensionsByType(
       continue;
     }
 
-    const info = LibMetric.displayInfo(def, dim);
     const name = info.name;
 
     if (name && !result.has(name)) {
