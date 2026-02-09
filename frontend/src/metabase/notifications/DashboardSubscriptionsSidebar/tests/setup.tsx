@@ -259,8 +259,19 @@ export function setup({
   // Mock POST that creates a notification and updates the GET response
   fetchMock.post("path:/api/notification", ({ options }) => {
     const body = JSON.parse(options.body as string);
+    // Hydrate user objects on recipients (the real backend does this)
+    const handlers = (body.handlers ?? []).map((handler: any) => ({
+      ...handler,
+      recipients: (handler.recipients ?? []).map((r: any) => {
+        if (r.type === "notification-recipient/user") {
+          return { ...r, user: currentUserMock };
+        }
+        return r;
+      }),
+    }));
     const newNotification = {
       ...body,
+      handlers,
       id: getNextId(),
       active: true,
       creator_id: currentUserMock.id,

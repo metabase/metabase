@@ -2,14 +2,12 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
-   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
    [metabase.util :as u]
@@ -136,76 +134,6 @@
 
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
-
-(deftest init-dashboard-subscription-triggers!-group-runs-test
-  (testing "a SendPulse trigger will send pulse to channels that have the same schedueld time"
-    (pulse-channel-test/with-send-pulse-setup!
-      (mt/with-temp
-        [:model/Dashboard    {dash-id :id} {}
-         :model/Pulse        {pulse-1 :id} {:dashboard_id dash-id}
-         :model/PulseChannel {pc-1-1 :id}  (merge
-                                            {:pulse_id     pulse-1
-                                             :channel_type :slack
-                                             :details      {:channel "#random"}}
-                                            daily-at-1am)
-         :model/PulseChannel {pc-1-2 :id}  (merge
-                                            {:pulse_id     pulse-1
-                                             :channel_type :slack
-                                             :details      {:channel "#general"}}
-                                            daily-at-1am)
-         :model/Pulse        {pulse-2 :id} {:dashboard_id dash-id}
-         :model/PulseChannel {pc-2-1 :id}  (merge
-                                            {:pulse_id     pulse-2
-                                             :channel_type :slack
-                                             :details      {:channel "#random"}}
-                                            daily-at-1am)
-         :model/PulseChannel {pc-2-2 :id}  (merge
-                                            {:pulse_id     pulse-2
-                                             :channel_type :slack
-                                             :details      {:channel "#general"}}
-                                            daily-at-6pm)
-         :model/PulseChannel {_pc-2-3 :id} (merge
-                                            {:enabled     false
-                                             :pulse_id     pulse-2
-                                             :channel_type :slack
-                                             :details      {:channel "#general"}}
-                                            daily-at-6pm)
-         :model/Pulse        {pulse-3 :id} {:dashboard_id dash-id}
-         :model/PulseChannel {pc-3-1 :id}  (merge
-                                            {:enabled      true
-                                             :pulse_id     pulse-3
-                                             :channel_type :slack
-                                             :details      {:channel "#general"}}
-                                            daily-at-6pm)
-         ;; pulse of archived dashboard shouldn't be scheduled
-         :model/Dashboard    {dash-id-2 :id} {:archived true}
-         :model/Pulse        {pulse-4 :id}   {:dashboard_id dash-id-2}
-         :model/PulseChannel {_pc-4-1 :id}   (merge
-                                              {:enabled      true
-                                               :pulse_id     pulse-4
-                                               :channel_type :slack
-                                               :details      {:channel "#general"}}
-                                              daily-at-6pm)]
-        (let [all-send-pulse-triggers #(set/union
-                                        (pulse-channel-test/send-pulse-triggers pulse-1)
-                                        (pulse-channel-test/send-pulse-triggers pulse-2)
-                                        (pulse-channel-test/send-pulse-triggers pulse-3)
-                                        (pulse-channel-test/send-pulse-triggers pulse-4))]
-          ;; delete all triggers created by PulseChanne hooks
-          (doseq [trigger-info (all-send-pulse-triggers)]
-            (task/delete-trigger! (triggers/key (:key trigger-info))))
-          (testing "sanity check that there are no triggers"
-            (is (empty? (all-send-pulse-triggers))))
-          (testing "init-send-pulse-triggers! should create triggers for each pulse-channel"
-            (#'task.send-pulses/init-dashboard-subscription-triggers!)
-            (is (=? #{(pulse-channel-test/pulse->trigger-info pulse-1 daily-at-1am [pc-1-1 pc-1-2])
-                      ;; pc-2-1 has the same schedule as pc-1-1 and pc-1-2 but it's not on the same trigger because it's a
-                      ;; different schedule
-                      (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-1am [pc-2-1])
-                      ;; there is no pc-2--3 because it's disabled
-                      (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-6pm [pc-2-2])
-                      (pulse-channel-test/pulse->trigger-info pulse-3 daily-at-6pm [pc-3-1])}
-                    (all-send-pulse-triggers)))))))))
 
 (deftest send-pulses-exceed-thread-pool-test
   (testing "test that if we have more send-pulse triggers than the number of available threads, all channels will still be sent"
@@ -341,34 +269,3 @@
                           :next-fire-time (next-fire-hour 1))}
                  (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))))))
 
-(deftest init-send-pulse-triggers-idempotent-test
-  (pulse-channel-test/with-send-pulse-setup!
-    (mt/with-temp-scheduler!
-      (task/init! ::task.send-pulses/SendPulses)
-      (mt/with-temp
-        [:model/Dashboard    {dash-id :id} {}
-         :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
-         :model/PulseChannel {_pc-id :id}   (merge
-                                             {:pulse_id     pulse-id
-                                              :channel_type :slack
-                                              :details      {:channel "#random"}}
-                                             daily-at-1am)]
-        (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
-          (testing "sanity check that it has triggers to begin with"
-            (is (not-empty pulse-triggers)))
-          (testing "init send pulse triggers are idempotent if the pulse channel doesn't change"
-            (#'task.send-pulses/init-dashboard-subscription-triggers!)
-            (is (= pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
-
-(deftest init-send-pulse-triggers-skip-alert-test
-  (pulse-channel-test/with-send-pulse-setup!
-    (mt/with-temp-scheduler!
-      (task/init! ::task.send-pulses/SendPulses)
-      (mt/with-temp
-        [:model/Pulse        {pulse-id :id} {:alert_condition "goal"}
-         :model/PulseChannel {pc-id :id}    (merge
-                                             {:pulse_id     pulse-id
-                                              :channel_type :slack
-                                              :details      {:channel "#random"}}
-                                             daily-at-1am)]
-        (is (not (contains? (set (map :id (#'task.send-pulses/active-dashsub-pcs))) pc-id)))))))

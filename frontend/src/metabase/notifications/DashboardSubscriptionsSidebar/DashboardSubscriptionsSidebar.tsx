@@ -80,6 +80,50 @@ const CHANNEL_TYPES = {
 
 // ─── Adapter functions: notification ↔ pulse ────────────────────────────────
 
+/**
+ * Extract schedule fields from a channel, sanitized by schedule_type so that
+ * irrelevant fields (e.g. schedule_day for hourly) don't pollute the cron string.
+ */
+function channelToScheduleSettings(
+  channel: Channel,
+): Partial<ScheduleSettings> {
+  const { schedule_type } = channel;
+  switch (schedule_type) {
+    case "hourly":
+      return { schedule_type, schedule_minute: channel.schedule_minute };
+    case "daily":
+      return {
+        schedule_type,
+        schedule_hour: channel.schedule_hour,
+        schedule_minute: channel.schedule_minute,
+      };
+    case "weekly":
+      return {
+        schedule_type,
+        schedule_day: channel.schedule_day,
+        schedule_hour: channel.schedule_hour,
+        schedule_minute: channel.schedule_minute,
+      };
+    case "monthly":
+      return {
+        schedule_type,
+        schedule_frame: channel.schedule_frame,
+        schedule_day: channel.schedule_day,
+        schedule_hour: channel.schedule_hour,
+        schedule_minute: channel.schedule_minute,
+      };
+    default:
+      return _.pick(
+        channel,
+        "schedule_type",
+        "schedule_day",
+        "schedule_frame",
+        "schedule_hour",
+        "schedule_minute",
+      );
+  }
+}
+
 function handlerRecipientsToChannelRecipients(
   recipients: NotificationRecipient[],
 ): User[] {
@@ -270,13 +314,7 @@ function pulseToCreateNotification(
 ): CreateDashboardNotificationRequest {
   const channel = pulse.channels[0];
   const cronSchedule = scheduleSettingsToCron(
-    _.pick(
-      channel,
-      "schedule_day",
-      "schedule_frame",
-      "schedule_hour",
-      "schedule_type",
-    ),
+    channelToScheduleSettings(channel),
   );
 
   return {
@@ -305,13 +343,7 @@ function pulseToUpdateNotification(
 ): UpdateDashboardNotificationRequest {
   const channel = pulse.channels[0];
   const cronSchedule = scheduleSettingsToCron(
-    _.pick(
-      channel,
-      "schedule_day",
-      "schedule_frame",
-      "schedule_hour",
-      "schedule_type",
-    ),
+    channelToScheduleSettings(channel),
   );
 
   const existingSubscription = originalNotification.subscriptions[0];
@@ -329,9 +361,11 @@ function pulseToUpdateNotification(
     },
     handlers: pulse.channels
       .filter((ch) => ch.enabled)
-      .map((ch, i) => {
+      .map((ch) => {
         const handler = channelToHandler(ch);
-        const existingHandler = originalNotification.handlers[i];
+        const existingHandler = originalNotification.handlers.find(
+          (h) => h.channel_type === handler.channel_type,
+        );
         if (existingHandler?.id) {
           return { ...handler, id: existingHandler.id };
         }
@@ -404,11 +438,14 @@ function DashboardSubscriptionsSidebarInner({
   const isAdmin = useSelector(getUserIsAdmin);
 
   // ── RTK Query: notifications + channel info ──
-  const { data: notifications, isLoading: isNotificationsLoading } =
-    useListNotificationsQuery({
-      dashboard_id: dashboard.id,
-      payload_type: "notification/dashboard",
-    });
+  const {
+    data: notifications,
+    isLoading: isNotificationsLoading,
+    isFetching: isNotificationsFetching,
+  } = useListNotificationsQuery({
+    dashboard_id: dashboard.id,
+    payload_type: "notification/dashboard",
+  });
 
   const { data: formInput } = useGetChannelInfoQuery();
 
@@ -512,12 +549,19 @@ function DashboardSubscriptionsSidebarInner({
     if (
       isEmbeddingSdk() &&
       shouldDisplayNewPulse(editingMode, pulses) &&
-      !isNotificationsLoading
+      !isNotificationsLoading &&
+      !isNotificationsFetching
     ) {
       setEditingMode(EDITING_MODES.ADD_EMAIL);
       setPulseWithChannel(CHANNEL_TYPES.EMAIL);
     }
-  }, [editingMode, pulses, isNotificationsLoading, setPulseWithChannel]);
+  }, [
+    editingMode,
+    pulses,
+    isNotificationsLoading,
+    isNotificationsFetching,
+    setPulseWithChannel,
+  ]);
 
   // Non-admin forwarding
   useEffect(() => {
@@ -636,7 +680,7 @@ function DashboardSubscriptionsSidebarInner({
   const testPulseFn = useCallback(
     async (cleanedPulse: DraftDashboardSubscription) => {
       const notificationReq = pulseToCreateNotification(cleanedPulse);
-      await sendUnsavedNotification(notificationReq);
+      await sendUnsavedNotification(notificationReq).unwrap();
     },
     [sendUnsavedNotification],
   );

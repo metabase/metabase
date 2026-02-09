@@ -43,6 +43,7 @@ type NotificationDashboardPayload = {
     dashboard_id: DashboardId;
     parameters?: Record<string, unknown>[] | null;
     skip_if_empty?: boolean;
+    disable_links?: boolean;
     dashboard_subscription_dashcards?: DashboardSubscriptionDashcard[] | null;
 
     id?: number;
