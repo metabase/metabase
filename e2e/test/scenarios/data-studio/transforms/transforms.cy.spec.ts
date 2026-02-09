@@ -4166,7 +4166,9 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
       //Check that a known header is present
-      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
       //Ensure transform permissions are not displayed
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
 
@@ -4208,7 +4210,9 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.findByRole("menuitem", { name: "All Users" }).click();
 
       //Check that a known header is present
-      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
       //Ensure transform permissions are not displayed
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
     },
@@ -4221,14 +4225,15 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
     cy.signInAsAdmin();
   });
 
-  // TODO [OSS]: fix this test. It works in isolation and local setup, but fails consistently on CI
   it("should have transforms available in self-hosted pro without upsell gem icon", () => {
     H.activateToken("pro-self-hosted").then(() => {
       cy.log("ensure that transform permissions are not shown");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
       //Check that a known header is present
-      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
       //Ensure transform permissions are not displayed
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
 
@@ -4263,9 +4268,13 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
       cy.findByRole("menuitem", { name: "All Users" }).click();
 
       //Check that a known header is present
-      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
-      //Ensure transform permissions are not displayed
-      cy.findByRole("columnheader", { name: /Transforms/ }).should("exist");
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
+      //Ensure transform permissions are displayed
+      cy.findByRole("columnheader", { name: /Transforms/ })
+        .scrollIntoView()
+        .should("be.visible");
     });
   });
 });
