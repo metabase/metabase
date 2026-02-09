@@ -19,13 +19,13 @@
 
 (defn generate-adhoc-png
   "Execute an ad-hoc query and render results to PNG."
-  [query & {:keys [display width]
-            :or   {display :table width 1280}}]
+  [query & {:keys [display]
+            :or   {display :table}}]
   (let [results    (execute-adhoc-query query)
         adhoc-card {:display                display
                     :visualization_settings {}}]
     (channel.render/render-adhoc-card-to-png
      adhoc-card
      results
-     width
+     1280
      {:channel.render/padding-x 32})))
