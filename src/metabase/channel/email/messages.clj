@@ -11,6 +11,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
@@ -39,18 +40,21 @@
   (or (appearance/application-name)
       (trs "Metabase")))
 
-(defn logo-url
-  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+(defn- logo-bundle
+  "Get the logo bundle for the current application logo."
   []
-  (let [url (appearance/application-logo-url)]
-    (cond
-      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+  (email.logo/logo-bundle (appearance/application-logo-url)))
 
-      :else nil)))
-      ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
-      ;; (data-uri-svg? url)               (themed-image-url url color)
-      ;; :else                             url
+(defn logo-url
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
+   For data URIs, returns the cid: reference (requires logo-attachment to be included in email)."
+  []
+  (:image-src (logo-bundle)))
+
+(defn logo-attachment
+  "Return the logo attachment map for embedding in emails, or nil if not needed."
+  []
+  (:attachment (logo-bundle)))
 
 (defn button-style
   "Return a CSS style string for a button with the given color."
@@ -81,6 +85,27 @@
    :colorTextDark      channel.render/color-text-dark
    :siteUrl            (system/site-url)})
 
+(defn- make-message-attachment
+  "Convert a content-id/url pair to an email attachment map."
+  [[content-id url]]
+  {:type         :inline
+   :content-id   content-id
+   :content-type "image/png"
+   :content      url})
+
+(defn- send-email-with-logo!
+  "Send an email, including the logo as an attachment if it's a data URI.
+   Takes the same args as email/send-message! but handles logo attachments automatically."
+  [{:keys [message] :as email-args}]
+  (if-let [attachment (logo-attachment)]
+    (email/send-message!
+     (assoc email-args
+            :message-type :attachments
+            :message      (vec (cons {:type    "text/html; charset=utf-8"
+                                      :content message}
+                                     [(make-message-attachment (first attachment))]))))
+    (email/send-message! email-args)))
+
 ;;; ### Public Interface
 
 (defn- all-admin-recipients
@@ -98,7 +123,7 @@
   [new-user & {:keys [google-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
-    (email/send-message!
+    (send-email-with-logo!
      {:subject      (str (if google-auth?
                            (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
                            (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
@@ -131,7 +156,7 @@
                               :isActive         is-active?
                               :adminEmail       (system/admin-email)
                               :adminEmailSet    (boolean (system/admin-email))}))]
-    (email/send-message!
+    (send-email-with-logo!
      {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
       :message-type :html
@@ -235,11 +260,11 @@
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
                         :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
                         :link         "https://metabase.com/feedback/active"})
-        email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
-               :recipients   [email]
-               :message-type :html
-               :message      (channel.template/render "metabase/channel/email/follow_up_email.hbs" context)}]
-    (email/send-message! email)))
+        email-msg {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
+                   :recipients   [email]
+                   :message-type :html
+                   :message      (channel.template/render "metabase/channel/email/follow_up_email.hbs" context)}]
+    (send-email-with-logo! email-msg)))
 
 (defn send-creator-sentiment-email!
   "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
@@ -263,7 +288,7 @@
                  :recipients   [email]
                  :message-type :html
                  :message      (channel.template/render "metabase/channel/email/creator_sentiment_email.hbs" context)}]
-    (email/send-message! message)))
+    (send-email-with-logo! message)))
 
 (defn generate-pulse-unsubscribe-hash
   "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions.
@@ -352,23 +377,33 @@
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [card recipient-emails archiver]
+  [card recipient-emails recipient-emails-with-no-links archiver]
   (send-email! recipient-emails not-working-subject archived-template
                {:card card
                 :actor archiver}
+               true)
+  (send-email! recipient-emails-with-no-links not-working-subject archived-template
+               {:card card
+                :actor archiver
+                :disable_links true}
                true))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [card recipient-emails archiver]
+  [card recipient-emails recipient-emails-with-no-links archiver]
   (send-email! recipient-emails not-working-subject changed-stopped-template
                {:card card
                 :actor archiver}
+               true)
+  (send-email! recipient-emails-with-no-links not-working-subject changed-stopped-template
+               {:card card
+                :actor archiver
+                :disable_links true}
                true))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
-  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters disable_links]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
     (email/send-message!
      :subject (trs "Subscription to {0} removed" dashboard-name)
@@ -399,4 +434,5 @@
                                                      :recipient         (:common_name pulse-creator)
                                                      :role              "Subscription Creator"}]
                                                    (map #(assoc % :role "Subscriber") affected-users)))
-                       :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))
+                       :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)
+                       :disable_links            disable_links})))))

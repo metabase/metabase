@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {
@@ -26,7 +27,10 @@ export function FilterPickerHeader({
           disabled={readOnly}
           withArrow={!readOnly}
         >
-          {tc(columnName)}
+          {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+            columnName,
+            tc,
+          )}
         </PopoverBackButton>
       )}
       {children}

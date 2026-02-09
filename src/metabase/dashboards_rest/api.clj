@@ -939,7 +939,9 @@
          :dashboard-id dashboard-id
          :dashboard-name dashboard-name
          :dashboard-description dashboard-description
-         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name]))))))
+         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name])
+         ;; We will not include links to Metabase for subscriptions created in modular embeddings
+         :disable_links (:disable_links broken-pulse))))))
 
 (defn- handle-broken-subscriptions
   "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params

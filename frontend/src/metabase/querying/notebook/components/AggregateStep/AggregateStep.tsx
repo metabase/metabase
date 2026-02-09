@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
@@ -46,7 +47,10 @@ export function AggregateStep({
   };
 
   const renderAggregationName = (aggregation: Lib.AggregationClause) =>
-    tc(Lib.displayInfo(query, stageIndex, aggregation).longDisplayName);
+    PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+      Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
+      tc,
+    );
 
   return (
     <ClauseStep

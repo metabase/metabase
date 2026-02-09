@@ -726,7 +726,7 @@
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
-                                     :data_layer          "copper"
+                                     :data_layer          "hidden"
                                      :fields              [(merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
