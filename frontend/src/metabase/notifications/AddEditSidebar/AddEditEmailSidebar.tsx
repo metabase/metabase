@@ -23,28 +23,39 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
-  ChannelSpec,
   Dashboard,
   ScheduleSettings,
+  ScheduleType,
   User,
 } from "metabase-types/api";
 import type { DraftDashboardSubscription } from "metabase-types/store";
 
+import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 import Heading from "./Heading";
 
+const SUBSCRIPTION_SCHEDULE_OPTIONS: ScheduleType[] = [
+  "every_n_minutes",
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "cron",
+];
+
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
-  channelSpec: ChannelSpec;
   users: User[];
   parameters: UiParameter[];
   hiddenParameters?: string;
   dashboard: Dashboard;
+  cronString?: string;
+  isCustomSchedule?: boolean;
   handleSave: () => void;
   onCancel: () => void;
   onChannelPropertyChange: (property: string, value: unknown) => void;
@@ -63,11 +74,12 @@ export const AddEditEmailSidebar = ({
   pulse,
   formInput,
   channel,
-  channelSpec,
   users,
   parameters,
   hiddenParameters,
   dashboard,
+  cronString: cronStringProp,
+  isCustomSchedule,
 
   // form callbacks
   handleSave,
@@ -110,7 +122,7 @@ export const AddEditEmailSidebar = ({
         className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
       >
         {isEmbeddingSdk() ? null : (
-          <div>
+          <div className={CS.pb2}>
             <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
             <RecipientPicker
               autoFocus={false}
@@ -128,17 +140,25 @@ export const AddEditEmailSidebar = ({
           </div>
         )}
         <Schedule
-          cronString={scheduleSettingsToCron(
-            _.pick(
-              channel,
-              "schedule_day",
-              "schedule_frame",
-              "schedule_hour",
-              "schedule_type",
-            ),
-          )}
-          scheduleOptions={channelSpec.schedules}
+          cronString={
+            cronStringProp ??
+            scheduleSettingsToCron(
+              _.pick(
+                channel,
+                "schedule_day",
+                "schedule_frame",
+                "schedule_hour",
+                "schedule_type",
+                "schedule_minute",
+              ),
+            )
+          }
+          scheduleOptions={SUBSCRIPTION_SCHEDULE_OPTIONS}
           verb={t`Sent`}
+          minutesOnHourPicker
+          labelAlignment="left"
+          className={S.schedule}
+          isCustomSchedule={isCustomSchedule}
           onScheduleChange={(nextCronString, nextSchedule) =>
             onChannelScheduleChange(nextCronString, nextSchedule)
           }

@@ -34,7 +34,6 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
-  ChannelSpec,
   ChannelSpecs,
   ChannelType,
   Dashboard,
@@ -89,6 +88,8 @@ function channelToScheduleSettings(
 ): Partial<ScheduleSettings> {
   const { schedule_type } = channel;
   switch (schedule_type) {
+    case "every_n_minutes":
+      return { schedule_type, schedule_minute: channel.schedule_minute };
     case "hourly":
       return { schedule_type, schedule_minute: channel.schedule_minute };
     case "daily":
@@ -138,10 +139,15 @@ function handlerRecipientsToChannelRecipients(
 
 function handlerToChannel(
   handler: NotificationHandler,
-  subscription?: { cron_schedule: string },
+  subscription?: {
+    cron_schedule: string;
+    ui_display_type?: string | null;
+  },
 ): Channel {
+  const isCustomSchedule = subscription?.ui_display_type === "cron/raw";
   const scheduleSettings: Partial<ScheduleSettings> = subscription
-    ? (cronToScheduleSettings(subscription.cron_schedule) ?? {})
+    ? (cronToScheduleSettings(subscription.cron_schedule, isCustomSchedule) ??
+      {})
     : {};
 
   if (handler.channel_type === "channel/email") {
@@ -311,11 +317,14 @@ function pulseCardsToDashcards(
 
 function pulseToCreateNotification(
   pulse: DraftDashboardSubscription,
+  rawCronString?: string | null,
 ): CreateDashboardNotificationRequest {
   const channel = pulse.channels[0];
-  const cronSchedule = scheduleSettingsToCron(
-    channelToScheduleSettings(channel),
-  );
+  const isCustomCron = channel.schedule_type === "cron";
+  const cronSchedule =
+    isCustomCron && rawCronString
+      ? rawCronString
+      : scheduleSettingsToCron(channelToScheduleSettings(channel));
 
   return {
     payload_type: "notification/dashboard",
@@ -331,7 +340,7 @@ function pulseToCreateNotification(
         type: "notification-subscription/cron",
         event_name: null,
         cron_schedule: cronSchedule,
-        ui_display_type: null,
+        ui_display_type: isCustomCron ? "cron/raw" : "cron/builder",
       },
     ],
   };
@@ -340,11 +349,14 @@ function pulseToCreateNotification(
 function pulseToUpdateNotification(
   pulse: DraftDashboardSubscription,
   originalNotification: Notification,
+  rawCronString?: string | null,
 ): UpdateDashboardNotificationRequest {
   const channel = pulse.channels[0];
-  const cronSchedule = scheduleSettingsToCron(
-    channelToScheduleSettings(channel),
-  );
+  const isCustomCron = channel.schedule_type === "cron";
+  const cronSchedule =
+    isCustomCron && rawCronString
+      ? rawCronString
+      : scheduleSettingsToCron(channelToScheduleSettings(channel));
 
   const existingSubscription = originalNotification.subscriptions[0];
 
@@ -377,7 +389,7 @@ function pulseToUpdateNotification(
         type: "notification-subscription/cron" as const,
         event_name: null,
         cron_schedule: cronSchedule,
-        ui_display_type: existingSubscription?.ui_display_type ?? null,
+        ui_display_type: isCustomCron ? "cron/raw" : "cron/builder",
       },
     ],
   };
@@ -479,6 +491,10 @@ function DashboardSubscriptionsSidebarInner({
   const [isSaving, setIsSaving] = useState(false);
   const [users, setUsers] = useState<User[] | undefined>(undefined);
 
+  // Track the raw cron string so custom cron expressions survive the
+  // channel ↔ ScheduleSettings roundtrip without loss.
+  const cronStringRef = useRef<string | null>(null);
+
   const prevPulsesRef = useRef(pulses);
 
   // Build pulse with dashboard defaults
@@ -521,6 +537,11 @@ function DashboardSubscriptionsSidebarInner({
       }
 
       const channel = createChannel(channelSpec);
+
+      // Initialize cronStringRef for the default schedule of a new subscription
+      cronStringRef.current = scheduleSettingsToCron(
+        channelToScheduleSettings(channel),
+      );
 
       const newPulse: DraftDashboardSubscription = {
         ...NEW_PULSE_TEMPLATE,
@@ -615,10 +636,12 @@ function DashboardSubscriptionsSidebarInner({
 
   const onChannelScheduleChange = useCallback(
     (index: number, cronString: string, schedule: ScheduleSettings) => {
+      cronStringRef.current = cronString;
       const p = pulseRef.current;
       const channels = [...p.channels];
-      const scheduleSettings = cronToScheduleSettings(cronString) ?? schedule;
-      channels[index] = { ...channels[index], ...scheduleSettings };
+      // Use the schedule from the Schedule component directly — it already
+      // has the correct schedule_type (including "cron" for custom).
+      channels[index] = { ...channels[index], ...schedule };
       setPulse({ ...p, channels });
     },
     [setPulse],
@@ -652,12 +675,16 @@ function DashboardSubscriptionsSidebarInner({
         const originalNotification = notificationById.get(cleanedPulse.id);
         if (originalNotification) {
           await updateNotification(
-            pulseToUpdateNotification(cleanedPulse, originalNotification),
+            pulseToUpdateNotification(
+              cleanedPulse,
+              originalNotification,
+              cronStringRef.current,
+            ),
           ).unwrap();
         }
       } else {
         await createNotification(
-          pulseToCreateNotification(cleanedPulse),
+          pulseToCreateNotification(cleanedPulse, cronStringRef.current),
         ).unwrap();
       }
 
@@ -679,7 +706,10 @@ function DashboardSubscriptionsSidebarInner({
 
   const testPulseFn = useCallback(
     async (cleanedPulse: DraftDashboardSubscription) => {
-      const notificationReq = pulseToCreateNotification(cleanedPulse);
+      const notificationReq = pulseToCreateNotification(
+        cleanedPulse,
+        cronStringRef.current,
+      );
       await sendUnsavedNotification(notificationReq).unwrap();
     },
     [sendUnsavedNotification],
@@ -694,6 +724,17 @@ function DashboardSubscriptionsSidebarInner({
   const editPulse = useCallback(
     (p: DashboardSubscription, channelType: ChannelType) => {
       setPulse(p);
+
+      // Initialize cronStringRef from the notification's subscription so that
+      // custom cron expressions are preserved if the user doesn't change them.
+      if (p.id != null) {
+        const notification = notificationById.get(p.id);
+        cronStringRef.current =
+          notification?.subscriptions[0]?.cron_schedule ?? null;
+      } else {
+        cronStringRef.current = null;
+      }
+
       const editingModeMap: Partial<Record<ChannelType, EditingMode>> = {
         [CHANNEL_TYPES.EMAIL]: EDITING_MODES.ADD_EMAIL,
         [CHANNEL_TYPES.SLACK]: EDITING_MODES.ADD_SLACK,
@@ -706,7 +747,7 @@ function DashboardSubscriptionsSidebarInner({
         editingModeMap[channelType] ?? EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
       );
     },
-    [editingMode, setPulse],
+    [editingMode, notificationById, setPulse],
   );
 
   const handleArchive = useCallback(async () => {
@@ -717,7 +758,11 @@ function DashboardSubscriptionsSidebarInner({
     const originalNotification = notificationById.get(pulse.id);
     if (originalNotification) {
       await updateNotification({
-        ...pulseToUpdateNotification(pulse, originalNotification),
+        ...pulseToUpdateNotification(
+          pulse,
+          originalNotification,
+          cronStringRef.current,
+        ),
         active: false,
       }).unwrap();
     }
@@ -783,7 +828,6 @@ function DashboardSubscriptionsSidebarInner({
     }
 
     const [channel, index] = channelDetails[0];
-    const channelSpec = formInput.channels.email;
 
     return (
       <AddEditEmailSidebarWithHooks
@@ -791,7 +835,8 @@ function DashboardSubscriptionsSidebarInner({
         pulse={pulse}
         formInput={formInput}
         channel={channel}
-        channelSpec={channelSpec}
+        cronString={cronStringRef.current ?? undefined}
+        isCustomSchedule={channel.schedule_type === "cron"}
         handleSave={handleSave}
         onCancel={handleCancel}
         onChannelPropertyChange={onChannelPropertyChange}
@@ -832,6 +877,8 @@ function DashboardSubscriptionsSidebarInner({
         formInput={formInput}
         channel={channel}
         channelSpec={channelSpec}
+        cronString={cronStringRef.current ?? undefined}
+        isCustomSchedule={channel.schedule_type === "cron"}
         handleSave={handleSave}
         onCancel={handleCancel}
         onChannelPropertyChange={_.partial(onChannelPropertyChange, index)}
@@ -882,7 +929,8 @@ interface AddEditEmailSidebarWithHooksProps {
   pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
-  channelSpec: ChannelSpec | undefined;
+  cronString?: string;
+  isCustomSchedule?: boolean;
   handleSave: () => void;
   onCancel: () => void;
   onChannelPropertyChange: (
@@ -909,7 +957,8 @@ function AddEditEmailSidebarWithHooks({
   pulse,
   formInput,
   channel,
-  channelSpec,
+  cronString,
+  isCustomSchedule,
   handleSave,
   onCancel,
   onChannelPropertyChange,
@@ -944,7 +993,8 @@ function AddEditEmailSidebarWithHooks({
       pulse={pulse}
       formInput={formInput}
       channel={channel}
-      channelSpec={channelSpec}
+      cronString={cronString}
+      isCustomSchedule={isCustomSchedule}
       handleSave={handleSave}
       onCancel={onCancel}
       onChannelPropertyChange={handleChannelPropertyChange}

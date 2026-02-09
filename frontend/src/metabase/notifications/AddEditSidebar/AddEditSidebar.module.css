@@ -1,0 +1,7 @@
+.schedule {
+  --schedule-grid-gap: 1.5rem;
+  --schedule-row-gap: 1rem;
+  --schedule-first-column-font-weight: bold;
+
+  grid-template-columns: minmax(2.5rem, min-content) auto;
+}
