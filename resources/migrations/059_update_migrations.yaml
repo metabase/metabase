@@ -2975,7 +2975,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:00
-      author: earther
+      author: qnkhuat
       comment: Create workspace_input_transform join table for m2m between workspace_input and workspace_transform
       preConditions:
         - onFail: MARK_RAN
@@ -3029,7 +3029,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:01
-      author: earther
+      author: qnkhuat
       comment: Add index on workspace_input_transform.workspace_input_id
       preConditions:
         - onFail: MARK_RAN
@@ -3048,7 +3048,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:02
-      author: earther
+      author: qnkhuat
       comment: Add composite index on workspace_input_transform (workspace_id, ref_id)
       preConditions:
         - onFail: MARK_RAN
@@ -3069,7 +3069,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:03
-      author: earther
+      author: qnkhuat
       comment: Add FK from workspace_input_transform.workspace_input_id to workspace_input with CASCADE
       preConditions:
         - onFail: MARK_RAN
@@ -3087,7 +3087,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:04
-      author: earther
+      author: qnkhuat
       comment: Add FK from workspace_input_transform.workspace_id to workspace with CASCADE
       preConditions:
         - onFail: MARK_RAN
@@ -3105,7 +3105,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:05
-      author: earther
+      author: qnkhuat
       comment: Add unique constraint on workspace_input_transform (workspace_input_id, workspace_id, ref_id, transform_version)
       preConditions:
         - onFail: MARK_RAN
@@ -3122,7 +3122,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:06
-      author: earther
+      author: qnkhuat
       comment: Migrate existing workspace_input rows into workspace_input_transform join table
       preConditions:
         - onFail: MARK_RAN
@@ -3141,7 +3141,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:07
-      author: earther
+      author: qnkhuat
       comment: Deduplicate workspace_input - delete rows that are duplicates by (workspace_id, db_id, schema, table), keeping the lowest id
       preConditions:
         - onFail: MARK_RAN
@@ -3177,7 +3177,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:08
-      author: earther
+      author: qnkhuat
       comment: Drop old unique constraint on workspace_input that includes ref_id and transform_version
       preConditions:
         - onFail: MARK_RAN
@@ -3196,7 +3196,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:09
-      author: earther
+      author: qnkhuat
       comment: Drop old composite index on workspace_input (workspace_id, ref_id)
       preConditions:
         - onFail: MARK_RAN
@@ -3219,7 +3219,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:10
-      author: earther
+      author: qnkhuat
       comment: Drop ref_id column from workspace_input (moved to workspace_input_transform)
       preConditions:
         - onFail: MARK_RAN
@@ -3240,7 +3240,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:11
-      author: earther
+      author: qnkhuat
       comment: Drop transform_version column from workspace_input (moved to workspace_input_transform)
       preConditions:
         - onFail: MARK_RAN
@@ -3262,7 +3262,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v59.2026-02-09T12:00:12
-      author: earther
+      author: qnkhuat
       comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table) after normalization
       preConditions:
         - onFail: MARK_RAN
