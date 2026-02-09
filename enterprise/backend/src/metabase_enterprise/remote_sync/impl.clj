@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -395,11 +396,18 @@
   "Imports remote-synced collections from a remote source repository asynchronously.
 
   Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
-  and an import-args map of additional arguments to pass to the import function.
+  and an import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
+  exception if force? is false and changes exist.
 
-  Returns a RemoteSyncTask."
+  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
+  are unsaved changes and force? is false."
   [branch force? import-args]
-  (let [source (source/source-from-settings branch)]
+  (let [source (source/source-from-settings branch)
+        has-dirty? (remote-sync.object/dirty?)]
+    (when (and has-dirty? (not force?))
+      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                      {:status-code 400
+                       :conflicts true})))
     (run-async! "import" branch (fn [task-id] (import! (source.p/snapshot source) task-id (assoc import-args :force? force?))))))
 
 (defn async-export!

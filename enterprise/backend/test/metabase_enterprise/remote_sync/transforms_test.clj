@@ -488,7 +488,7 @@ is_sample: false
               (let [test-files {"main" {(str "collections/" remote-coll-entity-id "_remote_transforms/" remote-coll-entity-id "_remote_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                    result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
                 (is (= :success (:status result))
                     (str "Import should succeed. Result: " result))
                 (is (not (t2/exists? :model/Transform :id local-transform-id))
@@ -808,7 +808,7 @@ serdes/meta:
                                         (str "collections/" remote-coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                    result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
                 (is (= :success (:status result))
                     (str "Import should succeed. Result: " result))
                 (is (settings/remote-sync-transforms)
