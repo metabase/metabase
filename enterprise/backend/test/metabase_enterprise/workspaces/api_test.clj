@@ -1970,6 +1970,12 @@
   (testing "Endpoint {:access :workspace} metadata matches service-user-patterns"
     (let [;; Get all endpoints from the workspace API namespace
           endpoints          (api.macros/ns-routes 'metabase-enterprise.workspaces.api)
+          ;; Convert route path to the expected pattern suffix (what comes after /api/ee/workspace/\d+)
+          ;; e.g., /:ws-id/run -> /run, /:ws-id/transform/:tx-id -> /transform/[^/]+
+          route->suffix      (fn [route]
+                               (-> route
+                                   (str/replace #"^/:ws-id" "")  ; Remove ws-id prefix
+                                   (str/replace #"/:tx-id" "/[^/]+")))  ; tx-id is string
           ;; Extract [method route] pairs with {:access :workspace} metadata
           workspace-access   (into #{}
                                    (keep (fn [[[method route _] info]]
@@ -1980,22 +1986,28 @@
           patterns           @#'ws.api/service-user-patterns
           ;; Helper to check if a route matches any pattern for its method
           matches-pattern?   (fn [[method route]]
-                               (let [full-uri (str "/api/ee/workspace" route)]
-                                 (some #(re-matches % full-uri)
+                               (let [suffix          (route->suffix route)
+                                     expected-pattern (str "/api/ee/workspace/\\d+" suffix "$")]
+                                 (some #(= (str %) expected-pattern)
                                        (get patterns method))))
           ;; Check the inverse: for each pattern, find endpoints that match
           pattern->endpoints (fn [method pattern]
                                (filter (fn [[[m route _] _info]]
                                          (and (= m method)
-                                              (re-matches pattern (str "/api/ee/workspace" route))))
+                                              (let [suffix           (route->suffix route)
+                                                    expected-pattern (str "/api/ee/workspace/\\d+" suffix "$")]
+                                                (= (str pattern) expected-pattern))))
                                        endpoints))]
 
       (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
         (doseq [[method route :as endpoint] workspace-access]
           (testing (str method " " route)
-            (is (matches-pattern? endpoint)
-                (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
-                     "Add the pattern or remove the metadata.")))))
+            (let [suffix           (route->suffix route)
+                  expected-pattern (str "/api/ee/workspace/\\d+" suffix "$")
+                  method-patterns  (get patterns method)]
+              (is (some #(= (str %) expected-pattern) method-patterns)
+                  (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
+                       "Expected pattern: " expected-pattern))))))
 
       (testing "Every pattern in service-user-patterns matches only endpoints with {:access :workspace}"
         (doseq [[method method-patterns] patterns
