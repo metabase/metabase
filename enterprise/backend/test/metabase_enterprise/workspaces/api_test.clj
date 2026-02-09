@@ -1299,8 +1299,56 @@
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
 
-;; Note: API-level tests for run_stale_ancestors would require real executable transforms.
-;; The core logic is tested in impl_test.clj (run-stale-ancestors-* tests).
+(deftest run-transform-with-stale-ancestors-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/run with run_stale_ancestors=true"
+    ;; Chain: x1 -> x2 -> x3, where x1 is stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}}}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [x1-ref (workspace-map :x1)
+            x2-ref (workspace-map :x2)
+            x3-ref (workspace-map :x3)]
+        (ws.tu/with-mocked-execution
+          (testing "without flag, ancestors are not run"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/run"))]
+              (is (= "succeeded" (:status result)))
+              (is (nil? (:ancestors result)))))
+          (testing "with flag, stale ancestors are run before target"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/run")
+                                               {:run_stale_ancestors true})]
+              (is (= "succeeded" (:status result)))
+              (is (= {:succeeded [x1-ref x2-ref]
+                      :failed    []
+                      :not_run   []}
+                     (:ancestors result))))))))))
+
+(deftest dry-run-transform-with-stale-ancestors-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run with run_stale_ancestors=true"
+    ;; Chain: x1 -> x2 -> x3, where x1 is stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}}}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [x1-ref (workspace-map :x1)
+            x2-ref (workspace-map :x2)
+            x3-ref (workspace-map :x3)]
+        (ws.tu/with-mocked-execution
+          (testing "with flag, stale ancestors are run before dry-run"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/dry-run")
+                                               {:run_stale_ancestors true})]
+              (is (= "succeeded" (:status result)))
+              (is (= {:succeeded [x1-ref x2-ref]
+                      :failed    []
+                      :not_run   []}
+                     (:ancestors result))))))))))
 
 (defn- random-target [db-id]
   {:type     "table"

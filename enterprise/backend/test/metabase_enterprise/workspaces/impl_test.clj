@@ -494,7 +494,12 @@
                                                        :x5 [:t0] :x6 [:x5]
                                                        :x7 [:x2 :x4 :x6]}
                                          :properties  {:x1 {:definition_changed true}
-                                                       :x4 {:definition_changed true}}}}]
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}
+                                                       :x4 {:definition_changed true}
+                                                       :x5 {:definition_changed false}
+                                                       :x6 {:definition_changed false}
+                                                       :x7 {:definition_changed false}}}}]
       (let [t1-ref (workspace-map :x1)
             t2-ref (workspace-map :x2)
             t4-ref (workspace-map :x4)
@@ -517,7 +522,8 @@
     (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
                             {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
                                          :properties  {:x1 {:definition_changed true}
-                                                       :x2 {:definition_changed true}}}}]
+                                                       :x2 {:definition_changed true}
+                                                       :x3 {:definition_changed false}}}}]
       (let [t1-ref    (workspace-map :x1)
             t2-ref    (workspace-map :x2)
             t3-ref    (workspace-map :x3)
@@ -539,7 +545,8 @@
     (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
                             {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
                                          :properties  {:x1 {:definition_changed true}
-                                                       :x2 {:definition_changed true}}}}]
+                                                       :x2 {:definition_changed true}
+                                                       :x3 {:definition_changed false}}}}]
       (let [t1-ref (workspace-map :x1)
             t2-ref (workspace-map :x2)
             t3-ref (workspace-map :x3)]
@@ -559,7 +566,9 @@
 (deftest run-stale-ancestors-no-stale-ancestors-test
   (testing "run-stale-ancestors! returns empty results when no ancestors are stale"
     (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
-                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]}}}]
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]}
+                                         :properties  {:x1 {:definition_changed false}
+                                                       :x2 {:definition_changed false}}}}]
       (let [t2-ref (workspace-map :x2)]
         (ws.tu/with-mocked-execution
           (let [workspace (t2/select-one :model/Workspace workspace-id)
