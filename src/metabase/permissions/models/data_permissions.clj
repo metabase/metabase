@@ -1074,11 +1074,12 @@
 (defn has-db-transforms-permission?
   "Returns true if the given user has the transforms permission for the given source db."
   [user-id database-id]
-  (and (not= database-id audit/audit-db-id)
-       (user-has-permission-for-database? user-id
-                                          :perms/transforms
-                                          :yes
-                                          database-id)))
+  (or (is-superuser? user-id)
+      (and (not= database-id audit/audit-db-id)
+           (user-has-permission-for-database? user-id
+                                              :perms/transforms
+                                              :yes
+                                              database-id))))
 
 (defn has-any-transforms-permission?
   "Returns true if the current user has the transforms permission for _any_ source db."

@@ -48,16 +48,6 @@ databaseChangeLog:
       rollback: # No need to roll back
 
   - changeSet:
-      id: v59.2025-12-01T18:53:27
-      author: nvoxland
-      comment: Make transform.source_database_id not nullable
-      changes:
-        - addNotNullConstraint:
-            tableName: transform
-            columnName: source_database_id
-            columnDataType: int
-
-  - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
       comment: Create measure table for saved aggregation expressions
@@ -2969,6 +2959,50 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             constraintName: fk_metabase_table_transform_id
+            onDelete: SET NULL
+
+  ## The original changeset that made this not null has been removed, but keep the switch to nullable to handle existing DBs.
+  - changeSet:
+      id: v59.2025-02-06T11:02:53
+      author: nvoxland
+      comment: Make transform.source_database_id nullable
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
+  - changeSet:
+      id: v59.2025-02-06T11:02:54
+      author: nvoxland
+      comment: Rename transform.source_database_id to source_db_id
+      changes:
+        - renameColumn:
+            tableName: transform
+            columnDataType: int
+            oldColumnName: source_database_id
+            newColumnName: source_db_id
+
+  - changeSet:
+      id: v59.2025-02-06T11:02:55
+      author: nvoxland
+      comment: Drop foreign key on transform(source_database_id) to recreate it
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2025-02-06T11:02:56
+      author: nvoxland
+      comment: Add foreign key on transform(source_database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranforms_source_db_id
             onDelete: SET NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -25,7 +25,7 @@
               :source-tables source-tables
               :body "# Python code here\nresult = df"}
      :name (str "python_transform_" name)
-     :source_database_id (mt/id)
+     :source_db_id (mt/id)
      :target {:database target-db
               :schema schema
               :name name

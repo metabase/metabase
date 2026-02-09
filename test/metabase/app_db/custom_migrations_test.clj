@@ -2746,7 +2746,7 @@
                               :source             source
                               :target             target
                               :source_type        source-type
-                              :source_database_id db-id
+                              :source_db_id db-id
                               :created_at         :%now
                               :updated_at         :%now}))
             ;; source.query.database takes precedence over target.database

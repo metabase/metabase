@@ -2866,7 +2866,7 @@
                                                             :group_id data-analyst-group-id}
                        :model/Database {db-id :id} {}
                        :model/Table {_table-id :id} {:db_id db-id}
-                       :model/Transform {transform-id :id} {:source_database_id db-id
+                       :model/Transform {transform-id :id} {:source_db_id db-id
                                                             :name "Test Transform"}]
           (testing "graph/unreferenced"
             (is (map? (mt/user-http-request analyst-id :get 200

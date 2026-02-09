@@ -354,7 +354,7 @@
                         [:in entity-id-field
                          {:select [:id]
                           :from   [table-name]
-                          :where  [:in :source_database_id
+                          :where  [:in :source_db_id
                                    (perms/visible-database-filter-select
                                     {:user-id          api/*current-user-id*
                                      :is-superuser?    api/*is-superuser?*

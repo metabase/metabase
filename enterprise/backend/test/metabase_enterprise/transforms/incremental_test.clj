@@ -135,7 +135,7 @@
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
         {:keys [field-name lib-column-key]} checkpoint-config]
     {:name transform-name
-     :source_database_id (mt/id)
+     :source_db_id (mt/id)
      :source (case transform-type
                :native {:type "query"
                         :query (make-incremental-source-query schema checkpoint-config)
