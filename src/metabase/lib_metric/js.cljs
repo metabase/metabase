@@ -707,3 +707,13 @@
       :can-list-values   (= :list has-fv)
       :can-search-values (= :search has-fv)
       :can-remap-values  can-remap})))
+
+(defn ^:export isSameSource
+  "Check if two dimensions share at least one common source.
+   Returns false if either dimension has no sources."
+  [dimension1 dimension2]
+  (let [sources1 (:sources dimension1)
+        sources2 (:sources dimension2)]
+    (boolean
+     (when (and (seq sources1) (seq sources2))
+       (some (set sources1) sources2)))))

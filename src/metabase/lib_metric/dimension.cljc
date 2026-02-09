@@ -59,10 +59,11 @@
   (let [target (lib/ref column)]
     {:dimension (cond-> {:id   nil
                          :name (:name column)}
-                  (:display-name column)   (assoc :display-name (:display-name column))
-                  (:effective-type column) (assoc :effective-type (:effective-type column))
-                  (:semantic-type column)  (assoc :semantic-type (:semantic-type column))
-                  (:lib/source column)     (assoc :lib/source (:lib/source column)))
+                  (:display-name column)    (assoc :display-name (:display-name column))
+                  (:effective-type column)  (assoc :effective-type (:effective-type column))
+                  (:semantic-type column)   (assoc :semantic-type (:semantic-type column))
+                  (:lib/source column)      (assoc :lib/source (:lib/source column))
+                  (pos-int? (:id column))   (assoc :sources [{:type :field, :field-id (:id column)}]))
      :mapping   (cond-> {:type   :table
                          :target target}
                   (:table-id column) (assoc :table-id (:table-id column)))}))
@@ -168,7 +169,7 @@
   "Check if the persisted dimensions have changed between old and new sets."
   [old-persisted :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
    new-persisted :- [:sequential ::lib-metric.schema/persisted-dimension]]
-  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :status :status-message]
+  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :status :status-message :sources]
         normalize    (fn [dims] (set (map #(perf/select-keys % persist-keys) dims)))]
     (not= (normalize old-persisted) (normalize new-persisted))))
 

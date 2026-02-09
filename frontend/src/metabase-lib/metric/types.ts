@@ -42,6 +42,11 @@ export type MetricDefinition = unknown & {
   _opaque: typeof _MetricDefinitionSymbol;
 };
 
+export type DimensionSource = {
+  type: "field";
+  fieldId?: number;
+};
+
 export type DimensionMetadata = unknown & {
   _opaque: typeof _DimensionMetadataSymbol;
 };

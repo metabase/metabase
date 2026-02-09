@@ -109,7 +109,8 @@
   (cond-> dim
     (:status dim)         (update :status keyword)
     (:effective-type dim) (update :effective-type keyword)
-    (:semantic-type dim)  (update :semantic-type keyword)))
+    (:semantic-type dim)  (update :semantic-type keyword)
+    (:sources dim)        (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
 
 (defn- normalize-target-ref
   "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."

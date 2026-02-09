@@ -588,3 +588,10 @@ export function dimensionValuesInfo(
     dimension,
   ) as DimensionValuesInfo;
 }
+
+export function isSameSource(
+  dimension1: DimensionMetadata,
+  dimension2: DimensionMetadata,
+): boolean {
+  return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}

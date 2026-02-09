@@ -14,13 +14,22 @@
   "UUID string identifying a dimension."
   ::lib.schema.common/uuid)
 
+(mr/def ::dimension-source.type
+  [:enum :field])
+
+(mr/def ::dimension-source
+  [:map
+   [:type     ::dimension-source.type]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+
 (mr/def ::dimension
   "Schema for a dimension definition."
   [:map
    [:id             ::dimension-id]
    [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:sources        {:optional true} [:maybe [:sequential ::dimension-source]]]])
 
 (mr/def ::dimension-mapping.type
   "Type of dimension mapping."
@@ -126,7 +135,8 @@
    [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:status          {:optional true} [:maybe ::dimension-status]]
-   [:status-message  {:optional true} [:maybe :string]]])
+   [:status-message  {:optional true} [:maybe :string]]
+   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -182,6 +192,7 @@
    [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:status           {:optional true} [:maybe ::dimension-status]]
    [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]
