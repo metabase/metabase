@@ -21,4 +21,5 @@
   :type       :boolean
   :visibility :authenticated
   :default    false
+  :export?    false
   :audit      :getter)
