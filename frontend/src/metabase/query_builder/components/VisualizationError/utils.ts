@@ -1,4 +1,4 @@
-export function adjustPositions(error: unknown, origSql: string): string {
+export function adjustPositions(error: string, origSql: string): string {
   /* Positions in error messages are borked coming in for Postgres errors.
    * Previously, you would see "blahblahblah bombed out, Position: 119" in a 10-character invalid query.
    * This is because MB shoves in 'remarks' into the original query and we get the exception from the query with remarks.
@@ -7,7 +7,6 @@ export function adjustPositions(error: unknown, origSql: string): string {
    * because the alternative of doing it in backend
    * is an absolutely terrifying kludge involving messing with exceptions.
    */
-  const errorStr = typeof error === "string" ? error : String(error);
   let adjustmentLength = 0;
 
   // redshift remarks use c-style multiline comments...
@@ -29,7 +28,7 @@ export function adjustPositions(error: unknown, origSql: string): string {
     adjustmentLength += newLinePos + 2;
   }
 
-  return errorStr.replace(/Position: (\d+)/, function (_, p1) {
+  return error.replace(/Position: (\d+)/, function (_, p1) {
     return "Position: " + (parseInt(p1) - adjustmentLength);
   });
 }
