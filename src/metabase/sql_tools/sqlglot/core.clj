@@ -1,12 +1,17 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
+   [clojure.string :as str]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (org.graalvm.polyglot PolyglotException)))
+
+(set! *warn-on-reflection* true)
 
 (defn- convert-error
   "Convert sql-parsing generic error format to lib.validate format.
@@ -89,18 +94,24 @@
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
   [_parser driver sql-str]
-  (let [dialect (driver->dialect driver)
-        ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
-        ;; Convert to [{:schema ... :table ...} ...] format.
-        ;; Do NOT normalize case here — SQLGlot already applies dialect-appropriate case rules
-        ;; (e.g., uppercase for Snowflake, lowercase for Postgres). Additional normalization
-        ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
-        ;; AppDB lookups where identifiers are stored in their native case.
-        ;; This matches the Macaw implementation which also returns raw identifiers.
-        table-tuples (sql-parsing/referenced-tables dialect sql-str)]
-    (mapv (fn [[_catalog schema table]]
-            {:schema schema :table table})
-          table-tuples)))
+  (try
+    (let [dialect (driver->dialect driver)
+          ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
+          ;; Convert to [{:schema ... :table ...} ...] format.
+          ;; Do NOT normalize case here — SQLGlot already applies dialect-appropriate case rules
+          ;; (e.g., uppercase for Snowflake, lowercase for Postgres). Additional normalization
+          ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
+          ;; AppDB lookups where identifiers are stored in their native case.
+          ;; This matches the Macaw implementation which also returns raw identifiers.
+          table-tuples (sql-parsing/referenced-tables dialect sql-str)]
+      (mapv (fn [[_catalog schema table]]
+              {:schema schema :table table})
+            table-tuples))
+    (catch PolyglotException e
+      ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
+      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+        []
+        (throw e)))))
 
 (defmethod sql-tools/simple-query?-impl :sqlglot
   [_parser sql-string]
