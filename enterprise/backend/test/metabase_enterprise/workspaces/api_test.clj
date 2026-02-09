@@ -4,11 +4,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.workspaces.api :as ws.api]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -1899,7 +1901,6 @@
    [:get  "/database"]
    [:get  "/checkout"]
    [:put  "/:ws-id"]
-   [:post "/:ws-id/archive"]
    [:post "/:ws-id/unarchive"]
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
@@ -1915,6 +1916,7 @@
    [:get  "/:ws-id/problem"]
    [:get  "/:ws-id/external/transform"]
    [:get  "/:ws-id/transform"]
+   [:post "/:ws-id/archive"]
    [:post "/:ws-id/transform"]
    [:get  "/:ws-id/transform/:tx-id"]
    [:put  "/:ws-id/transform/:tx-id"]
@@ -1963,3 +1965,46 @@
                 (is (not= permission-denied-msg (:body resp)) "Should allow its own service user"))
               (is (= permission-denied-msg (mt/user-http-request service-user-2 method 403 url))
                   "Should reject other service users"))))))))
+
+(deftest service-user-access-metadata-matches-patterns-test
+  (testing "Endpoint {:access :workspace} metadata matches service-user-patterns"
+    (let [;; Get all endpoints from the workspace API namespace
+          endpoints          (api.macros/ns-routes 'metabase-enterprise.workspaces.api)
+          ;; Extract [method route] pairs with {:access :workspace} metadata
+          workspace-access   (into #{}
+                                   (keep (fn [[[method route _] info]]
+                                           (when (= :workspace (get-in info [:form :metadata :access]))
+                                             [method route])))
+                                   endpoints)
+          ;; Get the service-user-patterns (private var)
+          patterns           @#'ws.api/service-user-patterns
+          ;; Helper to check if a route matches any pattern for its method
+          matches-pattern?   (fn [[method route]]
+                               (let [full-uri (str "/api/ee/workspace" route)]
+                                 (some #(re-matches % full-uri)
+                                       (get patterns method))))
+          ;; Check the inverse: for each pattern, find endpoints that match
+          pattern->endpoints (fn [method pattern]
+                               (filter (fn [[[m route _] _info]]
+                                         (and (= m method)
+                                              (re-matches pattern (str "/api/ee/workspace" route))))
+                                       endpoints))]
+
+      (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
+        (doseq [[method route :as endpoint] workspace-access]
+          (testing (str method " " route)
+            (is (matches-pattern? endpoint)
+                (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
+                     "Add the pattern or remove the metadata.")))))
+
+      (testing "Every pattern in service-user-patterns matches only endpoints with {:access :workspace}"
+        (doseq [[method method-patterns] patterns
+                pattern                  method-patterns]
+          (let [matching-endpoints (pattern->endpoints method pattern)]
+            (testing (str method " " pattern)
+              (is (seq matching-endpoints)
+                  "Pattern doesn't match any endpoint. Remove the stale pattern.")
+              (doseq [[[_ route _] info] matching-endpoints]
+                (is (= :workspace (get-in info [:form :metadata :access]))
+                    (str "Pattern matches " route " but endpoint lacks {:access :workspace} metadata. "
+                         "Add the metadata or remove the pattern."))))))))))
