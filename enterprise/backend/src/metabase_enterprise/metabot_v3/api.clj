@@ -63,7 +63,7 @@
   Returns a map keyed by model name: {\"model-name\" {:prompt X :completion Y}}"
   [parts]
   (transduce
-   (comp (filter #(= :usage (:type %))))
+   (filter #(= :usage (:type %)))
    (completing
     (fn [acc {:keys [usage model]}]
       (let [model (or model "unknown")]
