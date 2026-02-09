@@ -309,7 +309,8 @@
                                             {:first_name (mt/random-name)})))
                   (add-user-to-group! [req-user status group-to-add]
                     ;; ensure `user-to-update` is not in `group-to-add`
-                    (t2/delete! :model/PermissionsGroupMembership
+                    ;; Use raw table name to bypass before-delete guard (test setup, not a real user action)
+                    (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
                                 :user_id (:id user-to-update)
                                 :group_id (:id group-to-add))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
@@ -320,7 +321,8 @@
                         (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
                                               {:user_group_memberships (map #(dissoc % :is_group_manager) new-user-group-membership)})))
 
-                    (t2/delete! :model/PermissionsGroupMembership
+                    ;; Use raw table name to bypass before-delete guard (test setup, not a real user action)
+                    (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
                                 :user_id (:id user-to-update)
                                 :group_id (:id group-to-add))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)

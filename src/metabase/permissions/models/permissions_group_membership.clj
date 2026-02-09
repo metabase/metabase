@@ -74,8 +74,16 @@
 
 (def ^:dynamic ^:private *update-user-when-added-to-admin-group?* true)
 
+(def ^:dynamic *allow-direct-deletion*
+  "Should we allow direct `t2/delete!` calls on PermissionsGroupMembership? By default this is `false`; only the
+  blessed helper functions like `remove-user-from-group!` bind this to `true`."
+  false)
+
 (t2/define-before-delete :model/PermissionsGroupMembership
   [{:keys [group_id user_id]}]
+  (when-not *allow-direct-deletion*
+    (throw (ex-info "Do not use `t2/delete!` with PermissionsGroupMembership directly. Use `remove-user-from-group!` or related instead"
+                    {})))
   (check-not-all-users-group group_id)
   (check-not-all-external-users-group group_id)
   ;; If this is the Admin group...
@@ -241,12 +249,11 @@
   (when (seq group-ids-or-groups)
     (let [user-id (u/the-id user-id-or-user)
           group-ids (map u/the-id group-ids-or-groups)
-          ;; Get the memberships that will be deleted for event publishing
           memberships (t2/select :model/PermissionsGroupMembership
                                  :user_id user-id
                                  :group_id [:in group-ids])]
-      ;; Delete the memberships (this will trigger the before-delete hooks)
-      (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids])
+      (binding [*allow-direct-deletion* true]
+        (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
       (doseq [membership memberships]
         (events/publish-event! :event/group-membership-delete {:object membership
                                                                :user-id api/*current-user-id*})))))
@@ -255,3 +262,23 @@
   "Removes a user from a group."
   [user-id-or-user group-ids-or-groups]
   (remove-user-from-groups! user-id-or-user [group-ids-or-groups]))
+
+(defn remove-all-users-from-group!
+  "Removes all users from a group."
+  [group-id]
+  (let [memberships (t2/select :model/PermissionsGroupMembership :group_id group-id)]
+    (binding [*allow-direct-deletion* true]
+      (t2/delete! :model/PermissionsGroupMembership :group_id group-id))
+    (doseq [membership memberships]
+      (events/publish-event! :event/group-membership-delete {:object membership
+                                                             :user-id api/*current-user-id*}))))
+
+(defn remove-user-from-all-groups!
+  "Removes a user from all groups."
+  [user-id]
+  (let [memberships (t2/select :model/PermissionsGroupMembership :user_id user-id)]
+    (binding [*allow-direct-deletion* true]
+      (t2/delete! :model/PermissionsGroupMembership :user_id user-id))
+    (doseq [membership memberships]
+      (events/publish-event! :event/group-membership-delete {:object membership
+                                                             :user-id api/*current-user-id*}))))

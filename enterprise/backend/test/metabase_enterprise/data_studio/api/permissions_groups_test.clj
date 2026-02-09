@@ -71,7 +71,8 @@
         (let [group-count-before (t2/count :model/PermissionsGroup)
               data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           ;; Ensure no members in the group
-          (t2/delete! :model/PermissionsGroupMembership :group_id data-analyst-group-id)
+          ;; Use raw table name to bypass before-delete guard (test setup, not a real user action)
+          (t2/delete! (t2/table-name :model/PermissionsGroupMembership) :group_id data-analyst-group-id)
           (perms-group/sync-data-analyst-group-for-oss!)
           (testing "No new groups should be created"
             (is (= group-count-before (t2/count :model/PermissionsGroup))))

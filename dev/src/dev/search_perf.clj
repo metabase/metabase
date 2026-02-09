@@ -274,7 +274,8 @@
     ;; Delete group memberships first (foreign key constraints)
     (when (seq user-ids)
       (println (format "Deleting memberships for %d users..." (count user-ids)))
-      (t2/delete! :model/PermissionsGroupMembership :user_id [:in user-ids] :group_id [:<> 1]))
+      ;; Use raw table name to bypass before-delete guard (bulk dev cleanup, not a real user action)
+      (t2/delete! (t2/table-name :model/PermissionsGroupMembership) :user_id [:in user-ids] :group_id [:<> 1]))
     ;; Delete users
     (when (seq user-ids)
       (println (format "Deleting %d users..." (count user-ids)))
