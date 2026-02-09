@@ -91,7 +91,7 @@ function WorkspacePageContent({
     activeTab,
     setActiveTab,
     setActiveTable,
-    setActiveTransform,
+    setActiveTransformRef,
     removeOpenedTab,
     setOpenedTabs,
     addOpenedTransform,
@@ -465,11 +465,12 @@ function WorkspacePageContent({
                         // After adding first transform to a workspace,
                         // show 'Setup' tab with initialization status log.
                         if (isWorkspaceUninitialized(workspace)) {
-                          setActiveTransform(transform);
-                          return setTab("setup");
+                          setActiveTransformRef(transform);
+                          setTab("setup");
+                        } else {
+                          setActiveTransformRef(transform);
+                          setTab(getTransformTabId(transform));
                         }
-                        setActiveTransform(transform);
-                        setTab(getTransformTabId(transform));
                       }}
                     />
                   )}

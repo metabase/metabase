@@ -82,7 +82,7 @@ export interface WorkspaceContextValue {
   activeTransformRef: AnyWorkspaceTransformRef | null;
   activeEditedTransform?: EditedTransform | null;
   setActiveTab: (tab: WorkspaceTab | null) => void;
-  setActiveTransform: (transform: AnyWorkspaceTransform) => void;
+  setActiveTransformRef: (transform: AnyWorkspaceTransformRef) => void;
   setActiveTable: (table: OpenTable | null) => void;
   addOpenedTab: (tab: WorkspaceTab, activate?: boolean) => void;
   removeOpenedTab: (tabId: string) => void;
@@ -323,7 +323,7 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const setActiveTransform = useCallback(
+  const setActiveTransformRef = useCallback(
     (transformRef: AnyWorkspaceTransformRef) => {
       updateWorkspaceState((state) => {
         const transformTabId = getTransformTabId(transformRef);
@@ -713,7 +713,7 @@ export const WorkspaceProvider = ({
       activeTab,
       activeEditedTransform,
       setActiveTab,
-      setActiveTransform,
+      setActiveTransformRef,
       setActiveTable,
       addOpenedTab,
       removeOpenedTab,
@@ -741,7 +741,7 @@ export const WorkspaceProvider = ({
       activeTab,
       activeEditedTransform,
       setActiveTab,
-      setActiveTransform,
+      setActiveTransformRef,
       setActiveTable,
       addOpenedTab,
       removeOpenedTab,

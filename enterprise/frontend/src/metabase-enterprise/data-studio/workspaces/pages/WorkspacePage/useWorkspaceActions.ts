@@ -41,7 +41,7 @@ export function useWorkspaceActions({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const { addOpenedTab, addOpenedTransform, setActiveTransform } =
+  const { addOpenedTab, addOpenedTransform, setActiveTransformRef } =
     useWorkspace();
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
@@ -197,7 +197,11 @@ export function useWorkspaceActions({
           id: transform.id,
           name: transform.name,
         });
-        // setActiveTransform(taggedTransform); // TODO
+        setActiveTransformRef({
+          type: "transform",
+          id: transform.id,
+          name: transform.name,
+        });
         onOpenTab(String(targetTransformId));
       } else if (transform && isWsTransform) {
         addOpenedTransform({
@@ -205,7 +209,11 @@ export function useWorkspaceActions({
           ref_id: transform.ref_id,
           name: transform.name,
         });
-        // setActiveTransform(data); // TODO
+        setActiveTransformRef({
+          type: "workspace-transform",
+          ref_id: transform.ref_id,
+          name: transform.name,
+        });
         onOpenTab(String(targetTransformId));
       } else {
         sendErrorToast(`Transform ${targetTransformId} not found`);
@@ -215,7 +223,7 @@ export function useWorkspaceActions({
       workspaceTransforms,
       availableTransforms,
       addOpenedTransform,
-      setActiveTransform,
+      setActiveTransformRef,
       onOpenTab,
       sendErrorToast,
     ],
