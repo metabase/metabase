@@ -1,8 +1,8 @@
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PythonTransformsUpsellModal } from "metabase-enterprise/data-studio/upsells/components";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { PythonTransformEditor } from "./components/PythonTransformEditor";
-import { PythonTransformsUpsellModal } from "./components/PythonTransformsUpsellModal";
 import { SHARED_LIB_IMPORT_PATH } from "./constants";
 import { PythonRunnerSettingsPage } from "./pages/PythonRunnerSettingsPage";
 import { getPythonLibraryRoutes } from "./routes";

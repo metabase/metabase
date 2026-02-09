@@ -105,9 +105,6 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 

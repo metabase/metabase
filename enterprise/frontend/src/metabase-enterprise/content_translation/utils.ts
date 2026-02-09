@@ -167,7 +167,7 @@ export const translateColumnDisplayName = (
     const hasPrefix = displayName.startsWith(prefix);
     const hasSuffix = displayName.endsWith(suffix);
 
-    if (hasPrefix && hasSuffix) {
+    if (hasPrefix && hasSuffix && (prefix || suffix)) {
       const innerStart = prefix.length;
       const innerEnd = displayName.length - suffix.length;
 
@@ -441,34 +441,4 @@ export const useSortByContentTranslation = () => {
     (a: string, b: string) => tc(a).localeCompare(tc(b)),
     [tc],
   );
-};
-
-/**
- * Translates a filter's display name by translating the column name part.
- * The longDisplayName is a pre-formatted string like "Plan is Business"
- * where the column name part needs to be translated.
- */
-export const getTranslatedFilterDisplayName = (
-  displayName: string,
-  tc: ContentTranslationFunction,
-  columnDisplayName?: string,
-): string => {
-  if (!displayName) {
-    return displayName ?? "";
-  }
-
-  if (!hasTranslations(tc)) {
-    return displayName;
-  }
-
-  if (columnDisplayName) {
-    const translatedColumnName = tc(columnDisplayName);
-
-    if (translatedColumnName !== columnDisplayName) {
-      return displayName.replace(columnDisplayName, translatedColumnName);
-    }
-  }
-
-  // Fallback to translate the whole string
-  return tc(displayName);
 };
