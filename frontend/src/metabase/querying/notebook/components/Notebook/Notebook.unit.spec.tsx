@@ -29,8 +29,10 @@ import {
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/lib/types";
 import {
+  SAMPLE_DATABASE,
   SAMPLE_METADATA,
-  createQueryWithClauses,
+  SAMPLE_PROVIDER,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, RecentItem } from "metabase-types/api";
@@ -41,7 +43,10 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { Notebook, type NotebookProps } from "./Notebook";
 
@@ -191,8 +196,14 @@ function setup({
 }
 
 function createSummarizedQuestion(type: CardType) {
-  const query = createQueryWithClauses({
-    aggregations: [{ operatorName: "count" }],
+  const query = createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
   });
   return new Question(createMockCard({ type }), SAMPLE_METADATA).setQuery(
     query,

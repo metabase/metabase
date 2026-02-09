@@ -4,11 +4,12 @@ import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
-  columnFinder,
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
   createQuery,
-  createQueryWithClauses,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { FieldPanel } from "./FieldPanel";
 
@@ -147,11 +148,29 @@ describe("QueryColumnPicker", () => {
 
   it("should not allow to remove fields for aggregated queries", async () => {
     setup({
-      query: createQueryWithClauses({
-        query: createQuery(),
-        aggregations: [
-          { operatorName: "count" },
-          { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [
+              { type: "operator", operator: "count", args: [] },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  {
+                    type: "column",
+                    name: "PRICE",
+                    groupName: "Product",
+                  },
+                ],
+              },
+            ],
+          },
         ],
       }),
     });
@@ -167,9 +186,22 @@ describe("QueryColumnPicker", () => {
 
   it("should not allow to remove fields for breakout queries", async () => {
     setup({
-      query: createQueryWithClauses({
-        query: createQuery(),
-        breakouts: [{ tableName: "PRODUCTS", columnName: "PRICE" }],
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            breakouts: [
+              {
+                name: "PRICE",
+                groupName: "Product",
+              },
+            ],
+          },
+        ],
       }),
     });
 
@@ -183,27 +215,40 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should not allow to remove the only field from multi-stage queries", () => {
-    const initialQuery = Lib.appendStage(
-      createQueryWithClauses({
-        query: createQuery(),
-        breakouts: [{ tableName: "PRODUCTS", columnName: "PRICE" }],
-      }),
-    );
-    const stageIndex = 1;
-    const findColumn = columnFinder(
-      initialQuery,
-      Lib.fieldableColumns(initialQuery, stageIndex),
-    );
     setup({
-      query: Lib.filter(
-        initialQuery,
-        stageIndex,
-        Lib.numberFilterClause({
-          operator: "=",
-          column: findColumn("PRODUCTS", "PRICE"),
-          values: [1],
-        }),
-      ),
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            breakouts: [
+              {
+                name: "PRICE",
+                groupName: "Product",
+              },
+            ],
+          },
+          {
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  {
+                    type: "column",
+                    name: "PRICE",
+                    groupName: "Summaries",
+                  },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     const [group, ...columns] = screen.getAllByRole("checkbox");
@@ -217,30 +262,44 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should allow to remove some but not all fields from multi-stage queries", async () => {
-    const initialQuery = Lib.appendStage(
-      createQueryWithClauses({
-        query: createQuery(),
-        breakouts: [
-          { tableName: "PRODUCTS", columnName: "PRICE" },
-          { tableName: "PRODUCTS", columnName: "CREATED_AT" },
+    setup({
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            breakouts: [
+              {
+                name: "PRICE",
+                groupName: "Product",
+              },
+              {
+                name: "CREATED_AT",
+                groupName: "Product",
+              },
+            ],
+          },
+          {
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  {
+                    type: "column",
+                    name: "PRICE",
+                    groupName: "Summaries",
+                  },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            ],
+          },
         ],
       }),
-    );
-    const stageIndex = 1;
-    const findColumn = columnFinder(
-      initialQuery,
-      Lib.fieldableColumns(initialQuery, stageIndex),
-    );
-    setup({
-      query: Lib.filter(
-        initialQuery,
-        stageIndex,
-        Lib.numberFilterClause({
-          operator: "=",
-          column: findColumn("PRODUCTS", "PRICE"),
-          values: [1],
-        }),
-      ),
     });
 
     const [group, firstColumn, secondColumn] = screen.getAllByRole("checkbox");
@@ -329,20 +388,53 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should not allow to remove columns when there are expressions and only one removable column in multi-stage queries", () => {
-    const initialQuery = Lib.appendStage(
-      createQueryWithClauses({
-        query: createQuery(),
-        breakouts: [{ tableName: "PRODUCTS", columnName: "PRICE" }],
-      }),
-    );
-    const stageIndex = 1;
     setup({
-      query: Lib.expression(
-        initialQuery,
-        stageIndex,
-        "Custom",
-        Lib.expressionClause("+", [1, 2]),
-      ),
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            breakouts: [
+              {
+                name: "PRICE",
+                groupName: "Product",
+              },
+            ],
+          },
+          {
+            expressions: [
+              {
+                name: "Custom",
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "literal", value: 1 },
+                    { type: "literal", value: 2 },
+                  ],
+                },
+              },
+            ],
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  {
+                    type: "column",
+                    name: "PRICE",
+                    groupName: "Summaries",
+                  },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     const [group, ...columns] = screen.getAllByRole("checkbox");

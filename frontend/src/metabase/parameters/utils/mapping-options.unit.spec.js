@@ -1,8 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
 import {
+  SAMPLE_DATABASE,
   SAMPLE_METADATA,
-  createQueryWithClauses,
+  SAMPLE_PROVIDER,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -778,17 +779,21 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should not confuse columns from different stages", () => {
-      const query = Lib.appendStage(
-        createQueryWithClauses({
-          breakouts: [
-            {
-              columnName: "CREATED_AT",
-              tableName: "ORDERS",
-              temporalBucketName: "Month",
-            },
-          ],
-        }),
-      );
+      const query = createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            breakouts: [
+              {
+                name: "CREATED_AT",
+                unit: "month",
+              },
+            ],
+          },
+          {},
+        ],
+      });
       const question = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
         query,
       );

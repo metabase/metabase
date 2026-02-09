@@ -3,10 +3,13 @@ import { renderHook } from "@testing-library/react";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
   columnFinder,
   createQuery,
-  createQueryWithClauses,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { useDateFilter } from "./use-date-filter";
 
@@ -75,20 +78,30 @@ describe("useDateFilter", () => {
   });
 
   it("should return available units for a custom column", () => {
-    const query = createQueryWithClauses({
-      query: defaultQuery,
-      expressions: [
+    const query = createTestQuery(SAMPLE_PROVIDER, {
+      databaseId: SAMPLE_DATABASE.id,
+      stages: [
         {
-          name: "CustomDate",
-          operator: "=",
-          args: [defaultColumn],
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "CustomDate",
+              value: {
+                type: "operator",
+                operator: "=",
+                args: [
+                  { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+                ],
+              },
+            },
+          ],
         },
       ],
     });
     const column = columnFinder(
       query,
       Lib.filterableColumns(query, stageIndex),
-    )("ORDERS", "CustomDate");
+    )(null, "CustomDate");
 
     const { result } = renderHook(() =>
       useDateFilter({

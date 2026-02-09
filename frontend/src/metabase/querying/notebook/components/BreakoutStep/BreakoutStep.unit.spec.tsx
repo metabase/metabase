@@ -10,10 +10,15 @@ import {
   within,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   createOrdersIdField,
   createOrdersTable,
   createSampleDatabase,
@@ -25,66 +30,85 @@ import type { NotebookStep } from "../../types";
 import { BreakoutStep } from "./BreakoutStep";
 
 function createQueryWithBreakout() {
-  return createQueryWithClauses({
-    breakouts: [{ tableName: "ORDERS", columnName: "TAX" }],
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [{ name: "TAX" }],
+      },
+    ],
   });
 }
 
-function createQueryWithBreakoutAndBinningStrategy(
-  binningStrategyName = "10 bins",
+function createQueryWithBreakoutAndBinningCount(
+  binningCount: number | undefined,
 ) {
-  return createQueryWithClauses({
-    breakouts: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "TAX",
-        binningStrategyName,
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [{ name: "TAX", binningCount }],
       },
     ],
   });
 }
 
 function createQueryWithMultipleBreakoutsAndBinningStrategy() {
-  return createQueryWithClauses({
-    breakouts: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "TAX",
-        binningStrategyName: "10 bins",
-      },
-      {
-        tableName: "ORDERS",
-        columnName: "TAX",
-        binningStrategyName: "50 bins",
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [
+          { name: "TAX", binningCount: 10 },
+          { name: "TAX", binningCount: 50 },
+        ],
       },
     ],
   });
 }
 
-function createQueryWithBreakoutAndTemporalBucket(temporalBucketName: string) {
-  return createQueryWithClauses({
-    breakouts: [
+function createQueryWithBreakoutAndTemporalBucket(
+  temporalBucketName: string | undefined,
+) {
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName,
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [{ name: "CREATED_AT", unit: temporalBucketName }],
       },
     ],
   });
 }
 
 function createQueryWithMultipleBreakoutsAndTemporalBucket() {
-  return createQueryWithClauses({
-    breakouts: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Year",
-      },
-      {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Month",
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [
+          { name: "CREATED_AT", unit: "year" },
+          { name: "CREATED_AT", unit: "month" },
+        ],
       },
     ],
   });
@@ -209,7 +233,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should highlight selected binning strategy", async () => {
-      const query = createQueryWithBreakoutAndBinningStrategy();
+      const query = createQueryWithBreakoutAndBinningCount(10);
       setup({ step: createMockNotebookStep({ query }) });
 
       await userEvent.click(screen.getByText("Tax: 10 bins"));
@@ -222,7 +246,7 @@ describe("BreakoutStep", () => {
     });
 
     it("shouldn't update a query when clicking a selected binned column", async () => {
-      const query = createQueryWithBreakoutAndBinningStrategy();
+      const query = createQueryWithBreakoutAndBinningCount(10);
       const { updateQuery } = setup({
         step: createMockNotebookStep({ query }),
       });
@@ -234,7 +258,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should highlight the `Don't bin` option when a column is not binned", async () => {
-      const query = createQueryWithBreakoutAndBinningStrategy("Don't bin");
+      const query = createQueryWithBreakoutAndBinningCount(undefined);
       setup({ step: createMockNotebookStep({ query }) });
 
       await userEvent.click(screen.getByText("Tax"));
@@ -276,7 +300,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should highlight selected temporal bucket", async () => {
-      const query = createQueryWithBreakoutAndTemporalBucket("Quarter");
+      const query = createQueryWithBreakoutAndTemporalBucket("quarter");
       setup({ step: createMockNotebookStep({ query }) });
 
       await userEvent.click(screen.getByText("Created At: Quarter"));
@@ -289,7 +313,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should handle `Don't bin` option for temporal bucket (metabase#19684)", async () => {
-      const query = createQueryWithBreakoutAndTemporalBucket("Don't bin");
+      const query = createQueryWithBreakoutAndTemporalBucket(undefined);
       setup({ step: createMockNotebookStep({ query }) });
 
       await userEvent.click(screen.getByText("Created At"));
@@ -311,7 +335,7 @@ describe("BreakoutStep", () => {
     });
 
     it("shouldn't update a query when clicking a selected column with temporal bucketing", async () => {
-      const query = createQueryWithBreakoutAndTemporalBucket("Quarter");
+      const query = createQueryWithBreakoutAndTemporalBucket("quarter");
       const { updateQuery } = setup({
         step: createMockNotebookStep({ query }),
       });
@@ -323,7 +347,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should allow to add a breakout for a column with an existing breakout but with a different binning strategy", async () => {
-      const query = createQueryWithBreakoutAndBinningStrategy("10 bins");
+      const query = createQueryWithBreakoutAndBinningCount(10);
       const { getNextBreakouts } = setup({
         step: createMockNotebookStep({ query }),
       });
@@ -340,7 +364,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should ignore attempts to add a breakout for a column with the same binning strategy", async () => {
-      const query = createQueryWithBreakoutAndBinningStrategy("10 bins");
+      const query = createQueryWithBreakoutAndBinningCount(10);
       const { getNextBreakouts } = setup({
         step: createMockNotebookStep({ query }),
       });
@@ -404,7 +428,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should allow to add a breakout for a column with an existing breakout but with a different temporal bucket", async () => {
-      const query = createQueryWithBreakoutAndTemporalBucket("Year");
+      const query = createQueryWithBreakoutAndTemporalBucket("year");
       const { getNextBreakouts } = setup({
         step: createMockNotebookStep({ query }),
       });
@@ -421,7 +445,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should ignore attempts to add a breakout for a column with the same temporal bucket", async () => {
-      const query = createQueryWithBreakoutAndTemporalBucket("Year");
+      const query = createQueryWithBreakoutAndTemporalBucket("year");
       const { getNextBreakouts } = setup({
         step: createMockNotebookStep({ query }),
       });
@@ -547,8 +571,17 @@ describe("BreakoutStep", () => {
     });
 
     it("should not allow to add more than 1 breakout", async () => {
-      const query = createQueryWithClauses({
-        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
+      const query = createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            breakouts: [{ name: "CREATED_AT" }],
+          },
+        ],
       });
       const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
       const step = createMockNotebookStep({ question });

@@ -5,7 +5,12 @@ import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  createQuery,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   COMMON_DATABASE_FEATURES,
@@ -13,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
+  ORDERS_ID,
   SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
@@ -29,15 +35,38 @@ import {
 import { AggregationPicker } from "./AggregationPicker";
 
 function createQueryWithCountAggregation() {
-  return createQueryWithClauses({
-    aggregations: [{ operatorName: "count" }],
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
   });
 }
 
 function createQueryWithMaxAggregation() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "max", tableName: "ORDERS", columnName: "QUANTITY" },
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+
+        aggregations: [
+          {
+            type: "operator",
+            operator: "max",
+            args: [{ type: "column", name: "QUANTITY" }],
+          },
+        ],
+      },
     ],
   });
 }

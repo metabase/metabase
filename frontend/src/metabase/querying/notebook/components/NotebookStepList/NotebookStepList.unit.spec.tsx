@@ -4,10 +4,18 @@ import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import type * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  createQuery,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -54,8 +62,14 @@ function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
 
 describe("NotebookStepList", () => {
   it("renders a list of actions for Summarize step with no breakouts", () => {
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
+    const query = createTestQuery(SAMPLE_PROVIDER, {
+      databaseId: SAMPLE_DATABASE.id,
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
     });
     setup({}, query);
 

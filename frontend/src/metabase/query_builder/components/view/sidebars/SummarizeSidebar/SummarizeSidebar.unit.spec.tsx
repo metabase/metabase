@@ -3,8 +3,14 @@ import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  createQuery,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -18,37 +24,49 @@ type SetupOpts = {
 };
 
 function createSummarizedQuery() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "max", tableName: "ORDERS", columnName: "QUANTITY" },
-    ],
-    breakouts: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Month",
-      },
-      {
-        tableName: "PRODUCTS",
-        columnName: "CATEGORY",
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          {
+            type: "operator",
+            operator: "max",
+            args: [{ type: "column", name: "QUANTITY" }],
+          },
+        ],
+        breakouts: [
+          {
+            name: "CREATED_AT",
+            unit: "month",
+          },
+          {
+            name: "CATEGORY",
+          },
+        ],
       },
     ],
   });
 }
 
 function createQueryWithBreakoutsForSameColumn() {
-  return createQueryWithClauses({
-    aggregations: [{ operatorName: "count" }],
-    breakouts: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Year",
-      },
-      {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Quarter",
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        breakouts: [
+          {
+            name: "CREATED_AT",
+            unit: "year",
+          },
+          {
+            name: "CREATED_AT",
+            unit: "quarter",
+          },
+        ],
       },
     ],
   });
@@ -144,8 +162,14 @@ describe("SummarizeSidebar", () => {
 
     it("should allow to remove last not default aggregation (metabase#48033)", async () => {
       await setup({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
+        query: createTestQuery(SAMPLE_PROVIDER, {
+          databaseId: SAMPLE_DATABASE.id,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+            },
+          ],
         }),
       });
 
