@@ -2,6 +2,7 @@
   "`/api/ee/replacement/` routes"
   (:require
    [metabase-enterprise.replacement.source :as replacement.source]
+   [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
@@ -83,6 +84,19 @@
                  (replacement.source/check-replace-source source-mp old-source new-source))]
     {:success (empty? errors)
      :errors  errors}))
+
+(api.macros/defendpoint :post "/replace-source" :- :nil
+  "Replace all usages of a particular table or card with a different table or card"
+  [_route-params
+   _query-params
+   {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
+   :- [:map
+       [:source_entity_id   ms/PositiveInt]
+       [:source_entity_type entity-type-enum]
+       [:target_entity_id   ms/PositiveInt]
+       [:target_entity_type entity-type-enum]]]
+  ;; TODO: call check-replace-source in some manner to check that the sources are swappable
+  (replacement.source-swap/swap-source [source_entity_type source_entity_id] [target_entity_type target_entity_id]))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/replacement` routes."

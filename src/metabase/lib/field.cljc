@@ -798,3 +798,9 @@
        :has-field-values (if (int? column-field-id)
                            (infer-has-field-values column)
                            :none)})))
+
+(defn is-field-clause?
+  "Returns whether a piece of a query is a field clause"
+  [clause]
+  (and (vector? clause)
+       (= (first clause) :field)))
