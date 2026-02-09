@@ -23,7 +23,7 @@ export type TaggedTransform = Transform & { type: "transform" };
  */
 export type UnsavedTransform = {
   type: "unsaved-transform";
-  id: number;
+  id: TransformId;
   name: string;
   source: DraftTransformSource;
   target: {
