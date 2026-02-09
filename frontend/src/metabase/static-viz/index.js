@@ -87,6 +87,7 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
         visualization_settings: settings,
       },
       data: mergedData,
+      columnValuesMapping,
     },
   ];
 }
