@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
@@ -23,7 +24,9 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -1311,7 +1314,13 @@
       (let [x1-ref (workspace-map :x1)
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
-        (ws.tu/with-mocked-execution
+        ;; Use a mock that returns :table (required by the API schema)
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})]
           (testing "without flag, ancestors are not run"
             (let [result (mt/user-http-request :crowberto :post 200
                                                (ws-url workspace-id "/transform/" x3-ref "/run"))]
@@ -1339,7 +1348,18 @@
       (let [x1-ref (workspace-map :x1)
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
-        (ws.tu/with-mocked-execution
+        ;; Mock both run (for ancestors) and preview (for dry-run target)
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})
+                                    ws.execute/run-transform-preview
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :data   {:rows [[1 "test"]]
+                                                :cols [{:name "id"} {:name "name"}]}})]
           (testing "with flag, stale ancestors are run before dry-run"
             (let [result (mt/user-http-request :crowberto :post 200
                                                (ws-url workspace-id "/transform/" x3-ref "/dry-run")
