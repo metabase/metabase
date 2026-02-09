@@ -431,18 +431,19 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
-              {activeTransformRef && !activeTransform && (
-                <Tabs.Panel
-                  value={getTransformTabId(activeTransformRef)}
-                  h="100%"
-                  style={{ overflow: "auto" }}
-                >
-                  <LoadingAndErrorWrapper
-                    error={activeTransformError}
-                    loading={activeTransformIsLoading}
-                  />
-                </Tabs.Panel>
-              )}
+              {activeTransformRef &&
+                (activeTransformError || activeTransformIsLoading) && (
+                  <Tabs.Panel
+                    value={getTransformTabId(activeTransformRef)}
+                    h="100%"
+                    style={{ overflow: "auto" }}
+                  >
+                    <LoadingAndErrorWrapper
+                      error={activeTransformError}
+                      loading={activeTransformIsLoading}
+                    />
+                  </Tabs.Panel>
+                )}
 
               {activeTransform && (
                 <Tabs.Panel
