@@ -60,20 +60,6 @@
                         ;; Handle field IDs with slashes (e.g., c75/17)
                         (str/join "/" (drop 3 parts)))}))
 
-(defn- format-result
-  "Format a tool result as an LLM-ready string.
-   Dispatches to the right llm-rep formatter based on :result-type.
-   Returns the :output string directly for error results (404s etc.)."
-  [result]
-  (if-let [structured (:structured-output result)]
-    (case (:result-type structured)
-      :field-metadata (llm-rep/field-metadata->xml structured)
-      :entity         (llm-rep/entity->xml structured)
-      ;; fallback — should not happen, but better than EDN
-      (llm-rep/entity->xml structured))
-    ;; error case — :output is already a string
-    (:output result)))
-
 (defn- fetch-table-resource
   "Fetch table resource based on URI components."
   [{:keys [resource-id sub-resource sub-resource-id]}]
@@ -81,27 +67,24 @@
     (cond
       ;; metabase://table/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
-      (format-result
-       (field-stats/field-values {:entity-type "table"
-                                  :entity-id table-id
-                                  :field-id sub-resource-id
-                                  :limit 30}))
+      (field-stats/field-values {:entity-type "table"
+                                 :entity-id table-id
+                                 :field-id sub-resource-id
+                                 :limit 30})
 
       ;; metabase://table/123/fields
       (= sub-resource "fields")
-      (format-result
-       (entity-details/get-table-details {:table-id table-id
-                                          :with-fields true
-                                          :with-field-values false
-                                          :with-related-tables false}))
+      (entity-details/get-table-details {:table-id table-id
+                                         :with-fields true
+                                         :with-field-values false
+                                         :with-related-tables false})
 
       ;; metabase://table/123
       (nil? sub-resource)
-      (format-result
-       (entity-details/get-table-details {:table-id table-id
-                                          :with-fields false
-                                          :with-field-values false
-                                          :with-related-tables false}))
+      (entity-details/get-table-details {:table-id table-id
+                                         :with-fields false
+                                         :with-field-values false
+                                         :with-related-tables false})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for table. Supported: fields")
@@ -114,27 +97,24 @@
     (cond
       ;; metabase://model/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
-      (format-result
-       (field-stats/field-values {:entity-type "model"
-                                  :entity-id model-id
-                                  :field-id sub-resource-id
-                                  :limit 30}))
+      (field-stats/field-values {:entity-type "model"
+                                 :entity-id model-id
+                                 :field-id sub-resource-id
+                                 :limit 30})
 
       ;; metabase://model/123/fields
       (= sub-resource "fields")
-      (format-result
-       (entity-details/get-table-details {:model-id model-id
-                                          :with-fields true
-                                          :with-field-values false
-                                          :with-related-tables false}))
+      (entity-details/get-table-details {:model-id model-id
+                                         :with-fields true
+                                         :with-field-values false
+                                         :with-related-tables false})
 
       ;; metabase://model/123
       (nil? sub-resource)
-      (format-result
-       (entity-details/get-table-details {:model-id model-id
-                                          :with-fields false
-                                          :with-field-values false
-                                          :with-related-tables false}))
+      (entity-details/get-table-details {:model-id model-id
+                                         :with-fields false
+                                         :with-field-values false
+                                         :with-related-tables false})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for model. Supported: fields")
@@ -147,25 +127,22 @@
     (cond
       ;; metabase://metric/123/dimensions/DIMENSION_ID
       (and (= sub-resource "dimensions") sub-resource-id)
-      (format-result
-       (field-stats/field-values {:entity-type "metric"
-                                  :entity-id metric-id
-                                  :field-id sub-resource-id
-                                  :limit 30}))
+      (field-stats/field-values {:entity-type "metric"
+                                 :entity-id metric-id
+                                 :field-id sub-resource-id
+                                 :limit 30})
 
       ;; metabase://metric/123/dimensions
       (= sub-resource "dimensions")
-      (format-result
-       (entity-details/get-metric-details {:metric-id metric-id
-                                           :with-queryable-dimensions true
-                                           :with-field-values false}))
+      (entity-details/get-metric-details {:metric-id metric-id
+                                          :with-queryable-dimensions true
+                                          :with-field-values false})
 
       ;; metabase://metric/123
       (nil? sub-resource)
-      (format-result
-       (entity-details/get-metric-details {:metric-id metric-id
-                                           :with-queryable-dimensions false
-                                           :with-field-values false}))
+      (entity-details/get-metric-details {:metric-id metric-id
+                                          :with-queryable-dimensions false
+                                          :with-field-values false})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for metric. Supported: dimensions")
@@ -219,10 +196,26 @@
                         {:resource-type resource-type :supported (keys resource-handlers)})))
 
       (let [result (handler parsed)]
-        {:uri uri :content result}))
+        (if (:status-code result)
+          {:uri uri :error (or (:output result) result)}
+          {:uri uri :content result})))
     (catch Exception e
       (log/warn "Error fetching resource" {:uri uri :error (ex-message e)})
       {:uri uri :error (or (ex-message e) "Unknown error")})))
+
+(defn- format-content
+  "Format a tool result as an LLM-ready string.
+   Dispatches to the right llm-rep formatter based on :result-type.
+   Returns the :output string directly for error results (404s etc.)."
+  [content]
+  (if-let [structured (:structured-output content)]
+    (case (:result-type structured)
+      :field-metadata (llm-rep/field-metadata->xml structured)
+      :entity         (llm-rep/entity->xml structured)
+      ;; fallback — should not happen, but better than EDN
+      (llm-rep/entity->xml structured))
+    ;; error case — :output is already a string
+    (:formatted content)))
 
 (defn- format-resources
   "Format resources for LLM output."
@@ -232,7 +225,7 @@
                  (for [{:keys [uri content error]} resources]
                    (str "<resource uri=\"" uri "\">"
                         (if content
-                          (str "\n" content "\n")
+                          (str "\n" (format-content content) "\n")
                           (str "\n**Error:** " error "\n"))
                         "</resource>")))
        "\n</resources>"))

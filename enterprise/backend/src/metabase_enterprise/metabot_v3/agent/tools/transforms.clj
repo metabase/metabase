@@ -1,24 +1,17 @@
 (ns metabase-enterprise.metabot-v3.agent.tools.transforms
   "Transform tool wrappers."
   (:require
-   [clojure.data.xml :as xml]
-   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.transforms :as transform-tools]
    [metabase-enterprise.metabot-v3.tools.transforms-write :as transforms-write-tools]
+   [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- xml [data]
-  (let [res ^String (xml/indent-str (xml/sexp-as-element data))]
-    (cond-> res
-      ;; strip preamble
-      (str/starts-with? res "<?xml") (subs (.indexOf res "\n")))))
-
 (defn- format-transform-details-output
   [{:keys [id name description source target] :as _transform}]
-  (xml
+  (metabot.u/xml
    [:transform {:id id :name name}
     (when description [:description description])
     (when source
@@ -29,7 +22,7 @@
 
 (defn- format-python-library-output
   [{:keys [path] :as lib}]
-  (xml
+  (metabot.u/xml
    [:python-library {:path path}
     (when-let [content (:content lib)] [:content content])]))
 
