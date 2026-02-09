@@ -1,10 +1,19 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
 
-export const Warnings = ({ warnings, className = "", size = 16 }) => {
+interface WarningsProps {
+  warnings?: string[];
+  className?: string;
+  size?: number;
+}
+
+export const Warnings = ({
+  warnings,
+  className = "",
+  size = 16,
+}: WarningsProps) => {
   if (!warnings || warnings.length === 0) {
     return null;
   }
