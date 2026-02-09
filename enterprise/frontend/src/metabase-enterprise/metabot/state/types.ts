@@ -3,9 +3,9 @@ import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
+  MetabotSuggestedTransform,
   MetabotTodoItem,
   MetabotTransformInfo,
-  SuggestedTransform,
 } from "metabase-types/api";
 
 export type MetabotUserTextChatMessage = {
@@ -86,11 +86,6 @@ export type MetabotToolCall = {
   name: string;
   message: string | undefined;
   status: "started" | "ended";
-};
-
-export type MetabotSuggestedTransform = SuggestedTransform & {
-  active: boolean;
-  suggestionId: string; // internal unique identifier for marking active/inactive
 };
 
 export type MetabotReactionsState = {

@@ -59,6 +59,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
@@ -79,7 +81,9 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -948,32 +952,6 @@
       (fn [_]
         (to-array (lib.core/filterable-columns a-query stage-number opts)))))))
 
-(defn ^:export filterable-column-operators
-  "Returns the filter operators which can be used in a filter for `filterable-column`.
-
-  `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
-  like [[visible-columns]].
-
-  > **Code health:** Healthy"
-  [filterable-column]
-  (to-array (lib.core/filterable-column-operators filterable-column)))
-
-(defn ^:export filter-clause
-  "Given a `filter-operator`, `column`, and 0 or more extra arguments, returns a standalone filter clause.
-
-  `filter-operator` comes from [[filterable-column-operators]], and `column` from [[filterable-columns]].
-
-  > **Code health:** Healthy"
-  [filter-operator column & args]
-  (apply lib.core/filter-clause filter-operator column args))
-
-(defn ^:export filter-operator
-  "Returns the filter operator used in `a-filter-clause`.
-
-  > **Code health:** Healthy"
-  [a-query stage-number a-filter-clause]
-  (lib.core/filter-operator a-query stage-number a-filter-clause))
-
 (defn ^:export filter
   "Adds `a-filter-clause` as a filter on `a-query`."
   [a-query stage-number a-filter-clause]
@@ -989,6 +967,18 @@
   > **Code health:** Healthy"
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
+
+(defn ^:export describe-filter-operator
+  "Returns a human-readable display name for a filter operator.
+
+  `operator` is a string like \"=\", \"!=\", \"contains\", etc.
+  `variant` is an optional string: \"default\" or \"equal-to\". Defaults to \"default\".
+
+  > **Code health:** Healthy"
+  ([operator]
+   (lib.core/describe-filter-operator (keyword operator)))
+  ([operator variant]
+   (lib.core/describe-filter-operator (keyword operator) (keyword variant))))
 
 ;; # Expressions
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported
@@ -2749,3 +2739,25 @@
       js->clj
       lib.native/validate-template-tags
       clj->js))
+
+(defn- decode-js-key
+  [cljs-key]
+  (cond-> cljs-key
+    (keyword? cljs-key) (name)
+    true (js-key->cljs-key)))
+
+(def parse-query-spec
+  "Parser for query-spec."
+  (mc/coercer [:ref ::lib.schema.test-spec/test-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode decode-js-key})
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
+
+(defn ^:export test-query
+  "Creates a query from a test query spec."
+  [metadata-providerable js-query-spec]
+  (let [query-spec (js->clj js-query-spec :keywordize-keys true)
+        parsed-query-spec (parse-query-spec query-spec)]
+    (lib.query.test-spec/test-query metadata-providerable parsed-query-spec)))

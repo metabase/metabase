@@ -102,8 +102,10 @@ You can set different attributes to enable/disable UI. Here are some example att
 | -------------------- | --------------------------------------------------------------------- |
 | `token`              | Required. The signed JWT token from your server.                      |
 | `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
-| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.           |
+| `with-downloads`\*   | Enable or disable downloads. Values: `"true"` or `"false"`.           |
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
+
+\* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
 

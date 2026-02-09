@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -33,27 +32,26 @@
 
 (def data-layers
   "Valid values for `Table.data_layer`.
-  :gold   - highest quality, fully visible, synced
-  :silver - high quality, visible, synced
-  :bronze - acceptable quality, visible, synced
-  :copper - low quality, hidden, not synced"
-  #{:gold :silver :bronze :copper})
+  :final     - tables published for downstream consumption
+  :internal  - acceptable quality, visible, synced
+  :hidden    - low quality, hidden, not synced"
+  #{:final :internal :hidden})
 
 (defn- visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
-    :copper
-    :gold))
+    :hidden
+    :internal))
 
 (defn- data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
   (case data-layer
-    :copper :hidden
-    ;; gold, silver, bronze all map to visible (nil)
+    :hidden :hidden
+    ;; internal,final all map to visible (nil)
     nil))
 
 (def field-orderings
@@ -112,10 +110,25 @@
                                :status-code 400}))))
           (some-> value name))})
 
+(def ^:private transform-data-layer
+  {:in  (:in mi/transform-keyword)
+   :out (comp (some-fn data-layers
+                       ;; some databases may retain prior medallion values
+                       ;; this is due to race conditions with migrations (migration runs can contend with running writes)
+                       ;; e.g. we saw the prior values retained for the sync of a new search index table in stats.
+                       ;; we might later have a second migration and risk removing this map or find a better way
+                       ;; to make breaking enum migrations.
+                       {:copper :hidden
+                        :bronze :final
+                        :silver :final
+                        :gold   :final}
+                       identity)
+              (:out mi/transform-keyword))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
@@ -161,7 +174,7 @@
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :bronze}]
+                  :data_layer   :internal}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -440,21 +453,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (if config/ee-available?
-    (mi/instances-with-hydrated-data
-     tables k
-     #(let [table-ids                (map :id tables)
-            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
-                                                       :from_entity_type "table"
-                                                       :from_entity_id [:in table-ids]
-                                                       :to_entity_type "transform")
-            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
-                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-        (update-vals table-id->transform-id transform-id->transform))
-     :id
-     {:default nil})
-    ;; EE not available, so no transforms
-    tables))
+  (mi/instances-with-hydrated-data
+   tables k
+   #(let [transform-ids (->> tables (keep :transform_id) distinct)
+          id->transform (when (seq transform-ids)
+                          (t2/select-fn->fn :id identity :model/Transform
+                                            :id [:in transform-ids]))]
+      (into {}
+            (keep (fn [{:keys [id transform_id]}]
+                    (when transform_id
+                      [id (get id->transform transform_id)])))
+            tables))
+   :id
+   {:default nil}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
@@ -581,7 +592,8 @@
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database :name)
-               :collection_id  (serdes/fk :model/Collection)}})
+               :collection_id  (serdes/fk :model/Collection)
+               :transform_id   (serdes/fk :model/Transform)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))

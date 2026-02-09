@@ -59,13 +59,24 @@
            (log/errorf e "Analyzing entity %s %s failed"
                        (t2/model instance) (:id instance))))))
 
-(def supported-entities
-  "Entities supported by the analysis findings code"
+(def analyzable-entities
+  "Entities for which we can compute analysis findings."
   #{:card :transform :segment})
 
-(def ^:private SupportedEntityType
+(def ^:private AnalyzableEntityType
   "Schema for entity types supported by analysis findings."
-  (into [:enum] supported-entities))
+  (into [:enum] analyzable-entities))
+
+(def dependable-entities
+  "Entities which can be depended on by other entities, even if they cannot themselves be analyzed.
+
+  For example, `:table`s can be passed to [[mark-dependents-stale!]] as the upstream entity whose dependents are now
+  stale, but we cannot analyze tables themselves."
+  (conj analyzable-entities :table))
+
+(def ^:private DependableEntityType
+  "Schema for entity types supported by analysis findings."
+  (into [:enum] dependable-entities))
 
 (defn- mark-supported-dependents-stale!
   "Given a map of {entity-type [entity-ids]}, mark all supported types as stale.
@@ -73,7 +84,7 @@
   [dependents]
   (let [supported-dependents (into {}
                                    (filter (fn [[dep-type dep-ids]]
-                                             (and (supported-entities dep-type)
+                                             (and (analyzable-entities dep-type)
                                                   (seq dep-ids))))
                                    dependents)]
     (doseq [[dep-type dep-ids] supported-dependents]
@@ -87,7 +98,7 @@
   Uses `transitive-dependents` (not `transitive-mbql-dependents`) because:
   1. It's faster - doesn't need to fetch entities to check for native-ness
   2. Native dependents marked stale will just be quickly re-validated as valid"
-  [entity-type :- SupportedEntityType
+  [entity-type :- DependableEntityType
    entity-id   :- pos-int?]
   (let [dependents (models.dependency/transitive-dependents {entity-type [{:id entity-id}]})]
     (mark-supported-dependents-stale! dependents)))
@@ -106,7 +117,7 @@
 
   Takes in an entity type and batch size, and looks for a batch of entities with missing or out of date
   AnalysisFindings and then upsert new analyses for them."
-  [type :- SupportedEntityType
+  [type :- AnalyzableEntityType
    batch-size :- pos-int?]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
     (lib-be/with-metadata-provider-cache

@@ -29,6 +29,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
@@ -40,7 +41,6 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_DATA_STUDIO,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -185,7 +185,10 @@ export const getRoutes = (store) => {
             <IndexRoute component={UserCollectionList} />
           </Route>
 
-          <Route path="collection/tenant-specific" component={IsAdmin}>
+          <Route
+            path="collection/tenant-specific"
+            component={PLUGIN_TENANTS.CanAccessTenantSpecificRoute}
+          >
             <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 
@@ -382,7 +385,7 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
+          {getDataStudioRoutes(
             store,
             CanAccessDataStudio,
             CanAccessDataModel,
