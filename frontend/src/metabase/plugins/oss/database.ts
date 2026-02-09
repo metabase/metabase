@@ -27,6 +27,15 @@ const getDefaultPluginDbRouting = () => ({
 
 export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
 
+const getDefaultPluginAuxiliaryConnections = () => ({
+  AuxiliaryConnectionsSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+});
+
+export const PLUGIN_AUXILIARY_CONNECTIONS =
+  getDefaultPluginAuxiliaryConnections();
+
 const getDefaultPluginDatabaseReplication = () => ({
   DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;

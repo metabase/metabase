@@ -68,6 +68,7 @@ export {
 } from "./oss/data-studio";
 export {
   PLUGIN_DB_ROUTING,
+  PLUGIN_AUXILIARY_CONNECTIONS,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
 } from "./oss/database";
