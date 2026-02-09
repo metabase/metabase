@@ -4,9 +4,13 @@
    [buddy.core.mac :as mac]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
+   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.upload.impl :as upload.impl]
+   [metabase.upload.settings :as upload.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]))
@@ -25,10 +29,10 @@
                  encryption/default-secret-key test-encryption-key]
      (mt/with-premium-features #{:metabot-v3 :sso-slack}
        (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                          metabot-slack-signing-secret test-signing-secret
-                                          metabot-slack-bot-token "xoxb-test"
-                                          slack-connect-client-id "test-client-id"
-                                          slack-connect-client-secret "test-secret"]
+                                          metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                          metabot.settings/metabot-slack-bot-token "xoxb-test"
+                                          sso-settings/slack-connect-client-id "test-client-id"
+                                          sso-settings/slack-connect-client-secret "test-secret"]
          ~@body))))
 
 (defn- compute-slack-signature
@@ -315,10 +319,10 @@
                 premium-features/enable-sso-slack? (constantly sso-slack)]
     (mt/with-premium-features #{:metabot-v3 :sso-slack}
       (mt/with-temporary-setting-values [site-url site-url
-                                         metabot-slack-signing-secret signing-secret
-                                         metabot-slack-bot-token bot-token
-                                         slack-connect-client-id client-id
-                                         slack-connect-client-secret client-secret]
+                                         metabot.settings/metabot-slack-signing-secret signing-secret
+                                         metabot.settings/metabot-slack-bot-token bot-token
+                                         sso-settings/slack-connect-client-id client-id
+                                         sso-settings/slack-connect-client-secret client-secret]
         (thunk)))))
 
 (deftest setup-complete-test
@@ -343,3 +347,274 @@
       (do-with-setup-override {:signing-secret nil}
                               #(is (= "Slack integration is not fully configured."
                                       (mt/client :post 503 "ee/metabot-v3/slack/events" request-body)))))))
+
+;; -------------------------------- CSV Upload Tests --------------------------------
+
+(defn- with-upload-mocks
+  "Helper to set up common mocks for CSV upload tests.
+   Options:
+   - :uploads-enabled? - Whether uploads are enabled (default false)
+   - :can-create-upload? - Whether user can create uploads (default true)
+   - :upload-result - Result from create-csv-upload! (default success with id 123)
+   - :download-content - Content returned by download-slack-file (default valid CSV)
+
+   Calls body-fn with a map containing tracking atoms:
+   {:upload-calls, :download-calls}"
+  [{:keys [uploads-enabled? can-create-upload? upload-result download-content db-id]
+    :or {uploads-enabled? false
+         can-create-upload? true
+         upload-result {:id 123 :name "uploaded_data"}
+         download-content (.getBytes "col1,col2\nval1,val2")
+         db-id 1}}
+   body-fn]
+  (let [upload-calls (atom [])
+        download-calls (atom [])]
+    (mt/with-dynamic-fn-redefs
+      [upload.settings/uploads-settings (constantly (when uploads-enabled?
+                                                      {:db_id db-id
+                                                       :schema_name nil
+                                                       :table_prefix nil}))
+       upload.impl/can-create-upload? (constantly can-create-upload?)
+       upload.impl/create-csv-upload! (fn [params]
+                                        (swap! upload-calls conj params)
+                                        upload-result)
+       slackbot/download-slack-file (fn [url]
+                                      (swap! download-calls conj url)
+                                      download-content)]
+      (body-fn {:upload-calls upload-calls
+                :download-calls download-calls}))))
+
+(deftest csv-upload-disabled-test
+  (testing "POST /events with file upload when uploads are disabled"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Here's my data"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :files [{:id "F123"
+                                         :name "data.csv"
+                                         :filetype "csv"
+                                         :url_private "https://files.slack.com/files/data.csv"
+                                         :size 100}]}}]
+        (with-upload-mocks
+          {:uploads-enabled? false}
+          (fn [{:keys [upload-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "CSV uploads are not enabled on this Metabase instance."}
+              (fn [{:keys [post-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "no upload was attempted"
+                    (is (= 0 (count @upload-calls))))
+                  (testing "AI responds with error message"
+                    (is (= "CSV uploads are not enabled on this Metabase instance."
+                           (:text (second @post-calls))))))))))))))
+
+(deftest csv-upload-success-test
+  (testing "POST /events with successful CSV upload"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :subtype "file_share"
+                                :text "Here's my data"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :files [{:id "F123"
+                                         :name "sales_data.csv"
+                                         :filetype "csv"
+                                         :url_private "https://files.slack.com/files/sales_data.csv"
+                                         :size 100}]}}]
+        (with-upload-mocks
+          {:uploads-enabled? true
+           :can-create-upload? true
+           :upload-result {:id 456 :name "Sales Data"}}
+          (fn [{:keys [upload-calls download-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "Your CSV has been uploaded successfully as a model."}
+              (fn [{:keys [post-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "file was downloaded from Slack"
+                    (is (= 1 (count @download-calls)))
+                    (is (= "https://files.slack.com/files/sales_data.csv" (first @download-calls))))
+                  (testing "upload was called with correct parameters"
+                    (is (= 1 (count @upload-calls)))
+                    (let [call (first @upload-calls)]
+                      (is (= "sales_data.csv" (:filename call)))))
+                  (testing "AI responds with success message"
+                    (is (= "Your CSV has been uploaded successfully as a model."
+                           (:text (second @post-calls))))))))))))))
+
+(deftest csv-upload-non-csv-skipped-test
+  (testing "POST /events with non-CSV file is skipped"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :subtype "file_share"
+                                :text "Here's my file"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :files [{:id "F123"
+                                         :name "document.pdf"
+                                         :filetype "pdf"
+                                         :url_private "https://files.slack.com/files/document.pdf"
+                                         :size 100}]}}]
+        (with-upload-mocks
+          {:uploads-enabled? true}
+          (fn [{:keys [upload-calls download-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "Only CSV files can be uploaded."}
+              (fn [{:keys [post-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "no download was attempted"
+                    (is (= 0 (count @download-calls))))
+                  (testing "no upload was attempted"
+                    (is (= 0 (count @upload-calls))))
+                  (testing "AI responds explaining PDF not supported"
+                    (is (= "Only CSV files can be uploaded."
+                           (:text (second @post-calls))))))))))))))
+
+(deftest csv-upload-mixed-files-test
+  (testing "POST /events with mix of CSV and non-CSV files"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :subtype "file_share"
+                                :text "Here are my files"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :files [{:id "F1"
+                                         :name "data.csv"
+                                         :filetype "csv"
+                                         :url_private "https://files.slack.com/files/data.csv"
+                                         :size 100}
+                                        {:id "F2"
+                                         :name "report.pdf"
+                                         :filetype "pdf"
+                                         :url_private "https://files.slack.com/files/report.pdf"
+                                         :size 200}
+                                        {:id "F3"
+                                         :name "more_data.tsv"
+                                         :filetype "tsv"
+                                         :url_private "https://files.slack.com/files/more_data.tsv"
+                                         :size 150}]}}]
+        (with-upload-mocks
+          {:uploads-enabled? true
+           :upload-result {:id 789 :name "Uploaded Data"}}
+          (fn [{:keys [upload-calls download-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "Uploaded 2 files, skipped 1 non-CSV file."}
+              (fn [{:keys [post-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "only CSV/TSV files were downloaded"
+                    (is (= 2 (count @download-calls)))
+                    (is (= #{"https://files.slack.com/files/data.csv"
+                             "https://files.slack.com/files/more_data.tsv"}
+                           (set @download-calls))))
+                  (testing "only CSV/TSV files were uploaded"
+                    (is (= 2 (count @upload-calls)))))))))))))
+
+(deftest csv-upload-file-too-large-test
+  (testing "POST /events with file exceeding size limit"
+    (with-slackbot-setup
+      (let [too-large-size (+ (* 1024 1024 1024) 1) ;; Just over 1GB
+            event-body {:type "event_callback"
+                        :event {:type "message"
+                                :subtype "file_share"
+                                :text "Here's my huge file"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :files [{:id "F123"
+                                         :name "huge_data.csv"
+                                         :filetype "csv"
+                                         :url_private "https://files.slack.com/files/huge_data.csv"
+                                         :size too-large-size}]}}]
+        (with-upload-mocks
+          {:uploads-enabled? true}
+          (fn [{:keys [upload-calls download-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "The file exceeds the 1GB size limit."}
+              (fn [{:keys [post-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "file was not downloaded due to size"
+                    (is (= 0 (count @download-calls))))
+                  (testing "upload was not attempted"
+                    (is (= 0 (count @upload-calls)))))))))))))
+
+(deftest csv-upload-no-permission-test
+  (testing "POST /events with file upload when user lacks permission"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :subtype "file_share"
+                                :text "Here's my data"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :files [{:id "F123"
+                                         :name "data.csv"
+                                         :filetype "csv"
+                                         :url_private "https://files.slack.com/files/data.csv"
+                                         :size 100}]}}]
+        (with-upload-mocks
+          {:uploads-enabled? true
+           :can-create-upload? false}
+          (fn [{:keys [upload-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "You don't have permission to upload files."}
+              (fn [{:keys [post-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "no upload was attempted"
+                    (is (= 0 (count @upload-calls))))
+                  (testing "AI responds with permission error"
+                    (is (= "You don't have permission to upload files."
+                           (:text (second @post-calls))))))))))))))
+
+(deftest csv-file-detection-test
+  (testing "csv-file? correctly identifies CSV/TSV files"
+    (is (true? (#'slackbot/csv-file? {:filetype "csv"})))
+    (is (true? (#'slackbot/csv-file? {:filetype "tsv"})))
+    (is (false? (#'slackbot/csv-file? {:filetype "pdf"})))
+    (is (false? (#'slackbot/csv-file? {:filetype "xlsx"})))
+    (is (false? (#'slackbot/csv-file? {:filetype nil})))
+    (is (false? (#'slackbot/csv-file? {})))))
