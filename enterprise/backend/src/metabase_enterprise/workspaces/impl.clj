@@ -789,13 +789,24 @@
 (defn- stale-ancestors-to-execute
   "Given a workspace, graph, and target ref-id, return the stale ancestor transforms to run, in dependency order.
    Only returns transforms that are both ancestors of the target AND stale."
-  [{ws-id :id :as workspace} graph ref-id]
-  (let [ancestor-ids (set (upstream-ancestors graph ref-id))
-        graph        (with-staleness workspace graph)
-        entities     (->> (:entities graph)
-                          (filter :stale)
-                          (filter #(contains? ancestor-ids (:id %))))]
-    (entities->transforms ws-id entities)))
+  [{ws-id :id} graph ref-id]
+  (let [ancestor-ids      (set (upstream-ancestors graph ref-id))
+        ancestor-entities (filter #(contains? ancestor-ids (:id %)) (:entities graph))
+        ;; Build a subgraph with only ancestor entities and their inter-dependencies
+        ;; Dependencies map is keyed by entities (maps with :id), not by IDs directly
+        ancestor-deps     (into {}
+                                (keep (fn [[to-entity from-list]]
+                                        (when (contains? ancestor-ids (:id to-entity))
+                                          [to-entity (filterv #(contains? ancestor-ids (:id %)) from-list)]))
+                                      (:dependencies graph)))
+        ancestor-graph    {:entities     ancestor-entities
+                           :dependencies ancestor-deps}
+        ;; Only fetch staleness for ancestors, not the entire graph
+        ancestor-ref-ids  (workspace-transform-ids ancestor-entities)
+        staleness-map     (fetch-staleness-map ws-id ancestor-ref-ids)
+        annotated-graph   (annotate-staleness ancestor-graph staleness-map)
+        stale-entities    (filter :stale (:entities annotated-graph))]
+    (entities->transforms ws-id stale-entities)))
 
 (defn run-stale-ancestors!
   "Run all stale ancestors of a given transform in dependency order.
@@ -819,9 +830,10 @@
                              :error   e}))]
              (if (= :succeeded (:status result))
                (update acc :succeeded conj id-str)
-               (do
-                 (log/error (:error result) "Failed to execute ancestor transform"
-                            {:workspace-id ws-id :node-type node-type :id id-str :result (dissoc result :error)})
+               (let [log-data {:workspace-id ws-id :node-type node-type :id id-str :result (dissoc result :error)}]
+                 (if-let [e (:error result)]
+                   (log/error e "Failed to execute ancestor transform" log-data)
+                   (log/error "Failed to execute ancestor transform" log-data))
                  (update acc :failed conj id-str)))))))
      {:succeeded []
       :failed    []
