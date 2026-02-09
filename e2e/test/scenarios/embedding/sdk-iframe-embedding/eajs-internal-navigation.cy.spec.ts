@@ -381,11 +381,16 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
 
       cy.log("back button should be visible");
       H.getSimpleEmbedIframeContent()
-        .findByText(/Back to/)
+        .findByText("Back to First Dashboard")
         .should("be.visible")
         .click();
 
-      cy.log("breadcrumbs should return after going back");
+      cy.log("verify we returned to First Dashboard");
+      H.getSimpleEmbedIframeContent()
+        .findByText("First Dashboard")
+        .should("be.visible");
+
+      cy.log("breadcrumbs should be visible again");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
         .should("be.visible");

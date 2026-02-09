@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { SdkBreadcrumbs } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
@@ -30,11 +31,13 @@ type MetabaseBrowserView =
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
   | { type: "exploration" }
-  | { type: "create-dashboard" };
+  | { type: "create-dashboard" }
+  | { type: "suspended" };
 
 const BREADCRUMB_HEIGHT = "3.5rem";
 
 export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
+  const navigationContext = useSdkInternalNavigation();
   const { initialCollection } = settings;
 
   const isReadOnly = settings.readOnly ?? true;
@@ -48,6 +51,32 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
     type: "collection",
     id: initialCollection,
   });
+
+  useEffect(() => {
+    if (navigationContext.stack.length === 0) {
+      navigationContext.push({ type: "metabase-browser" });
+    }
+  }, []);
+
+  // When the provider renders a non-virtual entry (click behavior navigation),
+  // unmount our dashboard to free the shared Redux state.
+  // When navigation returns, restore the view so the dashboard re-fetches.
+  const previousViewRef = useRef<MetabaseBrowserView | null>(null);
+
+  useEffect(() => {
+    const hasProviderEntry = navigationContext.stack.some(
+      (entry) =>
+        entry.type !== "metabase-browser" && !entry.type.startsWith("virtual"),
+    );
+
+    if (hasProviderEntry && currentView.type !== "suspended") {
+      previousViewRef.current = currentView;
+      setCurrentView({ type: "suspended" });
+    } else if (!hasProviderEntry && previousViewRef.current) {
+      setCurrentView(previousViewRef.current);
+      previousViewRef.current = null;
+    }
+  }, [navigationContext.stack, currentView, initialCollection]);
 
   // Use the last collection in the breadcrumb as the target for saving new questions.
   const targetCollection = useMemo(() => {
@@ -63,6 +92,10 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   // If a user clicks on a collection breadcrumb, switch the view.
   useEffect(() => {
     if (currentLocation?.type === "collection") {
+      // Pop virtual entries pushed by browser navigation (e.g., virtual-dashboard)
+      if (navigationContext.stack.length > 1) {
+        navigationContext.pop();
+      }
       setCurrentView({ type: currentLocation.type, id: currentLocation.id });
     }
   }, [currentLocation]);
@@ -157,7 +190,31 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
               .with("dataset", () => "model")
               .otherwise((model) => model as SdkBreadcrumbItemType);
 
-            setCurrentView({ type, id: item.id });
+            if (type === "dashboard") {
+              setCurrentView({ type: "dashboard", id: item.id });
+              navigationContext.push({
+                type: "virtual-dashboard",
+                id: item.id,
+                name: item.name,
+                onPop: () =>
+                  setCurrentView({ type: "collection", id: view.id }),
+              });
+            } else if (
+              type === "question" ||
+              type === "model" ||
+              type === "metric"
+            ) {
+              setCurrentView({ type, id: item.id });
+              navigationContext.push({
+                type: "virtual-question",
+                id: item.id,
+                name: item.name,
+                onPop: () =>
+                  setCurrentView({ type: "collection", id: view.id }),
+              });
+            } else {
+              setCurrentView({ type, id: item.id });
+            }
           }}
         />
       </Box>
