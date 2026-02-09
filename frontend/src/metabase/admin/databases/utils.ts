@@ -1,4 +1,9 @@
-import type { Database, DatabaseFeature, DatabaseId } from "metabase-types/api";
+import type {
+  AuxiliaryConnectionType,
+  Database,
+  DatabaseFeature,
+  DatabaseId,
+} from "metabase-types/api";
 
 export const isDbModifiable = (
   database: { id?: DatabaseId; is_attached_dwh?: boolean } | undefined,
@@ -25,6 +30,22 @@ export const hasDbRoutingEnabled = (
 
 export const hasAuxiliaryConnectionsEnabled = (
   database: Pick<Database, "write_database_id">,
+  types: readonly AuxiliaryConnectionType[] = ["read-write-data"],
 ) => {
-  return Boolean(database.write_database_id);
+  return types.reduce(
+    (acc, type) => acc || getAuxiliaryConnectionId(type, database) != null,
+    false,
+  );
+};
+
+export const getAuxiliaryConnectionId = (
+  type: AuxiliaryConnectionType,
+  database: Pick<Database, "write_database_id">,
+) => {
+  switch (type) {
+    case "read-write-data":
+      return database.write_database_id;
+    default:
+      return null;
+  }
 };
