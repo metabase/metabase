@@ -1,11 +1,13 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { MetricSchema } from "metabase/schema";
 import type {
+  Dataset,
   FieldValue,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
   GetRemappedMetricDimensionValueRequest,
   Metric,
+  MetricDatasetRequest,
   MetricId,
   SearchMetricDimensionValuesRequest,
 } from "metabase-types/api";
@@ -77,6 +79,13 @@ export const metricApi = Api.injectEndpoints({
       providesTags: (_, error, { metricId }) =>
         provideMetricDimensionValuesTags(metricId),
     }),
+    getMetricDataset: builder.query<Dataset, MetricDatasetRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/metric/dataset",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -87,4 +96,5 @@ export const {
   useGetMetricDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
   useGetRemappedMetricDimensionValueQuery,
+  useGetMetricDatasetQuery,
 } = metricApi;

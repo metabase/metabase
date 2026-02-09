@@ -3,7 +3,6 @@
 import { combineReducers } from "@reduxjs/toolkit";
 
 import { admin } from "metabase/admin/admin";
-import { reducer as metricsExplorer } from "metabase/metrics-explorer/metrics-explorer.slice";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
@@ -33,7 +32,6 @@ export function makeMainReducers() {
     admin,
     plugins: combineReducers(PLUGIN_REDUCERS),
     visualizer,
-    metricsExplorer,
   };
 }
 
