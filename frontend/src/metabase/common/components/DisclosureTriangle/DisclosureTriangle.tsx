@@ -1,7 +1,14 @@
-/* eslint-disable react/prop-types */
 import { Icon } from "metabase/ui";
 
-export const DisclosureTriangle = ({ open, className }) => (
+interface DisclosureTriangleProps {
+  open: boolean;
+  className?: string;
+}
+
+export const DisclosureTriangle = ({
+  open,
+  className,
+}: DisclosureTriangleProps) => (
   <Icon
     className={className}
     name="expand_arrow"
