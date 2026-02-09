@@ -76,9 +76,6 @@ export interface WorkspaceContextValue {
   openedTabs: WorkspaceTab[];
   activeTab: WorkspaceTab | null;
   activeTable: OpenTable | null;
-  activeTransform: AnyWorkspaceTransform | null;
-  activeTransformError: unknown;
-  activeTransformIsLoading: boolean;
   activeTransformRef: AnyWorkspaceTransformRef | null;
   activeEditedTransform?: EditedTransform | null;
   setActiveTab: (tab: WorkspaceTab | null) => void;
@@ -181,12 +178,10 @@ export const WorkspaceProvider = ({
   const { openedTabs, activeTransformRef, activeTable, activeTab } =
     currentState;
 
-  const activeTransformQuery = useActiveTransform({
+  const { data: activeTransform } = useActiveTransform({
     transformRef: activeTransformRef,
     workspaceId,
   });
-
-  const activeTransform = activeTransformQuery.data;
 
   const updateWorkspaceState = useCallback(
     (updater: (state: WorkspaceState) => WorkspaceState) => {
@@ -707,9 +702,6 @@ export const WorkspaceProvider = ({
     () => ({
       workspaceId,
       openedTabs,
-      activeTransform,
-      activeTransformError: activeTransformQuery.error,
-      activeTransformIsLoading: activeTransformQuery.isLoading,
       activeTransformRef,
       activeTable,
       activeTab,
@@ -736,8 +728,6 @@ export const WorkspaceProvider = ({
     [
       workspaceId,
       openedTabs,
-      activeTransform,
-      activeTransformQuery,
       activeTransformRef,
       activeTable,
       activeTab,

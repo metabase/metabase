@@ -57,6 +57,7 @@ import {
   getTransformTabId,
   useWorkspace,
 } from "./WorkspaceProvider";
+import { useActiveTransform } from "./useActiveTransform";
 import { useWorkspaceActions } from "./useWorkspaceActions";
 import { useWorkspaceData } from "./useWorkspaceData";
 
@@ -79,12 +80,10 @@ function WorkspacePageContent({
     activationConstraint: { distance: 10 },
   });
   const dispatch = useDispatch();
+  const workspaceId = parseInt(params.workspaceId, 10);
 
   const {
     openedTabs,
-    activeTransform,
-    activeTransformError,
-    activeTransformIsLoading,
     activeTransformRef,
     activeEditedTransform,
     activeTable,
@@ -99,12 +98,19 @@ function WorkspacePageContent({
     unsavedTransforms,
   } = useWorkspace();
 
+  const {
+    data: activeTransform,
+    error: activeTransformError,
+    isLoading: activeTransformIsLoading,
+  } = useActiveTransform({
+    transformRef: activeTransformRef,
+    workspaceId: workspaceId,
+  });
+
   const [isResizing, setIsResizing] = useState(false);
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
 
   const { tab, setTab, ref: tabsListRef } = useWorkspaceUiTabs();
-
-  const workspaceId = parseInt(params.workspaceId, 10);
 
   // Data fetching
   const {
