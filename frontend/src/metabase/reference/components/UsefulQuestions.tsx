@@ -3,11 +3,12 @@ import { t } from "ttag";
 
 import { QueryButton } from "metabase/common/components/QueryButton";
 import D from "metabase/reference/components/Detail.module.css";
+import type { IconName } from "metabase/ui";
 
 import S from "./UsefulQuestions.module.css";
 
 interface UsefulQuestionsProps {
-  questions: { text: string; icon: string; link: string }[];
+  questions: { text: string; icon: IconName; link: string }[];
 }
 
 const UsefulQuestions = ({ questions }: UsefulQuestionsProps) => (
