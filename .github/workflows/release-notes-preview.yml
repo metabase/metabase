@@ -23,7 +23,9 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version

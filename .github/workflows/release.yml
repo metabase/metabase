@@ -63,7 +63,9 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
@@ -108,7 +110,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send publish start message
@@ -189,7 +193,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - uses: actions/download-artifact@v4
@@ -286,7 +292,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Tag Release
@@ -318,7 +326,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Get extra tags
@@ -366,7 +376,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Find milestone
@@ -444,7 +456,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
@@ -523,7 +537,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Publish version info
@@ -580,7 +596,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send publish complete message
@@ -611,7 +629,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Update milestones

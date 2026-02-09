@@ -19,7 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send build start message
@@ -79,7 +81,9 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
@@ -121,7 +125,9 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Branch
@@ -152,7 +158,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get build dependencies

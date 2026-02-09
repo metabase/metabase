@@ -26,7 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
           fetch-depth: ${{ env.isNewReleaseBranch == 'false' && 3 || 0 }} # we need the full history to get all the commit messages
           ref: master # we want the logic from master, even though we're triggering on a release branch
       - name: Prepare release scripts
