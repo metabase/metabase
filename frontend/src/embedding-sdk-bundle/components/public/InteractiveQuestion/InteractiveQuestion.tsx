@@ -49,6 +49,7 @@ export type InteractiveQuestionProps = Omit<
 export type InteractiveQuestionComponents = {
   /** @deprecated Use `InteractiveQuestion.NavigationBackButton` instead */
   BackButton: typeof BackButton;
+  /** Back button to navigate back after drills and internal navigations*/
   NavigationBackButton: typeof SdkInternalNavigationBackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
