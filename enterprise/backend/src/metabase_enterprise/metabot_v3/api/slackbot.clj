@@ -807,9 +807,8 @@
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do
     (require '[clojure.java.shell :refer [sh]])
-    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true})))
+    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true}))))
   ;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
-  )
 
 ;; ----------------- DEV -----------------------
 

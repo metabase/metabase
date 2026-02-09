@@ -22,7 +22,8 @@
   [query & {:keys [display width]
             :or   {display :table width 1280}}]
   (let [results    (execute-adhoc-query query)
-        adhoc-card {:display display}]
+        adhoc-card {:display                display
+                    :visualization_settings {}}]
     (channel.render/render-adhoc-card-to-png
      adhoc-card
      results
