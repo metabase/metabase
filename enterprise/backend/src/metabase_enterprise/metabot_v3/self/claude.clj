@@ -8,7 +8,8 @@
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
 
@@ -161,29 +162,33 @@
                                  :tools [{:name         "structured_output"
                                           :description  "Output structured data"
                                           :input_schema (mjs/transform (mut/closed-schema schema))}]))]
-    (try
-      (let [res (http/post (str (llm/ee-anthropic-api-base-url) "/v1/messages")
-                           {:as      :stream
-                            :headers {"x-api-key"         (llm/ee-anthropic-api-key)
-                                      "anthropic-version" "2023-06-01"
-                                      "content-type"      "application/json"}
-                            :body    (json/encode req)})]
-        (core/sse-reducible (:body res)))
-      (catch Exception e
-        (if-let [res (some-> (ex-data e)
-                             json/decode-body)]
-          (let [status (:status res)
-                msg    (case (int status)
-                         401 "Anthropic API key expired or invalid"
-                         403 "Anthropic API key has not enough permissions"
-                         404 "Anthropic API is telling us we cannot access this URL anymore?"
-                         413 "Anthropic API is not happy with our request being too big"
-                         429 "Anthropic API has rate limited us"
-                         500 "Anthropic API is not working but not saying why"
-                         529 "Anthropid API is overloaded and is asking us to wait"
-                         "Unhandled error accessing Anthropic API")]
-            (throw (ex-info msg (assoc res :api-error true) e)))
-          (throw e))))))
+    (with-span :info {:name       :metabot-v3.claude/request
+                      :model      model
+                      :msg-count  (count input)
+                      :tool-count (count tools)}
+      (try
+        (let [res (http/post (str (llm/ee-anthropic-api-base-url) "/v1/messages")
+                             {:as      :stream
+                              :headers {"x-api-key"         (llm/ee-anthropic-api-key)
+                                        "anthropic-version" "2023-06-01"
+                                        "content-type"      "application/json"}
+                              :body    (json/encode req)})]
+          (core/sse-reducible (:body res)))
+        (catch Exception e
+          (if-let [res (some-> (ex-data e)
+                               json/decode-body)]
+            (let [status (:status res)
+                  msg    (case (int status)
+                           401 "Anthropic API key expired or invalid"
+                           403 "Anthropic API key has not enough permissions"
+                           404 "Anthropic API is telling us we cannot access this URL anymore?"
+                           413 "Anthropic API is not happy with our request being too big"
+                           429 "Anthropic API has rate limited us"
+                           500 "Anthropic API is not working but not saying why"
+                           529 "Anthropid API is overloaded and is asking us to wait"
+                           "Unhandled error accessing Anthropic API")]
+              (throw (ex-info msg (assoc res :api-error true) e)))
+            (throw e)))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"
