@@ -438,7 +438,7 @@
 (def transform-models
   "Models that indicate transforms content in a snapshot.
    Derived from specs with `:enabled? :remote-sync-transforms`."
-  (models-for-setting :remote-sync-transforms))
+  (disj (models-for-setting :remote-sync-transforms) :model/TransformTag))
 
 (defn models-in-import
   "Returns set of model-type strings present in the import.
