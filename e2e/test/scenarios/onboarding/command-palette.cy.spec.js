@@ -42,7 +42,7 @@ const REAL_PRESS_DELAY = 1;
 
 describe("command palette", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
   });
 
@@ -474,7 +474,7 @@ describe("command palette", () => {
 describe("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
     H.resetSnowplow();
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
     H.enableTracking();
   });

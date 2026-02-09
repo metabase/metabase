@@ -10,7 +10,7 @@ const TOTAL_ITEMS = PAGE_SIZE + 1;
 
 describe("scenarios > search", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
   });
 
@@ -28,13 +28,13 @@ describe("scenarios > search", () => {
   describe("multiple pages of results", () => {
     before(() => {
       cy.signInAsAdmin();
-      H.restore();
+      H.restore("default", { reindex: true });
       generateQuestions(TOTAL_ITEMS);
       H.snapshot("many-questions");
     });
 
     beforeEach(() => {
-      H.restore("many-questions");
+      H.restore("many-questions", { reindex: true });
     });
 
     it("should allow users to paginate results", () => {

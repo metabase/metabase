@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 
 import cypressOnFix from "cypress-on-fix";
@@ -140,18 +139,6 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
-      if (results && results.video) {
-        // Do we have test failures?
-        if (results && results.video && results.stats.failures === 0) {
-          // delete the video if the spec passed
-          fs.unlinkSync(results.video);
-        }
-      }
-    });
-
     return config;
   },
   baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
@@ -168,9 +155,7 @@ const defaultConfig = {
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
   viewportHeight: 800,
   viewportWidth: 1280,
-  // enable video recording in run mode
-  video: true,
-  videoCompression: true,
+  video: false,
 };
 
 const mainConfig = {

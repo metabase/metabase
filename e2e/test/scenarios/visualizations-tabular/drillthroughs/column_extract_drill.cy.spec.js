@@ -93,8 +93,11 @@ const DATE_QUESTION = {
 };
 
 describe("extract action", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
+  });
+
+  beforeEach(() => {
     cy.signInAsAdmin();
   });
 
@@ -250,9 +253,8 @@ describe("extract action", () => {
   });
 
   describe("email columns", () => {
-    beforeEach(() => {
+    before(() => {
       H.restore();
-      cy.signInAsAdmin();
     });
 
     EMAIL_CASES.forEach(({ option, value, example }) => {
@@ -270,11 +272,9 @@ describe("extract action", () => {
   });
 
   describe("url columns", () => {
-    beforeEach(() => {
+    before(() => {
       H.restore();
       cy.signInAsAdmin();
-
-      // Make the Email column a URL column for these tests, to avoid having to create a new model
       cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
         semantic_type: "type/URL",
       });
@@ -396,9 +396,12 @@ function extractColumnAndCheck({
 }
 
 describe("extract action", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
     H.resetSnowplow();
+  });
+
+  beforeEach(() => {
     cy.signInAsAdmin();
   });
 

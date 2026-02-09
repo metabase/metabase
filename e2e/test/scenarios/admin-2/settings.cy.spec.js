@@ -285,7 +285,7 @@ describe("scenarios > admin > settings", () => {
 });
 
 describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
   });
@@ -298,7 +298,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
 });
 
 describe("scenarios > admin > settings (EE)", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
@@ -314,7 +314,7 @@ describe("scenarios > admin > settings (EE)", () => {
 });
 
 describe("Cloud settings section", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
   });
@@ -492,7 +492,7 @@ describe("scenarios > admin > settings > email settings", () => {
   });
 
   describe("starter instance", () => {
-    beforeEach(() => {
+    before(() => {
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
           // in an actual cloud starter instance this gets configured via env vars
@@ -645,7 +645,7 @@ describe("scenarios > admin > license and billing", () => {
     });
   };
 
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
   });
@@ -1207,7 +1207,7 @@ describe("admin > settings > updates", () => {
 
   const currentVersion = "v1.55.2";
 
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
 
@@ -1253,7 +1253,7 @@ describe("admin > settings > updates", () => {
 });
 
 describe("admin > settings > nav", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
     cy.visit("/admin/settings");

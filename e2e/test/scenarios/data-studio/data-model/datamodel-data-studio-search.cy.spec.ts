@@ -6,7 +6,7 @@ const { TablePicker } = H.DataModel;
 describe("Search", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
-    H.restore("postgres-writable");
+    H.restore("postgres-writable", { reindex: true });
     H.resetSnowplow();
     H.activateToken("bleeding-edge");
     H.resetTestTable({ type: "postgres", table: "multi_schema" });
