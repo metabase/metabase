@@ -1,6 +1,6 @@
-import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type {
   MetricSourceId,
   MetricsViewerTabState,
@@ -8,20 +8,54 @@ import type {
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 
-import { MAX_AUTO_TABS, STAGE_INDEX } from "../constants";
+import { MAX_AUTO_TABS } from "../constants";
 
-import { findColumnByName, isDimensionColumn } from "./queries";
+import { isDimensionCandidate } from "./queries";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
 
+// ── Dimension icon helper ──
+
+export function getDimensionIcon(dim: DimensionMetadata): IconName {
+  if (LibMetric.isPrimaryKey(dim)) {
+    return "label";
+  }
+  if (LibMetric.isForeignKey(dim)) {
+    return "connections";
+  }
+  if (LibMetric.isBoolean(dim)) {
+    return "io";
+  }
+  if (LibMetric.isDateOrDateTime(dim) || LibMetric.isTime(dim)) {
+    return "calendar";
+  }
+  if (LibMetric.isCategory(dim)) {
+    return "string";
+  }
+  if (LibMetric.isNumeric(dim) || LibMetric.isCoordinate(dim)) {
+    return "int";
+  }
+  if (
+    LibMetric.isState(dim) ||
+    LibMetric.isCountry(dim) ||
+    LibMetric.isCity(dim) ||
+    LibMetric.isLocation(dim)
+  ) {
+    return "location";
+  }
+  return "unknown";
+}
+
+// ── Dimension type classification ──
+
 function getDimensionType(
-  column: Lib.ColumnMetadata,
+  dim: DimensionMetadata,
 ): MetricsViewerTabType | null {
-  if (!isDimensionColumn(column)) {
+  if (!isDimensionCandidate(dim)) {
     return null;
   }
 
   for (const config of TAB_TYPE_REGISTRY) {
-    if (config.columnPredicate(column)) {
+    if (config.dimensionPredicate(dim)) {
       return config.type;
     }
   }
@@ -29,35 +63,35 @@ function getDimensionType(
   return null;
 }
 
-type ColumnInfo = {
-  column: Lib.ColumnMetadata;
+type DimensionInfo = {
+  dimension: DimensionMetadata;
   name: string;
   displayName: string;
   type: MetricsViewerTabType;
 };
 
-export function getBreakoutColumnsByType(
-  query: Lib.Query,
-): Map<string, ColumnInfo> {
-  const result = new Map<string, ColumnInfo>();
-  const breakoutableCols = Lib.breakoutableColumns(query, STAGE_INDEX);
+export function getDimensionsByType(
+  def: MetricDefinition,
+): Map<string, DimensionInfo> {
+  const result = new Map<string, DimensionInfo>();
+  const dims = LibMetric.projectionableDimensions(def);
 
-  for (const column of breakoutableCols) {
-    if (!isDimensionColumn(column)) {
+  for (const dim of dims) {
+    if (!isDimensionCandidate(dim)) {
       continue;
     }
 
-    const type = getDimensionType(column);
+    const type = getDimensionType(dim);
     if (type === null) {
       continue;
     }
 
-    const info = Lib.displayInfo(query, STAGE_INDEX, column);
+    const info = LibMetric.displayInfo(def, dim);
     const name = info.name;
 
-    if (!result.has(name)) {
+    if (name && !result.has(name)) {
       result.set(name, {
-        column,
+        dimension: dim,
         name,
         displayName: info.displayName,
         type,
@@ -70,25 +104,25 @@ export function getBreakoutColumnsByType(
 
 // ── Stored tab creation ──
 
-function classifyColumnsBySource(
-  queriesBySourceId: Record<MetricSourceId, Lib.Query | null>,
+function classifyDimensionsBySource(
+  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
-): Map<MetricSourceId, Map<string, ColumnInfo>> {
-  const columnsBySource = new Map<MetricSourceId, Map<string, ColumnInfo>>();
+): Map<MetricSourceId, Map<string, DimensionInfo>> {
+  const dimsBySource = new Map<MetricSourceId, Map<string, DimensionInfo>>();
 
   for (const sourceId of sourceOrder) {
-    const query = queriesBySourceId[sourceId];
-    if (!query) {
+    const def = definitionsBySourceId[sourceId];
+    if (!def) {
       continue;
     }
-    columnsBySource.set(sourceId, getBreakoutColumnsByType(query));
+    dimsBySource.set(sourceId, getDimensionsByType(def));
   }
 
-  return columnsBySource;
+  return dimsBySource;
 }
 
 export function computeDefaultTabs(
-  queriesBySourceId: Record<MetricSourceId, Lib.Query | null>,
+  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
 ): MetricsViewerTabState[] {
   const tabs: MetricsViewerTabState[] = [];
@@ -97,11 +131,11 @@ export function computeDefaultTabs(
     return tabs;
   }
 
-  const columnsBySource = classifyColumnsBySource(
-    queriesBySourceId,
+  const dimsBySource = classifyDimensionsBySource(
+    definitionsBySourceId,
     sourceOrder,
   );
-  if (columnsBySource.size === 0) {
+  if (dimsBySource.size === 0) {
     return tabs;
   }
 
@@ -115,18 +149,18 @@ export function computeDefaultTabs(
     }
 
     if (config.matchMode === "aggregate") {
-      const columnsBySourceRecord: Record<MetricSourceId, string> = {};
+      const dimsBySourceRecord: Record<MetricSourceId, string> = {};
 
-      if (config.columnRanker) {
+      if (config.dimensionRanker) {
         let targetRank = Infinity;
         for (const sourceId of sourceOrder) {
-          const columns = columnsBySource.get(sourceId);
-          if (!columns) {
+          const dims = dimsBySource.get(sourceId);
+          if (!dims) {
             continue;
           }
-          for (const [, info] of columns) {
+          for (const [, info] of dims) {
             if (info.type === config.type) {
-              const rank = config.columnRanker(info.column);
+              const rank = config.dimensionRanker(info.dimension);
               if (rank < targetRank) {
                 targetRank = rank;
               }
@@ -135,15 +169,15 @@ export function computeDefaultTabs(
         }
 
         for (const sourceId of sourceOrder) {
-          const columns = columnsBySource.get(sourceId);
-          if (!columns) {
+          const dims = dimsBySource.get(sourceId);
+          if (!dims) {
             continue;
           }
-          for (const [, info] of columns) {
+          for (const [, info] of dims) {
             if (info.type === config.type) {
-              const rank = config.columnRanker(info.column);
+              const rank = config.dimensionRanker(info.dimension);
               if (rank === targetRank) {
-                columnsBySourceRecord[sourceId] = info.name;
+                dimsBySourceRecord[sourceId] = info.name;
                 break;
               }
             }
@@ -151,20 +185,20 @@ export function computeDefaultTabs(
         }
       } else {
         for (const sourceId of sourceOrder) {
-          const columns = columnsBySource.get(sourceId);
-          if (!columns) {
+          const dims = dimsBySource.get(sourceId);
+          if (!dims) {
             continue;
           }
-          for (const [, info] of columns) {
+          for (const [, info] of dims) {
             if (info.type === config.type) {
-              columnsBySourceRecord[sourceId] = info.name;
+              dimsBySourceRecord[sourceId] = info.name;
               break;
             }
           }
         }
       }
 
-      if (Object.keys(columnsBySourceRecord).length > 0) {
+      if (Object.keys(dimsBySourceRecord).length > 0) {
         tabs.push({
           id: config.fixedId!,
           type: config.type,
@@ -172,29 +206,29 @@ export function computeDefaultTabs(
           display: config.defaultDisplayType,
           definitions: sourceOrder.map((id) => ({
             definitionId: id,
-            projectionDimensionId: columnsBySourceRecord[id],
+            projectionDimensionId: dimsBySourceRecord[id],
           })),
         });
       }
     } else {
-      const uniqueColumns = new Map<
+      const uniqueDimensions = new Map<
         string,
         { displayName: string; sourceIds: MetricSourceId[] }
       >();
 
       for (const sourceId of sourceOrder) {
-        const columns = columnsBySource.get(sourceId);
-        if (!columns) {
+        const dims = dimsBySource.get(sourceId);
+        if (!dims) {
           continue;
         }
 
-        for (const [, info] of columns) {
+        for (const [, info] of dims) {
           if (info.type === config.type) {
-            const existing = uniqueColumns.get(info.name);
+            const existing = uniqueDimensions.get(info.name);
             if (existing) {
               existing.sourceIds.push(sourceId);
             } else {
-              uniqueColumns.set(info.name, {
+              uniqueDimensions.set(info.name, {
                 displayName: info.displayName,
                 sourceIds: [sourceId],
               });
@@ -203,24 +237,24 @@ export function computeDefaultTabs(
         }
       }
 
-      for (const [columnName, { displayName, sourceIds }] of uniqueColumns) {
+      for (const [dimName, { displayName, sourceIds }] of uniqueDimensions) {
         if (tabs.length >= MAX_AUTO_TABS) {
           break;
         }
 
-        const columnsBySourceRecord: Record<MetricSourceId, string> = {};
+        const dimsBySourceRecord: Record<MetricSourceId, string> = {};
         for (const sourceId of sourceIds) {
-          columnsBySourceRecord[sourceId] = columnName;
+          dimsBySourceRecord[sourceId] = dimName;
         }
 
         tabs.push({
-          id: columnName,
+          id: dimName,
           type: config.type,
           label: displayName,
           display: config.defaultDisplayType,
           definitions: sourceOrder.map((id) => ({
             definitionId: id,
-            projectionDimensionId: columnsBySourceRecord[id],
+            projectionDimensionId: dimsBySourceRecord[id],
           })),
         });
       }
@@ -230,84 +264,80 @@ export function computeDefaultTabs(
   return tabs;
 }
 
-export function createTabFromColumn(
-  columnName: string,
-  queriesBySourceId: Record<MetricSourceId, Lib.Query | null>,
+export function createTabFromDimension(
+  dimensionName: string,
+  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
 ): MetricsViewerTabState | null {
-  const columnsBySourceRecord: Record<MetricSourceId, string> = {};
+  const dimsBySourceRecord: Record<MetricSourceId, string> = {};
   let tabType: MetricsViewerTabType = "category";
   let displayName: string | null = null;
 
   for (const sourceId of sourceOrder) {
-    const query = queriesBySourceId[sourceId];
-    if (!query) {
+    const def = definitionsBySourceId[sourceId];
+    if (!def) {
       continue;
     }
 
-    const column = findColumnByName(query, columnName);
-    if (column) {
-      columnsBySourceRecord[sourceId] = columnName;
-      const dimensionType = getDimensionType(column);
-      if (dimensionType) {
-        tabType = dimensionType;
-      }
+    const dims = getDimensionsByType(def);
+    const dimInfo = dims.get(dimensionName);
+    if (dimInfo) {
+      dimsBySourceRecord[sourceId] = dimensionName;
+      tabType = dimInfo.type;
       if (!displayName) {
-        const columnsByType = getBreakoutColumnsByType(query);
-        const columnInfo = columnsByType.get(columnName);
-        displayName = columnInfo?.displayName ?? columnName;
+        displayName = dimInfo.displayName;
       }
     }
   }
 
-  if (Object.keys(columnsBySourceRecord).length === 0) {
+  if (Object.keys(dimsBySourceRecord).length === 0) {
     return null;
   }
 
   return {
-    id: columnName,
+    id: dimensionName,
     type: tabType,
-    label: displayName ?? columnName,
+    label: displayName ?? dimensionName,
     display: getTabConfig(tabType).defaultDisplayType,
     definitions: sourceOrder.map((id) => ({
       definitionId: id,
-      projectionDimensionId: columnsBySourceRecord[id],
+      projectionDimensionId: dimsBySourceRecord[id],
     })),
   };
 }
 
 function findExistingTabRank(
   tab: StoredMetricsViewerTab,
-  columnRanker: (col: Lib.ColumnMetadata) => number,
-  baseQueries?: Record<MetricSourceId, Lib.Query | null>,
+  dimensionRanker: (dim: DimensionMetadata) => number,
+  baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
 ): number | null {
-  if (!baseQueries) {
+  if (!baseDefinitions) {
     return null;
   }
 
-  for (const [sourceId, columnName] of Object.entries(tab.columnsBySource)) {
-    const q = baseQueries[sourceId as MetricSourceId];
-    if (!q) {
+  for (const [sourceId, dimName] of Object.entries(tab.columnsBySource)) {
+    const def = baseDefinitions[sourceId as MetricSourceId];
+    if (!def) {
       continue;
     }
-    const cols = getBreakoutColumnsByType(q);
-    const col = cols.get(columnName);
-    if (col) {
-      return columnRanker(col.column);
+    const dims = getDimensionsByType(def);
+    const dimInfo = dims.get(dimName);
+    if (dimInfo) {
+      return dimensionRanker(dimInfo.dimension);
     }
   }
   return null;
 }
 
-function findBestRankInColumns(
-  columnsByType: Map<string, ColumnInfo>,
+function findBestRankInDimensions(
+  dimsByType: Map<string, DimensionInfo>,
   tabType: MetricsViewerTabType,
-  columnRanker: (col: Lib.ColumnMetadata) => number,
+  dimensionRanker: (dim: DimensionMetadata) => number,
 ): number | null {
   let best: number | null = null;
-  for (const [, info] of columnsByType) {
+  for (const [, info] of dimsByType) {
     if (info.type === tabType) {
-      const rank = columnRanker(info.column);
+      const rank = dimensionRanker(info.dimension);
       if (best === null || rank < best) {
         best = rank;
       }
@@ -316,35 +346,35 @@ function findBestRankInColumns(
   return best;
 }
 
-export function findMatchingColumnForTab(
-  query: Lib.Query,
+export function findMatchingDimensionForTab(
+  def: MetricDefinition,
   tab: StoredMetricsViewerTab,
-  baseQueries?: Record<MetricSourceId, Lib.Query | null>,
+  baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
 ): string | null {
-  const columnsByType = getBreakoutColumnsByType(query);
+  const dimsByType = getDimensionsByType(def);
   const config = TAB_TYPE_REGISTRY.find((c) => c.type === tab.type);
 
   if (config?.matchMode === "aggregate") {
-    if (config.columnRanker) {
+    if (config.dimensionRanker) {
       let targetRank = findExistingTabRank(
         tab,
-        config.columnRanker,
-        baseQueries,
+        config.dimensionRanker,
+        baseDefinitions,
       );
 
       if (targetRank === null) {
-        targetRank = findBestRankInColumns(
-          columnsByType,
+        targetRank = findBestRankInDimensions(
+          dimsByType,
           config.type,
-          config.columnRanker,
+          config.dimensionRanker,
         );
       }
 
       if (targetRank !== null) {
-        for (const [, info] of columnsByType) {
+        for (const [, info] of dimsByType) {
           if (
             info.type === config.type &&
-            config.columnRanker(info.column) === targetRank
+            config.dimensionRanker(info.dimension) === targetRank
           ) {
             return info.name;
           }
@@ -353,7 +383,7 @@ export function findMatchingColumnForTab(
       return null;
     }
 
-    for (const [, info] of columnsByType) {
+    for (const [, info] of dimsByType) {
       if (info.type === tab.type) {
         return info.name;
       }
@@ -361,9 +391,9 @@ export function findMatchingColumnForTab(
     return null;
   }
 
-  const matchingColumn = columnsByType.get(tab.id);
-  if (matchingColumn && matchingColumn.type === tab.type) {
-    return matchingColumn.name;
+  const matchingDim = dimsByType.get(tab.id);
+  if (matchingDim && matchingDim.type === tab.type) {
+    return matchingDim.name;
   }
 
   return null;
@@ -383,7 +413,7 @@ export interface AvailableDimensionsResult {
 }
 
 export function getAvailableDimensionsForPicker(
-  queriesBySourceId: Record<MetricSourceId, Lib.Query | null>,
+  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
   existingTabIds: Set<string>,
@@ -397,12 +427,12 @@ export function getAvailableDimensionsForPicker(
     return result;
   }
 
-  const allDimensionsBySource = new Map<
+  const allDimsBySource = new Map<
     MetricSourceId,
     Map<
       string,
       {
-        column: Lib.ColumnMetadata;
+        dimension: DimensionMetadata;
         label: string;
         icon: IconName;
         tabType: MetricsViewerTabType;
@@ -411,50 +441,50 @@ export function getAvailableDimensionsForPicker(
   >();
 
   for (const sourceId of sourceOrder) {
-    const query = queriesBySourceId[sourceId];
-    if (!query) {
+    const def = definitionsBySourceId[sourceId];
+    if (!def) {
       continue;
     }
 
-    const dimensionsMap = new Map<
+    const dimsMap = new Map<
       string,
       {
-        column: Lib.ColumnMetadata;
+        dimension: DimensionMetadata;
         label: string;
         icon: IconName;
         tabType: MetricsViewerTabType;
       }
     >();
-    const breakoutableCols = Lib.breakoutableColumns(query, STAGE_INDEX);
+    const projDims = LibMetric.projectionableDimensions(def);
 
-    for (const column of breakoutableCols) {
-      if (!isDimensionColumn(column)) {
+    for (const dim of projDims) {
+      if (!isDimensionCandidate(dim)) {
         continue;
       }
 
-      const info = Lib.displayInfo(query, STAGE_INDEX, column);
+      const info = LibMetric.displayInfo(def, dim);
       const dimensionName = info.name;
 
-      if (existingTabIds.has(dimensionName)) {
+      if (!dimensionName || existingTabIds.has(dimensionName)) {
         continue;
       }
 
-      const tabType = getDimensionType(column);
+      const tabType = getDimensionType(dim);
       if (!tabType) {
         continue;
       }
 
-      if (!dimensionsMap.has(dimensionName)) {
-        dimensionsMap.set(dimensionName, {
-          column,
+      if (!dimsMap.has(dimensionName)) {
+        dimsMap.set(dimensionName, {
+          dimension: dim,
           label: info.displayName ?? dimensionName,
-          icon: getColumnIcon(column),
+          icon: getDimensionIcon(dim),
           tabType,
         });
       }
     }
 
-    allDimensionsBySource.set(sourceId, dimensionsMap);
+    allDimsBySource.set(sourceId, dimsMap);
   }
 
   interface DimensionMeta {
@@ -466,7 +496,7 @@ export function getAvailableDimensionsForPicker(
 
   const dimensionMetas = new Map<string, DimensionMeta>();
 
-  for (const [sourceId, dimensions] of allDimensionsBySource) {
+  for (const [sourceId, dimensions] of allDimsBySource) {
     for (const [dimensionName, { label, icon, tabType }] of dimensions) {
       const existing = dimensionMetas.get(dimensionName);
       if (existing) {
@@ -482,14 +512,14 @@ export function getAvailableDimensionsForPicker(
     }
   }
 
-  const loadedSourceCount = allDimensionsBySource.size;
+  const loadedSourceCount = allDimsBySource.size;
   const hasMultipleSources = loadedSourceCount > 1;
 
-  const sharedDimensionNames = new Set<string>();
+  const sharedDimNames = new Set<string>();
   if (hasMultipleSources) {
     for (const [dimensionName, meta] of dimensionMetas) {
       if (meta.sourceIds.length === loadedSourceCount) {
-        sharedDimensionNames.add(dimensionName);
+        sharedDimNames.add(dimensionName);
         result.shared.push({ dimensionName, ...meta });
       }
     }
@@ -497,7 +527,7 @@ export function getAvailableDimensionsForPicker(
   }
 
   for (const sourceId of sourceOrder) {
-    const dimensions = allDimensionsBySource.get(sourceId);
+    const dimensions = allDimsBySource.get(sourceId);
     if (!dimensions) {
       continue;
     }
@@ -505,7 +535,7 @@ export function getAvailableDimensionsForPicker(
     result.bySource[sourceId] = [];
 
     for (const [dimensionName, { label, icon, tabType }] of dimensions) {
-      if (!hasMultipleSources || !sharedDimensionNames.has(dimensionName)) {
+      if (!hasMultipleSources || !sharedDimNames.has(dimensionName)) {
         result.bySource[sourceId].push({
           dimensionName,
           label,

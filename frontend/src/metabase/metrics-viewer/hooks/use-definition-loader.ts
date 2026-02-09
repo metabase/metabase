@@ -1,13 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 
 import { useDispatch, useStore } from "metabase/lib/redux";
-import type * as Lib from "metabase-lib";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 import { t } from "ttag";
 
 import {
-  getQueryFromDefinition,
   loadMeasureDefinition,
   loadMetricDefinition,
 } from "../adapters/definition-loader";
@@ -16,7 +15,6 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
-  TempJsMetricDefinition,
 } from "../types/viewer-state";
 import {
   createMeasureSourceId,
@@ -27,7 +25,7 @@ import { computeDefaultTabs } from "../utils/tabs";
 export interface DefinitionLoaderCallbacks {
   onAdd: (entry: MetricsViewerDefinitionEntry) => void;
   onRemove: (id: DefinitionId) => void;
-  onUpdate: (id: DefinitionId, definition: TempJsMetricDefinition) => void;
+  onUpdate: (id: DefinitionId, definition: MetricDefinition) => void;
   onReplace: (
     oldId: DefinitionId,
     newEntry: MetricsViewerDefinitionEntry,
@@ -85,7 +83,7 @@ export function useDefinitionLoader(
   const loadDefinition = useCallback(
     async (
       definitionId: DefinitionId,
-      loader: () => Promise<TempJsMetricDefinition>,
+      loader: () => Promise<MetricDefinition>,
       errorMsg: string,
     ): Promise<MetricsViewerDefinitionEntry | null> => {
       if (loadingRef.current.has(definitionId)) {
@@ -121,10 +119,13 @@ export function useDefinitionLoader(
 
   const createDefaultTabs = useCallback(
     (entry: MetricsViewerDefinitionEntry) => {
-      const queries: Record<MetricSourceId, Lib.Query | null> = {
-        [entry.id]: getQueryFromDefinition(entry.definition),
+      if (!entry.definition) {
+        return;
+      }
+      const definitions: Record<MetricSourceId, MetricDefinition | null> = {
+        [entry.id]: entry.definition,
       };
-      for (const tab of computeDefaultTabs(queries, [entry.id])) {
+      for (const tab of computeDefaultTabs(definitions, [entry.id])) {
         onAddTab(tab);
       }
     },
@@ -134,13 +135,12 @@ export function useDefinitionLoader(
   const loadAndAdd = useCallback(
     async (
       definitionId: MetricSourceId,
-      placeholderDefinition: TempJsMetricDefinition,
-      loader: () => Promise<TempJsMetricDefinition>,
+      loader: () => Promise<MetricDefinition>,
       errorMsg: string,
     ) => {
       onAdd({
         id: definitionId,
-        definition: placeholderDefinition,
+        definition: null,
       });
 
       const entry = await loadDefinition(definitionId, loader, errorMsg);
@@ -149,7 +149,7 @@ export function useDefinitionLoader(
         return;
       }
 
-      onUpdate(entry.id, entry.definition);
+      onUpdate(entry.id, entry.definition!);
 
       if (currentDefinitions.length === 0) {
         createDefaultTabs(entry);
@@ -162,13 +162,12 @@ export function useDefinitionLoader(
     async (
       oldSourceId: MetricSourceId,
       newDefinitionId: MetricSourceId,
-      placeholderDefinition: TempJsMetricDefinition,
-      loader: () => Promise<TempJsMetricDefinition>,
+      loader: () => Promise<MetricDefinition>,
       errorMsg: string,
     ) => {
       onReplace(oldSourceId, {
         id: newDefinitionId,
-        definition: placeholderDefinition,
+        definition: null,
       });
 
       const entry = await loadDefinition(newDefinitionId, loader, errorMsg);
@@ -177,7 +176,7 @@ export function useDefinitionLoader(
         return;
       }
 
-      onUpdate(entry.id, entry.definition);
+      onUpdate(entry.id, entry.definition!);
     },
     [onReplace, onRemove, onUpdate, loadDefinition],
   );
@@ -186,7 +185,6 @@ export function useDefinitionLoader(
     (metricId: MetricId) =>
       loadAndAdd(
         createMetricSourceId(metricId),
-        { "source-metric": metricId },
         () => loadMetricDefinition(dispatch, store.getState, metricId),
         t`Failed to load metric`,
       ),
@@ -197,7 +195,6 @@ export function useDefinitionLoader(
     (measureId: MeasureId) =>
       loadAndAdd(
         createMeasureSourceId(measureId),
-        { "source-measure": measureId },
         () => loadMeasureDefinition(dispatch, store.getState, measureId),
         t`Failed to load measure`,
       ),
@@ -209,7 +206,6 @@ export function useDefinitionLoader(
       loadAndReplace(
         oldSourceId,
         createMetricSourceId(metricId),
-        { "source-metric": metricId },
         () => loadMetricDefinition(dispatch, store.getState, metricId),
         t`Failed to load metric`,
       ),
@@ -221,7 +217,6 @@ export function useDefinitionLoader(
       loadAndReplace(
         oldSourceId,
         createMeasureSourceId(measureId),
-        { "source-measure": measureId },
         () => loadMeasureDefinition(dispatch, store.getState, measureId),
         t`Failed to load measure`,
       ),

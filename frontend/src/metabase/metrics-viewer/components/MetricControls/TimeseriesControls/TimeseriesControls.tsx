@@ -1,70 +1,54 @@
-import { useCallback } from "react";
-
-import { getDatePickerValue } from "metabase/querying/filters/utils/dates";
 import { Divider } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 import type { DatePickerValue } from "metabase/querying/common/types";
 
-import { STAGE_INDEX } from "../../../constants";
 import { BucketButton } from "../BucketButton";
 import { FilterButton } from "../FilterButton";
-import type { BreakoutInfo } from "../../../utils/queries";
+import type { ProjectionInfo } from "../../../utils/queries";
 
 import S from "./TimeseriesControls.module.css";
 
 type TimeseriesControlsProps = {
-  query: Lib.Query;
-  breakoutInfo: BreakoutInfo;
+  definition: MetricDefinition;
+  projectionInfo: ProjectionInfo;
   onFilterChange: (value: DatePickerValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
 };
 
 export function TimeseriesControls({
-  query,
-  breakoutInfo,
+  definition,
+  projectionInfo,
   onFilterChange,
   onTemporalUnitChange,
 }: TimeseriesControlsProps) {
   const {
-    breakout,
-    breakoutColumn,
-    filterColumn,
+    projection,
+    projectionDimension,
+    filterDimension,
     filter,
     isTemporalBucketable,
-  } = breakoutInfo;
+  } = projectionInfo;
 
-  const handleFilterChange = useCallback(
-    (newFilter: Lib.ExpressionClause | undefined) => {
-      if (newFilter && filterColumn) {
-        const value = getDatePickerValue(query, STAGE_INDEX, newFilter);
-        onFilterChange(value);
-      } else {
-        onFilterChange(undefined);
-      }
-    },
-    [query, filterColumn, onFilterChange],
-  );
-
-  if (!breakout || !breakoutColumn || !filterColumn) {
+  if (!projection || !projectionDimension || !filterDimension) {
     return null;
   }
 
   return (
     <>
       <FilterButton
-        query={query}
-        column={filterColumn}
+        definition={definition}
+        filterDimension={filterDimension}
         filter={filter}
-        onChange={handleFilterChange}
+        onChange={onFilterChange}
       />
       {isTemporalBucketable && (
         <>
           <Divider orientation="vertical" className={S.divider} />
           <BucketButton
-            query={query}
-            column={breakoutColumn}
-            breakout={breakout}
+            definition={definition}
+            dimension={projectionDimension}
+            projection={projection}
             onChange={onTemporalUnitChange}
           />
         </>

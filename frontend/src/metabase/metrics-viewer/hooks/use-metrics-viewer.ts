@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo } from "react";
 
 import type { Dataset } from "metabase-types/api";
 
-import {
-  getDefinitionName,
-  getQueryFromDefinition,
-} from "../adapters/definition-loader";
+import * as LibMetric from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
+
+import { getDefinitionName } from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type {
   DefinitionId,
@@ -26,9 +26,9 @@ import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
   type AvailableDimensionsResult,
   type SourceDisplayInfo,
-  createTabFromColumn,
+  createTabFromDimension,
   getAvailableDimensionsForPicker,
-  getBreakoutColumnsByType,
+  getDimensionsByType,
 } from "../utils/tabs";
 
 import { useDefinitionLoader } from "./use-definition-loader";
@@ -145,15 +145,12 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   const isAllTabActive =
     state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;
 
-  const queriesBySourceId = useMemo(() => {
-    const queries: Record<
-      MetricSourceId,
-      ReturnType<typeof getQueryFromDefinition>
-    > = {};
+  const definitionsBySourceId = useMemo(() => {
+    const defs: Record<MetricSourceId, MetricDefinition | null> = {};
     for (const entry of state.definitions) {
-      queries[entry.id] = getQueryFromDefinition(entry.definition);
+      defs[entry.id] = entry.definition;
     }
-    return queries;
+    return defs;
   }, [state.definitions]);
 
   const sourceOrder = useMemo(
@@ -172,9 +169,9 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       if (!name) {
         continue;
       }
-      if (definition["source-metric"]) {
+      if (definition && LibMetric.sourceMetricId(definition) != null) {
         result[entry.id] = { type: "metric", name };
-      } else if (definition["source-measure"]) {
+      } else if (definition && LibMetric.sourceMeasureId(definition) != null) {
         result[entry.id] = { type: "measure", name };
       }
     }
@@ -204,27 +201,27 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         if (!firstDef?.projectionDimensionId) {
           return tab;
         }
-        const query =
-          queriesBySourceId[firstDef.definitionId as MetricSourceId];
-        if (!query) {
+        const def =
+          definitionsBySourceId[firstDef.definitionId as MetricSourceId];
+        if (!def) {
           return tab;
         }
-        const columnsByType = getBreakoutColumnsByType(query);
-        const colInfo = columnsByType.get(firstDef.projectionDimensionId);
-        return colInfo ? { ...tab, label: colInfo.displayName } : tab;
+        const dimsByType = getDimensionsByType(def);
+        const dimInfo = dimsByType.get(firstDef.projectionDimensionId);
+        return dimInfo ? { ...tab, label: dimInfo.displayName } : tab;
       }),
-    [state.tabs, queriesBySourceId, fixedTabIds],
+    [state.tabs, definitionsBySourceId, fixedTabIds],
   );
 
   const availableDimensions = useMemo(
     () =>
       getAvailableDimensionsForPicker(
-        queriesBySourceId,
+        definitionsBySourceId,
         sourceOrder,
         sourceDataById,
         existingTabIds,
       ),
-    [queriesBySourceId, sourceOrder, sourceDataById, existingTabIds],
+    [definitionsBySourceId, sourceOrder, sourceDataById, existingTabIds],
   );
 
   // ── Auto-execute effect ──
@@ -296,9 +293,9 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const addTab = useCallback(
     (dimensionName: string) => {
-      const newTab = createTabFromColumn(
+      const newTab = createTabFromDimension(
         dimensionName,
-        queriesBySourceId,
+        definitionsBySourceId,
         sourceOrder,
       );
       if (!newTab) {
@@ -308,7 +305,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       addTabState(newTab);
       changeTab(newTab.id);
     },
-    [queriesBySourceId, sourceOrder, addTabState, changeTab],
+    [definitionsBySourceId, sourceOrder, addTabState, changeTab],
   );
 
   const updateActiveTab = useCallback(

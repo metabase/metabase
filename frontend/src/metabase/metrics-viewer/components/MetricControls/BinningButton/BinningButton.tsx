@@ -2,41 +2,38 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, DefaultSelectItem, Icon, Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 
-import { STAGE_INDEX, UNBINNED } from "../../../constants";
+import { UNBINNED } from "../../../constants";
 
 import S from "../MetricControls.module.css";
 const MIN_WIDTH = 180;
 
 type BinningButtonProps = {
-  query: Lib.Query;
-  column: Lib.ColumnMetadata;
-  breakout: Lib.BreakoutClause;
+  definition: MetricDefinition;
+  dimension: DimensionMetadata;
+  projection: ProjectionClause;
   onBinningChange: (binningStrategy: string | null) => void;
 };
 
 export function BinningButton({
-  query,
-  column,
-  breakout,
+  definition,
+  dimension,
+  projection,
   onBinningChange,
 }: BinningButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const { currentBinning, availableStrategies } = useMemo(() => {
-    const binning = Lib.binning(breakout);
-    const binningInfo = binning
-      ? Lib.displayInfo(query, STAGE_INDEX, binning)
+    const binningVal = LibMetric.binning(projection);
+    const binningInfo = binningVal
+      ? LibMetric.displayInfo(definition, binningVal)
       : undefined;
-    const strategies = Lib.availableBinningStrategies(
-      query,
-      STAGE_INDEX,
-      column,
-    );
+    const strategies = LibMetric.availableBinningStrategies(definition, dimension);
 
     const items = strategies.map((strategy) => {
-      const info = Lib.displayInfo(query, STAGE_INDEX, strategy);
+      const info = LibMetric.displayInfo(definition, strategy);
       return {
         bucket: strategy,
         displayName: info.displayName,
@@ -45,7 +42,7 @@ export function BinningButton({
     });
 
     return { currentBinning: binningInfo, availableStrategies: items };
-  }, [query, column, breakout]);
+  }, [definition, dimension, projection]);
 
   const handleSelect = (binningName: string | null) => {
     onBinningChange(binningName);

@@ -3,37 +3,36 @@ import { t } from "ttag";
 
 import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button, Icon, Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
-
-import { STAGE_INDEX } from "../../../constants";
 
 import S from "../MetricControls.module.css";
 
 type BucketButtonProps = {
-  query: Lib.Query;
-  column: Lib.ColumnMetadata;
-  breakout: Lib.BreakoutClause;
+  definition: MetricDefinition;
+  dimension: DimensionMetadata;
+  projection: ProjectionClause;
   onChange: (unit: TemporalUnit | undefined) => void;
 };
 
 export function BucketButton({
-  query,
-  column,
-  breakout,
+  definition,
+  dimension,
+  projection,
   onChange,
 }: BucketButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const { bucketInfo, availableItems } = useMemo(() => {
-    const bucket = Lib.temporalBucket(breakout);
+    const bucket = LibMetric.temporalBucket(projection);
     const info = bucket
-      ? Lib.displayInfo(query, STAGE_INDEX, bucket)
+      ? LibMetric.displayInfo(definition, bucket)
       : undefined;
-    const buckets = Lib.availableTemporalBuckets(query, STAGE_INDEX, column);
+    const buckets = LibMetric.availableTemporalBuckets(definition, dimension);
 
     const items = buckets.map((b) => {
-      const bucketDisplayInfo = Lib.displayInfo(query, STAGE_INDEX, b);
+      const bucketDisplayInfo = LibMetric.displayInfo(definition, b);
       return {
         bucket: b,
         value: bucketDisplayInfo.shortName,
@@ -42,7 +41,7 @@ export function BucketButton({
     });
 
     return { bucketInfo: info, availableItems: items };
-  }, [query, column, breakout]);
+  }, [definition, dimension, projection]);
 
   const handleChange = (newValue: TemporalUnit) => {
     onChange(newValue);

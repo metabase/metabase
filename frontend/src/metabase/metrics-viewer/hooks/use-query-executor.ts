@@ -1,13 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 
-import { datasetApi } from "metabase/api";
+import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch } from "metabase/lib/redux";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
-import { getQueryFromDefinition } from "../adapters/definition-loader";
-import { buildExecutableQuery } from "../utils/queries";
+import { buildExecutableDefinition } from "../utils/queries";
 import type {
   MetricsViewerDefinitionEntry,
   DefinitionId,
@@ -72,39 +71,36 @@ export function useQueryExecutor(): UseQueryExecutorResult {
           }
 
           const entry = definitions.find((d) => d.id === tabDef.definitionId);
-          if (!entry) {
-            return;
-          }
-
-          const baseQuery = getQueryFromDefinition(entry.definition);
-          if (!baseQuery) {
+          if (!entry || !entry.definition) {
             setErrors((prev) => {
               const m = new Map(prev);
-              m.set(tabDef.definitionId, "No query available");
+              m.set(tabDef.definitionId, "No definition available");
               return m;
             });
             return;
           }
 
           try {
-            const execQuery = buildExecutableQuery(
-              baseQuery,
+            const execDef = buildExecutableDefinition(
+              entry.definition,
               tab,
               tabDef.projectionDimensionId,
             );
 
-            if (!execQuery) {
+            if (!execDef) {
               setErrors((prev) => {
                 const m = new Map(prev);
-                m.set(tabDef.definitionId, "Cannot build query");
+                m.set(tabDef.definitionId, "Cannot build definition");
                 return m;
               });
               return;
             }
 
-            const datasetQuery = Lib.toLegacyQuery(execQuery);
+            const jsDefinition = LibMetric.toJsMetricDefinition(execDef);
             const result = await dispatch(
-              datasetApi.endpoints.getAdhocQuery.initiate(datasetQuery),
+              metricApi.endpoints.getMetricDataset.initiate({
+                definition: jsDefinition,
+              }),
             );
 
             if (signal.aborted) {

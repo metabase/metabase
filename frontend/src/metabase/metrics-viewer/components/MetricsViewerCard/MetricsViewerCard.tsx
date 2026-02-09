@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { datasetApi } from "metabase/api";
+import { metricApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { Paper, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
 import type {
@@ -14,7 +14,7 @@ import type {
 import {
   buildRawSeriesFromDefinitions,
   buildDimensionItemsFromDefinitions,
-  computeModifiedQueries,
+  computeModifiedDefinitions,
 } from "../../utils/series";
 import { getTabConfig } from "../../utils/tab-config";
 import { MetricsViewerVisualization } from "../MetricsViewerVisualization";
@@ -40,8 +40,8 @@ export function MetricsViewerCard({
   const dispatch = useDispatch();
   const tabConfig = getTabConfig(tab.type);
 
-  const modifiedQueries = useMemo(
-    () => computeModifiedQueries(definitions, tab),
+  const modifiedDefinitions = useMemo(
+    () => computeModifiedDefinitions(definitions, tab),
     [definitions, tab],
   );
 
@@ -54,13 +54,15 @@ export function MetricsViewerCard({
       const newResults = new Map<DefinitionId, Dataset>();
 
       const promises = tab.definitions.map(async (tabDef) => {
-        const query = modifiedQueries.get(tabDef.definitionId);
-        if (!query) {
+        const modDef = modifiedDefinitions.get(tabDef.definitionId);
+        if (!modDef) {
           return;
         }
-        const datasetQuery = Lib.toLegacyQuery(query);
+        const jsDefinition = LibMetric.toJsMetricDefinition(modDef);
         const result = await dispatch(
-          datasetApi.endpoints.getAdhocQuery.initiate(datasetQuery),
+          metricApi.endpoints.getMetricDataset.initiate({
+            definition: jsDefinition,
+          }),
         );
         if (!cancelled && result.data) {
           newResults.set(tabDef.definitionId, result.data);
@@ -78,7 +80,7 @@ export function MetricsViewerCard({
     return () => {
       cancelled = true;
     };
-  }, [dispatch, tab.definitions, modifiedQueries]);
+  }, [dispatch, tab.definitions, modifiedDefinitions]);
 
   const rawSeries = useMemo(
     () =>
@@ -86,9 +88,9 @@ export function MetricsViewerCard({
         definitions,
         tab,
         results,
-        modifiedQueries,
+        modifiedDefinitions,
       ),
-    [definitions, tab, results, modifiedQueries],
+    [definitions, tab, results, modifiedDefinitions],
   );
 
   const dimensionItems = useMemo(
@@ -96,11 +98,11 @@ export function MetricsViewerCard({
       buildDimensionItemsFromDefinitions(
         definitions,
         tab,
-        modifiedQueries,
+        modifiedDefinitions,
         sourceColors,
-        tabConfig.columnPredicate,
+        tabConfig.dimensionPredicate,
       ),
-    [definitions, tab, modifiedQueries, sourceColors, tabConfig.columnPredicate],
+    [definitions, tab, modifiedDefinitions, sourceColors, tabConfig.dimensionPredicate],
   );
 
   const handleDimensionChange = useCallback(

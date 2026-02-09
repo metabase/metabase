@@ -1,76 +1,26 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { getColorsForValues } from "metabase/lib/colors/charts";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   Dataset,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  getDefinitionCard,
-  getDefinitionMeasure,
-  getDefinitionName,
-  getDefinitionTableId,
-  getQueryFromDefinition,
-} from "../adapters/definition-loader";
-import { STAGE_INDEX } from "../constants";
+import { getDefinitionName } from "../adapters/definition-loader";
 import type {
   DefinitionId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   SelectedMetric,
-  TempJsMetricDefinition,
-} from "../types/viewer-state";
-import {
-  isMeasureDefinition,
-  isMetricDefinition,
 } from "../types/viewer-state";
 
-import { buildExecutableQuery } from "./queries";
+import { buildExecutableDefinition, isDimensionCandidate } from "./queries";
 import { measureToCardId, parseSourceId } from "./source-ids";
+import { getDimensionIcon } from "./tabs";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
-
-function getDefinitionNumericId(definition: TempJsMetricDefinition): number {
-  if (isMetricDefinition(definition)) {
-    return definition["source-metric"];
-  }
-  if (isMeasureDefinition(definition)) {
-    return definition["source-measure"];
-  }
-  throw new Error("Definition is neither metric nor measure");
-}
-
-function getAggregationColumnName(
-  definition: TempJsMetricDefinition,
-): string | null {
-  const query = getQueryFromDefinition(definition);
-  if (!query) {
-    return null;
-  }
-
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  const breakoutNames = new Set(
-    breakouts
-      .map((b) => {
-        const col = Lib.breakoutColumn(query, STAGE_INDEX, b);
-        return col ? Lib.displayInfo(query, STAGE_INDEX, col).name : null;
-      })
-      .filter(Boolean),
-  );
-
-  const columns = Lib.returnedColumns(query, STAGE_INDEX);
-  for (const col of columns) {
-    const info = Lib.displayInfo(query, STAGE_INDEX, col);
-    if (!breakoutNames.has(info.name)) {
-      return info.name;
-    }
-  }
-
-  return null;
-}
 
 export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
@@ -84,14 +34,17 @@ export function computeSourceColors(
 
   for (let i = 0; i < definitions.length; i++) {
     const entry = definitions[i];
+    if (!entry.definition) {
+      continue;
+    }
     const name = getDefinitionName(entry.definition);
 
-    numericIds.push(getDefinitionNumericId(entry.definition));
+    const metricId = LibMetric.sourceMetricId(entry.definition);
+    const measureId = LibMetric.sourceMeasureId(entry.definition);
+    numericIds.push(metricId ?? measureId ?? 0);
 
     if (!name) {
       keys.push(entry.id);
-    } else if (i === 0) {
-      keys.push(getAggregationColumnName(entry.definition) ?? name);
     } else {
       keys.push(name);
     }
@@ -115,53 +68,52 @@ export function buildRawSeriesFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
   resultsByDefinitionId: Map<DefinitionId, Dataset>,
-  modifiedQueries: Map<DefinitionId, Lib.Query | null>,
+  modifiedDefinitions: Map<DefinitionId, MetricDefinition | null>,
 ): SingleSeries[] {
   const validSeries: SingleSeries[] = [];
   let vizSettings: VisualizationSettings | null = null;
 
   for (const tabDef of tab.definitions) {
     const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry) {
+    if (!entry || !entry.definition) {
       continue;
     }
 
-    const query = modifiedQueries.get(entry.id);
+    const modDef = modifiedDefinitions.get(entry.id);
     const result = resultsByDefinitionId.get(entry.id);
 
-    if (!query || !result?.data?.cols?.length) {
+    if (!modDef || !result?.data?.cols?.length) {
       continue;
     }
 
-    const breakouts = Lib.breakouts(query, STAGE_INDEX);
-    if (breakouts.length === 0) {
+    const projs = LibMetric.projections(modDef);
+    if (projs.length === 0) {
       continue;
     }
 
     if (vizSettings === null) {
-      vizSettings = DISPLAY_TYPE_REGISTRY[tab.display].getSettings(query);
+      vizSettings = DISPLAY_TYPE_REGISTRY[tab.display].getSettings(modDef);
     }
 
-    const { definition } = entry;
-    const card = getDefinitionCard(definition);
-    const measure = getDefinitionMeasure(definition);
+    const metricId = LibMetric.sourceMetricId(entry.definition);
+    const measureId = LibMetric.sourceMeasureId(entry.definition);
+    const name = getDefinitionName(entry.definition);
 
-    if (isMetricDefinition(definition) && card) {
+    if (metricId != null) {
+      const syntheticCard = {
+        id: metricId,
+        name,
+        display: tab.display,
+        visualization_settings: vizSettings,
+      };
       validSeries.push({
-        card: {
-          ...card,
-          display: tab.display,
-          visualization_settings: {
-            ...card.visualization_settings,
-            ...vizSettings,
-          },
-        },
+        card: syntheticCard as SingleSeries["card"],
         data: result.data,
       });
-    } else if (isMeasureDefinition(definition) && measure) {
+    } else if (measureId != null) {
       const syntheticCard = {
-        id: measureToCardId(definition["source-measure"]),
-        name: measure.name,
+        id: measureToCardId(measureId),
+        name,
         display: tab.display,
         visualization_settings: vizSettings,
       };
@@ -176,24 +128,24 @@ export function buildRawSeriesFromDefinitions(
 }
 
 function computeAvailableOptions(
-  query: Lib.Query,
-  columnFilter?: (col: Lib.ColumnMetadata) => boolean,
+  def: MetricDefinition,
+  dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
-  const columns = Lib.breakoutableColumns(query, STAGE_INDEX);
-  const filtered = columns.filter((col) => {
-    const info = Lib.displayInfo(query, STAGE_INDEX, col);
-    if (info.isImplicitlyJoinable) {
+  const dims = LibMetric.projectionableDimensions(def);
+  const filtered = dims.filter((dim) => {
+    const info = LibMetric.displayInfo(def, dim);
+    if (info.isFromJoin) {
       return false;
     }
-    return columnFilter ? columnFilter(col) : true;
+    return dimensionFilter ? dimensionFilter(dim) : true;
   });
 
-  return filtered.map((col) => {
-    const info = Lib.displayInfo(query, STAGE_INDEX, col);
+  return filtered.map((dim) => {
+    const info = LibMetric.displayInfo(def, dim);
     return {
-      name: info.name,
+      name: info.name!,
       displayName: info.displayName,
-      icon: getColumnIcon(col),
+      icon: getDimensionIcon(dim),
     };
   });
 }
@@ -201,59 +153,52 @@ function computeAvailableOptions(
 export function buildDimensionItemsFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
-  modifiedQueries: Map<DefinitionId, Lib.Query | null>,
+  modifiedDefinitions: Map<DefinitionId, MetricDefinition | null>,
   sourceColors: Record<number, string>,
-  columnFilter?: (col: Lib.ColumnMetadata) => boolean,
+  dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
   const items: DimensionItem[] = [];
 
   for (const tabDef of tab.definitions) {
     const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry) {
+    if (!entry || !entry.definition) {
       continue;
     }
 
-    const query = modifiedQueries.get(entry.id);
+    const modDef = modifiedDefinitions.get(entry.id);
     const { id: numericId } = parseSourceId(entry.id);
-    const baseQuery = getQueryFromDefinition(entry.definition);
 
-    if (!query) {
-      if (!tabDef.projectionDimensionId && baseQuery) {
+    if (!modDef) {
+      if (!tabDef.projectionDimensionId) {
         items.push({
           id: entry.id,
           label: undefined,
           icon: undefined,
           color: sourceColors[numericId],
-          availableOptions: computeAvailableOptions(baseQuery, columnFilter),
+          availableOptions: computeAvailableOptions(entry.definition, dimensionFilter),
         });
       }
       continue;
     }
 
-    const breakouts = Lib.breakouts(query, STAGE_INDEX);
-    if (breakouts.length === 0) {
+    const projs = LibMetric.projections(modDef);
+    if (projs.length === 0) {
       continue;
     }
 
-    const column = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
-    if (!column) {
+    const dim = LibMetric.projectionDimension(modDef, projs[0]);
+    if (!dim) {
       continue;
     }
 
-    const columnInfo = Lib.displayInfo(
-      query,
-      STAGE_INDEX,
-      Lib.withTemporalBucket(column, null),
-    );
-
-    const optionsQuery = baseQuery ?? query;
+    const dimInfo = LibMetric.displayInfo(modDef, dim);
 
     items.push({
       id: entry.id,
-      label: columnInfo.displayName,
-      icon: getColumnIcon(column),
+      label: dimInfo.displayName,
+      icon: getDimensionIcon(dim),
       color: sourceColors[numericId],
-      availableOptions: computeAvailableOptions(optionsQuery, columnFilter),
+      availableOptions: computeAvailableOptions(entry.definition, dimensionFilter),
     });
   }
 
@@ -269,23 +214,33 @@ export function getSelectedMetricsInfo(
     const isLoading = loadingIds.has(entry.id);
     const name = getDefinitionName(definition);
 
-    if (isMetricDefinition(definition)) {
+    if (!definition) {
+      const parsed = parseSourceId(entry.id);
       return [{
-        id: definition["source-metric"],
+        id: parsed.id,
+        sourceType: parsed.type,
+        name,
+        isLoading,
+      }];
+    }
+
+    const metricId = LibMetric.sourceMetricId(definition);
+    if (metricId != null) {
+      return [{
+        id: metricId,
         sourceType: "metric",
         name,
         isLoading,
       }];
     }
 
-    if (isMeasureDefinition(definition)) {
-      const tableId = getDefinitionTableId(definition);
+    const measureId = LibMetric.sourceMeasureId(definition);
+    if (measureId != null) {
       return [{
-        id: definition["source-measure"],
+        id: measureId,
         sourceType: "measure",
         name,
         isLoading,
-        tableId: tableId ?? undefined,
       }];
     }
 
@@ -293,32 +248,26 @@ export function getSelectedMetricsInfo(
   });
 }
 
-export function computeModifiedQueries(
+export function computeModifiedDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
-): Map<DefinitionId, Lib.Query | null> {
-  const queries = new Map<DefinitionId, Lib.Query | null>();
+): Map<DefinitionId, MetricDefinition | null> {
+  const result = new Map<DefinitionId, MetricDefinition | null>();
 
   for (const tabDef of tab.definitions) {
     const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry) {
-      queries.set(tabDef.definitionId, null);
+    if (!entry || !entry.definition) {
+      result.set(tabDef.definitionId, null);
       continue;
     }
 
-    const baseQuery = getQueryFromDefinition(entry.definition);
-    if (!baseQuery) {
-      queries.set(tabDef.definitionId, null);
-      continue;
-    }
-
-    const execQuery = buildExecutableQuery(
-      baseQuery,
+    const execDef = buildExecutableDefinition(
+      entry.definition,
       tab,
       tabDef.projectionDimensionId,
     );
-    queries.set(entry.id, execQuery);
+    result.set(entry.id, execDef);
   }
 
-  return queries;
+  return result;
 }
