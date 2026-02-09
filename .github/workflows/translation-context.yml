@@ -24,9 +24,8 @@ jobs:
         run: |
           npx --yes crowdin-context-harvester@latest harvest \
             --project="$CROWDIN_PROJECT_ID" \
-            --crowdinFiles "metabase.po" \
             --ai="openai" \
             --model="gpt-5.1" \
-            --croql='not (context contains "✨ AI Context")' \
+            --croql='file is "metabase.po" and not (context contains " AI Context")'
             --output="csv" \
             --concurrency=10
