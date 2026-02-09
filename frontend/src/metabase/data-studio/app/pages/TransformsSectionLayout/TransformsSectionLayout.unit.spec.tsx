@@ -1,4 +1,8 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupStoreEEBillingEndpoint,
+  setupStoreEECloudAddOnsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -84,6 +88,11 @@ describe("TransformSectionLayout", () => {
   });
 
   describe("Pro Hosted", () => {
+    beforeEach(() => {
+      setupStoreEECloudAddOnsEndpoint(5);
+      setupStoreEEBillingEndpoint(5);
+    });
+
     it("Should only allow you into transforms if you have the transform token feature", async () => {
       setup({ isHosted: true });
       await assertDataStudioUpsellPage();
