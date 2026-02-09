@@ -23800,7 +23800,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms", "transforms-basic", "transforms-advanced" ]
           }
         } ],
         "responses" : {
@@ -43123,7 +43123,11 @@
                         "type" : "integer"
                       },
                       "source_readable" : {
-                        "type" : "boolean"
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
                       },
                       "tag_ids" : {
                         "type" : "array",
@@ -43413,7 +43417,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44137,7 +44145,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44435,7 +44447,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44868,7 +44884,11 @@
                         "type" : "integer"
                       },
                       "source_readable" : {
-                        "type" : "boolean"
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
                       },
                       "tag_ids" : {
                         "type" : "array",

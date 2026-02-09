@@ -168,6 +168,7 @@ config:
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
     jwt-attribute-tenant: '@tenant'
+    jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
