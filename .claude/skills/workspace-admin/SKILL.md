@@ -123,7 +123,9 @@ When running `/new-workspace`, create these files in the project directory:
 PROJECT_NAME/
 ├── .claude/
 │   └── skills/
-│       ├── workspace-admin/SKILL.md
+│       ├── workspace-admin/
+│       │   ├── SKILL.md
+│       │   └── fetch_table.py    # Table metadata fetcher
 │       ├── workspace-files/SKILL.md
 │       ├── workspace-sync/SKILL.md
 │       └── data-workspace/SKILL.md
@@ -167,30 +169,45 @@ allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
 
 Manages local files in a data workspace project.
 
-## File Formats
+## SQL File Format (questions/*.sql or transforms/*.sql)
 
-### SQL Transform (questions/*.sql or transforms/*.sql)
 ```sql
--- name: Rating Variance by Initial
--- description: Analyzes rating variance
+-- name: Revenue by Customer Segment
+-- description: Calculates total revenue grouped by customer segment
 -- target_schema: public
--- target_table: rating_variance_by_initial
+-- target_table: revenue_by_segment
 -- ref_id: lucid-ferret-a852
 
-SELECT ...
+SELECT
+    c.segment,
+    COUNT(DISTINCT o.customer_id) AS customer_count,
+    SUM(o.total) AS total_revenue
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+WHERE o.status = 'completed'
+GROUP BY c.segment
+ORDER BY total_revenue DESC
 ```
 
-### Python Transform (transforms/*.py)
+## Python File Format (transforms/*.py)
+
 ```python
-# name: User Order Summary
-# source_tables: {"users": 1015, "orders": 1042}
-# target_table: user_order_summary
+# name: Customer Cohort Analysis
+# description: Assigns customers to monthly cohorts
+# source_tables: {"orders": 1042, "customers": 1015}
+# target_schema: public
+# target_table: customer_cohorts
 # ref_id: gentle-fox-b123
 
-result = users_df.merge(orders_df, on='user_id')
+import pandas as pd
+
+first_purchase = orders_df.groupby('customer_id')['created_at'].min().reset_index()
+first_purchase['cohort'] = pd.to_datetime(first_purchase['created_at']).dt.to_period('M')
+result = customers_df.merge(first_purchase, left_on='id', right_on='customer_id')
 ```
 
-### Table Schema (tables/*.yaml)
+## Table Schema (tables/*.yaml)
+
 ```yaml
 name: orders
 schema: public
@@ -199,17 +216,21 @@ table_id: 1042
 columns:
   - name: id
     type: integer
+  - name: customer_id
+    type: integer
   - name: total
     type: decimal
+  - name: created_at
+    type: timestamp
 ```
 
 ## Header Fields
 - `name` (required): Human-readable name
 - `description` (optional): What this does
-- `target_schema` (optional): Target schema
+- `target_schema` (required): Target schema name
 - `target_table` (required): Target table name
-- `ref_id` (auto): Assigned by API after sync
-- `source_tables` (Python only): Map of df name to table ID
+- `ref_id` (auto): Assigned by API after sync - DO NOT set manually
+- `source_tables` (Python only): JSON map of dataframe name to table ID
 ```
 
 ### .claude/skills/workspace-sync/SKILL.md
@@ -231,45 +252,34 @@ Syncs local files with the Metabase workspace API.
 - Existing files (has ref_id): PUT to update
 - Deleted files: DELETE from API
 
-## Usage
+## Reading Configuration
 
-Read config:
 ```bash
-API_KEY=$(grep METABASE_API_KEY .env | cut -d= -f2)
+API_KEY=$(grep METABASE_API_KEY .env | cut -d= -f2-)
 WS_ID=$(grep '^id:' workspace.yaml | awk '{print $2}')
+DB_ID=$(grep '^database_id:' workspace.yaml | awk '{print $2}')
 URL=$(grep '^metabase_url:' workspace.yaml | awk '{print $2}')
 ```
 
-Create transform:
+## Syncing a SQL File
+
 ```bash
-curl -s -X POST -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"...","source":{...},"target":{...}}' \
-  "$URL/api/ee/workspace/$WS_ID/transform"
-```
+FILE="questions/q01_revenue.sql"
+NAME=$(grep '^-- name:' "$FILE" | sed 's/^-- name: //')
+SCHEMA=$(grep '^-- target_schema:' "$FILE" | sed 's/^-- target_schema: //')
+TABLE=$(grep '^-- target_table:' "$FILE" | sed 's/^-- target_table: //')
+REF_ID=$(grep '^-- ref_id:' "$FILE" | sed 's/^-- ref_id: //')
+SQL=$(sed -n '/^[^-]/,$p' "$FILE" | jq -Rs .)
 
-Update transform:
-```bash
-curl -s -X PUT -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"...","source":{...},"target":{...}}' \
-  "$URL/api/ee/workspace/$WS_ID/transform/$REF_ID"
-```
+JSON='{"name":"'"$NAME"'","source":{"type":"query","query":{"type":"native","native":{"query":'"$SQL"'},"database":'"$DB_ID"'}},"target":{"type":"table","schema":"'"$SCHEMA"'","name":"'"$TABLE"'"}}'
 
-## Building Request Body
-
-SQL file to API request:
-```json
-{
-  "name": "...",
-  "source": {
-    "type": "query",
-    "query": {
-      "type": "native",
-      "native": {"query": "SELECT ..."},
-      "database": 19
-    }
-  },
-  "target": {"type": "table", "schema": "public", "name": "..."}
-}
+if [ -z "$REF_ID" ]; then
+  RESP=$(curl -s -X POST -H "x-api-key: $API_KEY" -H "Content-Type: application/json" -d "$JSON" "$URL/api/ee/workspace/$WS_ID/transform")
+  NEW_REF=$(echo "$RESP" | jq -r '.ref_id')
+  # Add ref_id to file header
+else
+  curl -s -X PUT -H "x-api-key: $API_KEY" -H "Content-Type: application/json" -d "$JSON" "$URL/api/ee/workspace/$WS_ID/transform/$REF_ID"
+fi
 ```
 ```
 
@@ -284,37 +294,63 @@ allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion]
 
 # Data Workspace
 
-Workflow for data analysis and pipeline building.
+Autonomous workflow. Execute the FULL loop without prompting:
+1. Discover tables - fetch metadata, save to `tables/*.yaml`
+2. Write file with proper headers
+3. Sync to workspace API
+4. Run the transform
+5. Present results
 
-## Two Modes
+## Configuration
 
-### Analysis Mode
-Triggered by questions: "What's the variance?", "Show top 5..."
-- Creates files in `questions/`
-- Shows results in chat
+```bash
+API_KEY=$(grep METABASE_API_KEY .env | cut -d= -f2-)
+WS_ID=$(grep '^id:' workspace.yaml | awk '{print $2}')
+DB_ID=$(grep '^database_id:' workspace.yaml | awk '{print $2}')
+URL=$(grep '^metabase_url:' workspace.yaml | awk '{print $2}')
+```
 
-### Pipeline Mode
-Triggered by: "Create a table that...", "Build cohort tables..."
-- Creates files in `transforms/`
-- Focus on reusable data models
+## Step 1: Discover Tables
 
-## Workflow
+Before writing queries, fetch metadata for relevant tables:
 
-1. Read context: `workspace.yaml`, `tables/*.yaml`
-2. Write SQL/Python with header comments
-3. Sync to workspace
-4. Dry-run to test: `POST .../transform/$REF_ID/dry-run`
-5. Present results (analysis) or confirm definition (pipeline)
+```bash
+# List all tables
+python3 ~/.claude/skills/workspace-admin/fetch_table.py --list
 
-## Scratch Queries
+# Fetch specific table by name
+python3 ~/.claude/skills/workspace-admin/fetch_table.py --name orders
 
-For quick checks - don't create files, just dry-run inline.
+# Fetch all tables
+python3 ~/.claude/skills/workspace-admin/fetch_table.py --all
+```
+
+## File Formats
+
+### SQL
+```sql
+-- name: Revenue by Segment
+-- target_schema: public
+-- target_table: revenue_by_segment
+
+SELECT segment, SUM(total) as revenue FROM orders GROUP BY segment
+```
+
+### Python
+```python
+# name: Customer Cohorts
+# source_tables: {"orders": 1042, "customers": 1015}
+# target_schema: public
+# target_table: customer_cohorts
+
+result = customers_df.merge(orders_df, on='customer_id')
+```
 
 ## API
 
-- Dry-run: `POST /api/ee/workspace/:ws/transform/:ref/dry-run`
+- Create: `POST /api/ee/workspace/:ws/transform`
+- Update: `PUT /api/ee/workspace/:ws/transform/:ref`
 - Run: `POST /api/ee/workspace/:ws/transform/:ref/run`
-- Run all: `POST /api/ee/workspace/:ws/run`
 ```
 
 ### .claude/skills/workspace-admin/SKILL.md

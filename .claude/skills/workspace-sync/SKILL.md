@@ -12,260 +12,178 @@ allowed-tools:
 
 # Workspace Sync
 
-This skill synchronizes local transform files with the Metabase workspace API:
-- Push local changes to the workspace
-- Create new transforms (POST) or update existing (PUT)
-- Write back `ref_id` to files after creation
-- Delete orphaned transforms (transforms in API but not in local files)
+Syncs local transform files with the Metabase workspace API.
 
-## Sync Behavior
+## Behavior
 
-- **Local files are the source of truth** - API state is overwritten
+- **Local files are source of truth** - API state is overwritten
 - **New files** (no `ref_id`): POST to create, then update file with returned `ref_id`
 - **Existing files** (has `ref_id`): PUT to update
 - **Deleted files**: Transforms in API but not locally are deleted
 
-## Prerequisites
-
-Must be run from inside an analysis project directory with:
-- `workspace.yaml` - Contains workspace ID and Metabase URL
-- `.env` - Contains `METABASE_API_KEY`
-
-## Commands
-
-### `/sync` - Sync All Files
-
-Syncs all files in `questions/` and `transforms/` to the workspace.
-
-**Workflow:**
-
-1. Read configuration:
-   ```bash
-   API_KEY=$(grep METABASE_API_KEY .env | cut -d= -f2)
-   WS_ID=$(grep '^id:' workspace.yaml | awk '{print $2}')
-   METABASE_URL=$(grep '^metabase_url:' workspace.yaml | awk '{print $2}')
-   ```
-
-2. List local files:
-   ```bash
-   find questions transforms -name "*.sql" -o -name "*.py" 2>/dev/null
-   ```
-
-3. For each file, extract metadata and sync:
-   - Parse header comments for `name`, `target_table`, `ref_id`, etc.
-   - If no `ref_id`: POST to create
-   - If has `ref_id`: PUT to update
-
-4. Get list of transforms from API and delete orphans
-
-5. Report results
-
-## API Calls
-
-### Create Transform (no ref_id)
+## Reading Configuration
 
 ```bash
-curl -s -X POST \
-  -H "x-api-key: $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Rating Variance",
-    "description": "...",
-    "source": {
-      "type": "query",
-      "query": {
-        "type": "native",
-        "native": {"query": "SELECT ..."},
-        "database": '$DB_ID'
-      }
-    },
-    "target": {
-      "type": "table",
-      "schema": "public",
-      "name": "rating_variance"
-    }
-  }' \
-  "$METABASE_URL/api/ee/workspace/$WS_ID/transform"
+# Read .env properly (handles values containing =)
+API_KEY=$(grep METABASE_API_KEY .env | cut -d= -f2-)
+WS_ID=$(grep '^id:' workspace.yaml | awk '{print $2}')
+DB_ID=$(grep '^database_id:' workspace.yaml | awk '{print $2}')
+URL=$(grep '^metabase_url:' workspace.yaml | awk '{print $2}')
 ```
 
-Response includes `ref_id` - update the local file with it.
-
-### Update Transform (has ref_id)
+## Syncing a SQL File
 
 ```bash
-curl -s -X PUT \
-  -H "x-api-key: $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Rating Variance",
-    "source": {...},
-    "target": {...}
-  }' \
-  "$METABASE_URL/api/ee/workspace/$WS_ID/transform/$REF_ID"
-```
+FILE="questions/q01_revenue.sql"
 
-### List Transforms
+# Extract metadata from header comments
+NAME=$(grep '^-- name:' "$FILE" | sed 's/^-- name: //')
+DESC=$(grep '^-- description:' "$FILE" | sed 's/^-- description: //')
+SCHEMA=$(grep '^-- target_schema:' "$FILE" | sed 's/^-- target_schema: //')
+TABLE=$(grep '^-- target_table:' "$FILE" | sed 's/^-- target_table: //')
+REF_ID=$(grep '^-- ref_id:' "$FILE" | sed 's/^-- ref_id: //')
 
-```bash
-curl -s -H "x-api-key: $API_KEY" \
-  "$METABASE_URL/api/ee/workspace/$WS_ID/transform"
-```
+# Extract SQL body (everything after header comments)
+SQL=$(sed -n '/^[^-]/,$p' "$FILE" | jq -Rs .)
 
-### Delete Transform
-
-```bash
-curl -s -X DELETE \
-  -H "x-api-key: $API_KEY" \
-  "$METABASE_URL/api/ee/workspace/$WS_ID/transform/$REF_ID"
-```
-
-## Building the Request Body
-
-### SQL File to API Request
-
-Given a SQL file:
-```sql
--- name: Rating Variance
--- description: Calculate variance by initial
--- target_schema: public
--- target_table: rating_variance
--- ref_id: lucid-ferret-a852
-
-SELECT UPPER(LEFT(reviewer, 1)) AS initial, VAR_POP(rating) AS variance
-FROM reviews
-GROUP BY 1
-```
-
-Build the API request:
-```json
+# Build JSON request
+JSON=$(cat <<EOF
 {
-  "name": "Rating Variance",
-  "description": "Calculate variance by initial",
+  "name": "$NAME",
+  "description": "$DESC",
   "source": {
     "type": "query",
     "query": {
       "type": "native",
-      "native": {
-        "query": "SELECT UPPER(LEFT(reviewer, 1)) AS initial, VAR_POP(rating) AS variance\nFROM reviews\nGROUP BY 1"
-      },
-      "database": 19
+      "native": {"query": $SQL},
+      "database": $DB_ID
     }
   },
   "target": {
     "type": "table",
-    "schema": "public",
-    "name": "rating_variance"
+    "schema": "$SCHEMA",
+    "name": "$TABLE"
   }
 }
+EOF
+)
+
+if [ -z "$REF_ID" ]; then
+  # CREATE: POST new transform
+  RESPONSE=$(curl -s -X POST \
+    -H "x-api-key: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$JSON" \
+    "$URL/api/ee/workspace/$WS_ID/transform")
+
+  # Extract ref_id from response and add to file
+  NEW_REF_ID=$(echo "$RESPONSE" | jq -r '.ref_id')
+  if [ "$NEW_REF_ID" != "null" ]; then
+    # Insert ref_id after target_table line
+    sed -i '' "/^-- target_table:/a\\
+-- ref_id: $NEW_REF_ID
+" "$FILE"
+    echo "Created: $FILE -> $NEW_REF_ID"
+  else
+    echo "Error creating $FILE: $RESPONSE"
+  fi
+else
+  # UPDATE: PUT existing transform
+  curl -s -X PUT \
+    -H "x-api-key: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$JSON" \
+    "$URL/api/ee/workspace/$WS_ID/transform/$REF_ID"
+  echo "Updated: $FILE ($REF_ID)"
+fi
 ```
 
-### Python File to API Request
+## Syncing a Python File
 
-Given a Python file:
-```python
-# name: User Order Summary
-# description: Join users with orders
-# source_tables: {"users": 1015, "orders": 1042}
-# target_schema: public
-# target_table: user_order_summary
+```bash
+FILE="transforms/cohorts.py"
 
-result = users_df.merge(orders_df, on='user_id')
-```
+# Extract metadata
+NAME=$(grep '^# name:' "$FILE" | sed 's/^# name: //')
+DESC=$(grep '^# description:' "$FILE" | sed 's/^# description: //')
+SOURCE_TABLES=$(grep '^# source_tables:' "$FILE" | sed 's/^# source_tables: //')
+SCHEMA=$(grep '^# target_schema:' "$FILE" | sed 's/^# target_schema: //')
+TABLE=$(grep '^# target_table:' "$FILE" | sed 's/^# target_table: //')
+REF_ID=$(grep '^# ref_id:' "$FILE" | sed 's/^# ref_id: //')
 
-Build the API request:
-```json
+# Extract Python body (everything after header comments)
+BODY=$(sed -n '/^[^#]/,$p' "$FILE" | jq -Rs .)
+
+JSON=$(cat <<EOF
 {
-  "name": "User Order Summary",
-  "description": "Join users with orders",
+  "name": "$NAME",
+  "description": "$DESC",
   "source": {
     "type": "python",
-    "source-tables": {"users": 1015, "orders": 1042},
-    "body": "result = users_df.merge(orders_df, on='user_id')"
+    "source-tables": $SOURCE_TABLES,
+    "body": $BODY
   },
   "target": {
     "type": "table",
-    "schema": "public",
-    "name": "user_order_summary"
+    "schema": "$SCHEMA",
+    "name": "$TABLE"
   }
 }
+EOF
+)
+
+# Same POST/PUT logic as SQL...
 ```
 
-## Parsing File Headers
-
-### SQL Files
+## Deleting Orphaned Transforms
 
 ```bash
-# Extract SQL body (everything after header comments)
-sed -n '/^[^-]/,$p' file.sql
+# Get all ref_ids from API
+API_REFS=$(curl -s -H "x-api-key: $API_KEY" \
+  "$URL/api/ee/workspace/$WS_ID/transform" | jq -r '.transforms[].ref_id')
 
-# Extract header field
-get_header() {
-  grep "^-- $1:" "$2" | sed "s/^-- $1: //"
-}
+# Get all ref_ids from local files
+LOCAL_REFS=$(grep -rh '^-- ref_id:\|^# ref_id:' questions/ transforms/ 2>/dev/null | \
+  sed 's/^-- ref_id: //; s/^# ref_id: //')
 
-NAME=$(get_header "name" file.sql)
-TARGET_TABLE=$(get_header "target_table" file.sql)
-REF_ID=$(get_header "ref_id" file.sql)
+# Find orphans (in API but not local)
+for ref in $API_REFS; do
+  if ! echo "$LOCAL_REFS" | grep -q "^$ref$"; then
+    curl -s -X DELETE \
+      -H "x-api-key: $API_KEY" \
+      "$URL/api/ee/workspace/$WS_ID/transform/$ref"
+    echo "Deleted orphan: $ref"
+  fi
+done
 ```
 
-### Python Files
+## Full Sync Script
 
 ```bash
-# Extract Python body (everything after header comments)
-sed -n '/^[^#]/,$p' file.py
+#!/bin/bash
+set -e
 
-# Extract header field
-get_header() {
-  grep "^# $1:" "$2" | sed "s/^# $1: //"
-}
+API_KEY=$(grep METABASE_API_KEY .env | cut -d= -f2-)
+WS_ID=$(grep '^id:' workspace.yaml | awk '{print $2}')
+DB_ID=$(grep '^database_id:' workspace.yaml | awk '{print $2}')
+URL=$(grep '^metabase_url:' workspace.yaml | awk '{print $2}')
+
+echo "Syncing to workspace $WS_ID..."
+
+# Sync all SQL files
+for f in questions/*.sql transforms/*.sql 2>/dev/null; do
+  [ -f "$f" ] || continue
+  # ... sync logic
+done
+
+# Sync all Python files
+for f in transforms/*.py 2>/dev/null; do
+  [ -f "$f" ] || continue
+  # ... sync logic
+done
+
+# Delete orphans
+# ... orphan deletion logic
+
+echo "Sync complete"
 ```
-
-## Updating ref_id After Creation
-
-After POST returns, update the file:
-
-```bash
-# Add ref_id to SQL file header (after target_table line)
-sed -i '' "/^-- target_table:/a\\
--- ref_id: $REF_ID
-" file.sql
-```
-
-Or use the Edit tool to insert the line.
-
-## Sync Report Format
-
-```
-Syncing 5 files to workspace 2856...
-
-Created:
-  questions/q1_rating_variance.sql -> lucid-ferret-a852
-  transforms/enriched_orders.sql -> gentle-fox-b123
-
-Updated:
-  questions/q2_top_reviewers.sql (calm-tiger-c456)
-  transforms/user_summary.sql (swift-hawk-d789)
-
-Deleted (orphaned):
-  old-transform (brave-lion-e012)
-
-Sync complete: 2 created, 2 updated, 1 deleted
-```
-
-## Error Handling
-
-- **400 Bad Request**: Check SQL syntax, target table conflicts
-- **403 Forbidden**: Check API key permissions
-- **404 Not Found**: Workspace or transform doesn't exist
-- **409 Conflict**: Target table already exists (another transform)
-
-On error, report which file failed and continue with remaining files.
-
-## Dry Run
-
-To preview what would happen without making changes:
-
-1. Parse all files and build requests
-2. Compare ref_ids with API transform list
-3. Report what would be created/updated/deleted
-4. Don't make any API calls
