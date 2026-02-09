@@ -279,6 +279,17 @@
     (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform :id ref-id}]
                        :rf (workspace-transform-id-xf conj))))
 
+(defn- upstream-ancestor-keys
+  "Given a graph and a ref-id, find all upstream ancestors (all node types).
+   Returns a set of {:node-type ... :id ...} maps (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents) and traverses upstream."
+  [graph ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform :id ref-id}]
+                       :init #{}
+                       :rf (fn [acc entity] (conj acc (select-keys entity [:node-type :id]))))))
+
 (defn downstream-descendants
   "Given a graph and a ref-id, find all downstream workspace transform descendants.
    Returns descendant ref-ids (not including the starting node).
@@ -788,16 +799,18 @@
 
 (defn- stale-ancestors-to-execute
   "Given a workspace, graph, and target ref-id, return the stale ancestor transforms to run, in dependency order.
-   Only returns transforms that are both ancestors of the target AND stale."
+   Only returns transforms that are both ancestors of the target AND stale.
+   Includes both workspace transforms and external transforms in the ancestor chain."
   [{ws-id :id} graph ref-id]
-  (let [ancestor-ids      (set (upstream-ancestors graph ref-id))
-        ancestor-entities (filter #(contains? ancestor-ids (:id %)) (:entities graph))
+  (let [ancestor-keys     (upstream-ancestor-keys graph ref-id)
+        ancestor?         (fn [entity] (contains? ancestor-keys (select-keys entity [:node-type :id])))
+        ancestor-entities (filter ancestor? (:entities graph))
         ;; Build a subgraph with only ancestor entities and their inter-dependencies
         ;; Dependencies map is keyed by entities (maps with :id), not by IDs directly
         ancestor-deps     (into {}
                                 (keep (fn [[to-entity from-list]]
-                                        (when (contains? ancestor-ids (:id to-entity))
-                                          [to-entity (filterv #(contains? ancestor-ids (:id %)) from-list)]))
+                                        (when (ancestor? to-entity)
+                                          [to-entity (filterv ancestor? from-list)]))
                                       (:dependencies graph)))
         ancestor-graph    {:entities     ancestor-entities
                            :dependencies ancestor-deps}

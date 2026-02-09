@@ -29,9 +29,9 @@
 (mr/def ::ancestors-result
   "Result of running stale ancestor transforms."
   [:map
-   [:succeeded [:sequential :string]]
-   [:failed [:sequential :string]]
-   [:not_run [:sequential :string]]])
+   [:succeeded [:sequential ::ref-id]]
+   [:failed [:sequential ::ref-id]]
+   [:not_run [:sequential ::ref-id]]])
 
 (mr/def ::execution-result
   [:map

@@ -578,3 +578,29 @@
               (is (= [] (:succeeded result)))
               (is (= [] (:failed result)))
               (is (= [] (:not_run result))))))))))
+
+(deftest run-stale-ancestors-includes-external-transforms-test
+  (testing "run-stale-ancestors! includes enclosed external transforms in the ancestor chain"
+    ;; Graph: (x1) -> x2 -> (x3) where x2 is an external (global) transform
+    ;; x1 is a workspace checkout, x2 is enclosed (global, not checked out), x3 is a workspace checkout
+    ;; x1 is locally stale -> x2 becomes transitively stale -> running ancestors for x3 should run both x1 and x2
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map global-map]}
+                            {:global    {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                             :workspace {:checkouts  [:x1 :x3]
+                                         :properties {:x1 {:definition_changed true}
+                                                      :x3 {:definition_changed false}}}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [x1-ref    (workspace-map :x1)
+            x2-global (str "global-id:" (global-map :x2))
+            x3-ref    (workspace-map :x3)]
+        (ws.tu/with-mocked-execution
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph x3-ref)
+                succeeded (:succeeded result)]
+            (testing "both workspace transform x1 and external transform x2 are run"
+              (is (= #{x1-ref x2-global} (set succeeded)))
+              (is (= [] (:failed result)))
+              (is (= [] (:not_run result))))
+            (testing "x1 runs before x2 (dependency order)"
+              (is (< (.indexOf succeeded x1-ref) (.indexOf succeeded x2-global))))))))))
