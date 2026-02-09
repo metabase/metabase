@@ -3,6 +3,13 @@
 # Generates a weekly markdown report of security alerts from GitHub
 # - Open alerts: ALL (current security topography)
 # - Fixed/Dismissed alerts: Since the specified date (default: 7 days ago)
+#
+# Usage:
+#   bin/security-report.sh [YYYY-MM-DD] > report.md
+#
+# Examples:
+#   bin/security-report.sh > security-report.md             # Last 7 days
+#   bin/security-report.sh 2026-01-03 > security-report.md  # Since Jan 3, 2026
 
 set -euo pipefail
 
