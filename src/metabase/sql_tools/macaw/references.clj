@@ -72,7 +72,6 @@
                   (driver.sql/normalize-name driver %)
                   %)))
 
-;; TODO: add this into sqlglot implementation
 (defn- col-fields [driver m]
   (->> (select-keys m [:type :column :table :schema :database :alias])
        (normalize-fields driver)))

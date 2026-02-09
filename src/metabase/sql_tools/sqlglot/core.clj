@@ -67,10 +67,43 @@
 
 ;;;; field-references
 
+(def ^:private ^:const normalizable-keys
+  "Keys that should have their string values normalized for case.
+   Matches Macaw's col-fields which normalizes [:type :column :table :schema :database :alias]."
+  #{:type :column :table :schema :database :alias})
+
+(defn- normalize-field
+  "Normalize identifier strings in a field spec using driver-specific case rules.
+   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
+  [driver field]
+  (if (map? field)
+    (reduce-kv (fn [m k v]
+                 (assoc m k
+                        (cond
+                          (and (normalizable-keys k) (string? v))
+                          (driver.sql/normalize-name driver v)
+
+                          (map? v)
+                          (normalize-field driver v)
+
+                          (set? v)
+                          (set (map #(normalize-field driver %) v))
+
+                          (sequential? v)
+                          (mapv #(normalize-field driver %) v)
+
+                          :else v)))
+               {}
+               field)
+    field))
+
 (defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
   (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)]
-    (update result :errors #(set (map convert-error %)))))
+    (-> result
+        (update :used-fields #(set (map (partial normalize-field driver) %)))
+        (update :returned-fields #(mapv (partial normalize-field driver) %))
+        (update :errors #(set (map convert-error %))))))
 
 ;;;; referenced-fields
 
