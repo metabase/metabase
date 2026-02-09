@@ -17,14 +17,17 @@ import type {
   DatabaseData,
 } from "metabase-types/api";
 
+import { Label } from "./Label";
+
 const DATABASE_FORM_CONFIG = {
   isAdvanced: true,
   engine: {
     fieldState: "disabled",
   },
+  advancedOptions: {
+    fieldState: "hidden",
+  },
 } as const;
-
-import { Label } from "./Label";
 
 export function AuxiliaryConnectionEditor({
   database,
