@@ -91,6 +91,7 @@ export const DatabaseFormBody = ({
         engineKey={engineKey}
         engine={engine}
         isAdvanced={isAdvanced}
+        config={config}
       />
       {isAdvanced && hasConnectionError && <DatabaseFormError />}
     </Box>

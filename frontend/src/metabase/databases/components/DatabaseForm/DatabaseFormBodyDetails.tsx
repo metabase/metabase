@@ -12,6 +12,7 @@ import type {
 import { isDatabaseFieldGroup, shouldShowField } from "../../utils/schema";
 import { DatabaseDetailField } from "../DatabaseDetailField";
 
+import type { DatabaseFormConfig } from "./DatabaseForm";
 import { CustomContainer } from "./container-styles";
 
 interface DatabaseFormBodyDetailsProps {
@@ -20,6 +21,7 @@ interface DatabaseFormBodyDetailsProps {
   engineKey: EngineKey | undefined;
   engine: Engine | undefined;
   isAdvanced: boolean;
+  config: DatabaseFormConfig;
 }
 
 export function DatabaseFormBodyDetails({
@@ -28,11 +30,12 @@ export function DatabaseFormBodyDetails({
   engineKey,
   engine,
   isAdvanced,
+  config,
 }: DatabaseFormBodyDetailsProps) {
   const { values } = useFormikContext<DatabaseData>();
 
   function renderField(engineField: EngineField) {
-    if (!shouldShowField(engineField, isAdvanced, values.details)) {
+    if (!shouldShowField(engineField, isAdvanced, config, values.details)) {
       return null;
     }
 
