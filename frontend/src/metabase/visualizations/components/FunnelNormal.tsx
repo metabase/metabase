@@ -13,6 +13,10 @@ import {
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
 import {
+  calculateFunnelSteps,
+  calculateStepOpacity,
+} from "metabase/static-viz/components/FunnelChart/utils/funnel";
+import {
   FunnelNormalRoot,
   FunnelStart,
   FunnelStep,
@@ -21,10 +25,6 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
-import {
-  calculateFunnelSteps,
-  calculateStepOpacity,
-} from "metabase/visualizations/lib/funnel/utils";
 import type {
   ClickObject,
   HoveredObject,

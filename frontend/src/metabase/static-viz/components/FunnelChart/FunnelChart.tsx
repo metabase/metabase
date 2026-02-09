@@ -8,16 +8,14 @@ import type {
 } from "metabase/static-viz/components/FunnelChart/types";
 import {
   calculateFunnelPolygonPoints,
+  calculateFunnelSteps,
+  calculateStepOpacity,
   getFormattedStep,
   groupData,
   reorderData,
 } from "metabase/static-viz/components/FunnelChart/utils/funnel";
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
-import {
-  calculateFunnelSteps,
-  calculateStepOpacity,
-} from "metabase/visualizations/lib/funnel/utils";
 
 import Watermark from "../../watermark.svg?component";
 
