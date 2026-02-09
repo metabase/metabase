@@ -3,6 +3,7 @@
   (:require
    [metabase.lib-metric.definition :as definition]
    [metabase.lib-metric.dimension :as dimension]
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.options :as lib.options]
    [metabase.util.performance :as perf]))
@@ -37,47 +38,19 @@
 
 ;;; -------------------------------------------------- Filter Operators --------------------------------------------------
 
-(def ^:private default-operators
-  "Default operators available for all column types."
-  [:is-null :not-null])
-
-(def ^:private string-operators
-  "String filter operators. Note: FE uses :is-empty/:not-empty instead of :is-null/:not-null for strings."
-  [:is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
-
-(def ^:private number-operators
-  "Numeric filter operators."
-  [:is-null :not-null := :!= :> :>= :< :<= :between])
-
-(def ^:private boolean-operators
-  "Boolean filter operators. Note: :!= is not supported."
-  [:is-null :not-null :=])
-
-(def ^:private temporal-operators
-  "Date/datetime filter operators."
-  [:is-null :not-null := :!= :> :< :between])
-
-(def ^:private coordinate-operators
-  "Coordinate filter operators. Note: :is-null/:not-null not supported for coordinates."
-  [:= :!= :> :>= :< :<= :between :inside])
-
-(def ^:private time-operators
-  "Time-only filter operators."
-  [:is-null :not-null :> :< :between])
-
 (defn operators-for-dimension
   "Get available filter operators for a dimension based on its type.
    Returns a vector of operator keywords.
    Type checking follows the same hierarchy as metabase.lib, applied to dimension metadata."
   [dimension]
   (cond
-    (types.isa/string-or-string-like? dimension) string-operators
-    (types.isa/coordinate? dimension)            coordinate-operators
-    (types.isa/boolean? dimension)               boolean-operators
-    (types.isa/time? dimension)                  time-operators
-    (types.isa/temporal? dimension)              temporal-operators
-    (types.isa/numeric? dimension)               number-operators
-    :else                                        default-operators))
+    (types.isa/string-or-string-like? dimension) (operators/operators-for-dimension-type :string)
+    (types.isa/coordinate? dimension)            (operators/operators-for-dimension-type :coordinate)
+    (types.isa/boolean? dimension)               (operators/operators-for-dimension-type :boolean)
+    (types.isa/time? dimension)                  (operators/operators-for-dimension-type :time)
+    (types.isa/temporal? dimension)              (operators/operators-for-dimension-type :temporal)
+    (types.isa/numeric? dimension)               (operators/operators-for-dimension-type :numeric)
+    :else                                        (operators/operators-for-dimension-type :default)))
 
 (defn filterable-dimension-operators
   "Get available filter operators for a dimension.

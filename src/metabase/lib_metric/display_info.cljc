@@ -4,9 +4,10 @@
    binning strategies.
 
    Follows the same multimethod dispatch pattern as metabase.lib.metadata.calculation/display-info."
-  (:refer-clojure :exclude [derive])
   (:require
    #?@(:cljs [[metabase.lib.cache :as lib.cache]])
+   [metabase.lib-metric.hierarchy :as hierarchy]
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -14,17 +15,6 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]))
-
-;;; -------------------------------------------------- Hierarchy --------------------------------------------------
-
-(defonce ^{:doc "Hierarchy for lib-metric display-info dispatch."} hierarchy
-  (atom (make-hierarchy)))
-
-(defn derive
-  "Like [[clojure.core/derive]], but affects the lib-metric [[hierarchy]]."
-  [tag parent]
-  (swap! hierarchy clojure.core/derive tag parent)
-  nil)
 
 ;;; -------------------------------------------------- Multimethod --------------------------------------------------
 
@@ -34,7 +24,7 @@
   {:arglists '([definition x])}
   (fn [_definition x]
     (lib.dispatch/dispatch-value x))
-  :hierarchy hierarchy)
+  :hierarchy hierarchy/hierarchy)
 
 ;;; -------------------------------------------------- Default Implementation --------------------------------------------------
 
@@ -173,24 +163,7 @@
 (defn- operator-display-name
   "Get a human-readable name for a filter operator."
   [op]
-  (case op
-    :=                "is"
-    :!=               "is not"
-    :>                "is greater than"
-    :>=               "is greater than or equal to"
-    :<                "is less than"
-    :<=               "is less than or equal to"
-    :between          "is between"
-    :contains         "contains"
-    :does-not-contain "does not contain"
-    :starts-with      "starts with"
-    :ends-with        "ends with"
-    :is-null          "is empty"
-    :not-null         "is not empty"
-    :is-empty         "is empty"
-    :not-empty        "is not empty"
-    :time-interval    "is"
-    (name op)))
+  (operators/display-name op))
 
 (defn- filter-clause-display-name
   "Generate a display name for a filter clause."
@@ -229,15 +202,9 @@
   [definition clause]
   {:display-name (filter-clause-display-name definition clause)})
 
-;; Derive filter operators into a common parent for dispatch.
-(doseq [op [:= :!= :< :<= :> :>= :between
-            :contains :does-not-contain :starts-with :ends-with
-            :is-null :not-null :is-empty :not-empty
-            :and :or :not
-            :time-interval :relative-time-interval]]
-  (derive op ::filter-clause))
-
-(defmethod display-info-method ::filter-clause
+;; Filter operators derive from operators/::filter-operator via the shared hierarchy.
+;; The derivations are registered in metabase.lib-metric.operators when it loads.
+(defmethod display-info-method ::operators/filter-operator
   [definition clause]
   (filter-clause-display-info definition clause))
 

@@ -815,6 +815,98 @@
         (is (= "You don't have permissions to do that."
                (dataset-request-error 403 {:source-metric (:id metric)})))))))
 
+(deftest dataset-permission-denied-measure-data-perms-test
+  (testing "POST /api/metric/dataset respects measure data permissions"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (dataset-request-error 403 {:source-measure (:id measure)}))))))))
+
+(deftest dataset-metric-with-collection-perms-can-execute-test
+  (testing "POST /api/metric/dataset allows execution when user has collection read perms"
+    (mt/with-temp [:model/Card metric {:name          "Accessible Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; rasta has access to the root collection by default
+      (let [response (dataset-request {:source-metric (:id metric)})]
+        (is (= "completed" (:status response)))
+        (is (= 100 (first-result response)))))))
+
+(deftest dataset-measure-with-data-perms-can-execute-test
+  (testing "POST /api/metric/dataset allows measure execution when user has data perms"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Accessible Measure"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [response (dataset-request {:source-measure (:id measure)})]
+            (is (= "completed" (:status response)))
+            (is (= 100 (first-result response)))))))))
+
+(deftest dataset-metric-admin-can-always-execute-test
+  (testing "POST /api/metric/dataset allows admin to execute metrics in any collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        ;; crowberto is admin
+        (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"
+                                             {:definition {:source-metric (:id metric)}})]
+          (is (= "completed" (:status response)))
+          (is (= 100 (ffirst (get-in response [:data :rows])))))))))
+
+(deftest dataset-measure-admin-can-always-execute-test
+  (testing "POST /api/metric/dataset allows admin to execute measures regardless of data perms"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        ;; crowberto is admin and can bypass data perms
+        (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"
+                                             {:definition {:source-measure (:id measure)}})]
+          (is (= "completed" (:status response)))
+          (is (= 100 (ffirst (get-in response [:data :rows])))))))))
+
+(deftest dataset-metric-with-filters-respects-permissions-test
+  (testing "POST /api/metric/dataset with filters respects collection permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        ;; Even with filters, permissions should be checked first
+        (is (= "You don't have permissions to do that."
+               (dataset-request-error 403 {:source-metric (:id metric)
+                                           :filters       []})))))))
+
+(deftest dataset-metric-with-projections-respects-permissions-test
+  (testing "POST /api/metric/dataset with projections respects collection permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        ;; Even with projections, permissions should be checked first
+        (is (= "You don't have permissions to do that."
+               (dataset-request-error 403 {:source-metric (:id metric)
+                                           :projections   []})))))))
+
 (deftest dataset-requires-definition-test
   (testing "POST /api/metric/dataset requires definition"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset" {})))))
