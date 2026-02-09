@@ -1000,7 +1000,8 @@
    _query-params
    {:keys [sql]} :- [:map [:sql [:string {:min 1}]]]]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
-        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot query archived workspace")
+        _         (api/check-400 (not= :archived (:base_status workspace))
+                                 "Cannot query archived workspace")
         _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/execute-adhoc-query workspace graph sql)))
