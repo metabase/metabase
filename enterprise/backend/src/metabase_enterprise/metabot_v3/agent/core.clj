@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,16 +91,29 @@
   "Call Claude and stream processed parts.
 
   Uses lite-aisdk-xf for fluid text streaming - emits text chunks immediately
-  rather than collecting them into one large part."
+  rather than collecting them into one large part.
+
+  Returns a reducible that, when consumed, traces the full LLM round-trip
+  (HTTP call + streaming response) as an OTel span."
   [memory context profile tools]
   (let [model      (:model profile "claude-haiku-4-5")
         system-msg (messages/build-system-message context profile tools)
         input-msgs (messages/build-message-history memory)]
     (log/info "Calling Claude" {:model model :msgs (count input-msgs) :tools (count tools)})
-    (eduction (comp (self/tool-executor-xf tools)
-                    (self/lite-aisdk-xf))
-              (self/claude (cond-> {:model model :input input-msgs :tools (vec tools)}
-                             system-msg (assoc :system (:content system-msg)))))))
+    (let [source (eduction (comp (self/tool-executor-xf tools)
+                                 (self/lite-aisdk-xf))
+                           (self/claude (cond-> {:model model :input input-msgs :tools (vec tools)}
+                                          system-msg (assoc :system (:content system-msg)))))]
+      ;; Wrap in a reducible that traces the entire LLM call + tool execution round-trip.
+      ;; The span covers from the start of reduction (when the HTTP request fires) through
+      ;; the last streamed chunk being consumed.
+      (reify clojure.lang.IReduceInit
+        (reduce [_ rf init]
+          (with-span :info {:name       :metabot-v3.agent/call-llm
+                            :model      model
+                            :msg-count  (count input-msgs)
+                            :tool-count (count tools)}
+            (reduce rf init source)))))))
 
 ;;; Memory management
 
@@ -218,37 +232,39 @@
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
   [{:keys [agent rf result iteration] :as loop-state}]
-  (let [{:keys [profile tools context memory-atom]} agent
-        max-iter   (:max-iterations profile 10)
-        parts-atom (atom [])
-        ;; Compose: post-process for streaming output, accumulate for later decisions
-        xf         (comp (streaming/post-process-xf (get-in @memory-atom [:state :queries] {})
-                                                    (get-in @memory-atom [:state :charts] {}))
-                         (u/tee-xf parts-atom))
-        ;; Stream parts to consumer AND accumulate them simultaneously
-        result'    (transduce xf rf result (call-llm @memory-atom context profile tools))
-        parts      @parts-atom]
-    (log/debug "Iteration" {:n iteration})
-    (if (empty? parts)
-      (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
-      (do
-        (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
-        (swap! memory-atom update-memory parts)
-        (cond
-          (reduced? result')
-          (assoc loop-state :status :reduced :result @result')
+  (with-span :debug {:name      :metabot-v3.agent/loop-step
+                     :iteration iteration}
+    (let [{:keys [profile tools context memory-atom]} agent
+          max-iter   (:max-iterations profile 10)
+          parts-atom (atom [])
+          ;; Compose: post-process for streaming output, accumulate for later decisions
+          xf         (comp (streaming/post-process-xf (get-in @memory-atom [:state :queries] {})
+                                                      (get-in @memory-atom [:state :charts] {}))
+                           (u/tee-xf parts-atom))
+          ;; Stream parts to consumer AND accumulate them simultaneously
+          result'    (transduce xf rf result (call-llm @memory-atom context profile tools))
+          parts      @parts-atom]
+      (log/debug "Iteration" {:n iteration})
+      (if (empty? parts)
+        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
+        (do
+          (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
+          (swap! memory-atom update-memory parts)
+          (cond
+            (reduced? result')
+            (assoc loop-state :status :reduced :result @result')
 
-          (should-continue? iteration max-iter parts)
-          (assoc loop-state :result result' :iteration (inc iteration))
+            (should-continue? iteration max-iter parts)
+            (assoc loop-state :result result' :iteration (inc iteration))
 
-          :else
-          (do (log/info "Agent loop complete"
-                        {:iterations (inc iteration)
-                         ;; TODO: decide if we want this reason to float up to frontend
-                         :reason     (finish-reason iteration max-iter parts)})
-              (assoc loop-state
-                     :status :done
-                     :result (rf result' (final-state-part @memory-atom)))))))))
+            :else
+            (do (log/info "Agent loop complete"
+                          {:iterations (inc iteration)
+                           ;; TODO: decide if we want this reason to float up to frontend
+                           :reason     (finish-reason iteration max-iter parts)})
+                (assoc loop-state
+                       :status :done
+                       :result (rf result' (final-state-part @memory-atom))))))))))
 
 ;;; Public API
 
@@ -263,15 +279,19 @@
             [:profile-id ::profile-id]
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]]]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (try
-        (->> (initial-loop-state (init-agent opts) rf init)
-             (iterate loop-step)
-             (drop-while #(= :continue (:status %)))
-             first
-             :result)
-        (catch Exception e
-          (when-not (:api-error (ex-data e))
-            (log/error e "Agent loop error"))
-          (rf init (error-part e)))))))
+  (let [profile-id (:profile-id opts)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (with-span :info {:name       :metabot-v3.agent/run-agent-loop
+                          :profile-id profile-id
+                          :msg-count  (count (:messages opts))}
+          (try
+            (->> (initial-loop-state (init-agent opts) rf init)
+                 (iterate loop-step)
+                 (drop-while #(= :continue (:status %)))
+                 first
+                 :result)
+            (catch Exception e
+              (when-not (:api-error (ex-data e))
+                (log/error e "Agent loop error"))
+              (rf init (error-part e)))))))))
