@@ -5176,10 +5176,10 @@
         "required" : [ "conversation_id" ]
       },
       "metabase-enterprise.metabot-v3.tools.transforms.transform-source" : {
-        "$ref" : "#/components/schemas/metabase.transforms.api.transform.transform-source"
+        "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.transform-source"
       },
       "metabase-enterprise.metabot-v3.tools.transforms.transform-target" : {
-        "$ref" : "#/components/schemas/metabase.transforms.api.transform.transform-target"
+        "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.transform-target"
       },
       "metabase-enterprise.permission-debug.impl.group-id" : {
         "type" : "integer"
@@ -13796,14 +13796,14 @@
         "type" : "string",
         "enum" : [ "events" ]
       },
-      "metabase.transforms.api.transform.run-trigger" : {
+      "metabase.transforms-rest.api.transform.run-trigger" : {
         "type" : "string",
         "enum" : [ "none", "global-schedule" ]
       },
-      "metabase.transforms.api.transform.transform-source" : {
+      "metabase.transforms-rest.api.transform.transform-source" : {
         "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
       },
-      "metabase.transforms.api.transform.transform-target" : {
+      "metabase.transforms-rest.api.transform.transform-target" : {
         "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
       },
       "metabase.transforms.schema.append-config" : {
@@ -43514,7 +43514,7 @@
                     "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
                   },
                   "run_trigger" : {
-                    "$ref" : "#/components/schemas/metabase.transforms.api.transform.run-trigger"
+                    "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.run-trigger"
                   },
                   "description" : {
                     "oneOf" : [ {
@@ -44536,7 +44536,7 @@
                     "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
                   },
                   "run_trigger" : {
-                    "$ref" : "#/components/schemas/metabase.transforms.api.transform.run-trigger"
+                    "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.run-trigger"
                   },
                   "description" : {
                     "oneOf" : [ {

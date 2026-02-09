@@ -1,4 +1,4 @@
-import * as INSPECTOR from "cljs/metabase.transforms.inspector.js";
+import * as INSPECTOR from "cljs/metabase.transforms-inspector.js";
 import type {
   InspectorCard,
   InspectorLens,

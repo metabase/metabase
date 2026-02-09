@@ -1560,17 +1560,49 @@
 
   transforms
   {:team "Querying"
-   :api  #{metabase.transforms.api.transform
-           metabase.transforms.api.transform-job
-           metabase.transforms.api.transform-tag
-           metabase.transforms.core
+   :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
+           metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
-           api
            channel
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           models
+           premium-features
+           queries
+           query-processor
+           settings
+           sync
+           task
+           task-history
+           util}
+   :friends #{models
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase.transforms-inspector.core
+           metabase.transforms-inspector.schema}
+   :uses #{driver
+           lib
+           lib-be
+           query-processor
+           transforms
+           util}}
+
+  transforms-rest
+  {:team "Gadget"
+   :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-job
+           metabase.transforms-rest.api.transform-tag}
+   :uses #{api
            database-routing
            driver
            events
@@ -1583,14 +1615,9 @@
            request
            revisions
            settings
-           sync
-           task
-           task-history
-           util}
-   :friends #{models
-              enterprise/transforms-python
-              enterprise/workspaces}}
-
+           transforms
+           transforms-inspector
+           util}}
 
   types
   {:team "Querying"
