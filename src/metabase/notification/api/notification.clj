@@ -31,10 +31,6 @@
   [notification]
   (= :notification/card (:payload_type notification)))
 
-(defn- dashboard-notification?
-  [notification]
-  (= :notification/dashboard (:payload_type notification)))
-
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
   [{:keys [creator_id creator_or_recipient_id recipient_id card_id dashboard_id payload_type include_inactive legacy-active legacy-user-id]}]
