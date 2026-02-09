@@ -9,14 +9,9 @@ export const getTranslatedFilterDisplayName = (
   tc: ContentTranslationFunction,
 ): string => {
   const displayInfo = Lib.displayInfo(query, stageIndex, filter);
-  const parts = Lib.filterParts(query, stageIndex, filter);
-  const columnDisplayName = parts?.column
-    ? Lib.displayInfo(query, stageIndex, parts.column).displayName
-    : undefined;
 
-  return PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
-    displayInfo.longDisplayName ?? "",
+  return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+    displayInfo.longDisplayName,
     tc,
-    columnDisplayName,
   );
 };

@@ -22,8 +22,11 @@ import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
-import { DependenciesUpsellPage, LibraryUpsellPage } from "./upsells";
-import { DependencyDiagnosticsUpsellPage } from "./upsells/DependencyDiagnosticsUpsellPage";
+import {
+  DependenciesUpsellPage,
+  DependencyDiagnosticsUpsellPage,
+  LibraryUpsellPage,
+} from "./upsells/pages";
 
 export function getDataStudioRoutes(
   store: Store<State>,

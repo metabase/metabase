@@ -6,6 +6,7 @@ import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { getIsHosted } from "metabase/databases/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -31,6 +32,7 @@ export const CreateTransformMenu = () => {
   ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const isHosted = useSelector(getIsHosted);
 
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
@@ -39,6 +41,9 @@ export const CreateTransformMenu = () => {
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
   });
+  const shouldShowPythonScriptOption =
+    isHosted &&
+    (shouldShowPythonTransformsUpsell || hasPythonTransformsFeature);
 
   const handlePythonClick = () => {
     if (hasPythonTransformsFeature) {
@@ -87,8 +92,7 @@ export const CreateTransformMenu = () => {
                 {t`SQL query`}
               </Menu.Item>
 
-              {(shouldShowPythonTransformsUpsell ||
-                hasPythonTransformsFeature) && (
+              {shouldShowPythonScriptOption && (
                 <Menu.Item
                   leftSection={<Icon name="code_block" />}
                   rightSection={
@@ -99,7 +103,6 @@ export const CreateTransformMenu = () => {
                   {t`Python script`}
                 </Menu.Item>
               )}
-
               <Menu.Item
                 leftSection={<Icon name="insight" />}
                 onClick={() => {
