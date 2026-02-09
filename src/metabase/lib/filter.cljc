@@ -629,14 +629,14 @@
         two-item    (fn [conj-word]
                       ;; "A and B" => " and " is between A and B
                       (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B"])]
-                        (subs result 1 (- (count result) 1))))
+                        (subs result 1 (dec (count result)))))
         three-item  (fn [conj-word]
                       ;; "A, B, and C" => ", " between A and B, ", and " between B and C
                       (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B" "C"])
                             ;; Find the separators around "B"
                             b-idx  (str/index-of result "B")]
                         [(subs result 1 b-idx)
-                         (subs result (inc b-idx) (- (count result) 1))]))]
+                         (subs result (inc b-idx) (dec (count result)))]))]
     (->> (concat
           (map two-item conjunctions)
           (mapcat three-item conjunctions))
