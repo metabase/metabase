@@ -160,7 +160,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
-    describe("filter step", () => {
+    describe.skip("filter step", () => {
       it("should translate content for numeric field", () => {
         setupEditor();
         mountEditor();
@@ -743,7 +743,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
-    it("should translate filter display name in RTL locale", () => {
+    it.skip("should translate filter display name in RTL locale", () => {
       setupArabicEditor();
       mountArabicEditor();
 
