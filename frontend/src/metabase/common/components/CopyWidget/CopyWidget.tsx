@@ -31,8 +31,10 @@ export const CopyWidget = ({
         onClick={
           !onChange
             ? (e) => {
-                const input = e.target as HTMLInputElement;
-                input.setSelectionRange(0, input.value.length);
+                e.currentTarget.setSelectionRange(
+                  0,
+                  e.currentTarget.value.length,
+                );
               }
             : undefined
         }
