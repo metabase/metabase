@@ -1,11 +1,11 @@
-import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
 
 import { GridItemRoot, GridRoot } from "./Grid.styled";
 
-export const Grid = (props: ComponentProps<typeof GridRoot>) => (
-  <GridRoot {...props} />
+export const Grid = (props: { children: ReactNode }) => (
+  <GridRoot>{props.children}</GridRoot>
 );
 
-export const GridItem = (props: ComponentProps<typeof GridItemRoot>) => (
-  <GridItemRoot {...props} />
+export const GridItem = (props: { children: ReactNode }) => (
+  <GridItemRoot>{props.children}</GridItemRoot>
 );
