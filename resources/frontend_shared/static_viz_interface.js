@@ -38,10 +38,11 @@ function funnel(data, settings, tokenFeatures) {
 
 
 function javascript_visualization(rawSeries, dashcardSettings, options) {
+  const parsedOptions = JSON.parse(options);
   const content = StaticViz.RenderChart(
     JSON.parse(rawSeries),
     JSON.parse(dashcardSettings),
-    JSON.parse(options),
+    parsedOptions,
   );
   const type = content.startsWith("<svg") ? "svg" : "html";
 

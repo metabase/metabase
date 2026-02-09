@@ -103,8 +103,11 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
+  width?: number;
+  height?: number;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  fitLegendWithinHeight?: boolean;
 }
 
 export interface VisualizationProps {

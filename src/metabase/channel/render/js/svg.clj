@@ -203,31 +203,50 @@
                                                            (json/encode (premium-features/token-features)))))]
     (svg-string->bytes svg-string)))
 
+(def ^:dynamic *chart-width*
+  "Width for the static chart component. When nil, uses the frontend default."
+  nil)
+
+(def ^:dynamic *chart-height*
+  "Height for the static chart component. When nil, uses the frontend default."
+  nil)
+
+(def ^:dynamic *fit-legend-within-height*
+  "When true, chart legends fit within the provided height instead of extending beyond it."
+  false)
+
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
-  (let [response (with-static-viz-context context
+  (let [options (cond-> {:applicationColors (appearance/application-colors)
+                         :startOfWeek       (lib-be/start-of-week)
+                         :customFormatting  (appearance/custom-formatting)
+                         :tokenFeatures     (premium-features/token-features)}
+                  *chart-width*              (assoc :width *chart-width*)
+                  *chart-height*             (assoc :height *chart-height*)
+                  *fit-legend-within-height* (assoc :fitLegendWithinHeight true))
+        response (with-static-viz-context context
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
-                                                         (json/encode {:applicationColors (appearance/application-colors)
-                                                                       :startOfWeek (lib-be/start-of-week)
-                                                                       :customFormatting (appearance/custom-formatting)
-                                                                       :tokenFeatures (premium-features/token-features)}))))]
+                                                         (json/encode options))))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
 
+(defn gauge-svg-string
+  "Render a gauge chart and return the raw SVG string (no PNG conversion)."
+  [card data]
+  (with-static-viz-context context
+    (.asString (js.engine/execute-fn-name context "gauge"
+                                          (json/encode card)
+                                          (json/encode data)
+                                          (json/encode (premium-features/token-features))))))
+
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (with-static-viz-context context
-    (let [js-res (js.engine/execute-fn-name context "gauge"
-                                            (json/encode card)
-                                            (json/encode data)
-                                            (json/encode (premium-features/token-features)))
-          svg-string (.asString js-res)]
-      (svg-string->bytes svg-string))))
+  (svg-string->bytes (gauge-svg-string card data)))
 
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"

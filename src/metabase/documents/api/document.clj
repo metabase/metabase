@@ -1,12 +1,14 @@
 (ns metabase.documents.api.document
   "`/api/document/` routes"
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as m.document]
+   [metabase.documents.pdf :as pdf]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
@@ -467,6 +469,31 @@
                  :format-rows?           format-rows?
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
+
+;;; ------------------------------------------------- PDF Export ------------------------------------------------------
+
+(defn- sanitize-filename
+  "Remove characters not safe for filenames."
+  [s]
+  (-> (or s "document")
+      (str/replace #"[^\w\s\-]" "")
+      str/trim
+      (str/replace #"\s+" "_")))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:document-id/pdf"
+  "Export a Document as a PDF file."
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
+  (let [document (api/check-404
+                  (api/read-check
+                   (t2/select-one :model/Document :id document-id :archived false)))
+        pdf-bytes (pdf/document->pdf-bytes document-id)
+        filename  (str (sanitize-filename (:name document)) ".pdf")]
+    {:status  200
+     :headers {"Content-Type"        "application/pdf"
+               "Content-Disposition" (str "attachment; filename=\"" filename "\"")
+               "Content-Length"      (str (alength pdf-bytes))}
+     :body    (java.io.ByteArrayInputStream. pdf-bytes)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/document/` routes."
