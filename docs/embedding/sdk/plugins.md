@@ -52,7 +52,7 @@ By default, links open in a new tab. You can use `handleLink` to intercept link 
 
 The function receives a URL string and should return `{ handled: true }` to prevent default navigation, or `{ handled: false }` to fall back to the default behavior (opening in a new tab).
 
-The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level. `handleLink` is also available in [modular embedding](../modular-embedding.md#customizing-link-click-behavior) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
+The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level. `handleLink` is also available in [modular embedding](../modular-embedding.md#page-level-config) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
 
 To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/formatting.md#display-as).
 
