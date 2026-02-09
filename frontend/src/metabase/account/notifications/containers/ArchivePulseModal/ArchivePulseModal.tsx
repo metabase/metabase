@@ -22,7 +22,7 @@ export function ArchivePulseModal({
   params,
   location,
   onClose,
-}: ArchivePulseModalProps): JSX.Element {
+}: ArchivePulseModalProps) {
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
 
@@ -41,20 +41,18 @@ export function ArchivePulseModal({
     await updateSubscription({ id: item.id, archived });
   };
 
-  return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      {() =>
-        pulse && user ? (
-          <ArchiveNotificationModal
-            item={pulse}
-            type="pulse"
-            user={user}
-            hasUnsubscribed={Boolean(location.query?.unsubscribed)}
-            onArchive={handleArchive}
-            onClose={onClose}
-          />
-        ) : null
-      }
-    </LoadingAndErrorWrapper>
-  );
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return pulse && user ? (
+    <ArchiveNotificationModal
+      item={pulse}
+      type="pulse"
+      user={user}
+      hasUnsubscribed={Boolean(location.query?.unsubscribed)}
+      onArchive={handleArchive}
+      onClose={onClose}
+    />
+  ) : null;
 }

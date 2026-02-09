@@ -17,7 +17,7 @@ type UnsubscribePulseModalProps = {
 export function UnsubscribePulseModal({
   params,
   onClose,
-}: UnsubscribePulseModalProps): JSX.Element {
+}: UnsubscribePulseModalProps) {
   const dispatch = useDispatch();
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
@@ -42,20 +42,18 @@ export function UnsubscribePulseModal({
     dispatch(navigateToArchive(item, "pulse", hasUnsubscribed));
   };
 
-  return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      {() =>
-        pulse && user ? (
-          <UnsubscribeModal
-            item={pulse}
-            type="pulse"
-            user={user}
-            onUnsubscribe={handleUnsubscribe}
-            onArchive={handleArchive}
-            onClose={onClose}
-          />
-        ) : null
-      }
-    </LoadingAndErrorWrapper>
-  );
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return pulse && user ? (
+    <UnsubscribeModal
+      item={pulse}
+      type="pulse"
+      user={user}
+      onUnsubscribe={handleUnsubscribe}
+      onArchive={handleArchive}
+      onClose={onClose}
+    />
+  ) : null;
 }

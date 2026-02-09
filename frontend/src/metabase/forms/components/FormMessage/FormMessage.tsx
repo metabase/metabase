@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { isObject } from "metabase-types/guards";
+
 import { FormMessageStyled } from "./FormMessage.styled";
 
 export type Response = {
@@ -11,10 +13,7 @@ export type Response = {
 
 function isResponse(value: unknown): value is Response {
   return (
-    value != null &&
-    typeof value === "object" &&
-    "status" in value &&
-    typeof (value as Response).status === "number"
+    isObject(value) && "status" in value && typeof value.status === "number"
   );
 }
 
