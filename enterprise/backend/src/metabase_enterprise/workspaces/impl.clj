@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.api.common :as api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.util]
    [metabase.util :as u]
@@ -58,29 +59,56 @@
   {:schema schema
    :name   table})
 
+(defn ungranted-inputs-for-transform
+  "Return ungranted WorkspaceInput rows that are linked to the given transform (by ref-id).
+   Uses the latest transform_version from workspace_input_transform."
+  [ws-id ref-id]
+  (t2/select [:model/WorkspaceInput :id :db_id :schema :table :table_id]
+             {:join  [[:workspace_input_transform :wit]
+                      [:= :wit.workspace_input_id :workspace_input.id]]
+              :where [:and
+                      [:= :wit.workspace_id ws-id]
+                      [:= :wit.ref_id ref-id]
+                      [:= :workspace_input.access_granted false]
+                      [:= :wit.transform_version
+                       {:select [[:%max.transform_version]]
+                        :from   [:workspace_input_transform]
+                        :where  [:and
+                                 [:= :workspace_id ws-id]
+                                 [:= :ref_id ref-id]]}]]}))
+
+(defn all-inputs-granted?
+  "Check whether all input tables for a given transform have been granted access."
+  [ws-id ref-id]
+  (empty? (ungranted-inputs-for-transform ws-id ref-id)))
+
 (defn sync-grant-accesses!
   "Grant read access to external input tables for a workspace that haven't been granted yet.
    External inputs are tables that are read by transforms but not produced by any transform in the workspace.
    This should be called after adding transforms to a workspace or when re-initializing workspace isolation
-   (e.g., after unarchiving)."
+   (e.g., after unarchiving).
+
+   When the current user is not a superuser (e.g., a workspace service user / agent), grants are skipped.
+   The agent must request explicit approval via the `/input/grant` endpoint instead."
   [{workspace-id :id :as workspace}]
-  (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
-    (if-not (:database_details workspace)
-      ;; TODO (Chris 2025-12-15) -- this should throw, but we're cautious about racing with initialization
-      #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
-      (log/warn "No database details, unable to grant read only access to the service account.")
-      (when (seq ungranted-inputs)
-        (let [database (t2/select-one :model/Database :id (:database_id workspace))
-              tables   (mapv external-input->table ungranted-inputs)]
-          (try
-            (ws.isolation/grant-read-access-to-tables! database workspace tables)
-            ;; Mark inputs as granted after successful grant
-            (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
-                        {:access_granted true})
-            (catch Exception e
-              ;; Suppress errors for tables that don't exist (common in tests with fake tables)
-              (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
-                (log/warn e "Error granting RO table permissions")))))))))
+  (when api/*is-superuser?*
+    (let [ungranted-inputs (query-ungranted-external-inputs workspace-id)]
+      (if-not (:database_details workspace)
+        ;; TODO (Chris 2025-12-15) -- this should throw, but we're cautious about racing with initialization
+        #_(throw (ex-info "No database details, unable to grant read only access to the service account." {}))
+        (log/warn "No database details, unable to grant read only access to the service account.")
+        (when (seq ungranted-inputs)
+          (let [database (t2/select-one :model/Database :id (:database_id workspace))
+                tables   (mapv external-input->table ungranted-inputs)]
+            (try
+              (ws.isolation/grant-read-access-to-tables! database workspace tables)
+              ;; Mark inputs as granted after successful grant
+              (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
+                          {:access_granted true})
+              (catch Exception e
+                ;; Suppress errors for tables that don't exist (common in tests with fake tables)
+                (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
+                  (log/warn e "Error granting RO table permissions"))))))))))
 
 (defn- batch-lookup-table-ids
   "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
@@ -420,18 +448,34 @@
   (ws.dag/path-induced-subgraph ws-id (workspace-transforms ws-id)))
 
 (defn- cleanup-old-transform-versions!
-  "Delete obsolete analysis for a given workspace transform."
+  "Delete obsolete analysis for a given workspace transform.
+   Cleans up old WorkspaceOutput rows and old WorkspaceInputTransform join rows.
+   Also removes orphaned WorkspaceInput rows that no longer have any join rows."
   [ws-id ref-id]
-  (doseq [model [:model/WorkspaceOutput :model/WorkspaceInput]]
-    (t2/delete! model
-                :workspace_id ws-id
-                :ref_id ref-id
-                ;; Use a subselect to avoid left over gunk from race conditions.
-                {:where [:< :transform_version {:select [:analysis_version]
-                                                :from   [:workspace_transform]
-                                                :where  [:and
-                                                         [:= :workspace_id ws-id]
-                                                         [:= :ref_id ref-id]]}]})))
+  ;; Clean up old output rows (unchanged)
+  (t2/delete! :model/WorkspaceOutput
+              :workspace_id ws-id
+              :ref_id ref-id
+              {:where [:< :transform_version {:select [:analysis_version]
+                                              :from   [:workspace_transform]
+                                              :where  [:and
+                                                       [:= :workspace_id ws-id]
+                                                       [:= :ref_id ref-id]]}]})
+  ;; Clean up old join rows (was WorkspaceInput, now WorkspaceInputTransform)
+  (t2/delete! :model/WorkspaceInputTransform
+              :workspace_id ws-id
+              :ref_id ref-id
+              {:where [:< :transform_version {:select [:analysis_version]
+                                              :from   [:workspace_transform]
+                                              :where  [:and
+                                                       [:= :workspace_id ws-id]
+                                                       [:= :ref_id ref-id]]}]})
+  ;; Clean up orphaned WorkspaceInput rows (no remaining join rows pointing to them)
+  (t2/delete! :model/WorkspaceInput
+              :workspace_id ws-id
+              {:where [:not [:exists {:select [1]
+                                      :from   [[:workspace_input_transform :wit]]
+                                      :where  [:= :wit.workspace_input_id :workspace_input.id]}]]}))
 
 (defn- cleanup-old-graph-versions!
   "Delete obsolete graph-level rows."
@@ -760,7 +804,8 @@
     (str "global-id:" ref-id-or-id)))
 
 (defn execute-workspace!
-  "Execute all the transforms within a given workspace."
+  "Execute all the transforms within a given workspace.
+   Skips workspace transforms whose inputs have not been granted access, adding them to :not_run."
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace graph)]
@@ -768,15 +813,18 @@
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
-         (try
-           ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
-             (update acc :succeeded conj id-str)
-             ;; Perhaps the status might indicate it never ran?
-             (update acc :failed conj id-str))
-           (catch Exception e
-             (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
-             (update acc :failed conj id-str)))))
+         ;; Skip workspace transforms with ungranted inputs
+         (if (and ref-id (not (all-inputs-granted? ws-id ref-id)))
+           (update acc :not_run conj id-str)
+           (try
+             ;; Perhaps we want to return some of the metadata from this as well?
+             (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
+               (update acc :succeeded conj id-str)
+               ;; Perhaps the status might indicate it never ran?
+               (update acc :failed conj id-str))
+             (catch Exception e
+               (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
+               (update acc :failed conj id-str))))))
      {:succeeded []
       :failed    []
       :not_run   []}
