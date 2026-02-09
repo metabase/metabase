@@ -791,7 +791,10 @@
 (defn- create-workspace-transform!
   "Shared logic for creating a new workspace transform.
    Validates the transform, checks constraints, and inserts it into the changeset.
-   Returns the created transform with isolated target info attached."
+   Returns the created transform with isolated target info attached.
+
+   Options:
+     :ref-id - Optional custom ref_id for the transform (defaults to auto-generated)"
   [ws-id body & {:keys [ref-id]}]
   ;; Check premium feature requirements
   (api/check (transforms.util/check-feature-enabled body)

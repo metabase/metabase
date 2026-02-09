@@ -1131,34 +1131,34 @@
 (deftest upsert-transform-missing-required-fields-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when creating without required fields"
     (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
-      (let [new-ref-id (ws.u/generate-ref-id)
-            target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
         (testing "missing name returns 400"
-          (is (= "name is required when creating a new transform"
-                 (mt/user-http-request :crowberto :put 400
-                                       (ws-url (:id workspace) "/transform" new-ref-id)
-                                       {:source {:type  "query"
-                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
-                                        :target {:type   "table"
-                                                 :schema target-schema
-                                                 :name   "missing_name_test"}}))))
-
+          (let [ref-id (ws.u/generate-ref-id)]
+            (is (= "name is required when creating a new transform"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" ref-id)
+                                         {:source {:type  "query"
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "missing_name_test"}})))))
         (testing "missing source returns 400"
-          (is (= "source is required when creating a new transform"
-                 (mt/user-http-request :crowberto :put 400
-                                       (ws-url (:id workspace) "/transform" new-ref-id)
-                                       {:name   "Test Transform"
-                                        :target {:type   "table"
-                                                 :schema target-schema
-                                                 :name   "missing_source_test"}}))))
-
+          (let [ref-id (ws.u/generate-ref-id)]
+            (is (= "source is required when creating a new transform"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" ref-id)
+                                         {:name   "Test Transform"
+                                          :target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "missing_source_test"}})))))
         (testing "missing target returns 400"
-          (is (= "target is required when creating a new transform"
-                 (mt/user-http-request :crowberto :put 400
-                                       (ws-url (:id workspace) "/transform" new-ref-id)
-                                       {:name   "Test Transform"
-                                        :source {:type  "query"
-                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}}))))))))
+          (let [ref-id (ws.u/generate-ref-id)]
+            (is (= "target is required when creating a new transform"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" ref-id)
+                                         {:name   "Test Transform"
+                                          :source {:type  "query"
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}})))))))))))
 
 (deftest upsert-transform-archived-workspace-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for archived workspace"
