@@ -604,6 +604,21 @@
                                   (meta/field-metadata :venues :name)])
                 lib/fieldable-columns)))))
 
+(deftest ^:parallel fieldable-columns-excludes-joins-and-expressions-test
+  (testing "fieldable-columns excludes joined columns"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                   [(lib/= (meta/field-metadata :venues :category-id)
+                                                           (meta/field-metadata :categories :id))])
+                                  (lib/with-join-fields :all))))]
+      (is (not-any? #(= :source/joins (:lib/source %))
+                    (lib/fieldable-columns query)))))
+  (testing "fieldable-columns excludes expression columns"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
+      (is (not-any? #(= :source/expressions (:lib/source %))
+                    (lib/fieldable-columns query))))))
+
 (deftest ^:parallel ref-to-joined-column-from-previous-stage-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/join (-> (lib/join-clause
