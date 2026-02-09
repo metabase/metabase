@@ -1,8 +1,6 @@
 (ns metabase.warehouses.models.database
   (:require
-   [clojure.core.cache :as cache]
    [clojure.core.match :refer [match]]
-   [clojure.core.memoize :as memoize]
    [clojure.data :as data]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -94,72 +92,25 @@
    (fn [db-id]
      (t2/select-one-fn :router_database_id :model/Database :id db-id))))
 
-;; TODO(galdre, 2026-01-28): Better naming
-(def ^:private db-id->write-db-id*
-  (memoize/memo
-   (fn [db-id]
-     (t2/select-one-fn :write_database_id :model/Database :id db-id))))
-
 (defn db-id->write-db-id
-  "Get the `write_database_id` for a given parent database ID.
-   Returns nil if no write connection is configured.
-   Cached per ID with manual invalidation via [[link-write-database!]] and [[unlink-write-database!]]."
-  [db-id]
-  (db-id->write-db-id* db-id))
-
-;; TODO(galdre, 2026-01-29): get feedback, factor commonality if good (util-ize too?)
-(defn- cache-write-db-mapping!
-  "Update the db-id->write-db-id cache to record that `parent-db-id` maps to `write-db-id`."
-  [parent-db-id write-db-id]
-  (memoize/memo-swap! db-id->write-db-id* cache/miss [parent-db-id] write-db-id))
-
-(defn- uncache-write-db-mapping!
-  "Update the db-id->write-db-id cache to record that `parent-db-id` has no write connection."
-  [parent-db-id]
-  (memoize/memo-swap! db-id->write-db-id* cache/miss [parent-db-id] nil))
-
-;; Uses clojure.core.memoize because we need manual cache insertion via memo-swap! to handle the
-;; insert-then-link ordering: when a write DB is created, define-after-insert fires before the
-;; parent's write_database_id is set, which would permanently cache `false`. The lifecycle hooks
-;; in define-after-update correct this by inserting the true value after the parent is linked.
-(def ^:private write-database-id?*
-  (memoize/memo
-   (fn [db-id]
-     (t2/exists? :model/Database :write_database_id db-id))))
+  "Stub for EE compatibility. Always returns nil."
+  [_db-id]
+  nil)
 
 (defn- write-database-id?
-  "Is this database ID a write database (i.e., referenced by another database's `write_database_id`)?
-   Write databases are hidden internal records and should be denied access via `can-read?` and `can-write?`."
-  [db-id]
-  (write-database-id?* db-id))
-
-(defn- mark-write-database-id!
-  "Update the write-database-id? cache to mark `db-id` as a write database."
-  [db-id]
-  (memoize/memo-swap! write-database-id?* cache/miss [db-id] true))
-
-(defn- unmark-write-database-id!
-  "Update the write-database-id? cache to mark `db-id` as NOT a write database."
-  [db-id]
-  (memoize/memo-swap! write-database-id?* cache/miss [db-id] false))
+  "Stub for EE compatibility. Always returns false."
+  [_db-id]
+  false)
 
 (defn link-write-database!
-  "Set `write_database_id` on `parent-db-id` to point to `write-db-id` and update
-   caches. Use this instead of raw `t2/update!` because `t2/update!` with pk+map
-   does not fire lifecycle hooks, so caches would not be updated automatically."
-  [parent-db-id write-db-id]
-  (t2/update! :model/Database parent-db-id {:write_database_id write-db-id})
-  (mark-write-database-id! write-db-id)
-  (cache-write-db-mapping! parent-db-id write-db-id))
+  "Stub for EE compatibility. No-op, returns nil."
+  [_parent-db-id _write-db-id]
+  nil)
 
 (defn unlink-write-database!
-  "Clear `write_database_id` on `parent-db-id` and update caches. Use this instead
-   of raw `t2/update!` because `t2/update!` with pk+map does not fire lifecycle
-   hooks, so caches would not be updated automatically."
-  [parent-db-id write-db-id]
-  (t2/update! :model/Database parent-db-id {:write_database_id nil})
-  (unmark-write-database-id! write-db-id)
-  (uncache-write-db-mapping! parent-db-id))
+  "Stub for EE compatibility. No-op, returns nil."
+  [_parent-db-id _write-db-id]
+  nil)
 
 (defmethod mi/can-read? :model/Database
   ;; Check if user can see this database's metadata.
@@ -172,7 +123,6 @@
   ([_model database-id]
    (cond
      (should-read-audit-db? database-id) false
-     (write-database-id? database-id) false
      (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (or
             ;; Has query builder access
@@ -226,7 +176,6 @@
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
       (and (not= db-id audit/audit-db-id)
-           (not (write-database-id? db-id))
            (current-user-can-write-db? db-id))))
 
 (defmethod mi/can-write? :model/Database
@@ -274,15 +223,14 @@
   (boolean (:router_database_id db)))
 
 (defn is-write-database?
-  "Is this database an auxiliary database with write permissions for some other database?"
-  [db]
-  (write-database-id? (:id db)))
+  "Stub for EE compatibility. Always returns false."
+  [_db]
+  false)
 
 (defn should-sync?
   "Should this database be synced?"
   [db]
-  (and (not (is-destination? db))
-       (not (is-write-database? db))))
+  (not (is-destination? db)))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -466,13 +414,6 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  (when-let [write-db-id (:write_database_id database)]
-    (memoize/memo-swap! write-database-id?* cache/evict [write-db-id])
-    (memoize/memo-swap! db-id->write-db-id* cache/evict [id])
-    (t2/delete! :model/Database :id write-db-id))
-  (when (write-database-id? id)
-    (when-let [parent-id (t2/select-one-fn :id :model/Database :write_database_id id)]
-      (memoize/memo-swap! db-id->write-db-id* cache/evict [parent-id])))
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
@@ -693,7 +634,6 @@
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
                :router_database_id (serdes/fk :model/Database)
-               :write_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/extract-query "Database"
@@ -701,10 +641,7 @@
   (t2/reducible-select (keyword "model" model-name)
                        {:where [:and
                                 (or where true)
-                                [:= :router_database_id nil]
-                                [:not-in :id {:select [:write_database_id]
-                                              :from   [(t2/table-name :model/Database)]
-                                              :where  [:!= :write_database_id nil]}]]}))
+                                [:= :router_database_id nil]]}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -742,12 +679,7 @@
                   :updated-at    true}
    :search-terms {:name        search.spec/explode-camel-case
                   :description true}
-   ;; Exclude destination databases (router_database_id set) and write databases (referenced by write_database_id)
-   :where        [:and
-                  [:= :router_database_id nil]
-                  [:not [:in :id {:select [:write_database_id]
-                                  :from   [:metabase_database]
-                                  :where  [:not= :write_database_id nil]}]]]
+   :where [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 
 (defenterprise hydrate-router-user-attribute

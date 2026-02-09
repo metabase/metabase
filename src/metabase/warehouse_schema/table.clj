@@ -19,7 +19,7 @@
   "Given a table, shape it for the API."
   [table]
   (-> table
-      (update :db dissoc :router_database_id :write_database_id)
+      (update :db dissoc :router_database_id)
       (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
 
