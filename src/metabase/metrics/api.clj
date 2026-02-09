@@ -4,8 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-metric.definition :as lib-metric.definition]
-   [metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.dimension :as metrics.dimension]
@@ -168,9 +167,9 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [provider   (lib-metric.metadata.jvm/metadata-provider)
-        metric-def (from-api-definition provider definition)
-        query      (lib-metric.definition/->mbql-query metric-def {:limit 10000})]
+  (let [query (-> (lib-metric/metadata-provider)
+                  (from-api-definition definition)
+                  (lib-metric/->mbql-query {:limit 10000}))]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (qp/userland-query query) rff))))
 
