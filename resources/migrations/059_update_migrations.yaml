@@ -2970,9 +2970,9 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_metabase_table_transform_id
             onDelete: SET NULL
-            
+
   - changeSet:
-      id: v59.2026-01-30T12:00:00
+      id: v59.2026-02-05T12:00:00
       author: edpaget
       comment: Add conflicts column to remote_sync_task table
       changes:

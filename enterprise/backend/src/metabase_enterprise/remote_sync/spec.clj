@@ -502,7 +502,7 @@
                 :when (some feature-model-types models-present)
                 :when (has-unsynced-entities-for-feature? specs-for-feature)
                 :let [category (setting->category setting-kw)]]
-            {:type     (keyword (str (str/lower-case category) "-conflict"))
+            {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category
              :message  (format "Import contains %s but local instance has unsynced %s"
                                category category)}))))
