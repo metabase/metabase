@@ -5,6 +5,8 @@
   (:import
    (org.apache.logging.log4j ThreadContext)))
 
+(set! *warn-on-reflection* true)
+
 (deftest group-enabled?-disabled-by-default-test
   (testing "group-enabled? returns false when tracing is not initialized"
     ;; By default, enabled-groups atom is nil (tracing not initialized)
