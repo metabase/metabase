@@ -1488,6 +1488,24 @@
                               :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
                     result))))))))
 
+(deftest adhoc-query-uses-isolated-credentials-test
+  (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
+    (let [isolated?      (atom false)
+          workspace-used (atom nil)
+          ws             (ws.tu/create-ready-ws! "Adhoc Query Isolation Test")]
+      (with-redefs [ws.isolation/do-with-workspace-isolation
+                    (fn [workspace thunk]
+                      (reset! isolated? true)
+                      (reset! workspace-used workspace)
+                      (thunk))]
+        (mt/user-http-request :crowberto :post 200
+                              (ws-url (:id ws) "/query")
+                              {:sql "SELECT 1"}))
+      (is @isolated? "Query should execute within workspace isolation context")
+      (is (= (:id ws) (:id @workspace-used)) "Should use correct workspace for isolation")
+      (is (some? (:database_details @workspace-used))
+          "Workspace should have database_details for proper isolation"))))
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id

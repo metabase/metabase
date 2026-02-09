@@ -130,21 +130,24 @@
 (defn- run-query
   "Remap source, execute query, and format as ::ws.t/query-result.
    Options: :row-limit (default 2000), :error-context (for logging).
-   Returns {:status :succeeded :data {...}} or {:status :failed :message ...}."
+   Returns {:status :succeeded :data {...} :running_time ...} or {:status :failed :message ...}."
   [source source-type remapping {:keys [row-limit error-context]
                                  :or   {row-limit preview-row-limit}}]
   (try
     (let [table-mapping   (:tables remapping no-mapping)
           field-mapping   (:fields remapping no-mapping)
           remapped-source (remap-source table-mapping field-mapping source-type source)
-          query           (:query remapped-source)
-          result          (qp/process-query
-                          (assoc query :constraints {:max-results           row-limit
-                                                     :max-results-bare-rows row-limit}))
+          query           (-> (:query remapped-source)
+                              (qp/userland-query)
+                              (assoc :constraints {:max-results           row-limit
+                                                   :max-results-bare-rows row-limit}))
+          result          (qp/process-query query)
           data            (:data result)]
       (if (= :completed (:status result))
-        {:status :succeeded
-         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status       :succeeded
+         :data         (select-keys data [:rows :cols :results_metadata])
+         :running_time (:running_time result)
+         :started_at   (:started_at result)}
         {:status  :failed
          :message (or (:error result) "Query execution failed")}))
     (catch Exception e

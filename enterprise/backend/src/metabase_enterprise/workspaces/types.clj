@@ -50,6 +50,8 @@
   [:map
    [:status [:enum :succeeded :failed]]
    [:message {:optional true} [:maybe :string]]
+   [:running_time {:optional true} [:maybe :int]]
+   [:started_at {:optional true} [:maybe :any]]
    [:data {:optional true}
     [:map
      [:rows {:optional true} [:sequential :any]]

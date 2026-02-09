@@ -403,7 +403,7 @@
    Applies workspace table remapping so queries can reference global table names.
    Options: :row-limit (default 2000).
    Returns a ::ws.t/query-result."
-  [{db-id :database_id :as workspace} graph sql {:as opts}]
+  [{db-id :database_id :as workspace} graph sql & {:as opts}]
   (ws.isolation/with-workspace-isolation
     workspace
     (ws.execute/execute-adhoc-sql db-id sql (build-remapping workspace graph) opts)))

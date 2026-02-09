@@ -1002,9 +1002,13 @@
   (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
         _         (api/check-400 (not= :archived (:base_status workspace))
                                  "Cannot query archived workspace")
+        _         (api/check-400 (not= :uninitialized (:db_status workspace))
+                                 "Workspace is not initialized")
+        _         (api/check-400 (some? (:database_details workspace))
+                                 "Workspace is not ready for queries")
         _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/execute-adhoc-query workspace graph sql nil)))
+    (ws.impl/execute-adhoc-query workspace graph sql)))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."
