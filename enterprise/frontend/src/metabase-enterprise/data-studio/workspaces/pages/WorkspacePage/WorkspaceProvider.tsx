@@ -53,28 +53,10 @@ export interface Tab {
   type: "transform" | "table";
 }
 
-export interface TaggedTransformTab extends Tab {
+export interface TransformTab extends Tab {
   type: "transform";
-  transformType: TaggedTransform["type"];
-  transformId: TaggedTransform["id"];
+  transform: AnyWorkspaceTransform;
 }
-
-export interface WorkspaceTransformTab extends Tab {
-  type: "transform";
-  transformType: WorkspaceTransform["type"];
-  transformId: WorkspaceTransform["ref_id"];
-}
-
-export interface UnsavedTransformTab extends Tab {
-  type: "transform";
-  transformType: UnsavedTransform["type"];
-  transformId: UnsavedTransform["id"];
-}
-
-export type TransformTab =
-  | TaggedTransformTab
-  | WorkspaceTransformTab
-  | UnsavedTransformTab;
 
 export interface TableTab extends Tab {
   type: "table";
