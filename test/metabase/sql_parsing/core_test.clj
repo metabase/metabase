@@ -7,17 +7,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------- SQL Parsing Tests -------------------------------------------------
-
-;; Note: The following tests use sql-parsing/p which no longer exists
-;; They are commented out pending implementation of that function or refactoring
-
-#_(deftest ^:parallel basic-select-test
-    (testing "Simple SELECT parses correctly"
-      (let [result (sql-parsing/p "SELECT id, name FROM users")]
-        (is (= ["users"] (:tables_source result)))
-        (is (= ["id" "name"] (sort (:columns result)))))))
-
 ;;; ------------------------------------------ referenced-tables API Tests -----------------------------------------
 
 (deftest ^:parallel referenced-tables-basic-test
@@ -132,13 +121,6 @@
     (is (= [[nil nil "users" "id"]]
            (sql-parsing/referenced-fields "mysql" "SELECT id FROM users")))))
 
-#_(deftest ^:parallel aggregate-test
-    (testing "Aggregate functions in projections"
-      (let [result (sql-parsing/p "SELECT COUNT(*), SUM(amount) FROM orders")]
-        (is (= ["orders"] (:tables_source result)))
-        ;; Projections are named_selects - unnamed aggregates may not appear
-        (is (vector? (:projections result))))))
-
 ;;; -------------------------------------------- UDTF (Table Function) Tests -----------------------------------------
 
 ;; Dialect-specific UDTF queries - each dialect may have slightly different syntax
@@ -182,24 +164,6 @@
           (is (some #(= "orders" (u/lower-case-en (nth % 2))) result)
               (format "dialect %s: should find 'orders' table in %s" dialect (pr-str result))))))))
 
-#_(deftest ^:parallel udtf-returned-columns-lineage-test
-    (testing "UDTFs are handled by returned-columns-lineage across dialects"
-      (doseq [[dialect sql] udtf-queries]
-        (testing (str "dialect: " dialect)
-        ;; UDTFs should not cause assertion errors - they return lineage with empty deps
-        ;; since there's no real table to trace columns back to
-          (let [result (sql-parsing/returned-columns-lineage (name dialect) sql "public" {})]
-            (is (sequential? result)
-                (format "dialect %s: should return sequential, got %s" dialect (type result))))))))
-
-#_(deftest ^:parallel udtf-validate-query-test
-    (testing "UDTFs pass validation (with infer_schema=True)"
-      (doseq [[dialect sql] udtf-queries]
-        (testing (str "dialect: " dialect)
-        ;; This should NOT throw an error now that infer_schema=True
-          (let [result (sql-parsing/validate-query (name dialect) sql "public" {})]
-            (is (= :ok (:status result))
-                (format "dialect %s: UDTF query should validate OK, got %s" dialect result)))))))
 ;;; ------------------------------------------ Set Operation Tests (UNION, INTERSECT, EXCEPT) ------------------------------------------
 
 ;; Set operation queries by dialect - tests UNION, UNION ALL, INTERSECT, EXCEPT
