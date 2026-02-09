@@ -9,11 +9,10 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn check-self-or-superuser
@@ -33,19 +32,10 @@
     (api/check-superuser)
     (user/set-permissions-groups! user-or-id new-groups-or-ids)))
 
-(mr/def ::user-group-membership
-  "Group Membership info of a User.
-  In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  [:map
-   [:id ms/PositiveInt]
-   [:is_group_manager
-    {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
-    :boolean]])
-
 (mu/defn maybe-set-user-group-memberships!
   "Implementation for `POST /api/user` and friends; set the PermissionsGroupMemberships for a `user-or-id`."
   [user-or-id
-   new-user-group-memberships :- [:maybe [:sequential ::user-group-membership]]
+   new-user-group-memberships :- [:maybe [:sequential ::users.schema/user-group-membership]]
    & [is-superuser?]]
   (when new-user-group-memberships
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
