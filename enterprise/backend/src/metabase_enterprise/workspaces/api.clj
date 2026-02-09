@@ -885,6 +885,10 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
+  ;; We use explicit check-then-branch rather than app-db/update-or-insert! because:
+  ;; 1. WorkspaceTransform has a compound primary key which that helper doesn't support
+  ;; 2. Update and insert have very different logic (update merges + increments versions,
+  ;;    insert requires full validation, workspace initialization, status transitions)
   (let [existing (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id)]
     (if existing
       ;; UPDATE path (existing behavior)
