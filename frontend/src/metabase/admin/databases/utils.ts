@@ -22,3 +22,9 @@ export const hasDbRoutingEnabled = (
 ) => {
   return !!database.router_user_attribute;
 };
+
+export const hasAuxiliaryConnectionsEnabled = (
+  database: Pick<Database, "write_database_id">,
+) => {
+  return Boolean(database.write_database_id);
+};
