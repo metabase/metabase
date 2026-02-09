@@ -1,13 +1,7 @@
-import {
-  setupCollectionTreeEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockSettings,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
 
 import { AllChangesView } from "./AllChangesView";
@@ -36,20 +30,11 @@ const deletedEntity = createMockRemoteSyncEntity({
 const setup = ({
   entities = [updatedEntity],
   collections = [defaultCollection],
-  isTransformsSyncEnabled = false,
 }: {
   entities: RemoteSyncEntity[];
   collections?: Collection[];
-  isTransformsSyncEnabled?: boolean;
 }) => {
-  // Use setupCollectionTreeEndpoint for simple tree mocking without complex filtering
   setupCollectionTreeEndpoint(collections);
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "use-tenants": false,
-      "remote-sync-transforms": isTransformsSyncEnabled,
-    }),
-  );
 
   renderWithProviders(<AllChangesView entities={entities} />);
 };
@@ -174,7 +159,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [transformEntity],
         collections: [transformsCollection],
-        isTransformsSyncEnabled: true,
       });
 
       expect(
@@ -206,7 +190,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [transformEntity],
         collections: [parentTransformsCollection],
-        isTransformsSyncEnabled: true,
       });
 
       expect(
@@ -236,7 +219,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [collectionEntity],
         collections: [transformsCollection],
-        isTransformsSyncEnabled: true,
       });
 
       expect(
@@ -397,6 +379,251 @@ describe("AllChangesView", () => {
       expect(
         await screen.findByText("Parent Snippet Folder"),
       ).toBeInTheDocument();
+      expect(screen.getByText("Child Snippet Folder")).toBeInTheDocument();
+      expect(screen.getByText("SELECT Query")).toBeInTheDocument();
+    });
+  });
+
+  describe("snippets and snippet collections with Library (data_studio)", () => {
+    it("should display snippets without collection_id under the Library collection", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Root Snippet",
+        model: "nativequerysnippet",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [libraryCollection],
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Root Snippet")).toBeInTheDocument();
+      expect(screen.queryByText("Root")).not.toBeInTheDocument();
+    });
+
+    it("should display snippets without collection_id under Root when no Library collection exists", async () => {
+      const regularCollection = createMockCollection({
+        id: 1,
+        name: "Regular Collection",
+        effective_ancestors: [],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Root Snippet",
+        model: "nativequerysnippet",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [regularCollection],
+      });
+
+      expect(await screen.findByText("Root")).toBeInTheDocument();
+      expect(screen.getByText("Root Snippet")).toBeInTheDocument();
+    });
+
+    it("should display multiple snippets without collection_id under the Library collection", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const snippetEntity1 = createMockRemoteSyncEntity({
+        id: 300,
+        name: "First Snippet",
+        model: "nativequerysnippet",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+      const snippetEntity2 = createMockRemoteSyncEntity({
+        id: 301,
+        name: "Second Snippet",
+        model: "nativequerysnippet",
+        collection_id: undefined,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [snippetEntity1, snippetEntity2],
+        collections: [libraryCollection],
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("First Snippet")).toBeInTheDocument();
+      expect(screen.getByText("Second Snippet")).toBeInTheDocument();
+    });
+
+    it("should display snippets with explicit collection_id in their assigned collection under Library", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const snippetCollection = createMockCollection({
+        id: 50,
+        name: "My Snippets",
+        namespace: "snippets",
+        effective_ancestors: [],
+      });
+      const snippetWithCollection = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Assigned Snippet",
+        model: "nativequerysnippet",
+        collection_id: 50,
+        sync_status: "create",
+      });
+      const snippetWithoutCollection = createMockRemoteSyncEntity({
+        id: 301,
+        name: "Unassigned Snippet",
+        model: "nativequerysnippet",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetWithCollection, snippetWithoutCollection],
+        collections: [libraryCollection, snippetCollection],
+      });
+
+      expect(await screen.findByText("My Snippets")).toBeInTheDocument();
+      expect(screen.getByText("Assigned Snippet")).toBeInTheDocument();
+
+      const libraryElements = screen.getAllByText("Library");
+      expect(libraryElements.length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText("Unassigned Snippet")).toBeInTheDocument();
+    });
+
+    it("should display non-snippet entities without collection_id under Root even when Library exists", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const cardEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Root Card",
+        model: "card",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [cardEntity],
+        collections: [libraryCollection],
+      });
+
+      expect(await screen.findByText("Root")).toBeInTheDocument();
+      expect(screen.getByText("Root Card")).toBeInTheDocument();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+
+    it("should find Library collection in nested tree structure", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const parentCollection = createMockCollection({
+        id: 1,
+        name: "Parent Collection",
+        children: [libraryCollection],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Nested Library Snippet",
+        model: "nativequerysnippet",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [parentCollection],
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Nested Library Snippet")).toBeInTheDocument();
+    });
+
+    it("should display snippet collections as descendants of Library", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const snippetCollection = createMockCollection({
+        id: 50,
+        name: "My Snippets",
+        namespace: "snippets",
+        effective_ancestors: [],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "SELECT Query",
+        model: "nativequerysnippet",
+        collection_id: 50,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [libraryCollection, snippetCollection],
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("My Snippets")).toBeInTheDocument();
+      expect(screen.getByText("SELECT Query")).toBeInTheDocument();
+    });
+
+    it("should display nested snippet collections under Library with full hierarchy", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const childSnippetCollection = createMockCollection({
+        id: 51,
+        name: "Child Snippet Folder",
+        namespace: "snippets",
+      });
+      const parentSnippetCollection = createMockCollection({
+        id: 50,
+        name: "Parent Snippet Folder",
+        namespace: "snippets",
+        children: [childSnippetCollection],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "SELECT Query",
+        model: "nativequerysnippet",
+        collection_id: 51,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [libraryCollection, parentSnippetCollection],
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Parent Snippet Folder")).toBeInTheDocument();
       expect(screen.getByText("Child Snippet Folder")).toBeInTheDocument();
       expect(screen.getByText("SELECT Query")).toBeInTheDocument();
     });
