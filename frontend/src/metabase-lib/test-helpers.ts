@@ -29,7 +29,7 @@ type MetadataProviderOpts = {
   metadata?: Metadata;
 };
 
-function createMetadataProvider({
+export function createMetadataProvider({
   databaseId = SAMPLE_DATABASE.id,
   metadata = SAMPLE_METADATA,
 }: MetadataProviderOpts = {}) {
