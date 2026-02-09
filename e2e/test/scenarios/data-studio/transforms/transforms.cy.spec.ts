@@ -4115,6 +4115,17 @@ describe("scenarios > data studio > transforms > permissions", () => {
     });
     H.setUserAsAnalyst(NORMAL_USER_ID);
 
+    cy.log(
+      "Ensure that transform permissions are visible when instance is hosted and transform feature is present",
+    );
+
+    cy.findByRole("radio", { name: "Data" }).click({ force: true });
+    cy.findByRole("menuitem", { name: "All Users" }).click();
+
+    cy.findByRole("columnheader", { name: /Transforms/ })
+      .scrollIntoView()
+      .should("be.visible");
+
     cy.log("sign in as normal user and create a transform");
     cy.signInAsNormalUser();
     visitTransformListPage();

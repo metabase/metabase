@@ -177,7 +177,7 @@ type EntityWithPermissions = {
   callout?: string;
 };
 
-const getShouldShowTransformPermissions = createSelector(
+export const getShouldShowTransformPermissions = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
   getIsHosted,
   (state: State) => getSetting(state, "transforms-enabled"),
