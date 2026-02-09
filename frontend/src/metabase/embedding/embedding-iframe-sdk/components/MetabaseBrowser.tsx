@@ -111,12 +111,14 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           withDownloads
           style={{ height: "100%" }}
           drillThroughQuestionProps={{ isSaveEnabled: false }}
+          enableEntityNavigation={settings.enableEntityNavigation}
         />
       ) : (
         <EditableDashboard
           withCardTitle
           dashboardId={id}
           style={{ height: "100%" }}
+          enableEntityNavigation={settings.enableEntityNavigation}
         />
       );
 

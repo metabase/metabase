@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { Row } from "@tanstack/react-table";
 import {
   type ComponentProps,
@@ -10,6 +11,7 @@ import {
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -19,6 +21,7 @@ import {
 import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -35,6 +38,7 @@ import {
   Card,
   EntityNameCell,
   Flex,
+  Group,
   Icon,
   Stack,
   TextInput,
@@ -101,6 +105,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [
+    isPythonUpsellOpened,
+    { open: openPythonUpsell, close: closePythonUpsell },
+  ] = useDisclosure(false);
+  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
@@ -129,7 +138,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
-    if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
+    // Only show Python library item if there's at least one item in the table
+    // It will trigger upsell if feature isn't enabled
+    if (data.length > 0) {
       data.push({
         id: "library",
         name: t`Python library`,
@@ -168,19 +179,26 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         minWidth: 280,
         maxAutoWidth: 800,
         enableSorting: true,
-        cell: ({ row }) => (
-          <EntityNameCell
-            data-testid="tree-node-name"
-            icon={row.original.icon}
-            iconColor={getNodeIconColor(row.original)}
-            name={row.original.name}
-            ellipsifiedProps={
-              isRowDisabled(row)
-                ? unreadableTransformEllipsifiedProps
-                : undefined
-            }
-          />
-        ),
+        cell: ({ row }) => {
+          const isLibraryWithoutFeature =
+            row.original.nodeType === "library" && !hasPythonTransformsFeature;
+          return (
+            <Group gap="sm" wrap="nowrap" miw={0}>
+              <EntityNameCell
+                data-testid="tree-node-name"
+                icon={row.original.icon}
+                iconColor={getNodeIconColor(row.original)}
+                name={row.original.name}
+                ellipsifiedProps={
+                  isRowDisabled(row)
+                    ? unreadableTransformEllipsifiedProps
+                    : undefined
+                }
+              />
+              {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
+            </Group>
+          );
+        },
       },
       {
         id: "owner",
@@ -254,20 +272,27 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           ) : null,
       },
     ];
-  }, []);
+  }, [hasPythonTransformsFeature]);
 
-  const getRowHref = useCallback((row: Row<TreeNode>) => {
-    if (isRowDisabled(row)) {
+  const getRowHref = useCallback(
+    (row: Row<TreeNode>) => {
+      if (isRowDisabled(row)) {
+        return null;
+      }
+      if (row.original.nodeType === "transform" && row.original.transformId) {
+        return Urls.transform(row.original.transformId);
+      }
+      if (
+        row.original.nodeType === "library" &&
+        row.original.url &&
+        hasPythonTransformsFeature
+      ) {
+        return row.original.url;
+      }
       return null;
-    }
-    if (row.original.nodeType === "transform" && row.original.transformId) {
-      return Urls.transform(row.original.transformId);
-    }
-    if (row.original.nodeType === "library" && row.original.url) {
-      return row.original.url;
-    }
-    return null;
-  }, []);
+    },
+    [hasPythonTransformsFeature],
+  );
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -282,12 +307,20 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     isFilterable,
   });
 
-  const handleRowClick = useCallback((row: Row<TreeNode>) => {
-    // Navigation for leaf nodes (transforms, library) is handled by the link
-    if (row.getCanExpand()) {
-      row.toggleExpanded();
-    }
-  }, []);
+  const handleRowClick = useCallback(
+    (row: Row<TreeNode>) => {
+      // If clicking on library without feature, show upsell modal
+      if (row.original.nodeType === "library" && !hasPythonTransformsFeature) {
+        openPythonUpsell();
+        return;
+      }
+      // Navigation for leaf nodes (transforms, library) is handled by the link
+      if (row.getCanExpand()) {
+        row.toggleExpanded();
+      }
+    },
+    [hasPythonTransformsFeature, openPythonUpsell],
+  );
 
   useEffect(() => {
     if (targetCollectionId && !hasScrolledRef.current && !isLoading) {
@@ -351,6 +384,10 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           )}
         </Card>
       </Stack>
+      <PLUGIN_TRANSFORMS_PYTHON.PythonTransformsUpsellModal
+        isOpen={isPythonUpsellOpened}
+        onClose={closePythonUpsell}
+      />
     </PageContainer>
   );
 };

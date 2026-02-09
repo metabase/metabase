@@ -3,6 +3,8 @@ import { type Ref, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -87,7 +89,7 @@ function getButtonLabel(
   query: Lib.Query,
   stageIndex: number,
   expression: Lib.ExpressionClause | undefined,
-  tc: (content: string | null | undefined) => string | null | undefined,
+  tc: ContentTranslationFunction,
 ) {
   if (expression == null) {
     return t`Pick a column…`;
@@ -97,7 +99,10 @@ function getButtonLabel(
     Lib.isJoinConditionLHSorRHSLiteral(expression) ||
     Lib.isJoinConditionLHSorRHSColumn(expression)
   ) {
-    return tc(Lib.displayInfo(query, stageIndex, expression).displayName);
+    return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
+      Lib.displayInfo(query, stageIndex, expression).displayName,
+      tc,
+    );
   }
 
   return t`Custom expression`;
