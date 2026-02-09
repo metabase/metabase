@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable)
    (java.util.concurrent Callable Executors ExecutorService)))
@@ -278,19 +279,22 @@
 (defn- run-tool
   "Execute a tool and return output chunks. Handles errors gracefully."
   [tool-call-id tool-name tool-fn chunks]
-  (try
-    (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
-      (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-      (let [result (tool-fn arguments)]
-        (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-        (collect-tool-result tool-call-id tool-name result)))
-    (catch Exception e
-      (log/warn e "Tool execution failed" {:tool-name tool-name})
-      [{:type       :tool-output-available
-        :toolCallId tool-call-id
-        :toolName   tool-name
-        :error      {:message (concise-tool-error e)
-                     :type    (str (type e))}}])))
+  (with-span :info {:name         :metabot-v3.agent/run-tool
+                    :tool-name    tool-name
+                    :tool-call-id tool-call-id}
+    (try
+      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
+        (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+        (let [result (tool-fn arguments)]
+          (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+          (collect-tool-result tool-call-id tool-name result)))
+      (catch Exception e
+        (log/warn e "Tool execution failed" {:tool-name tool-name})
+        [{:type       :tool-output-available
+          :toolCallId tool-call-id
+          :toolName   tool-name
+          :error      {:message (concise-tool-error e)
+                       :type    (str (type e))}}]))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
