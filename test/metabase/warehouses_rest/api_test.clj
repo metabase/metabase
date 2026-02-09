@@ -1653,10 +1653,10 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (with-redefs [warehouses/test-database-connection (fn [_ details & _]
-                                                          (swap! call-count inc)
-                                                          (swap! ssl-values conj (:ssl details))
-                                                          (if @valid? nil {:valid false}))]
+      (with-redefs [warehouses.util/test-database-connection (fn [_ details & _]
+                                                               (swap! call-count inc)
+                                                               (swap! ssl-values conj (:ssl details))
+                                                               (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
           (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
