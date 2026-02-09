@@ -197,3 +197,49 @@
    [:metric-id  {:optional true} pos-int?]
    [:measure-id {:optional true} pos-int?]
    [:table-id   {:optional true} pos-int?]])
+
+;;; ------------------------------------------------- Computed Dimensions -------------------------------------------------
+;;; Schemas for computed dimensions during reconciliation.
+
+(mr/def ::computed-dimension
+  "A dimension computed from a visible column, before reconciliation.
+   The :id is nil until assigned during reconciliation."
+  [:map
+   [:id [:maybe ::dimension-id]]
+   [:name :string]
+   [:display-name {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe :keyword]]
+   [:semantic-type {:optional true} [:maybe :keyword]]
+   [:lib/source {:optional true} [:maybe :keyword]]])
+
+(mr/def ::computed-pair
+  "A computed dimension paired with its mapping (before ID assignment)."
+  [:map
+   [:dimension ::computed-dimension]
+   [:mapping [:map
+              [:type ::dimension-mapping.type]
+              [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
+              [:target ::dimension-mapping.target]]]])
+
+;;; ------------------------------------------------- Display Info -------------------------------------------------
+
+(mr/def ::display-info
+  "Schema for display info returned by display-info function."
+  [:map
+   [:display-name {:optional true} :string]
+   [:name {:optional true} :string]
+   [:long-display-name {:optional true} :string]
+   [:effective-type {:optional true} :keyword]
+   [:semantic-type {:optional true} :keyword]
+   [:description {:optional true} [:maybe :string]]
+   [:selected {:optional true} :boolean]
+   [:default {:optional true} :boolean]
+   [:short-name {:optional true} :string]
+   ;; Position tracking for dimensions
+   [:filter-positions {:optional true} [:sequential :int]]
+   [:projection-positions {:optional true} [:sequential :int]]
+   ;; Source indicators
+   [:is-from-join {:optional true} :boolean]
+   [:is-calculated {:optional true} :boolean]
+   ;; Temporal bucket specific
+   [:is-temporal-extraction {:optional true} :boolean]])

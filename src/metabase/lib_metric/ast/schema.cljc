@@ -182,6 +182,14 @@
     [:node/type [:= :filter/not]]
     [:child [:ref ::filter-node]]]])
 
+;;; -------------------- Join Nodes --------------------
+
+(mr/def ::join-node
+  "A join from the source metric's query, preserved as raw pMBQL."
+  [:map
+   [:node/type [:= :ast/join]]
+   [:mbql-join :any]])
+
 ;;; -------------------- Source Nodes --------------------
 
 (mr/def ::source-metric
@@ -192,7 +200,7 @@
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
-   [:joins {:optional true} [:maybe [:sequential :any]]]
+   [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 
 (mr/def ::source-measure
@@ -203,7 +211,7 @@
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
-   [:joins {:optional true} [:maybe [:sequential :any]]]
+   [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 
 (mr/def ::source-node

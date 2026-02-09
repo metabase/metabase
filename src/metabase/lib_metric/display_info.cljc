@@ -13,8 +13,7 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.i18n :as i18n]))
 
 ;;; -------------------------------------------------- Hierarchy --------------------------------------------------
 
@@ -26,29 +25,6 @@
   [tag parent]
   (swap! hierarchy clojure.core/derive tag parent)
   nil)
-
-;;; -------------------------------------------------- Schema --------------------------------------------------
-
-(mr/def ::display-info
-  "Schema for display info returned by [[display-info]]."
-  [:map
-   [:display-name {:optional true} :string]
-   [:name {:optional true} :string]
-   [:long-display-name {:optional true} :string]
-   [:effective-type {:optional true} :keyword]
-   [:semantic-type {:optional true} :keyword]
-   [:description {:optional true} [:maybe :string]]
-   [:selected {:optional true} :boolean]
-   [:default {:optional true} :boolean]
-   [:short-name {:optional true} :string]
-   ;; Position tracking for dimensions
-   [:filter-positions {:optional true} [:sequential :int]]
-   [:projection-positions {:optional true} [:sequential :int]]
-   ;; Source indicators
-   [:is-from-join {:optional true} :boolean]
-   [:is-calculated {:optional true} :boolean]
-   ;; Temporal bucket specific
-   [:is-temporal-extraction {:optional true} :boolean]])
 
 ;;; -------------------------------------------------- Multimethod --------------------------------------------------
 

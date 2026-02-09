@@ -4,6 +4,7 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]))
 
@@ -244,12 +245,22 @@
       {:node/type :filter/and
        :children  (mapv mbql-clause->filter-mbql-node filters)})))
 
+(defn- extract-source-joins
+  "Extract joins from pMBQL query and convert to AST join nodes."
+  [pmbql-query]
+  (when-let [joins (lib.join/joins pmbql-query -1)]
+    (mapv (fn [join]
+            {:node/type :ast/join
+             :mbql-join join})
+          joins)))
+
 (defn- pmbql-query->source-node
   "Parse pMBQL query into source node structure using lib functions."
   [source-type id metadata pmbql-query]
   (let [table-id      (lib.util/source-table-id pmbql-query)
         aggregation   (first (lib.aggregation/aggregations pmbql-query))
-        source-filter (extract-source-filters pmbql-query)]
+        source-filter (extract-source-filters pmbql-query)
+        source-joins  (extract-source-joins pmbql-query)]
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
@@ -257,7 +268,7 @@
                               {:node/type :aggregation/count})
              :base-table  (table-node table-id)
              :metadata    metadata}
-      ;; TODO: Add joins extraction when needed
+      source-joins  (assoc :joins source-joins)
       source-filter (assoc :filters source-filter))))
 
 ;;; -------------------- Main Construction --------------------
