@@ -347,7 +347,7 @@ describe("DashboardSubscriptionsSidebar", () => {
       setup({ pulses });
 
       expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      expect(await screen.findByText("Emailed daily")).toBeInTheDocument();
+      expect(await screen.findByText(/Emailed daily/)).toBeInTheDocument();
       expect(await screen.findByText("Test User")).toBeInTheDocument();
     });
 
@@ -377,8 +377,8 @@ describe("DashboardSubscriptionsSidebar", () => {
       setup({ pulses, isAdmin: true });
 
       // Open the subscription
-      expect(await screen.findByText("Emailed weekly")).toBeInTheDocument();
-      await userEvent.click(await screen.findByText("Emailed weekly"));
+      expect(await screen.findByText(/Emailed Monday/)).toBeInTheDocument();
+      await userEvent.click(await screen.findByText(/Emailed Monday/));
 
       // Delete it
       await userEvent.click(
