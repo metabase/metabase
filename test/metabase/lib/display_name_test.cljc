@@ -123,50 +123,95 @@
              (lib.display-name/parse-column-display-name-parts "Products → Total של סכום" patterns))))))
 
 (deftest ^:parallel parse-column-display-name-parts-filter-test
-  (let [filter-patterns (lib.filter/filter-display-name-patterns)]
-    (testing "Simple binary filter"
+  (let [filter-patterns (lib.filter/filter-display-name-patterns)
+        conjunctions    (lib.filter/compound-filter-conjunctions)]
+    (testing "Between filter should not split 'and' in values as compound conjunction"
       (is (= [{:type :translatable, :value "Total"}
-              {:type :static, :value " is between 100 and 200"}]
-             (lib.display-name/parse-column-display-name-parts "Total is between 100 and 200" nil filter-patterns))))
+              {:type :static, :value " is between "}
+              {:type :static, :value "100 and 200"}]
+             (lib.display-name/parse-column-display-name-parts "Total is between 100 and 200" nil filter-patterns conjunctions))))
 
     (testing "Greater than filter"
       (is (= [{:type :translatable, :value "Total"}
-              {:type :static, :value " is greater than 100"}]
-             (lib.display-name/parse-column-display-name-parts "Total is greater than 100" nil filter-patterns))))
+              {:type :static, :value " is greater than "}
+              {:type :static, :value "100"}]
+             (lib.display-name/parse-column-display-name-parts "Total is greater than 100" nil filter-patterns conjunctions))))
 
     (testing "Unary filter (not)"
       (is (= [{:type :static, :value "not "}
               {:type :translatable, :value "Total"}]
-             (lib.display-name/parse-column-display-name-parts "not Total" nil filter-patterns))))
+             (lib.display-name/parse-column-display-name-parts "not Total" nil filter-patterns conjunctions))))
 
     (testing "Unary filter (is empty)"
       (is (= [{:type :translatable, :value "Total"}
               {:type :static, :value " is empty"}]
-             (lib.display-name/parse-column-display-name-parts "Total is empty" nil filter-patterns))))
+             (lib.display-name/parse-column-display-name-parts "Total is empty" nil filter-patterns conjunctions))))
 
     (testing "Filter with join"
       (is (= [{:type :translatable, :value "Products"}
               {:type :static, :value " → "}
               {:type :translatable, :value "Total"}
-              {:type :static, :value " is between 100 and 200"}]
-             (lib.display-name/parse-column-display-name-parts "Products → Total is between 100 and 200" nil filter-patterns))))
+              {:type :static, :value " is between "}
+              {:type :static, :value "100 and 200"}]
+             (lib.display-name/parse-column-display-name-parts "Products → Total is between 100 and 200" nil filter-patterns conjunctions))))
 
     (testing "Filter with temporal bucket"
       (is (= [{:type :translatable, :value "Created At"}
               {:type :static, :value ": "}
               {:type :static, :value "Month"}
-              {:type :static, :value " is before 2024"}]
-             (lib.display-name/parse-column-display-name-parts "Created At: Month is before 2024" nil filter-patterns))))
+              {:type :static, :value " is before "}
+              {:type :static, :value "2024"}]
+             (lib.display-name/parse-column-display-name-parts "Created At: Month is before 2024" nil filter-patterns conjunctions))))
 
     (testing "Contains filter"
       (is (= [{:type :translatable, :value "Category"}
-              {:type :static, :value " contains Widget"}]
-             (lib.display-name/parse-column-display-name-parts "Category contains Widget" nil filter-patterns))))
+              {:type :static, :value " contains "}
+              {:type :static, :value "Widget"}]
+             (lib.display-name/parse-column-display-name-parts "Category contains Widget" nil filter-patterns conjunctions))))
 
     (testing "Does not contain filter"
       (is (= [{:type :translatable, :value "Category"}
-              {:type :static, :value " does not contain Widget"}]
-             (lib.display-name/parse-column-display-name-parts "Category does not contain Widget" nil filter-patterns))))))
+              {:type :static, :value " does not contain "}
+              {:type :static, :value "Widget"}]
+             (lib.display-name/parse-column-display-name-parts "Category does not contain Widget" nil filter-patterns conjunctions))))))
+
+(deftest ^:parallel parse-column-display-name-parts-compound-filter-test
+  (let [filter-patterns (lib.filter/filter-display-name-patterns)
+        conjunctions    (lib.filter/compound-filter-conjunctions)]
+    (testing "Two-item compound filter with 'or'"
+      (is (= [{:type :translatable, :value "Review Requested At"}
+              {:type :static, :value " is not empty"}
+              {:type :static, :value " or "}
+              {:type :translatable, :value "Reviewed At"}
+              {:type :static, :value " is not empty"}]
+             (lib.display-name/parse-column-display-name-parts
+              "Review Requested At is not empty or Reviewed At is not empty"
+              nil filter-patterns conjunctions))))
+
+    (testing "Two-item compound filter with 'and'"
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " is greater than "}
+              {:type :static, :value "100"}
+              {:type :static, :value " and "}
+              {:type :translatable, :value "Price"}
+              {:type :static, :value " is less than "}
+              {:type :static, :value "50"}]
+             (lib.display-name/parse-column-display-name-parts
+              "Total is greater than 100 and Price is less than 50"
+              nil filter-patterns conjunctions))))
+
+    (testing "Three-item compound filter"
+      (is (= [{:type :translatable, :value "Total"}
+              {:type :static, :value " is empty"}
+              {:type :static, :value ", "}
+              {:type :translatable, :value "Price"}
+              {:type :static, :value " is empty"}
+              {:type :static, :value ", and "}
+              {:type :translatable, :value "Status"}
+              {:type :static, :value " is empty"}]
+             (lib.display-name/parse-column-display-name-parts
+              "Total is empty, Price is empty, and Status is empty"
+              nil filter-patterns conjunctions))))))
 
 (deftest ^:parallel parse-column-display-name-parts-filter-with-aggregation-test
   (let [agg-patterns    (lib.aggregation/aggregation-display-name-patterns)

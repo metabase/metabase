@@ -65,27 +65,24 @@
 (defn- try-parse-filter-to-parts
   "Try to parse a display name using filter patterns.
    Filter patterns have :prefix (text before column) and :separator (text between column and first value/end).
-   Returns {:column str, :prefix str, :suffix str-or-nil} or nil."
+   Returns {:column str, :prefix str, :separator str-or-nil, :remainder str-or-nil} or nil."
   [display-name patterns]
   (perf/some (fn [{:keys [prefix separator]}]
-               ;; Skip degenerate patterns where both prefix and separator are empty.
-               ;; This can happen when a locale translates e.g. "not {0}" to just "{0}",
-               ;; which would match everything and cause infinite recursion.
+               ;; Skip degenerate patterns where both prefix and separator are empty
+               ;; (can happen when a locale translates e.g. "not {0}" to just "{0}")
                (when (and (or (seq prefix) (seq separator))
                           (str/starts-with? display-name prefix))
-                 (let [after-prefix (subs display-name (count prefix))]
-                   (if (seq separator)
-                     ;; Binary/ternary: has separator between column and values
-                     (when-let [sep-idx (str/index-of after-prefix separator)]
-                       (when (pos? sep-idx) ;; column must be non-empty
-                         {:column (subs after-prefix 0 sep-idx)
-                          :prefix prefix
-                          :suffix (subs after-prefix sep-idx)}))
-                     ;; Unary: no separator, everything after prefix is the column
-                     (when (seq after-prefix)
-                       {:column after-prefix
-                        :prefix prefix
-                        :suffix nil})))))
+                 (let [after-prefix (subs display-name (count prefix))
+                       ;; For unary filters (empty separator), column extends to end of string
+                       sep-idx      (if (seq separator)
+                                      (str/index-of after-prefix separator)
+                                      (count after-prefix))]
+                   (when (and sep-idx (pos? sep-idx))
+                     {:column    (subs after-prefix 0 sep-idx)
+                      :prefix    prefix
+                      :separator separator
+                      :remainder (when (seq separator)
+                                   (subs after-prefix (+ sep-idx (count separator))))}))))
              patterns))
 
 (defn- try-parse-colon-suffix-to-parts
@@ -97,6 +94,38 @@
       {:matched true
        :column  (subs display-name 0 colon-idx)
        :suffix  (subs display-name (+ colon-idx (count column-display-name-separator)))})))
+
+(defn- find-earliest-conjunction
+  "Find the earliest conjunction in `s` where the left side matches a filter pattern.
+   Prefers earliest position; at the same position, prefers the longest conjunction.
+   Returns {:left str :conjunction str :right str} or nil."
+  [s conjunctions filter-patterns]
+  (->> conjunctions
+       (keep (fn [conj-str]
+               (when-let [idx (str/index-of s conj-str)]
+                 (let [left  (subs s 0 idx)
+                       right (subs s (+ idx (count conj-str)))]
+                   (when (try-parse-filter-to-parts left filter-patterns)
+                     {:left left :conjunction conj-str :right right :idx idx})))))
+       (sort-by (juxt :idx #(- (count (:conjunction %)))))
+       first))
+
+(defn- try-split-compound
+  "Try to split a display name into compound filter clauses.
+   Iteratively splits on conjunctions ('and', 'or', ', ') from left to right.
+   Only splits where both neighbors match a filter pattern, to avoid splitting
+   'between 100 and 200' on 'and'.
+   Returns a vector of alternating clauses and conjunctions, e.g.
+   [\"X is empty\" \", \" \"Y is empty\" \", and \" \"Z is empty\"], or nil."
+  [display-name conjunctions filter-patterns]
+  (when (and (seq conjunctions) (seq filter-patterns))
+    (loop [remaining display-name
+           result    []]
+      (if-let [{:keys [left conjunction right]} (find-earliest-conjunction remaining conjunctions filter-patterns)]
+        (recur right (conj result left conjunction))
+        ;; No more conjunctions found. If we split at least once, the remainder must also be a valid filter.
+        (when (and (seq result) (try-parse-filter-to-parts remaining filter-patterns))
+          (conj result remaining))))))
 
 (defn parse-column-display-name-parts
   "Parse a column display name into a flat list of parts for translation.
@@ -138,13 +167,15 @@
       {:type :static, :value \": \"}
       {:type :static, :value \"Month\"}]"
   ([display-name]
-   (parse-column-display-name-parts display-name nil nil))
+   (parse-column-display-name-parts display-name nil nil nil))
   ([display-name aggregation-patterns]
-   (parse-column-display-name-parts display-name aggregation-patterns nil))
+   (parse-column-display-name-parts display-name aggregation-patterns nil nil))
   ([display-name aggregation-patterns filter-patterns]
+   (parse-column-display-name-parts display-name aggregation-patterns filter-patterns nil))
+  ([display-name aggregation-patterns filter-patterns conjunctions]
    (letfn [(parse-inner [string]
                         ;; Recursively parse the inner part which may have more patterns
-             (parse-column-display-name-parts string aggregation-patterns filter-patterns))
+             (parse-column-display-name-parts string aggregation-patterns filter-patterns conjunctions))
 
            (parse-join-alias [join-alias]
              ;; Parse join alias which may be an implicit join like "People - Product"
@@ -157,7 +188,17 @@
                (parse-inner join-alias)))]
 
      (or
-      ;; First try aggregation patterns (most specific, wraps other patterns)
+      ;; First try compound filter (e.g. "X is empty or Y is empty")
+      ;; Must be before individual filter matching so each clause is parsed independently.
+      (when-let [segments (try-split-compound display-name conjunctions filter-patterns)]
+        ;; segments is [clause conj clause conj clause ...] — odd indices are conjunctions
+        (into []
+              (mapcat #(if (odd? %2)
+                         [(static-part %1)]
+                         (parse-inner %1))
+                      segments (range))))
+
+      ;; Then try aggregation patterns (most specific, wraps other patterns)
       (when-let [{:keys [prefix suffix inner]} (try-parse-aggregation-to-parts display-name aggregation-patterns)]
         (-> []
             (cond-> (seq prefix) (conj (static-part prefix)))
@@ -166,11 +207,13 @@
 
       ;; Then try filter patterns (column + operator + values)
       ;; Must be before join/colon parsing since filter text may contain ": " or " → "
-      (when-let [{:keys [column prefix suffix]} (try-parse-filter-to-parts display-name filter-patterns)]
+      (when-let [{:keys [column prefix separator remainder]}
+                 (try-parse-filter-to-parts display-name filter-patterns)]
         (-> []
             (cond-> (seq prefix) (conj (static-part prefix)))
             (into (parse-inner column))
-            (cond-> suffix (conj (static-part suffix)))))
+            (cond-> (seq separator) (conj (static-part separator)))
+            (cond-> (seq remainder) (conj (static-part remainder)))))
 
       ;; Then try join pattern
       (when-let [{:keys [join-alias column]} (try-parse-join-to-parts display-name)]

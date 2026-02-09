@@ -86,12 +86,17 @@
 ;;; Display names for filter clauses are only really used in generating descriptions for `:case` aggregations or for
 ;;; generating the suggested name for a query.
 
+(defn- conjunction-word
+  "Returns the translated conjunction word for `:and` or `:or`."
+  [tag]
+  (clojure.core/case tag
+    :and (i18n/tru "and")
+    :or  (i18n/tru "or")))
+
 (defmethod lib.metadata.calculation/display-name-method ::compound
   [query stage-number [tag _opts & subclauses] style]
   (lib.util/join-strings-with-conjunction
-   (clojure.core/case tag
-     :and (i18n/tru "and")
-     :or  (i18n/tru "or"))
+   (conjunction-word tag)
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause style))))
 
@@ -612,6 +617,32 @@
      :separator (if val-idx
                   (subs after-col 0 val-idx)
                   after-col)}))
+
+(defn compound-filter-conjunctions
+  "Returns conjunction strings used in compound filter display names,
+   derived from [[lib.util/join-strings-with-conjunction]] output.
+   Longest strings first so greedy matching works correctly."
+  []
+  (let [conjunctions (mapv conjunction-word [:and :or])
+        ;; Extract actual separators by calling join-strings-with-conjunction
+        ;; with marker strings and seeing what appears between them.
+        two-item    (fn [conj-word]
+                      ;; "A and B" => " and " is between A and B
+                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B"])]
+                        (subs result 1 (- (count result) 1))))
+        three-item  (fn [conj-word]
+                      ;; "A, B, and C" => ", " between A and B, ", and " between B and C
+                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B" "C"])
+                            ;; Find the separators around "B"
+                            b-idx  (str/index-of result "B")]
+                        [(subs result 1 b-idx)
+                         (subs result (inc b-idx) (- (count result) 1))]))]
+    (->> (concat
+          (map two-item conjunctions)
+          (mapcat three-item conjunctions))
+         distinct
+         (sort-by #(- (count %)))
+         vec)))
 
 (defn filter-display-name-patterns
   "Returns filter display name patterns for content translation.

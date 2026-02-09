@@ -613,6 +613,9 @@ describe("translateColumnDisplayName", () => {
         "Created At": "Erstellt am",
         Products: "Produkte",
         Status: "Status",
+        "Review Requested At": "Überprüfung angefordert am",
+        "Reviewed At": "Überprüft am",
+        Category: "Kategorie",
       };
 
       return typeof str === "string" ? (translations[str] ?? str) : str;
@@ -641,6 +644,18 @@ describe("translateColumnDisplayName", () => {
       [
         "Unknown Column is greater than 100",
         "Unknown Column is greater than 100",
+      ],
+      [
+        "Review Requested At is not empty or Reviewed At is not empty",
+        "Überprüfung angefordert am is not empty or Überprüft am is not empty",
+      ],
+      [
+        "Total is empty, Price is empty, and Status is empty",
+        "Gesamtsumme is empty, Preis is empty, and Status is empty",
+      ],
+      [
+        "Total is empty, Price is empty, Status is empty, and Category is empty",
+        "Gesamtsumme is empty, Preis is empty, Status is empty, and Kategorie is empty",
       ],
     ])(
       "should translate column name in filter: %s -> %s",

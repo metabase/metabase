@@ -561,7 +561,8 @@
   [display-name]
   (let [aggregation-patterns (lib.aggregation/aggregation-display-name-patterns)
         filter-patterns      (lib.filter/filter-display-name-patterns)
-        parts (lib.display-name/parse-column-display-name-parts display-name aggregation-patterns filter-patterns)]
+        conjunctions         (lib.filter/compound-filter-conjunctions)
+        parts (lib.display-name/parse-column-display-name-parts display-name aggregation-patterns filter-patterns conjunctions)]
     (clj->js parts)))
 
 (defn ^:export numeric-binning-strategies
