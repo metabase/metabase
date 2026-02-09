@@ -186,7 +186,7 @@ To define the configuration that applies to every embed on the page, use the `de
 
 - `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
 
-- `pluginsConfig` (optional, Pro and Enterprise only): plugins to customize the behavior of embedded components. You can customize what happens when people click a link in your embedded questions and dashboards by passing the `handleLink` function inside `pluginsConfig` in the `defineMetabaseConfig()` call. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
+- `pluginsConfig` (optional, Pro and Enterprise only): plugins to customize the behavior of embedded components. Use the `handleLink` function to customize what happens when people click a link in your embedded questions and dashboards. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
 
 
 ## Authentication

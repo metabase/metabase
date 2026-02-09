@@ -120,7 +120,6 @@ The SDK doesn't support:
 - Official collections
 - Subscriptions
 - Alerts
-- Dashboard custom destinations (instead, use [display as link](./plugins.md#handlelink)
 - Dashboard link cards
 - Server-side rendering (SSR)
 
