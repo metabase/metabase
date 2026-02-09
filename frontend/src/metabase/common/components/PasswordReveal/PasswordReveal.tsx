@@ -62,7 +62,7 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
           className={cx(CS.textLight, CS.textNormal, CS.mr3, CS.borderless)}
           value={password}
           onClick={(e) => {
-            const target = e.target as HTMLInputElement;
+            const target = e.currentTarget;
             target.setSelectionRange(0, target.value.length);
           }}
           readOnly
