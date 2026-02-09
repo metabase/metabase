@@ -98,7 +98,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
-  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
@@ -114,7 +114,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         justify="space-between"
         data-testid="data-studio-nav"
       >
-        <Stack gap="0.75rem" flex={1} mih={0}>
+        <Stack gap="0.75rem" flex={1} mih={0} className={S.upperGroup}>
           <DataStudioNavbarToggle
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}
@@ -257,7 +257,7 @@ function DataStudioTab({
   rightSection,
   isGated,
 }: DataStudioTabProps) {
-  const upsellGem = isGated ? <UpsellGem size={14} /> : null;
+  const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
   const effectiveRightSection = rightSection ?? upsellGem;
 
   return (

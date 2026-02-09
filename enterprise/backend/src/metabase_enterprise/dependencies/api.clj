@@ -296,7 +296,7 @@
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
-               :owner_user_id :owner_email]
+               :owner_user_id :owner_email :transform_id]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source
@@ -359,7 +359,7 @@
                                     {:user-id          api/*current-user-id*
                                      :is-superuser?    api/*is-superuser?*
                                      :is-data-analyst? api/*is-data-analyst?*}
-                                    {:perms/create-queries [:query-builder :query-builder-and-native]})]}]])
+                                    {:perms/create-queries :query-builder})]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)

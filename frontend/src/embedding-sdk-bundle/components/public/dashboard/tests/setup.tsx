@@ -20,6 +20,7 @@ import {
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { screen } from "__support__/ui";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -241,11 +242,13 @@ export const setupSdkDashboard = async ({
 
   renderWithSDKProviders(
     <Box h="500px">
-      <Component
-        dashboardId={dashboardId}
-        dataPickerProps={dataPickerProps}
-        {...props}
-      />
+      <SdkInternalNavigationProvider>
+        <Component
+          dashboardId={dashboardId}
+          dataPickerProps={dataPickerProps}
+          {...props}
+        />
+      </SdkInternalNavigationProvider>
     </Box>,
     {
       componentProviderProps: {

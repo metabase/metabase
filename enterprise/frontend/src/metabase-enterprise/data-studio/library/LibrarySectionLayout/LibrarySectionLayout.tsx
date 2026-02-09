@@ -11,7 +11,7 @@ import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
-import { LibraryUpsellPage } from "metabase/data-studio/upsells";
+import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -91,7 +91,7 @@ function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
-  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const hasLibraryFeature = useHasTokenFeature("library");
 
   if (!hasLibraryFeature) {
     return <LibraryUpsellPage />;
