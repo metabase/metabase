@@ -425,16 +425,15 @@
           ;; t1 -> t2 -> t3
           graph {:entities     [t1 t2 t3]
                  :dependencies {t2 [t1]
-                                t3 [t2]}}
-          ws-tx? #(= :workspace-transform (:node-type %))]
+                                t3 [t2]}}]
       (testing "t1 has t2 and t3 as descendants"
         (is (= #{"t2" "t3"}
-               (set (ws.impl/downstream-ids graph "t1" ws-tx?)))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t1")))))
       (testing "t2 has only t3 as descendant"
         (is (= #{"t3"}
-               (set (ws.impl/downstream-ids graph "t2" ws-tx?)))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t2")))))
       (testing "t3 has no descendants"
-        (is (empty? (ws.impl/downstream-ids graph "t3" ws-tx?)))))))
+        (is (empty? (ws.impl/downstream-ids graph :workspace-transform "t3")))))))
 
 (deftest downstream-ids-diamond-test
   (testing "Diamond graph: computes all downstream paths"
@@ -450,14 +449,13 @@
           graph {:entities     [t1 t2 t3 t4]
                  :dependencies {t2 [t1]
                                 t3 [t1]
-                                t4 [t2 t3]}}
-          ws-tx? #(= :workspace-transform (:node-type %))]
+                                t4 [t2 t3]}}]
       (testing "t1 has all transforms as descendants"
         (is (= #{"t2" "t3" "t4"}
-               (set (ws.impl/downstream-ids graph "t1" ws-tx?)))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t1")))))
       (testing "t2 has only t4 as descendant"
         (is (= #{"t4"}
-               (set (ws.impl/downstream-ids graph "t2" ws-tx?))))))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t2"))))))))
 
 (deftest downstream-ids-with-external-transforms-test
   (testing "External transforms are traversed but not included when filtered"
@@ -467,14 +465,13 @@
           ;; t1 -> ext -> t2
           graph {:entities     [t1 ext t2]
                  :dependencies {ext [t1]
-                                t2  [ext]}}
-          ws-tx? #(= :workspace-transform (:node-type %))]
+                                t2  [ext]}}]
       (testing "t1 can reach through external transform to t2"
         (is (= #{"t2"}
-               (set (ws.impl/downstream-ids graph "t1" ws-tx?)))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t1")))))
       (testing "downstream-nodes returns all node types including external"
-        (is (= #{{:node-type :workspace-transform :id "t2"}
-                 {:node-type :external-transform :id 100}}
+        (is (= #{{:node-type :workspace-transform, :id "t2"}
+                 {:node-type :external-transform, :id 100}}
                (ws.impl/downstream-nodes graph "t1")))))))
 
 (deftest downstream-nodes-empty-graph-test

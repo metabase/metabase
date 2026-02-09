@@ -258,14 +258,20 @@
   []
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
-(def ^:private workspace-transform-id-xf
-  "Transducer that extracts :id from workspace-transform nodes."
-  (keep #(when (= :workspace-transform (:node-type %)) (:id %))))
+(defn- node-type-id-xf
+  "Create a transducer that filters nodes by type and extracts IDs."
+  [node-type]
+  (keep #(when (= node-type (:node-type %)) (:id %))))
+
+(defn- node-type-id-rf
+  "Create a reducing function that filters nodes by type and extracts IDs."
+  [node-type]
+  ((node-type-id-xf node-type) conj))
 
 (defn- workspace-transform-ids
   "Extract ref-ids from nodes that are workspace transforms."
   [nodes]
-  (into [] workspace-transform-id-xf nodes))
+  (into [] (node-type-id-xf :workspace-transform) nodes))
 
 (declare get-or-calculate-graph!)
 
@@ -289,13 +295,7 @@
   [graph filter-type ref-id]
   (when-let [deps-map (:dependencies graph)]
     (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform, :id ref-id}]
-                       :rf (fn
-                             ([] [])
-                             ([acc] acc)
-                             ([acc entity]
-                              (if (= filter-type (:node-type entity))
-                                (conj acc (:id entity))
-                                acc))))))
+                       :rf (node-type-id-rf filter-type))))
 
 (defn downstream-nodes
   "Given a graph and a workspace transform ref-id, find all downstream nodes (all node types).
@@ -319,13 +319,7 @@
   (when-let [deps-map (:dependencies graph)]
     (let [forward-edges (ws.dag/reverse-graph deps-map)]
       (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform, :id ref-id}]
-                         :rf (fn
-                               ([] [])
-                               ([acc] acc)
-                               ([acc entity]
-                                (if (= filter-type (:node-type entity))
-                                  (conj acc (:id entity))
-                                  acc)))))))
+                         :rf (node-type-id-rf filter-type)))))
 
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
