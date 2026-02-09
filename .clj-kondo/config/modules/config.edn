@@ -1567,6 +1567,7 @@
   tracing
   {:team "DevEx"
    :api  #{metabase.tracing.core
+           metabase.tracing.init
            metabase.tracing.sdk}
    :uses #{config
            settings
