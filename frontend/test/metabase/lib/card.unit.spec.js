@@ -1,8 +1,4 @@
-import {
-  createCard,
-  deserializeCardFromUrl,
-  serializeCardForUrl,
-} from "metabase/lib/card";
+import { deserializeCardFromUrl, serializeCardForUrl } from "metabase/lib/card";
 import {
   b64_to_utf8,
   b64url_to_utf8,
@@ -56,26 +52,6 @@ const getCard = ({
 };
 
 describe("lib/card", () => {
-  describe("createCard", () => {
-    it("should return a new card", () => {
-      expect(createCard()).toEqual({
-        name: null,
-        display: "table",
-        visualization_settings: {},
-        dataset_query: {},
-      });
-    });
-
-    it("should set the name if supplied", () => {
-      expect(createCard("something")).toEqual({
-        name: "something",
-        display: "table",
-        visualization_settings: {},
-        dataset_query: {},
-      });
-    });
-  });
-
   describe("utf8_to_b64", () => {
     it("should encode with non-URL-safe characters", () => {
       expect(utf8_to_b64("  ?").indexOf("/")).toEqual(3);
