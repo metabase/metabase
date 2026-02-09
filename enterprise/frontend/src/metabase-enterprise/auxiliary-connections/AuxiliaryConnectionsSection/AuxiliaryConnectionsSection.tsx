@@ -49,7 +49,7 @@ export function AuxiliaryConnectionsSection({
   const disableAuxiliaryConnections = useCallback(async () => {
     await Promise.all(
       ALL_CONNECTION_TYPES.map((type) =>
-        deleteAuxiliaryConnection({ id: database.id, type }),
+        deleteAuxiliaryConnection({ id: database.id, type }).unwrap(),
       ),
     );
   }, [database.id, deleteAuxiliaryConnection]);
@@ -60,8 +60,17 @@ export function AuxiliaryConnectionsSection({
       setIsExpanded(evt.target.checked);
 
       if (!evt.target.checked) {
-        await disableAuxiliaryConnections();
-        sendToast({ message: t`Auxiliary connections disabled` });
+        try {
+          await disableAuxiliaryConnections();
+          sendToast({ message: t`Auxiliary connections disabled` });
+        } catch (error) {
+          sendToast({
+            type: "error",
+            icon: "warning",
+            toastColor: "error",
+            message: t`Something went wrong`,
+          });
+        }
       }
     },
     [disableAuxiliaryConnections, sendToast],

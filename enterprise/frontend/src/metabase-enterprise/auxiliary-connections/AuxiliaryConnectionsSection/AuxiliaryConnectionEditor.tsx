@@ -99,8 +99,14 @@ export function AuxiliaryConnectionEditor({
   );
 
   const handleDelete = useCallback(async () => {
-    deleteAuxiliaryConnection({ id: database.id, type });
-  }, [database.id, type, deleteAuxiliaryConnection]);
+    try {
+      deleteAuxiliaryConnection({ id: database.id, type }).unwrap();
+    } catch (error) {
+      sendToast({
+        message: t`Failed to delete auxiliary connection`,
+      });
+    }
+  }, [database.id, type, sendToast, deleteAuxiliaryConnection]);
 
   return (
     <Flex direction="row" gap="sm" align="center" justify="space-between">
