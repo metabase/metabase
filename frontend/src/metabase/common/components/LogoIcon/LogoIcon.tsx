@@ -3,12 +3,11 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
 
-export interface LogoIconProps {
+interface LogoIconProps {
   width?: number;
   height?: number;
   dark?: boolean;
   fill?: string;
-  className?: string;
 }
 
 export const DefaultLogoIcon = ({
@@ -16,12 +15,10 @@ export const DefaultLogoIcon = ({
   height = 32,
   width,
   fill = "currentcolor",
-  className,
 }: LogoIconProps) => {
   return (
     <svg
       className={cx(
-        className,
         "Icon",
         { [CS.textMetabaseBrand]: !dark },
         { [CS.textWhite]: dark },
