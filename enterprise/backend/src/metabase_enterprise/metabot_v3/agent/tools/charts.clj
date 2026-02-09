@@ -30,15 +30,15 @@
                                      "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
                                      "smartscalar" "gauge" "progress" "funnel" "object" "map"]]]]]]
   (try
-    (let [result (create-chart-tools/create-chart
-                  {:query-id (get data_source :query_id)
-                   :chart-type (keyword (get viz_settings :chart_type))
-                   :queries-state (shared/current-queries-state)})
-          reactions (:reactions result)]
-      (let [structured (assoc (dissoc result :reactions) :result-type :chart)]
-        (cond-> {:output (format-chart-output structured)
-                 :structured-output structured}
-          (seq reactions) (assoc :reactions reactions))))
+    (let [result     (create-chart-tools/create-chart
+                      {:query-id      (get data_source :query_id)
+                       :chart-type    (keyword (get viz_settings :chart_type))
+                       :queries-state (shared/current-queries-state)})
+          reactions  (:reactions result)
+          structured (assoc (dissoc result :reactions) :result-type :chart)]
+      (cond-> {:output (format-chart-output structured)
+               :structured-output structured}
+        (seq reactions) (assoc :reactions reactions)))
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
