@@ -1058,6 +1058,46 @@
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
 
+(deftest update-workspace-transform-target-conflict-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when updating target to conflict"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+        ;; Create two transforms with different targets via POST API
+        (let [tx1 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
+                                        {:name   "Transform 1"
+                                         :source {:type  "query"
+                                                  :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                         :target {:type   "table"
+                                                  :schema target-schema
+                                                  :name   "target_table_1"}})
+              _tx2 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
+                                         {:name   "Transform 2"
+                                          :source {:type  "query"
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "target_table_2"}})]
+          (testing "updating target to match another transform's target returns 400"
+            (is (= "Another transform in this workspace already targets that table"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" (:ref_id tx1))
+                                         {:target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "target_table_2"}}))))
+          (testing "updating target to a unique table succeeds"
+            (is (=? {:ref_id (:ref_id tx1)}
+                    (mt/user-http-request :crowberto :put 200
+                                          (ws-url (:id workspace) "/transform" (:ref_id tx1))
+                                          {:target {:type   "table"
+                                                    :schema target-schema
+                                                    :name   "target_table_3"}}))))
+          (testing "updating non-target fields doesn't trigger conflict check"
+            (is (=? {:ref_id (:ref_id tx1)
+                     :name   "Renamed Transform 1"}
+                    (mt/user-http-request :crowberto :put 200
+                                          (ws-url (:id workspace) "/transform" (:ref_id tx1))
+                                          {:name "Renamed Transform 1"})))))))))
+
 (deftest upsert-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid (upsert behavior)"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]

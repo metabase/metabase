@@ -891,7 +891,7 @@
   ;;    insert requires full validation, workspace initialization, status transitions)
   (let [existing (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id)]
     (if existing
-      ;; UPDATE path (existing behavior)
+      ;; UPDATE path
       (t2/with-transaction [_tx]
         (let [;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
               ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
@@ -899,6 +899,10 @@
               merged-body (cond-> body
                             (:target body) (update :target #(merge base %)))
               source-or-target-changed? (or (:source body) (:target body))]
+          ;; If target is changing, check for conflicts with other transforms (excluding this one)
+          (when (:target body)
+            (api/check-400 (not (internal-target-conflict? ws-id (:target merged-body) tx-id))
+                           (deferred-tru "Another transform in this workspace already targets that table")))
           (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
           ;; If source or target changed, increment versions for re-analysis
           (when source-or-target-changed?
