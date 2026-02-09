@@ -39,7 +39,8 @@
 
 (defn- card-href
   [card]
-  (h (urls/card-url (u/the-id card))))
+  (when-let [card-id (u/id card)]
+    (h (urls/card-url card-id))))
 
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]

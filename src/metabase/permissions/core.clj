@@ -107,6 +107,7 @@
   collection-readwrite-path
   collection-path?]
  [metabase.permissions.user
+  query-creation-capabilities
   user-permissions-set
   user->tenant-collection-and-descendant-ids
   has-any-transforms-permission?

@@ -335,21 +335,11 @@
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
   permissions across non-sample databases."
   [user]
-  (let [db-ids              (t2/select-pks-set :model/Database)
-        _                   (perms/prime-db-cache db-ids)
-        create-query-perms  (into #{}
-                                  (map (fn [db-id]
-                                         (perms/most-permissive-database-permission-for-user
-                                          api/*current-user-id* :perms/create-queries db-id)))
-                                  db-ids)
-        can-create-queries? (or (some #(perms/at-least-as-permissive?
-                                        :perms/create-queries % :query-builder)
-                                      create-query-perms)
-                                (perms/user-has-any-published-table-permission?))
-        can-create-native?  (contains? create-query-perms :query-builder-and-native)]
+  (let [{:keys [can-create-queries can-create-native-queries]}
+        (perms/query-creation-capabilities (:id user))]
     (update user :permissions assoc
-            :can_create_queries        (boolean can-create-queries?)
-            :can_create_native_queries can-create-native?)))
+            :can_create_queries        can-create-queries
+            :can_create_native_queries can-create-native-queries)))
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."

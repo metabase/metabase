@@ -326,24 +326,35 @@
        (mapv #(hash-map :role (if (:bot_id %) :assistant :user)
                         :content (:text %)))))
 
+(defn- compute-capabilities
+  "Compute capability strings for the current user based on their permissions."
+  []
+  (let [{:keys [can-create-queries can-create-native-queries]}
+        (perms/query-creation-capabilities api/*current-user-id*)]
+    (cond-> []
+      can-create-queries        (conj "permission:save_questions")
+      can-create-native-queries (conj "permission:write_sql_queries")
+      api/*is-superuser?*       (conj "permission:write_transforms"))))
+
 (defn- make-ai-request
   "Make an AI request and return both text and data parts.
    Optional `extra-history` is appended after the thread history (e.g., for upload context)."
   ([conversation-id prompt thread]
    (make-ai-request conversation-id prompt thread nil))
   ([conversation-id prompt thread extra-history]
-   (let [message    (metabot-v3.envelope/user-message prompt)
-         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
-         profile-id (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
-         session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+   (let [message        (metabot-v3.envelope/user-message prompt)
+         metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
+         profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
+         session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+         capabilities   (compute-capabilities)
          thread-history (thread->history thread)
-         history    (into (vec thread-history) extra-history)
-         lines      (atom nil)
+         history        (into (vec thread-history) extra-history)
+         lines          (atom nil)
          ^StreamingResponse response-stream
          (metabot-v3.client/streaming-request
           {:context         (metabot-v3.context/create-context
                              {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                              :capabilities []})
+                              :capabilities               capabilities})
            :metabot-id      metabot-id
            :profile-id      profile-id
            :session-id      session-id
@@ -353,8 +364,8 @@
            :state           {}
            :on-complete     (fn [the-lines] (reset! lines the-lines))})
          null-stream (OutputStream/nullOutputStream)
-         _ ((.-f response-stream) null-stream (a/chan))
-         messages (metabot-v3.util/aisdk->messages :assistant @lines)]
+         _           ((.-f response-stream) null-stream (a/chan))
+         messages    (metabot-v3.util/aisdk->messages :assistant @lines)]
      {:text (->> messages
                  (filter #(= (:_type %) :TEXT))
                  (map :content)
