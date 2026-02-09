@@ -145,9 +145,18 @@
   [parser driver query]
   (sql-tools.common/validate-query parser driver query))
 
+;; TODO: Following previously implmented as:
+;;(mapv split-compound-table-spec (:tables (macaw/query->tables sql-str {:mode :compound-select})))
+;; To fix the test old implementation was resurrected.
+;; We should ensure the bigquery differences again.
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
-  [_parser _driver sql-str]
-  (mapv split-compound-table-spec (:tables (macaw/query->tables sql-str {:mode :compound-select}))))
+  [_parser driver sql-str]
+  (-> sql-str
+      (macaw/parsed-query)
+      (macaw/query->components {:strip-contexts? true})
+      :tables
+      (->> (map :component)
+           (map #(sql-tools.common/normalize-table-spec driver %)))))
 
 (defmethod sql-tools/simple-query?-impl :macaw
   [_parser sql-string]
