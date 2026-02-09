@@ -320,6 +320,28 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
+(deftest ^:parallel fingerprint-based-default-temporal-bucket-test
+  (testing "The default temporal bucket is based on the fingerprint's date range"
+    (doseq [[earliest latest expected-default]
+            ;; < 1 day => :minute, 1-30 days => :day, 31-364 days => :week, >= 365 days => :month
+            [["2024-01-01T00:00:00" "2024-01-01T12:00:00" :minute]
+             ["2024-01-01T00:00:00" "2024-01-02T00:00:00" :day]     ;; boundary: exactly 1 day
+             ["2024-01-01"          "2024-01-15"           :day]
+             ["2024-01-01"          "2024-01-31"           :day]     ;; boundary: exactly 30 days
+             ["2024-01-01"          "2024-02-01"           :week]    ;; boundary: exactly 31 days
+             ["2024-01-01"          "2024-06-01"           :week]
+             ["2023-01-01"          "2023-12-31"           :week]    ;; boundary: exactly 364 days
+             ["2023-01-01"          "2024-01-01"           :month]   ;; boundary: exactly 365 days
+             ["2024-01-01"          "2025-06-01"           :month]]]
+      (let [field (assoc (meta/field-metadata :orders :created-at)
+                         :fingerprint {:type {:type/DateTime {:earliest earliest :latest latest}}})
+            mp    (lib.tu/mock-metadata-provider meta/metadata-provider {:fields [field]})
+            query (lib/query mp (meta/table-metadata :orders))
+            buckets (lib/available-temporal-buckets query field)
+            default-unit (some #(when (:default %) (:unit %)) buckets)]
+        (testing (str earliest " to " latest " => " expected-default)
+          (is (= expected-default default-unit)))))))
+
 (deftest ^:parallel field-with-binning-test
   (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
         binning       {:strategy :num-bins
