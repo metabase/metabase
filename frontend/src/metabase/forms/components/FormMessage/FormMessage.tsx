@@ -13,7 +13,11 @@ export type Response = {
 
 function isResponse(value: unknown): value is Response {
   return (
-    isObject(value) && "status" in value && typeof value.status === "number"
+    isObject(value) &&
+    "status" in value &&
+    typeof value.status === "number" &&
+    (value.data === undefined ||
+      (isObject(value.data) && typeof value.data.message === "string"))
   );
 }
 
