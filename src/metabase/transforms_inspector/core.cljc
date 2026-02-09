@@ -7,7 +7,7 @@
              [metabase.transforms-inspector.lens.generic]
              [metabase.transforms-inspector.lens.join-analysis]
              [metabase.transforms-inspector.lens.unmatched-rows]
-             [metabase.transforms-inspector.schema :as schema]
+             [metabase.transforms-inspector.schema]
              [metabase.util.i18n :refer [tru]]
              [metabase.util.malli :as mu]])
    [metabase.transforms-inspector.card-result :as card-result]

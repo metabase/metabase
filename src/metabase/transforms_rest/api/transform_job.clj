@@ -15,7 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
 (def ^:private LastRunResponse

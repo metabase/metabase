@@ -2238,6 +2238,7 @@
               system
               task
               transforms
+              transforms-rest
               users-rest
               util
               warehouse-schema
@@ -2492,6 +2493,7 @@
            settings
            system
            transforms
+           transforms-rest
            util
            enterprise/transforms-python}}}
 

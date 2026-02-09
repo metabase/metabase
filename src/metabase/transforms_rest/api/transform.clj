@@ -419,8 +419,8 @@
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
   (api/check-data-analyst)
   (-> (transforms.core/paged-runs (assoc query-params
-                                       :offset (request/offset)
-                                       :limit  (request/limit)))
+                                         :offset (request/offset)
+                                         :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
 (defn update-transform!
@@ -516,8 +516,8 @@
   (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.core/execute! transform {:start-promise start-promise
-                                             :run-method :manual
-                                             :user-id api/*current-user-id*}))
+                                          :run-method :manual
+                                          :user-id api/*current-user-id*}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
