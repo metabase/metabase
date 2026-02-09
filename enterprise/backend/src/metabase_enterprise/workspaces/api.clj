@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-input-external]
@@ -127,6 +128,7 @@
              "/graph$"
              "/problem$"
              "/external/transform$"
+             "/input/pending$"
              "/transform$"
              "/transform/[^/]+$"]
     ;; Manage & run transforms
@@ -811,7 +813,8 @@
                         (cond-> (not= :uninitialized (:db_status workspace))
                           (update :target assoc :database (:database_id workspace))))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
-      (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
+      (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
+          attach-isolated-target))))
 
 ;; TODO (Sanya 2025-12-12) -- Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -911,6 +914,14 @@
   (ws.impl/increment-graph-version! ws-id)
   nil)
 
+(defn- check-inputs-granted! [ws-id tx-id]
+  (let [ungranted (ws.impl/ungranted-inputs-for-transform ws-id tx-id)]
+    (when (seq ungranted)
+      (throw (ex-info (str "Transform cannot run: the following input tables have not been granted access: "
+                           (str/join ", " (map #(str (:schema %) "." (:table %)) ungranted)))
+                      {:status-code      400
+                       :ungranted-tables ungranted})))))
+
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
   :- ::ws.t/execution-result
   "Run a transform in a workspace.
@@ -922,6 +933,7 @@
         transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _         (check-transforms-enabled! (:database_id workspace))
+        _         (check-inputs-granted! ws-id tx-id)
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/run-transform! workspace graph transform)))
 
@@ -937,8 +949,49 @@
         transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _         (check-transforms-enabled! (:database_id workspace))
+        _         (check-inputs-granted! ws-id tx-id)
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/dry-run-transform workspace graph transform)))
+
+;;; ---------------------------------------- Input Grant Endpoints ----------------------------------------
+
+(def ^:private PendingInput
+  [:map
+   [:id ::ws.t/appdb-id]
+   [:db_id ::ws.t/appdb-id]
+   [:schema [:maybe :string]]
+   [:table :string]
+   [:table_id [:maybe ::ws.t/appdb-id]]])
+
+(api.macros/defendpoint :get "/:ws-id/input/pending"
+  :- [:map [:inputs [:sequential PendingInput]]]
+  "List all input tables that haven't been granted access yet."
+  {:access :workspace}
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
+  (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+  {:inputs (t2/select [:model/WorkspaceInput :id :db_id :schema :table :table_id]
+                      :workspace_id ws-id
+                      :access_granted false
+                      {:order-by [:db_id :schema :table]})})
+
+(api.macros/defendpoint :post "/:ws-id/input/grant"
+  :- :nil
+  "Grant read access to specific input tables. Superuser only."
+  {:access :workspace}
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+   _query-params
+   {:keys [input_ids]} :- [:map [:input_ids [:sequential ms/PositiveInt]]]]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
+        inputs    (t2/select :model/WorkspaceInput
+                             :id [:in input_ids]
+                             :workspace_id ws-id
+                             :access_granted false)]
+    (api/check-400 (seq inputs) "No matching ungranted inputs found")
+    (let [database (t2/select-one :model/Database :id (:database_id workspace))
+          tables   (mapv (fn [{:keys [schema table]}] {:schema schema :name table}) inputs)]
+      (ws.isolation/grant-read-access-to-tables! database workspace tables)
+      (t2/update! :model/WorkspaceInput {:id [:in (map :id inputs)]} {:access_granted true}))
+    nil))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."

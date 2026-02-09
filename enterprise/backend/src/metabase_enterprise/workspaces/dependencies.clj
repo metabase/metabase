@@ -43,6 +43,7 @@
    The ref_id directly links the input to its transform, no join table needed."
   (:require
    [metabase-enterprise.workspaces.models.workspace-input]
+   [metabase-enterprise.workspaces.models.workspace-input-transform]
    [metabase-enterprise.workspaces.models.workspace-output]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
@@ -245,23 +246,44 @@
   [default-schema input]
   (update input :schema #(or % default-schema)))
 
+(defn- upsert-workspace-input!
+  "Ensure a workspace_input row exists for the given table coordinate.
+   Returns the workspace_input id (existing or newly created)."
+  [workspace-id {:keys [db_id schema table table_id]}]
+  (or (t2/select-one-fn :id [:model/WorkspaceInput :id]
+                        :workspace_id workspace-id
+                        :db_id db_id
+                        :schema schema
+                        :table table)
+      (do (ws.u/ignore-constraint-violation
+           (t2/insert! :model/WorkspaceInput
+                       {:workspace_id workspace-id
+                        :db_id        db_id
+                        :schema       schema
+                        :table        table
+                        :table_id     table_id}))
+          ;; Re-select to handle race condition where another thread inserted first
+          (t2/select-one-fn :id [:model/WorkspaceInput :id]
+                            :workspace_id workspace-id
+                            :db_id db_id
+                            :schema schema
+                            :table table))))
+
 (defn- insert-workspace-inputs!
-  "Insert workspace_input records for the given inputs with the given transform_version.
-   Each input row is linked to a specific transform via ref_id.
+  "Insert workspace_input records (deduplicated by table coordinate) and workspace_input_transform
+   join rows for the given inputs with the given transform_version.
    With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
    Silently ignores constraint violations from concurrent inserts."
   [workspace-id ref-id inputs transform-version]
   (when (seq inputs)
-    (ws.u/ignore-constraint-violation
-     (t2/insert! :model/WorkspaceInput
-                 (for [{:keys [db_id schema table table_id]} inputs]
-                   {:workspace_id      workspace-id
-                    :ref_id            ref-id
-                    :transform_version transform-version
-                    :db_id             db_id
-                    :schema            schema
-                    :table             table
-                    :table_id          table_id}))))
+    (let [input-ids (mapv (partial upsert-workspace-input! workspace-id) inputs)]
+      (ws.u/ignore-constraint-violation
+       (t2/insert! :model/WorkspaceInputTransform
+                   (for [input-id input-ids]
+                     {:workspace_input_id input-id
+                      :workspace_id       workspace-id
+                      :ref_id             ref-id
+                      :transform_version  transform-version})))))
   nil)
 
 (defn transform-output-exists-for-version?

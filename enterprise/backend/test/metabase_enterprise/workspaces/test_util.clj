@@ -336,6 +336,7 @@
                                                       :model/Workspace
                                                       :model/WorkspaceTransform
                                                       :model/WorkspaceInput
+                                                      :model/WorkspaceInputTransform
                                                       :model/WorkspaceOutput]
                                 (tests))))))))
 
