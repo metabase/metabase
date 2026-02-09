@@ -937,10 +937,11 @@
         run-ancestors?     (flag-enabled? run_stale_ancestors)
         ancestors-result   (when run-ancestors?
                              (ws.impl/run-stale-ancestors! workspace graph tx-id))
-        ancestors-failed?  (seq (:failed ancestors-result))
-        transform-result   (if ancestors-failed?
+        failed-ancestors   (:failed ancestors-result)
+        transform-result   (if (seq failed-ancestors)
                              {:status  :failed
-                              :message "Ancestor transform failed"
+                              :message (str "Ancestor transform failed: "
+                                            (str/join ", " failed-ancestors))
                               :table   (select-keys (:target transform) [:schema :name])}
                              (ws.impl/run-transform! workspace graph transform))]
     (cond-> transform-result
@@ -968,10 +969,11 @@
         run-ancestors?     (flag-enabled? run_stale_ancestors)
         ancestors-result   (when run-ancestors?
                              (ws.impl/run-stale-ancestors! workspace graph tx-id))
-        ancestors-failed?  (seq (:failed ancestors-result))
-        dry-run-result     (if ancestors-failed?
+        failed-ancestors   (:failed ancestors-result)
+        dry-run-result     (if (seq failed-ancestors)
                              {:status  :failed
-                              :message "Ancestor transform failed"}
+                              :message (str "Ancestor transform failed: "
+                                            (str/join ", " failed-ancestors))}
                              (ws.impl/dry-run-transform workspace graph transform))]
     (cond-> dry-run-result
       run-ancestors? (assoc :ancestors ancestors-result))))
