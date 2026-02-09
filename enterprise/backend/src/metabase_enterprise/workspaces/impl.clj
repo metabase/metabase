@@ -401,11 +401,12 @@
 (defn execute-adhoc-query
   "Execute an arbitrary SQL query in the workspace's isolated database context.
    Applies workspace table remapping so queries can reference global table names.
-   Returns a ::ws.t/dry-run-result with the first 2000 rows."
-  [{db-id :database_id :as workspace} graph sql]
+   Options: :row-limit (default 2000).
+   Returns a ::ws.t/query-result."
+  [{db-id :database_id :as workspace} graph sql {:as opts}]
   (ws.isolation/with-workspace-isolation
     workspace
-    (ws.execute/execute-adhoc-sql db-id sql (build-remapping workspace graph))))
+    (ws.execute/execute-adhoc-sql db-id sql (build-remapping workspace graph) opts)))
 
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 

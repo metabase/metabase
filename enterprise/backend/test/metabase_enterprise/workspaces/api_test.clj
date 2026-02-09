@@ -1468,8 +1468,18 @@
                                                (ws-url (:id ws) "/transform/" ref-id "/run"))]
           (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
 
-        (testing "ad-hoc query can SELECT from transform output using global table name"
+        (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
           (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
+                result    (mt/user-http-request :crowberto :post 200
+                                                (ws-url (:id ws) "/query")
+                                                {:sql query-sql})]
+            (is (=? {:status "succeeded"
+                     :data   {:rows [[1 "remapped"]]
+                              :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                    result))))
+
+        (testing "ad-hoc query can SELECT from transform output using unqualified table name"
+          (let [query-sql (str "SELECT * FROM " target-table)
                 result    (mt/user-http-request :crowberto :post 200
                                                 (ws-url (:id ws) "/query")
                                                 {:sql query-sql})]

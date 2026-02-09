@@ -960,7 +960,7 @@
       run-ancestors? (assoc :ancestors ancestors-result))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
-  :- ::ws.t/dry-run-result
+  :- ::ws.t/query-result
   "Dry-run a transform in a workspace without persisting to the target table.
 
   Returns the first 2000 rows of transform output for preview purposes.
@@ -991,7 +991,7 @@
       run-ancestors? (assoc :ancestors ancestors-result))))
 
 (api.macros/defendpoint :post "/:ws-id/query"
-  :- ::ws.t/dry-run-result
+  :- ::ws.t/query-result
   "Execute an arbitrary SQL query in the workspace's isolated database context.
    Table references are remapped to isolated workspace tables.
    Returns the first 2000 rows of query results."
@@ -1004,7 +1004,7 @@
                                  "Cannot query archived workspace")
         _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/execute-adhoc-query workspace graph sql)))
+    (ws.impl/execute-adhoc-query workspace graph sql nil)))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."

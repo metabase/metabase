@@ -44,8 +44,8 @@
             [:schema {:optional true} [:maybe :string]]]]
    [:ancestors {:optional true} ::ancestors-result]])
 
-(mr/def ::dry-run-result
-  "Result of a transform dry-run (preview without persisting).
+(mr/def ::query-result
+  "Result of a query preview (dry-run or ad-hoc query).
    Data is nested under :data to match /api/dataset response format."
   [:map
    [:status [:enum :succeeded :failed]]
