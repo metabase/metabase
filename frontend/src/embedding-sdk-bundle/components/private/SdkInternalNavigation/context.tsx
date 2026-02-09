@@ -9,29 +9,41 @@ export type SdkInternalNavigationEntry =
       type: "dashboard";
       id: SdkDashboardId;
       name: string;
+      virtual?: true;
       parameters?: ParameterValues;
+      onPop?: () => void;
     }
   | {
       type: "question";
       id: SdkQuestionId;
       name: string;
+      virtual?: true;
       parameters?: ParameterValues;
+      onPop?: () => void;
     }
   | {
-      /** Virtual entry for question drills - parent component handles rendering, this just tracks navigation depth */
-      type: "virtual-question-drill";
+      type: "metabase-browser";
+      virtual: false;
+      onPop?: () => void;
+    }
+  | {
+      /** Parent component handles rendering, this just tracks navigation depth */
+      type: "question-drill";
+      virtual: true;
       name: string;
       onPop?: () => void;
     }
   | {
-      /** Virtual entry for opening a card from dashboard (clicking card title or click behavior) */
-      type: "virtual-open-card";
+      /** Opening a card from dashboard (clicking card title or click behavior) */
+      type: "open-card";
+      virtual: true;
       name: string;
       onPop?: () => void;
     }
   | {
-      /** Virtual entry for new question creation from dashboard */
-      type: "virtual-new-question";
+      /** New question creation from dashboard */
+      type: "new-question";
+      virtual: true;
       onPop?: () => void;
     };
 
