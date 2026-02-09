@@ -1,39 +1,10 @@
-import {
-  setupCollectionTreeEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { LibraryCollectionType } from "metabase/plugins";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import type {
-  Collection,
-  CollectionType,
-  RemoteSyncEntity,
-} from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockSettings,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { AllChangesView } from "./AllChangesView";
-
-// Helper function to detect library collections (mirrors enterprise implementation)
-function getLibraryCollectionType(
-  type: CollectionType | null | undefined,
-): LibraryCollectionType | undefined {
-  switch (type) {
-    case "library":
-      return "root";
-    case "library-data":
-      return "data";
-    case "library-metrics":
-      return "metrics";
-  }
-}
 
 const defaultCollection = createMockCollection({
   id: 1,
@@ -59,47 +30,13 @@ const deletedEntity = createMockRemoteSyncEntity({
 const setup = ({
   entities = [updatedEntity],
   collections = [defaultCollection],
-  isTransformsSyncEnabled = false,
-  enableDataStudio = false,
 }: {
   entities: RemoteSyncEntity[];
   collections?: Collection[];
-  isTransformsSyncEnabled?: boolean;
-  enableDataStudio?: boolean;
 }) => {
-  if (enableDataStudio) {
-    PLUGIN_DATA_STUDIO.getLibraryCollectionType = getLibraryCollectionType;
-  } else {
-    PLUGIN_DATA_STUDIO.getLibraryCollectionType = () => undefined;
-  }
-
-  const tokenFeatures = enableDataStudio
-    ? createMockTokenFeatures({ data_studio: true })
-    : createMockTokenFeatures();
-
-  const settingsState = mockSettings({
-    "use-tenants": false,
-    "remote-sync-transforms": isTransformsSyncEnabled,
-    "token-features": tokenFeatures,
-  });
-
   setupCollectionTreeEndpoint(collections);
 
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "use-tenants": false,
-      "remote-sync-transforms": isTransformsSyncEnabled,
-      "token-features": tokenFeatures,
-    }),
-  );
-
-  const storeInitialState = createMockState({
-    settings: settingsState,
-  });
-
-  renderWithProviders(<AllChangesView entities={entities} />, {
-    storeInitialState,
-  });
+  renderWithProviders(<AllChangesView entities={entities} />);
 };
 
 describe("AllChangesView", () => {
@@ -221,7 +158,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [transformEntity],
         collections: [transformsCollection],
-        isTransformsSyncEnabled: true,
       });
 
       expect(
@@ -253,7 +189,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [transformEntity],
         collections: [parentTransformsCollection],
-        isTransformsSyncEnabled: true,
       });
 
       expect(
@@ -283,7 +218,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [collectionEntity],
         collections: [transformsCollection],
-        isTransformsSyncEnabled: true,
       });
 
       expect(
@@ -450,31 +384,6 @@ describe("AllChangesView", () => {
   });
 
   describe("snippets and snippet collections with Library (data_studio)", () => {
-    it("should display snippets without collection_id under Root when data_studio feature is not enabled", async () => {
-      const libraryCollection = createMockCollection({
-        id: 99,
-        name: "Library",
-        type: "library",
-        effective_ancestors: [],
-      });
-      const snippetEntity = createMockRemoteSyncEntity({
-        id: 300,
-        name: "Root Snippet",
-        model: "nativequerysnippet",
-        collection_id: undefined,
-        sync_status: "create",
-      });
-
-      setup({
-        entities: [snippetEntity],
-        collections: [libraryCollection],
-        enableDataStudio: false,
-      });
-
-      expect(await screen.findByText("Root")).toBeInTheDocument();
-      expect(screen.getByText("Root Snippet")).toBeInTheDocument();
-    });
-
     it("should display snippets without collection_id under the Library collection", async () => {
       const libraryCollection = createMockCollection({
         id: 99,
@@ -493,7 +402,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetEntity],
         collections: [libraryCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Library")).toBeInTheDocument();
@@ -518,7 +426,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetEntity],
         collections: [regularCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Root")).toBeInTheDocument();
@@ -550,7 +457,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetEntity1, snippetEntity2],
         collections: [libraryCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Library")).toBeInTheDocument();
@@ -589,7 +495,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetWithCollection, snippetWithoutCollection],
         collections: [libraryCollection, snippetCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("My Snippets")).toBeInTheDocument();
@@ -618,7 +523,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [cardEntity],
         collections: [libraryCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Root")).toBeInTheDocument();
@@ -649,7 +553,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetEntity],
         collections: [parentCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Library")).toBeInTheDocument();
@@ -680,7 +583,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetEntity],
         collections: [libraryCollection, snippetCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Library")).toBeInTheDocument();
@@ -717,7 +619,6 @@ describe("AllChangesView", () => {
       setup({
         entities: [snippetEntity],
         collections: [libraryCollection, parentSnippetCollection],
-        enableDataStudio: true,
       });
 
       expect(await screen.findByText("Library")).toBeInTheDocument();
