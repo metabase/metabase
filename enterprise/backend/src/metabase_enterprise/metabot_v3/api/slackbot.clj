@@ -251,28 +251,39 @@
    :success (containing model info) or :error (containing message)."
   [{:keys [name url_private] :as file}]
   (if-let [size-error (validate-file-size file)]
-    {:error size-error :filename name}
-    (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
-      (try
-        (let [content (download-slack-file url_private)
-              _ (io/copy content temp-file)
-              db-id (get-upload-db-id)
-              result (upload.impl/create-csv-upload!
-                      {:filename     name
-                       :file         temp-file
-                       :db-id        db-id
-                       :schema-name  (get-upload-schema-name)
-                       :table-prefix (get-upload-table-prefix)
-                       :collection-id nil})]
-          {:success true
-           :filename name
-           :model-id (:id result)
-           :model-name (:name result)})
-        (catch Exception e
-          (log/warnf e "Failed to process CSV upload: %s" name)
-          {:error (ex-message e) :filename name})
-        (finally
-          (io/delete-file temp-file true))))))
+    (do
+      (log/infof "[csv-upload] Step 5/9 Size Validation -- FAILED: file=%s error=%s" name size-error)
+      {:error size-error :filename name})
+    (do
+      (log/infof "[csv-upload] Step 5/9 Size Validation -- OK: file=%s size=%d" name (:size file))
+      (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
+        (try
+          (let [content (download-slack-file url_private)
+                _ (io/copy content temp-file)
+                _ (log/infof "[csv-upload] Step 6/9 Slack File Download -- OK: file=%s bytes=%d"
+                             name (alength ^bytes content))
+                db-id (get-upload-db-id)
+                result (upload.impl/create-csv-upload!
+                        {:filename     name
+                         :file         temp-file
+                         :db-id        db-id
+                         :schema-name  (get-upload-schema-name)
+                         :table-prefix (get-upload-table-prefix)
+                         :collection-id nil})]
+            (log/infof "[csv-upload] Step 7/9 Metabase Upload Processing -- OK: file=%s model_id=%d model_name=%s"
+                       name (:id result) (:name result))
+            {:success true
+             :filename name
+             :model-id (:id result)
+             :model-name (:name result)})
+          (catch Exception e
+            (let [step (if (.contains (str (ex-message e)) "download")
+                         "Step 6/9 Slack File Download"
+                         "Step 7/9 Metabase Upload Processing")]
+              (log/warnf "[csv-upload] %s -- FAILED: file=%s error=%s" step name (ex-message e)))
+            {:error (ex-message e) :filename name})
+          (finally
+            (io/delete-file temp-file true)))))))
 
 (defn- process-file-uploads
   "Process all files from a Slack event. Returns a map with:
@@ -280,48 +291,52 @@
    :skipped - seq of non-CSV filenames that were skipped"
   [files]
   (let [{csv-files true other-files false} (group-by csv-file? files)
-        skipped (mapv :name other-files)
-        results (mapv process-csv-file csv-files)]
-    {:results results
-     :skipped skipped}))
+        skipped (mapv :name other-files)]
+    (log/infof "[csv-upload] Step 4/9 File Classification -- OK: csv_count=%d skipped_count=%d skipped=%s"
+               (count csv-files) (count skipped) (pr-str skipped))
+    (let [results (mapv process-csv-file csv-files)]
+      {:results results
+       :skipped skipped})))
 
 (defn- build-upload-system-messages
   "Build system messages to inject into AI request about uploads."
   [{:keys [results skipped]}]
   (let [successes (filter :success results)
-        failures (filter :error results)]
-    (cond-> []
-      (seq successes)
-      (conj {:role "system"
-             :content (format "The user uploaded CSV files that are now available as models in Metabase: %s. You can help them query this data."
-                              (str/join ", " (map #(format "%s (model ID: %d)"
-                                                           (:filename %)
-                                                           (:model-id %))
-                                                  successes)))})
+        failures (filter :error results)
+        messages (cond-> []
+                   (seq successes)
+                   (conj {:role :assistant
+                          :content (format "The user uploaded CSV files that are now available as models in Metabase: %s. You can help them query this data."
+                                           (str/join ", " (map #(format "%s (model ID: %d)"
+                                                                        (:filename %)
+                                                                        (:model-id %))
+                                                               successes)))})
 
-      (seq failures)
-      (conj {:role "system"
-             :content (format "Some file uploads failed: %s. Explain these errors to the user."
-                              (str/join ", " (map #(format "%s: %s"
-                                                           (:filename %)
-                                                           (:error %))
-                                                  failures)))})
+                   (seq failures)
+                   (conj {:role :assistant
+                          :content (format "Some file uploads failed: %s. Explain these errors to the user."
+                                           (str/join ", " (map #(format "%s: %s"
+                                                                        (:filename %)
+                                                                        (:error %))
+                                                               failures)))})
 
-      (seq skipped)
-      (conj {:role "system"
-             :content (format "The user tried to upload non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
-                              (str/join ", " skipped))}))))
+                   (seq skipped)
+                   (conj {:role :assistant
+                          :content (format "The user tried to upload non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
+                                           (str/join ", " skipped))}))]
+    (log/infof "[csv-upload] Step 8/9 Result Communication -- OK: successes=%d failures=%d skipped=%d messages=%d"
+               (count successes) (count failures) (count skipped) (count messages))
+    messages))
 
 (defn- handle-file-uploads
   "Handle file uploads if present. Returns nil if no files, otherwise
    returns upload result map and messages to inject into AI request."
   [files]
-  (log/infof "[slackbot] handle-file-uploads: file_count=%s" (count files))
   (when (seq files)
     (cond
       (not (uploads-enabled?))
       (do
-        (log/infof "[slackbot] handle-file-uploads: uploads not enabled")
+        (log/info "[csv-upload] Step 3/9 Pre-flight Checks -- FAILED: uploads not enabled")
         {:error "CSV uploads are not enabled. An administrator needs to configure a database for uploads in Admin > Settings > Uploads."})
 
       :else
@@ -329,13 +344,16 @@
             db (t2/select-one :model/Database :id db-id)
             schema-name (get-upload-schema-name)
             can-upload? (upload.impl/can-create-upload? db schema-name)]
-        (log/infof "[slackbot] handle-file-uploads: db_id=%s schema=%s can_upload=%s" db-id schema-name can-upload?)
         (if-not can-upload?
-          {:error "You don't have permission to upload files. Contact your Metabase administrator."}
-          (let [result (process-file-uploads files)]
-            (log/infof "[slackbot] handle-file-uploads: process_result=%s" (pr-str result))
-            {:upload-result result
-             :system-messages (build-upload-system-messages result)}))))))
+          (do
+            (log/infof "[csv-upload] Step 3/9 Pre-flight Checks -- FAILED: no permission for db_id=%s schema=%s"
+                       db-id schema-name)
+            {:error "You don't have permission to upload files. Contact your Metabase administrator."})
+          (do
+            (log/infof "[csv-upload] Step 3/9 Pre-flight Checks -- OK: db_id=%s schema=%s" db-id schema-name)
+            (let [result (process-file-uploads files)]
+              {:upload-result result
+               :system-messages (build-upload-system-messages result)})))))))
 
 ;; -------------------- AI SERVICE ---------------------------
 
@@ -349,21 +367,16 @@
 
 (defn- make-ai-request
   "Make an AI request and return both text and data parts.
-   Optional `extra-history` is prepended to the thread history (e.g., for upload context)."
+   Optional `extra-history` is appended after the thread history (e.g., for upload context)."
   ([conversation-id prompt thread]
    (make-ai-request conversation-id prompt thread nil))
   ([conversation-id prompt thread extra-history]
-   (log/infof "[slackbot] make-ai-request: extra_history_count=%s" (count extra-history))
    (let [message    (metabot-v3.envelope/user-message prompt)
          metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
          profile-id (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
          session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
          thread-history (thread->history thread)
-         history    (into (vec extra-history) thread-history)
-         _ (log/infof "[slackbot] make-ai-request: thread_history_count=%s final_history_count=%s"
-                      (count thread-history)
-                      (count history))
-         _ (log/infof "[slackbot] make-ai-request: final_history=%s" (pr-str history))
+         history    (into (vec thread-history) extra-history)
          lines      (atom nil)
          ^StreamingResponse response-stream
          (metabot-v3.client/streaming-request
@@ -619,27 +632,31 @@
    :thread_ts (or (:thread_ts event)
                   (:ts event))})
 
-(mu/defn- send-metabot-response
-  "Send a metabot response to `client` for message `event`."
-  [client :- SlackClient
-   event  :- SlackMessageImEvent]
-  (let [prompt (:text event)
-        thread (fetch-thread client event)
-        message-ctx (event->reply-context event)
-        thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
-        ;; TODO: handle case where this errors
-        ;; TODO: send constant conversation id
-        {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
-    (delete-message client thinking-message)
-    (post-message client (merge message-ctx {:text text}))
-    (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
-      (doseq [viz vizs]
-        (when-let [card-id (get-in viz [:value :entity_id])]
-          (let [png-bytes (generate-card-png card-id)
-                filename (str "chart-" card-id ".png")]
-            (post-image client png-bytes filename
-                        (:channel message-ctx)
-                        (:thread_ts message-ctx))))))))
+(defn- send-metabot-response
+  "Send a metabot response to `client` for message `event`.
+   Optional `extra-history` is appended after thread history (e.g., for upload context)."
+  ([client event]
+   (send-metabot-response client event nil))
+  ([client event extra-history]
+   (let [prompt (:text event)
+         thread (fetch-thread client event)
+         message-ctx (event->reply-context event)
+         thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
+         ;; TODO: handle case where this errors
+         ;; TODO: send constant conversation id
+         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread extra-history)]
+     (log/infof "[csv-upload] Step 9/9 AI Response -- OK: text_length=%d data_parts=%d"
+                (count text) (count data-parts))
+     (delete-message client thinking-message)
+     (post-message client (merge message-ctx {:text text}))
+     (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
+       (doseq [viz vizs]
+         (when-let [card-id (get-in viz [:value :entity_id])]
+           (let [png-bytes (generate-card-png card-id)
+                 filename (str "chart-" card-id ".png")]
+             (post-image client png-bytes filename
+                         (:channel message-ctx)
+                         (:thread_ts message-ctx)))))))))
 
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize"
@@ -683,24 +700,17 @@
    user-id :- :int]
   (request/with-current-user user-id
     (let [files (:files event)
-          _ (log/infof "[slackbot] process-message-file-share: file_count=%s files=%s"
-                       (count files)
-                       (mapv #(select-keys % [:id :name :filetype :mimetype :size]) files))
           file-handling (when (seq files)
                           (handle-file-uploads files))
-          _ (log/infof "[slackbot] process-message-file-share: file_handling=%s" (pr-str file-handling))
           extra-history (cond
                           ;; Pre-flight error (uploads disabled, no permission)
                           (:error file-handling)
-                          [{:role "system"
+                          [{:role :assistant
                             :content (:error file-handling)}]
 
                           ;; Upload results to communicate to AI
                           (:system-messages file-handling)
-                          (:system-messages file-handling))
-          _ (log/infof "[slackbot] process-message-file-share: extra_history_count=%s extra_history=%s"
-                       (count extra-history)
-                       (pr-str extra-history))]
+                          (:system-messages file-handling))]
       (send-metabot-response client event extra-history))))
 
 (mu/defn- process-user-message :- :nil
@@ -709,19 +719,20 @@
    event  :- SlackKnownMessageEvent]
   (let [slack-user-id (:user event)
         user-id (slack-id->user-id slack-user-id)]
-    (log/infof "[slackbot] process-user-message: slack_user=%s metabase_user=%s" slack-user-id user-id)
     (if-not user-id
-      (send-auth-link client event)
+      (do
+        (log/infof "[csv-upload] Step 2/9 Event Routing -- FAILED: slack_user=%s not linked to Metabase account"
+                   slack-user-id)
+        (send-auth-link client event))
       (let [channel-type (:channel_type event)
-            subtype (:subtype event)]
-        (log/infof "[slackbot] process-user-message dispatch: channel_type=%s subtype=%s -> %s"
-                   channel-type
-                   subtype
-                   (cond
-                     (= subtype "file_share") "process-message-file-share"
-                     (= channel-type "im") "process-message-im"
-                     (= channel-type "channel") "process-message-channels"
-                     :else "unhandled"))
+            subtype (:subtype event)
+            route (cond
+                    (= subtype "file_share") "file_share"
+                    (= channel-type "im") "im"
+                    (= channel-type "channel") "channel"
+                    :else "unhandled")]
+        (log/infof "[csv-upload] Step 2/9 Event Routing -- OK: slack_user=%s metabase_user=%s route=%s"
+                   slack-user-id user-id route)
         (cond
           (= subtype "file_share")   (process-message-file-share client event user-id)
           (= channel-type "im")      (process-message-im client event user-id)
@@ -735,17 +746,18 @@
   [payload :- SlackEventCallbackEvent]
   (let [client {:token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
-    (def tsp-event event)
-    (println "TSP received event")
-    (log/infof "[slackbot] handle-event-callback: type=%s subtype=%s channel_type=%s has_files=%s file_count=%s"
+    (log/infof "[csv-upload] Event received: type=%s subtype=%s channel_type=%s file_count=%s"
                (:type event)
                (:subtype event)
                (:channel_type event)
-               (boolean (seq (:files event)))
                (count (:files event)))
     (when (known-user-message? event)
       ;; TODO: should we queue work up another way?
-      (future (process-user-message client event)))
+      (future
+        (try
+          (process-user-message client event)
+          (catch Exception e
+            (log/infof e "[slackbot] Error processing message: %s" (ex-message e))))))
     ack-msg))
 
 ;; ----------------------- ROUTES --------------------------
@@ -768,6 +780,7 @@
             [::mc/default       [:map [:type :string]]]]
    request]
   (assert-valid-slack-req request)
+  (log/info "[csv-upload] Step 1/9 Event Reception & Authentication -- OK")
   ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
     "url_verification" (handle-url-verification body)
@@ -797,7 +810,7 @@
   ;; Updating an existing slack app
   ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
-  (system/site-url! "https://frontpage-petite-performed-participated.trycloudflare.com")
+  (system/site-url! "https://pioneer-fifth-riding-namespace.trycloudflare.com")
   ;; 3. visit the app manifest slack settings page for your slack app (https://app.slack.com/app-settings/.../..../app-manifest)
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do
