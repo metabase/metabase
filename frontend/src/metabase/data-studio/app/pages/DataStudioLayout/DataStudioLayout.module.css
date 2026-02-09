@@ -177,3 +177,7 @@
   top: 0.25rem;
   right: 0.25rem;
 }
+
+.upperGroup {
+  overflow-y: auto;
+}

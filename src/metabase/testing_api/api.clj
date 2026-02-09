@@ -10,6 +10,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -237,3 +242,14 @@
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
   (refresh-cache-configs!))
+
+(api.macros/defendpoint :post "/query" :- ::lib.schema/query
+  "Creates a query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as query-spec} :- [:merge
+                                          [:map
+                                           [:database ::lib.schema.id/database]]
+                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-query query-spec)))

@@ -2730,11 +2730,16 @@ LIMIT
       getTransformsList().within(() => {
         cy.findByText("Archive Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
-        cy.findByText("Python library").should("be.visible");
       });
     });
 
     it("should show Python library item and navigate to it", () => {
+      // Python library row only appears when we have at least one transform
+      H.createSqlTransform({
+        sourceQuery: "SELECT 1",
+        targetTable: "table_a",
+        targetSchema: "Schema A",
+      });
       visitTransformListPage();
 
       cy.log("Python library should be visible in the list");
@@ -4246,7 +4251,7 @@ describe("scenarios > data studio > transforms > permissions > starter", () => {
       cy.log("Verify transforms page is accessible");
       H.DataStudio.nav().findByText("Transforms").click();
 
-      cy.findByText("Tidy up your data right from Metabase").should(
+      cy.findByText("Start transforming your data in Metabase").should(
         "be.visible",
       );
     });

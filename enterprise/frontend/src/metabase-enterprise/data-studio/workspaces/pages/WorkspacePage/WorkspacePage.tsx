@@ -101,7 +101,7 @@ function WorkspacePageContent({
 
   const { tab, setTab, ref: tabsListRef } = useWorkspaceUiTabs();
 
-  const workspaceId = Number(params.workspaceId);
+  const workspaceId = parseInt(params.workspaceId, 10);
 
   // Data fetching
   const {
