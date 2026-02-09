@@ -358,9 +358,9 @@
       (is (true? (:definition_changed entity)))
       (is (false? (:input_data_changed entity))))))
 
-;;;; Static graph tests for marking functions (upstream-ancestors, downstream-descendants, any-ancestor-stale?)
+;;;; Static graph tests for graph traversal functions
 
-(deftest upstream-ancestors-linear-chain-test
+(deftest upstream-ids-linear-chain-test
   (testing "Linear chain: computes all upstream ancestors"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -371,14 +371,14 @@
                                 t3 [t2]}}]
       (testing "t3 has t1 and t2 as ancestors"
         (is (= #{"t1" "t2"}
-               (set (ws.impl/upstream-ancestors graph "t3")))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t3")))))
       (testing "t2 has only t1 as ancestor"
         (is (= #{"t1"}
-               (set (ws.impl/upstream-ancestors graph "t2")))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t2")))))
       (testing "t1 has no ancestors"
-        (is (empty? (ws.impl/upstream-ancestors graph "t1")))))))
+        (is (empty? (ws.impl/upstream-ids graph :workspace-transform "t1")))))))
 
-(deftest upstream-ancestors-diamond-test
+(deftest upstream-ids-diamond-test
   (testing "Diamond graph: computes all paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -395,13 +395,13 @@
                                 t4 [t2 t3]}}]
       (testing "t4 has all transforms as ancestors"
         (is (= #{"t1" "t2" "t3"}
-               (set (ws.impl/upstream-ancestors graph "t4")))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t4")))))
       (testing "t2 has only t1 as ancestor"
         (is (= #{"t1"}
-               (set (ws.impl/upstream-ancestors graph "t2"))))))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t2"))))))))
 
-(deftest upstream-ancestors-with-external-transforms-test
-  (testing "External transforms are traversed but not included"
+(deftest upstream-ids-with-external-transforms-test
+  (testing "External transforms are traversed but not included when filtered"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
           t2 (workspace-transform "t2")
@@ -411,11 +411,13 @@
                                 t2  [ext]}}]
       (testing "t2 can reach through external transform to t1"
         (is (= #{"t1"}
-               (set (ws.impl/upstream-ancestors graph "t2")))))
-      (testing "ext cannot be returned as it's external"
-        (is (not (contains? (set (ws.impl/upstream-ancestors graph "t2")) 100)))))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t2")))))
+      (testing "upstream-nodes returns all node types including external"
+        (is (= #{{:node-type :workspace-transform :id "t1"}
+                 {:node-type :external-transform :id 100}}
+               (ws.impl/upstream-nodes graph "t2")))))))
 
-(deftest downstream-descendants-linear-chain-test
+(deftest downstream-ids-linear-chain-test
   (testing "Linear chain: computes all downstream descendants"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -423,17 +425,18 @@
           ;; t1 -> t2 -> t3
           graph {:entities     [t1 t2 t3]
                  :dependencies {t2 [t1]
-                                t3 [t2]}}]
+                                t3 [t2]}}
+          ws-tx? #(= :workspace-transform (:node-type %))]
       (testing "t1 has t2 and t3 as descendants"
         (is (= #{"t2" "t3"}
-               (set (ws.impl/downstream-descendants graph "t1")))))
+               (set (ws.impl/downstream-ids graph "t1" ws-tx?)))))
       (testing "t2 has only t3 as descendant"
         (is (= #{"t3"}
-               (set (ws.impl/downstream-descendants graph "t2")))))
+               (set (ws.impl/downstream-ids graph "t2" ws-tx?)))))
       (testing "t3 has no descendants"
-        (is (empty? (ws.impl/downstream-descendants graph "t3")))))))
+        (is (empty? (ws.impl/downstream-ids graph "t3" ws-tx?)))))))
 
-(deftest downstream-descendants-diamond-test
+(deftest downstream-ids-diamond-test
   (testing "Diamond graph: computes all downstream paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -447,36 +450,40 @@
           graph {:entities     [t1 t2 t3 t4]
                  :dependencies {t2 [t1]
                                 t3 [t1]
-                                t4 [t2 t3]}}]
+                                t4 [t2 t3]}}
+          ws-tx? #(= :workspace-transform (:node-type %))]
       (testing "t1 has all transforms as descendants"
         (is (= #{"t2" "t3" "t4"}
-               (set (ws.impl/downstream-descendants graph "t1")))))
+               (set (ws.impl/downstream-ids graph "t1" ws-tx?)))))
       (testing "t2 has only t4 as descendant"
         (is (= #{"t4"}
-               (set (ws.impl/downstream-descendants graph "t2"))))))))
+               (set (ws.impl/downstream-ids graph "t2" ws-tx?))))))))
 
-(deftest downstream-descendants-with-external-transforms-test
-  (testing "External transforms are traversed but not included"
+(deftest downstream-ids-with-external-transforms-test
+  (testing "External transforms are traversed but not included when filtered"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
           t2 (workspace-transform "t2")
           ;; t1 -> ext -> t2
           graph {:entities     [t1 ext t2]
                  :dependencies {ext [t1]
-                                t2  [ext]}}]
+                                t2  [ext]}}
+          ws-tx? #(= :workspace-transform (:node-type %))]
       (testing "t1 can reach through external transform to t2"
         (is (= #{"t2"}
-               (set (ws.impl/downstream-descendants graph "t1")))))
-      (testing "ext cannot be returned as it's external"
-        (is (not (contains? (set (ws.impl/downstream-descendants graph "t1")) 100)))))))
+               (set (ws.impl/downstream-ids graph "t1" ws-tx?)))))
+      (testing "downstream-nodes returns all node types including external"
+        (is (= #{{:node-type :workspace-transform :id "t2"}
+                 {:node-type :external-transform :id 100}}
+               (ws.impl/downstream-nodes graph "t1")))))))
 
-(deftest downstream-descendants-empty-graph-test
+(deftest downstream-nodes-empty-graph-test
   (testing "Empty graph returns nil"
-    (is (nil? (ws.impl/downstream-descendants {:entities [] :dependencies nil} "t1")))))
+    (is (nil? (ws.impl/downstream-nodes {:entities [] :dependencies nil} "t1")))))
 
-(deftest upstream-ancestors-empty-graph-test
+(deftest upstream-nodes-empty-graph-test
   (testing "Empty graph returns nil"
-    (is (nil? (ws.impl/upstream-ancestors {:entities [] :dependencies nil} "t1")))))
+    (is (nil? (ws.impl/upstream-nodes {:entities [] :dependencies nil} "t1")))))
 
 ;;;; run-stale-ancestors! tests
 
