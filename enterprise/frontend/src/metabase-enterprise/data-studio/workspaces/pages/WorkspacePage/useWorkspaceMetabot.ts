@@ -287,7 +287,7 @@ export function useWorkspaceMetabot({
       !openedTabs.some(
         (tab) =>
           tab.type === "transform" &&
-          getTransformId(tab.transform) ===
+          getTransformId(tab.transformRef) ===
             getTransformId(metabotContextTransform),
       )
     ) {
@@ -369,7 +369,7 @@ export function useWorkspaceMetabot({
         const existingTab = openedTabs.find(
           (tab) =>
             tab.type === "transform" &&
-            getTransformId(tab.transform) === localTransform.id,
+            getTransformId(tab.transformRef) === localTransform.id,
         );
         if (existingTab) {
           setActiveTab(existingTab);

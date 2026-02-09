@@ -164,7 +164,8 @@ function WorkspacePageContent({
       const isActive =
         (tab.type === "transform" &&
           activeTransform &&
-          getTransformId(activeTransform) === getTransformId(tab.transform)) ||
+          getTransformId(activeTransform) ===
+            getTransformId(tab.transformRef)) ||
         (tab.type === "table" && activeTable?.tableId === tab.table.tableId);
       const remaining = openedTabs.filter((item) => item.id !== tab.id);
 
@@ -504,9 +505,9 @@ function WorkspacePageContent({
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
                   isLoadingWorkspaceTransforms={isLoadingWorkspaceTransforms}
-                  onTransformClick={(transform) => {
-                    addOpenedTransform(transform);
-                    setTab(getTransformTabId(transform));
+                  onTransformClick={(transformRef) => {
+                    addOpenedTransform(transformRef);
+                    setTab(getTransformTabId(transformRef));
                     if (activeTable) {
                       setActiveTable(null);
                     }
