@@ -176,13 +176,28 @@ const isFieldVisible = (
   );
 };
 
+export function getConfigForField(
+  field: EngineField,
+  config: DatabaseFormConfig,
+) {
+  switch (field.name) {
+    case "advanced-options":
+      return config.advancedOptions;
+    case "engine":
+      return config.engine;
+  }
+}
+
 export function shouldShowField(
   field: EngineField,
   isAdvanced: boolean,
   config: DatabaseFormConfig,
   details?: Record<string, unknown>,
 ) {
+  const fieldConfig = getConfigForField(field, config);
+
   return (
+    fieldConfig?.fieldState !== "hidden" &&
     isFieldVisible(field, details) &&
     shouldShowFieldInAdvancedMode(field, isAdvanced)
   );
