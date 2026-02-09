@@ -31,7 +31,7 @@ For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConf
 <metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
 ```
 
-If you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
+If you also want to translate content (like item titles, headings, filter labels, or data), you'll need to add a translation dictionary.
 
 ### SDK translations
 
