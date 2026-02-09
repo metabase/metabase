@@ -145,7 +145,8 @@
              "/transform/validate/target$"
              "/run$"
              "/transform/[^/]+/run$"
-             "/transform/[^/]+/dry-run$"]
+             "/transform/[^/]+/dry-run$"
+             "/query$"]
     :put    ["/transform/[^/]+$"]
     :delete ["/transform/[^/]+$"]}
    (partial mapv ws-pattern)))
@@ -988,6 +989,19 @@
                              (ws.impl/dry-run-transform workspace graph transform))]
     (cond-> dry-run-result
       run-ancestors? (assoc :ancestors ancestors-result))))
+
+(api.macros/defendpoint :post "/:ws-id/query"
+  :- ::ws.t/dry-run-result
+  "Execute an arbitrary SQL query in the workspace's isolated database context.
+   Returns the first 2000 rows of query results."
+  {:access :workspace}
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+   _query-params
+   {:keys [sql]} :- [:map [:sql [:string {:min 1}]]]]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
+        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot query archived workspace")
+        _         (check-transforms-enabled! (:database_id workspace))]
+    (ws.impl/execute-adhoc-query workspace sql)))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."

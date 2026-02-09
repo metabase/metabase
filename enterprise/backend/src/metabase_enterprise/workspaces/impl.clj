@@ -398,6 +398,14 @@
     workspace
     (ws.execute/run-transform-preview transform (build-remapping workspace graph))))
 
+(defn execute-adhoc-query
+  "Execute an arbitrary SQL query in the workspace's isolated database context.
+   Returns a ::ws.t/dry-run-result with the first 2000 rows."
+  [{:keys [database_id] :as workspace} sql]
+  (ws.isolation/with-workspace-isolation
+    workspace
+    (ws.execute/execute-adhoc-sql database_id sql)))
+
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 
 (defn- extract-external-transform-ids

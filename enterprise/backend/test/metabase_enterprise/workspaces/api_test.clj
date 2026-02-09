@@ -1370,6 +1370,81 @@
                       :not_run   []}
                      (:ancestors result))))))))))
 
+;;; ---------------------------------------- Adhoc Query Tests ----------------------------------------
+
+(deftest ^:synchronized adhoc-query-test
+  (testing "POST /api/ee/workspace/:id/query"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Test")]
+      (testing "happy path - returns query results for valid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 as id, 'hello' as name"})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1 "hello"]]
+                            :cols [{:name #"(?i)id"} {:name #"(?i)name"}]}}
+                  result))))
+
+      (testing "returns results for multi-row queries"
+        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+              result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql sql})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1] [2] [3]]}}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-error-handling-test
+  (testing "POST /api/ee/workspace/:id/query error handling"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Error Test")]
+      (testing "returns failed status with message for invalid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT FROM WHERE INVALID"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result))))
+
+      (testing "returns failed status for syntax errors"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 LIMIT"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-validation-test
+  (testing "POST /api/ee/workspace/:id/query validation"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Validation Test"}]
+      (testing "returns 404 for non-existent workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404
+                                     (ws-url 999999 "/query")
+                                     {:sql "SELECT 1"}))))
+
+      (testing "returns 400 for missing sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {}))))
+
+      (testing "returns 400 for empty sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {:sql ""})))))))
+
+(deftest ^:synchronized adhoc-query-archived-workspace-test
+  (testing "POST /api/ee/workspace/:id/query on archived workspace"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Archived Test")]
+      ;; Archive the workspace
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/archive"))
+
+      (testing "returns 400 for archived workspace"
+        (is (= "Cannot query archived workspace"
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/query")
+                                     {:sql "SELECT 1"})))))))
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id
@@ -1995,7 +2070,8 @@
    [:post "/:ws-id/run"]
    [:post "/:ws-id/transform/:tx-id/run"]
    [:post "/:ws-id/transform/:tx-id/dry-run"]
-   [:post "/:ws-id/transform/validate/target"]])
+   [:post "/:ws-id/transform/validate/target"]
+   [:post "/:ws-id/query"]])
 
 (def ^:private permission-denied-msg "You don't have permissions to do that.")
 

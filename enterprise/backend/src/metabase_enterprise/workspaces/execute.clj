@@ -151,6 +151,29 @@
       {:status  :failed
        :message (ex-message e)})))
 
+(defn execute-adhoc-sql
+  "Execute an arbitrary SQL query against a database and return the first 2000 rows.
+   Returns a ::ws.t/dry-run-result map with data nested under :data."
+  [database-id sql]
+  (try
+    (let [query  {:database database-id
+                  :lib/type :mbql/query
+                  :stages   [{:lib/type :mbql.stage/native
+                              :native   sql}]}
+          result (qp/process-query
+                  (assoc query :constraints {:max-results           preview-row-limit
+                                             :max-results-bare-rows preview-row-limit}))
+          data   (:data result)]
+      (if (= :completed (:status result))
+        {:status :succeeded
+         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status  :failed
+         :message (or (:error result) "Query execution failed")}))
+    (catch Exception e
+      (log/error e "Failed to execute adhoc SQL query")
+      {:status  :failed
+       :message (ex-message e)})))
+
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
    Returns a ::ws.t/dry-run-result map with data nested under :data."
