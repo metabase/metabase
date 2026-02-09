@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useToast } from "metabase/common/hooks";
 import type {
@@ -131,55 +132,36 @@ export const useAdminSettings = <
     async ({
       toast = true,
       ...settings
-    }: {
-      toast?: boolean;
-    } & Partial<EnterpriseSettings>) => {
+    }: { toast?: boolean } & Partial<EnterpriseSettings>) => {
       const response = await updateSettings(settings);
 
-      if (!toast) {
-        return response;
+      if (toast) {
+        if (response.error) {
+          const message =
+            (response.error as { data?: { message: string } })?.data?.message ||
+            t`Error saving settings`;
+
+          sendToast({ message, icon: "warning", toastColor: "danger" });
+        } else {
+          sendToast({ message: t`Changes saved`, icon: "check_filled" });
+        }
       }
 
-      if (response.error) {
-        const message =
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving settings`;
-
-        sendToast({ message, icon: "warning", toastColor: "danger" });
-      } else {
-        sendToast({ message: t`Changes saved`, icon: "check_filled" });
-      }
       return response;
     },
     [updateSettings, sendToast],
   );
 
+  type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
   const values = useMemo(() => {
-    if (!settings) {
-      return {} as Record<SettingNames[number], boolean>;
-    }
-
-    return settingNames.reduce(
-      (acc, key) => {
-        acc[key as SettingNames[number]] = !!settings[key];
-        return acc;
-      },
-      {} as Record<SettingNames[number], boolean>,
-    );
+    return (settings ? _.pick(settingNames, ...settingNames) : {}) as Values;
   }, [settings, settingNames]);
 
+  type Details = { [K in SettingNames[number]]: SettingDefinition<K> };
   const details = useMemo(() => {
-    if (!settingsDetails) {
-      return {} as Record<SettingNames[number], SettingDefinition>;
-    }
-
-    return settingNames.reduce(
-      (acc, key) => {
-        acc[key as SettingNames[number]] = settingsDetails[key];
-        return acc;
-      },
-      {} as Record<SettingNames[number], SettingDefinition>,
-    );
+    return (
+      settingsDetails ? _.pick(settingNames, ...settingNames) : {}
+    ) as Details;
   }, [settingsDetails, settingNames]);
 
   return {

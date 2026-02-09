@@ -33,6 +33,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
@@ -441,13 +442,17 @@
                                 :description "Issue a Metabot command"
                                 :should_escape false}]}
    :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
-                  :scopes {:bot ["channels:history"
+                  :scopes {:bot ["assistant:write"
+                                 "channels:history"
                                  "chat:write"
+                                 "channels:read"
                                  "commands"
+                                 "groups:read"
                                  "im:history"
-                                 "files:write"
+                                 "im:read"
                                  "files:read"
-                                 "assistant:write"]}}
+                                 "files:write"
+                                 "mpim:read"]}}
    :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
                                     :bot_events ["app_home_opened"
                                                  "message.channels"
@@ -551,19 +556,23 @@
     [:text {:optional true} [:maybe :string]]
     [:thread_ts {:optional true} [:maybe :string]]]])
 
-(def ^:private SlackHandledMessageEvent
-  "Schema for event_callback event that we handle."
+(def ^:private SlackKnownMessageEvent
+  "Schema for event_callback events that we handle."
   [:or
+   ;; Events based on :subtype come first as :subtype is unambiguous.
+   SlackMessageFileShareEvent
+   ;; Events based on :channel_type. These are generic message events that might overlap with the above. For example,
+   ;; a SlackMessageFileShareEvent might have either :channel_type. Maybe these should be "mixins", but for now we
+   ;; only need to distinguish file_share vs im vs channel messages.
    SlackMessageImEvent
-   SlackMessageChannelsEvent
-   SlackMessageFileShareEvent])
+   SlackMessageChannelsEvent])
 
 (def ^:private SlackEventCallbackEvent
   "Malli schema for Slack event_callback event"
   [:map
    [:type [:= "event_callback"]]
    [:event [:or
-            SlackHandledMessageEvent
+            SlackKnownMessageEvent
             ;; Fallback for any other valid event type
             [:map
              [:type :string]
@@ -576,12 +585,12 @@
    :headers {"Content-Type" "text/plain"}
    :body    (:challenge event)})
 
-(defn- user-message?
+(defn- known-user-message?
   "Check if event is a user message (not bot/system message).
    Returns true if the event has no bot_id and matches a known message schema."
   [event]
   (and (nil? (:bot_id event))
-       (mr/validate SlackHandledMessageEvent event)))
+       (mr/validate SlackKnownMessageEvent event)))
 
 (def ^:private ack-msg
   "Acknowledgement payload"
@@ -597,9 +606,11 @@
                     :provider "slack-connect"
                     :provider_id slack-user-id))
 
-(def ^:private slack-user-authorize-link
+(defn- slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
-  (str (system/site-url) "/auth/login?redirect=/auth/sso?preferred_method=slack-connect"))
+  []
+  (let [sso-url "/auth/sso?preferred_method=slack-connect&redirect=/slack-connect-success"]
+    (str (system/site-url) "/auth/login?redirect=" (codec/url-encode sso-url))))
 
 (defn- event->reply-context
   "Extract the necessary context for a reply from the given `event`"
@@ -609,34 +620,44 @@
                   (:ts event))})
 
 (mu/defn- send-metabot-response
-  "Send a metabot response to `client` for message `event`.
-   Optional `extra-history` is passed to make-ai-request for upload context."
-  ([client :- SlackClient
-    event  :- SlackHandledMessageEvent]
-   (send-metabot-response client event nil))
-  ([client :- SlackClient
-    event  :- SlackHandledMessageEvent
-    extra-history]
-   (log/infof "[slackbot] send-metabot-response: extra_history_count=%s extra_history=%s"
-              (count extra-history)
-              (pr-str extra-history))
-   (let [prompt (or (:text event) "I've uploaded some files.")
-         _ (log/infof "[slackbot] send-metabot-response: prompt=%s" prompt)
-         thread (fetch-thread client event)
-         message-ctx (event->reply-context event)
-         thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
-         ;; TODO: handle case where this errors
-         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread extra-history)]
-     (delete-message client thinking-message)
-     (post-message client (merge message-ctx {:text text}))
-     (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
-       (doseq [viz vizs]
-         (when-let [card-id (get-in viz [:value :entity_id])]
-           (let [png-bytes (generate-card-png card-id)
-                 filename (str "chart-" card-id ".png")]
-             (post-image client png-bytes filename
-                         (:channel message-ctx)
-                         (:thread_ts message-ctx)))))))))
+  "Send a metabot response to `client` for message `event`."
+  [client :- SlackClient
+   event  :- SlackMessageImEvent]
+  (let [prompt (:text event)
+        thread (fetch-thread client event)
+        message-ctx (event->reply-context event)
+        thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
+        ;; TODO: handle case where this errors
+        ;; TODO: send constant conversation id
+        {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
+    (delete-message client thinking-message)
+    (post-message client (merge message-ctx {:text text}))
+    (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
+      (doseq [viz vizs]
+        (when-let [card-id (get-in viz [:value :entity_id])]
+          (let [png-bytes (generate-card-png card-id)
+                filename (str "chart-" card-id ".png")]
+            (post-image client png-bytes filename
+                        (:channel message-ctx)
+                        (:thread_ts message-ctx))))))))
+
+(defn- send-auth-link
+  "Respond to an incoming slack message with a request to authorize"
+  [client event]
+  (post-ephemeral-message
+   client
+   (merge (event->reply-context event)
+          {:user (:user event)
+           :text "Connect your Slack account to Metabase to use Metabot."
+           :blocks [{:type "section"
+                     :text {:type "mrkdwn"
+                            :text "To use Metabot, connect your Slack account to Metabase."}}
+                    {:type "actions"
+                     :elements [{:type "button"
+                                 :text {:type "plain_text"
+                                        :text ":link: Connect to Metabase"
+                                        :emoji true}
+                                 :url (slack-user-authorize-link)}]}]})))
 
 (mu/defn- process-message-im
   "Process a direct message (message.im)"
@@ -685,16 +706,12 @@
 (mu/defn- process-user-message :- :nil
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- SlackClient
-   event  :- SlackHandledMessageEvent]
+   event  :- SlackKnownMessageEvent]
   (let [slack-user-id (:user event)
         user-id (slack-id->user-id slack-user-id)]
     (log/infof "[slackbot] process-user-message: slack_user=%s metabase_user=%s" slack-user-id user-id)
     (if-not user-id
-      (post-ephemeral-message client
-                              (merge (event->reply-context event)
-                                     {:user slack-user-id
-                                      :text (str "You need to link your slack account and authorize the Metabot app. "
-                                                 "Please visit: " slack-user-authorize-link)}))
+      (send-auth-link client event)
       (let [channel-type (:channel_type event)
             subtype (:subtype event)]
         (log/infof "[slackbot] process-user-message dispatch: channel_type=%s subtype=%s -> %s"
@@ -726,7 +743,7 @@
                (:channel_type event)
                (boolean (seq (:files event)))
                (count (:files event)))
-    (when (user-message? event)
+    (when (known-user-message? event)
       ;; TODO: should we queue work up another way?
       (future (process-user-message client event)))
     ack-msg))
@@ -750,12 +767,13 @@
             ["event_callback"   SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
    request]
-  (assert-setup-complete)
   (assert-valid-slack-req request)
   ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
     "url_verification" (handle-url-verification body)
-    "event_callback" (handle-event-callback body)
+    "event_callback" (do
+                       (assert-setup-complete)
+                       (handle-event-callback body))
     ack-msg))
 
 (def ^{:arglists '([request respond raise])} routes
@@ -768,16 +786,16 @@
   ;; Guide to set yourself up for local development
   ;;
   ;; New slack app
-  ;; 1. create a tunnel via `cloudflared tunnel --url http://localhost:3000`
+  ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
-  (system/site-url! "https://personal-hear-sugar-graduates.trycloudflare.com")
+  (system/site-url! "https://<random-id>.ngrok-free.app")
   ;; 4. visit this url in yoru browser, following the setup flow outlined there
   (str (system/site-url) "/admin/metabot/slackbot")
   ;; 6. verify you've setup your instance correctly
   (setup-complete?)
 
   ;; Updating an existing slack app
-  ;; 1. create a tunnel via `cloudflared tunnel --url http://localhost:3000`
+  ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
   (system/site-url! "https://frontpage-petite-performed-participated.trycloudflare.com")
   ;; 3. visit the app manifest slack settings page for your slack app (https://app.slack.com/app-settings/.../..../app-manifest)
