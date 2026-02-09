@@ -26,6 +26,6 @@ jobs:
             --project="$CROWDIN_PROJECT_ID" \
             --ai="openai" \
             --model="gpt-5.1" \
-            --croql='file is "metabase.po" and not (context contains "✨ AI Context")' \
+            --croql='not (context contains "✨ AI Context")' \
             --output="csv" \
             --concurrency=10
