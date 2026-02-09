@@ -100,7 +100,7 @@
         (let [timeout-chan (a/timeout server.settings/*thread-interrupt-escalation-timeout-ms*)
               [_ port]     (a/alts! [finished-chan timeout-chan])]
           (when (= port timeout-chan)
-            (log/infof "Task still running %s after cancellation, escalating to Thread.interrupt()"
+            (log/infof "Task still running %s after cancellation, escalating to thread interruption"
                        (u/format-milliseconds server.settings/*thread-interrupt-escalation-timeout-ms*))
             (.cancel fut true)))))))
 
@@ -117,8 +117,8 @@
                    (a/>!! finished-chan :unexpected-error)
                    (write-error! os e nil))
                  (finally
-                   ;; Clear the interrupted flag before any blocking ops (a/>!!) to prevent
-                   ;; the thread from carrying stale interrupted state to the next task.
+                   ;; Clear the interrupted flag to prevent the thread from
+                   ;; carrying stale interrupted state to the next task.
                    (Thread/interrupted)
                    (a/>!! finished-chan (if (a/poll! canceled-chan)
                                           :canceled

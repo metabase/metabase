@@ -345,8 +345,6 @@
         (is (= ["Non-streaming response returned from streaming endpoint"]
                (me/humanize (mr/explain schema {:data "not a streaming response"}))))))))
 
-;;; ---------------------------------------- interrupt escalation tests ----------------------------------------
-
 (deftest start-interrupt-escalation-cancels-future-test
   (testing ".cancel is called when the task is still running after the interruption timeout"
     (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 100]
@@ -368,10 +366,10 @@
 (deftest start-interrupt-escalation-no-cancel-when-task-finishes-test
   (testing ".cancel is not called when the task finishes before the escalation timeout"
     (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 2000]
-      (let [cancel-called? (atom false)
+      (let [cancel-called? (promise)
             mock-future    (reify Future
-                             (cancel [_ _]
-                               (reset! cancel-called? true)
+                             (cancel [_ interrupt?]
+                               (deliver cancel-called? interrupt?)
                                true)
                              (isCancelled [_] false)
                              (isDone [_] false)
@@ -382,28 +380,24 @@
         (a/>!! canceled-chan ::request-canceled)
         (Thread/sleep 50)
         (a/>!! finished-chan :completed)
-        (Thread/sleep 200)
-        (is (false? @cancel-called?)
-            "Future.cancel() should NOT be called when the task finishes before timeout")))))
+        (is (= ::not-called (deref cancel-called? 200 ::not-called)))))))
 
 (deftest start-interrupt-escalation-noop-when-disabled-test
   (testing "no-op when interrupt-escalation-timeout-ms is 0"
     (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 0]
-      (let [cancel-called? (atom false)
+      (let [cancel-called? (promise)
             mock-future    (reify Future
-                             (cancel [_ _]
-                               (reset! cancel-called? true)
+                             (cancel [_ interrupt?]
+                               (deliver cancel-called? interrupt?)
                                true)
                              (isCancelled [_] false)
                              (isDone [_] false)
                              (get [_] nil))
             finished-chan   (a/promise-chan)
             canceled-chan   (a/promise-chan)]
-        (is (nil? (#'streaming-response/start-interrupt-escalation! mock-future finished-chan canceled-chan)))
+        (#'streaming-response/start-interrupt-escalation! mock-future finished-chan canceled-chan)
         (a/>!! canceled-chan ::request-canceled)
-        (Thread/sleep 200)
-        (is (false? @cancel-called?)
-            "Future.cancel() should NOT be called when escalation is disabled")))))
+        (is (= ::not-called (deref cancel-called? 200 ::not-called)))))))
 
 (deftest interrupt-escalation-integration-test
   (testing "A stuck streaming response thread is interrupted via escalation after cancellation"
@@ -432,4 +426,5 @@
             (is (true? (deref task-started? 5000 ::timed-out)))
             (a/>!! canceled-chan ::request-canceled)
             (is (true? (deref interrupted? 5000 ::timed-out)))
-            (is (true? (deref complete-promise 5000 ::timed-out)))))))))
+            (is (true? (deref complete-promise 5000 ::timed-out)))
+            (is (= :canceled (a/poll! finished-chan)))))))))
