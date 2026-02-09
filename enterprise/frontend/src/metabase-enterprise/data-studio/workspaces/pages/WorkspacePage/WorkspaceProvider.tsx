@@ -82,12 +82,12 @@ export interface WorkspaceContextValue {
   activeTransformRef: AnyWorkspaceTransformRef | null;
   activeEditedTransform?: EditedTransform | null;
   setActiveTab: (tab: WorkspaceTab | null) => void;
-  setActiveTransformRef: (transform: AnyWorkspaceTransformRef) => void;
+  setActiveTransformRef: (transformRef: AnyWorkspaceTransformRef) => void;
   setActiveTable: (table: OpenTable | null) => void;
   addOpenedTab: (tab: WorkspaceTab, activate?: boolean) => void;
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
-  addOpenedTransform: (transform: AnyWorkspaceTransformRef) => void;
+  addOpenedTransform: (transformRef: AnyWorkspaceTransformRef) => void;
   removeWorkspaceTransform: (transformId: string | number) => void;
   editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
@@ -126,17 +126,19 @@ interface WorkspaceProviderProps {
 
 /** Get the unique identifier used for tabs and transform lookups */
 export function getTransformId(
-  transform: AnyWorkspaceTransformRef,
+  transformRef: AnyWorkspaceTransformRef,
 ): string | number {
-  if (transform.type === "workspace-transform") {
-    return transform.ref_id;
+  if (transformRef.type === "workspace-transform") {
+    return transformRef.ref_id;
   }
-  return transform.id;
+  return transformRef.id;
 }
 
 /** Get the tab ID for a transform */
-export function getTransformTabId(transform: AnyWorkspaceTransformRef): string {
-  return `transform-${getTransformId(transform)}`;
+export function getTransformTabId(
+  transformRef: AnyWorkspaceTransformRef,
+): string {
+  return `transform-${getTransformId(transformRef)}`;
 }
 
 /** Get the numeric transform ID (for metabot, RunButton, etc.) */
@@ -360,12 +362,12 @@ export const WorkspaceProvider = ({
   );
 
   const addOpenedTransform = useCallback(
-    (transform: AnyWorkspaceTransformRef) => {
+    (transformRef: AnyWorkspaceTransformRef) => {
       const transformTab: TransformTab = {
-        id: getTransformTabId(transform),
-        name: transform.name,
+        id: getTransformTabId(transformRef),
+        name: transformRef.name,
         type: "transform",
-        transformRef: transform,
+        transformRef: transformRef,
       };
       addOpenedTab(transformTab);
     },
