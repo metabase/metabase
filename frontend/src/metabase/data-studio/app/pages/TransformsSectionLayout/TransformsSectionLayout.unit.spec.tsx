@@ -119,5 +119,5 @@ const assertEnableScreen = async () =>
 
 const assertDataStudioUpsellPage = async () =>
   expect(
-    await screen.findByText("Tidy up your data right from Metabase"),
+    await screen.findByText("Start transforming your data in Metabase"),
   ).toBeInTheDocument();
